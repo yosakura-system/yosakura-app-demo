@@ -42,7 +42,8 @@
     task:   '<rect x="4.5" y="3.5" width="15" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 8.5l1.2 1.2L11.5 7M8 14.5l1.2 1.2L11.5 13M14 9h3.2M14 15h3.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
     invoice:'<path d="M6.5 3h8l3.5 3.5V21l-2-1-2 1-2-1-2 1-2-1-2 1V3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8.5h6M9 11.5h6M9 14.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
     hr:     '<circle cx="12" cy="8" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 19c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
-    play:   '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 8.3l5.2 3.7-5.2 3.7z" fill="currentColor"/>'
+    play:   '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 8.3l5.2 3.7-5.2 3.7z" fill="currentColor"/>',
+    cart:   '<circle cx="9.5" cy="20" r="1.4" fill="currentColor"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/><path d="M2.5 4h2.2l2.4 11.2h10.2l1.9-8.2H6.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
   };
   const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${I[k] || ''}</svg>`;
 
@@ -109,6 +110,9 @@
     { id:'hr', group:'storeops', icon:'hr', roles:['manager','owner','hq'],
       name:{ ja:'スタッフ評価・面談', en:'Staff Review', vi:'Đánh giá nhân viên' },
       desc:{ ja:'キャリアアップ制度と面談', en:'Career ranks & interviews', vi:'Xếp hạng & phỏng vấn' } },
+    { id:'order', group:'storeops', icon:'cart', roles:['manager','owner','hq'],
+      name:{ ja:'備品・食材の発注', en:'Order Supplies', vi:'Đặt vật tư' },
+      desc:{ ja:'カタログから本部へ発注', en:'Order from the HQ catalog', vi:'Đặt từ danh mục HQ' } },
     { id:'schedule', group:'biz', icon:'calendar', roles:['owner','hq'],
       name:{ ja:'開業スケジュール D-90', en:'Opening Schedule D-90', vi:'Lịch khai trương D-90' },
       desc:{ ja:'契約〜開業のマスター工程', en:'Contract to opening master plan', vi:'Từ hợp đồng đến khai trương' } },
@@ -538,18 +542,26 @@
 
   /* ⑥ 総括表（モック）*/
   APP_VIEWS.soukatsu = () => `
-    ${NOTE(demoImg)}
+    ${NOTE({ ja:'◆ 実際の日報フォーマットに準拠（デモ数値）', en:'◆ Based on the real daily report format (demo figures)', vi:'◆ Theo mẫu báo cáo ngày thực tế (số liệu demo)' })}
     <div class="card">
-      <h3>${L({ ja:'本日の総括表', en:'Today summary', vi:'Tổng kết hôm nay' })}</h3>
+      <h3>${L({ ja:'本日の総括表', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
       <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select>${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
       <div class="stat-row">
-        <div class="stat"><div class="n">¥87,000</div><div class="k">${L({ja:'売上',en:'Sales',vi:'Doanh thu'})}</div></div>
-        <div class="stat"><div class="n">13</div><div class="k">${L({ja:'客数',en:'Guests',vi:'Khách'})}</div></div>
-        <div class="stat"><div class="n">¥6,692</div><div class="k">${L({ja:'客単価',en:'Per guest',vi:'BQ/khách'})}</div></div>
+        <div class="stat"><div class="n">¥186,817</div><div class="k">${L({ja:'当日売上',en:'Sales',vi:'Doanh thu'})}</div></div>
+        <div class="stat"><div class="n">16</div><div class="k">${L({ja:'客数',en:'Guests',vi:'Khách'})}</div></div>
+        <div class="stat"><div class="n">¥11,676</div><div class="k">${L({ja:'客単価',en:'Per guest',vi:'BQ/khách'})}</div></div>
       </div>
-      <label class="fld"><span>${L({ ja:'特記事項', en:'Notes', vi:'Ghi chú' })}</span><textarea placeholder="${L({ja:'本日の気づき・共有事項',en:'Today findings to share',vi:'Điều cần chia sẻ hôm nay'})}"></textarea></label>
+      ${soukatsuRow(L({ja:'月累計 / 目標到達',en:'Month total / to goal',vi:'Lũy kế / mục tiêu'}), '¥4,278,725', '77.4%')}
+      ${soukatsuRow(L({ja:'口コミ（当日 / 累計）',en:'Reviews (today / total)',vi:'Đánh giá (nay / tổng)'}), '2', '70')}
+      ${soukatsuRow(L({ja:'ヒアリング（当日）',en:'Hearings (today)',vi:'Phỏng vấn (nay)'}), '9', '')}
+      ${soukatsuRow(L({ja:'原価率 / 人件費率（FL）',en:'Food / Labor (FL)',vi:'Giá vốn / nhân sự'}), '36.5%', '23.6%')}
+      ${soukatsuRow(L({ja:'チップ（当日 / 累計）',en:'Tips (today / total)',vi:'Tip (nay / tổng)'}), '¥21,000', '¥84,541')}
+      ${soukatsuRow(L({ja:'キャンセル（累計）',en:'Cancellations (total)',vi:'Hủy (tổng)'}), '¥31,700', '')}
+      <label class="fld" style="margin-top:14px"><span>${L({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' })}</span><textarea placeholder="${L({ja:'本日の気づき・清掃箇所など',en:'Findings, cleaning done, etc.',vi:'Ghi chú, vệ sinh đã làm...'})}"></textarea></label>
+      <label class="fld"><span>${L({ ja:'翌日の食材発注', en:'Tomorrow ingredient order', vi:'Đặt NL ngày mai' })}</span><textarea placeholder="${L({ja:'例：豆乳6／寿司のエビ2／お米 …',en:'e.g. soy milk 6 / shrimp 2 / rice …',vi:'vd: sữa đậu 6 / tôm 2 / gạo …'})}"></textarea></label>
       <button class="btn-primary" onclick="return false">${L({ja:'提出（デモ）',en:'Submit (demo)',vi:'Nộp (demo)'})}</button>
     </div>`;
+  const soukatsuRow = (label, a, b) => `<div class="bar-row" style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding:9px 2px"><span style="font-size:12.5px;color:var(--gray)">${esc(label)}</span><b style="font-size:14px">${esc(a)}${b?` <span style="color:var(--gray);font-weight:400">/ ${esc(b)}</span>`:''}</b></div>`;
 
   /* ⑦ 開業スケジュール D-90（モック）*/
   const TL = [
@@ -666,7 +678,8 @@
     [{ja:'山口陶器',en:'Yamaguchi Toki',vi:'Yamaguchi Toki'},{ja:'食器',en:'Tableware',vi:'Chén đĩa'},{ja:'メール請求',en:'Email invoice',vi:'Hóa đơn email'},{ja:'月末締め',en:'Month-end',vi:'Cuối tháng'}],
     [{ja:'丸眞',en:'Marushin',vi:'Marushin'},{ja:'おしぼり 等',en:'Towels etc.',vi:'Khăn v.v.'},{ja:'郵送請求',en:'Postal invoice',vi:'Hóa đơn bưu điện'},{ja:'月末締め',en:'Month-end',vi:'Cuối tháng'}],
     [{ja:'亀池商店',en:'Kameike Shoten',vi:'Kameike Shoten'},{ja:'箸',en:'Chopsticks',vi:'Đũa'},{ja:'担当へ直接請求',en:'Direct to staff',vi:'Trực tiếp cho NV'},{ja:'都度',en:'Each time',vi:'Mỗi lần'}],
-    [{ja:'かねさし',en:'Kanesashi',vi:'Kanesashi'},{ja:'食材',en:'Ingredients',vi:'Nguyên liệu'},{ja:'発注・在庫連携',en:'Order/stock linked',vi:'Liên kết đặt/tồn'},{ja:'週次',en:'Weekly',vi:'Hàng tuần'}]
+    [{ja:'かねさし',en:'Kanesashi',vi:'Kanesashi'},{ja:'食材',en:'Ingredients',vi:'Nguyên liệu'},{ja:'発注・在庫連携',en:'Order/stock linked',vi:'Liên kết đặt/tồn'},{ja:'週次',en:'Weekly',vi:'Hàng tuần'}],
+    [{ja:'株式会社ZEST',en:'ZEST Inc.',vi:'ZEST'},{ja:'倉庫・発送',en:'Warehouse/shipping',vi:'Kho/vận chuyển'},{ja:'手配チェック＋請求書',en:'Handling check + invoice',vi:'Kiểm tra + hóa đơn'},{ja:'都度',en:'Each time',vi:'Mỗi lần'}]
   ];
   APP_VIEWS.invoice = () => `
     ${NOTE({ ja:'◆ 高原社長のご要望「誰へ・締日・支払方法の一覧化」を一元管理', en:'◆ Centralize who/cutoff/method of billing (per CEO request)', vi:'◆ Quản lý tập trung ai/kỳ hạn/cách thanh toán' })}
@@ -675,7 +688,7 @@
       ${VENDORS.map(([n,k,how,when])=>`<div class="rep"><div class="body"><div class="l1">${esc(L(n))} <span class="muted" style="font-weight:400">・ ${esc(L(k))}</span></div><div class="l2">${esc(L(how))}</div></div><span class="amt" style="color:var(--sumi)">${esc(L(when))}</span></div>`).join('')}
       <button class="btn-primary" style="margin-top:14px" onclick="return false">${L({ja:'請求書の受領状況を確認（デモ）',en:'Check invoice status (demo)',vi:'Kiểm tra hóa đơn (demo)'})}</button>
     </div>
-    <p class="hint">${L({ ja:'本部宛か担当直送かが混在していた請求を、一覧で見える化する構想。', en:'Makes visible whether invoices go to HQ or staff directly.', vi:'Làm rõ hóa đơn gửi HQ hay trực tiếp cho nhân viên.' })}</p>`;
+    <p class="hint">${L({ ja:'本部宛か担当直送かが混在していた請求を一覧で見える化。備品POP等は納品後ロイヤリティに加算して加盟店へ請求。', en:'Makes billing routes visible. Supplies/POP are billed to franchisees via royalty after delivery.', vi:'Làm rõ luồng hóa đơn. Vật tư/POP tính cho cửa hàng qua royalty sau khi giao.' })}</p>`;
 
   /* ⑬ スタッフ評価・面談（モック）*/
   const RANKS = [
@@ -719,6 +732,29 @@
         ${visibleStores().map(s=>`<div class="tile" data-mock="1" style="min-height:92px"><div class="ico">${svg('video')}</div><div class="nm" style="font-size:12px">${esc(s)}</div><div class="desc">${L({ja:'ライブ / 録画',en:'Live / Rec',vi:'Trực tiếp / Ghi'})}</div></div>`).join('')}
       </div>
       <p class="muted" style="margin-top:12px">${L({ ja:'監視ではなくブランド品質維持・加盟店支援のための確認。倍速で要点のみ確認。', en:'Not surveillance: quality & franchisee support. Review key moments at high speed.', vi:'Không phải giám sát: hỗ trợ chất lượng. Xem nhanh các điểm chính.' })}</p>
+    </div>`;
+
+  /* 備品・食材の発注（加盟店パートナーズに準拠）*/
+  const ORDER_ITEMS = [
+    { n:{ja:'世桜BOOK',en:'YOSAKURA BOOK',vi:'YOSAKURA BOOK'}, k:{ja:'冊子',en:'Booklet',vi:'Sổ'} },
+    { n:{ja:'祝カード',en:'Celebration card',vi:'Thiệp chúc mừng'}, k:{ja:'カード',en:'Card',vi:'Thiệp'} },
+    { n:{ja:'ショッパー',en:'Shopper bag',vi:'Túi giấy'}, k:{ja:'袋',en:'Bag',vi:'Túi'} },
+    { n:{ja:'食べ方POP（鰻/牛カツ/和牛）',en:'How-to-eat POP',vi:'POP cách ăn'}, k:{ja:'POP',en:'POP',vi:'POP'} },
+    { n:{ja:'牛カツサンド箱',en:'Gyukatsu sando box',vi:'Hộp sando'}, k:{ja:'箱',en:'Box',vi:'Hộp'} },
+    { n:{ja:'世桜梅酒 1,800ml',en:'YOSAKURA plum wine 1.8L',vi:'Rượu mơ 1.8L'}, k:{ja:'食材',en:'Ingredient',vi:'Nguyên liệu'} }
+  ];
+  APP_VIEWS.order = () => `
+    ${NOTE({ ja:'◆ 加盟店パートナーズ（本部一括の発注）に準拠', en:'◆ Based on the HQ ordering system', vi:'◆ Theo hệ thống đặt hàng của HQ' })}
+    <div class="card">
+      <h3>${L({ ja:'カタログ', en:'Catalog', vi:'Danh mục' })}</h3>
+      ${ORDER_ITEMS.map(it=>`<div class="rep"><div class="body"><div class="l1">${esc(L(it.n))}</div><div class="l2">${esc(L(it.k))}</div></div><span class="stag st-new" data-mock="1" style="cursor:pointer">＋ ${L({ja:'カゴ',en:'Cart',vi:'Giỏ'})}</span></div>`).join('')}
+    </div>
+    <div class="card">
+      <h3>${L({ ja:'発注する', en:'Place order', vi:'Đặt hàng' })}</h3>
+      <label class="fld"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><select>${ORDER_ITEMS.map(it=>`<option>${esc(L(it.n))}</option>`).join('')}</select></label>
+      <label class="fld"><span>${L({ ja:'数量', en:'Quantity', vi:'Số lượng' })}</span><input type="text" inputmode="numeric" placeholder="30"></label>
+      <button class="btn-primary" onclick="return false">${L({ja:'発注する（デモ）',en:'Order (demo)',vi:'Đặt (demo)'})}</button>
+      <div class="hint">${L({ ja:'納期は通常 発注後 約1週間。お品代は注文先業者の請求書に準じ、POP等は納品後ロイヤリティに加算して請求。POP修正500円〜／新規2,000円〜（要素追加は本部承認）。', en:'Lead time ~1 week. Costs follow vendor invoices; POP etc. billed via royalty. POP edit from 500 yen / new from 2,000 yen (additions need HQ approval).', vi:'Giao ~1 tuần. Chi phí theo hóa đơn NCC; POP tính qua royalty. Sửa POP từ 500 yen / mới từ 2,000 yen (thêm mục cần HQ duyệt).' })}</div>
     </div>`;
 
   const mockGeneric = (a) => `${NOTE(demoImg)}<div class="card"><p class="muted">${esc(L(a.name))}</p></div>`;
