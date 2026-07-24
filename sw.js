@@ -1,5 +1,7 @@
-/* 世桜アプリ（デモ）Service Worker ─ アプリシェルをキャッシュしオフライン起動＆インストール可能に */
-const CACHE = 'yosakura-demo-v10';
+/* 世桜アプリ（デモ）Service Worker
+   ネットワーク優先（オンライン時は常に最新を取得／オフライン時のみキャッシュ）。
+   → iPhone等でも更新が即反映される。オフラインでも起動可能。 */
+const CACHE = 'yosakura-demo-v11';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
   './icons/logo-full.png', './icons/icon-192.png', './icons/icon-512.png',
@@ -17,16 +19,15 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// ネットワーク優先：オンラインなら最新を取得しキャッシュ更新、失敗時のみキャッシュへフォールバック
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   e.respondWith(
-    caches.match(req).then((cached) =>
-      cached || fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-        return res;
-      }).catch(() => caches.match('./index.html'))
-    )
+    fetch(req).then((res) => {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+      return res;
+    }).catch(() => caches.match(req).then((c) => c || caches.match('./index.html')))
   );
 });
