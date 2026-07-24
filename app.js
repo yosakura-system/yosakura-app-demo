@@ -95,7 +95,7 @@
     { id:'mtg', group:'storeops', icon:'mtg', roles:['manager','owner','hq'],
       name:{ ja:'月例MTG', en:'Monthly Meeting', vi:'Họp hàng tháng' },
       desc:{ ja:'各店の定例MTGと議題を一元管理', en:'All stores meetings & agendas', vi:'Lịch họp & nội dung mọi cửa hàng' } },
-    { id:'hr', group:'storeops', icon:'hr', roles:['manager','hq'],
+    { id:'hr', group:'storeops', icon:'hr', roles:['manager','owner','hq'],
       name:{ ja:'スタッフ評価・面談', en:'Staff Review', vi:'Đánh giá nhân viên' },
       desc:{ ja:'キャリアアップ制度と面談', en:'Career ranks & interviews', vi:'Xếp hạng & phỏng vấn' } },
     { id:'schedule', group:'biz', icon:'calendar', roles:['owner','hq'],
@@ -124,9 +124,18 @@
   const canOpen = (app, role) => role === 'hq' || app.roles.includes(role);
 
   /* ---------- 状態 ---------- */
-  const LS = { role:'yosakura_demo_role', reports:'yosakura_demo_reports', checks:'yosakura_demo_checks' };
+  const LS = { role:'yosakura_demo_role', store:'yosakura_demo_store', reports:'yosakura_demo_reports', checks:'yosakura_demo_checks' };
   const getRole = () => localStorage.getItem(LS.role) || 'staff';
   const setRole = (r) => localStorage.setItem(LS.role, r);
+  const getStoreSel = () => localStorage.getItem(LS.store) || STORES[0];
+  const setStoreSel = (s) => localStorage.setItem(LS.store, s);
+  // 店舗スコープ：本部＝全店（または任意1店にドリルダウン）、非本部＝自店のみ
+  function visibleStores() {
+    const role = getRole(), sel = getStoreSel();
+    if (role === 'hq') return sel === 'all' ? STORES.slice() : [sel];
+    return [STORES.includes(sel) ? sel : STORES[0]];
+  }
+  const storeShort = (s) => s === 'all' ? L({ ja:'全店', en:'All', vi:'Tất cả' }) : (s.split(' ').slice(1).join(' ') || s);
   const getReports = () => { try { return JSON.parse(localStorage.getItem(LS.reports)) || []; } catch { return []; } };
   const saveReports = (a) => localStorage.setItem(LS.reports, JSON.stringify(a));
 
@@ -247,7 +256,7 @@
         <div class="hdr__spacer"></div>
         <button class="lang-chip" id="langBtn" aria-label="language">${svg('globe')}<span>${LANGS[LANG].short}</span></button>
         <button class="role-chip" id="roleBtn">
-          <span class="tag">${L({ ja:'デモ', en:'Demo', vi:'Demo' })}</span><span class="dot"></span>${L(role.label)}
+          <span class="dot"></span>${L(role.label)}<span class="sep">・</span>${esc(storeShort(getStoreSel()))}
         </button>
       </header>
       ${inner}
@@ -354,7 +363,7 @@
           </div>
         </label>
         <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
-          <select id="f_store">${STORES.map(s=>`<option>${esc(s)}</option>`).join('')}</select>
+          <select id="f_store">${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select>
         </label>
         <label class="fld"><span id="f_item_l">${L({ ja:'メニュー', en:'Menu item', vi:'Món' })}</span>
           <input type="text" id="f_item" placeholder="${L({ ja:'例：うな重（並）', en:'e.g. Unagi rice bowl', vi:'vd: Cơm lươn' })}">
@@ -395,7 +404,7 @@
     ${NOTE(demoImg)}
     <div class="card">
       <h3>${L({ ja:'提供直後の一枚を報告', en:'Report the first serving photo', vi:'Gửi ảnh món vừa phục vụ' })}</h3>
-      <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select>${STORES.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+      <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select>${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
       <label class="fld"><span>${L({ ja:'メニュー', en:'Menu item', vi:'Món' })}</span><input type="text" placeholder="${L({ja:'例：海鮮丼',en:'e.g. Seafood bowl',vi:'vd: Cơm hải sản'})}"></label>
       <label class="fld"><span>${L({ ja:'写真', en:'Photo', vi:'Ảnh' })}</span>
         <div class="photo-drop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ja:'撮影して追加',en:'Take a photo',vi:'Chụp ảnh'})}</b><br><small>${L({ja:'盛付の基準チェックに使用',en:'Used to check plating standards',vi:'Dùng để kiểm tra cách trình bày'})}</small></div></div>
@@ -458,7 +467,7 @@
     ${NOTE(demoImg)}
     <div class="card">
       <h3>${L({ ja:'本日の総括表', en:'Today summary', vi:'Tổng kết hôm nay' })}</h3>
-      <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select>${STORES.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+      <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select>${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
       <div class="stat-row">
         <div class="stat"><div class="n">¥87,000</div><div class="k">${L({ja:'売上',en:'Sales',vi:'Doanh thu'})}</div></div>
         <div class="stat"><div class="n">13</div><div class="k">${L({ja:'客数',en:'Guests',vi:'Khách'})}</div></div>
@@ -494,7 +503,8 @@
 
   /* ⑨ 本部ダッシュボード（動く）*/
   APP_VIEWS.dashboard = () => {
-    const reps = getReports();
+    const vis = visibleStores();
+    const reps = getReports().filter(r => vis.includes(r.store));
     const a = reps.filter(r=>r.kind==='a').length, b = reps.filter(r=>r.kind==='b').length;
     const byStore = {}; reps.forEach(r => byStore[r.store] = (byStore[r.store]||0)+1);
     const max = Math.max(1, ...Object.values(byStore));
@@ -530,13 +540,21 @@
       [{ja:'Google口コミ',en:'Google reviews',vi:'Đánh giá Google'},{ja:'総括表の記入',en:'Daily summary entry',vi:'Nhập tổng kết'},{ja:'商品別売上構成比',en:'Sales mix by item',vi:'Cơ cấu doanh thu'},{ja:'盛付・一食目共有',en:'Plating / first-plate',vi:'Trình bày / món đầu'},{ja:'店内動画共有',en:'In-store video',vi:'Video trong quán'},{ja:'藁焼きの声がけ',en:'Straw-grill call-out',vi:'Mời khách nướng rơm'},{ja:'サーベイ',en:'Survey',vi:'Khảo sát'}]]
   ];
   const whenL = (w) => w.replace('第4木', L({ja:'毎月 第4木',en:'4th Thu',vi:'Thứ 5 tuần 4'})).replace('第4水', L({ja:'毎月 第4水',en:'4th Wed',vi:'Thứ 4 tuần 4'}));
-  APP_VIEWS.mtg = () => `
-    ${NOTE({ ja:'◆ 全店の月例MTGと議題を一元管理（実データ反映）', en:'◆ All stores monthly meetings & agendas, centralized (live data)', vi:'◆ Quản lý tập trung họp & nội dung mọi cửa hàng (dữ liệu thật)' })}
-    ${MTG.map(([name,when,items])=>`
-      <div class="card">
-        <div class="mtg-h"><h3>${esc(L(name))}</h3><span class="muted">${esc(whenL(when))}</span></div>
-        <div class="chips">${items.map(t=>`<span class="chip">${esc(L(t))}</span>`).join('')}</div>
-      </div>`).join('')}`;
+  // 店舗 → MTGインデックス（自店の議題のみ表示するため）
+  const MTG_OF = { '牛カツ世桜 富士山店':0, '日本鰻世桜 富士山店':0, '寿司世桜 心斎橋店':1, '日本鰻世桜 京都祇園店':2, '日本鰻世桜 長堀橋店':3, '日本鰻世桜 浅草橋店':4, '和牛世桜 広島店':5 };
+  APP_VIEWS.mtg = () => {
+    const isHQ = getRole() === 'hq' && getStoreSel() === 'all';
+    const vis = visibleStores();
+    const idx = isHQ ? MTG.map((_,i)=>i) : [...new Set(vis.map(s=>MTG_OF[s]).filter(i=>i!==undefined))];
+    const list = idx.map(i=>MTG[i]);
+    return `
+      ${NOTE(isHQ ? { ja:'◆ 全店の月例MTGと議題を一元管理（実データ反映）', en:'◆ All stores monthly meetings & agendas (live data)', vi:'◆ Họp & nội dung mọi cửa hàng (dữ liệu thật)' } : { ja:'◆ 自店の月例MTGと議題（実データ反映）', en:'◆ Your store monthly meeting & agenda (live data)', vi:'◆ Họp & nội dung cửa hàng của bạn (dữ liệu thật)' })}
+      ${list.length ? list.map(([name,when,items])=>`
+        <div class="card">
+          <div class="mtg-h"><h3>${esc(L(name))}</h3><span class="muted">${esc(whenL(when))}</span></div>
+          <div class="chips">${items.map(t=>`<span class="chip">${esc(L(t))}</span>`).join('')}</div>
+        </div>`).join('') : `<div class="card"><p class="muted">${L({ ja:'自店の月例MTGはまだ登録されていません。', en:'No monthly meeting registered for your store yet.', vi:'Chưa có lịch họp cho cửa hàng của bạn.' })}</p></div>`}`;
+  };
 
   /* ⑪ 課題・タスク管理（一元管理・実データ）*/
   const ST = { doing:{ja:'進行中',en:'In progress',vi:'Đang làm'}, done:{ja:'完了',en:'Done',vi:'Xong'}, new:{ja:'新規',en:'New',vi:'Mới'} };
@@ -607,7 +625,8 @@
   /* ⑭ 提出物管理（モック）*/
   APP_VIEWS.teishutsu = () => {
     const S = { in:{ja:'提出済',en:'Submitted',vi:'Đã nộp'}, out:{ja:'未提出',en:'Missing',vi:'Chưa nộp'} };
-    const data = [['日本鰻世桜 富士山店','in','—'],['牛カツ世桜 富士山店','in','—'],['寿司世桜 心斎橋店','in','—'],['日本鰻世桜 長堀橋店','in','—'],['日本鰻世桜 京都祇園店','out','1'],['日本鰻世桜 浅草橋店','in','—'],['和牛世桜 広島店','out','3']];
+    const vis = visibleStores();
+    const data = [['日本鰻世桜 富士山店','in','—'],['牛カツ世桜 富士山店','in','—'],['寿司世桜 心斎橋店','in','—'],['日本鰻世桜 長堀橋店','in','—'],['日本鰻世桜 京都祇園店','out','1'],['日本鰻世桜 浅草橋店','in','—'],['和牛世桜 広島店','out','3']].filter(([s])=>vis.includes(s));
     return `
       ${NOTE({ ja:'◆ デモ表示（提出状況の自動集約イメージ）', en:'◆ Demo (auto-aggregated submission status)', vi:'◆ Demo (tổng hợp trạng thái nộp)' })}
       <div class="card">
@@ -623,7 +642,7 @@
     <div class="card">
       <h3>${L({ ja:'全店カメラ（本部アカウント）', en:'All-store cameras (HQ account)', vi:'Camera mọi cửa hàng (HQ)' })}</h3>
       <div class="grid">
-        ${STORES.map(s=>`<div class="tile" data-mock="1" style="min-height:92px"><div class="ico">${svg('video')}</div><div class="nm" style="font-size:12px">${esc(s)}</div><div class="desc">${L({ja:'ライブ / 録画',en:'Live / Rec',vi:'Trực tiếp / Ghi'})}</div></div>`).join('')}
+        ${visibleStores().map(s=>`<div class="tile" data-mock="1" style="min-height:92px"><div class="ico">${svg('video')}</div><div class="nm" style="font-size:12px">${esc(s)}</div><div class="desc">${L({ja:'ライブ / 録画',en:'Live / Rec',vi:'Trực tiếp / Ghi'})}</div></div>`).join('')}
       </div>
       <p class="muted" style="margin-top:12px">${L({ ja:'監視ではなくブランド品質維持・加盟店支援のための確認。倍速で要点のみ確認。', en:'Not surveillance: quality & franchisee support. Review key moments at high speed.', vi:'Không phải giám sát: hỗ trợ chất lượng. Xem nhanh các điểm chính.' })}</p>
     </div>`;
@@ -633,26 +652,47 @@
     <div class="bar-row"><div class="bl"><span>${esc(label)}</span><b>${pct}%</b></div>
     <div class="bar-track"><div class="bar-fill" style="width:${pct}%;${hl?'background:#000':''}"></div></div></div>`;
 
-  /* ---------- 役割切替シート ---------- */
-  function openRoleSheet() {
-    const cur = getRole();
-    const mask = el(`<div class="sheet-mask"><div class="sheet">
-      <div class="grip"></div>
-      <h3>${L({ ja:'役割を切り替える', en:'Switch role', vi:'Đổi vai trò' })}<span class="demo-tag">${L({ja:'デモ',en:'Demo',vi:'Demo'})}</span></h3>
-      <div class="sub">${L({ ja:'本部だけでなく、加盟店（スタッフ・店長・加盟店オーナー）も同じアプリを使う前提です。役割によって見える機能・画面が変わります。', en:'Both HQ and franchise stores (staff, manager, franchisee) use the same app. Visible features change by role.', vi:'Cả HQ và cửa hàng nhượng quyền (nhân viên, quản lý, chủ) dùng chung app. Tính năng thay đổi theo vai trò.' })}</div>
-      ${Object.entries(ROLES).map(([k,v])=>`
-        <button class="role-opt ${k===cur?'on':''}" data-role="${k}">
-          <span class="rr">${v.mark}</span>
-          <span class="ri"><b>${L(v.label)}</b><span>${L(v.desc)}</span></span>
-          ${k===cur?`<span class="rc">${svg('tick')}</span>`:''}
-        </button>`).join('')}
-    </div></div>`);
-    mask.addEventListener('click', (e) => {
-      if (e.target === mask) return mask.remove();
-      const btn = e.target.closest('[data-role]');
-      if (btn) { setRole(btn.dataset.role); mask.remove(); render(); toast(`${L(ROLES[btn.dataset.role].label)}`); }
-    });
+  /* ---------- 役割＋店舗（表示）切替シート ---------- */
+  function openIdentitySheet() {
+    const buildHTML = () => {
+      const role = getRole(), sel = getStoreSel();
+      const storeOpts = role === 'hq' ? ['all', ...STORES] : STORES;
+      const storeLabel = (s) => s === 'all' ? L({ ja:'全店（本部）', en:'All stores (HQ)', vi:'Tất cả (HQ)' }) : s;
+      return `<div class="sheet">
+        <div class="grip"></div>
+        <h3>${L({ ja:'表示を切り替える', en:'Switch view', vi:'Đổi hiển thị' })}<span class="demo-tag">${L({ja:'デモ',en:'Demo',vi:'Demo'})}</span></h3>
+        <div class="sub">${L({ ja:'本部は全店を閲覧できます。スタッフ・店長・加盟店オーナーは自分の店舗のみ（数値なども自店だけ）。', en:'HQ sees all stores. Staff, managers and franchisees see only their own store, including numbers.', vi:'HQ xem mọi cửa hàng. Nhân viên/quản lý/chủ chỉ xem cửa hàng của mình, kể cả số liệu.' })}</div>
+        <div class="idlabel">${L({ ja:'役割', en:'Role', vi:'Vai trò' })}</div>
+        ${Object.entries(ROLES).map(([k,v])=>`
+          <button class="role-opt ${k===role?'on':''}" data-role="${k}">
+            <span class="rr">${v.mark}</span>
+            <span class="ri"><b>${L(v.label)}</b><span>${L(v.desc)}</span></span>
+            ${k===role?`<span class="rc">${svg('tick')}</span>`:''}
+          </button>`).join('')}
+        <div class="idlabel">${L({ ja:'店舗（見えるデータの範囲）', en:'Store (data scope)', vi:'Cửa hàng (phạm vi dữ liệu)' })}</div>
+        ${storeOpts.map(s=>`
+          <button class="role-opt store-opt ${s===sel?'on':''}" data-store="${esc(s)}">
+            <span class="ri"><b>${esc(storeLabel(s))}</b></span>
+            ${s===sel?`<span class="rc">${svg('tick')}</span>`:''}
+          </button>`).join('')}
+        <button class="btn-primary" data-done="1" style="margin-top:10px">${L({ ja:'完了', en:'Done', vi:'Xong' })}</button>
+      </div>`;
+    };
+    const mask = el(`<div class="sheet-mask">${buildHTML()}</div>`);
+    const wire = () => {
+      mask.querySelectorAll('[data-role]').forEach(b => b.onclick = () => {
+        setRole(b.dataset.role);
+        if (b.dataset.role !== 'hq' && getStoreSel() === 'all') setStoreSel(STORES[0]);
+        rebuild();
+      });
+      mask.querySelectorAll('[data-store]').forEach(b => b.onclick = () => { setStoreSel(b.dataset.store); rebuild(); });
+      const done = mask.querySelector('[data-done]');
+      if (done) done.onclick = () => { mask.remove(); render(); };
+    };
+    const rebuild = () => { mask.querySelector('.sheet').outerHTML = buildHTML(); wire(); };
+    mask.addEventListener('click', (e) => { if (e.target === mask) { mask.remove(); render(); } });
     document.body.appendChild(mask);
+    wire();
   }
 
   /* ---------- 言語切替シート ---------- */
@@ -690,7 +730,7 @@
   function bind() {
     const byId = (id) => document.getElementById(id);
     if (byId('langBtn')) byId('langBtn').onclick = openLangSheet;
-    if (byId('roleBtn')) byId('roleBtn').onclick = openRoleSheet;
+    if (byId('roleBtn')) byId('roleBtn').onclick = openIdentitySheet;
     if (byId('installBtn')) byId('installBtn').onclick = triggerInstall;
     if (byId('installDismiss')) byId('installDismiss').onclick = () => { localStorage.setItem('yosakura_install_hide', '1'); render(); };
     if (byId('backBtn')) byId('backBtn').onclick = () => go('/home');
