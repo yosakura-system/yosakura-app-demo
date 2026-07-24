@@ -41,7 +41,8 @@
     mtg:    '<circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 18c0-2.4 2-3.9 4.5-3.9 1.2 0 2.3.35 3.1.95M12.9 15.05c.8-.6 1.9-.95 3.1-.95 2.5 0 4.5 1.5 4.5 3.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
     task:   '<rect x="4.5" y="3.5" width="15" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 8.5l1.2 1.2L11.5 7M8 14.5l1.2 1.2L11.5 13M14 9h3.2M14 15h3.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
     invoice:'<path d="M6.5 3h8l3.5 3.5V21l-2-1-2 1-2-1-2 1-2-1-2 1V3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8.5h6M9 11.5h6M9 14.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
-    hr:     '<circle cx="12" cy="8" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 19c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'
+    hr:     '<circle cx="12" cy="8" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 19c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+    play:   '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 8.3l5.2 3.7-5.2 3.7z" fill="currentColor"/>'
   };
   const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${I[k] || ''}</svg>`;
 
@@ -96,6 +97,9 @@
     { id:'survey', group:'learn', icon:'star', roles:['staff','manager','owner','hq'],
       name:{ ja:'サーベイ', en:'Survey', vi:'Khảo sát' },
       desc:{ ja:'お客様アンケート運用', en:'Customer survey operation', vi:'Khảo sát khách hàng' } },
+    { id:'guide', group:'learn', icon:'play', roles:['staff','manager','owner','hq'],
+      name:{ ja:'使い方ガイド', en:'How to use', vi:'Hướng dẫn' },
+      desc:{ ja:'このアプリの使い方（1分）', en:'Quick app guide (1 min)', vi:'Hướng dẫn nhanh (1 phút)' } },
     { id:'soukatsu', group:'storeops', icon:'table', roles:['manager','owner','hq'],
       name:{ ja:'総括表の入力', en:'Daily Summary', vi:'Tổng kết ngày' },
       desc:{ ja:'日次の売上・客数・分析', en:'Daily sales, guests, review', vi:'Doanh thu, khách, phân tích' } },
@@ -199,6 +203,47 @@
   const isDataUrl = (p) => typeof p === 'string' && p.slice(0, 5) === 'data:';
   const photoThumb = (p) => isDataUrl(p) ? p : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w400';
   const photoFull  = (p) => isDataUrl(p) ? p : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w1600';
+
+  /* ---------- 使い方ガイド（アプリ内チュートリアル）---------- */
+  const TOUR = [
+    { icon:'play',
+      t:{ ja:'世桜アプリへようこそ', en:'Welcome to YOSAKURA App', vi:'Chào mừng đến YOSAKURA' },
+      b:{ ja:'店舗の報告から本部の管理まで、これ1つで。役割と言語で表示が変わります。', en:'From store reports to HQ management, all in one. The view changes by role and language.', vi:'Từ báo cáo cửa hàng đến quản lý HQ, tất cả trong một. Hiển thị đổi theo vai trò và ngôn ngữ.' } },
+    { icon:'hr',
+      t:{ ja:'役割・言語を切り替え', en:'Switch role & language', vi:'Đổi vai trò & ngôn ngữ' },
+      b:{ ja:'右上のチップで役割（スタッフ／店長／加盟店オーナー／本部）を、🌐で言語（日・英・越）を切替。見える画面が変わります。', en:'Use the top-right chip to switch role, and 🌐 to switch language (JP/EN/VI). Visible screens change.', vi:'Dùng chip góc trên phải để đổi vai trò, và 🌐 để đổi ngôn ngữ (JP/EN/VI). Màn hình sẽ thay đổi.' } },
+    { icon:'food',
+      t:{ ja:'食べ残し・食材ロスを報告', en:'Report food waste & loss', vi:'Báo cáo thức ăn thừa & hao hụt' },
+      b:{ ja:'「報告」から入力。写真も複数枚OK。送信すると本部にすぐ届きます。', en:'Fill it from “Report”. Multiple photos OK. On submit it reaches HQ instantly.', vi:'Nhập từ “Báo cáo”. Nhiều ảnh OK. Gửi xong sẽ đến HQ ngay.' } },
+    { icon:'gauge',
+      t:{ ja:'本部で全店を確認', en:'HQ sees all stores', vi:'HQ xem mọi cửa hàng' },
+      b:{ ja:'本部ダッシュボードに全店の報告と写真が自動で集まります（店舗別に閲覧）。', en:'The HQ dashboard auto-collects every store’s reports and photos (viewable by store).', vi:'Bảng điều khiển HQ tự tổng hợp báo cáo và ảnh mọi cửa hàng (xem theo cửa hàng).' } },
+    { icon:'home',
+      t:{ ja:'ホーム画面に追加', en:'Add to Home Screen', vi:'Thêm vào màn hình chính' },
+      b:{ ja:'「追加」ボタンでアプリのように起動。世桜のロゴが立ち上がります。', en:'Use the “Add” button to launch like an app, with the YOSAKURA logo.', vi:'Dùng nút “Thêm” để khởi động như ứng dụng với logo YOSAKURA.' } }
+  ];
+  function markTourDone() { localStorage.setItem('yosakura_tour_done', '1'); }
+  function openTour(i) {
+    i = i || 0;
+    const step = TOUR[i], last = i === TOUR.length - 1;
+    const mask = el(`<div class="tour-mask"><div class="tour">
+      <button class="tour__x" data-tour-close="1" aria-label="close">×</button>
+      <div class="tour__ic">${svg(step.icon)}</div>
+      <h3 class="tour__t">${esc(L(step.t))}</h3>
+      <p class="tour__b">${esc(L(step.b))}</p>
+      <div class="tour__dots">${TOUR.map((_, k) => `<span class="tour__dot ${k===i?'on':''}"></span>`).join('')}</div>
+      <div class="tour__row">
+        ${i>0 ? `<button class="tour__skip" data-tour-back="1">${L({ja:'戻る',en:'Back',vi:'Quay lại'})}</button>` : `<button class="tour__skip" data-tour-close="1">${L({ja:'スキップ',en:'Skip',vi:'Bỏ qua'})}</button>`}
+        <button class="btn-primary tour__next" data-tour-next="1">${last ? L({ja:'はじめる',en:'Get started',vi:'Bắt đầu'}) : L({ja:'次へ',en:'Next',vi:'Tiếp'})}</button>
+      </div>
+    </div></div>`);
+    mask.addEventListener('click', (e) => {
+      if (e.target === mask || e.target.closest('[data-tour-close]')) { markTourDone(); mask.remove(); return; }
+      if (e.target.closest('[data-tour-back]')) { mask.remove(); openTour(i - 1); return; }
+      if (e.target.closest('[data-tour-next]')) { mask.remove(); if (last) { markTourDone(); } else { openTour(i + 1); } return; }
+    });
+    document.body.appendChild(mask);
+  }
 
   /* ---------- PWAインストール ---------- */
   let deferredPrompt = null;
@@ -351,6 +396,7 @@
 
   /* ---------- アプリ詳細 ---------- */
   function viewApp(id) {
+    if (id === 'guide') { setTimeout(() => openTour(0), 20); return viewHome('learn'); }
     const a = appById(id);
     if (!a) return viewHome('home');
     if (!canOpen(a, getRole())) { toast(L({ ja:'この機能を開く権限がありません', en:'You do not have permission for this', vi:'Bạn không có quyền mở mục này' })); return viewHome('home'); }
@@ -766,7 +812,7 @@
     if (byId('backBtn')) byId('backBtn').onclick = () => go('/home');
 
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab === 'home' ? '/home' : `/home?tab=${b.dataset.tab}`));
-    document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => go(`/app/${b.dataset.open}`));
+    document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { if (b.dataset.open === 'guide') openTour(0); else go(`/app/${b.dataset.open}`); });
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
     document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'デモのため、この先はイメージです', en:'Demo: further screens are mockups', vi:'Demo: màn hình tiếp theo là mô phỏng' })));
     document.querySelectorAll('.rep-photo').forEach(im => im.onclick = () => openLightbox(im.dataset.full));
@@ -866,6 +912,7 @@
   render();
   syncReports(true);
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
+  if (!localStorage.getItem('yosakura_tour_done')) setTimeout(() => openTour(0), 1450); // 初回のみ使い方ガイド
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }

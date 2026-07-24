@@ -322,3 +322,18 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 .footer-note { text-align: center; font-size: 10.5px; color: #B0A79C; padding: 18px 0 6px; letter-spacing: .04em; }
+
+/* 使い方ガイド（チュートリアル） */
+.tour-mask { position: fixed; inset: 0; z-index: 80; background: rgba(20,15,18,.5); display: flex; align-items: flex-end; justify-content: center; animation: fade .2s; }
+.tour { position: relative; width: 100%; max-width: var(--maxw); background: #fff; border-radius: 22px 22px 0 0; padding: 26px 22px calc(24px + env(safe-area-inset-bottom)); text-align: center; animation: up .3s cubic-bezier(.2,.8,.2,1); }
+.tour__x { position: absolute; top: 12px; right: 14px; width: 26px; height: 26px; border: none; background: none; color: var(--gray); font-size: 20px; line-height: 1; cursor: pointer; }
+.tour__ic { width: 78px; height: 78px; border-radius: 20px; background: var(--suou-t); color: var(--suou); display: grid; place-items: center; margin: 8px auto 18px; }
+.tour__ic svg { width: 40px; height: 40px; }
+.tour__t { font-family: var(--serif); font-size: 20px; margin: 0 0 10px; letter-spacing: .03em; }
+.tour__b { font-size: 13.5px; color: var(--gray); line-height: 1.75; margin: 0 auto 20px; max-width: 21em; }
+.tour__dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 18px; }
+.tour__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: all .2s; }
+.tour__dot.on { background: var(--suou); width: 20px; border-radius: 4px; }
+.tour__row { display: flex; align-items: center; gap: 8px; }
+.tour__skip { flex: 0 0 auto; background: none; border: none; color: var(--gray); font-weight: 700; font-size: 13px; padding: 14px 10px; cursor: pointer; font-family: var(--sans); }
+.tour__next { flex: 1; }
