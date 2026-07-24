@@ -195,6 +195,10 @@
     m.onclick = () => m.remove();
     document.body.appendChild(m);
   }
+  // 写真は base64(dataURL) か DriveファイルID。表示用URLに変換（IDはDriveのサムネイル配信）
+  const isDataUrl = (p) => typeof p === 'string' && p.slice(0, 5) === 'data:';
+  const photoThumb = (p) => isDataUrl(p) ? p : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w400';
+  const photoFull  = (p) => isDataUrl(p) ? p : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w1600';
 
   /* ---------- PWAインストール ---------- */
   let deferredPrompt = null;
@@ -418,7 +422,7 @@
       <div class="body">
         <div class="l1">${esc(r.item||L({ja:'（品目未記入）',en:'(no item)',vi:'(chưa nhập)'}))}</div>
         <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}${r.note?' ・ '+esc(L(r.note)):''}</div>
-        ${(r.photos && r.photos.length) ? `<div class="rep-photos">${r.photos.map(p=>`<img class="rep-photo" src="${p}" alt="" data-full="${p}">`).join('')}</div>` : ''}
+        ${(r.photos && r.photos.length) ? `<div class="rep-photos">${r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" alt="" data-full="${photoFull(p)}" loading="lazy">`).join('')}</div>` : ''}
       </div>
       <span class="amt">${esc(levelLabel(r.level))}</span>
     </div>`;

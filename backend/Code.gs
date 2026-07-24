@@ -1,11 +1,12 @@
 /**
- * 世桜アプリ 共有バックエンド（Google Apps Script）
- * スプレッドシートをデータベースにして、全端末で報告データを同期する。
- * このスクリプトは「スプレッドシートに紐づくスクリプト」として動かす前提（getActiveSpreadsheet を使用）。
- * デプロイ手順は同フォルダの「デプロイ手順.md」を参照。
+ * 世桜アプリ 共有バックエンド（Google Apps Script）＋写真はGoogle Drive保存版
+ * スプレッドシート＝報告データ、Google Drive＝写真本体（シートには写真のファイルIDのみ保存）。
+ * これにより高解像度の写真を保存でき、拡大しても綺麗。
+ * 「スプレッドシートに紐づくスクリプト」として動かす前提。デプロイ手順は「デプロイ手順.md」参照。
  */
 var SHEET_NAME = 'reports';
 var HEADERS = ['id', 'ts', 'kind', 'store', 'item', 'level', 'note', 'photos'];
+var PHOTO_FOLDER = '世桜アプリ_写真';
 
 function getSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -15,6 +16,21 @@ function getSheet() {
   return sh;
 }
 
+function getPhotoFolder() {
+  var it = DriveApp.getFoldersByName(PHOTO_FOLDER);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(PHOTO_FOLDER);
+}
+
+// base64のdataURLを受け取りDriveへ保存してファイルIDを返す。既にID/URLならそのまま返す。
+function savePhoto(p) {
+  var m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/.exec(String(p || ''));
+  if (!m) return p; // dataURLでなければ（既存のID等）そのまま
+  var blob = Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], 'photo.jpg');
+  var file = getPhotoFolder().createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return file.getId();
+}
+
 // 報告一覧を返す（新しい順）。?store=店舗名 で絞り込み可、?store=all は全件。
 function doGet(e) {
   try {
@@ -22,7 +38,7 @@ function doGet(e) {
     var values = sh.getDataRange().getValues();
     var store = e && e.parameter ? e.parameter.store : '';
     var out = [];
-    for (var i = values.length - 1; i >= 1; i--) {   // 1行目はヘッダー
+    for (var i = values.length - 1; i >= 1; i--) {
       var r = values[i];
       if (!r[0]) continue;
       if (store && store !== 'all' && r[3] !== store) continue;
@@ -38,15 +54,16 @@ function doGet(e) {
   }
 }
 
-// 報告を1件追加する。body は JSON 文字列（Content-Type: text/plain で送る）。
+// 報告を1件追加。写真はDriveへ保存しIDをシートに記録。
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     var sh = getSheet();
     var id = Utilities.getUuid();
     var ts = data.t || Date.now();
-    var photos = Array.isArray(data.photos) ? data.photos.slice(0, 3) : [];
-    sh.appendRow([id, ts, data.kind || '', data.store || '', data.item || '', data.level || '', normNote(data.note), JSON.stringify(photos)]);
+    var input = Array.isArray(data.photos) ? data.photos.slice(0, 6) : [];
+    var photoIds = input.map(savePhoto);
+    sh.appendRow([id, ts, data.kind || '', data.store || '', data.item || '', data.level || '', normNote(data.note), JSON.stringify(photoIds)]);
     return json({ ok: true, id: id });
   } catch (err) {
     return json({ ok: false, error: String(err) });
