@@ -29,6 +29,8 @@
     chev:   '<path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
     back:   '<path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
     globe:  '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 12h17M12 3.5c2.6 2.4 2.6 14.6 0 17M12 3.5c-2.6 2.4-2.6 14.6 0 17" fill="none" stroke="currentColor" stroke-width="1.35"/>',
+    share:  '<path d="M12 3.5v10.5M12 3.5l-3 3M12 3.5l3 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 9.5H5.6A1.6 1.6 0 0 0 4 11.1V19a1.6 1.6 0 0 0 1.6 1.6h12.8A1.6 1.6 0 0 0 20 19v-7.9a1.6 1.6 0 0 0-1.6-1.6H17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+    dots:   '<circle cx="12" cy="5" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="19" r="1.7" fill="currentColor"/>',
     mtg:    '<circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 18c0-2.4 2-3.9 4.5-3.9 1.2 0 2.3.35 3.1.95M12.9 15.05c.8-.6 1.9-.95 3.1-.95 2.5 0 4.5 1.5 4.5 3.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
     task:   '<rect x="4.5" y="3.5" width="15" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 8.5l1.2 1.2L11.5 7M8 14.5l1.2 1.2L11.5 13M14 9h3.2M14 15h3.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
     invoice:'<path d="M6.5 3h8l3.5 3.5V21l-2-1-2 1-2-1-2 1-2-1-2 1V3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8.5h6M9 11.5h6M9 14.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
@@ -167,9 +169,57 @@
   /* ---------- PWAインストール ---------- */
   let deferredPrompt = null;
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
+  // 追加が完了したら記録して案内を消す
+  window.addEventListener('appinstalled', () => { localStorage.setItem('yosakura_installed', '1'); deferredPrompt = null; render(); });
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const installHidden = () => isStandalone() || localStorage.getItem('yosakura_installed') || localStorage.getItem('yosakura_install_hide');
+  function getPlatform() {
+    const ua = navigator.userAgent || '';
+    const iOS = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+    if (iOS) return 'ios';
+    if (/android/i.test(ua)) return 'android';
+    return 'desktop';
+  }
   function triggerInstall() {
-    if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.finally(() => { deferredPrompt = null; }); }
-    else { toast(L({ ja:'ブラウザのメニューから「ホーム画面に追加」を選んでください', en:'Use the browser menu to Add to Home Screen', vi:'Dùng menu trình duyệt để Thêm vào màn hình chính' })); }
+    // Android/PCのChrome系はネイティブのインストールダイアログを自動表示
+    if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.finally(() => { deferredPrompt = null; }); return; }
+    // それ以外（iPhone等）は端末別の手順を案内
+    openInstallSheet(getPlatform());
+  }
+
+  const INSTALL_STEPS = {
+    ios: [
+      { icon:'share', t:{ ja:'画面下の「共有」ボタンをタップ', en:'Tap the Share button at the bottom', vi:'Chạm nút Chia sẻ ở dưới' } },
+      { t:{ ja:'メニューを下にスクロールし「ホーム画面に追加」をタップ', en:'Scroll down and tap “Add to Home Screen”', vi:'Kéo xuống, chọn “Thêm vào màn hình chính”' } },
+      { t:{ ja:'右上の「追加」をタップ', en:'Tap “Add” at the top right', vi:'Chạm “Thêm” ở góc trên phải' } }
+    ],
+    android: [
+      { icon:'dots', t:{ ja:'右上の「⋮」メニューをタップ', en:'Tap the “⋮” menu at the top right', vi:'Chạm menu “⋮” ở góc trên phải' } },
+      { t:{ ja:'「アプリをインストール」または「ホーム画面に追加」をタップ', en:'Tap “Install app” or “Add to Home screen”', vi:'Chọn “Cài đặt ứng dụng” hoặc “Thêm vào màn hình chính”' } },
+      { t:{ ja:'案内に沿って「追加／インストール」', en:'Follow the prompt to Add / Install', vi:'Làm theo hướng dẫn để Thêm / Cài đặt' } }
+    ],
+    desktop: [
+      { t:{ ja:'アドレスバー右の「インストール」アイコン、またはメニューから「インストール」を選択', en:'Click the install icon in the address bar, or Menu → Install', vi:'Nhấn biểu tượng cài đặt ở thanh địa chỉ, hoặc Menu → Cài đặt' } }
+    ]
+  };
+  function openInstallSheet(platform) {
+    const steps = INSTALL_STEPS[platform] || INSTALL_STEPS.desktop;
+    const title = {
+      ios:     { ja:'ホーム画面に追加（iPhone・iPad）', en:'Add to Home Screen (iPhone / iPad)', vi:'Thêm vào màn hình (iPhone / iPad)' },
+      android: { ja:'ホーム画面に追加（Android）', en:'Add to Home Screen (Android)', vi:'Thêm vào màn hình (Android)' },
+      desktop: { ja:'アプリをインストール', en:'Install the app', vi:'Cài đặt ứng dụng' }
+    }[platform];
+    const mask = el(`<div class="sheet-mask"><div class="sheet">
+      <div class="grip"></div>
+      <h3>${L(title)}</h3>
+      <div class="inst-list">
+        ${steps.map((s,i)=>`<div class="inst-step"><span class="inst-no">${i+1}</span><div class="inst-tx">${L(s.t)}${s.icon?` <span class="inst-ic">${svg(s.icon)}</span>`:''}</div></div>`).join('')}
+      </div>
+      ${platform==='ios'?`<p class="inst-note">${L({ ja:'※ Safari で開いてください。他アプリ内のブラウザでは表示されない場合があります。', en:'Please open in Safari. In-app browsers may not show this option.', vi:'Hãy mở bằng Safari. Trình duyệt trong ứng dụng có thể không hiện tùy chọn này.' })}</p>`:''}
+      <button class="btn-primary" data-close="1">${L({ ja:'閉じる', en:'Close', vi:'Đóng' })}</button>
+    </div></div>`);
+    mask.addEventListener('click', (e) => { if (e.target === mask || e.target.closest('[data-close]')) mask.remove(); });
+    document.body.appendChild(mask);
   }
 
   /* ---------- ルーター ---------- */
@@ -212,8 +262,9 @@
     const filter = { home:null, genba:'genba', learn:'learn', hq:'hq' }[tab];
     const groups = filter ? [filter] : GROUPS.map(g => g.id);
 
-    const install = tab === 'home' ? `
+    const install = (tab === 'home' && !installHidden()) ? `
       <div class="install-card">
+        <button class="install-x" id="installDismiss" aria-label="close">×</button>
         <img class="hdr__logo" style="width:40px;height:40px" src="icons/icon-192.png" alt="">
         <div class="txt"><b>${L({ ja:'ホーム画面に世桜を追加', en:'Add YOSAKURA to Home Screen', vi:'Thêm YOSAKURA vào màn hình' })}</b>
           <span>${L({ ja:'アプリのように起動。世桜のロゴが立ち上がります。', en:'Launch like an app with the YOSAKURA logo.', vi:'Khởi động như ứng dụng với logo YOSAKURA.' })}</span></div>
@@ -641,6 +692,7 @@
     if (byId('langBtn')) byId('langBtn').onclick = openLangSheet;
     if (byId('roleBtn')) byId('roleBtn').onclick = openRoleSheet;
     if (byId('installBtn')) byId('installBtn').onclick = triggerInstall;
+    if (byId('installDismiss')) byId('installDismiss').onclick = () => { localStorage.setItem('yosakura_install_hide', '1'); render(); };
     if (byId('backBtn')) byId('backBtn').onclick = () => go('/home');
 
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab === 'home' ? '/home' : `/home?tab=${b.dataset.tab}`));

@@ -94,10 +94,24 @@ body {
 .hero__title b { color: var(--suou); }
 
 .install-card {
+  position: relative;
   display: flex; align-items: center; gap: 12px; margin: 14px 0 4px;
   background: linear-gradient(120deg, var(--suou), var(--suou-d)); color: #fff;
   padding: 14px 16px; border-radius: 16px; box-shadow: var(--shadow);
 }
+.install-x { position: absolute; top: 6px; right: 8px; width: 22px; height: 22px; border: none; background: none;
+  color: #fff; opacity: .7; font-size: 17px; line-height: 1; cursor: pointer; padding: 0; }
+.install-x:active { opacity: 1; }
+/* インストール手順シート */
+.inst-list { margin: 4px 0 2px; }
+.inst-step { display: flex; gap: 12px; align-items: flex-start; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+.inst-step:last-child { border-bottom: none; }
+.inst-no { width: 24px; height: 24px; border-radius: 50%; background: var(--suou); color: #fff; font-weight: 800;
+  font-size: 12px; display: grid; place-items: center; flex-shrink: 0; }
+.inst-tx { font-size: 14px; line-height: 1.55; }
+.inst-ic { display: inline-flex; vertical-align: middle; color: var(--suou); }
+.inst-ic svg { width: 19px; height: 19px; }
+.inst-note { font-size: 11.5px; color: var(--gray); margin: 8px 2px 14px; }
 .install-card .txt { flex: 1; }
 .install-card .txt b { font-size: 14px; }
 .install-card .txt span { display: block; font-size: 11.5px; opacity: .85; margin-top: 2px; }
