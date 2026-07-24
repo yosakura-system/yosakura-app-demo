@@ -256,7 +256,7 @@
         <div class="hdr__spacer"></div>
         <button class="lang-chip" id="langBtn" aria-label="language">${svg('globe')}<span>${LANGS[LANG].short}</span></button>
         <button class="role-chip" id="roleBtn">
-          <span class="dot"></span>${L(role.label)}<span class="sep">・</span>${esc(storeShort(getStoreSel()))}
+          <span class="dot"></span><span class="rc-role">${L(role.label)}</span><span class="sep">・</span><span class="rc-store">${esc(storeShort(getStoreSel()))}</span>
         </button>
       </header>
       ${inner}

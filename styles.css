@@ -65,11 +65,14 @@ body {
 .hdr__brand small { font-family: var(--sans); font-size: 10px; letter-spacing: .2em; color: var(--gray); display: block; line-height: 1; margin-top: 2px; }
 .hdr__spacer { flex: 1; }
 .role-chip {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
   background: var(--suou); color: #fff; border: none;
   font-size: 12px; font-weight: 700; padding: 7px 12px; border-radius: 999px;
   box-shadow: var(--shadow-s); cursor: pointer; font-family: var(--sans);
+  white-space: nowrap; max-width: 58vw;
 }
+.role-chip .rc-role { flex-shrink: 0; }
+.role-chip .rc-store { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .role-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: .9; }
 .role-chip .tag { font-size: 9px; opacity: .8; font-weight: 600; }
 .lang-chip { display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid var(--line);
