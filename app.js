@@ -182,13 +182,13 @@
     return Math.floor(h / 24) + L({ ja:'日前', en:'d ago', vi:' ngày trước' });
   };
   // 写真を縮小してdataURL化（localStorage節約のためJPEG・最大240px）
-  function downscale(img, max) {
+  function downscale(img, max, q) {
     let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
     if (w > h) { if (w > max) { h = Math.round(h * max / w); w = max; } }
     else { if (h > max) { w = Math.round(w * max / h); h = max; } }
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     c.getContext('2d').drawImage(img, 0, 0, w, h);
-    try { return c.toDataURL('image/jpeg', 0.6); } catch { return ''; }
+    try { return c.toDataURL('image/jpeg', q || 0.6); } catch { return ''; }
   }
   function openLightbox(src) {
     const m = el(`<div class="lightbox"><img src="${src}" alt=""></div>`);
@@ -797,7 +797,7 @@
           const url = URL.createObjectURL(f);
           const wrap = document.createElement('div'); wrap.className = 'pt';
           const img = new Image(); img.alt = '';
-          img.onload = () => { wrap.dataset.thumb = downscale(img, 240); };
+          img.onload = () => { wrap.dataset.thumb = downscale(img, 1500, 0.82); };
           img.src = url;
           const x = document.createElement('button'); x.type = 'button'; x.className = 'pt-x'; x.textContent = '×';
           x.onclick = (e) => { e.stopPropagation(); URL.revokeObjectURL(url); wrap.remove(); };
@@ -816,7 +816,7 @@
       const note = document.getElementById('f_note').value.trim();
       if (!item) { toast(L({ ja:'品目を入力してください', en:'Please enter an item', vi:'Vui lòng nhập hạng mục' })); return; }
       const thumbsEl = document.getElementById('photoThumbs');
-      const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0,3) : [];
+      const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0,6) : [];
       const rep = { kind, store, item, level, note, photos, t: Date.now() };
       const reps = getReports();
       reps.push(rep);         // 楽観的に即表示
