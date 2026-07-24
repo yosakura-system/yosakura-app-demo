@@ -7,6 +7,13 @@
 (() => {
   'use strict';
 
+  /* ====== 共有バックエンド設定 ======
+     GAS WebアプリのURL（/exec）をここに貼ると、全端末でデータが同期される。
+     空のままなら従来通りこの端末内(localStorage)だけに保存。 */
+  const API_URL = '';
+  const useBackend = () => !!API_URL;
+  let lastSync = 0;
+
   /* ---------- SVGアイコン ---------- */
   const I = {
     food:   '<path d="M4 3v7a3 3 0 0 0 3 3v8M9 3v7M7 3v7M17 3c-1.5 0-3 2-3 6 0 2 1 3 3 3v9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -365,7 +372,8 @@
 
   /* ① 食べ残し・食材ロス報告（動く）*/
   APP_VIEWS.tabemono = () => {
-    const recent = getReports().slice().sort((x,y)=>y.t-x.t).slice(0,5);
+    const vis = visibleStores();
+    const recent = getReports().filter(r => vis.includes(r.store)).sort((x,y)=>y.t-x.t).slice(0,5);
     const segL = (arr) => arr.map((o,i)=>`<button type="button" data-v="${o.v}" class="${i===0?'on':''}">${L(o.t)}</button>`).join('');
     return `
       <div class="card" id="repForm">
@@ -745,6 +753,8 @@
 
   function bind() {
     const byId = (id) => document.getElementById(id);
+    // 報告一覧・ダッシュボード表示時は共有バックエンドから最新を取得
+    if (useBackend() && (byId('recentList') || location.hash.indexOf('/app/dashboard') >= 0)) syncReports();
     if (byId('langBtn')) byId('langBtn').onclick = openLangSheet;
     if (byId('roleBtn')) byId('roleBtn').onclick = openIdentitySheet;
     if (byId('installBtn')) byId('installBtn').onclick = triggerInstall;
@@ -802,10 +812,12 @@
       const note = document.getElementById('f_note').value.trim();
       if (!item) { toast(L({ ja:'品目を入力してください', en:'Please enter an item', vi:'Vui lòng nhập hạng mục' })); return; }
       const thumbsEl = document.getElementById('photoThumbs');
-      const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean) : [];
+      const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0,3) : [];
+      const rep = { kind, store, item, level, note, photos, t: Date.now() };
       const reps = getReports();
-      reps.push({ kind, store, item, level, note, photos, t: Date.now() });
+      reps.push(rep);         // 楽観的に即表示
       saveReports(reps);
+      postReport(rep);        // バックエンド設定時は全端末へ同期
       toast(L({ ja:'報告しました。ありがとうございます！', en:'Reported. Thank you!', vi:'Đã gửi. Cảm ơn!' }));
       render();
     };
@@ -825,10 +837,30 @@
     });
   }
 
+  /* ---------- 共有バックエンドとの同期 ---------- */
+  async function syncReports(force) {
+    if (!useBackend()) return;
+    if (!force && Date.now() - lastSync < 3000) return;
+    lastSync = Date.now();
+    try {
+      const res = await fetch(API_URL);
+      const d = await res.json();
+      if (d && d.ok && Array.isArray(d.reports)) {
+        const next = JSON.stringify(d.reports);
+        if (next !== (localStorage.getItem(LS.reports) || '')) { localStorage.setItem(LS.reports, next); render(); }
+      }
+    } catch (_) { /* オフライン時はキャッシュを使用 */ }
+  }
+  function postReport(rep) {
+    if (!useBackend()) return Promise.resolve();
+    return fetch(API_URL, { method: 'POST', body: JSON.stringify(rep) }).then(() => syncReports(true)).catch(() => {});
+  }
+
   /* ---------- 起動 ---------- */
   document.documentElement.lang = LANG;
-  seedIfEmpty();
+  if (!useBackend()) seedIfEmpty();
   render();
+  syncReports(true);
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
