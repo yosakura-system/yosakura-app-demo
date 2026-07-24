@@ -218,6 +218,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .rep .body .l1 { font-size: 13px; font-weight: 700; }
 .rep .body .l2 { font-size: 11.5px; color: var(--gray); }
 .rep .amt { font-size: 11px; font-weight: 800; color: var(--suou); white-space: nowrap; }
+.rep-photos { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+.rep-photo { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--line); cursor: pointer; }
+.lightbox { position: fixed; inset: 0; z-index: 70; background: rgba(20,15,18,.86); display: flex; align-items: center;
+  justify-content: center; padding: 24px; animation: fade .2s; }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
 
 /* ダッシュボード */
 .stat-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }

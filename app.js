@@ -174,6 +174,20 @@
     if (h < 24) return h + L({ ja:'時間前', en:'h ago', vi:' giờ trước' });
     return Math.floor(h / 24) + L({ ja:'日前', en:'d ago', vi:' ngày trước' });
   };
+  // 写真を縮小してdataURL化（localStorage節約のためJPEG・最大240px）
+  function downscale(img, max) {
+    let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    if (w > h) { if (w > max) { h = Math.round(h * max / w); w = max; } }
+    else { if (h > max) { w = Math.round(w * max / h); h = max; } }
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    try { return c.toDataURL('image/jpeg', 0.6); } catch { return ''; }
+  }
+  function openLightbox(src) {
+    const m = el(`<div class="lightbox"><img src="${src}" alt=""></div>`);
+    m.onclick = () => m.remove();
+    document.body.appendChild(m);
+  }
 
   /* ---------- PWAインストール ---------- */
   let deferredPrompt = null;
@@ -396,6 +410,7 @@
       <div class="body">
         <div class="l1">${esc(r.item||L({ja:'（品目未記入）',en:'(no item)',vi:'(chưa nhập)'}))}</div>
         <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}${r.note?' ・ '+esc(L(r.note)):''}</div>
+        ${(r.photos && r.photos.length) ? `<div class="rep-photos">${r.photos.map(p=>`<img class="rep-photo" src="${p}" alt="" data-full="${p}">`).join('')}</div>` : ''}
       </div>
       <span class="amt">${esc(levelLabel(r.level))}</span>
     </div>`;
@@ -740,6 +755,7 @@
     document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => go(`/app/${b.dataset.open}`));
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
     document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'デモのため、この先はイメージです', en:'Demo: further screens are mockups', vi:'Demo: màn hình tiếp theo là mô phỏng' })));
+    document.querySelectorAll('.rep-photo').forEach(im => im.onclick = () => openLightbox(im.dataset.full));
 
     document.querySelectorAll('[data-seg]').forEach(seg => {
       seg.querySelectorAll('button').forEach(btn => btn.onclick = () => {
@@ -766,7 +782,9 @@
         Array.from(fi.files).forEach(f => {
           const url = URL.createObjectURL(f);
           const wrap = document.createElement('div'); wrap.className = 'pt';
-          const img = new Image(); img.src = url; img.alt = '';
+          const img = new Image(); img.alt = '';
+          img.onload = () => { wrap.dataset.thumb = downscale(img, 240); };
+          img.src = url;
           const x = document.createElement('button'); x.type = 'button'; x.className = 'pt-x'; x.textContent = '×';
           x.onclick = (e) => { e.stopPropagation(); URL.revokeObjectURL(url); wrap.remove(); };
           wrap.appendChild(img); wrap.appendChild(x); thumbs.appendChild(wrap);
@@ -783,8 +801,10 @@
       const item = document.getElementById('f_item').value.trim();
       const note = document.getElementById('f_note').value.trim();
       if (!item) { toast(L({ ja:'品目を入力してください', en:'Please enter an item', vi:'Vui lòng nhập hạng mục' })); return; }
+      const thumbsEl = document.getElementById('photoThumbs');
+      const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean) : [];
       const reps = getReports();
-      reps.push({ kind, store, item, level, note, t: Date.now() });
+      reps.push({ kind, store, item, level, note, photos, t: Date.now() });
       saveReports(reps);
       toast(L({ ja:'報告しました。ありがとうございます！', en:'Reported. Thank you!', vi:'Đã gửi. Cảm ơn!' }));
       render();
