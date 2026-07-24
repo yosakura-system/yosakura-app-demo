@@ -1,5 +1,5 @@
 /* 世桜アプリ（デモ）Service Worker ─ アプリシェルをキャッシュしオフライン起動＆インストール可能に */
-const CACHE = 'yosakura-demo-v8';
+const CACHE = 'yosakura-demo-v9';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
   './icons/logo-full.png', './icons/icon-192.png', './icons/icon-512.png',
