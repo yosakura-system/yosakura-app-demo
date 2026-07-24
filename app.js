@@ -10,7 +10,7 @@
   /* ====== 共有バックエンド設定 ======
      GAS WebアプリのURL（/exec）をここに貼ると、全端末でデータが同期される。
      空のままなら従来通りこの端末内(localStorage)だけに保存。 */
-  const API_URL = '';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbzS-tvfTQwJjgYn2ASHWidU-qBWZzF85bqt25T4mAXcM-P6-75zFqzUSlgiPFDTe7KQRQ/exec';
   const useBackend = () => !!API_URL;
   let lastSync = 0;
 
