@@ -374,12 +374,13 @@
         <label class="fld"><span>${L({ ja:'気づき（任意）', en:'Notes (optional)', vi:'Ghi chú (tùy chọn)' })}</span>
           <textarea id="f_note" placeholder="${L({ ja:'例：ご飯が多いかも／仕込み過ぎ など', en:'e.g. portion too big / over-prepped', vi:'vd: khẩu phần lớn / chuẩn bị dư' })}"></textarea>
         </label>
-        <label class="fld"><span>${L({ ja:'写真（任意）', en:'Photo (optional)', vi:'Ảnh (tùy chọn)' })}</span>
+        <label class="fld"><span>${L({ ja:'写真（任意・複数可）', en:'Photos (optional, multiple)', vi:'Ảnh (tùy chọn, nhiều ảnh)' })}</span>
           <div class="photo-drop" id="photoDrop">
             <div class="ph-ico">${svg('camera')}</div>
-            <div><b style="font-size:13px">${L({ ja:'写真を追加', en:'Add photo', vi:'Thêm ảnh' })}</b><br><small>${L({ ja:'お皿を下げてから／料理だけを撮影', en:'After clearing the table / dish only', vi:'Sau khi dọn bàn / chỉ chụp món' })}</small></div>
-            <input type="file" accept="image/*" id="f_photo" hidden>
+            <div><b style="font-size:13px">${L({ ja:'写真を追加', en:'Add photos', vi:'Thêm ảnh' })}</b><br><small>${L({ ja:'複数枚OK／お皿を下げてから・料理だけを撮影', en:'Multiple OK / after clearing table, dish only', vi:'Nhiều ảnh OK / sau khi dọn bàn, chỉ chụp món' })}</small></div>
+            <input type="file" accept="image/*" multiple id="f_photo" hidden>
           </div>
+          <div class="photo-thumbs" id="photoThumbs"></div>
         </label>
         <button class="btn-primary" id="submitRep">${L({ ja:'報告する', en:'Submit', vi:'Gửi báo cáo' })}</button>
         <div class="hint">${L({ ja:'※デモ：この端末に保存され、下と「本部ダッシュボード」に反映されます', en:'Demo: saved on this device and shown below and in the HQ Dashboard', vi:'Demo: lưu trên máy này, hiển thị bên dưới và ở Bảng điều khiển' })}</div>
@@ -759,8 +760,19 @@
     const drop = document.getElementById('photoDrop');
     if (drop) {
       const fi = document.getElementById('f_photo');
+      const thumbs = document.getElementById('photoThumbs');
       drop.onclick = () => fi.click();
-      fi.onchange = () => { if (!fi.files[0]) return; const url = URL.createObjectURL(fi.files[0]); drop.querySelector('img')?.remove(); const img = new Image(); img.src = url; drop.appendChild(img); };
+      fi.onchange = () => {
+        Array.from(fi.files).forEach(f => {
+          const url = URL.createObjectURL(f);
+          const wrap = document.createElement('div'); wrap.className = 'pt';
+          const img = new Image(); img.src = url; img.alt = '';
+          const x = document.createElement('button'); x.type = 'button'; x.className = 'pt-x'; x.textContent = '×';
+          x.onclick = (e) => { e.stopPropagation(); URL.revokeObjectURL(url); wrap.remove(); };
+          wrap.appendChild(img); wrap.appendChild(x); thumbs.appendChild(wrap);
+        });
+        fi.value = ''; // 同じ写真の再選択や追加ができるようにクリア
+      };
     }
 
     const sub = document.getElementById('submitRep');
