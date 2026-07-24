@@ -9,10 +9,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT  = os.path.join(HERE, 'icons')
 SRC  = os.path.join(OUT, 'ogp.jpg')
 
-STYLE = 'suou'   # 'faithful'(生成り地×墨) or 'suou'(蘇芳地×白枝・小サイズでも視認性高)
+STYLE = 'faithful'   # 'faithful'(白地×墨枝) or 'suou'(蘇芳地×白枝)
 
 SUOU=(142,53,74); WHITE=(255,255,255); KINARI=(247,244,239); SUMI=(22,22,22)
-BG, FG = (KINARI, SUMI) if STYLE == 'faithful' else (SUOU, WHITE)
+BG, FG = (WHITE, SUMI) if STYLE == 'faithful' else (SUOU, WHITE)
 
 # --- 枝モチーフの輪郭を検出して切り出し、アルファ(筆のかすれ込み)を作る ---
 src = Image.open(SRC).convert('RGB')

@@ -1,15 +1,15 @@
 /* ===== 世桜アプリ（デモ）スタイル ── 和モダン / 蘇芳ブランド ===== */
 :root {
-  --suou: #8E354A;        /* 蘇芳（ブランド主色） */
-  --suou-d: #6E2739;      /* 濃い蘇芳 */
-  --suou-t: #F3DCE2;      /* 桜（淡） */
-  --sumi: #23201F;        /* 墨（文字） */
-  --gray: #7A716B;        /* 副次文字 */
-  --kinari: #F7F4EF;      /* 生成り（背景） */
+  --suou: #1F1C1B;        /* 主アクセント＝墨（黒） */
+  --suou-d: #000000;      /* 濃い墨 */
+  --suou-t: #EEEBE6;      /* 淡いグレー（アイコン地・タグ） */
+  --sumi: #201D1C;        /* 墨（文字） */
+  --gray: #7C736D;        /* 副次文字 */
+  --kinari: #FFFFFF;      /* アプリ背景＝白 */
   --paper: #FFFFFF;       /* 面 */
-  --line: #E7E0D6;        /* 罫 */
-  --gold: #B8945A;        /* 金差し */
-  --moegi: #3C7A5A;       /* 萌葱（肯定） */
+  --line: #E6E1DA;        /* 罫 */
+  --gold: #8F8170;        /* 差し色（グレージュ） */
+  --moegi: #1F1C1B;       /* 機能アクセントも墨に統一（モノクロ） */
   --shadow: 0 8px 28px rgba(60,30,40,.10), 0 2px 8px rgba(60,30,40,.06);
   --shadow-s: 0 3px 12px rgba(60,30,40,.08);
   --serif: "Yu Mincho","YuMincho","Hiragino Mincho ProN",serif;
@@ -22,7 +22,7 @@ html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--sans);
   color: var(--sumi);
-  background: #EDE7DE;
+  background: #E9E7E3;
   line-height: 1.6;
   overscroll-behavior-y: none;
 }
@@ -55,7 +55,7 @@ body {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: 10px;
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
-  background: rgba(247,244,239,.82);
+  background: rgba(255,255,255,.85);
   backdrop-filter: saturate(180%) blur(14px);
   -webkit-backdrop-filter: saturate(180%) blur(14px);
   border-bottom: 1px solid var(--line);
@@ -125,8 +125,8 @@ body {
 .tile .ico svg { width: 24px; height: 24px; }
 .tile .nm { font-size: 14px; font-weight: 700; letter-spacing: .02em; line-height: 1.35; }
 .tile .desc { font-size: 11px; color: var(--gray); margin-top: -4px; }
-.tile .live { position: absolute; top: 12px; right: 12px; font-size: 9px; font-weight: 800; color: var(--moegi);
-  background: #E8F3ED; padding: 3px 7px; border-radius: 999px; letter-spacing: .06em; }
+.tile .live { position: absolute; top: 12px; right: 12px; font-size: 9px; font-weight: 800; color: #FFFFFF;
+  background: #1F1C1B; padding: 3px 7px; border-radius: 999px; letter-spacing: .06em; }
 
 .tile.locked { background: #F4F1EC; cursor: not-allowed; }
 .tile.locked .ico { background: #EDE7DE; color: #B7ADA2; }
@@ -187,7 +187,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .rep:last-child { border-bottom: none; }
 .rep .kind { font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
 .rep .kind.a { background: var(--suou-t); color: var(--suou-d); }
-.rep .kind.b { background: #EAF0DE; color: #5A6E2E; }
+.rep .kind.b { background: #FFFFFF; color: #2A2624; box-shadow: inset 0 0 0 1px #D8D2C8; }
 .rep .body { flex: 1; min-width: 0; }
 .rep .body .l1 { font-size: 13px; font-weight: 700; }
 .rep .body .l2 { font-size: 11.5px; color: var(--gray); }
@@ -232,6 +232,19 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .tl .ev::before { content: ""; position: absolute; left: -19px; top: 9px; width: 10px; height: 10px; border-radius: 50%; background: var(--suou); box-shadow: 0 0 0 3px var(--kinari); }
 .tl .ev .d { font-size: 11px; font-weight: 800; color: var(--suou); }
 .tl .ev .t { font-size: 13px; }
+
+/* ===== 一元管理モジュール（MTG/課題/請求/評価）===== */
+.mtg-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.mtg-h h3 { margin: 0; }
+.mtg-h .muted { white-space: nowrap; font-size: 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 11.5px; background: var(--suou-t); color: #3a3532; padding: 5px 10px; border-radius: 999px; }
+.rankb { font-family: var(--serif); font-weight: 800; font-size: 15px; width: 32px; height: 32px; border-radius: 9px;
+  background: var(--suou); color: #fff; display: grid; place-items: center; flex-shrink: 0; }
+.stag { font-size: 10px; font-weight: 800; padding: 4px 9px; border-radius: 999px; white-space: nowrap; align-self: flex-start; }
+.stag.st-doing { background: #1F1C1B; color: #fff; }
+.stag.st-new { background: #FFFFFF; color: #1F1C1B; box-shadow: inset 0 0 0 1px #1F1C1B; }
+.stag.st-done { background: #EEEBE6; color: #8A817A; }
 
 /* ===== ボトムナビ ===== */
 .tabbar {

@@ -28,20 +28,27 @@
     tick:   '<path d="M5 12l4 4 10-10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
     chev:   '<path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
     back:   '<path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
-    add:    '<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+    add:    '<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    mtg:    '<circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 18c0-2.4 2-3.9 4.5-3.9 1.2 0 2.3.35 3.1.95M12.9 15.05c.8-.6 1.9-.95 3.1-.95 2.5 0 4.5 1.5 4.5 3.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    task:   '<rect x="4.5" y="3.5" width="15" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 8.5l1.2 1.2L11.5 7M8 14.5l1.2 1.2L11.5 13M14 9h3.2M14 15h3.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+    invoice:'<path d="M6.5 3h8l3.5 3.5V21l-2-1-2 1-2-1-2 1-2-1-2 1V3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8.5h6M9 11.5h6M9 14.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+    hr:     '<circle cx="12" cy="8" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 19c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'
   };
   const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${I[k] || ''}</svg>`;
 
   /* ---------- 役割（権限）---------- */
   const ROLES = {
-    staff:   { label: 'スタッフ', mark: '員', desc: '店舗の現場スタッフ' },
-    manager: { label: '店長',     mark: '長', desc: '店舗の店長・管理者' },
-    owner:   { label: 'オーナー', mark: '主', desc: '加盟店オーナー' },
-    hq:      { label: '本部',     mark: '本', desc: '世桜 本部メンバー' }
+    staff:   { label: 'スタッフ',       mark: '員', desc: '加盟店・直営店の現場スタッフ' },
+    manager: { label: '店長',           mark: '長', desc: '店舗の店長・管理者' },
+    owner:   { label: '加盟店オーナー', mark: '主', desc: '加盟店のオーナー様' },
+    hq:      { label: '本部',           mark: '本', desc: '世桜 本部（経営・高原社長ら）' }
   };
 
-  /* ---------- 店舗マスター（デモ）---------- */
-  const STORES = ['日本鰻世桜 富士山', '寿司世桜 心斎橋', '和牛世桜 広島', '牛カツ世桜 富士山', '日本鰻世桜 京都祇園'];
+  /* ---------- 店舗マスター（実在店舗）---------- */
+  const STORES = [
+    '日本鰻世桜 富士山店', '牛カツ世桜 富士山店', '寿司世桜 心斎橋店',
+    '日本鰻世桜 京都祇園店', '日本鰻世桜 長堀橋店', '日本鰻世桜 浅草橋店', '和牛世桜 広島店'
+  ];
 
   /* ---------- アプリ登録（この配列を増やすほど"窓口の中身"が増える）---------- */
   const APPS = [
@@ -51,13 +58,17 @@
     { id:'manual',    group:'学ぶ',     icon:'book',    name:'マニュアル',             desc:'理念・接客・衛生・商品',       roles:['staff','manager','owner','hq'] },
     { id:'survey',    group:'学ぶ',     icon:'star',    name:'サーベイ',               desc:'お客様アンケート運用',         roles:['staff','manager','owner','hq'] },
     { id:'soukatsu',  group:'店舗運営', icon:'table',   name:'総括表の入力',           desc:'日次の売上・客数・分析',       roles:['manager','owner','hq'] },
-    { id:'schedule',  group:'オーナー', icon:'calendar',name:'開業スケジュール D-90',  desc:'契約〜開業のマスター工程',     roles:['owner','hq'] },
-    { id:'pl',        group:'オーナー', icon:'yen',     name:'数値・PL',               desc:'損益・KPIの見える化',          roles:['owner','hq'] },
+    { id:'mtg',       group:'店舗運営', icon:'mtg',     name:'月例MTG',                desc:'各店の定例MTGと議題を一元管理', roles:['manager','owner','hq'] },
+    { id:'hr',        group:'店舗運営', icon:'hr',      name:'スタッフ評価・面談',     desc:'キャリアアップ制度と面談',     roles:['manager','hq'] },
+    { id:'schedule',  group:'開業・経営', icon:'calendar',name:'開業スケジュール D-90',  desc:'契約〜開業のマスター工程',     roles:['owner','hq'] },
+    { id:'pl',        group:'開業・経営', icon:'yen',     name:'数値・PL',               desc:'損益・KPIの見える化',          roles:['owner','hq'] },
     { id:'dashboard', group:'本部',     icon:'gauge',   name:'本部ダッシュボード',     desc:'全店の報告を自動集約',         roles:['hq'] },
+    { id:'tasks',     group:'本部',     icon:'task',    name:'課題・タスク管理',       desc:'本部の全課題を担当・状況で管理', roles:['hq'] },
+    { id:'invoice',   group:'本部',     icon:'invoice', name:'請求・支払管理',         desc:'取引先ごとの請求方法・締日',   roles:['hq'] },
     { id:'teishutsu', group:'本部',     icon:'inbox',   name:'加盟店・提出物管理',     desc:'提出状況と未提出の自動抽出',   roles:['hq'] },
     { id:'camera',    group:'本部',     icon:'video',   name:'防犯カメラ確認',         desc:'本部から全店を一括確認',       roles:['hq'] }
   ];
-  const GROUPS = ['現場業務', '学ぶ', '店舗運営', 'オーナー', '本部'];
+  const GROUPS = ['現場業務', '学ぶ', '店舗運営', '開業・経営', '本部'];
   const appById = (id) => APPS.find(a => a.id === id);
   const canOpen = (app, role) => role === 'hq' || app.roles.includes(role);
 
@@ -77,11 +88,11 @@
     if (localStorage.getItem(LS.reports)) return;
     const now = Date.now();
     const s = [
-      { kind:'a', store:'日本鰻世桜 富士山', item:'うな重（並）', level:'半分以上', note:'ご飯を残されるお客様が多い', t: now-3600e3*20 },
-      { kind:'a', store:'寿司世桜 心斎橋',   item:'デザート（抹茶）', level:'3分の1', note:'抹茶チョコが重いとの声', t: now-3600e3*28 },
-      { kind:'b', store:'和牛世桜 広島',     item:'副菜の仕込み', level:'多め', note:'夜の副菜を仕込み過ぎ', t: now-3600e3*30 },
-      { kind:'a', store:'牛カツ世桜 富士山', item:'キャベツ', level:'少し', note:'', t: now-3600e3*44 },
-      { kind:'b', store:'日本鰻世桜 富士山', item:'うなぎのタレ', level:'少なめ', note:'', t: now-3600e3*46 }
+      { kind:'a', store:'日本鰻世桜 富士山店', item:'うな重（並）', level:'半分以上', note:'ご飯を残されるお客様が多い', t: now-3600e3*20 },
+      { kind:'a', store:'寿司世桜 心斎橋店',   item:'デザート（抹茶）', level:'3分の1', note:'抹茶チョコが重いとの声', t: now-3600e3*28 },
+      { kind:'b', store:'和牛世桜 広島店',     item:'副菜の仕込み', level:'多め', note:'夜の副菜を仕込み過ぎ', t: now-3600e3*30 },
+      { kind:'a', store:'牛カツ世桜 富士山店', item:'キャベツ', level:'少し', note:'', t: now-3600e3*44 },
+      { kind:'b', store:'日本鰻世桜 富士山店', item:'うなぎのタレ', level:'少なめ', note:'', t: now-3600e3*46 }
     ];
     saveReports(s);
   }
@@ -152,9 +163,6 @@
   /* ---------- 画面：ホーム（タブでグループ絞り込み）---------- */
   function viewHome(tab) {
     const role = getRole();
-    const hour = new Date().getHours();
-    const hi = hour < 5 ? 'おつかれさまです' : hour < 11 ? 'おはようございます' : hour < 17 ? 'こんにちは' : 'おつかれさまです';
-
     const filter = { home:null, genba:'現場業務', learn:'学ぶ', hq:'本部' }[tab];
     const groups = filter ? [filter] : GROUPS;
 
@@ -184,10 +192,8 @@
     const heroBlock = tab === 'home'
       ? `<div class="brandhead">
            <img class="brandhead__logo" src="icons/logo-full.png" alt="日本料理 世桜 -yosakura-">
-           <div class="brandhead__hi">${hi}</div>
          </div>`
       : `<div class="hero">
-           <div class="hero__hi">${hi}</div>
            <h1 class="hero__title">${heroTitle}</h1>
          </div>`;
 
@@ -204,7 +210,7 @@
   function tileHTML(a, role) {
     const ok = canOpen(a, role);
     if (!ok) {
-      const need = a.roles.includes('hq') && a.roles.length === 1 ? '本部' : a.roles.includes('owner') ? 'オーナー' : '店長';
+      const need = a.roles.includes('hq') && a.roles.length === 1 ? '本部' : a.roles.includes('owner') ? '加盟店オーナー' : '店長';
       return `<div class="tile locked" data-locked="${a.id}">
         <span class="lock">${svg('lock')}</span>
         <div class="ico">${svg(a.icon)}</div>
@@ -439,11 +445,97 @@
       <p class="muted" style="margin-top:12px">監視ではなくブランド品質維持・加盟店支援のための確認。倍速で要点のみ確認。</p>
     </div>`;
 
+  /* --- 月例MTG（各店の定例MTG・議題を一元管理／実データ反映）--- */
+  APP_VIEWS.mtg = () => {
+    const MTG = [
+      ['富士山2店舗（鰻・牛カツ）', '毎月 第4木 18:00', ['サーベイ', 'Google口コミ用POP', 'A型看板', 'ポストカード4種', '和牛BOX見積', '3店舗目の商談', 'お茶（桐箱）オペ']],
+      ['寿司世桜 心斎橋店', '毎月 第4木 16:00', ['小冊子', '日本文化の説明', 'シャリ合わせ', 'ザル', '照明', 'ランチメニュー', 'サーベイ']],
+      ['日本鰻世桜 京都祇園店', '毎月 第4木 15:00', ['口コミ返信', '売価設定FIX', 'サーベイ', '7DAYSヒアリング', 'MEO/SEOの本部区分']],
+      ['日本鰻世桜 長堀橋店', '毎月 第4木 16:30', ['梅酒の状況', 'サーベイ', 'メニュー', '蛍の演出']],
+      ['日本鰻世桜 浅草橋店', '毎月 第4水 15:00', ['和牛', 'ガスバーナーケース', 'サーベイ', 'TIP BOX', 'ハラール状況', 'マニュアル見直し']],
+      ['和牛世桜 広島店', '毎月 第4木 18:00', ['Google口コミ', '総括表の記入', '商品別売上構成比', '盛付・一食目共有', '店内動画共有', '藁焼きの声がけ', 'サーベイ']]
+    ];
+    return `
+      <p class="mock-note">◆ 全店の月例MTGと議題を一元管理（実データ反映）</p>
+      ${MTG.map(([name, when, items]) => `
+        <div class="card">
+          <div class="mtg-h"><h3>${esc(name)}</h3><span class="muted">${esc(when)}</span></div>
+          <div class="chips">${items.map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div>
+        </div>`).join('')}`;
+  };
+
+  /* --- 課題・タスク管理（本部の一元管理表／実データ反映・機密は非表示）--- */
+  APP_VIEWS.tasks = () => {
+    const T = [
+      ['進行中', '請求', '他業者の請求フロー一覧の作成', '本部'],
+      ['新規',   '品質', '食べ残し・食材ロスを本部へ共有する仕組み', '本部'],
+      ['進行中', '動画マニュアル', '動画化する項目と参考動画の選定', '本部'],
+      ['進行中', 'マニュアル', 'レシピ全体の見直し（見やすさ・使いやすさ）', '商品開発'],
+      ['進行中', '提出物', '提出物管理シートの運用ルール整備', '本部'],
+      ['進行中', '口コミ', 'ネガティブ口コミの確認・報告フロー化', '本部'],
+      ['進行中', '備品', '備品発注・在庫管理シートの整備', '本部'],
+      ['新規',   '教育', 'キャリアアップテストの雛形作成', '本部'],
+      ['完了',   'マニュアル', '祝いカードの記入・スタンプ運用の追加', '本部'],
+      ['完了',   '開業支援', '現地研修用チェックリストの作成', '本部']
+    ];
+    const cnt = (s) => T.filter(t => t[0] === s).length;
+    const cls = { '進行中': 'st-doing', '完了': 'st-done', '新規': 'st-new' };
+    return `
+      <p class="mock-note">◆ 本部の全課題を担当・状況で一元管理（実データ反映）</p>
+      <div class="stat-row">
+        <div class="stat"><div class="n">${T.length}</div><div class="k">総課題</div></div>
+        <div class="stat"><div class="n">${cnt('進行中') + cnt('新規')}</div><div class="k">対応中</div></div>
+        <div class="stat"><div class="n">${cnt('完了')}</div><div class="k">完了</div></div>
+      </div>
+      <div class="card">
+        ${T.map(([st, cat, title, who]) => `<div class="rep"><span class="stag ${cls[st]}">${st}</span><div class="body"><div class="l1">${esc(title)}</div><div class="l2">${esc(cat)} ・ 担当：${esc(who)}</div></div></div>`).join('')}
+      </div>`;
+  };
+
+  /* --- 請求・支払管理（高原社長のご要望「誰へ・締日・方法の一覧化」）--- */
+  APP_VIEWS.invoice = () => {
+    const V = [
+      ['山口陶器', '食器', 'メール請求', '月末締め'],
+      ['丸眞', 'おしぼり 等', '郵送請求', '月末締め'],
+      ['亀池商店', '箸', '担当へ直接請求', '都度'],
+      ['かねさし', '食材', '発注・在庫連携', '週次']
+    ];
+    return `
+      <p class="mock-note">◆ 高原社長のご要望「誰へ・締日・支払方法の一覧化」を一元管理</p>
+      <div class="card">
+        <h3>取引先マスター</h3>
+        ${V.map(([n, k, how, when]) => `<div class="rep"><div class="body"><div class="l1">${esc(n)} <span class="muted" style="font-weight:400">・ ${esc(k)}</span></div><div class="l2">${esc(how)}</div></div><span class="amt" style="color:var(--sumi)">${esc(when)}</span></div>`).join('')}
+        <button class="btn-primary" style="margin-top:14px" onclick="return false">請求書の受領状況を確認（デモ）</button>
+      </div>
+      <p class="hint">本部宛か担当直送かが混在していた請求を、一覧で見える化する構想。</p>`;
+  };
+
+  /* --- スタッフ評価・面談（キャリアアップ制度）--- */
+  APP_VIEWS.hr = () => {
+    const RANKS = [
+      ['S', '店長代行クラス', '時間帯/日別の責任者・店長代行（時給+300円）'],
+      ['L', 'リーダー', '新人育成を担当・全部門をカバー'],
+      ['A', '一人前', '基本の営業が一通りできる'],
+      ['B', '新人', '入って間もないスタッフ']
+    ];
+    return `
+      <p class="mock-note">◆ キャリアアップ制度・面談を一元管理（イメージ）</p>
+      <div class="card">
+        <h3>ランク制度</h3>
+        ${RANKS.map(([r, t, d]) => `<div class="rep"><span class="rankb">${r}</span><div class="body"><div class="l1">${esc(t)}</div><div class="l2">${esc(d)}</div></div></div>`).join('')}
+      </div>
+      <div class="card">
+        <h3>面談</h3>
+        <div class="chips"><span class="chip">年4回（3・6・9・12月）</span><span class="chip">1ヶ月前にフォーム予約</span><span class="chip">1回30分</span></div>
+        <p class="muted" style="margin-top:10px">評価は7DAYS／面談評価シート（5つの価値・7つの管理・店舗ルール 等）／目標設定で実施。時給は面談の翌月に反映。</p>
+      </div>`;
+  };
+
   const mockGeneric = (a) => `<p class="mock-note">◆ デモ表示</p><div class="card"><p class="muted">「${esc(a.name)}」の画面イメージ。</p></div>`;
 
   const bar = (label, pct, hl=false) => `
     <div class="bar-row"><div class="bl"><span>${label}</span><b>${pct}%</b></div>
-    <div class="bar-track"><div class="bar-fill" style="width:${pct}%;${hl?'background:linear-gradient(90deg,var(--moegi),#2f6247)':''}"></div></div></div>`;
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%;${hl?'background:#000':''}"></div></div></div>`;
 
   /* ---------- 役割切替シート ---------- */
   function openRoleSheet() {
@@ -451,7 +543,7 @@
     const mask = el(`<div class="sheet-mask"><div class="sheet">
       <div class="grip"></div>
       <h3>役割を切り替える<span class="demo-tag">デモ</span></h3>
-      <div class="sub">同じアプリでも、権限によって見える機能・画面が変わります。高原社長にこの出し分けをお見せするための切替です。</div>
+      <div class="sub">本部だけでなく、加盟店（スタッフ・店長・加盟店オーナー）も同じアプリを使う前提です。役割によって見える機能・画面が変わります。この出し分けをお見せするための切替です。</div>
       ${Object.entries(ROLES).map(([k,v])=>`
         <button class="role-opt ${k===cur?'on':''}" data-role="${k}">
           <span class="rr">${v.mark}</span>
