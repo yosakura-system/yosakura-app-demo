@@ -43,7 +43,9 @@
     invoice:'<path d="M6.5 3h8l3.5 3.5V21l-2-1-2 1-2-1-2 1-2-1-2 1V3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8.5h6M9 11.5h6M9 14.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
     hr:     '<circle cx="12" cy="8" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 19c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
     play:   '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 8.3l5.2 3.7-5.2 3.7z" fill="currentColor"/>',
-    cart:   '<circle cx="9.5" cy="20" r="1.4" fill="currentColor"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/><path d="M2.5 4h2.2l2.4 11.2h10.2l1.9-8.2H6.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
+    cart:   '<circle cx="9.5" cy="20" r="1.4" fill="currentColor"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/><path d="M2.5 4h2.2l2.4 11.2h10.2l1.9-8.2H6.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+    link:   '<path d="M9.5 14.5l5-5M11 6.5l1.3-1.3a3.6 3.6 0 0 1 5.1 5.1L16 11.6M13 17.4l-1.3 1.3a3.6 3.6 0 0 1-5.1-5.1L8 12.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+    box:    '<path d="M3.5 7.5L12 3.5l8.5 4v9L12 20.5 3.5 16.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 7.5L12 11.5l8.5-4M12 11.5V20.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'
   };
   const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${I[k] || ''}</svg>`;
 
@@ -92,6 +94,12 @@
     { id:'checklist', group:'genba', icon:'check', roles:['staff','manager','owner','hq'],
       name:{ ja:'開店・清掃チェック', en:'Opening & Cleaning', vi:'Mở cửa & Vệ sinh' },
       desc:{ ja:'毎日の開店前チェック', en:'Daily pre-open checklist', vi:'Kiểm tra trước khi mở cửa' } },
+    { id:'links', group:'genba', icon:'link', roles:['staff','manager','owner','hq'],
+      name:{ ja:'リンク集', en:'Quick Links', vi:'Liên kết' },
+      desc:{ ja:'初期設定・発注などの必要リンク', en:'Setup, ordering and key links', vi:'Cài đặt, đặt hàng, liên kết' } },
+    { id:'inventory', group:'storeops', icon:'box', roles:['manager','owner','hq'],
+      name:{ ja:'棚卸・在庫入力', en:'Stocktake', vi:'Kiểm kho' },
+      desc:{ ja:'品目ごとの在庫をスマホで入力', en:'Enter stock by item on your phone', vi:'Nhập tồn kho theo mặt hàng' } },
     { id:'manual', group:'learn', icon:'book', roles:['staff','manager','owner','hq'],
       name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' },
       desc:{ ja:'理念・接客・衛生・商品', en:'Values, service, hygiene, menu', vi:'Triết lý, phục vụ, vệ sinh' } },
@@ -153,6 +161,8 @@
   const storeShort = (s) => s === 'all' ? L({ ja:'全店', en:'All', vi:'Tất cả' }) : (s.split(' ').slice(1).join(' ') || s);
   const getReports = () => { try { return JSON.parse(localStorage.getItem(LS.reports)) || []; } catch { return []; } };
   const saveReports = (a) => localStorage.setItem(LS.reports, JSON.stringify(a));
+  const getFP = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_fp')) || []; } catch { return []; } };
+  const saveFP = (a) => localStorage.setItem('yosakura_demo_fp', JSON.stringify(a));
 
   function seedIfEmpty() {
     if (localStorage.getItem(LS.reports)) return;
@@ -477,18 +487,35 @@
       <span class="amt">${esc(levelLabel(r.level))}</span>
     </div>`;
 
-  /* ② 一食目写真（モック）*/
-  APP_VIEWS.firstphoto = () => `
-    ${NOTE(demoImg)}
-    <div class="card">
-      <h3>${L({ ja:'提供直後の一枚を報告', en:'Report the first serving photo', vi:'Gửi ảnh món vừa phục vụ' })}</h3>
-      <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select>${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
-      <label class="fld"><span>${L({ ja:'メニュー', en:'Menu item', vi:'Món' })}</span><input type="text" placeholder="${L({ja:'例：海鮮丼',en:'e.g. Seafood bowl',vi:'vd: Cơm hải sản'})}"></label>
-      <label class="fld"><span>${L({ ja:'写真', en:'Photo', vi:'Ảnh' })}</span>
-        <div class="photo-drop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ja:'撮影して追加',en:'Take a photo',vi:'Chụp ảnh'})}</b><br><small>${L({ja:'盛付の基準チェックに使用',en:'Used to check plating standards',vi:'Dùng để kiểm tra cách trình bày'})}</small></div></div>
-      </label>
-      <button class="btn-primary" onclick="return false">${L({ja:'送信（デモ）',en:'Send (demo)',vi:'Gửi (demo)'})}</button>
-      <div class="hint">${L({ ja:'本番ではAIが盛付を一次判定 → 基準外のみ本部へ通知する構想', en:'In production, AI pre-checks plating and only flags issues to HQ', vi:'Bản chính: AI kiểm tra trình bày, chỉ báo HQ khi bất thường' })}</div>
+  /* ② 一食目写真（撮影→提出まで動作・AI判定は演出）*/
+  APP_VIEWS.firstphoto = () => {
+    const recent = getFP().filter(r => visibleStores().includes(r.store)).sort((x,y)=>y.t-x.t).slice(0,6);
+    return `
+      ${NOTE({ ja:'◆ 撮影→提出まで動きます（AI判定はデモ演出）', en:'◆ Capture→submit works (AI judgment is a demo)', vi:'◆ Chụp→gửi hoạt động (AI là demo)' })}
+      <div class="card" id="fpForm">
+        <h3>${L({ ja:'提供直後の一枚を報告', en:'Report the first serving photo', vi:'Gửi ảnh món vừa phục vụ' })}</h3>
+        <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="fp_store">${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'メニュー', en:'Menu item', vi:'Món' })}</span><input type="text" id="fp_item" placeholder="${L({ja:'例：海鮮丼',en:'e.g. Seafood bowl',vi:'vd: Cơm hải sản'})}"></label>
+        <label class="fld"><span>${L({ ja:'写真（複数可）', en:'Photos', vi:'Ảnh' })}</span>
+          <div class="photo-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ja:'撮影して追加',en:'Take photos',vi:'Chụp ảnh'})}</b><br><small>${L({ja:'盛付の基準チェックに使用',en:'Used to check plating standards',vi:'Dùng để kiểm tra trình bày'})}</small></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
+          <div class="photo-thumbs" id="photoThumbs"></div>
+        </label>
+        <button class="btn-primary" id="submitFP">${L({ja:'AIチェックして提出',en:'Check with AI & submit',vi:'Kiểm AI & gửi'})}</button>
+        <div class="hint">${L({ ja:'本番ではAIが盛付を一次判定 → 基準外のみ本部へ通知する構想', en:'In production, AI pre-checks plating and only flags issues to HQ', vi:'Bản chính: AI kiểm tra trình bày, chỉ báo HQ khi bất thường' })}</div>
+      </div>
+      <div class="card">
+        <h3>${L({ ja:'最近の一食目写真', en:'Recent first-plate photos', vi:'Ảnh món đầu gần đây' })}</h3>
+        <div id="fpList">${recent.length ? recent.map(fpRow).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}</div>
+      </div>`;
+  };
+  const fpRow = (r) => `
+    <div class="rep">
+      ${r.photos && r.photos.length ? `<img class="rep-photo" src="${photoThumb(r.photos[0])}" alt="" data-full="${photoFull(r.photos[0])}">` : `<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}
+      <div class="body">
+        <div class="l1">${esc(r.item||'—')}</div>
+        <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}</div>
+      </div>
+      <span class="stag ${r.ai==='ok'?'st-done':'st-new'}">${r.ai==='ok'?L({ja:'基準内',en:'OK',vi:'Đạt'}):L({ja:'要確認',en:'Check',vi:'Cần xem'})}</span>
     </div>`;
 
   /* ③ 開店・清掃チェック（動く）*/
@@ -757,6 +784,47 @@
       <div class="hint">${L({ ja:'納期は通常 発注後 約1週間。お品代は注文先業者の請求書に準じ、POP等は納品後ロイヤリティに加算して請求。POP修正500円〜／新規2,000円〜（要素追加は本部承認）。', en:'Lead time ~1 week. Costs follow vendor invoices; POP etc. billed via royalty. POP edit from 500 yen / new from 2,000 yen (additions need HQ approval).', vi:'Giao ~1 tuần. Chi phí theo hóa đơn NCC; POP tính qua royalty. Sửa POP từ 500 yen / mới từ 2,000 yen (thêm mục cần HQ duyệt).' })}</div>
     </div>`;
 
+  /* リンク集（初期リンク・発注リンク集）*/
+  const LINK_GROUPS = [
+    { g:{ja:'初期セットアップ',en:'Initial setup',vi:'Cài đặt ban đầu'}, items:[
+      {ja:'Googleビジネスプロフィール',en:'Google Business Profile',vi:'Google Business'},
+      {ja:'Googleカレンダー共有',en:'Google Calendar share',vi:'Chia sẻ lịch Google'},
+      {ja:'公式LINE / サーベイ設定',en:'Official LINE / Survey setup',vi:'LINE chính thức / Khảo sát'} ] },
+    { g:{ja:'発注',en:'Ordering',vi:'Đặt hàng'}, items:[
+      {ja:'備品・食材 発注フォーム（パートナーズ）',en:'Supply & ingredient order form',vi:'Form đặt vật tư & NL'},
+      {ja:'口コミQR 作成',en:'Review QR generator',vi:'Tạo QR đánh giá'} ] },
+    { g:{ja:'学ぶ',en:'Learn',vi:'Học'}, items:[
+      {ja:'マニュアル目次',en:'Manual index',vi:'Mục lục cẩm nang'},
+      {ja:'7DAYS 研修',en:'7DAYS training',vi:'Đào tạo 7DAYS'} ] }
+  ];
+  APP_VIEWS.links = () => `
+    ${NOTE({ ja:'◆ 各店に必要なリンクを1画面に集約（デモ）', en:'◆ Key links for each store in one place (demo)', vi:'◆ Liên kết cần thiết ở một nơi (demo)' })}
+    ${LINK_GROUPS.map(sec=>`
+      <div class="card">
+        <h3>${esc(L(sec.g))}</h3>
+        ${sec.items.map(it=>`<div class="mrow" data-mock="1"><div class="mi">${svg('link')}</div><div class="mt"><b>${esc(L(it))}</b></div><span class="chev">${svg('chev')}</span></div>`).join('')}
+      </div>`).join('')}`;
+
+  /* 棚卸・在庫入力 */
+  const INV_ITEMS = [
+    {ja:'うなぎ（真空パック）',en:'Unagi (vacuum)',vi:'Lươn (hút chân không)'},
+    {ja:'和牛',en:'Wagyu',vi:'Wagyu'},
+    {ja:'お米（武川米）',en:'Rice (Mukawa)',vi:'Gạo (Mukawa)'},
+    {ja:'世桜梅酒',en:'Plum wine',vi:'Rượu mơ'},
+    {ja:'食べ方POP',en:'How-to-eat POP',vi:'POP cách ăn'},
+    {ja:'おしぼり',en:'Wet towels',vi:'Khăn ướt'},
+    {ja:'茶碗',en:'Rice bowls',vi:'Chén cơm'}
+  ];
+  APP_VIEWS.inventory = () => `
+    ${NOTE({ ja:'◆ 棚卸をスマホ/PCから入力（デモ・保存はこの端末）', en:'◆ Enter stocktake from phone/PC (demo, saved on device)', vi:'◆ Nhập kiểm kho từ điện thoại/PC (demo)' })}
+    <div class="card">
+      <h3>${L({ ja:'在庫入力', en:'Enter stock', vi:'Nhập tồn kho' })}</h3>
+      <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select>${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+      ${INV_ITEMS.map(it=>`<div class="rep"><div class="body"><div class="l1">${esc(L(it))}</div></div><input type="text" inputmode="numeric" placeholder="0" style="width:70px;text-align:center;padding:8px"></div>`).join('')}
+      <button class="btn-primary" style="margin-top:12px" onclick="return false">${L({ja:'保存（デモ）',en:'Save (demo)',vi:'Lưu (demo)'})}</button>
+      <div class="hint">${L({ ja:'本番では発注システムと連動し、基準を下回った品目を発注候補として自動抽出する構想。', en:'In production, links to ordering and auto-suggests items below threshold.', vi:'Bản chính: liên kết đặt hàng, tự gợi ý mặt hàng dưới ngưỡng.' })}</div>
+    </div>`;
+
   const mockGeneric = (a) => `${NOTE(demoImg)}<div class="card"><p class="muted">${esc(L(a.name))}</p></div>`;
   const bar = (label, pct, hl=false) => `
     <div class="bar-row"><div class="bl"><span>${esc(label)}</span><b>${pct}%</b></div>
@@ -905,6 +973,22 @@
       saveReports(reps);
       postReport(rep);        // バックエンド設定時は全端末へ同期
       toast(L({ ja:'報告しました。ありがとうございます！', en:'Reported. Thank you!', vi:'Đã gửi. Cảm ơn!' }));
+      render();
+    };
+
+    const subFP = document.getElementById('submitFP');
+    if (subFP) subFP.onclick = () => {
+      const thumbsEl = document.getElementById('photoThumbs');
+      const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0,3) : [];
+      const item = document.getElementById('fp_item').value.trim();
+      const store = document.getElementById('fp_store').value;
+      if (!photos.length) { toast(L({ ja:'写真を追加してください', en:'Please add a photo', vi:'Vui lòng thêm ảnh' })); return; }
+      const ai = Math.random() < 0.25 ? 'ng' : 'ok';   // AI判定（デモ演出）
+      const fps = getFP(); fps.push({ store, item, photos, ai, t: Date.now() });
+      try { saveFP(fps.slice(-15)); } catch (e) { saveFP(fps.slice(-5)); }
+      toast(ai === 'ok'
+        ? L({ ja:'AI判定：基準内。提出しました', en:'AI: OK. Submitted', vi:'AI: Đạt. Đã gửi' })
+        : L({ ja:'AI判定：要確認。本部へ通知しました', en:'AI: needs check. HQ notified', vi:'AI: cần xem. Đã báo HQ' }));
       render();
     };
 
