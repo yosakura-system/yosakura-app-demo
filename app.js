@@ -267,13 +267,14 @@
 
   /* ---------- シェル ---------- */
   function shell(inner, activeTab) {
-    const role = ROLES[getRole()];
+    const roleKey = getRole();
+    const role = ROLES[roleKey];
     const tabs = [
       ['home', { ja:'ホーム', en:'Home', vi:'Trang chủ' }, 'home'],
       ['genba', { ja:'報告', en:'Report', vi:'Báo cáo' }, 'report'],
-      ['learn', { ja:'学ぶ', en:'Learn', vi:'Học' }, 'grad'],
-      ['hq', { ja:'本部', en:'HQ', vi:'HQ' }, 'hq']
+      ['learn', { ja:'学ぶ', en:'Learn', vi:'Học' }, 'grad']
     ];
+    if (roleKey === 'hq') tabs.push(['hq', { ja:'本部', en:'HQ', vi:'HQ' }, 'hq']); // 本部権限のみ
     return `
       <header class="hdr">
         <img class="hdr__logo" src="icons/icon-192.png" alt="">
@@ -293,6 +294,7 @@
   /* ---------- ホーム ---------- */
   function viewHome(tab) {
     const role = getRole();
+    if (tab === 'hq' && role !== 'hq') tab = 'home'; // 本部権限が無ければホームへ
     const filter = { home:null, genba:'genba', learn:'learn', hq:'hq' }[tab];
     const groups = filter ? [filter] : GROUPS.map(g => g.id);
 
@@ -307,12 +309,10 @@
 
     let sections = '';
     for (const gid of groups) {
-      const apps = APPS.filter(a => a.group === gid);
-      if (!apps.length) continue;
-      const okN = apps.filter(a => canOpen(a, role)).length;
+      const apps = APPS.filter(a => a.group === gid && canOpen(a, role)); // 使える機能だけ表示
+      if (!apps.length) continue;                                          // 空セクションは非表示
       sections += `
-        <div class="sec-h"><span class="bar"></span><h2>${esc(groupName(gid))}</h2>
-          <span class="count">${okN}/${apps.length} ${L({ ja:'利用可', en:'available', vi:'khả dụng' })}</span></div>
+        <div class="sec-h"><span class="bar"></span><h2>${esc(groupName(gid))}</h2></div>
         <div class="grid">${apps.map(a => tileHTML(a, role)).join('')}</div>`;
     }
 
