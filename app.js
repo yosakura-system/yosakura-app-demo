@@ -941,7 +941,18 @@
           <label class="fld"><span>${L({ja:'当日売上',en:'Sales',vi:'Doanh thu'})}</span><input type="text" inputmode="numeric" id="sk_sales" placeholder="186817"></label>
           <label class="fld"><span>${L({ja:'客数',en:'Guests',vi:'Khách'})}</span><input type="text" inputmode="numeric" id="sk_guests" placeholder="16"></label>
         </div>
-        <div class="stat-row" style="margin:2px 0 10px"><div class="stat"><div class="n" id="sk_avg">¥0</div><div class="k">${L({ja:'客単価（自動計算）',en:'Per guest (auto)',vi:'BQ/khách (tự động)'})}</div></div></div>
+        <div class="stat-row" style="margin:2px 0 10px">
+          <div class="stat"><div class="n" id="sk_avg">¥0</div><div class="k">${L({ja:'客単価（自動計算）',en:'Per guest (auto)',vi:'BQ/khách (tự động)'})}</div></div>
+          <div class="stat"><div class="n" id="sk_rate">—</div><div class="k">${L({ja:'到達度（自動）',en:'To goal (auto)',vi:'Đạt mục tiêu (auto)'})}</div></div>
+        </div>
+        <div class="sk-grid">
+          <label class="fld"><span>${L({ja:'純売上',en:'Net sales',vi:'Doanh thu thuần'})}</span><input type="text" inputmode="numeric" id="sk_net" placeholder="129136"></label>
+          <label class="fld"><span>${L({ja:'レジ誤差',en:'Register error',vi:'Sai lệch quầy'})}</span><input type="text" inputmode="numeric" id="sk_err" placeholder="0"></label>
+          <label class="fld"><span>${L({ja:'月累計売上',en:'Month-to-date',vi:'Lũy kế tháng'})}</span><input type="text" inputmode="numeric" id="sk_mtd" placeholder="2146145"></label>
+          <label class="fld"><span>${L({ja:'売上目標（月）',en:'Monthly goal',vi:'Mục tiêu tháng'})}</span><input type="text" inputmode="numeric" id="sk_goal" placeholder="3000000"></label>
+          <label class="fld"><span>${L({ja:'フード数',en:'Food items',vi:'Số món ăn'})}</span><input type="text" inputmode="numeric" id="sk_foodct" placeholder="29"></label>
+          <label class="fld"><span>${L({ja:'飲料数',en:'Drink items',vi:'Số đồ uống'})}</span><input type="text" inputmode="numeric" id="sk_drinkct" placeholder="14"></label>
+        </div>
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'口コミ 当日',en:'Reviews today',vi:'Đánh giá nay'})}</span><input type="text" inputmode="numeric" id="sk_rvt" placeholder="2"></label>
           <label class="fld"><span>${L({ja:'口コミ 累計',en:'Reviews total',vi:'Đánh giá tổng'})}</span><input type="text" inputmode="numeric" id="sk_rva" placeholder="70"></label>
@@ -1667,12 +1678,19 @@
       const upd = () => { const s = Number(skSales.value)||0, g = Number(skGuests.value)||0; skAvg.textContent = g ? ('¥' + Math.round(s/g).toLocaleString('en-US')) : '¥0'; };
       skSales.oninput = upd; skGuests.oninput = upd;
     }
+    const skMtd = byId('sk_mtd'), skGoal = byId('sk_goal'), skRate = byId('sk_rate');
+    if (skMtd && skGoal && skRate) {
+      const upd2 = () => { const m = Number(skMtd.value)||0, g = Number(skGoal.value)||0; skRate.textContent = g ? ((m/g*100).toFixed(1) + '%') : '—'; };
+      skMtd.oninput = upd2; skGoal.oninput = upd2;
+    }
     const subSk = byId('submitSk');
     if (subSk) subSk.onclick = () => {
       const v = (id) => { const e = byId(id); return e ? e.value.trim() : ''; };
       if (!v('sk_sales')) { toast(L({ ja:'当日売上を入力してください', en:'Please enter sales', vi:'Vui lòng nhập doanh thu' })); return; }
       const rec = {
         store: v('sk_store'), date: v('sk_date'), sales: Number(v('sk_sales'))||0, guests: Number(v('sk_guests'))||0,
+        net: Number(v('sk_net'))||0, err: v('sk_err'), mtd: Number(v('sk_mtd'))||0, goal: Number(v('sk_goal'))||0,
+        foodct: v('sk_foodct'), drinkct: v('sk_drinkct'),
         rvt: v('sk_rvt'), rva: v('sk_rva'), hear: v('sk_hear'), disc: v('sk_disc'),
         food: v('sk_food'), labor: v('sk_labor'), tipt: v('sk_tipt'), tipa: v('sk_tipa'),
         cancel: v('sk_cancel'), closer: v('sk_closer'), note: v('sk_note'), order: v('sk_order'), t: Date.now()
