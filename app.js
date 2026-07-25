@@ -45,7 +45,8 @@
     play:   '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 8.3l5.2 3.7-5.2 3.7z" fill="currentColor"/>',
     cart:   '<circle cx="9.5" cy="20" r="1.4" fill="currentColor"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/><path d="M2.5 4h2.2l2.4 11.2h10.2l1.9-8.2H6.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
     link:   '<path d="M9.5 14.5l5-5M11 6.5l1.3-1.3a3.6 3.6 0 0 1 5.1 5.1L16 11.6M13 17.4l-1.3 1.3a3.6 3.6 0 0 1-5.1-5.1L8 12.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
-    box:    '<path d="M3.5 7.5L12 3.5l8.5 4v9L12 20.5 3.5 16.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 7.5L12 11.5l8.5-4M12 11.5V20.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'
+    box:    '<path d="M3.5 7.5L12 3.5l8.5 4v9L12 20.5 3.5 16.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 7.5L12 11.5l8.5-4M12 11.5V20.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+    idea:   '<path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.6 10.8c.5.4.9 1 .9 1.7v.5h5.4v-.5c0-.7.4-1.3.9-1.7A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>'
   };
   const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${I[k] || ''}</svg>`;
 
@@ -91,6 +92,9 @@
     { id:'firstphoto', group:'genba', icon:'camera', roles:['staff','manager','owner','hq'],
       name:{ ja:'一食目写真の報告', en:'First-plate Photo', vi:'Ảnh món đầu tiên' },
       desc:{ ja:'提供直後の一枚を本部へ', en:'Send the first serving photo', vi:'Gửi ảnh ngay khi phục vụ' } },
+    { id:'kizuki', group:'genba', icon:'idea', roles:['staff','manager','owner','hq'],
+      name:{ ja:'気づきの報告', en:'Daily Insights', vi:'Ghi nhận cuối ca' },
+      desc:{ ja:'クローズ後の気づきを本部へ共有', en:'Share end-of-shift insights', vi:'Chia sẻ ghi nhận sau ca' } },
     { id:'checklist', group:'genba', icon:'check', roles:['staff','manager','owner','hq'],
       name:{ ja:'開店・清掃チェック', en:'Opening & Cleaning', vi:'Mở cửa & Vệ sinh' },
       desc:{ ja:'毎日の開店前チェック', en:'Daily pre-open checklist', vi:'Kiểm tra trước khi mở cửa' } },
@@ -185,6 +189,16 @@
     saveSk([
       { store:'日本料理世桜 心斎橋（おまかせ）', date:d(1), sales:186817, guests:16, rvt:'2', rva:'70', hear:'9', disc:'0', food:'36.5', labor:'23.6', tipt:'21000', tipa:'84541', cancel:'31700', closer:'', note:'', order:'豆乳6／寿司のエビ2／ガリ1／お米', t:now-864e5 },
       { store:'寿司世桜 心斎橋店', date:d(2), sales:80850, guests:12, rvt:'1', rva:'', hear:'', disc:'0', food:'', labor:'', tipt:'0', tipa:'0', cancel:'', closer:'', note:'', order:'', t:now-2*864e5 }
+    ]);
+  }
+  // 気づきの初期データ（ローカル機能・空のときだけ）
+  function seedKz() {
+    if (localStorage.getItem('yosakura_demo_kizuki')) return;
+    const now = Date.now();
+    saveKz([
+      { store:'和牛世桜 広島店', cat:'food', note:'藁焼き後の油の切れが甘い皿があった。提供前にもう一度確認したい。', photos:[], t: now-3600e3*3 },
+      { store:'寿司世桜 心斎橋店', cat:'service', note:'お客様から「わさび少なめ」のご希望が続いた。最初に伺うと良さそう。', photos:[], t: now-3600e3*20 },
+      { store:'日本鰻世桜 長堀橋店', cat:'other', note:'アイスのお茶の出数が増加。ピッチャーを先に仕込むと提供が早くなる。', photos:[], t: now-3600e3*26 }
     ]);
   }
 
@@ -446,6 +460,84 @@
   /* =================== 各アプリ =================== */
   const APP_VIEWS = {};
 
+  /* 食べ残し報告のメニュー選択（木村さん要望：自由入力→選択式）。店舗の業態でメニューを出し分け＋「その他（自由入力）」 */
+  // ※メニューは実測（2026-07-03巡回）＋公式サイト/TableCheck/Instagramの公表名に基づく。要確認は本部と突合。
+  const MENU_MASTER = {
+    unagi: [ // 日本鰻世桜＝ひつまぶし専門（並/上/極の3段階）
+      { ja:'ひつまぶし（並）', en:'Hitsumabushi (Regular)', vi:'Hitsumabushi (Thường)' },
+      { ja:'ひつまぶし（上）', en:'Hitsumabushi (Superior)', vi:'Hitsumabushi (Cao cấp)' },
+      { ja:'ひつまぶし（極）', en:'Hitsumabushi (Ultimate)', vi:'Hitsumabushi (Đỉnh)' },
+      { ja:'京都宇治茶', en:'Kyoto Uji tea', vi:'Trà Uji Kyoto' }
+    ],
+    gyukatsu: [ // 牛カツ世桜／焼きひつまぶし世桜
+      { ja:'焼きひつまぶし', en:'Grilled hitsumabushi', vi:'Hitsumabushi nướng' },
+      { ja:'和牛牛カツ', en:'Wagyu gyukatsu', vi:'Wagyu chiên xù' },
+      { ja:'牛カツサンド', en:'Gyukatsu sandwich', vi:'Sandwich bò' }
+    ],
+    sushi: [ // 寿司世桜＝おまかせ専門
+      { ja:'おまかせコース', en:'Omakase course', vi:'Set Omakase' }
+    ],
+    temaki: [ // 手巻き寿司世桜（OSAKA HAND ROLL）
+      { ja:'OSAKA HAND ROLL（手巻き）', en:'Osaka Hand Roll', vi:'Sushi cuốn tay Osaka' },
+      { ja:'鰻おにぎり', en:'Eel rice ball', vi:'Cơm nắm lươn' },
+      { ja:'ハラル鰻', en:'Halal unagi', vi:'Lươn Halal' }
+    ],
+    wagyu: [ // 和牛世桜＝和牛ひつまぶし専門
+      { ja:'和牛ひつまぶし', en:'Wagyu hitsumabushi', vi:'Wagyu hitsumabushi' },
+      { ja:'和牛ひつまぶし（極）', en:'Wagyu hitsumabushi (Ultimate)', vi:'Wagyu hitsumabushi (Đỉnh)' },
+      { ja:'和牛すき焼きひつまぶし', en:'Wagyu sukiyaki hitsumabushi', vi:'Sukiyaki hitsumabushi' },
+      { ja:'神戸牛ひつまぶし', en:'Kobe beef hitsumabushi', vi:'Bò Kobe hitsumabushi' }
+    ],
+    nihonryori: [ // 日本料理世桜＝OMAKASEコース（コース内の各品も報告できるよう列挙）
+      { ja:'おまかせコース（全体）', en:'Omakase course', vi:'Set Omakase' },
+      { ja:'手巻き寿司', en:'Hand roll sushi', vi:'Sushi cuốn tay' },
+      { ja:'握り寿司', en:'Nigiri sushi', vi:'Sushi nắm' },
+      { ja:'和牛ステーキ', en:'Wagyu steak', vi:'Bò wagyu bít tết' },
+      { ja:'和牛すき焼き', en:'Wagyu sukiyaki', vi:'Wagyu sukiyaki' },
+      { ja:'鰻', en:'Unagi (eel)', vi:'Lươn' },
+      { ja:'ラーメン', en:'Ramen', vi:'Mì ramen' }
+    ]
+  };
+  const COMMON_MENU = [
+    { ja:'世桜梅酒', en:'Plum wine', vi:'Rượu mơ' },
+    { ja:'日本茶（ほうじ茶）', en:'Hojicha tea', vi:'Trà Hojicha' },
+    { ja:'日本茶（緑茶）', en:'Green tea', vi:'Trà xanh' },
+    { ja:'ドリンクペアリング', en:'Drink pairing', vi:'Đồ uống pairing' },
+    { ja:'デザート', en:'Dessert', vi:'Tráng miệng' }
+  ];
+  const storeType = (s='') =>
+    s.indexOf('日本鰻世桜')===0    ? 'unagi' :
+    s.indexOf('牛カツ世桜')===0    ? 'gyukatsu' :
+    s.indexOf('手巻き寿司世桜')===0 ? 'temaki' :
+    s.indexOf('寿司世桜')===0      ? 'sushi' :
+    s.indexOf('和牛世桜')===0      ? 'wagyu' :
+    s.indexOf('日本料理世桜')===0  ? 'nihonryori' : null;
+  const menusForStore = (s) => { const t = storeType(s); return (t && MENU_MASTER[t] ? MENU_MASTER[t] : []).concat(COMMON_MENU); };
+  const itemLabelObj = (kind) => kind==='a' ? { ja:'メニュー', en:'Menu item', vi:'Món' } : { ja:'品目（食材）', en:'Item (ingredient)', vi:'Hạng mục' };
+  // 種別・店舗に応じた「品目」入力欄を生成。食べ残し=メニュー選択、食材ロス=自由入力。
+  function itemFieldHTML(kind, store) {
+    if (kind === 'b') {
+      return `<label class="fld"><span>${L(itemLabelObj('b'))}</span>
+        <input type="text" id="f_item" placeholder="${L({ ja:'例：副菜の仕込み', en:'e.g. side-dish prep', vi:'vd: món phụ chuẩn bị' })}"></label>`;
+    }
+    const opts = menusForStore(store).map(m=>`<option value="${esc(m.ja)}">${esc(L(m))}</option>`).join('');
+    return `<label class="fld"><span>${L(itemLabelObj('a'))}</span>
+      <select id="f_item">
+        <option value="" disabled selected>${L({ ja:'メニューを選択', en:'Select a menu item', vi:'Chọn món' })}</option>
+        ${opts}
+        <option value="__other__">${L({ ja:'その他（自由入力）', en:'Other (free text)', vi:'Khác (tự nhập)' })}</option>
+      </select>
+      <input type="text" id="f_item_other" style="display:none;margin-top:8px" placeholder="${L({ ja:'メニュー名を入力', en:'Enter menu name', vi:'Nhập tên món' })}"></label>`;
+  }
+  // 「その他」を選んだら自由入力欄を表示
+  function wireItemBlock() {
+    const sel = document.getElementById('f_item');
+    const oth = document.getElementById('f_item_other');
+    if (sel && sel.tagName === 'SELECT' && oth) {
+      sel.onchange = () => { const other = sel.value === '__other__'; oth.style.display = other ? 'block' : 'none'; if (other) oth.focus(); };
+    }
+  }
+
   /* ① 食べ残し・食材ロス報告（動く）*/
   APP_VIEWS.tabemono = () => {
     const vis = visibleStores();
@@ -463,9 +555,7 @@
         <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
           <select id="f_store">${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select>
         </label>
-        <label class="fld"><span id="f_item_l">${L({ ja:'メニュー', en:'Menu item', vi:'Món' })}</span>
-          <input type="text" id="f_item" placeholder="${L({ ja:'例：うな重（並）', en:'e.g. Unagi rice bowl', vi:'vd: Cơm lươn' })}">
-        </label>
+        <div id="itemBlock">${itemFieldHTML('a', visibleStores()[0])}</div>
         <label class="fld"><span>${L({ ja:'残り具合', en:'Amount left', vi:'Lượng còn lại' })}</span>
           <div class="seg" data-seg="level">${segL(LEVELS_A)}</div>
         </label>
@@ -575,6 +665,54 @@
     document.body.appendChild(mask);
   }
 
+  /* 気づきの報告（まな運用：クローズ後に全スタッフが気づきを送信）*/
+  const getKz = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_kizuki')) || []; } catch { return []; } };
+  const saveKz = (a) => localStorage.setItem('yosakura_demo_kizuki', JSON.stringify(a));
+  const KZ_CATS = [
+    { v:'food',    t:{ ja:'料理', en:'Food', vi:'Món ăn' } },
+    { v:'service', t:{ ja:'サービス', en:'Service', vi:'Phục vụ' } },
+    { v:'other',   t:{ ja:'その他・提案', en:'Other / Idea', vi:'Khác / Đề xuất' } }
+  ];
+  const kzCatLabel = (v) => { const f = KZ_CATS.find(x=>x.v===v); return f ? L(f.t) : v; };
+  APP_VIEWS.kizuki = () => {
+    const vis = visibleStores();
+    const recent = getKz().filter(r=>vis.includes(r.store)).sort((a,b)=>b.t-a.t).slice(0,6);
+    const ph = L({
+      ja:'例）料理＝盛り付け・味・お客様の食べ残し（理由も）／サービス＝求められた調味料・ご指摘・褒められた点／その他＝必要な器具・こんなシステムがあれば 等',
+      en:'e.g. Food = plating/taste/leftovers; Service = requests/feedback/praise; Other = tools or system ideas',
+      vi:'vd: Món ăn / Phục vụ / Khác (đề xuất)'
+    });
+    return `
+      ${NOTE({ ja:'◆ クローズ後、その日出勤したスタッフ全員で「気づき」を送信（本部が改善に活用）', en:'◆ After close, every staff shares an insight (HQ uses it to improve)', vi:'◆ Sau khi đóng cửa, mỗi nhân viên gửi một ghi nhận' })}
+      <div class="card" id="kzForm">
+        <h3>${L({ ja:'気づきを報告', en:'Share an insight', vi:'Gửi ghi nhận' })}</h3>
+        <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
+          <select id="kz_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'カテゴリ', en:'Category', vi:'Danh mục' })}</span>
+          <div class="seg" data-seg="kzcat">${KZ_CATS.map((c,i)=>`<button type="button" data-v="${c.v}" class="${i===0?'on':''}">${L(c.t)}</button>`).join('')}</div></label>
+        <label class="fld"><span>${L({ ja:'気づいたこと', en:'Your insight', vi:'Ghi nhận' })}</span>
+          <textarea id="kz_note" placeholder="${esc(ph)}"></textarea></label>
+        <label class="fld"><span>${L({ ja:'写真（任意）', en:'Photo (optional)', vi:'Ảnh (tùy chọn)' })}</span>
+          <div class="photo-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ ja:'写真を追加', en:'Add photos', vi:'Thêm ảnh' })}</b></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
+          <div class="photo-thumbs" id="photoThumbs"></div></label>
+        <button class="btn-primary" id="submitKz">${L({ ja:'報告する', en:'Submit', vi:'Gửi' })}</button>
+        <div class="hint">${L({ ja:'※退勤前に。お客様がいらっしゃる時はキッチン奥などご配慮を。', en:'Before leaving. Please be discreet if guests are present.', vi:'Trước khi tan ca. Vui lòng kín đáo nếu có khách.' })}</div>
+      </div>
+      <div class="card">
+        <h3>${L({ ja:'最近の気づき', en:'Recent insights', vi:'Ghi nhận gần đây' })}</h3>
+        <div id="kzList">${recent.length ? recent.map(kzRow).join('') : `<div class="muted">${L({ ja:'まだありません', en:'None yet', vi:'Chưa có' })}</div>`}</div>
+      </div>`;
+  };
+  const kzRow = (r) => `
+    <div class="rep">
+      <span class="kind ${r.cat==='food'?'a':'b'}">${esc(kzCatLabel(r.cat))}</span>
+      <div class="body">
+        <div class="l1">${esc(r.note||'—')}</div>
+        <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}</div>
+        ${(r.photos && r.photos.length) ? `<div class="rep-photos">${r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" alt="" data-full="${photoFull(p)}" loading="lazy">`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+
   /* ③ 開店・清掃チェック（動く：和牛世桜 店舗管理チェックシート2026.05に準拠）*/
   const CHECK_GROUPS = [
     { g:{ja:'開店準備',en:'Pre-open',vi:'Chuẩn bị mở'}, items:[
@@ -591,7 +729,8 @@
       {ja:'ステンレスの汚れ（カット後にダスター）',en:'Stainless wipe-down after cutting',vi:'Lau inox sau khi cắt'},
       {ja:'藁焼き場のステンレス（中性洗剤→乾拭き）',en:'Straw-grill stainless (detergent→dry)',vi:'Inox bếp nướng rơm'},
       {ja:'まな板・包丁の管理',en:'Cutting board & knife care',vi:'Thớt & dao'},
-      {ja:'洗い場の清掃',en:'Wash area cleaning',vi:'Vệ sinh khu rửa'} ] },
+      {ja:'洗い場の清掃',en:'Wash area cleaning',vi:'Vệ sinh khu rửa'},
+      {ja:'食材の冷蔵保管（しぐれ・いくら・魚類は使用後すぐ戻す）',en:'Refrigerate ingredients right after use',vi:'Cất lạnh nguyên liệu ngay sau khi dùng'} ] },
     { g:{ja:'トイレ・入口',en:'Restroom & entrance',vi:'WC & lối vào'}, items:[
       {ja:'トイレ便器内の汚れ（サンボール）',en:'Toilet bowl stains (Sunbowl)',vi:'Vết bẩn bồn cầu'},
       {ja:'トイレ清掃・備品補充',en:'Restroom clean & supplies',vi:'Vệ sinh WC & vật tư'},
@@ -746,6 +885,12 @@
         const latest = {}; sk.slice().sort((a,b)=>a.t-b.t).forEach(r => latest[r.store] = r);
         const rows = Object.values(latest).sort((a,b)=>b.t-a.t).slice(0,6);
         return `<div class="card"><h3>${L({ ja:'最新の総括表（店舗別）', en:'Latest daily report by store', vi:'Báo cáo mới theo cửa hàng' })}</h3>${rows.map(skRow).join('')}</div>`;
+      })()}
+      ${(() => {
+        const kz = getKz().filter(r => vis.includes(r.store));
+        if (!kz.length) return '';
+        const rows = kz.slice().sort((a,b)=>b.t-a.t).slice(0,6);
+        return `<div class="card"><h3>${L({ ja:'最近の気づき（全店）', en:'Recent staff insights', vi:'Ghi nhận gần đây' })}</h3>${rows.map(kzRow).join('')}</div>`;
       })()}`;
   };
 
@@ -1038,16 +1183,28 @@
         seg.querySelectorAll('button').forEach(x => x.classList.remove('on'));
         btn.classList.add('on');
         if (seg.dataset.seg === 'kind') {
-          const isA = btn.dataset.v === 'a';
-          const lab = document.getElementById('f_item_l');
-          const inp = document.getElementById('f_item');
+          const kind = btn.dataset.v;
+          const store = (document.getElementById('f_store') || {}).value || visibleStores()[0];
+          const block = document.getElementById('itemBlock');
+          if (block) { block.innerHTML = itemFieldHTML(kind, store); wireItemBlock(); }
           const lvl = document.querySelector('[data-seg="level"]');
-          if (lab) lab.textContent = isA ? L({ ja:'メニュー', en:'Menu item', vi:'Món' }) : L({ ja:'品目', en:'Item', vi:'Hạng mục' });
-          if (inp) inp.placeholder = isA ? L({ ja:'例：うな重（並）', en:'e.g. Unagi rice bowl', vi:'vd: Cơm lươn' }) : L({ ja:'例：副菜の仕込み', en:'e.g. side-dish prep', vi:'vd: món phụ chuẩn bị' });
-          if (lvl) { lvl.innerHTML = (isA?LEVELS_A:LEVELS_B).map((o,i)=>`<button type="button" data-v="${o.v}" class="${i===0?'on':''}">${L(o.t)}</button>`).join(''); rebindSeg(lvl); }
+          if (lvl) { lvl.innerHTML = (kind==='a'?LEVELS_A:LEVELS_B).map((o,i)=>`<button type="button" data-v="${o.v}" class="${i===0?'on':''}">${L(o.t)}</button>`).join(''); rebindSeg(lvl); }
         }
       });
     });
+
+    // 店舗を変えたらメニュー選択肢を出し分け＋「その他」トグルを配線（食べ残し報告）
+    const fstoreSel = document.getElementById('f_store');
+    const itemBlockEl = document.getElementById('itemBlock');
+    if (fstoreSel && itemBlockEl) {
+      fstoreSel.onchange = () => {
+        const on = document.querySelector('[data-seg="kind"] .on');
+        const kind = on ? on.dataset.v : 'a';
+        itemBlockEl.innerHTML = itemFieldHTML(kind, fstoreSel.value);
+        wireItemBlock();
+      };
+    }
+    wireItemBlock();
 
     const drop = document.getElementById('photoDrop');
     if (drop) {
@@ -1074,9 +1231,11 @@
       const kind = document.querySelector('[data-seg="kind"] .on').dataset.v;
       const level = document.querySelector('[data-seg="level"] .on').dataset.v;
       const store = document.getElementById('f_store').value;
-      const item = document.getElementById('f_item').value.trim();
+      const itemEl = document.getElementById('f_item');
+      let item = itemEl ? itemEl.value.trim() : '';
+      if (item === '__other__') { const oth = document.getElementById('f_item_other'); item = oth ? oth.value.trim() : ''; }
       const note = document.getElementById('f_note').value.trim();
-      if (!item) { toast(L({ ja:'品目を入力してください', en:'Please enter an item', vi:'Vui lòng nhập hạng mục' })); return; }
+      if (!item) { toast(L({ ja:'メニュー・品目を選んでください', en:'Please choose an item', vi:'Vui lòng chọn hạng mục' })); return; }
       const thumbsEl = document.getElementById('photoThumbs');
       const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0,6) : [];
       const rep = { kind, store, item, level, note, photos, t: Date.now() };
@@ -1085,6 +1244,21 @@
       saveReports(reps);
       postReport(rep);        // バックエンド設定時は全端末へ同期
       toast(L({ ja:'報告しました。ありがとうございます！', en:'Reported. Thank you!', vi:'Đã gửi. Cảm ơn!' }));
+      render();
+    };
+
+    const subKz = document.getElementById('submitKz');
+    if (subKz) subKz.onclick = () => {
+      const catEl = document.querySelector('[data-seg="kzcat"] .on');
+      const cat = catEl ? catEl.dataset.v : 'food';
+      const store = document.getElementById('kz_store').value;
+      const note = document.getElementById('kz_note').value.trim();
+      if (!note) { toast(L({ ja:'気づいたことを入力してください', en:'Please enter your insight', vi:'Vui lòng nhập ghi nhận' })); return; }
+      const thumbsEl = document.getElementById('photoThumbs');
+      const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0,4) : [];
+      const arr = getKz(); arr.push({ store, cat, note, photos, t: Date.now() });
+      try { saveKz(arr.slice(-80)); } catch (e) { saveKz(arr.slice(-30)); }
+      toast(L({ ja:'気づきを共有しました。ありがとうございます！', en:'Insight shared. Thank you!', vi:'Đã gửi. Cảm ơn!' }));
       render();
     };
 
@@ -1168,6 +1342,7 @@
   document.documentElement.lang = LANG;
   if (!useBackend()) seedIfEmpty();
   seedSk(); // 総括表はローカル機能（バックエンド非管理）のため常に用意
+  seedKz(); // 気づきの初期データ
   render();
   syncReports(true);
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
