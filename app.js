@@ -46,7 +46,9 @@
     cart:   '<circle cx="9.5" cy="20" r="1.4" fill="currentColor"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/><path d="M2.5 4h2.2l2.4 11.2h10.2l1.9-8.2H6.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
     link:   '<path d="M9.5 14.5l5-5M11 6.5l1.3-1.3a3.6 3.6 0 0 1 5.1 5.1L16 11.6M13 17.4l-1.3 1.3a3.6 3.6 0 0 1-5.1-5.1L8 12.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
     box:    '<path d="M3.5 7.5L12 3.5l8.5 4v9L12 20.5 3.5 16.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 7.5L12 11.5l8.5-4M12 11.5V20.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
-    idea:   '<path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.6 10.8c.5.4.9 1 .9 1.7v.5h5.4v-.5c0-.7.4-1.3.9-1.7A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>'
+    idea:   '<path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.6 10.8c.5.4.9 1 .9 1.7v.5h5.4v-.5c0-.7.4-1.3.9-1.7A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>',
+    pin:    '<path d="M12 21s7-6.3 7-11a7 7 0 0 0-14 0c0 4.7 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/>',
+    coins:  '<ellipse cx="12" cy="6.4" rx="6.5" ry="2.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 6.4v5c0 1.55 2.9 2.8 6.5 2.8s6.5-1.25 6.5-2.8v-5M5.5 11.4v5c0 1.55 2.9 2.8 6.5 2.8s6.5-1.25 6.5-2.8v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'
   };
   const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${I[k] || ''}</svg>`;
 
@@ -95,6 +97,9 @@
     { id:'kizuki', group:'genba', icon:'idea', roles:['staff','manager','owner','hq'],
       name:{ ja:'気づきの報告', en:'Daily Insights', vi:'Ghi nhận cuối ca' },
       desc:{ ja:'クローズ後の気づきを本部へ共有', en:'Share end-of-shift insights', vi:'Chia sẻ ghi nhận sau ca' } },
+    { id:'route', group:'genba', icon:'pin', roles:['staff','manager','owner','hq'],
+      name:{ ja:'来店経路の記録', en:'Arrival Route', vi:'Nguồn khách' },
+      desc:{ ja:'来店きっかけをワンタップで', en:'One-tap arrival source', vi:'Nguồn khách 1 chạm' } },
     { id:'checklist', group:'genba', icon:'check', roles:['staff','manager','owner','hq'],
       name:{ ja:'開店・清掃チェック', en:'Opening & Cleaning', vi:'Mở cửa & Vệ sinh' },
       desc:{ ja:'毎日の開店前チェック', en:'Daily pre-open checklist', vi:'Kiểm tra trước khi mở cửa' } },
@@ -104,6 +109,9 @@
     { id:'inventory', group:'storeops', icon:'box', roles:['manager','owner','hq'],
       name:{ ja:'棚卸・在庫入力', en:'Stocktake', vi:'Kiểm kho' },
       desc:{ ja:'品目ごとの在庫をスマホで入力', en:'Enter stock by item on your phone', vi:'Nhập tồn kho theo mặt hàng' } },
+    { id:'openreg', group:'storeops', icon:'coins', roles:['manager','owner','hq'],
+      name:{ ja:'開局（レジ準備金）', en:'Register Open', vi:'Mở quầy' },
+      desc:{ ja:'金種を入力→合計を自動計算', en:'Enter float by denomination', vi:'Nhập tiền quỹ đầu ca' } },
     { id:'manual', group:'learn', icon:'book', roles:['staff','manager','owner','hq'],
       name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' },
       desc:{ ja:'理念・接客・衛生・商品', en:'Values, service, hygiene, menu', vi:'Triết lý, phục vụ, vệ sinh' } },
@@ -713,6 +721,78 @@
       </div>
     </div>`;
 
+  /* 来店経路の記録（まな＝記入減少→ワンタップで記録）*/
+  const getRoute = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_route')) || []; } catch { return []; } };
+  const saveRoute = (a) => localStorage.setItem('yosakura_demo_route', JSON.stringify(a));
+  const ROUTES = [
+    { v:'google',    t:{ ja:'Google（マップ/検索）', en:'Google', vi:'Google' } },
+    { v:'instagram', t:{ ja:'Instagram', en:'Instagram', vi:'Instagram' } },
+    { v:'tiktok',    t:{ ja:'TikTok', en:'TikTok', vi:'TikTok' } },
+    { v:'referral',  t:{ ja:'紹介・口コミ', en:'Referral', vi:'Giới thiệu' } },
+    { v:'walkin',    t:{ ja:'通りがかり', en:'Walk-in', vi:'Vãng lai' } },
+    { v:'repeat',    t:{ ja:'リピーター', en:'Repeat guest', vi:'Khách quen' } },
+    { v:'other',     t:{ ja:'その他', en:'Other', vi:'Khác' } }
+  ];
+  const routeLabel = (v) => { const f = ROUTES.find(x=>x.v===v); return f ? L(f.t) : v; };
+  const dayStr = (t) => { const d = new Date(t); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
+  APP_VIEWS.route = () => {
+    const store = visibleStores()[0];
+    const today = dayStr(Date.now());
+    const todays = getRoute().filter(r => r.store===store && dayStr(r.t)===today);
+    const counts = {}; ROUTES.forEach(r=>counts[r.v]=0);
+    todays.forEach(e => { if (counts[e.route] != null) counts[e.route]++; });
+    const total = todays.length;
+    return `
+      ${NOTE({ ja:'◆ お客様の来店きっかけをワンタップで記録（本日分の集計に反映）', en:'◆ One-tap logging of how guests found us (today total)', vi:'◆ Ghi nhận 1 chạm nguồn khách (thống kê hôm nay)' })}
+      <div class="card">
+        <h3>${L({ ja:'来店経路を記録', en:'Log arrival route', vi:'Ghi nguồn khách' })}</h3>
+        <div class="muted" style="margin-bottom:10px">${L({ ja:'記録先', en:'Logging to', vi:'Ghi cho' })}：${esc(store)}</div>
+        <div class="grid">
+          ${ROUTES.map(r=>`<button class="tile" data-route="${r.v}" data-store="${esc(store)}" style="min-height:84px"><div class="nm">${esc(L(r.t))}</div><div class="desc" style="font-size:20px;font-weight:700;color:var(--sumi)">${counts[r.v]}</div></button>`).join('')}
+        </div>
+        <div class="stat-row" style="margin-top:12px"><div class="stat"><div class="n">${total}</div><div class="k">${L({ ja:'本日の記録数', en:'Logged today', vi:'Hôm nay' })}</div></div></div>
+        ${total ? `<button class="stag st-new" id="routeUndo" style="cursor:pointer;margin-top:4px">${L({ ja:'直前の1件を取り消す', en:'Undo last', vi:'Hoàn tác' })}</button>` : ''}
+      </div>`;
+  };
+
+  /* 開局（レジ準備金）＝金種入力→合計自動。総括表のレジ締めと対 */
+  const getOpen = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_open')) || []; } catch { return []; } };
+  const saveOpen = (a) => localStorage.setItem('yosakura_demo_open', JSON.stringify(a));
+  const DENOMS = [10000,5000,1000,500,100,50,10,5,1];
+  const OPEN_TARGET = 100000;
+  APP_VIEWS.openreg = () => {
+    const vis = visibleStores();
+    const recent = getOpen().filter(r=>vis.includes(r.store)).sort((a,b)=>b.t-a.t).slice(0,5);
+    const today = new Date().toISOString().slice(0,10);
+    return `
+      ${NOTE({ ja:'◆ 開店時のレジ準備金を金種で入力→合計を自動計算（準備金 ¥100,000 目安）', en:'◆ Enter opening float by denomination; total auto-calculated', vi:'◆ Nhập tiền quỹ đầu ca theo mệnh giá; tự tính tổng' })}
+      <div class="card" id="orForm">
+        <h3>${L({ ja:'開局（レジ準備金）', en:'Register open (float)', vi:'Mở quầy (tiền quỹ)' })}</h3>
+        <div class="sk-grid">
+          <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="or_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+          <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="or_date" value="${today}"></label>
+        </div>
+        ${DENOMS.map(d=>`<div class="rep"><div class="body"><div class="l1">¥${d.toLocaleString('en-US')}</div></div><input type="text" inputmode="numeric" class="or_denom" data-d="${d}" placeholder="0" style="width:84px;text-align:center;padding:9px"></div>`).join('')}
+        <div class="stat-row" style="margin-top:10px">
+          <div class="stat"><div class="n" id="or_total">¥0</div><div class="k">${L({ ja:'合計', en:'Total', vi:'Tổng' })}</div></div>
+          <div class="stat"><div class="n" id="or_diff">±0</div><div class="k">${L({ ja:'準備金との差', en:'vs float', vi:'So với quỹ' })}</div></div>
+        </div>
+        <button class="btn-primary" id="submitOr">${L({ ja:'開局する', en:'Open register', vi:'Mở quầy' })}</button>
+        <div class="hint">${L({ ja:'※デモ：この端末に保存され、履歴に反映されます', en:'Demo: saved on this device and shown in history', vi:'Demo: lưu trên máy này' })}</div>
+      </div>
+      <div class="card"><h3>${L({ ja:'最近の開局', en:'Recent opens', vi:'Mở quầy gần đây' })}</h3>
+        <div>${recent.length ? recent.map(orRow).join('') : `<div class="muted">${L({ ja:'まだありません', en:'None yet', vi:'Chưa có' })}</div>`}</div>
+      </div>`;
+  };
+  const orRow = (r) => {
+    const df = (r.total||0) - OPEN_TARGET;
+    const dfTxt = df===0 ? L({ ja:'準備金ぴったり', en:'exact', vi:'khớp' }) : (df>0?'+':'−') + yen(Math.abs(df));
+    return `<div class="rep">
+      <span class="kind b">${esc((r.date||'').slice(5))}</span>
+      <div class="body"><div class="l1">${yen(r.total)}</div><div class="l2">${esc(r.store)} ・ ${esc(dfTxt)}</div></div>
+    </div>`;
+  };
+
   /* ③ 開店・清掃チェック（動く：和牛世桜 店舗管理チェックシート2026.05に準拠）*/
   const CHECK_GROUPS = [
     { g:{ja:'開店準備',en:'Pre-open',vi:'Chuẩn bị mở'}, items:[
@@ -1285,6 +1365,40 @@
       render();
     });
     if (byId('checkReset')) byId('checkReset').onclick = () => { localStorage.setItem(LS.checks, '{}'); toast(L({ ja:'チェックをリセットしました', en:'Checklist reset', vi:'Đã đặt lại' })); render(); };
+
+    // 来店経路：ワンタップ記録＋取り消し
+    document.querySelectorAll('[data-route]').forEach(b => b.onclick = () => {
+      const arr = getRoute(); arr.push({ store: b.dataset.store, route: b.dataset.route, t: Date.now() });
+      try { saveRoute(arr.slice(-3000)); } catch (e) { saveRoute(arr.slice(-800)); }
+      toast(L({ ja:'記録しました', en:'Logged', vi:'Đã ghi' }) + '：' + routeLabel(b.dataset.route));
+      render();
+    });
+    if (byId('routeUndo')) byId('routeUndo').onclick = () => {
+      const store = visibleStores()[0], today = dayStr(Date.now());
+      const arr = getRoute();
+      for (let i=arr.length-1; i>=0; i--) { if (arr[i].store===store && dayStr(arr[i].t)===today) { arr.splice(i,1); break; } }
+      saveRoute(arr); render();
+    };
+
+    // 開局（レジ準備金）：金種→合計/差の自動計算＋保存
+    const orDenoms = document.querySelectorAll('.or_denom');
+    if (orDenoms.length) {
+      const upd = () => {
+        let t = 0; orDenoms.forEach(i => { t += (Number(i.dataset.d)||0) * (Number(i.value)||0); });
+        const totEl = byId('or_total'); if (totEl) totEl.textContent = '¥' + t.toLocaleString('en-US');
+        const diffEl = byId('or_diff'); if (diffEl) { const df = t - OPEN_TARGET; diffEl.textContent = (df>=0?'+':'−') + '¥' + Math.abs(df).toLocaleString('en-US'); }
+      };
+      orDenoms.forEach(i => i.oninput = upd);
+    }
+    const subOr = byId('submitOr');
+    if (subOr) subOr.onclick = () => {
+      const denom = {}; let total = 0;
+      document.querySelectorAll('.or_denom').forEach(i => { const d = Number(i.dataset.d)||0, c = Number(i.value)||0; denom[d] = c; total += d*c; });
+      const rec = { store: byId('or_store').value, date: byId('or_date').value, denom, total, t: Date.now() };
+      const arr = getOpen(); arr.push(rec); try { saveOpen(arr.slice(-60)); } catch (e) { saveOpen(arr.slice(-20)); }
+      toast(L({ ja:'開局しました（合計 ', en:'Register opened (total ', vi:'Đã mở quầy (tổng ' }) + '¥' + total.toLocaleString('en-US') + '）');
+      render();
+    };
 
     // 一食目写真：本部フィードバックを開く
     document.querySelectorAll('[data-fpfb]').forEach(b => b.onclick = () => openFPFeedback(b.dataset.fpfb));
