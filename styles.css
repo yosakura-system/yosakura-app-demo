@@ -176,10 +176,13 @@ body {
 /* フォーム */
 label.fld { display: block; margin-bottom: 14px; }
 label.fld > span { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: #4a4340; }
-input[type=text], select, textarea {
+input[type=text], input[type=date], select, textarea {
   width: 100%; font: inherit; font-size: 15px; padding: 12px 13px; border: 1px solid var(--line);
   border-radius: 12px; background: #FCFBF9; color: var(--sumi); font-family: var(--sans);
 }
+/* 総括表など多項目フォームの2カラム配置 */
+.sk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.sk-grid .fld { min-width: 0; }
 textarea { min-height: 74px; resize: vertical; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--suou); box-shadow: 0 0 0 3px rgba(142,53,74,.12); }
 

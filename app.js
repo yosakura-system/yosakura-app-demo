@@ -163,6 +163,8 @@
   const saveReports = (a) => localStorage.setItem(LS.reports, JSON.stringify(a));
   const getFP = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_fp')) || []; } catch { return []; } };
   const saveFP = (a) => localStorage.setItem('yosakura_demo_fp', JSON.stringify(a));
+  const getSk = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_soukatsu')) || []; } catch { return []; } };
+  const saveSk = (a) => localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(a));
 
   function seedIfEmpty() {
     if (localStorage.getItem(LS.reports)) return;
@@ -173,6 +175,16 @@
       { kind:'b', store:'和牛世桜 広島店',     item:'副菜の仕込み', level:'much', note:{ ja:'夜の副菜を仕込み過ぎ', en:'Over-prepped side dishes', vi:'Chuẩn bị dư món phụ' }, t: now-3600e3*30 },
       { kind:'a', store:'牛カツ世桜 富士山店', item:'キャベツ', level:'little', note:'', t: now-3600e3*44 },
       { kind:'b', store:'日本鰻世桜 富士山店', item:'うなぎのタレ', level:'small', note:'', t: now-3600e3*46 }
+    ]);
+  }
+
+  // 総括表の履歴を用意（バックエンド非管理のローカル機能・空のときだけ）
+  function seedSk() {
+    if (localStorage.getItem('yosakura_demo_soukatsu')) return;
+    const now = Date.now(), d = (n) => new Date(now - n*864e5).toISOString().slice(0,10);
+    saveSk([
+      { store:'日本料理世桜 心斎橋（おまかせ）', date:d(1), sales:186817, guests:16, rvt:'2', rva:'70', hear:'9', disc:'0', food:'36.5', labor:'23.6', tipt:'21000', tipa:'84541', cancel:'31700', closer:'', note:'', order:'豆乳6／寿司のエビ2／ガリ1／お米', t:now-864e5 },
+      { store:'寿司世桜 心斎橋店', date:d(2), sales:80850, guests:12, rvt:'1', rva:'', hear:'', disc:'0', food:'', labor:'', tipt:'0', tipa:'0', cancel:'', closer:'', note:'', order:'', t:now-2*864e5 }
     ]);
   }
 
@@ -508,37 +520,104 @@
         <div id="fpList">${recent.length ? recent.map(fpRow).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}</div>
       </div>`;
   };
-  const fpRow = (r) => `
+  const fpRow = (r) => {
+    const hq = getRole() === 'hq';
+    const fb = r.fb;
+    const badge = fb
+      ? `<span class="stag ${fb.result==='ok'?'st-done':'st-doing'}">${fb.result==='ok'?L({ja:'本部OK',en:'HQ OK',vi:'HQ OK'}):L({ja:'要改善',en:'Improve',vi:'Cần sửa'})}</span>`
+      : `<span class="stag ${r.ai==='ok'?'st-done':'st-new'}">${r.ai==='ok'?L({ja:'AI 基準内',en:'AI OK',vi:'AI đạt'}):L({ja:'AI 要確認',en:'AI check',vi:'AI xem'})}</span>`;
+    return `
     <div class="rep">
       ${r.photos && r.photos.length ? `<img class="rep-photo" src="${photoThumb(r.photos[0])}" alt="" data-full="${photoFull(r.photos[0])}">` : `<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}
       <div class="body">
         <div class="l1">${esc(r.item||'—')}</div>
         <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}</div>
+        ${fb && fb.comment ? `<div class="l2" style="color:var(--sumi)">💬 ${esc(fb.comment)}</div>` : ''}
+        ${hq && r.id ? `<button class="stag st-new" data-fpfb="${esc(r.id)}" style="cursor:pointer;margin-top:6px">${fb?L({ja:'FBを編集',en:'Edit feedback',vi:'Sửa FB'}):L({ja:'本部フィードバック',en:'Give HQ feedback',vi:'FB từ HQ'})}</button>` : ''}
       </div>
-      <span class="stag ${r.ai==='ok'?'st-done':'st-new'}">${r.ai==='ok'?L({ja:'基準内',en:'OK',vi:'Đạt'}):L({ja:'要確認',en:'Check',vi:'Cần xem'})}</span>
+      ${badge}
     </div>`;
+  };
+  // 一食目写真の本部フィードバック（基準内/要改善＋コメント）
+  function openFPFeedback(id) {
+    const r = getFP().find(x => x.id === id);
+    if (!r) return;
+    const cur = r.fb || { result:'ok', comment:'' };
+    let result = cur.result;
+    const mask = el(`<div class="sheet-mask"><div class="sheet">
+      <div class="grip"></div>
+      <h3>${L({ja:'一食目写真の本部フィードバック',en:'HQ feedback on first-plate photo',vi:'Phản hồi HQ cho ảnh món đầu'})}</h3>
+      <div class="sub">${esc(r.item||'—')} ・ ${esc(r.store)}</div>
+      ${r.photos && r.photos.length ? `<img class="rep-photo" src="${photoThumb(r.photos[0])}" alt="" data-full="${photoFull(r.photos[0])}" style="width:100%;height:180px;object-fit:cover;border-radius:12px;margin:8px 0">` : ''}
+      <div class="idlabel">${L({ja:'判定',en:'Result',vi:'Kết quả'})}</div>
+      <div class="seg" data-seg="fbres" style="margin-bottom:12px">
+        <button type="button" data-v="ok" class="${cur.result==='ok'?'on':''}">${L({ja:'基準内（OK）',en:'Meets standard',vi:'Đạt chuẩn'})}</button>
+        <button type="button" data-v="ng" class="${cur.result==='ng'?'on':''}">${L({ja:'要改善',en:'Needs work',vi:'Cần cải thiện'})}</button>
+      </div>
+      <label class="fld"><span>${L({ja:'コメント',en:'Comment',vi:'Nhận xét'})}</span><textarea id="fb_comment" placeholder="${L({ja:'例：盛り付けバランス／油をしっかり切る 等',en:'e.g. plating balance / drain oil well',vi:'vd: cân đối trình bày / ráo dầu kỹ'})}">${esc(cur.comment||'')}</textarea></label>
+      <button class="btn-primary" data-fbsave="1">${L({ja:'フィードバックを送る',en:'Send feedback',vi:'Gửi phản hồi'})}</button>
+    </div></div>`);
+    mask.addEventListener('click', (e) => {
+      if (e.target === mask) return mask.remove();
+      const seg = e.target.closest('[data-seg="fbres"] [data-v]');
+      if (seg) { mask.querySelectorAll('[data-seg="fbres"] button').forEach(x=>x.classList.remove('on')); seg.classList.add('on'); result = seg.dataset.v; return; }
+      const img = e.target.closest('.rep-photo');
+      if (img) { openLightbox(img.dataset.full); return; }
+      if (e.target.closest('[data-fbsave]')) {
+        const comment = (mask.querySelector('#fb_comment').value || '').trim();
+        const arr = getFP(); const t = arr.find(x => x.id === id);
+        if (t) { t.fb = { result, comment, t: Date.now() }; saveFP(arr); }
+        mask.remove();
+        toast(result==='ok' ? L({ja:'「基準内」を送りました',en:'Marked as OK',vi:'Đã đánh dấu Đạt'}) : L({ja:'「要改善」を送りました',en:'Sent improvement feedback',vi:'Đã gửi phản hồi'}));
+        render();
+      }
+    });
+    document.body.appendChild(mask);
+  }
 
-  /* ③ 開店・清掃チェック（動く）*/
-  const CHECK_ITEMS = [
-    { ja:'制服・身だしなみ', en:'Uniform & grooming', vi:'Đồng phục & tác phong' },
-    { ja:'手洗い・消毒', en:'Handwash & sanitize', vi:'Rửa tay & khử khuẩn' },
-    { ja:'冷蔵庫の温度確認', en:'Fridge temperature', vi:'Nhiệt độ tủ lạnh' },
-    { ja:'客席・テーブル清掃', en:'Seats & tables cleaning', vi:'Vệ sinh bàn ghế' },
-    { ja:'トイレ清掃', en:'Restroom cleaning', vi:'Vệ sinh nhà vệ sinh' },
-    { ja:'ゴミ・廃棄処理', en:'Trash & disposal', vi:'Rác & xử lý' },
-    { ja:'当日の予約確認', en:'Today reservations', vi:'Đặt chỗ hôm nay' },
-    { ja:'POP・季節メニュー確認', en:'POP & seasonal menu', vi:'POP & thực đơn mùa' }
+  /* ③ 開店・清掃チェック（動く：和牛世桜 店舗管理チェックシート2026.05に準拠）*/
+  const CHECK_GROUPS = [
+    { g:{ja:'開店準備',en:'Pre-open',vi:'Chuẩn bị mở'}, items:[
+      {ja:'制服・身だしなみ',en:'Uniform & grooming',vi:'Đồng phục & tác phong'},
+      {ja:'手洗い・消毒',en:'Handwash & sanitize',vi:'Rửa tay & khử khuẩn'},
+      {ja:'当日の予約確認',en:'Today reservations',vi:'Đặt chỗ hôm nay'},
+      {ja:'冷蔵庫の温度確認',en:'Fridge temperature',vi:'Nhiệt độ tủ lạnh'} ] },
+    { g:{ja:'ホール・客席',en:'Hall & seats',vi:'Sảnh & bàn'}, items:[
+      {ja:'客席・テーブル清掃',en:'Seats & tables cleaning',vi:'Vệ sinh bàn ghế'},
+      {ja:'グラスの汚れ（水垢・くもり）',en:'Glass stains (water marks)',vi:'Vết bẩn ly'},
+      {ja:'照明・調光の確認',en:'Lighting & dimming',vi:'Ánh sáng & điều chỉnh'},
+      {ja:'ディスプレイ・装飾の清掃',en:'Display & decor cleaning',vi:'Vệ sinh trưng bày'} ] },
+    { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
+      {ja:'ステンレスの汚れ（カット後にダスター）',en:'Stainless wipe-down after cutting',vi:'Lau inox sau khi cắt'},
+      {ja:'藁焼き場のステンレス（中性洗剤→乾拭き）',en:'Straw-grill stainless (detergent→dry)',vi:'Inox bếp nướng rơm'},
+      {ja:'まな板・包丁の管理',en:'Cutting board & knife care',vi:'Thớt & dao'},
+      {ja:'洗い場の清掃',en:'Wash area cleaning',vi:'Vệ sinh khu rửa'} ] },
+    { g:{ja:'トイレ・入口',en:'Restroom & entrance',vi:'WC & lối vào'}, items:[
+      {ja:'トイレ便器内の汚れ（サンボール）',en:'Toilet bowl stains (Sunbowl)',vi:'Vết bẩn bồn cầu'},
+      {ja:'トイレ清掃・備品補充',en:'Restroom clean & supplies',vi:'Vệ sinh WC & vật tư'},
+      {ja:'営業中看板／暖簾／A型看板',en:'Open sign / noren / A-frame',vi:'Bảng hiệu / rèm / bảng A'},
+      {ja:'食べ方POPの汚れ（早めに再発行）',en:'How-to-eat POP condition',vi:'Tình trạng POP cách ăn'} ] }
   ];
+  const CHECK_ITEMS = CHECK_GROUPS.reduce((a,g)=>a.concat(g.items), []); // フラット配列（done索引の互換用）
   APP_VIEWS.checklist = () => {
     const done = JSON.parse(localStorage.getItem(LS.checks) || '{}');
+    const total = CHECK_ITEMS.length;
     const n = CHECK_ITEMS.filter((_,i)=>done[i]).length;
+    let idx = -1;
+    const groupsHTML = CHECK_GROUPS.map(gr => `
+      <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${esc(L(gr.g))}</h2></div>
+      <div class="card" style="padding:4px 14px">
+        ${gr.items.map(it => { idx++; const i = idx; return `<div class="check ${done[i]?'done':''}" data-ci="${i}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}</span></div>`; }).join('')}
+      </div>`).join('');
     return `
-      <div class="card">
-        <h3>${L({ ja:'本日の開店前チェック', en:'Today pre-open check', vi:'Kiểm tra trước mở cửa' })}（${n}/${CHECK_ITEMS.length}）</h3>
-        <div id="checkList">
-          ${CHECK_ITEMS.map((it,i)=>`<div class="check ${done[i]?'done':''}" data-ci="${i}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}</span></div>`).join('')}
-        </div>
+      ${NOTE({ ja:'◆ 和牛世桜 店舗管理チェックシート（2026.05最新版）に準拠', en:'◆ Based on the Wagyu Yosakura store-management checklist (2026.05)', vi:'◆ Theo bảng kiểm tra quản lý cửa hàng (2026.05)' })}
+      <div class="card" style="text-align:center">
+        <h3>${L({ ja:'本日の開店前チェック', en:'Today pre-open check', vi:'Kiểm tra trước mở cửa' })}</h3>
+        <div style="font-size:26px;font-weight:700;letter-spacing:.02em">${n}<span style="color:var(--gray);font-size:17px">/${total}</span></div>
+        <div class="bar-track" style="margin:9px 0 2px"><div class="bar-fill" style="width:${Math.round(n/total*100)}%"></div></div>
+        <button class="stag st-new" id="checkReset" style="cursor:pointer;margin-top:10px">${L({ja:'翌日用にリセット',en:'Reset for next day',vi:'Đặt lại cho ngày mai'})}</button>
       </div>
+      ${groupsHTML}
       <div class="hint">${L({ ja:'※デモ：チェックはこの端末に保存されます', en:'Demo: checks are saved on this device', vi:'Demo: lưu trạng thái trên máy này' })}</div>`;
   };
 
@@ -567,28 +646,54 @@
       <div class="mrow" data-mock="1"><div class="mi">${svg('table')}</div><div class="mt"><b>${L({ja:'回答を見る',en:'View responses',vi:'Xem phản hồi'})}</b><span>${L({ja:'満足度・自由記述の集計',en:'Satisfaction & comments',vi:'Mức hài lòng & nhận xét'})}</span></div><span class="chev">${svg('chev')}</span></div>
     </div>`;
 
-  /* ⑥ 総括表（モック）*/
-  APP_VIEWS.soukatsu = () => `
-    ${NOTE({ ja:'◆ 実際の日報フォーマットに準拠（デモ数値）', en:'◆ Based on the real daily report format (demo figures)', vi:'◆ Theo mẫu báo cáo ngày thực tế (số liệu demo)' })}
-    <div class="card">
-      <h3>${L({ ja:'本日の総括表', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
-      <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select>${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
-      <div class="stat-row">
-        <div class="stat"><div class="n">¥186,817</div><div class="k">${L({ja:'当日売上',en:'Sales',vi:'Doanh thu'})}</div></div>
-        <div class="stat"><div class="n">16</div><div class="k">${L({ja:'客数',en:'Guests',vi:'Khách'})}</div></div>
-        <div class="stat"><div class="n">¥11,676</div><div class="k">${L({ja:'客単価',en:'Per guest',vi:'BQ/khách'})}</div></div>
+  /* ⑥ 総括表（動く：実日報フォーマットで入力→保存→履歴＆本部集約）*/
+  const yen = (n) => '¥' + (Number(n) || 0).toLocaleString('en-US');
+  APP_VIEWS.soukatsu = () => {
+    const vis = visibleStores();
+    const recent = getSk().filter(r => vis.includes(r.store)).sort((a,b)=>b.t-a.t).slice(0,6);
+    const today = new Date().toISOString().slice(0,10);
+    return `
+      ${NOTE({ ja:'◆ 実際の日報フォーマットで入力→保存できます（履歴と本部集約に反映）', en:'◆ Enter in the real daily-report format; it saves to history & HQ', vi:'◆ Nhập theo mẫu báo cáo ngày thực tế; lưu vào lịch sử & HQ' })}
+      <div class="card" id="skForm">
+        <h3>${L({ ja:'本日の総括表', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
+        <div class="sk-grid">
+          <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+          <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${today}"></label>
+          <label class="fld"><span>${L({ja:'当日売上',en:'Sales',vi:'Doanh thu'})}</span><input type="text" inputmode="numeric" id="sk_sales" placeholder="186817"></label>
+          <label class="fld"><span>${L({ja:'客数',en:'Guests',vi:'Khách'})}</span><input type="text" inputmode="numeric" id="sk_guests" placeholder="16"></label>
+        </div>
+        <div class="stat-row" style="margin:2px 0 10px"><div class="stat"><div class="n" id="sk_avg">¥0</div><div class="k">${L({ja:'客単価（自動計算）',en:'Per guest (auto)',vi:'BQ/khách (tự động)'})}</div></div></div>
+        <div class="sk-grid">
+          <label class="fld"><span>${L({ja:'口コミ 当日',en:'Reviews today',vi:'Đánh giá nay'})}</span><input type="text" inputmode="numeric" id="sk_rvt" placeholder="2"></label>
+          <label class="fld"><span>${L({ja:'口コミ 累計',en:'Reviews total',vi:'Đánh giá tổng'})}</span><input type="text" inputmode="numeric" id="sk_rva" placeholder="70"></label>
+          <label class="fld"><span>${L({ja:'ヒアリング 当日',en:'Hearings today',vi:'Phỏng vấn nay'})}</span><input type="text" inputmode="numeric" id="sk_hear" placeholder="9"></label>
+          <label class="fld"><span>${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})}</span><input type="text" inputmode="numeric" id="sk_disc" placeholder="0"></label>
+          <label class="fld"><span>${L({ja:'原価率 %',en:'Food cost %',vi:'Giá vốn %'})}</span><input type="text" inputmode="decimal" id="sk_food" placeholder="36.5"></label>
+          <label class="fld"><span>${L({ja:'人件費率 %',en:'Labor %',vi:'Nhân sự %'})}</span><input type="text" inputmode="decimal" id="sk_labor" placeholder="23.6"></label>
+          <label class="fld"><span>${L({ja:'チップ 当日',en:'Tips today',vi:'Tip nay'})}</span><input type="text" inputmode="numeric" id="sk_tipt" placeholder="21000"></label>
+          <label class="fld"><span>${L({ja:'チップ 累計',en:'Tips total',vi:'Tip tổng'})}</span><input type="text" inputmode="numeric" id="sk_tipa" placeholder="84541"></label>
+          <label class="fld"><span>${L({ja:'キャンセル 累計',en:'Cancel total',vi:'Hủy tổng'})}</span><input type="text" inputmode="numeric" id="sk_cancel" placeholder="31700"></label>
+          <label class="fld"><span>${L({ja:'レジ締め担当',en:'Cash-up by',vi:'Người chốt sổ'})}</span><input type="text" id="sk_closer" placeholder="${L({ja:'担当者名',en:'staff name',vi:'tên NV'})}"></label>
+        </div>
+        <label class="fld"><span>${L({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' })}</span><textarea id="sk_note" placeholder="${L({ja:'本日の気づき・清掃箇所など',en:'Findings, cleaning done, etc.',vi:'Ghi chú, vệ sinh đã làm...'})}"></textarea></label>
+        <label class="fld"><span>${L({ ja:'翌日の食材発注', en:'Tomorrow ingredient order', vi:'Đặt NL ngày mai' })}</span><textarea id="sk_order" placeholder="${L({ja:'例：豆乳6／寿司のエビ2／お米 …',en:'e.g. soy milk 6 / shrimp 2 / rice …',vi:'vd: sữa đậu 6 / tôm 2 / gạo …'})}"></textarea></label>
+        <button class="btn-primary" id="submitSk">${L({ja:'提出する',en:'Submit',vi:'Nộp'})}</button>
+        <div class="hint">${L({ja:'※デモ：この端末に保存され、下の履歴と「本部ダッシュボード」に反映されます',en:'Demo: saved on this device and shown below and in the HQ Dashboard',vi:'Demo: lưu trên máy này, hiển thị bên dưới và ở Bảng điều khiển'})}</div>
       </div>
-      ${soukatsuRow(L({ja:'月累計 / 目標到達',en:'Month total / to goal',vi:'Lũy kế / mục tiêu'}), '¥4,278,725', '77.4%')}
-      ${soukatsuRow(L({ja:'口コミ（当日 / 累計）',en:'Reviews (today / total)',vi:'Đánh giá (nay / tổng)'}), '2', '70')}
-      ${soukatsuRow(L({ja:'ヒアリング（当日）',en:'Hearings (today)',vi:'Phỏng vấn (nay)'}), '9', '')}
-      ${soukatsuRow(L({ja:'原価率 / 人件費率（FL）',en:'Food / Labor (FL)',vi:'Giá vốn / nhân sự'}), '36.5%', '23.6%')}
-      ${soukatsuRow(L({ja:'チップ（当日 / 累計）',en:'Tips (today / total)',vi:'Tip (nay / tổng)'}), '¥21,000', '¥84,541')}
-      ${soukatsuRow(L({ja:'キャンセル（累計）',en:'Cancellations (total)',vi:'Hủy (tổng)'}), '¥31,700', '')}
-      <label class="fld" style="margin-top:14px"><span>${L({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' })}</span><textarea placeholder="${L({ja:'本日の気づき・清掃箇所など',en:'Findings, cleaning done, etc.',vi:'Ghi chú, vệ sinh đã làm...'})}"></textarea></label>
-      <label class="fld"><span>${L({ ja:'翌日の食材発注', en:'Tomorrow ingredient order', vi:'Đặt NL ngày mai' })}</span><textarea placeholder="${L({ja:'例：豆乳6／寿司のエビ2／お米 …',en:'e.g. soy milk 6 / shrimp 2 / rice …',vi:'vd: sữa đậu 6 / tôm 2 / gạo …'})}"></textarea></label>
-      <button class="btn-primary" onclick="return false">${L({ja:'提出（デモ）',en:'Submit (demo)',vi:'Nộp (demo)'})}</button>
+      <div class="card">
+        <h3>${L({ ja:'最近の総括表', en:'Recent daily reports', vi:'Báo cáo gần đây' })}</h3>
+        <div id="skList">${recent.length ? recent.map(skRow).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}</div>
+      </div>`;
+  };
+  const skRow = (r) => `
+    <div class="rep">
+      <span class="kind b">${esc((r.date||'').slice(5))}</span>
+      <div class="body">
+        <div class="l1">${yen(r.sales)} ・ ${esc(r.guests||0)}${L({ja:'名',en:' guests',vi:' khách'})}</div>
+        <div class="l2">${esc(r.store)}${r.food?' ・ FL '+esc(r.food)+'/'+esc(r.labor||'—')+'%':''}${r.closer?' ・ '+L({ja:'締め',en:'by',vi:'chốt'})+':'+esc(r.closer):''}</div>
+      </div>
+      <span class="amt">${r.guests?yen(Math.round((Number(r.sales)||0)/(Number(r.guests)||1))):'—'}</span>
     </div>`;
-  const soukatsuRow = (label, a, b) => `<div class="bar-row" style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding:9px 2px"><span style="font-size:12.5px;color:var(--gray)">${esc(label)}</span><b style="font-size:14px">${esc(a)}${b?` <span style="color:var(--gray);font-weight:400">/ ${esc(b)}</span>`:''}</b></div>`;
 
   /* ⑦ 開業スケジュール D-90（モック）*/
   const TL = [
@@ -634,7 +739,14 @@
         <h3>${L({ ja:'店舗別の報告数', en:'Reports by store', vi:'Báo cáo theo cửa hàng' })}</h3>
         ${rows.map(([s,c])=>`<div class="bar-row"><div class="bl"><span>${esc(s)}</span><b>${c}${L({ja:'件',en:'',vi:''})}</b></div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(c/max*100)}%"></div></div></div>`).join('') || `<div class="muted">${L({ja:'データがありません',en:'No data',vi:'Chưa có dữ liệu'})}</div>`}
       </div>
-      <div class="card"><h3>${L({ ja:'最新の報告', en:'Latest reports', vi:'Báo cáo mới nhất' })}</h3>${recent.map(repRow).join('')}</div>`;
+      <div class="card"><h3>${L({ ja:'最新の報告', en:'Latest reports', vi:'Báo cáo mới nhất' })}</h3>${recent.map(repRow).join('')}</div>
+      ${(() => {
+        const sk = getSk().filter(r => vis.includes(r.store));
+        if (!sk.length) return '';
+        const latest = {}; sk.slice().sort((a,b)=>a.t-b.t).forEach(r => latest[r.store] = r);
+        const rows = Object.values(latest).sort((a,b)=>b.t-a.t).slice(0,6);
+        return `<div class="card"><h3>${L({ ja:'最新の総括表（店舗別）', en:'Latest daily report by store', vi:'Báo cáo mới theo cửa hàng' })}</h3>${rows.map(skRow).join('')}</div>`;
+      })()}`;
   };
 
   /* ⑩ 月例MTG（一元管理・実データ）*/
@@ -983,8 +1095,8 @@
       const item = document.getElementById('fp_item').value.trim();
       const store = document.getElementById('fp_store').value;
       if (!photos.length) { toast(L({ ja:'写真を追加してください', en:'Please add a photo', vi:'Vui lòng thêm ảnh' })); return; }
-      const ai = Math.random() < 0.25 ? 'ng' : 'ok';   // AI判定（デモ演出）
-      const fps = getFP(); fps.push({ store, item, photos, ai, t: Date.now() });
+      const ai = Math.random() < 0.25 ? 'ng' : 'ok';   // AI判定（デモ演出・本部FBで上書き可）
+      const fps = getFP(); fps.push({ id: 'fp' + Date.now() + Math.random().toString(36).slice(2,6), store, item, photos, ai, t: Date.now() });
       try { saveFP(fps.slice(-15)); } catch (e) { saveFP(fps.slice(-5)); }
       toast(ai === 'ok'
         ? L({ ja:'AI判定：基準内。提出しました', en:'AI: OK. Submitted', vi:'AI: Đạt. Đã gửi' })
@@ -998,6 +1110,32 @@
       localStorage.setItem(LS.checks, JSON.stringify(done));
       render();
     });
+    if (byId('checkReset')) byId('checkReset').onclick = () => { localStorage.setItem(LS.checks, '{}'); toast(L({ ja:'チェックをリセットしました', en:'Checklist reset', vi:'Đã đặt lại' })); render(); };
+
+    // 一食目写真：本部フィードバックを開く
+    document.querySelectorAll('[data-fpfb]').forEach(b => b.onclick = () => openFPFeedback(b.dataset.fpfb));
+
+    // 総括表：客単価の自動計算＋提出
+    const skSales = byId('sk_sales'), skGuests = byId('sk_guests'), skAvg = byId('sk_avg');
+    if (skSales && skGuests && skAvg) {
+      const upd = () => { const s = Number(skSales.value)||0, g = Number(skGuests.value)||0; skAvg.textContent = g ? ('¥' + Math.round(s/g).toLocaleString('en-US')) : '¥0'; };
+      skSales.oninput = upd; skGuests.oninput = upd;
+    }
+    const subSk = byId('submitSk');
+    if (subSk) subSk.onclick = () => {
+      const v = (id) => { const e = byId(id); return e ? e.value.trim() : ''; };
+      if (!v('sk_sales')) { toast(L({ ja:'当日売上を入力してください', en:'Please enter sales', vi:'Vui lòng nhập doanh thu' })); return; }
+      const rec = {
+        store: v('sk_store'), date: v('sk_date'), sales: Number(v('sk_sales'))||0, guests: Number(v('sk_guests'))||0,
+        rvt: v('sk_rvt'), rva: v('sk_rva'), hear: v('sk_hear'), disc: v('sk_disc'),
+        food: v('sk_food'), labor: v('sk_labor'), tipt: v('sk_tipt'), tipa: v('sk_tipa'),
+        cancel: v('sk_cancel'), closer: v('sk_closer'), note: v('sk_note'), order: v('sk_order'), t: Date.now()
+      };
+      const arr = getSk(); arr.push(rec);
+      try { saveSk(arr.slice(-60)); } catch (e) { saveSk(arr.slice(-20)); }
+      toast(L({ ja:'総括表を提出しました。ありがとうございます！', en:'Daily report submitted. Thank you!', vi:'Đã nộp báo cáo. Cảm ơn!' }));
+      render();
+    };
   }
   // レベルセグメント差し替え後の再バインド
   function rebindSeg(seg) {
@@ -1029,6 +1167,7 @@
   /* ---------- 起動 ---------- */
   document.documentElement.lang = LANG;
   if (!useBackend()) seedIfEmpty();
+  seedSk(); // 総括表はローカル機能（バックエンド非管理）のため常に用意
   render();
   syncReports(true);
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
