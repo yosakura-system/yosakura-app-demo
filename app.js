@@ -750,12 +750,32 @@
   const routeLabel = (v) => { const f = ROUTES.find(x=>x.v===v); return f ? L(f.t) : v; };
   const dayStr = (t) => { const d = new Date(t); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
   APP_VIEWS.route = () => {
-    const store = visibleStores()[0];
+    const vis = visibleStores();
     const today = dayStr(Date.now());
-    const todays = getRoute().filter(r => r.store===store && dayStr(r.t)===today);
+    const todays = getRoute().filter(r => vis.includes(r.store) && dayStr(r.t)===today);
     const counts = {}; ROUTES.forEach(r=>counts[r.v]=0);
     todays.forEach(e => { if (counts[e.route] != null) counts[e.route]++; });
     const total = todays.length;
+    // 本部・全店＝全店を集約して表示（閲覧モード。記録は各店舗で）
+    if (vis.length > 1) {
+      const byStore = {}; vis.forEach(s=>byStore[s]=0);
+      todays.forEach(e => { if (byStore[e.store] != null) byStore[e.store]++; });
+      const storeRows = Object.entries(byStore).sort((a,b)=>b[1]-a[1]);
+      return `
+        ${NOTE({ ja:'◆ 全店の本日の来店経路を集約表示（本部・閲覧モード。記録は各店舗で行います）', en:'◆ Aggregated arrival routes for all stores (HQ view)', vi:'◆ Tổng hợp nguồn khách toàn hệ thống (chế độ HQ)' })}
+        <div class="card">
+          <h3>${L({ ja:'本日の来店経路（全店）', en:'Arrival routes today (all stores)', vi:'Nguồn khách hôm nay (toàn bộ)' })}</h3>
+          <div class="stat-row"><div class="stat"><div class="n">${total}</div><div class="k">${L({ ja:'合計', en:'Total', vi:'Tổng' })}</div></div></div>
+          ${ROUTES.map(r=>`<div class="bar-row"><div class="bl"><span>${esc(L(r.t))}</span><b>${counts[r.v]}</b></div><div class="bar-track"><div class="bar-fill" style="width:${total?Math.round(counts[r.v]/total*100):0}%"></div></div></div>`).join('')}
+        </div>
+        <div class="card">
+          <h3>${L({ ja:'店舗別の本日合計', en:'Today by store', vi:'Hôm nay theo cửa hàng' })}</h3>
+          ${storeRows.map(([s,c])=>`<div class="rep"><div class="body"><div class="l1">${esc(s)}</div></div><span class="amt">${c}</span></div>`).join('')}
+        </div>
+        <p class="hint">${L({ ja:'※ 記録は各店舗（スタッフ）が行います。端末をまたいで集約するには共有同期の設定が必要です（食べ残し報告は設定済み）。', en:'Logged by each store. Cross-device aggregation needs shared sync (Food Waste already has it).', vi:'Do từng cửa hàng ghi. Cần đồng bộ để tổng hợp giữa các máy.' })}</p>`;
+    }
+    // 単一店舗＝ワンタップ記録
+    const store = vis[0];
     return `
       ${NOTE({ ja:'◆ お客様の来店きっかけをワンタップで記録（本日分の集計に反映）', en:'◆ One-tap logging of how guests found us (today total)', vi:'◆ Ghi nhận 1 chạm nguồn khách (thống kê hôm nay)' })}
       <div class="card">
@@ -901,7 +921,7 @@
         <button class="btn-primary" id="submitSurvey">${L({ ja:'送信する', en:'Submit', vi:'Gửi' })}</button>
       </div>
       <div class="card">
-        <h3>${L({ ja:'集計（自店）', en:'Summary (this store)', vi:'Tổng hợp (cửa hàng)' })}</h3>
+        <h3>${L(vis.length>1 ? { ja:'集計（全店）', en:'Summary (all stores)', vi:'Tổng hợp (toàn bộ)' } : { ja:'集計（自店）', en:'Summary (this store)', vi:'Tổng hợp (cửa hàng)' })}</h3>
         <div class="stat-row"><div class="stat"><div class="n">${n}</div><div class="k">${L({ ja:'回答数', en:'Responses', vi:'Phản hồi' })}</div></div><div class="stat"><div class="n">${n?avg.toFixed(1):'—'}</div><div class="k">${L({ ja:'平均満足度', en:'Avg. satisfaction', vi:'Hài lòng TB' })}</div></div></div>
       </div>`;
   };
