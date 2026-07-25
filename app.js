@@ -901,6 +901,25 @@
       { store:st, sat:5, route:'instagram', note:'', t:now-3600e3*28 }
     ]);
   }
+  // iPadサーベイ運用マニュアル準拠：顔文字の満足度／改善点（複数選択）／高満足時のみ口コミ案内
+  const SAT_FACES = [
+    { v:1, e:'😣', t:{ja:'大変不満',en:'Very poor',vi:'Rất tệ'} },
+    { v:2, e:'🙁', t:{ja:'不満',en:'Poor',vi:'Chưa tốt'} },
+    { v:3, e:'😐', t:{ja:'普通',en:'OK',vi:'Bình thường'} },
+    { v:4, e:'🙂', t:{ja:'満足',en:'Good',vi:'Hài lòng'} },
+    { v:5, e:'😍', t:{ja:'大変満足',en:'Excellent',vi:'Rất hài lòng'} }
+  ];
+  const SURVEY_ISSUES = [
+    { v:'food', t:{ja:'料理・味',en:'Food',vi:'Món ăn'} },
+    { v:'plating', t:{ja:'盛り付け',en:'Plating',vi:'Trình bày'} },
+    { v:'service', t:{ja:'接客',en:'Service',vi:'Phục vụ'} },
+    { v:'timing', t:{ja:'提供時間',en:'Wait time',vi:'Thời gian'} },
+    { v:'space', t:{ja:'内装・空間',en:'Ambience',vi:'Không gian'} },
+    { v:'price', t:{ja:'価格',en:'Price',vi:'Giá'} },
+    { v:'other', t:{ja:'その他',en:'Other',vi:'Khác'} }
+  ];
+  const surveyIssueLabel = (v) => { const f = SURVEY_ISSUES.find(x=>x.v===v); return f ? L(f.t) : v; };
+  const SURVEY_URL = 'https://yosakurasurvey.vercel.app/store2.html';
   APP_VIEWS.survey = () => {
     const vis = visibleStores();
     const store = vis[0];
@@ -908,16 +927,23 @@
     const n = rows.length;
     const avg = n ? (rows.reduce((s,r)=>s+(Number(r.sat)||0),0)/n) : 0;
     return `
-      ${NOTE({ ja:'◆ お客様がiPad／スマホで回答。満足度・来店経路・ご感想が自店の集計に反映されます。', en:'◆ Guests answer on iPad/phone; results aggregate for the store.', vi:'◆ Khách trả lời trên iPad/điện thoại; kết quả tổng hợp cho cửa hàng.' })}
+      ${NOTE({ ja:'◆ 実際のiPadサーベイ運用マニュアルに準拠。回答は自店・本部の集計に反映されます。', en:'◆ Based on the real iPad survey manual.', vi:'◆ Theo cẩm nang khảo sát iPad thực tế.' })}
+      <div class="card">
+        <button class="btn-primary" id="surveyOpen" data-url="${SURVEY_URL}">${L({ ja:'本番サーベイを開く（お客様のiPad用）', en:'Open live survey (for guests)', vi:'Mở khảo sát thật (cho khách)' })}</button>
+        <div class="hint">${L({ ja:'声かけは短く：「お時間がありましたら、アンケートにご協力をお願いいたします。」／回答は誘導せず、満足度を最優先に。', en:'Keep it short; never lead the answer; prioritize the guest.', vi:'Nói ngắn gọn; không gợi ý câu trả lời.' })}</div>
+      </div>
       <div class="card" id="surveyForm">
-        <h3>${L({ ja:'お客様アンケート', en:'Guest survey', vi:'Khảo sát khách' })}</h3>
+        <h3>${L({ ja:'アンケート（デモ入力）', en:'Survey (demo input)', vi:'Khảo sát (demo)' })}</h3>
         <div class="muted" style="margin-bottom:6px">${esc(store)}</div>
         <label class="fld"><span>${L({ ja:'満足度', en:'Satisfaction', vi:'Mức hài lòng' })}</span>
-          <div class="seg" data-seg="sat">${[1,2,3,4,5].map(v=>`<button type="button" data-v="${v}" class="${v===5?'on':''}">${v}</button>`).join('')}</div></label>
+          <div class="seg" data-seg="sat">${SAT_FACES.map(f=>`<button type="button" data-v="${f.v}" class="${f.v===5?'on':''}" title="${esc(L(f.t))}" style="font-size:20px">${f.e}</button>`).join('')}</div></label>
         <label class="fld"><span>${L({ ja:'来店のきっかけ', en:'How did you hear about us?', vi:'Nguồn biết đến' })}</span>
           <select id="survey_route">${ROUTES.map(r=>`<option value="${r.v}">${esc(L(r.t))}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'改善してほしい点（複数選択可・任意）', en:'Points to improve (multi, optional)', vi:'Điểm cần cải thiện' })}</span>
+          <div class="seg-multi" data-multiseg="issue">${SURVEY_ISSUES.map(o=>`<button type="button" class="chip" data-v="${o.v}">${esc(L(o.t))}</button>`).join('')}</div></label>
         <label class="fld"><span>${L({ ja:'ご感想（任意）', en:'Comments (optional)', vi:'Nhận xét' })}</span><textarea id="survey_note" placeholder="${L({ ja:'ご意見・ご感想をお聞かせください', en:'Your feedback', vi:'Ý kiến của bạn' })}"></textarea></label>
         <button class="btn-primary" id="submitSurvey">${L({ ja:'送信する', en:'Submit', vi:'Gửi' })}</button>
+        <div class="hint">${L({ ja:'※「大変満足／満足」の時だけ、控えめに口コミQRをご案内（断られたらすぐ引く）。', en:'Only when highly satisfied, gently offer the review QR.', vi:'Chỉ khi rất hài lòng mới mời đánh giá.' })}</div>
       </div>
       <div class="card">
         <h3>${L(vis.length>1 ? { ja:'集計（全店）', en:'Summary (all stores)', vi:'Tổng hợp (toàn bộ)' } : { ja:'集計（自店）', en:'Summary (this store)', vi:'Tổng hợp (cửa hàng)' })}</h3>
@@ -987,15 +1013,15 @@
 
   /* ⑦ 開業スケジュール D-90（モック）*/
   const TL = [
-    ['D-90',{ja:'加盟契約締結・キックオフMTG',en:'Franchise contract & kickoff',vi:'Ký hợp đồng & khởi động'}],
-    ['D-75',{ja:'物件確定・現地調査・業態提案',en:'Site fixed, survey, format',vi:'Chốt mặt bằng, khảo sát'}],
-    ['D-60',{ja:'内装発注／SNS・MEO・採用開始',en:'Interior order / SNS / hiring',vi:'Đặt nội thất / SNS / tuyển'}],
-    ['D-30',{ja:'許認可申請・行政検査・備品搬入',en:'Permits, inspection, equipment',vi:'Giấy phép, kiểm tra, thiết bị'}],
-    ['D-14',{ja:'研修・現地入り・仕込み・オペ確認',en:'Training, on-site prep, ops check',vi:'Đào tạo, chuẩn bị, kiểm tra'}],
-    ['D-Day',{ja:'オープン（本部が現地サポート）',en:'Opening (HQ on-site support)',vi:'Khai trương (HQ hỗ trợ)'}]
+    ['D-90',{ja:'加盟契約締結・KO/1st〜3rd MTG・近隣店舗情報収集',en:'Contract, KO/1st-3rd MTG, area research',vi:'Ký HĐ, KO/1st-3rd MTG, khảo sát khu vực'}],
+    ['D-75',{ja:'出店エリア確定・現地調査・物件選定・業態提案・物件契約',en:'Area fixed, survey, site select, format, lease',vi:'Chốt khu vực, khảo sát, chọn mặt bằng, ký thuê'}],
+    ['D-60',{ja:'内装発注・店舗設計/施工見積・Instagram/LINE作成・MEO/Googleマイビジネス・採用面接/研修',en:'Interior order, design, SNS, MEO, hiring',vi:'Đặt nội thất, thiết kế, SNS, MEO, tuyển dụng'}],
+    ['D-30',{ja:'許認可申請・行政検査・内装施工・備品搬入・写真撮影・PR TIMES・口コミ返信担当設置',en:'Permits, inspection, build, equipment, PR, reviews',vi:'Giấy phép, kiểm tra, thi công, thiết bị, PR'}],
+    ['D-14',{ja:'研修・現地入り・仕込み・オペ確認',en:'Training, on-site prep, ops check',vi:'Đào tạo, chuẩn bị, kiểm tra vận hành'}],
+    ['D-Day',{ja:'オープン（本部が現地サポート）',en:'Opening (HQ on-site support)',vi:'Khai trương (HQ hỗ trợ tại chỗ)'}]
   ];
   APP_VIEWS.schedule = () => `
-    ${NOTE({ ja:'◆ デモ表示（開業マスター工程）', en:'◆ Demo (opening master plan)', vi:'◆ Demo (kế hoạch khai trương)' })}
+    ${NOTE({ ja:'◆ 実際の開業マスタースケジュール（D-90）に準拠', en:'◆ Based on the real D-90 opening master schedule', vi:'◆ Theo lịch khai trương D-90 thực tế' })}
     <div class="card"><div class="tl">
       ${TL.map(([d,t])=>`<div class="ev"><div class="d">${d}</div><div class="t">${esc(L(t))}</div></div>`).join('')}
     </div></div>`;
@@ -1598,17 +1624,23 @@
       postReport({ kind:'svfb', store, item:aspect, note: JSON.stringify({ good, improve }), t });
     };
 
-    // ⑥ サーベイ：回答送信
+    // ⑥ サーベイ：本番リンク・改善点(複数選択)・回答送信（高満足時のみ口コミ案内）
+    if (byId('surveyOpen')) byId('surveyOpen').onclick = (e) => window.open(e.currentTarget.dataset.url, '_blank', 'noopener');
+    document.querySelectorAll('[data-multiseg] button').forEach(b => b.onclick = () => b.classList.toggle('on'));
     const subSurvey = byId('submitSurvey');
     if (subSurvey) subSurvey.onclick = () => {
       const satEl = document.querySelector('[data-seg="sat"] .on');
       const sat = satEl ? Number(satEl.dataset.v) : 5;
-      const t = Date.now(), store = visibleStores()[0], route = byId('survey_route').value, note = byId('survey_note').value.trim();
+      const issues = Array.from(document.querySelectorAll('[data-multiseg="issue"] .on')).map(b => b.dataset.v);
+      const t = Date.now(), store = visibleStores()[0], route = byId('survey_route').value, comment = byId('survey_note').value.trim();
+      const note = (issues.length ? '[改善点: ' + issues.map(surveyIssueLabel).join('・') + '] ' : '') + comment;
       const arr = getSurvey(); arr.push({ store, sat, route, note, t });
       try { saveSurvey(arr.slice(-300)); } catch (e) { saveSurvey(arr.slice(-100)); }
-      lastSync = t;
-      toast(L({ ja:'ご回答ありがとうございました！', en:'Thank you for your feedback!', vi:'Cảm ơn phản hồi của bạn!' })); render();
+      lastSync = t; render();
       postReport({ kind:'survey', store, level:String(sat), item:route, note, t });
+      toast(sat >= 4
+        ? L({ ja:'ありがとうございます！よろしければ口コミQRのご案内を（控えめに）', en:'Thank you! Gently offer the review QR.', vi:'Cảm ơn! Hãy mời đánh giá nhẹ nhàng.' })
+        : L({ ja:'ご回答ありがとうございました！', en:'Thank you for your feedback!', vi:'Cảm ơn phản hồi của bạn!' }));
     };
 
     const subFP = document.getElementById('submitFP');

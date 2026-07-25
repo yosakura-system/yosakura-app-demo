@@ -277,6 +277,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .mtg-h .muted { white-space: nowrap; font-size: 12px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { font-size: 11.5px; background: var(--suou-t); color: #3a3532; padding: 5px 10px; border-radius: 999px; }
+/* サーベイ改善点など：複数選択できるチップ */
+.seg-multi { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.seg-multi .chip { cursor: pointer; border: 1px solid var(--line); font: inherit; font-size: 12px; padding: 6px 12px; }
+.seg-multi .chip.on { background: var(--sumi); color: #fff; border-color: var(--sumi); }
 .rankb { font-family: var(--serif); font-weight: 800; font-size: 15px; width: 32px; height: 32px; border-radius: 9px;
   background: var(--suou); color: #fff; display: grid; place-items: center; flex-shrink: 0; }
 .stag { font-size: 10px; font-weight: 800; padding: 4px 9px; border-radius: 999px; white-space: nowrap; align-self: flex-start; }
