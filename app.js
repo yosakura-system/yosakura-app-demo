@@ -48,7 +48,9 @@
     box:    '<path d="M3.5 7.5L12 3.5l8.5 4v9L12 20.5 3.5 16.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 7.5L12 11.5l8.5-4M12 11.5V20.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
     idea:   '<path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.6 10.8c.5.4.9 1 .9 1.7v.5h5.4v-.5c0-.7.4-1.3.9-1.7A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>',
     pin:    '<path d="M12 21s7-6.3 7-11a7 7 0 0 0-14 0c0 4.7 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/>',
-    coins:  '<ellipse cx="12" cy="6.4" rx="6.5" ry="2.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 6.4v5c0 1.55 2.9 2.8 6.5 2.8s6.5-1.25 6.5-2.8v-5M5.5 11.4v5c0 1.55 2.9 2.8 6.5 2.8s6.5-1.25 6.5-2.8v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'
+    coins:  '<ellipse cx="12" cy="6.4" rx="6.5" ry="2.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 6.4v5c0 1.55 2.9 2.8 6.5 2.8s6.5-1.25 6.5-2.8v-5M5.5 11.4v5c0 1.55 2.9 2.8 6.5 2.8s6.5-1.25 6.5-2.8v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+    chat:   '<path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 10h9M7.5 13h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    qr:     '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 14h3v3h-3zM19 14h1v1h-1zM19 19h1v1h-1zM14 19h3v1h-3z" fill="currentColor"/>'
   };
   const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${I[k] || ''}</svg>`;
 
@@ -100,6 +102,12 @@
     { id:'route', group:'genba', icon:'pin', roles:['staff','manager','owner','hq'],
       name:{ ja:'来店経路の記録', en:'Arrival Route', vi:'Nguồn khách' },
       desc:{ ja:'来店きっかけをワンタップで', en:'One-tap arrival source', vi:'Nguồn khách 1 chạm' } },
+    { id:'review', group:'genba', icon:'qr', roles:['staff','manager','owner','hq'],
+      name:{ ja:'口コミQR', en:'Review QR', vi:'QR đánh giá' },
+      desc:{ ja:'Googleレビュー投稿ページへ直接ご案内', en:'Direct link to Google review', vi:'Dẫn thẳng tới đánh giá Google' } },
+    { id:'talk', group:'learn', icon:'chat', roles:['staff','manager','owner','hq'],
+      name:{ ja:'接客スクリプト・食べ方ガイド', en:'Service Scripts', vi:'Kịch bản phục vụ' },
+      desc:{ ja:'多言語の接客フレーズと食べ方案内', en:'Multilingual phrases & how-to-enjoy', vi:'Câu phục vụ đa ngữ' } },
     { id:'checklist', group:'genba', icon:'check', roles:['staff','manager','owner','hq'],
       name:{ ja:'開店・清掃チェック', en:'Opening & Cleaning', vi:'Mở cửa & Vệ sinh' },
       desc:{ ja:'毎日の開店前チェック', en:'Daily pre-open checklist', vi:'Kiểm tra trước khi mở cửa' } },
@@ -112,6 +120,9 @@
     { id:'openreg', group:'storeops', icon:'coins', roles:['manager','owner','hq'],
       name:{ ja:'開局（レジ準備金）', en:'Register Open', vi:'Mở quầy' },
       desc:{ ja:'金種を入力→合計を自動計算', en:'Enter float by denomination', vi:'Nhập tiền quỹ đầu ca' } },
+    { id:'storevideo', group:'storeops', icon:'video', roles:['staff','manager','owner','hq'],
+      name:{ ja:'店内動画の共有', en:'In-store Video', vi:'Video trong quán' },
+      desc:{ ja:'店内一周の動画リンクを共有', en:'Share store walkthrough videos', vi:'Chia sẻ video trong quán' } },
     { id:'manual', group:'learn', icon:'book', roles:['staff','manager','owner','hq'],
       name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' },
       desc:{ ja:'理念・接客・衛生・商品', en:'Values, service, hygiene, menu', vi:'Triết lý, phục vụ, vệ sinh' } },
@@ -153,7 +164,10 @@
       desc:{ ja:'提出状況と未提出の自動抽出', en:'Track & flag missing submissions', vi:'Theo dõi tài liệu chưa nộp' } },
     { id:'camera', group:'hq', icon:'video', roles:['hq'],
       name:{ ja:'防犯カメラ確認', en:'Security Cameras', vi:'Camera an ninh' },
-      desc:{ ja:'本部から全店を一括確認', en:'Check all stores from HQ', vi:'Xem mọi cửa hàng từ HQ' } }
+      desc:{ ja:'本部から全店を一括確認', en:'Check all stores from HQ', vi:'Xem mọi cửa hàng từ HQ' } },
+    { id:'svfb', group:'hq', icon:'report', roles:['hq'],
+      name:{ ja:'店舗巡回フィードバック', en:'Store Visit Feedback', vi:'Phản hồi cửa hàng' },
+      desc:{ ja:'接客/提供/品質/内装/多言語を観点別に記録', en:'SV feedback by aspect', vi:'Ghi nhận theo tiêu chí' } }
   ];
   const appById = (id) => APPS.find(a => a.id === id);
   const canOpen = (app, role) => role === 'hq' || app.roles.includes(role);
@@ -856,14 +870,41 @@
     <div class="hint">${L({ ja:'動画マニュアルもこの中に統合していく構想', en:'Video manuals will also be integrated here', vi:'Cẩm nang video cũng sẽ được tích hợp' })}</div>`;
 
   /* ⑤ サーベイ（モック）*/
-  APP_VIEWS.survey = () => `
-    ${NOTE(demoImg)}
-    <div class="card">
-      <h3>${L({ ja:'お客様サーベイ', en:'Customer Survey', vi:'Khảo sát khách hàng' })}</h3>
-      <p class="muted">${L({ ja:'お客様がiPad／スマホで回答するアンケート。回答は本部に自動集約され、店舗改善に活用します。', en:'Guests answer on iPad/phone. Responses auto-collect at HQ to improve stores.', vi:'Khách trả lời trên iPad/điện thoại. Kết quả tự tổng hợp về HQ để cải thiện.' })}</p>
-      <div class="mrow" data-mock="1"><div class="mi">${svg('star')}</div><div class="mt"><b>${L({ja:'QRコードを表示',en:'Show QR code',vi:'Hiện mã QR'})}</b><span>${L({ja:'卓上・お会計時にご案内',en:'On table / at checkout',vi:'Trên bàn / khi thanh toán'})}</span></div><span class="chev">${svg('chev')}</span></div>
-      <div class="mrow" data-mock="1"><div class="mi">${svg('table')}</div><div class="mt"><b>${L({ja:'回答を見る',en:'View responses',vi:'Xem phản hồi'})}</b><span>${L({ja:'満足度・自由記述の集計',en:'Satisfaction & comments',vi:'Mức hài lòng & nhận xét'})}</span></div><span class="chev">${svg('chev')}</span></div>
-    </div>`;
+  /* ⑥ サーベイ（動く：お客様が満足度・来店経路・ご感想を回答→自店で集計）*/
+  const getSurvey = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_survey')) || []; } catch { return []; } };
+  const saveSurvey = (a) => localStorage.setItem('yosakura_demo_survey', JSON.stringify(a));
+  function seedSurvey() {
+    if (localStorage.getItem('yosakura_demo_survey')) return;
+    const now = Date.now(), st = '寿司世桜 心斎橋店';
+    saveSurvey([
+      { store:st, sat:5, route:'tiktok', note:'', t:now-3600e3*5 },
+      { store:st, sat:4, route:'google', note:'Great dashi!', t:now-3600e3*9 },
+      { store:st, sat:5, route:'instagram', note:'', t:now-3600e3*28 }
+    ]);
+  }
+  APP_VIEWS.survey = () => {
+    const vis = visibleStores();
+    const store = vis[0];
+    const rows = getSurvey().filter(r=>vis.includes(r.store));
+    const n = rows.length;
+    const avg = n ? (rows.reduce((s,r)=>s+(Number(r.sat)||0),0)/n) : 0;
+    return `
+      ${NOTE({ ja:'◆ お客様がiPad／スマホで回答。満足度・来店経路・ご感想が自店の集計に反映されます。', en:'◆ Guests answer on iPad/phone; results aggregate for the store.', vi:'◆ Khách trả lời trên iPad/điện thoại; kết quả tổng hợp cho cửa hàng.' })}
+      <div class="card" id="surveyForm">
+        <h3>${L({ ja:'お客様アンケート', en:'Guest survey', vi:'Khảo sát khách' })}</h3>
+        <div class="muted" style="margin-bottom:6px">${esc(store)}</div>
+        <label class="fld"><span>${L({ ja:'満足度', en:'Satisfaction', vi:'Mức hài lòng' })}</span>
+          <div class="seg" data-seg="sat">${[1,2,3,4,5].map(v=>`<button type="button" data-v="${v}" class="${v===5?'on':''}">${v}</button>`).join('')}</div></label>
+        <label class="fld"><span>${L({ ja:'来店のきっかけ', en:'How did you hear about us?', vi:'Nguồn biết đến' })}</span>
+          <select id="survey_route">${ROUTES.map(r=>`<option value="${r.v}">${esc(L(r.t))}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'ご感想（任意）', en:'Comments (optional)', vi:'Nhận xét' })}</span><textarea id="survey_note" placeholder="${L({ ja:'ご意見・ご感想をお聞かせください', en:'Your feedback', vi:'Ý kiến của bạn' })}"></textarea></label>
+        <button class="btn-primary" id="submitSurvey">${L({ ja:'送信する', en:'Submit', vi:'Gửi' })}</button>
+      </div>
+      <div class="card">
+        <h3>${L({ ja:'集計（自店）', en:'Summary (this store)', vi:'Tổng hợp (cửa hàng)' })}</h3>
+        <div class="stat-row"><div class="stat"><div class="n">${n}</div><div class="k">${L({ ja:'回答数', en:'Responses', vi:'Phản hồi' })}</div></div><div class="stat"><div class="n">${n?avg.toFixed(1):'—'}</div><div class="k">${L({ ja:'平均満足度', en:'Avg. satisfaction', vi:'Hài lòng TB' })}</div></div></div>
+      </div>`;
+  };
 
   /* ⑥ 総括表（動く：実日報フォーマットで入力→保存→履歴＆本部集約）*/
   const yen = (n) => '¥' + (Number(n) || 0).toLocaleString('en-US');
@@ -1162,6 +1203,145 @@
       <div class="hint">${L({ ja:'本番では発注システムと連動し、基準を下回った品目を発注候補として自動抽出する構想。', en:'In production, links to ordering and auto-suggests items below threshold.', vi:'Bản chính: liên kết đặt hàng, tự gợi ý mặt hàng dưới ngưỡng.' })}</div>
     </div>`;
 
+  /* ① 接客スクリプト・食べ方ガイド（多言語・寿司世桜の来店FBの実フレーズ）*/
+  const TALK = [
+    { h:{ ja:'ご挨拶', en:'Greeting', vi:'Chào hỏi' }, items:[
+      { ja:'本日は世桜へようこそ。シェフのおまかせと日本伝統の出汁でお楽しみください。',
+        en:'Thank you for visiting YOSAKURA today. We serve the chef\'s omakase with a traditional Japanese dashi soup. Please enjoy the gentle and beautiful taste of Japan.',
+        vi:'Cảm ơn quý khách đã đến YOSAKURA. Mời quý khách thưởng thức omakase của đầu bếp cùng nước dùng dashi truyền thống.' }
+    ]},
+    { h:{ ja:'食べ方・ペアリング', en:'How to enjoy / Pairing', vi:'Cách thưởng thức' }, items:[
+      { ja:'まず出汁をひと口、次にお寿司を、そしてもうひと口出汁を。味のバランスが引き立ちます。',
+        en:'Try tasting the broth first, then enjoy the sushi, and take another sip after. It helps bring out the balance of flavors.',
+        vi:'Hãy nếm nước dùng trước, rồi ăn sushi, sau đó nhấp thêm một ngụm. Giúp cân bằng hương vị.' },
+      { ja:'この出汁は、次にお出しするカニと一緒にお楽しみください。浸すと風味が一層引き立ちます。',
+        en:'Please enjoy this broth with the crab served next. By dipping it in the broth, you can enjoy the flavor even more.',
+        vi:'Mời dùng nước dùng này với cua phục vụ tiếp theo. Chấm vào sẽ ngon hơn.' }
+    ]},
+    { h:{ ja:'料理のご説明', en:'Dish explanation', vi:'Giới thiệu món' }, items:[
+      { ja:'出汁は、干した魚と海藻からとった日本のスープです。',
+        en:'This is Japanese soup stock made from dried fish and seaweed.',
+        vi:'Đây là nước dùng Nhật nấu từ cá khô và rong biển.' },
+      { ja:'シェフの季節のおすすめをお楽しみください。',
+        en:'Please enjoy the chef\'s seasonal selection.',
+        vi:'Mời quý khách thưởng thức lựa chọn theo mùa của đầu bếp.' }
+    ]},
+    { h:{ ja:'注意のお声がけ', en:'Safety notes', vi:'Lưu ý an toàn' }, items:[
+      { ja:'熱いのでお気をつけください。',
+        en:'It\'s very hot. Please be careful.',
+        vi:'Món rất nóng, xin quý khách cẩn thận.' },
+      { ja:'こちらはカニの天ぷらです。中に柔らかい骨があるのでお気をつけてお召し上がりください。',
+        en:'This is crab tempura. Please enjoy it carefully — there are thin soft bones inside.',
+        vi:'Đây là tempura cua. Bên trong có xương mềm, xin dùng cẩn thận.' }
+    ]}
+  ];
+  APP_VIEWS.talk = () => `
+    ${NOTE({ ja:'◆ 提供時にそのまま使える多言語フレーズ（外国籍スタッフの方も安心）', en:'◆ Ready-to-use multilingual phrases for serving', vi:'◆ Câu đa ngữ dùng ngay khi phục vụ' })}
+    ${TALK.map(sec=>`<div class="card"><h3>${esc(L(sec.h))}</h3>${sec.items.map(it=>`
+      <div class="rep" style="display:block;padding:10px 2px">
+        <div class="l1" style="margin-bottom:5px">${esc(it.ja)}</div>
+        <div class="l2" style="color:var(--sumi)"><b>EN</b>　${esc(it.en)}</div>
+        <div class="l2"><b>VI</b>　${esc(it.vi)}</div>
+      </div>`).join('')}</div>`).join('')}`;
+
+  /* ③ 口コミQR（Googleレビュー直リンク・谷口さん課題対応）*/
+  const getReviewMap = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_review')) || {}; } catch { return {}; } };
+  const saveReviewMap = (m) => localStorage.setItem('yosakura_demo_review', JSON.stringify(m));
+  APP_VIEWS.review = () => {
+    const store = visibleStores()[0];
+    const url = getReviewMap()[store] || '';
+    return `
+      ${NOTE({ ja:'◆ お客様がQRを読むとGoogleレビュー投稿ページへ直接移動（投稿までの導線を短縮）', en:'◆ Scanning the QR opens the Google review page directly', vi:'◆ Quét QR mở thẳng trang đánh giá Google' })}
+      <div class="card" style="text-align:center">
+        <h3>${L({ ja:'口コミQR', en:'Review QR', vi:'QR đánh giá' })}</h3>
+        <div class="muted" style="margin-bottom:6px">${esc(store)}</div>
+        ${url ? `
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(url)}" alt="QR" style="width:220px;height:220px;border:1px solid var(--line);border-radius:14px;margin:6px auto;display:block">
+          <button class="btn-primary" id="reviewOpen" data-url="${esc(url)}" style="margin-top:8px">${L({ ja:'レビューページを開く', en:'Open review page', vi:'Mở trang đánh giá' })}</button>
+          <button class="stag st-new" id="reviewCopy" data-url="${esc(url)}" style="cursor:pointer;margin-top:10px">${L({ ja:'リンクをコピー', en:'Copy link', vi:'Sao chép' })}</button>
+        ` : `<p class="muted" style="margin:14px 0">${L({ ja:'レビューリンクが未設定です。下で設定してください。', en:'No review link set yet. Please set it below.', vi:'Chưa có liên kết. Vui lòng đặt bên dưới.' })}</p>`}
+      </div>
+      <div class="card">
+        <h3>${L({ ja:'レビューリンクの設定（店長・本部）', en:'Set review link (manager/HQ)', vi:'Đặt liên kết (quản lý/HQ)' })}</h3>
+        <label class="fld"><span>${L({ ja:'Googleレビュー 直リンクURL', en:'Google review direct URL', vi:'URL đánh giá Google' })}</span><input type="text" id="review_url" value="${esc(url)}" placeholder="https://g.page/r/..."></label>
+        <button class="btn-primary" id="reviewSave">${L({ ja:'保存する', en:'Save', vi:'Lưu' })}</button>
+        <div class="hint">${L({ ja:'取得方法：Googleビジネスプロフィール マネージャ → 対象店舗 →「クチコミを増やす（レビューを依頼）」→ 専用リンクをコピー', en:'How to get: Google Business Profile → your store → "Get more reviews" → copy the link', vi:'Lấy link: Google Business Profile → cửa hàng → "Nhận thêm đánh giá" → sao chép' })}</div>
+      </div>`;
+  };
+
+  /* ④ 店内動画の共有（オープン前/中の店内一周を週1共有）*/
+  const getVideos = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_storevideo')) || []; } catch { return []; } };
+  const saveVideos = (a) => localStorage.setItem('yosakura_demo_storevideo', JSON.stringify(a));
+  APP_VIEWS.storevideo = () => {
+    const vis = visibleStores();
+    const recent = getVideos().filter(r=>vis.includes(r.store)).sort((a,b)=>b.t-a.t).slice(0,8);
+    return `
+      ${NOTE({ ja:'◆ 店内一周（外観〜ホール〜キッチン〜トイレ）の動画リンクを共有（目安：週1回）', en:'◆ Share store walkthrough video links (about weekly)', vi:'◆ Chia sẻ link video đi một vòng quán (hàng tuần)' })}
+      <div class="card" id="svForm">
+        <h3>${L({ ja:'動画を共有', en:'Share a video', vi:'Chia sẻ video' })}</h3>
+        <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sv_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'動画リンク（Drive / YouTube 等）', en:'Video link', vi:'Link video' })}</span><input type="text" id="sv_url" placeholder="https://"></label>
+        <label class="fld"><span>${L({ ja:'メモ（任意）', en:'Note (optional)', vi:'Ghi chú' })}</span><input type="text" id="sv_note" placeholder="${L({ ja:'例：オープン前の店内', en:'e.g. before opening', vi:'vd: trước khi mở' })}"></label>
+        <button class="btn-primary" id="submitSv">${L({ ja:'共有する', en:'Share', vi:'Chia sẻ' })}</button>
+      </div>
+      <div class="card">
+        <h3>${L({ ja:'共有された動画', en:'Shared videos', vi:'Video đã chia sẻ' })}</h3>
+        <div>${recent.length ? recent.map(svRow).join('') : `<div class="muted">${L({ ja:'まだありません', en:'None yet', vi:'Chưa có' })}</div>`}</div>
+      </div>`;
+  };
+  const svRow = (r) => `
+    <div class="rep">
+      <span class="kind b">${L({ ja:'動画', en:'Video', vi:'Video' })}</span>
+      <div class="body">
+        <div class="l1"><a href="${esc(r.url)}" target="_blank" rel="noopener" style="color:var(--sumi)">${esc(r.note || r.url)}</a></div>
+        <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}</div>
+      </div>
+    </div>`;
+
+  /* ⑤ 店舗巡回フィードバック（SV/体験訪問様式・来店FB実例集を標準化）*/
+  const getSvfb = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_svfb')) || []; } catch { return []; } };
+  const saveSvfb = (a) => localStorage.setItem('yosakura_demo_svfb', JSON.stringify(a));
+  const SVFB_ASPECTS = [
+    { v:'service',  t:{ ja:'接客', en:'Service', vi:'Phục vụ' } },
+    { v:'serving',  t:{ ja:'提供オペ', en:'Serving', vi:'Phục vụ món' } },
+    { v:'quality',  t:{ ja:'品質・商品', en:'Quality', vi:'Chất lượng' } },
+    { v:'interior', t:{ ja:'内装・環境', en:'Interior', vi:'Nội thất' } },
+    { v:'lang',     t:{ ja:'多言語対応', en:'Language', vi:'Đa ngôn ngữ' } },
+    { v:'other',    t:{ ja:'その他', en:'Other', vi:'Khác' } }
+  ];
+  const svfbAspect = (v) => { const f = SVFB_ASPECTS.find(x=>x.v===v); return f ? L(f.t) : v; };
+  APP_VIEWS.svfb = () => {
+    const recent = getSvfb().slice().sort((a,b)=>b.t-a.t).slice(0,8);
+    return `
+      ${NOTE({ ja:'◆ 店舗を訪問し、観点別に「良かった点／改善点」を記録（全店で品質を揃える）', en:'◆ Record good points / improvements by aspect when visiting a store', vi:'◆ Ghi điểm tốt / cần cải thiện theo tiêu chí' })}
+      <div class="card" id="svfbForm">
+        <h3>${L({ ja:'巡回フィードバックを記録', en:'Log store feedback', vi:'Ghi phản hồi' })}</h3>
+        <label class="fld"><span>${L({ ja:'対象店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="fb_store">${STORES.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'観点', en:'Aspect', vi:'Tiêu chí' })}</span><select id="fb_aspect">${SVFB_ASPECTS.map(a=>`<option value="${a.v}">${esc(L(a.t))}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'良かった点', en:'Good points', vi:'Điểm tốt' })}</span><textarea id="fb_good" placeholder="${L({ ja:'例：箸を落とした際すぐ気付いて交換＝気にかけが伝わる', en:'e.g. noticed a dropped chopstick immediately', vi:'vd: chú ý ngay khi khách rơi đũa' })}"></textarea></label>
+        <label class="fld"><span>${L({ ja:'改善点', en:'To improve', vi:'Cần cải thiện' })}</span><textarea id="fb_improve" placeholder="${L({ ja:'例：提供時に食べ方を一言添える／出汁は石の中央に置く', en:'e.g. add a word on how to eat when serving', vi:'vd: nói cách dùng khi phục vụ' })}"></textarea></label>
+        <button class="btn-primary" id="submitSvfb">${L({ ja:'記録する', en:'Save', vi:'Lưu' })}</button>
+      </div>
+      <div class="card">
+        <h3>${L({ ja:'最近のフィードバック', en:'Recent feedback', vi:'Phản hồi gần đây' })}</h3>
+        <div>${recent.length ? recent.map(svfbRow).join('') : `<div class="muted">${L({ ja:'まだありません', en:'None yet', vi:'Chưa có' })}</div>`}</div>
+      </div>`;
+  };
+  const svfbRow = (r) => `
+    <div class="rep" style="display:block">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span class="stag st-new">${esc(svfbAspect(r.aspect))}</span><span class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}</span></div>
+      ${r.good ? `<div class="l2" style="color:var(--sumi)">◎ ${esc(r.good)}</div>` : ''}
+      ${r.improve ? `<div class="l2">△ ${esc(r.improve)}</div>` : ''}
+    </div>`;
+  function seedSvfb() {
+    if (localStorage.getItem('yosakura_demo_svfb')) return;
+    const now = Date.now();
+    saveSvfb([
+      { store:'寿司世桜 心斎橋店', aspect:'serving', good:'', improve:'出汁は寿司の石の中央に置くと綺麗。提供時に食べ方（ベストタイミング）を一言添える。', t: now-3600e3*24 },
+      { store:'寿司世桜 心斎橋店', aspect:'service', good:'箸を落とした際すぐ気付いて新しい物を持ってきた＝「気にかけてくれている」が伝わる。', improve:'', t: now-3600e3*30 }
+    ]);
+  }
+
   const mockGeneric = (a) => `${NOTE(demoImg)}<div class="card"><p class="muted">${esc(L(a.name))}</p></div>`;
   const bar = (label, pct, hl=false) => `
     <div class="bar-row"><div class="bl"><span>${esc(label)}</span><b>${pct}%</b></div>
@@ -1342,6 +1522,45 @@
       render();
     };
 
+    // ③ 口コミQR：保存・開く・コピー
+    if (byId('reviewSave')) byId('reviewSave').onclick = () => {
+      const store = visibleStores()[0]; const u = byId('review_url').value.trim();
+      const m = getReviewMap(); if (u) m[store] = u; else delete m[store]; saveReviewMap(m);
+      toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' })); render();
+    };
+    if (byId('reviewOpen')) byId('reviewOpen').onclick = (e) => window.open(e.currentTarget.dataset.url, '_blank', 'noopener');
+    if (byId('reviewCopy')) byId('reviewCopy').onclick = (e) => { try { navigator.clipboard.writeText(e.currentTarget.dataset.url); } catch (_) {} toast(L({ ja:'コピーしました', en:'Copied', vi:'Đã sao chép' })); };
+
+    // ④ 店内動画：共有
+    const subSv = byId('submitSv');
+    if (subSv) subSv.onclick = () => {
+      const url = byId('sv_url').value.trim();
+      if (!url) { toast(L({ ja:'動画リンクを入力してください', en:'Please enter a video link', vi:'Vui lòng nhập link' })); return; }
+      const arr = getVideos(); arr.push({ store: byId('sv_store').value, url, note: byId('sv_note').value.trim(), t: Date.now() });
+      try { saveVideos(arr.slice(-80)); } catch (e) { saveVideos(arr.slice(-30)); }
+      toast(L({ ja:'共有しました', en:'Shared', vi:'Đã chia sẻ' })); render();
+    };
+
+    // ⑤ 巡回フィードバック：記録
+    const subSvfb = byId('submitSvfb');
+    if (subSvfb) subSvfb.onclick = () => {
+      const good = byId('fb_good').value.trim(), improve = byId('fb_improve').value.trim();
+      if (!good && !improve) { toast(L({ ja:'良かった点か改善点を入力してください', en:'Please enter a good point or an improvement', vi:'Vui lòng nhập nội dung' })); return; }
+      const arr = getSvfb(); arr.push({ store: byId('fb_store').value, aspect: byId('fb_aspect').value, good, improve, t: Date.now() });
+      try { saveSvfb(arr.slice(-120)); } catch (e) { saveSvfb(arr.slice(-40)); }
+      toast(L({ ja:'記録しました', en:'Saved', vi:'Đã lưu' })); render();
+    };
+
+    // ⑥ サーベイ：回答送信
+    const subSurvey = byId('submitSurvey');
+    if (subSurvey) subSurvey.onclick = () => {
+      const satEl = document.querySelector('[data-seg="sat"] .on');
+      const sat = satEl ? Number(satEl.dataset.v) : 5;
+      const arr = getSurvey(); arr.push({ store: visibleStores()[0], sat, route: byId('survey_route').value, note: byId('survey_note').value.trim(), t: Date.now() });
+      try { saveSurvey(arr.slice(-300)); } catch (e) { saveSurvey(arr.slice(-100)); }
+      toast(L({ ja:'ご回答ありがとうございました！', en:'Thank you for your feedback!', vi:'Cảm ơn phản hồi của bạn!' })); render();
+    };
+
     const subFP = document.getElementById('submitFP');
     if (subFP) subFP.onclick = () => {
       const thumbsEl = document.getElementById('photoThumbs');
@@ -1457,6 +1676,8 @@
   if (!useBackend()) seedIfEmpty();
   seedSk(); // 総括表はローカル機能（バックエンド非管理）のため常に用意
   seedKz(); // 気づきの初期データ
+  seedSvfb(); // 店舗巡回フィードバックの初期データ
+  seedSurvey(); // サーベイの初期データ
   render();
   syncReports(true);
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
