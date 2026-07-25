@@ -785,7 +785,6 @@
           ${ROUTES.map(r=>`<button class="tile" data-route="${r.v}" data-store="${esc(store)}" style="min-height:84px"><div class="nm">${esc(L(r.t))}</div><div class="desc" style="font-size:20px;font-weight:700;color:var(--sumi)">${counts[r.v]}</div></button>`).join('')}
         </div>
         <div class="stat-row" style="margin-top:12px"><div class="stat"><div class="n">${total}</div><div class="k">${L({ ja:'本日の記録数', en:'Logged today', vi:'Hôm nay' })}</div></div></div>
-        ${total ? `<button class="stag st-new" id="routeUndo" style="cursor:pointer;margin-top:4px">${L({ ja:'直前の1件を取り消す', en:'Undo last', vi:'Hoàn tác' })}</button>` : ''}
       </div>`;
   };
 
@@ -1111,7 +1110,7 @@
     <div class="card">
       <h3>${L({ ja:'取引先マスター', en:'Vendor master', vi:'Danh sách nhà cung cấp' })}</h3>
       ${VENDORS.map(([n,k,how,when])=>`<div class="rep"><div class="body"><div class="l1">${esc(L(n))} <span class="muted" style="font-weight:400">・ ${esc(L(k))}</span></div><div class="l2">${esc(L(how))}</div></div><span class="amt" style="color:var(--sumi)">${esc(L(when))}</span></div>`).join('')}
-      <button class="btn-primary" style="margin-top:14px" onclick="return false">${L({ja:'請求書の受領状況を確認（デモ）',en:'Check invoice status (demo)',vi:'Kiểm tra hóa đơn (demo)'})}</button>
+      <button class="btn-primary" style="margin-top:14px" id="demoInvoice">${L({ja:'請求書の受領状況を確認（デモ）',en:'Check invoice status (demo)',vi:'Kiểm tra hóa đơn (demo)'})}</button>
     </div>
     <p class="hint">${L({ ja:'本部宛か担当直送かが混在していた請求を一覧で見える化。備品POP等は納品後ロイヤリティに加算して加盟店へ請求。', en:'Makes billing routes visible. Supplies/POP are billed to franchisees via royalty after delivery.', vi:'Làm rõ luồng hóa đơn. Vật tư/POP tính cho cửa hàng qua royalty sau khi giao.' })}</p>`;
 
@@ -1144,7 +1143,7 @@
       <div class="card">
         <h3>${L({ ja:'本日の提出状況', en:'Today submissions', vi:'Trạng thái nộp hôm nay' })}</h3>
         ${data.map(([s,st,d])=>`<div class="rep"><span class="kind ${st==='in'?'b':'a'}">${L(S[st])}</span><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${st==='out'?L({ja:'未提出',en:'Missing',vi:'Chưa nộp'})+' '+d+L({ja:'日',en:'d',vi:' ngày'}):L({ja:'期限内',en:'On time',vi:'Đúng hạn'})}</div></div></div>`).join('')}
-        <button class="btn-primary" style="margin-top:14px" onclick="return false">${L({ja:'未提出店に連絡文を自動生成（デモ）',en:'Auto-draft reminder to missing stores (demo)',vi:'Tự soạn nhắc cửa hàng chưa nộp (demo)'})}</button>
+        <button class="btn-primary" style="margin-top:14px" id="demoReminder">${L({ja:'未提出店に連絡文を自動生成（デモ）',en:'Auto-draft reminder to missing stores (demo)',vi:'Tự soạn nhắc cửa hàng chưa nộp (demo)'})}</button>
       </div>`;
   };
 
@@ -1178,7 +1177,7 @@
       <h3>${L({ ja:'発注する', en:'Place order', vi:'Đặt hàng' })}</h3>
       <label class="fld"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><select>${ORDER_ITEMS.map(it=>`<option>${esc(L(it.n))}</option>`).join('')}</select></label>
       <label class="fld"><span>${L({ ja:'数量', en:'Quantity', vi:'Số lượng' })}</span><input type="text" inputmode="numeric" placeholder="30"></label>
-      <button class="btn-primary" onclick="return false">${L({ja:'発注する（デモ）',en:'Order (demo)',vi:'Đặt (demo)'})}</button>
+      <button class="btn-primary" id="demoOrder">${L({ja:'発注する（デモ）',en:'Order (demo)',vi:'Đặt (demo)'})}</button>
       <div class="hint">${L({ ja:'納期は通常 発注後 約1週間。お品代は注文先業者の請求書に準じ、POP等は納品後ロイヤリティに加算して請求。POP修正500円〜／新規2,000円〜（要素追加は本部承認）。', en:'Lead time ~1 week. Costs follow vendor invoices; POP etc. billed via royalty. POP edit from 500 yen / new from 2,000 yen (additions need HQ approval).', vi:'Giao ~1 tuần. Chi phí theo hóa đơn NCC; POP tính qua royalty. Sửa POP từ 500 yen / mới từ 2,000 yen (thêm mục cần HQ duyệt).' })}</div>
     </div>`;
 
@@ -1219,7 +1218,7 @@
       <h3>${L({ ja:'在庫入力', en:'Enter stock', vi:'Nhập tồn kho' })}</h3>
       <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select>${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
       ${INV_ITEMS.map(it=>`<div class="rep"><div class="body"><div class="l1">${esc(L(it))}</div></div><input type="text" inputmode="numeric" placeholder="0" style="width:70px;text-align:center;padding:8px"></div>`).join('')}
-      <button class="btn-primary" style="margin-top:12px" onclick="return false">${L({ja:'保存（デモ）',en:'Save (demo)',vi:'Lưu (demo)'})}</button>
+      <button class="btn-primary" style="margin-top:12px" id="demoInv">${L({ja:'保存（デモ）',en:'Save (demo)',vi:'Lưu (demo)'})}</button>
       <div class="hint">${L({ ja:'本番では発注システムと連動し、基準を下回った品目を発注候補として自動抽出する構想。', en:'In production, links to ordering and auto-suggests items below threshold.', vi:'Bản chính: liên kết đặt hàng, tự gợi ý mặt hàng dưới ngưỡng.' })}</div>
     </div>`;
 
@@ -1444,8 +1443,8 @@
 
   function bind() {
     const byId = (id) => document.getElementById(id);
-    // 報告一覧・ダッシュボード表示時は共有バックエンドから最新を取得
-    if (useBackend() && (byId('recentList') || location.hash.indexOf('/app/dashboard') >= 0)) syncReports();
+    // どの画面でも共有バックエンドから最新を取得（3秒スロットル）＝全端末で同期
+    if (useBackend()) syncReports();
     if (byId('langBtn')) byId('langBtn').onclick = openLangSheet;
     if (byId('roleBtn')) byId('roleBtn').onclick = openIdentitySheet;
     if (byId('installBtn')) byId('installBtn').onclick = triggerInstall;
@@ -1456,6 +1455,14 @@
     document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { if (b.dataset.open === 'guide') openTour(0); else go(`/app/${b.dataset.open}`); });
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
     document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'デモのため、この先はイメージです', en:'Demo: further screens are mockups', vi:'Demo: màn hình tiếp theo là mô phỏng' })));
+    // デモ操作ボタン（本番で有効化予定）にも必ずフィードバックを返す＝無反応ボタンを排除
+    const demoBtns = {
+      demoInvoice: { ja:'請求書の受領状況を確認しました（デモ）', en:'Checked invoice status (demo)', vi:'Đã kiểm tra hóa đơn (demo)' },
+      demoReminder:{ ja:'未提出店への連絡文を生成しました（デモ）', en:'Reminder drafted (demo)', vi:'Đã soạn nhắc (demo)' },
+      demoOrder:   { ja:'発注を受け付けました（デモ）', en:'Order received (demo)', vi:'Đã nhận đặt hàng (demo)' },
+      demoInv:     { ja:'在庫を保存しました（デモ）', en:'Stock saved (demo)', vi:'Đã lưu tồn kho (demo)' }
+    };
+    Object.keys(demoBtns).forEach(id => { const b = byId(id); if (b) b.onclick = () => toast(L(demoBtns[id])); });
     document.querySelectorAll('.rep-photo').forEach(im => im.onclick = () => openLightbox(im.dataset.full));
 
     document.querySelectorAll('[data-seg]').forEach(seg => {
@@ -1536,10 +1543,13 @@
       if (!note) { toast(L({ ja:'気づいたことを入力してください', en:'Please enter your insight', vi:'Vui lòng nhập ghi nhận' })); return; }
       const thumbsEl = document.getElementById('photoThumbs');
       const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0,4) : [];
-      const arr = getKz(); arr.push({ store, cat, note, photos, t: Date.now() });
+      const t = Date.now();
+      const arr = getKz(); arr.push({ store, cat, note, photos, t });
       try { saveKz(arr.slice(-80)); } catch (e) { saveKz(arr.slice(-30)); }
+      lastSync = t; // 直後の重複同期を抑止（postReportがforce同期）
       toast(L({ ja:'気づきを共有しました。ありがとうございます！', en:'Insight shared. Thank you!', vi:'Đã gửi. Cảm ơn!' }));
       render();
+      postReport({ kind:'kizuki', store, item:cat, note, photos, t });
     };
 
     // ③ 口コミQR：保存・開く・コピー
@@ -1556,9 +1566,12 @@
     if (subSv) subSv.onclick = () => {
       const url = byId('sv_url').value.trim();
       if (!url) { toast(L({ ja:'動画リンクを入力してください', en:'Please enter a video link', vi:'Vui lòng nhập link' })); return; }
-      const arr = getVideos(); arr.push({ store: byId('sv_store').value, url, note: byId('sv_note').value.trim(), t: Date.now() });
+      const t = Date.now(), store = byId('sv_store').value, note = byId('sv_note').value.trim();
+      const arr = getVideos(); arr.push({ store, url, note, t });
       try { saveVideos(arr.slice(-80)); } catch (e) { saveVideos(arr.slice(-30)); }
+      lastSync = t;
       toast(L({ ja:'共有しました', en:'Shared', vi:'Đã chia sẻ' })); render();
+      postReport({ kind:'video', store, item:url, note, t });
     };
 
     // ⑤ 巡回フィードバック：記録
@@ -1566,9 +1579,12 @@
     if (subSvfb) subSvfb.onclick = () => {
       const good = byId('fb_good').value.trim(), improve = byId('fb_improve').value.trim();
       if (!good && !improve) { toast(L({ ja:'良かった点か改善点を入力してください', en:'Please enter a good point or an improvement', vi:'Vui lòng nhập nội dung' })); return; }
-      const arr = getSvfb(); arr.push({ store: byId('fb_store').value, aspect: byId('fb_aspect').value, good, improve, t: Date.now() });
+      const t = Date.now(), store = byId('fb_store').value, aspect = byId('fb_aspect').value;
+      const arr = getSvfb(); arr.push({ store, aspect, good, improve, t });
       try { saveSvfb(arr.slice(-120)); } catch (e) { saveSvfb(arr.slice(-40)); }
+      lastSync = t;
       toast(L({ ja:'記録しました', en:'Saved', vi:'Đã lưu' })); render();
+      postReport({ kind:'svfb', store, item:aspect, note: JSON.stringify({ good, improve }), t });
     };
 
     // ⑥ サーベイ：回答送信
@@ -1576,9 +1592,12 @@
     if (subSurvey) subSurvey.onclick = () => {
       const satEl = document.querySelector('[data-seg="sat"] .on');
       const sat = satEl ? Number(satEl.dataset.v) : 5;
-      const arr = getSurvey(); arr.push({ store: visibleStores()[0], sat, route: byId('survey_route').value, note: byId('survey_note').value.trim(), t: Date.now() });
+      const t = Date.now(), store = visibleStores()[0], route = byId('survey_route').value, note = byId('survey_note').value.trim();
+      const arr = getSurvey(); arr.push({ store, sat, route, note, t });
       try { saveSurvey(arr.slice(-300)); } catch (e) { saveSurvey(arr.slice(-100)); }
+      lastSync = t;
       toast(L({ ja:'ご回答ありがとうございました！', en:'Thank you for your feedback!', vi:'Cảm ơn phản hồi của bạn!' })); render();
+      postReport({ kind:'survey', store, level:String(sat), item:route, note, t });
     };
 
     const subFP = document.getElementById('submitFP');
@@ -1605,19 +1624,16 @@
     });
     if (byId('checkReset')) byId('checkReset').onclick = () => { localStorage.setItem(LS.checks, '{}'); toast(L({ ja:'チェックをリセットしました', en:'Checklist reset', vi:'Đã đặt lại' })); render(); };
 
-    // 来店経路：ワンタップ記録＋取り消し
+    // 来店経路：ワンタップ記録（全端末で本部に集約）
     document.querySelectorAll('[data-route]').forEach(b => b.onclick = () => {
-      const arr = getRoute(); arr.push({ store: b.dataset.store, route: b.dataset.route, t: Date.now() });
+      const t = Date.now(), store = b.dataset.store, route = b.dataset.route;
+      const arr = getRoute(); arr.push({ store, route, t });
       try { saveRoute(arr.slice(-3000)); } catch (e) { saveRoute(arr.slice(-800)); }
-      toast(L({ ja:'記録しました', en:'Logged', vi:'Đã ghi' }) + '：' + routeLabel(b.dataset.route));
+      lastSync = t;
+      toast(L({ ja:'記録しました', en:'Logged', vi:'Đã ghi' }) + '：' + routeLabel(route));
       render();
+      postReport({ kind:'route', store, item:route, t });
     });
-    if (byId('routeUndo')) byId('routeUndo').onclick = () => {
-      const store = visibleStores()[0], today = dayStr(Date.now());
-      const arr = getRoute();
-      for (let i=arr.length-1; i>=0; i--) { if (arr[i].store===store && dayStr(arr[i].t)===today) { arr.splice(i,1); break; } }
-      saveRoute(arr); render();
-    };
 
     // 開局（レジ準備金）：金種→合計/差の自動計算＋保存
     const orDenoms = document.querySelectorAll('.or_denom');
@@ -1633,10 +1649,13 @@
     if (subOr) subOr.onclick = () => {
       const denom = {}; let total = 0;
       document.querySelectorAll('.or_denom').forEach(i => { const d = Number(i.dataset.d)||0, c = Number(i.value)||0; denom[d] = c; total += d*c; });
-      const rec = { store: byId('or_store').value, date: byId('or_date').value, denom, total, t: Date.now() };
+      const t = Date.now(), store = byId('or_store').value, date = byId('or_date').value;
+      const rec = { store, date, denom, total, t };
       const arr = getOpen(); arr.push(rec); try { saveOpen(arr.slice(-60)); } catch (e) { saveOpen(arr.slice(-20)); }
+      lastSync = t;
       toast(L({ ja:'開局しました（合計 ', en:'Register opened (total ', vi:'Đã mở quầy (tổng ' }) + '¥' + total.toLocaleString('en-US') + '）');
       render();
+      postReport({ kind:'open', store, note: JSON.stringify({ date, denom, total }), t });
     };
 
     // 一食目写真：本部フィードバックを開く
@@ -1660,8 +1679,11 @@
       };
       const arr = getSk(); arr.push(rec);
       try { saveSk(arr.slice(-60)); } catch (e) { saveSk(arr.slice(-20)); }
+      lastSync = rec.t;
       toast(L({ ja:'総括表を提出しました。ありがとうございます！', en:'Daily report submitted. Thank you!', vi:'Đã nộp báo cáo. Cảm ơn!' }));
       render();
+      const skStore = rec.store, skT = rec.t, skPayload = Object.assign({}, rec); delete skPayload.store; delete skPayload.t;
+      postReport({ kind:'soukatsu', store: skStore, note: JSON.stringify(skPayload), t: skT });
     };
   }
   // レベルセグメント差し替え後の再バインド
@@ -1672,7 +1694,29 @@
     });
   }
 
-  /* ---------- 共有バックエンドとの同期 ---------- */
+  /* ---------- 共有バックエンドとの同期（全機能を種別で相乗り・全端末で同期）---------- */
+  const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
+  // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
+  function distribute(rows) {
+    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[];
+    (rows || []).forEach(r => {
+      const t = Number(r.t) || 0, id = r.id, store = r.store || '';
+      switch (r.kind) {
+        case 'a': case 'b': food.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
+        case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
+        case 'route': route.push({ store, route:r.item, t, id }); break;
+        case 'open': { const p=pj(r.note); open.push({ store, date:p.date||'', denom:p.denom||{}, total:Number(p.total)||0, t, id }); } break;
+        case 'soukatsu': { const p=pj(r.note); sk.push(Object.assign({ store, t, id }, p)); } break;
+        case 'survey': survey.push({ store, sat:Number(r.level)||0, route:r.item, note:r.note, t, id }); break;
+        case 'svfb': { const p=pj(r.note); svfb.push({ store, aspect:r.item, good:p.good||'', improve:p.improve||'', t, id }); } break;
+        case 'video': video.push({ store, url:r.item, note:r.note, t, id }); break;
+      }
+    });
+    const set = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a)); } catch (_) {} };
+    set(LS.reports, food); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
+    set('yosakura_demo_open', open); set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
+    set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
+  }
   async function syncReports(force) {
     if (!useBackend()) return;
     if (!force && Date.now() - lastSync < 3000) return;
@@ -1681,11 +1725,16 @@
       const res = await fetch(API_URL);
       const d = await res.json();
       if (d && d.ok && Array.isArray(d.reports)) {
-        const next = JSON.stringify(d.reports);
-        if (next !== (localStorage.getItem(LS.reports) || '')) { localStorage.setItem(LS.reports, next); render(); }
+        const nextRaw = JSON.stringify(d.reports);
+        if (nextRaw !== (localStorage.getItem('yosakura_demo_raw') || '')) {
+          localStorage.setItem('yosakura_demo_raw', nextRaw);
+          distribute(d.reports);
+          render();
+        }
       }
-    } catch (_) { /* オフライン時はキャッシュを使用 */ }
+    } catch (_) { /* オフライン時はローカル（既存データ）を使用 */ }
   }
+  // rep = { kind, store, item, level, note, photos, t }
   function postReport(rep) {
     if (!useBackend()) return Promise.resolve();
     return fetch(API_URL, { method: 'POST', body: JSON.stringify(rep) }).then(() => syncReports(true)).catch(() => {});
@@ -1694,10 +1743,8 @@
   /* ---------- 起動 ---------- */
   document.documentElement.lang = LANG;
   if (!useBackend()) seedIfEmpty();
-  seedSk(); // 総括表はローカル機能（バックエンド非管理）のため常に用意
-  seedKz(); // 気づきの初期データ
-  seedSvfb(); // 店舗巡回フィードバックの初期データ
-  seedSurvey(); // サーベイの初期データ
+  // バックエンド接続時は全端末同期を使うためシードしない（＝実データのみ）。オフライン検証時のみ初期データを用意。
+  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); }
   render();
   syncReports(true);
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
