@@ -180,9 +180,13 @@ input[type=text], input[type=date], select, textarea {
   width: 100%; font: inherit; font-size: 15px; padding: 12px 13px; border: 1px solid var(--line);
   border-radius: 12px; background: #FCFBF9; color: var(--sumi); font-family: var(--sans);
 }
+/* iOSのdate入力は固有の最小幅を持ち列からはみ出るため、ネイティブ装飾を外して列内に収める */
+input[type=date] { -webkit-appearance: none; appearance: none; min-width: 0; text-align: left; }
 /* 総括表など多項目フォームの2カラム配置 */
 .sk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.sk-grid { min-width: 0; }
 .sk-grid .fld { min-width: 0; }
+.sk-grid .fld input, .sk-grid .fld select { min-width: 0; }
 textarea { min-height: 74px; resize: vertical; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--suou); box-shadow: 0 0 0 3px rgba(142,53,74,.12); }
 
