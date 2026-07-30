@@ -10,8 +10,18 @@
   /* ====== 共有バックエンド設定 ======
      GAS WebアプリのURL（/exec）をここに貼ると、全端末でデータが同期される。
      空のままなら従来通りこの端末内(localStorage)だけに保存。 */
-  const API_URL = 'https://script.google.com/macros/s/AKfycbzS-tvfTQwJjgYn2ASHWidU-qBWZzF85bqt25T4mAXcM-P6-75zFqzUSlgiPFDTe7KQRQ/exec';
-  const useBackend = () => !!API_URL;
+  /* 既定（従来からの共有バックエンド）。★本番運用では「本部の専用バックエンド」を設定して切り替える。
+     設定は本部メニュー →「バックエンド設定」から。設定するとこの端末以降その接続先を使う。 */
+  const API_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzS-tvfTQwJjgYn2ASHWidU-qBWZzF85bqt25T4mAXcM-P6-75zFqzUSlgiPFDTe7KQRQ/exec';
+  const LS_API = 'yosakura_api_url';
+  const getApiUrl = () => (localStorage.getItem(LS_API) || API_URL_DEFAULT);
+  const isCustomApi = () => !!localStorage.getItem(LS_API);
+  function setApiUrl(u) {
+    const v = (u || '').trim();
+    if (v) localStorage.setItem(LS_API, v); else localStorage.removeItem(LS_API);
+    try { localStorage.removeItem(LS.reports); } catch (e) {} // 接続先が変わるため取得済みデータを破棄
+  }
+  const useBackend = () => !!getApiUrl();
   let lastSync = 0;
 
   /* ---------- SVGアイコン ---------- */
@@ -1724,6 +1734,63 @@
       </div>`;
   };
 
+  /* ---------- フィードバック（本部メンバーの気づきをアプリ内で集める・全端末共有） ---------- */
+  const FB_KIND = 'appfb';
+  const FB_CATS = [
+    { v:'hard',  t:{ja:'使いにくい',en:'Hard to use',vi:'Khó dùng'} },
+    { v:'bug',   t:{ja:'不具合',en:'Bug',vi:'Lỗi'} },
+    { v:'want',  t:{ja:'こうしたい',en:'Request',vi:'Đề xuất'} },
+    { v:'good',  t:{ja:'良かった',en:'Good',vi:'Tốt'} }
+  ];
+  const fbCatLabel = (v) => { const f = FB_CATS.find(x => x.v === v); return f ? L(f.t) : v; };
+  APP_VIEWS.appfb = () => {
+    const rows = subRows(FB_KIND).sort((a, b) => b.t - a.t).slice(0, 30);
+    const mine = getRole();
+    return `
+      <div class="card">
+        <h3>${L({ja:'このアプリへのご意見',en:'Feedback on this app',vi:'Góp ý về ứng dụng'})}</h3>
+        <p class="hint" style="display:block">${L({ja:'使ってみて気づいたことを、そのままお送りください。改善に使わせていただきます。',en:'Tell us anything you noticed. We use it to improve.',vi:'Hãy cho biết điều bạn nhận thấy. Chúng tôi sẽ cải thiện.'})}</p>
+        <div class="idlabel">${L({ja:'種類',en:'Type',vi:'Loại'})}</div>
+        <div class="seg" data-seg="fbcat" style="margin-bottom:12px">${FB_CATS.map((c, i) => `<button type="button" data-v="${c.v}" class="${i===0?'on':''}">${L(c.t)}</button>`).join('')}</div>
+        <label class="fld"><span>${L({ja:'どの画面ですか（任意）',en:'Which screen (optional)',vi:'Màn hình nào (tùy chọn)'})}</span>
+          <select id="fb_screen"><option value="">${L({ja:'選ばない',en:'None',vi:'Không chọn'})}</option>${APPS.filter(a=>canOpen(a,mine)).map(a=>`<option value="${esc(a.id)}">${esc(L(a.name))}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ja:'内容',en:'Details',vi:'Nội dung'})}</span><textarea id="fb_note" placeholder="${L({ja:'例：今日出すものが分かりやすい／提出ボタンが小さい など',en:'e.g. Today list is clear / submit button is small',vi:'vd: Danh sách rõ / nút gửi nhỏ'})}"></textarea></label>
+        <button class="btn-primary" data-fbsend="1">${L({ja:'送信する',en:'Send',vi:'Gửi'})}</button>
+      </div>
+      <div class="card">
+        <h3>${L({ja:'みんなのご意見',en:'All feedback',vi:'Tất cả góp ý'})} <small style="color:#8a8">${rows.length}</small></h3>
+        ${rows.length ? rows.map(r => { const p = parseNote(r.note); return `<div class="rep"><span class="kind ${p.cat==='bug'?'a':'b'}">${esc(fbCatLabel(p.cat))}</span><div class="body"><div class="l1">${esc(p.note||'')}</div><div class="l2">${p.screen?esc(p.screen)+' ・ ':''}${esc(p.by||'')} ・ ${timeAgo(r.t)}</div></div></div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
+        <p class="hint" style="display:block">${L({ja:'※ ご意見は全端末で共有されます（本部メンバー全員が見られます）。',en:'Feedback is shared across devices (all HQ members can see).',vi:'Góp ý được chia sẻ giữa các máy.'})}</p>
+      </div>`;
+  };
+
+  /* ---------- 本部：バックエンド設定（専用の保存先へ切り替える） ---------- */
+  APP_VIEWS.backend = () => {
+    if (getRole() !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ設定できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
+    const cur = getApiUrl(); const custom = isCustomApi();
+    return `
+      <div class="card">
+        <h3>${L({ja:'データの保存先（バックエンド）',en:'Data backend',vi:'Nơi lưu dữ liệu'})}</h3>
+        <div class="rep"><span class="kind ${custom?'b':'a'}">${custom?L({ja:'専用',en:'Dedicated',vi:'Riêng'}):L({ja:'共用',en:'Shared',vi:'Chung'})}</span>
+          <div class="body"><div class="l1">${custom?L({ja:'世桜専用の保存先に接続しています',en:'Connected to your dedicated backend',vi:'Đang dùng backend riêng'}):L({ja:'共用（デモと同じ）保存先に接続しています',en:'Using the shared (demo) backend',vi:'Đang dùng backend chung (demo)'})}</div>
+          <div class="l2" style="word-break:break-all">${esc(cur.slice(0, 72))}${cur.length>72?'…':''}</div></div></div>
+        ${custom ? '' : `<p class="hint" style="display:block;color:#b23">${L({ja:'※ 実運用の前に、世桜専用の保存先へ切り替えてください（他のデータと混ざらないようにするため）。',en:'Before real operation, switch to your dedicated backend so data is not mixed.',vi:'Trước khi vận hành thật, hãy chuyển sang backend riêng.'})}</p>`}
+        <label class="fld"><span>${L({ja:'専用バックエンドのURL（/exec で終わるもの）',en:'Dedicated backend URL (ends with /exec)',vi:'URL backend riêng (kết thúc /exec)'})}</span>
+          <input type="text" id="api_url" placeholder="https://script.google.com/macros/s/.../exec" value="${custom?esc(cur):''}"></label>
+        <button class="btn-primary" data-apitest="1">${L({ja:'接続をテストして保存',en:'Test connection & save',vi:'Kiểm tra & lưu'})}</button>
+        ${custom ? `<button class="mini" data-apireset="1" style="margin-top:10px">${L({ja:'共用に戻す',en:'Back to shared',vi:'Về dùng chung'})}</button>` : ''}
+        <div class="hint">${L({ja:'保存すると、この端末の接続先が切り替わります。各端末で同じURLを設定してください。',en:'Saving switches this device. Set the same URL on each device.',vi:'Lưu sẽ đổi máy này. Hãy đặt cùng URL trên mọi máy.'})}</div>
+      </div>
+      <div class="card">
+        <h3>${L({ja:'専用の保存先を作るには',en:'How to create your backend',vi:'Cách tạo backend riêng'})}</h3>
+        <div class="l2">${L({ja:'① Googleスプレッドシートを新規作成（例：世桜アプリ_本部データ）',en:'1) Create a new Google Sheet',vi:'1) Tạo Google Sheet mới'})}</div>
+        <div class="l2">${L({ja:'② 拡張機能 → Apps Script を開き、お渡しするコードを貼る',en:'2) Extensions → Apps Script, paste the provided code',vi:'2) Tiện ích mở rộng → Apps Script, dán mã'})}</div>
+        <div class="l2">${L({ja:'③ デプロイ → ウェブアプリ（実行：自分／アクセス：全員）',en:'3) Deploy as Web app (run as: me / access: anyone)',vi:'3) Triển khai Web app (chạy: tôi / truy cập: mọi người)'})}</div>
+        <div class="l2">${L({ja:'④ 表示された /exec のURLを上に貼って保存',en:'4) Paste the /exec URL above and save',vi:'4) Dán URL /exec ở trên và lưu'})}</div>
+        <p class="hint" style="display:block">${L({ja:'※ 手順書（PDF）を別途お渡しします。ご不明な点は神田までご連絡ください。',en:'A step-by-step PDF is provided separately.',vi:'Có tài liệu PDF hướng dẫn riêng.'})}</p>
+      </div>`;
+  };
+
   /* ---------- 提出履歴（直近7日・実データ） ---------- */
   APP_VIEWS.history = () => {
     const store = visibleStores()[0];
@@ -1741,8 +1808,52 @@
   (function bindSubmissionOnce() {
     if (document.__subBound) return; document.__subBound = true;
     document.addEventListener('click', (e) => {
-      const t = e.target.closest('[data-tsub],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit]');
+      // フィードバックの種類切替（このビュー内のセグメント）
+      const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
+      if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
+      const t = e.target.closest('[data-tsub],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend]');
       if (!t) return;
+      if (t.dataset.fbsend) {
+        const noteEl = document.getElementById('fb_note');
+        const note = (noteEl && noteEl.value || '').trim();
+        if (!note) { toast(L({ja:'内容を入力してください',en:'Please enter details',vi:'Vui lòng nhập nội dung'})); return; }
+        const catEl = document.querySelector('[data-seg="fbcat"] .on');
+        const cat = catEl ? catEl.dataset.v : 'hard';
+        const scEl = document.getElementById('fb_screen');
+        const scId = scEl ? scEl.value : '';
+        const scApp = scId ? appById(scId) : null;
+        const roleLabel = L(ROLES[getRole()].label);
+        postSub(FB_KIND, getStoreSel() || '*', cat, { cat, note, screen: scApp ? L(scApp.name) : '', by: roleLabel });
+        pushAudit('feedback', cat);
+        if (noteEl) noteEl.value = '';
+        toast(L({ja:'ありがとうございます。ご意見を送信しました。',en:'Thank you. Your feedback was sent.',vi:'Cảm ơn. Đã gửi góp ý.'}));
+        render(); return;
+      }
+      if (t.dataset.apireset) {
+        if (!confirm(L({ja:'共用の保存先に戻します。よろしいですか？',en:'Switch back to the shared backend?',vi:'Quay lại backend chung?'}))) return;
+        setApiUrl(''); pushAudit('backend', 'reset to shared');
+        toast(L({ja:'共用の保存先に戻しました',en:'Switched back to shared',vi:'Đã quay lại dùng chung'}));
+        syncReports(true); render(); return;
+      }
+      if (t.dataset.apitest) {
+        const input = document.getElementById('api_url');
+        const url = (input && input.value || '').trim();
+        if (!/^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(url)) {
+          toast(L({ja:'URLの形式が違います（/exec で終わるGASのURLを貼ってください）',en:'Invalid URL. Paste the GAS URL ending with /exec',vi:'URL không đúng. Dán URL GAS kết thúc /exec'})); return;
+        }
+        t.disabled = true; const prev = t.textContent;
+        t.textContent = L({ja:'接続中…',en:'Testing…',vi:'Đang kiểm tra…'});
+        fetch(url).then(r => r.json()).then(j => {
+          if (!j || j.ok !== true) throw new Error('bad response');
+          setApiUrl(url); pushAudit('backend', 'set dedicated');
+          toast(L({ja:'接続できました。専用の保存先に切り替えました。',en:'Connected. Switched to your dedicated backend.',vi:'Đã kết nối. Đã chuyển sang backend riêng.'}));
+          syncReports(true); render();
+        }).catch(() => {
+          t.disabled = false; t.textContent = prev;
+          toast(L({ja:'接続できませんでした。デプロイの「アクセスできるユーザー＝全員」をご確認ください。',en:'Could not connect. Check deployment access = Anyone.',vi:'Không kết nối được. Kiểm tra quyền truy cập = Mọi người.'}));
+        });
+        return;
+      }
       if (t.dataset.topensubmit) {
         const sel = document.getElementById('op_store');
         const store = (sel && sel.value) || visibleStores()[0];
@@ -1784,6 +1895,16 @@
     APPS.unshift({ id:'history', group:'genba', icon:'report', roles:['staff','manager','owner','hq'],
       name:{ ja:'提出履歴', en:'Submission history', vi:'Lịch sử nộp' },
       desc:{ ja:'直近7日の提出・判定を確認', en:'Last 7 days of submissions', vi:'7 ngày gần đây' } });
+  }
+  if (!appById('appfb')) {
+    APPS.push({ id:'appfb', group:'learn', icon:'idea', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'アプリへのご意見', en:'App feedback', vi:'Góp ý ứng dụng' },
+      desc:{ ja:'使ってみて気づいたことをお送りください', en:'Tell us what you noticed', vi:'Cho biết điều bạn nhận thấy' } });
+  }
+  if (!appById('backend')) {
+    APPS.push({ id:'backend', group:'hq', icon:'lock', roles:['hq'],
+      name:{ ja:'バックエンド設定', en:'Backend settings', vi:'Cài đặt backend' },
+      desc:{ ja:'データの保存先（専用／共用）を切り替え', en:'Switch data backend (dedicated/shared)', vi:'Đổi nơi lưu dữ liệu' } });
   }
   if (!appById('kyou')) {
     APPS.unshift({ id:'kyou', group:'genba', icon:'check', live:true, roles:['staff','manager','owner','hq'],
@@ -2096,7 +2217,7 @@
     if (!force && Date.now() - lastSync < 3000) return;
     lastSync = Date.now();
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(getApiUrl());
       const d = await res.json();
       if (d && d.ok && Array.isArray(d.reports)) {
         const nextRaw = JSON.stringify(d.reports);
@@ -2111,7 +2232,7 @@
   // rep = { kind, store, item, level, note, photos, t }
   function postReport(rep) {
     if (!useBackend()) return Promise.resolve();
-    return fetch(API_URL, { method: 'POST', body: JSON.stringify(rep) }).then(() => syncReports(true)).catch(() => {});
+    return fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(rep) }).then(() => syncReports(true)).catch(() => {});
   }
 
   /* ---------- 起動 ---------- */
