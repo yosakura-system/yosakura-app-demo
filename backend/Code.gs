@@ -13,7 +13,23 @@ var HEADERS = ['id', 'ts', 'kind', 'store', 'item', 'level', 'note', 'photos'];
 var PHOTO_FOLDER = '世桜アプリ_写真';
 var READ_TAIL = 2000;        // doGetで読む「直近の行数」の上限（シート全体は読まない＝高速）
 var RETURN_MAX = 800;        // 返す最新レコード数の上限
-var PHOTO_TTL_DAYS = 90;     // 写真をDriveに保持する日数（これより古い写真は自動でゴミ箱へ）
+
+/* ★保存期間・自動削除の設定（2026-07-31 安全化）
+ * MTGでは「保存2ヶ月」で整理中だが、削除対象・起算日が未確定のため、
+ * 自動削除は初期OFF。確定後に ENABLE_AUTO_PURGE を true にし、PHOTO_TTL_DAYS を60日等へ変更する。
+ * まずは listPurgeTargets() で「削除される予定の写真」を確認できる（削除はしない）。*/
+var PHOTO_TTL_DAYS   = getSetting_('PHOTO_TTL_DAYS', 90);      // 保持日数（設定値で変更可）
+var ENABLE_AUTO_PURGE = getSetting_('ENABLE_AUTO_PURGE', false); // 自動削除の有効/無効（初期OFF）
+
+// スクリプトプロパティから設定を読む（無ければ既定値）。管理画面や手動で変更できる。
+function getSetting_(key, def) {
+  try {
+    var v = PropertiesService.getScriptProperties().getProperty(key);
+    if (v === null || v === undefined || v === '') return def;
+    if (v === 'true') return true; if (v === 'false') return false;
+    var n = Number(v); return isNaN(n) ? v : n;
+  } catch (e) { return def; }
+}
 
 function getSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -42,6 +58,10 @@ function savePhoto(p) {
 // ★シート末尾の直近 READ_TAIL 行だけを読むので、行数が増えても速度が一定。
 function doGet(e) {
   try {
+    // 保存期間の確認用：?action=purgeTargets は「削除される予定」を返すだけ（削除しない）
+    if (e && e.parameter && e.parameter.action === 'purgeTargets') {
+      return json({ ok: true, purge: listPurgeTargets() });
+    }
     var sh = getSheet();
     var lastRow = sh.getLastRow();
     var store = e && e.parameter ? e.parameter.store : '';
@@ -84,10 +104,16 @@ function doPost(e) {
 }
 
 /**
- * 古い写真を自動でゴミ箱へ（Drive容量対策）。1日1回のトリガーで実行する。
- * ※ゴミ箱の写真は約30日後に自動で完全削除され、容量が解放されます（すぐ空けたい時は手動でゴミ箱を空に）。
+ * 古い写真を自動でゴミ箱へ（Drive容量対策）。1日1回のトリガーで実行する想定。
+ * ★安全化（2026-07-31）：ENABLE_AUTO_PURGE が false の間は「何も削除しない」。
+ *   保存期間（PHOTO_TTL_DAYS）と有効化（ENABLE_AUTO_PURGE）が確定するまで削除を止める。
+ *   削除される予定の写真は listPurgeTargets() で事前に確認できる。
  */
 function purgeOldPhotos() {
+  if (!ENABLE_AUTO_PURGE) {
+    Logger.log('purgeOldPhotos: DISABLED (ENABLE_AUTO_PURGE=false). No files were trashed.');
+    return { enabled: false, trashed: 0, note: '自動削除は無効です。ScriptプロパティでENABLE_AUTO_PURGE=trueにすると有効化されます。' };
+  }
   var folder = getPhotoFolder();
   var cutoff = new Date(Date.now() - PHOTO_TTL_DAYS * 24 * 60 * 60 * 1000);
   var files = folder.getFiles();
@@ -97,7 +123,24 @@ function purgeOldPhotos() {
     try { if (f.getDateCreated() < cutoff) { f.setTrashed(true); removed++; } } catch (_) {}
   }
   Logger.log('purgeOldPhotos: trashed ' + removed + ' file(s) older than ' + PHOTO_TTL_DAYS + ' days');
-  return removed;
+  return { enabled: true, trashed: removed, ttlDays: PHOTO_TTL_DAYS };
+}
+
+/**
+ * 削除予定の写真の一覧を返す（★削除はしない）。保存期間の確定前に、影響範囲を確認するために使う。
+ * doGet(?action=purgeTargets) でも呼べる。
+ */
+function listPurgeTargets() {
+  var folder = getPhotoFolder();
+  var cutoff = new Date(Date.now() - PHOTO_TTL_DAYS * 24 * 60 * 60 * 1000);
+  var files = folder.getFiles();
+  var targets = [], total = 0;
+  while (files.hasNext()) {
+    var f = files.next(); total++;
+    var created = f.getDateCreated();
+    if (created < cutoff) targets.push({ id: f.getId(), name: f.getName(), created: created.toISOString() });
+  }
+  return { ttlDays: PHOTO_TTL_DAYS, autoPurgeEnabled: ENABLE_AUTO_PURGE, totalPhotos: total, wouldTrash: targets.length, sample: targets.slice(0, 50) };
 }
 
 function normNote(n) { if (n && typeof n === 'object') return n.ja || ''; return n || ''; }

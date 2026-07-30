@@ -1171,18 +1171,7 @@
     </div>`;
 
   /* ⑭ 提出物管理（モック）*/
-  APP_VIEWS.teishutsu = () => {
-    const S = { in:{ja:'提出済',en:'Submitted',vi:'Đã nộp'}, out:{ja:'未提出',en:'Missing',vi:'Chưa nộp'} };
-    const vis = visibleStores();
-    const data = [['日本鰻世桜 富士山店','in','—'],['牛カツ世桜 富士山店','in','—'],['寿司世桜 心斎橋店','in','—'],['日本鰻世桜 長堀橋店','in','—'],['日本鰻世桜 京都祇園店','out','1'],['日本鰻世桜 浅草橋店','in','—'],['和牛世桜 広島店','out','3']].filter(([s])=>vis.includes(s));
-    return `
-      ${NOTE({ ja:'◆ デモ表示（提出状況の自動集約イメージ）', en:'◆ Demo (auto-aggregated submission status)', vi:'◆ Demo (tổng hợp trạng thái nộp)' })}
-      <div class="card">
-        <h3>${L({ ja:'本日の提出状況', en:'Today submissions', vi:'Trạng thái nộp hôm nay' })}</h3>
-        ${data.map(([s,st,d])=>`<div class="rep"><span class="kind ${st==='in'?'b':'a'}">${L(S[st])}</span><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${st==='out'?L({ja:'未提出',en:'Missing',vi:'Chưa nộp'})+' '+d+L({ja:'日',en:'d',vi:' ngày'}):L({ja:'期限内',en:'On time',vi:'Đúng hạn'})}</div></div></div>`).join('')}
-        <button class="btn-primary" style="margin-top:14px" id="demoReminder">${L({ja:'未提出店に連絡文を自動生成（デモ）',en:'Auto-draft reminder to missing stores (demo)',vi:'Tự soạn nhắc cửa hàng chưa nộp (demo)'})}</button>
-      </div>`;
-  };
+  // APP_VIEWS.teishutsu は「提出管理レイヤー」で実データ版に再定義（下方）。ここでの旧モック定義は削除済み。
 
   /* ⑮ 防犯カメラ（モック）*/
   APP_VIEWS.camera = () => `
@@ -1467,6 +1456,253 @@
   }
 
   /* ---------- レンダリング ---------- */
+  /* ============================================================
+     提出管理レイヤー（第1段階／本番運用前提）
+     - 提出物マスタ・店舗×業態対象・定休日・現地時間・3軸ステータス
+     - 「今日出すもの」（店舗）／提出状況一覧・未提出抽出（本部）
+     - 提出判定は既存の実データ（同期済みの提出実績）から算出する
+     - 外部送信・自動削除は初期OFF。未接続機能は「未接続／手動運用中」を明示
+     ============================================================ */
+  const SUBKEYS = {
+    master:  'yosakura_sub_master_v1',
+    status:  'yosakura_sub_status_v1',
+    holiday: 'yosakura_sub_holiday_v1',
+    roster:  'yosakura_sub_roster_v1',
+    audit:   'yosakura_sub_audit_v1'
+  };
+  const jget = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch { return d; } };
+  const jset = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+
+  // 店舗メタ（業態・タイムゾーン・コース店か）を店舗名から導出
+  function storeMeta(name) {
+    const overseas = /ハノイ|ホーチミン/.test(name);
+    const course = /おまかせ/.test(name); // コース主体店（1食目写真は対象外）
+    let gyotai = 'other';
+    if (/日本料理世桜/.test(name)) gyotai = 'nihon';
+    else if (/寿司世桜|手巻き寿司世桜/.test(name)) gyotai = 'sushi';
+    else if (/牛カツ世桜/.test(name)) gyotai = 'gyukatsu';
+    else if (/日本鰻世桜/.test(name)) gyotai = 'unagi';
+    else if (/和牛世桜/.test(name)) gyotai = 'wagyu';
+    return { course, gyotai, tz: overseas ? 'Asia/Ho_Chi_Minh' : 'Asia/Tokyo' };
+  }
+  // 店舗の現地時間での日付キー（YYYY-MM-DD）
+  function dateKeyFor(name, ts) {
+    const tz = storeMeta(name).tz;
+    try { return new Date(ts || Date.now()).toLocaleDateString('en-CA', { timeZone: tz }); }
+    catch { return new Date(ts || Date.now()).toISOString().slice(0, 10); }
+  }
+  function nowHMFor(name) {
+    const tz = storeMeta(name).tz;
+    try { return new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' }); }
+    catch { return new Date().toTimeString().slice(0, 5); }
+  }
+
+  // 提出物マスタ（本部が設定）。obligation: required(必須)/store(店舗運用)/off(対象外)
+  function defaultMasters() {
+    return [
+      { id:'firstphoto', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'}, oblig:'required', freq:'daily', due:'23:59', target:'except_course', hqReview:'exception', detect:'fp', linkApp:'firstphoto' },
+      { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},       oblig:'required', freq:'daily', due:'23:59', target:'all',          hqReview:'each',      detect:'sk', linkApp:'soukatsu' },
+      { id:'openphoto',  name:{ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'},          oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'none', linkApp:null },
+      { id:'cleaning',   name:{ja:'開店清掃チェック',en:'Opening cleaning',vi:'Vệ sinh mở cửa'}, oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'none', linkApp:'checklist' },
+      { id:'facade',     name:{ja:'内外装動画＋ポップ',en:'Interior video & POP',vi:'Video & POP'}, oblig:'required', freq:'monthly', due:'23:59', target:'all',       hqReview:'each',      detect:'video', linkApp:'storevideo' }
+    ];
+  }
+  const getMasters = () => { let m = jget(SUBKEYS.master, null); if (!m) { m = defaultMasters(); jset(SUBKEYS.master, m); } return m; };
+  const saveMasters = (m) => jset(SUBKEYS.master, m);
+
+  const getHolidays = () => jget(SUBKEYS.holiday, {});
+  const isHoliday = (store, dk) => (getHolidays()[store] || []).includes(dk);
+  const getAudit = () => jget(SUBKEYS.audit, []);
+  function pushAudit(action, detail) {
+    const a = getAudit();
+    a.push({ ts: Date.now(), role: getRole(), store: getStoreSel(), action, detail: detail || '' });
+    jset(SUBKEYS.audit, a.slice(-500));
+  }
+
+  // 3軸ステータス（提出は実データから算出／判定・本部確認・改善確認はここに保存）
+  const statusKey = (store, mid, dk) => `${store}${mid}${dk}`;
+  const getStatusMap = () => jget(SUBKEYS.status, {});
+  function getStatus(store, mid, dk) { return getStatusMap()[statusKey(store, mid, dk)] || { judge:'', hqConfirm:'', improve:'' }; }
+  function setStatus(store, mid, dk, patch) {
+    const map = getStatusMap(); const k = statusKey(store, mid, dk);
+    const cur = map[k] || { judge:'', hqConfirm:'', improve:'', trail:[] };
+    const next = Object.assign({}, cur, patch, { ts: Date.now(), by: getRole() });
+    next.trail = (cur.trail || []).concat([{ ts: Date.now(), by: getRole(), patch }]).slice(-20);
+    map[k] = next; jset(SUBKEYS.status, map);
+    pushAudit('status', `${store}/${mid}/${dk}:${JSON.stringify(patch)}`);
+    return next;
+  }
+
+  // この提出物がこの店舗に適用されるか（対象設定＋コース除外＋対象外オフ）
+  function appliesToStore(m, store) {
+    if (m.oblig === 'off') return false;
+    if (m.target === 'except_course' && storeMeta(store).course) return false;
+    if (m.target === 'stores' && Array.isArray(m.stores) && !m.stores.includes(store)) return false;
+    return true;
+  }
+  // 実データから「提出済みか」を判定（同期済みの実績を突き合わせ）
+  function detectSubmitted(store, m, dk) {
+    const sameDay = (t) => dateKeyFor(store, t) === dk;
+    const sameMonth = (t) => dateKeyFor(store, t).slice(0, 7) === dk.slice(0, 7);
+    const inScope = m.freq === 'monthly' ? sameMonth : sameDay;
+    try {
+      if (m.detect === 'fp')     return getFP().some(r => r.store === store && inScope(r.t));
+      if (m.detect === 'sk')     return getSk().some(r => r.store === store && inScope(r.t));
+      if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
+      if (m.detect === 'video')  return getReports().some(r => r.kind === 'video' && r.store === store && inScope(r.t));
+    } catch (e) {}
+    return false;
+  }
+
+  // ある店舗の当日の提出物リスト（今日出すもの）
+  function todayItemsFor(store) {
+    const dk = dateKeyFor(store, Date.now());
+    const holiday = isHoliday(store, dk);
+    return getMasters().filter(m => appliesToStore(m, store)).map(m => {
+      const manual = m.detect === 'none'; // 自動判定できない（手動運用）
+      const submitted = manual ? null : (holiday ? true : detectSubmitted(store, m, dk));
+      const st = getStatus(store, m.id, dk);
+      const overdue = !manual && !submitted && !holiday && nowHMFor(store) > (m.due || '23:59') && m.freq === 'daily';
+      return { m, dk, submitted, manual, holiday, overdue, status: st };
+    });
+  }
+
+  const OBLIG_LABEL = { required:{ja:'必須',en:'Required',vi:'Bắt buộc'}, store:{ja:'店舗運用',en:'Store-run',vi:'Cửa hàng'}, off:{ja:'対象外',en:'Off',vi:'Không'} };
+  const JUDGE_LABEL = { '':{ja:'—',en:'—',vi:'—'}, in:{ja:'基準内',en:'In-std',vi:'Đạt'}, check:{ja:'要確認',en:'Check',vi:'Cần KT'}, out:{ja:'基準外',en:'Out-std',vi:'Không đạt'} };
+
+  /* ---------- 店舗向け：今日出すもの ---------- */
+  APP_VIEWS.kyou = () => {
+    const store = visibleStores()[0];
+    const items = todayItemsFor(store);
+    const dk = dateKeyFor(store, Date.now());
+    const holiday = isHoliday(store, dk);
+    const remain = items.filter(it => !it.manual && !it.submitted).length;
+    const rows = items.map(it => {
+      const badgeTxt = it.manual ? L({ja:'手動',en:'Manual',vi:'Thủ công'}) : (it.submitted ? L({ja:'提出済',en:'Done',vi:'Đã nộp'}) : L({ja:'未提出',en:'To do',vi:'Chưa'}));
+      const badgeCls = it.manual ? '' : (it.submitted ? 'b' : 'a');
+      const due = it.m.freq === 'monthly' ? L({ja:'今月',en:'This month',vi:'Tháng này'}) : `${L({ja:'締切',en:'Due',vi:'Hạn'})} ${it.m.due}`;
+      const openBtn = ((it.manual || !it.submitted) && it.m.linkApp) ? `<button class="mini" data-tsub="${it.m.linkApp}">${L({ja:'開いて提出',en:'Open',vi:'Mở'})}${svg('chev')}</button>` : '';
+      const oflag = it.overdue ? ` <span style="color:#b23">${L({ja:'締切超過',en:'Overdue',vi:'Quá hạn'})}</span>` : '';
+      const noentry = it.manual ? ` <span class="hint" style="display:inline">※${L({ja:'自動判定なし（店舗運用・手動）',en:'no auto-check (store-run/manual)',vi:'không tự KT (thủ công)'})}</span>` : '';
+      return `<div class="rep"><span class="kind ${badgeCls}">${badgeTxt}</span>
+        <div class="body"><div class="l1">${esc(L(it.m.name))} <small style="color:#8a8">(${L(OBLIG_LABEL[it.m.oblig])})</small></div>
+        <div class="l2">${due}${oflag}${noentry}</div></div>${openBtn}</div>`;
+    }).join('');
+    return `
+      <div class="card">
+        <h3>${L({ja:'今日出すもの',en:'Today to submit',vi:'Cần nộp hôm nay'})} — ${esc(storeShort(store))} <small style="color:#8a8">${dk}</small></h3>
+        ${holiday ? `<p class="hint" style="display:block">${L({ja:'本日は定休日として登録されています（未提出にはなりません）。',en:'Registered as a holiday today (not counted as missing).',vi:'Hôm nay là ngày nghỉ (không tính chưa nộp).'})}</p>` : `<p class="hint" style="display:block">${L({ja:'残り',en:'Remaining',vi:'Còn lại'})} ${remain} ${L({ja:'件（現地時間で判定）',en:'item(s) (store local time)',vi:'mục (giờ địa phương)'})}</p>`}
+        ${rows}
+      </div>
+      <p class="hint" style="display:block">${L({ja:'※ 提出の有無は、実際の提出データ（全端末同期）から自動で判定しています。',en:'Status is auto-detected from real submitted data (synced).',vi:'Trạng thái tự nhận từ dữ liệu đã nộp (đồng bộ).'})}</p>`;
+  };
+
+  /* ---------- 本部向け：提出状況一覧・未提出抽出（実データ集約） ---------- */
+  APP_VIEWS.teishutsu = () => {
+    const role = getRole();
+    if (role !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
+    const missingOnly = localStorage.getItem('yosakura_sub_missingonly') === '1';
+    const masters = getMasters().filter(m => m.oblig !== 'off');
+    const stores = STORES.slice();
+    let totalMissing = 0;
+    const cells = stores.map(store => {
+      const dk = dateKeyFor(store, Date.now());
+      const holiday = isHoliday(store, dk);
+      const items = masters.filter(m => appliesToStore(m, store)).map(m => {
+        const manual = m.detect === 'none';
+        const submitted = manual ? null : (holiday ? true : detectSubmitted(store, m, dk));
+        if (!manual && !submitted && !holiday) totalMissing++;
+        return { m, submitted, manual, holiday, status: getStatus(store, m.id, dk), dk };
+      });
+      const missing = items.filter(it => !it.manual && !it.submitted && !it.holiday);
+      if (missingOnly && !missing.length) return '';
+      const chips = items.map(it => {
+        const cls = it.manual ? '' : (it.submitted ? 'b' : 'a');
+        const sym = it.manual ? '·' : (it.submitted ? '✓' : '✗');
+        const jl = it.status.judge ? ` ${L(JUDGE_LABEL[it.status.judge])}` : '';
+        return `<span class="kind ${cls}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(it.m.name))}${sym}${jl}</span>`;
+      }).join('');
+      const act = missing.length ? `<div style="margin-top:8px"><button class="mini" data-treminder="${esc(store)}">${L({ja:'未提出の連絡文をコピー',en:'Copy reminder',vi:'Sao chép nhắc'})}</button> <button class="mini" data-tdrill="${esc(store)}">${L({ja:'判定・確認',en:'Review',vi:'Duyệt'})}${svg('chev')}</button></div>` : '';
+      return `<div class="rep" style="align-items:flex-start"><span class="kind ${missing.length?'a':'b'}">${missing.length?L({ja:'未',en:'Miss',vi:'Thiếu'}):L({ja:'済',en:'OK',vi:'OK'})}</span>
+        <div class="body"><div class="l1">${esc(storeShort(store))} ${holiday?`<small style="color:#8a8">(${L({ja:'定休日',en:'Holiday',vi:'Nghỉ'})})</small>`:''}</div>
+        <div class="l2">${chips}</div>${act}</div></div>`;
+    }).join('');
+    return `
+      <div class="card">
+        <h3>${L({ja:'本日の提出状況（全店）',en:'Today submissions (all stores)',vi:'Trạng thái nộp (mọi cửa hàng)'})}</h3>
+        <div style="display:flex;gap:8px;align-items:center;margin:6px 0 12px">
+          <button class="mini ${missingOnly?'on':''}" data-tmissing="1">${missingOnly?'☑':'☐'} ${L({ja:'未提出のみ',en:'Missing only',vi:'Chỉ thiếu'})}</button>
+          <span class="hint" style="display:inline">${L({ja:'未提出',en:'Missing',vi:'Thiếu'})} ${totalMissing}</span>
+        </div>
+        ${cells || `<p class="hint" style="display:block">${L({ja:'未提出はありません。',en:'No missing.',vi:'Không thiếu.'})}</p>`}
+      </div>
+      <div class="card">
+        <h3>${L({ja:'提出物マスタ（本部設定）',en:'Submission master (HQ)',vi:'Cấu hình mục nộp (HQ)'})}</h3>
+        ${masters.map(m => `<div class="rep"><span class="kind b">${L(OBLIG_LABEL[m.oblig])}</span><div class="body"><div class="l1">${esc(L(m.name))}</div><div class="l2">${m.freq==='daily'?L({ja:'毎日',en:'Daily',vi:'Hàng ngày'}):L({ja:'月1',en:'Monthly',vi:'Hàng tháng'})} ・ ${L({ja:'締切',en:'Due',vi:'Hạn'})} ${m.due} ・ ${m.hqReview==='each'?L({ja:'本部確認あり',en:'HQ review',vi:'HQ duyệt'}):m.hqReview==='exception'?L({ja:'例外のみ本部',en:'Exceptions to HQ',vi:'Ngoại lệ HQ'}):L({ja:'本部確認なし',en:'No HQ review',vi:'Không HQ'})}</div></div></div>`).join('')}
+        <p class="hint" style="display:block">${L({ja:'※ この設定はこの端末に保存されています。全店で共有するにはバックエンド接続（次段階）が必要です。',en:'Saved on this device. Cross-store sharing needs backend (next step).',vi:'Lưu trên máy này. Cần backend để chia sẻ (bước sau).'})}</p>
+      </div>
+      <p class="hint" style="display:block">${L({ja:'※ 提出状況は実際の提出データ（同期済み）から自動集約しています。LINE通知・AI判定は未接続（手動運用中）。',en:'Auto-aggregated from real synced data. LINE & AI not connected (manual).',vi:'Tự tổng hợp từ dữ liệu thật (đã đồng bộ). LINE & AI chưa kết nối (thủ công).'})}</p>`;
+  };
+
+  /* ---------- 本部向け：店舗の判定・本部確認（手動判定＝AI未接続時） ---------- */
+  function openTeishutsuDrill(store) {
+    document.querySelectorAll('.sheet-mask').forEach(m => m.remove()); // 再判定時は前回シートを閉じる
+    const dk = dateKeyFor(store, Date.now());
+    const masters = getMasters().filter(m => appliesToStore(m, store) && m.oblig !== 'off');
+    const rows = masters.map(m => {
+      const submitted = detectSubmitted(store, m, dk);
+      const st = getStatus(store, m.id, dk);
+      const jbtns = ['in','check','out'].map(v => `<button class="mini ${st.judge===v?'on':''}" data-tjudge="${esc(store)}|${m.id}|${v}">${L(JUDGE_LABEL[v])}</button>`).join(' ');
+      return `<div class="rep" style="align-items:flex-start"><span class="kind ${submitted?'b':'a'}">${submitted?'✓':'✗'}</span><div class="body">
+        <div class="l1">${esc(L(m.name))}</div>
+        <div class="l2">${L({ja:'手動判定（AI未接続）',en:'Manual judge (AI off)',vi:'Chấm tay (AI off)'})}: ${jbtns}</div>
+        <div class="l2" style="margin-top:6px"><button class="mini ${st.hqConfirm==='done'?'on':''}" data-thq="${esc(store)}|${m.id}|done">${L({ja:'本部確認済',en:'HQ confirmed',vi:'HQ đã duyệt'})}</button>
+          <button class="mini ${st.hqConfirm==='need'?'on':''}" data-thq="${esc(store)}|${m.id}|need">${L({ja:'要連絡',en:'Contact',vi:'Cần LH'})}</button>
+          <button class="mini ${st.improve==='ok'?'on':''}" data-timp="${esc(store)}|${m.id}|ok">${L({ja:'翌日改善済',en:'Improved',vi:'Đã cải thiện'})}</button></div>
+      </div></div>`;
+    }).join('');
+    const mask = el(`<div class="sheet-mask"><div class="sheet">
+      <div class="grip"></div>
+      <h3>${esc(storeShort(store))} ${L({ja:'判定・本部確認',en:'Judge & HQ review',vi:'Chấm & duyệt'})} <small style="color:#8a8">${dk}</small></h3>
+      ${rows}
+      <p class="hint" style="display:block">${L({ja:'※ AI判定は未接続のため手動判定です。接続後は同じ欄へAI結果が入ります。',en:'AI not connected: manual. AI results will fill the same field later.',vi:'AI chưa kết nối: chấm tay. Sau này AI sẽ điền cùng ô.'})}</p>
+      <button class="btn-primary" data-close="1" style="margin-top:12px">${L({ja:'閉じる',en:'Close',vi:'Đóng'})}</button>
+    </div></div>`);
+    mask.addEventListener('click', (e) => { if (e.target === mask || e.target.closest('[data-close]')) mask.remove(); });
+    document.body.appendChild(mask);
+  }
+
+  // 委譲イベント（$appは再描画で中身が入れ替わるが要素自体は残るため一度だけ登録）
+  (function bindSubmissionOnce() {
+    if (document.__subBound) return; document.__subBound = true;
+    document.addEventListener('click', (e) => {
+      const t = e.target.closest('[data-tsub],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp]');
+      if (!t) return;
+      if (t.dataset.tsub) { go(`/app/${t.dataset.tsub}`); return; }
+      if (t.dataset.tmissing) { const cur = localStorage.getItem('yosakura_sub_missingonly') === '1'; localStorage.setItem('yosakura_sub_missingonly', cur ? '0' : '1'); render(); return; }
+      if (t.dataset.tdrill) { openTeishutsuDrill(t.dataset.tdrill); return; }
+      if (t.dataset.treminder) {
+        const store = t.dataset.treminder; const dk = dateKeyFor(store, Date.now());
+        const miss = getMasters().filter(m => appliesToStore(m, store) && m.oblig !== 'off' && m.detect !== 'none' && !detectSubmitted(store, m, dk)).map(m => '・' + L(m.name));
+        const text = `${storeShort(store)} ${L({ja:'様',en:'',vi:''})}\n${L({ja:'本日分の未提出があります。ご確認をお願いします。',en:'You have missing submissions today. Please check.',vi:'Hôm nay còn mục chưa nộp. Vui lòng kiểm tra.'})}\n${miss.join('\n')}`;
+        try { navigator.clipboard.writeText(text); } catch (_) {}
+        pushAudit('reminder_copy', store);
+        toast(L({ja:'連絡文をコピーしました（LINEは手動送信）',en:'Reminder copied (send via LINE manually)',vi:'Đã sao chép (gửi LINE thủ công)'}));
+        return;
+      }
+      if (t.dataset.tjudge) { const [s, mid, v] = t.dataset.tjudge.split('|'); const dk = dateKeyFor(s, Date.now()); const cur = getStatus(s, mid, dk).judge; setStatus(s, mid, dk, { judge: cur === v ? '' : v }); openTeishutsuDrill(s); return; }
+      if (t.dataset.thq)   { const [s, mid, v] = t.dataset.thq.split('|'); const dk = dateKeyFor(s, Date.now()); const cur = getStatus(s, mid, dk).hqConfirm; setStatus(s, mid, dk, { hqConfirm: cur === v ? '' : v }); openTeishutsuDrill(s); return; }
+      if (t.dataset.timp)  { const [s, mid, v] = t.dataset.timp.split('|'); const dk = dateKeyFor(s, Date.now()); const cur = getStatus(s, mid, dk).improve; setStatus(s, mid, dk, { improve: cur === v ? '' : v }); openTeishutsuDrill(s); return; }
+    });
+  })();
+
+  // 「今日出すもの」をアプリ一覧へ追加（店舗ロール中心・本部も閲覧可）
+  if (!appById('kyou')) {
+    APPS.unshift({ id:'kyou', group:'genba', icon:'check', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'今日出すもの', en:'Today to submit', vi:'Cần nộp hôm nay' },
+      desc:{ ja:'当日の提出物と未提出をひと目で', en:'Today’s items & missing at a glance', vi:'Mục cần nộp & còn thiếu' } });
+  }
+
   function render() {
     const { path, params } = currentRoute();
     let html;
