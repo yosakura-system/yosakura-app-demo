@@ -16,6 +16,22 @@
   const LS_API = 'yosakura_api_url';
   const getApiUrl = () => (localStorage.getItem(LS_API) || API_URL_DEFAULT);
   const isCustomApi = () => !!localStorage.getItem(LS_API);
+  /* システム管理者モード：接続先の変更は「本部ロール かつ 管理者モード」のみ可能。
+     通常の本部利用者は接続状態の閲覧のみ（誤操作で共用へ戻すのを防ぐ）。
+     ※ これは誤操作防止のための鍵であり、機密を守る認証ではありません（フロントのため）。 */
+  const LS_ADMIN = 'yosakura_sysadmin';
+  const ADMIN_CODE = 'yosakura-system';
+  const isSysAdmin = () => localStorage.getItem(LS_ADMIN) === '1';
+  const setSysAdmin = (on) => { if (on) localStorage.setItem(LS_ADMIN, '1'); else localStorage.removeItem(LS_ADMIN); };
+  // 接続先の変更ログ（変更者・日時・変更前後・テスト結果）
+  const LS_APILOG = 'yosakura_api_log';
+  function pushApiLog(entry) {
+    let a = []; try { a = JSON.parse(localStorage.getItem(LS_APILOG)) || []; } catch (e) {}
+    a.push(Object.assign({ ts: Date.now(), role: getRole() }, entry));
+    try { localStorage.setItem(LS_APILOG, JSON.stringify(a.slice(-50))); } catch (e) {}
+  }
+  const getApiLog = () => { try { return JSON.parse(localStorage.getItem(LS_APILOG)) || []; } catch { return []; } };
+  const maskUrl = (u) => { const m = /\/macros\/s\/([^/]+)\//.exec(u || ''); return m ? `…/${m[1].slice(0, 8)}…/exec` : (u || '—'); };
   function setApiUrl(u) {
     const v = (u || '').trim();
     if (v) localStorage.setItem(LS_API, v); else localStorage.removeItem(LS_API);
@@ -1766,28 +1782,39 @@
 
   /* ---------- 本部：バックエンド設定（専用の保存先へ切り替える） ---------- */
   APP_VIEWS.backend = () => {
-    if (getRole() !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ設定できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
-    const cur = getApiUrl(); const custom = isCustomApi();
-    return `
+    if (getRole() !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
+    const cur = getApiUrl(); const custom = isCustomApi(); const admin = isSysAdmin();
+    // 接続状態（本部の方は「今どこにつながっているか」だけ確認できます）
+    const statusCard = `
       <div class="card">
-        <h3>${L({ja:'データの保存先（バックエンド）',en:'Data backend',vi:'Nơi lưu dữ liệu'})}</h3>
+        <h3>${L({ja:'データの保存先（接続状態）',en:'Data backend (status)',vi:'Nơi lưu dữ liệu (trạng thái)'})}</h3>
         <div class="rep"><span class="kind ${custom?'b':'a'}">${custom?L({ja:'専用',en:'Dedicated',vi:'Riêng'}):L({ja:'共用',en:'Shared',vi:'Chung'})}</span>
-          <div class="body"><div class="l1">${custom?L({ja:'世桜専用の保存先に接続しています',en:'Connected to your dedicated backend',vi:'Đang dùng backend riêng'}):L({ja:'共用（デモと同じ）保存先に接続しています',en:'Using the shared (demo) backend',vi:'Đang dùng backend chung (demo)'})}</div>
-          <div class="l2" style="word-break:break-all">${esc(cur.slice(0, 72))}${cur.length>72?'…':''}</div></div></div>
-        ${custom ? '' : `<p class="hint" style="display:block;color:#b23">${L({ja:'※ 実運用の前に、世桜専用の保存先へ切り替えてください（他のデータと混ざらないようにするため）。',en:'Before real operation, switch to your dedicated backend so data is not mixed.',vi:'Trước khi vận hành thật, hãy chuyển sang backend riêng.'})}</p>`}
+          <div class="body"><div class="l1">${custom?L({ja:'世桜専用の保存先に接続しています',en:'Connected to the dedicated backend',vi:'Đang dùng backend riêng'}):L({ja:'共用（検証用）の保存先に接続しています',en:'Using the shared (test) backend',vi:'Đang dùng backend chung (thử nghiệm)'})}</div>
+          <div class="l2">${esc(maskUrl(cur))}</div></div></div>
+        ${custom ? '' : `<p class="hint" style="display:block;color:#b23">${L({ja:'※ 実データの運用を始める前に、システム担当（神田）が専用の保存先へ切り替えます。',en:'Before real operation, the system admin will switch to the dedicated backend.',vi:'Trước khi vận hành thật, quản trị hệ thống sẽ chuyển sang backend riêng.'})}</p>`}
+      </div>`;
+    if (!admin) {
+      return statusCard + `
+      <div class="card">
+        <h3>${L({ja:'設定の変更について',en:'Changing this setting',vi:'Về việc thay đổi'})}</h3>
+        <p class="hint" style="display:block">${L({ja:'保存先の変更は、初期設定・環境移行・障害対応のときにシステム担当（神田）が行います。日常の運用では変更の必要はありません。',en:'Only the system admin changes this (initial setup, migration, incidents).',vi:'Chỉ quản trị hệ thống thay đổi (cài đặt ban đầu, chuyển đổi, sự cố).'})}</p>
+        <button class="mini" data-adminunlock="1">${L({ja:'システム管理者として変更する',en:'Unlock as system admin',vi:'Mở khóa quản trị'})}</button>
+      </div>`;
+    }
+    const log = getApiLog().slice(-5).reverse();
+    return statusCard + `
+      <div class="card">
+        <h3>${L({ja:'接続先の変更（システム管理者）',en:'Change backend (system admin)',vi:'Đổi backend (quản trị)'})}</h3>
         <label class="fld"><span>${L({ja:'専用バックエンドのURL（/exec で終わるもの）',en:'Dedicated backend URL (ends with /exec)',vi:'URL backend riêng (kết thúc /exec)'})}</span>
           <input type="text" id="api_url" placeholder="https://script.google.com/macros/s/.../exec" value="${custom?esc(cur):''}"></label>
         <button class="btn-primary" data-apitest="1">${L({ja:'接続をテストして保存',en:'Test connection & save',vi:'Kiểm tra & lưu'})}</button>
-        ${custom ? `<button class="mini" data-apireset="1" style="margin-top:10px">${L({ja:'共用に戻す',en:'Back to shared',vi:'Về dùng chung'})}</button>` : ''}
-        <div class="hint">${L({ja:'保存すると、この端末の接続先が切り替わります。各端末で同じURLを設定してください。',en:'Saving switches this device. Set the same URL on each device.',vi:'Lưu sẽ đổi máy này. Hãy đặt cùng URL trên mọi máy.'})}</div>
+        ${custom ? `<button class="mini" data-apireset="1" style="margin-top:10px">${L({ja:'共用に戻す（通常は使いません）',en:'Back to shared (rarely used)',vi:'Về dùng chung (hiếm khi)'})}</button>` : ''}
+        <button class="mini" data-adminlock="1" style="margin-top:10px">${L({ja:'管理者モードを終了',en:'Exit admin mode',vi:'Thoát chế độ quản trị'})}</button>
+        <div class="hint">${L({ja:'接続テストに成功したときだけ保存されます。各端末で同じURLの設定が必要です。',en:'Saved only when the connection test succeeds. Set the same URL on each device.',vi:'Chỉ lưu khi kiểm tra kết nối thành công.'})}</div>
       </div>
       <div class="card">
-        <h3>${L({ja:'専用の保存先を作るには',en:'How to create your backend',vi:'Cách tạo backend riêng'})}</h3>
-        <div class="l2">${L({ja:'① Googleスプレッドシートを新規作成（例：世桜アプリ_本部データ）',en:'1) Create a new Google Sheet',vi:'1) Tạo Google Sheet mới'})}</div>
-        <div class="l2">${L({ja:'② 拡張機能 → Apps Script を開き、お渡しするコードを貼る',en:'2) Extensions → Apps Script, paste the provided code',vi:'2) Tiện ích mở rộng → Apps Script, dán mã'})}</div>
-        <div class="l2">${L({ja:'③ デプロイ → ウェブアプリ（実行：自分／アクセス：全員）',en:'3) Deploy as Web app (run as: me / access: anyone)',vi:'3) Triển khai Web app (chạy: tôi / truy cập: mọi người)'})}</div>
-        <div class="l2">${L({ja:'④ 表示された /exec のURLを上に貼って保存',en:'4) Paste the /exec URL above and save',vi:'4) Dán URL /exec ở trên và lưu'})}</div>
-        <p class="hint" style="display:block">${L({ja:'※ 手順書（PDF）を別途お渡しします。ご不明な点は神田までご連絡ください。',en:'A step-by-step PDF is provided separately.',vi:'Có tài liệu PDF hướng dẫn riêng.'})}</p>
+        <h3>${L({ja:'変更の記録',en:'Change log',vi:'Nhật ký thay đổi'})}</h3>
+        ${log.length ? log.map(e => `<div class="rep"><span class="kind ${e.result==='ok'?'b':'a'}">${e.result==='ok'?'OK':'NG'}</span><div class="body"><div class="l1">${esc(e.action||'')}</div><div class="l2">${esc(maskUrl(e.from))} → ${esc(maskUrl(e.to))}</div><div class="l2">${esc(e.role||'')} ・ ${timeAgo(e.ts)}</div></div></div>`).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
       </div>`;
   };
 
@@ -1829,13 +1856,24 @@
         toast(L({ja:'ありがとうございます。ご意見を送信しました。',en:'Thank you. Your feedback was sent.',vi:'Cảm ơn. Đã gửi góp ý.'}));
         render(); return;
       }
+      if (t.dataset.adminunlock) {
+        const code = prompt(L({ja:'システム管理者コードを入力してください（システム担当のみ）',en:'Enter the system admin code',vi:'Nhập mã quản trị hệ thống'}) || '');
+        if (code === null) return;
+        if (code.trim() !== ADMIN_CODE) { toast(L({ja:'コードが違います',en:'Wrong code',vi:'Mã không đúng'})); return; }
+        setSysAdmin(true); pushAudit('backend', 'admin unlock');
+        toast(L({ja:'管理者モードになりました',en:'Admin mode on',vi:'Đã bật chế độ quản trị'})); render(); return;
+      }
+      if (t.dataset.adminlock) { setSysAdmin(false); pushAudit('backend', 'admin lock'); toast(L({ja:'管理者モードを終了しました',en:'Admin mode off',vi:'Đã tắt chế độ quản trị'})); render(); return; }
       if (t.dataset.apireset) {
-        if (!confirm(L({ja:'共用の保存先に戻します。よろしいですか？',en:'Switch back to the shared backend?',vi:'Quay lại backend chung?'}))) return;
-        setApiUrl(''); pushAudit('backend', 'reset to shared');
+        if (!isSysAdmin()) { toast(L({ja:'システム管理者のみ変更できます',en:'System admin only',vi:'Chỉ quản trị hệ thống'})); return; }
+        if (!confirm(L({ja:'共用（検証用）の保存先に戻します。実データの参照先が変わります。よろしいですか？',en:'Switch back to the shared (test) backend? The data source will change.',vi:'Quay lại backend chung (thử nghiệm)?'}))) return;
+        const from = getApiUrl();
+        setApiUrl(''); pushAudit('backend', 'reset to shared'); pushApiLog({ action:'共用に戻す', from, to: API_URL_DEFAULT, result:'ok' });
         toast(L({ja:'共用の保存先に戻しました',en:'Switched back to shared',vi:'Đã quay lại dùng chung'}));
         syncReports(true); render(); return;
       }
       if (t.dataset.apitest) {
+        if (!isSysAdmin()) { toast(L({ja:'システム管理者のみ変更できます',en:'System admin only',vi:'Chỉ quản trị hệ thống'})); return; }
         const input = document.getElementById('api_url');
         const url = (input && input.value || '').trim();
         if (!/^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(url)) {
@@ -1843,13 +1881,16 @@
         }
         t.disabled = true; const prev = t.textContent;
         t.textContent = L({ja:'接続中…',en:'Testing…',vi:'Đang kiểm tra…'});
+        const from = getApiUrl();
         fetch(url).then(r => r.json()).then(j => {
           if (!j || j.ok !== true) throw new Error('bad response');
           setApiUrl(url); pushAudit('backend', 'set dedicated');
+          pushApiLog({ action:'専用へ切替', from, to: url, result:'ok' });
           toast(L({ja:'接続できました。専用の保存先に切り替えました。',en:'Connected. Switched to your dedicated backend.',vi:'Đã kết nối. Đã chuyển sang backend riêng.'}));
           syncReports(true); render();
         }).catch(() => {
           t.disabled = false; t.textContent = prev;
+          pushApiLog({ action:'接続テスト', from, to: url, result:'ng' });
           toast(L({ja:'接続できませんでした。デプロイの「アクセスできるユーザー＝全員」をご確認ください。',en:'Could not connect. Check deployment access = Anyone.',vi:'Không kết nối được. Kiểm tra quyền truy cập = Mọi người.'}));
         });
         return;

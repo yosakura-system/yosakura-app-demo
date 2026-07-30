@@ -39,6 +39,118 @@ function getSheet() {
   return sh;
 }
 
+/* ============================================================
+   初期セットアップ（世桜システム管理アカウントで一度だけ実行）
+   ★ 既存のシート・データは削除も上書きもしません。不足分だけ追加します。
+   使い方：GASエディタで関数 setupYosakuraBackend を選び「実行」。
+   ============================================================ */
+function setupYosakuraBackend() {
+  var result = { sheets: createRequiredSheets(), properties: initScriptProperties_(), drive: ensurePhotoFolder_() };
+  result.validation = validateBackendConfiguration();
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+// 必要なシートとヘッダーを作る（既存があれば触らず、不足ヘッダーのみ追記）
+function createRequiredSheets() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var plan = [
+    { name: SHEET_NAME, headers: HEADERS, note: 'アプリの全データ（1行＝1件）。kindで種類を判別' },
+    { name: '_readme',  headers: ['項目', '説明'], note: 'この保存先の説明' }
+  ];
+  var out = [];
+  plan.forEach(function (p) {
+    var sh = ss.getSheetByName(p.name);
+    var created = false;
+    if (!sh) { sh = ss.insertSheet(p.name); created = true; }
+    if (sh.getLastRow() === 0) sh.appendRow(p.headers);
+    else {
+      // 既存ヘッダーに不足があれば右側へ追加（既存列は動かさない）
+      var cur = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0].map(String);
+      p.headers.forEach(function (h) { if (cur.indexOf(h) === -1) sh.getRange(1, sh.getLastColumn() + 1).setValue(h); });
+    }
+    out.push({ sheet: p.name, created: created, note: p.note });
+  });
+  // _readme に説明を入れる（空のときだけ）
+  var rm = ss.getSheetByName('_readme');
+  if (rm && rm.getLastRow() <= 1) {
+    rm.appendRow(['用途', '世桜アプリの本番データ保存先（提出・判定・設定・写真ID）']);
+    rm.appendRow(['注意', 'reportsシートを直接編集・削除しないでください（アプリの表示に影響します）']);
+    rm.appendRow(['写真', 'Googleドライブの「世桜アプリ_写真」フォルダに保存されます']);
+    rm.appendRow(['自動削除', '初期は無効（ENABLE_AUTO_PURGE=false）。保存期間の確定後に有効化します']);
+    rm.appendRow(['kindの例', 'a/b=食べ残し, kizuki=気づき, soukatsu=総括表, video=店内動画, survey, route, open, svfb']);
+    rm.appendRow(['提出管理', 'submaster=提出物マスタ, substat=判定/本部確認, subholiday=定休日, subrec=提出実績, appfb=ご意見']);
+  }
+  return out;
+}
+
+// Script Properties の初期値（既に値があれば上書きしない）
+function initScriptProperties_() {
+  var sp = PropertiesService.getScriptProperties();
+  var defaults = {
+    ENABLE_AUTO_PURGE: 'false',  // 写真の自動削除（初期は無効）
+    PHOTO_TTL_DAYS: '90',        // 保存期間（確定後に60等へ変更）
+    ENV: 'pilot',                // pilot（本部直営店の試験運用）→ prod
+    READ_TAIL: String(READ_TAIL),
+    RETURN_MAX: String(RETURN_MAX)
+  };
+  var applied = {};
+  Object.keys(defaults).forEach(function (k) {
+    var cur = sp.getProperty(k);
+    if (cur === null || cur === '') { sp.setProperty(k, defaults[k]); applied[k] = defaults[k] + '（新規設定）'; }
+    else applied[k] = cur + '（既存のまま）';
+  });
+  return applied;
+}
+
+// 写真フォルダを用意し、そのIDをプロパティに記録
+function ensurePhotoFolder_() {
+  var folder = getPhotoFolder();
+  PropertiesService.getScriptProperties().setProperty('PHOTO_FOLDER_ID', folder.getId());
+  return { name: folder.getName(), id: folder.getId(), url: folder.getUrl() };
+}
+
+/* 構成が正しいかを点検する（実行して結果をログで確認）。データは変更しません。 */
+function validateBackendConfiguration() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sp = PropertiesService.getScriptProperties();
+  var sh = ss.getSheetByName(SHEET_NAME);
+  var checks = [];
+  function ck(name, ok, detail) { checks.push({ check: name, ok: !!ok, detail: detail || '' }); }
+
+  ck('スプレッドシートに接続できる', !!ss, ss ? ss.getName() : '');
+  ck('reportsシートがある', !!sh, sh ? ('行数: ' + sh.getLastRow()) : '未作成');
+  if (sh) {
+    var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0].map(String);
+    var missing = HEADERS.filter(function (h) { return head.indexOf(h) === -1; });
+    ck('ヘッダーが揃っている', missing.length === 0, missing.length ? ('不足: ' + missing.join(',')) : head.join(','));
+  }
+  var folderOk = false, folderInfo = '';
+  try { var f = getPhotoFolder(); folderOk = true; folderInfo = f.getName() + ' / ' + f.getId(); } catch (e) { folderInfo = String(e); }
+  ck('写真フォルダにアクセスできる', folderOk, folderInfo);
+  ck('自動削除が無効になっている（初期は無効が正）', String(sp.getProperty('ENABLE_AUTO_PURGE')) !== 'true', 'ENABLE_AUTO_PURGE=' + sp.getProperty('ENABLE_AUTO_PURGE'));
+  ck('保存期間が設定されている', !!sp.getProperty('PHOTO_TTL_DAYS'), 'PHOTO_TTL_DAYS=' + sp.getProperty('PHOTO_TTL_DAYS'));
+  ck('環境が設定されている', !!sp.getProperty('ENV'), 'ENV=' + sp.getProperty('ENV'));
+
+  var ng = checks.filter(function (c) { return !c.ok; });
+  var out = { allOk: ng.length === 0, ngCount: ng.length, checks: checks };
+  Logger.log(JSON.stringify(out, null, 2));
+  return out;
+}
+
+/* 接続テスト用：1件書いて読み、そのテスト行を削除する（本番データに残しません） */
+function selfTestReadWrite() {
+  var sh = getSheet();
+  var id = 'selftest-' + Utilities.getUuid();
+  sh.appendRow([id, Date.now(), '_selftest', '_test', 'ping', '', '接続テスト', '[]']);
+  var lastRow = sh.getLastRow();
+  var wrote = sh.getRange(lastRow, 1).getValue() === id;
+  if (wrote) sh.deleteRow(lastRow); // テスト行は残さない
+  var out = { wrote: wrote, cleaned: wrote };
+  Logger.log(JSON.stringify(out));
+  return out;
+}
+
 function getPhotoFolder() {
   var it = DriveApp.getFoldersByName(PHOTO_FOLDER);
   return it.hasNext() ? it.next() : DriveApp.createFolder(PHOTO_FOLDER);
