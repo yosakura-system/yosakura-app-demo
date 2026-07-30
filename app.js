@@ -1502,15 +1502,36 @@
     return [
       { id:'firstphoto', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'}, oblig:'required', freq:'daily', due:'23:59', target:'except_course', hqReview:'exception', detect:'fp', linkApp:'firstphoto' },
       { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},       oblig:'required', freq:'daily', due:'23:59', target:'all',          hqReview:'each',      detect:'sk', linkApp:'soukatsu' },
-      { id:'openphoto',  name:{ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'},          oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'none', linkApp:null },
+      { id:'openphoto',  name:{ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'},          oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'subrec', linkApp:'openphoto' },
       { id:'cleaning',   name:{ja:'開店清掃チェック',en:'Opening cleaning',vi:'Vệ sinh mở cửa'}, oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'none', linkApp:'checklist' },
       { id:'facade',     name:{ja:'内外装動画＋ポップ',en:'Interior video & POP',vi:'Video & POP'}, oblig:'required', freq:'monthly', due:'23:59', target:'all',       hqReview:'each',      detect:'video', linkApp:'storevideo' }
     ];
   }
-  const getMasters = () => { let m = jget(SUBKEYS.master, null); if (!m) { m = defaultMasters(); jset(SUBKEYS.master, m); } return m; };
-  const saveMasters = (m) => jset(SUBKEYS.master, m);
+  /* 提出管理データの全端末共有：既存バックエンド(reports)に専用kindで保存し本部全員で共有（追加kindのみ・既存挙動は不変） */
+  const SUB_KINDS = { master:'submaster', status:'substat', holiday:'subholiday', open:'subrec' };
+  const parseNote = (n) => { try { return typeof n === 'string' ? (n ? JSON.parse(n) : {}) : (n || {}); } catch { return {}; } };
+  const subRows = (kind) => { try { return getReports().filter(r => r.kind === kind); } catch { return []; } };
+  function postSub(kind, store, item, note, photos) {
+    const rep = { kind, store: store || '*', item: item || '', note: (note && typeof note === 'object') ? JSON.stringify(note) : (note || ''), photos: photos || [], t: Date.now() };
+    try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
+    if (useBackend()) postReport(rep);
+    return rep;
+  }
+  // 提出物マスタ（本部設定・全端末共有）：最新のsubmaster行→無ければローカル→既定
+  function getMasters() {
+    const rows = subRows(SUB_KINDS.master).sort((a, b) => (b.t || 0) - (a.t || 0));
+    if (rows.length) { const m = parseNote(rows[0].note); if (Array.isArray(m) && m.length) return m; }
+    let m = jget(SUBKEYS.master, null); if (!m) { m = defaultMasters(); jset(SUBKEYS.master, m); } return m;
+  }
+  function saveMasters(m) { jset(SUBKEYS.master, m); postSub(SUB_KINDS.master, '*', 'master', m); pushAudit('master', 'update'); }
 
-  const getHolidays = () => jget(SUBKEYS.holiday, {});
+  // 定休日（全端末共有）：店舗ごと最新のsubholiday行＋ローカル
+  function getHolidays() {
+    const map = Object.assign({}, jget(SUBKEYS.holiday, {}));
+    subRows(SUB_KINDS.holiday).sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(r => { const p = parseNote(r.note); if (r.store && Array.isArray(p.dates)) map[r.store] = p.dates; });
+    return map;
+  }
+  function setHoliday(store, dates) { const m = jget(SUBKEYS.holiday, {}); m[store] = dates; jset(SUBKEYS.holiday, m); postSub(SUB_KINDS.holiday, store, 'holiday', { dates }); pushAudit('holiday', store); }
   const isHoliday = (store, dk) => (getHolidays()[store] || []).includes(dk);
   const getAudit = () => jget(SUBKEYS.audit, []);
   function pushAudit(action, detail) {
@@ -1520,15 +1541,21 @@
   }
 
   // 3軸ステータス（提出は実データから算出／判定・本部確認・改善確認はここに保存）
-  const statusKey = (store, mid, dk) => `${store}${mid}${dk}`;
-  const getStatusMap = () => jget(SUBKEYS.status, {});
+  const statusKey = (store, mid, dk) => `${store}|${mid}|${dk}`;
+  function getStatusMap() {
+    const map = Object.assign({}, jget(SUBKEYS.status, {}));
+    subRows(SUB_KINDS.status).sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(r => {
+      const p = parseNote(r.note); const key = `${r.store || ''}|${r.item || ''}`;
+      map[key] = Object.assign({}, map[key], { judge: p.judge || '', hqConfirm: p.hqConfirm || '', improve: p.improve || '', ts: r.t, by: p.by });
+    });
+    return map;
+  }
   function getStatus(store, mid, dk) { return getStatusMap()[statusKey(store, mid, dk)] || { judge:'', hqConfirm:'', improve:'' }; }
   function setStatus(store, mid, dk, patch) {
-    const map = getStatusMap(); const k = statusKey(store, mid, dk);
-    const cur = map[k] || { judge:'', hqConfirm:'', improve:'', trail:[] };
-    const next = Object.assign({}, cur, patch, { ts: Date.now(), by: getRole() });
-    next.trail = (cur.trail || []).concat([{ ts: Date.now(), by: getRole(), patch }]).slice(-20);
-    map[k] = next; jset(SUBKEYS.status, map);
+    const cur = getStatus(store, mid, dk);
+    const next = Object.assign({ judge:'', hqConfirm:'', improve:'' }, cur, patch);
+    const map = jget(SUBKEYS.status, {}); map[statusKey(store, mid, dk)] = Object.assign({}, next, { ts: Date.now(), by: getRole() }); jset(SUBKEYS.status, map);
+    postSub(SUB_KINDS.status, store, `${mid}|${dk}`, { judge: next.judge, hqConfirm: next.hqConfirm, improve: next.improve, by: getRole() });
     pushAudit('status', `${store}/${mid}/${dk}:${JSON.stringify(patch)}`);
     return next;
   }
@@ -1550,6 +1577,7 @@
       if (m.detect === 'sk')     return getSk().some(r => r.store === store && inScope(r.t));
       if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
       if (m.detect === 'video')  return getReports().some(r => r.kind === 'video' && r.store === store && inScope(r.t));
+      if (m.detect === 'subrec') return subRows(SUB_KINDS.open).some(r => r.store === store && String(r.item || '').split('|')[0] === m.id && inScope(r.t));
     } catch (e) {}
     return false;
   }
@@ -1672,12 +1700,62 @@
     document.body.appendChild(mask);
   }
 
+  /* ---------- 店舗向け：オープン写真の提出（実データ・全端末共有） ---------- */
+  APP_VIEWS.openphoto = () => {
+    const store = visibleStores()[0];
+    const dk = dateKeyFor(store, Date.now());
+    const m = getMasters().find(x => x.id === 'openphoto') || { id:'openphoto', detect:'subrec', freq:'daily' };
+    const done = detectSubmitted(store, m, dk);
+    const recent = subRows(SUB_KINDS.open).filter(r => visibleStores().includes(r.store)).sort((a, b) => b.t - a.t).slice(0, 6);
+    return `
+      <div class="card">
+        <h3>${L({ja:'オープン写真の提出',en:'Submit opening photo',vi:'Nộp ảnh mở cửa'})} — ${esc(storeShort(store))}</h3>
+        ${done ? `<p class="hint" style="display:block;color:#2a7">${L({ja:'本日は提出済みです（追加提出も可）。',en:'Submitted today (you can add more).',vi:'Đã nộp hôm nay (có thể thêm).'})}</p>` : `<p class="hint" style="display:block">${L({ja:'開店時の店内・外観を1枚。',en:'One photo of the store at opening.',vi:'Một ảnh cửa hàng khi mở cửa.'})}</p>`}
+        <label class="fld"><span>${L({ja:'店舗',en:'Store',vi:'Cửa hàng'})}</span><select id="op_store">${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ja:'写真',en:'Photos',vi:'Ảnh'})}</span>
+          <div class="photo-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ja:'撮影して追加',en:'Take photos',vi:'Chụp ảnh'})}</b><br><small>${L({ja:'開店時の店内・外観',en:'Store interior/exterior at open',vi:'Nội/ngoại thất khi mở cửa'})}</small></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
+          <div class="photo-thumbs" id="photoThumbs"></div>
+        </label>
+        <button class="btn-primary" data-topensubmit="1">${L({ja:'提出する',en:'Submit',vi:'Gửi'})}</button>
+        <div class="hint">${L({ja:'※ 写真が無いと提出できません（提出漏れ防止）。',en:'A photo is required to submit.',vi:'Cần có ảnh mới gửi được.'})}</div>
+      </div>
+      <div class="card"><h3>${L({ja:'最近のオープン写真',en:'Recent opening photos',vi:'Ảnh mở cửa gần đây'})}</h3>
+        ${recent.length ? recent.map(r=>`<div class="rep">${r.photos&&r.photos.length?`<img class="rep-photo" src="${photoThumb(r.photos[0])}" data-full="${photoFull(r.photos[0])}" alt="">`:`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}</div></div></div>`).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
+      </div>`;
+  };
+
+  /* ---------- 提出履歴（直近7日・実データ） ---------- */
+  APP_VIEWS.history = () => {
+    const store = visibleStores()[0];
+    const masters = getMasters().filter(m => appliesToStore(m, store) && m.oblig !== 'off' && m.detect !== 'none');
+    const days = []; for (let i = 0; i < 7; i++) days.push(dateKeyFor(store, Date.now() - i * 86400000));
+    const rows = days.map(dk => {
+      const chips = masters.map(m => { const sub = detectSubmitted(store, m, dk); const st = getStatus(store, m.id, dk); const jl = st.judge ? ` ${L(JUDGE_LABEL[st.judge])}` : ''; return `<span class="kind ${sub?'b':'a'}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(m.name))}${sub?'✓':'✗'}${jl}</span>`; }).join('');
+      return `<div class="rep"><div class="body"><div class="l1">${dk}${isHoliday(store,dk)?` <small style="color:#8a8">(${L({ja:'定休日',en:'Holiday',vi:'Nghỉ'})})</small>`:''}</div><div class="l2">${chips || '—'}</div></div></div>`;
+    }).join('');
+    return `<div class="card"><h3>${L({ja:'提出履歴（直近7日）',en:'History (last 7 days)',vi:'Lịch sử (7 ngày)'})} — ${esc(storeShort(store))}</h3>${rows}
+      <p class="hint" style="display:block">${L({ja:'※ 実際の提出データ（全端末同期）から表示しています。',en:'From real synced submission data.',vi:'Từ dữ liệu đã nộp (đồng bộ).'})}</p></div>`;
+  };
+
   // 委譲イベント（$appは再描画で中身が入れ替わるが要素自体は残るため一度だけ登録）
   (function bindSubmissionOnce() {
     if (document.__subBound) return; document.__subBound = true;
     document.addEventListener('click', (e) => {
-      const t = e.target.closest('[data-tsub],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp]');
+      const t = e.target.closest('[data-tsub],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit]');
       if (!t) return;
+      if (t.dataset.topensubmit) {
+        const sel = document.getElementById('op_store');
+        const store = (sel && sel.value) || visibleStores()[0];
+        const thumbsEl = document.getElementById('photoThumbs');
+        const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0, 6) : [];
+        if (!photos.length) { toast(L({ja:'写真を撮影・選択してください（提出漏れ防止）',en:'Please add a photo before submitting',vi:'Vui lòng thêm ảnh trước khi gửi'})); return; }
+        const dk = dateKeyFor(store, Date.now());
+        postSub(SUB_KINDS.open, store, `openphoto|${dk}`, { by: getRole() }, photos);
+        pushAudit('open_submit', store);
+        toast(L({ja:'オープン写真を提出しました。ありがとうございます！',en:'Opening photo submitted. Thank you!',vi:'Đã gửi ảnh mở cửa. Cảm ơn!'}));
+        go('/app/kyou');
+        return;
+      }
       if (t.dataset.tsub) { go(`/app/${t.dataset.tsub}`); return; }
       if (t.dataset.tmissing) { const cur = localStorage.getItem('yosakura_sub_missingonly') === '1'; localStorage.setItem('yosakura_sub_missingonly', cur ? '0' : '1'); render(); return; }
       if (t.dataset.tdrill) { openTeishutsuDrill(t.dataset.tdrill); return; }
@@ -1696,7 +1774,17 @@
     });
   })();
 
-  // 「今日出すもの」をアプリ一覧へ追加（店舗ロール中心・本部も閲覧可）
+  // 提出管理モジュールをアプリ一覧へ追加（店舗ロール中心・本部も閲覧可）
+  if (!appById('openphoto')) {
+    APPS.unshift({ id:'openphoto', group:'genba', icon:'camera', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'オープン写真の提出', en:'Opening photo', vi:'Ảnh mở cửa' },
+      desc:{ ja:'開店時の店内・外観を提出', en:'Submit store photo at opening', vi:'Nộp ảnh khi mở cửa' } });
+  }
+  if (!appById('history')) {
+    APPS.unshift({ id:'history', group:'genba', icon:'report', roles:['staff','manager','owner','hq'],
+      name:{ ja:'提出履歴', en:'Submission history', vi:'Lịch sử nộp' },
+      desc:{ ja:'直近7日の提出・判定を確認', en:'Last 7 days of submissions', vi:'7 ngày gần đây' } });
+  }
   if (!appById('kyou')) {
     APPS.unshift({ id:'kyou', group:'genba', icon:'check', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'今日出すもの', en:'Today to submit', vi:'Cần nộp hôm nay' },
