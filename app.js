@@ -1,8 +1,8 @@
 /* ===================================================================
-   世桜アプリ（デモ） app.js  ─ 多言語対応（日本語 / English / Tiếng Việt）
+   世桜アプリ app.js  ─ 多言語対応（日本語 / English / Tiếng Việt）
    1つの窓口 → 中に多数の業務アプリ → 権限で出し分け → すべてここで管理
    フレームワーク不使用のバニラJS・静的PWA（GitHub Pagesで無料公開可）
-   ※デモ。データは端末内(localStorage)のみ。本番はGAS+スプレッドシート等に接続する想定。
+   データはGAS＋スプレッドシート／Googleドライブに保存し、全端末で同期する（未接続時はこの端末内に保存）。
 =================================================================== */
 (() => {
   'use strict';
@@ -119,7 +119,7 @@
     { id:'tabemono', group:'genba', icon:'food', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'食べ残し・食材ロス報告', en:'Food Waste & Loss', vi:'Thức ăn thừa & hao hụt' },
       desc:{ ja:'お客様の残し／食材ロスを記録', en:'Log leftovers / ingredient loss', vi:'Ghi đồ thừa / hao hụt' } },
-    { id:'firstphoto', group:'genba', icon:'camera', roles:['staff','manager','owner','hq'],
+    { id:'firstphoto', group:'genba', icon:'camera', soon:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'一食目写真の報告', en:'First-plate Photo', vi:'Ảnh món đầu tiên' },
       desc:{ ja:'提供直後の一枚を本部へ', en:'Send the first serving photo', vi:'Gửi ảnh ngay khi phục vụ' } },
     { id:'kizuki', group:'genba', icon:'idea', roles:['staff','manager','owner','hq'],
@@ -137,10 +137,10 @@
     { id:'checklist', group:'genba', icon:'check', roles:['staff','manager','owner','hq'],
       name:{ ja:'開店・清掃チェック', en:'Opening & Cleaning', vi:'Mở cửa & Vệ sinh' },
       desc:{ ja:'毎日の開店前チェック', en:'Daily pre-open checklist', vi:'Kiểm tra trước khi mở cửa' } },
-    { id:'links', group:'genba', icon:'link', roles:['staff','manager','owner','hq'],
+    { id:'links', group:'genba', icon:'link', soon:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'リンク集', en:'Quick Links', vi:'Liên kết' },
       desc:{ ja:'初期設定・発注などの必要リンク', en:'Setup, ordering and key links', vi:'Cài đặt, đặt hàng, liên kết' } },
-    { id:'inventory', group:'storeops', icon:'box', roles:['manager','owner','hq'],
+    { id:'inventory', group:'storeops', icon:'box', soon:true, roles:['manager','owner','hq'],
       name:{ ja:'棚卸・在庫入力', en:'Stocktake', vi:'Kiểm kho' },
       desc:{ ja:'品目ごとの在庫をスマホで入力', en:'Enter stock by item on your phone', vi:'Nhập tồn kho theo mặt hàng' } },
     { id:'openreg', group:'storeops', icon:'coins', roles:['manager','owner','hq'],
@@ -149,7 +149,7 @@
     { id:'storevideo', group:'storeops', icon:'video', roles:['staff','manager','owner','hq'],
       name:{ ja:'店内動画の共有', en:'In-store Video', vi:'Video trong quán' },
       desc:{ ja:'店内一周の動画リンクを共有', en:'Share store walkthrough videos', vi:'Chia sẻ video trong quán' } },
-    { id:'manual', group:'learn', icon:'book', roles:['staff','manager','owner','hq'],
+    { id:'manual', group:'learn', icon:'book', soon:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' },
       desc:{ ja:'理念・接客・衛生・商品', en:'Values, service, hygiene, menu', vi:'Triết lý, phục vụ, vệ sinh' } },
     { id:'survey', group:'learn', icon:'star', roles:['staff','manager','owner','hq'],
@@ -164,16 +164,16 @@
     { id:'mtg', group:'storeops', icon:'mtg', roles:['manager','owner','hq'],
       name:{ ja:'月例MTG', en:'Monthly Meeting', vi:'Họp hàng tháng' },
       desc:{ ja:'各店の定例MTGと議題を一元管理', en:'All stores meetings & agendas', vi:'Lịch họp & nội dung mọi cửa hàng' } },
-    { id:'hr', group:'storeops', icon:'hr', roles:['manager','owner','hq'],
+    { id:'hr', group:'storeops', icon:'hr', soon:true, roles:['manager','owner','hq'],
       name:{ ja:'スタッフ評価・面談', en:'Staff Review', vi:'Đánh giá nhân viên' },
       desc:{ ja:'キャリアアップ制度と面談', en:'Career ranks & interviews', vi:'Xếp hạng & phỏng vấn' } },
-    { id:'order', group:'storeops', icon:'cart', roles:['manager','owner','hq'],
+    { id:'order', group:'storeops', icon:'cart', soon:true, roles:['manager','owner','hq'],
       name:{ ja:'備品・食材の発注', en:'Order Supplies', vi:'Đặt vật tư' },
       desc:{ ja:'カタログから本部へ発注', en:'Order from the HQ catalog', vi:'Đặt từ danh mục HQ' } },
-    { id:'schedule', group:'biz', icon:'calendar', roles:['owner','hq'],
+    { id:'schedule', group:'biz', icon:'calendar', soon:true, roles:['owner','hq'],
       name:{ ja:'開業スケジュール D-90', en:'Opening Schedule D-90', vi:'Lịch khai trương D-90' },
       desc:{ ja:'契約〜開業のマスター工程', en:'Contract to opening master plan', vi:'Từ hợp đồng đến khai trương' } },
-    { id:'pl', group:'biz', icon:'yen', roles:['owner','hq'],
+    { id:'pl', group:'biz', icon:'yen', soon:true, roles:['owner','hq'],
       name:{ ja:'数値・PL', en:'Numbers & P/L', vi:'Số liệu & P/L' },
       desc:{ ja:'損益・KPIの見える化', en:'Profit and KPI visibility', vi:'Lợi nhuận & KPI' } },
     { id:'dashboard', group:'hq', icon:'gauge', roles:['hq'],
@@ -182,13 +182,13 @@
     { id:'tasks', group:'hq', icon:'task', roles:['hq'],
       name:{ ja:'課題・タスク管理', en:'Task Management', vi:'Quản lý công việc' },
       desc:{ ja:'本部の全課題を担当・状況で管理', en:'All HQ tasks by owner & status', vi:'Công việc theo phụ trách & trạng thái' } },
-    { id:'invoice', group:'hq', icon:'invoice', roles:['hq'],
+    { id:'invoice', group:'hq', icon:'invoice', soon:true, roles:['hq'],
       name:{ ja:'請求・支払管理', en:'Billing & Payment', vi:'Hóa đơn & Thanh toán' },
       desc:{ ja:'取引先ごとの請求方法・締日', en:'Vendor billing method & cutoff', vi:'Cách & kỳ hạn thanh toán' } },
     { id:'teishutsu', group:'hq', icon:'inbox', roles:['hq'],
       name:{ ja:'加盟店・提出物管理', en:'Submissions', vi:'Nộp tài liệu' },
       desc:{ ja:'提出状況と未提出の自動抽出', en:'Track & flag missing submissions', vi:'Theo dõi tài liệu chưa nộp' } },
-    { id:'camera', group:'hq', icon:'video', roles:['hq'],
+    { id:'camera', group:'hq', icon:'video', soon:true, roles:['hq'],
       name:{ ja:'防犯カメラ確認', en:'Security Cameras', vi:'Camera an ninh' },
       desc:{ ja:'本部から全店を一括確認', en:'Check all stores from HQ', vi:'Xem mọi cửa hàng từ HQ' } },
     { id:'svfb', group:'hq', icon:'report', roles:['hq'],
@@ -458,7 +458,7 @@
         ${heroBlock}
         ${install}
         ${sections}
-        <div class="footer-note">${L({ ja:'世桜アプリ demo ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app demo · View changes by role & language (switch at top)', vi:'Demo YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}</div>
+        <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}</div>
       </main>`;
     return shell(inner, tab);
   }
@@ -475,7 +475,7 @@
       </div>`;
     }
     return `<button class="tile" data-open="${a.id}">
-      ${a.live ? '<span class="live">● LIVE</span>' : ''}
+      ${a.soon ? `<span class="live" style="background:#8a8f98">${L({ja:'準備中',en:'Soon',vi:'Sắp có'})}</span>` : (a.live ? '<span class="live">● LIVE</span>' : '')}
       <div class="ico">${svg(a.icon)}</div>
       <div class="nm">${esc(L(a.name))}</div>
       <div class="desc">${esc(L(a.desc))}</div>
@@ -503,7 +503,7 @@
   const groupTab = (g) => (g === 'genba' || g === 'learn' || g === 'hq') ? g : 'home';
 
   const NOTE = (o) => `<p class="mock-note">${L(o)}</p>`;
-  const demoImg = { ja:'◆ デモ表示（画面イメージ）', en:'◆ Demo view (mockup)', vi:'◆ Bản demo (mô phỏng)' };
+  const demoImg = { ja:'◆ この画面は準備中です（画面イメージ）', en:'◆ This screen is in preparation (mockup)', vi:'◆ Màn hình đang chuẩn bị (mô phỏng)' };
 
   /* =================== 各アプリ =================== */
   const APP_VIEWS = {};
@@ -619,7 +619,7 @@
           <div class="photo-thumbs" id="photoThumbs"></div>
         </label>
         <button class="btn-primary" id="submitRep">${L({ ja:'報告する', en:'Submit', vi:'Gửi báo cáo' })}</button>
-        <div class="hint">${L({ ja:'※デモ：この端末に保存され、下と「本部ダッシュボード」に反映されます', en:'Demo: saved on this device and shown below and in the HQ Dashboard', vi:'Demo: lưu trên máy này, hiển thị bên dưới và ở Bảng điều khiển' })}</div>
+        <div class="hint">${L({ ja:'保存すると、下の一覧と「本部ダッシュボード」に反映されます', en:'Saved and shown below and in the HQ Dashboard', vi:'Được lưu và hiển thị bên dưới và ở Bảng điều khiển' })}</div>
       </div>
       <div class="card">
         <h3>${L({ ja:'最近の報告', en:'Recent reports', vi:'Báo cáo gần đây' })}</h3>
@@ -641,7 +641,7 @@
   APP_VIEWS.firstphoto = () => {
     const recent = getFP().filter(r => visibleStores().includes(r.store)).sort((x,y)=>y.t-x.t).slice(0,6);
     return `
-      ${NOTE({ ja:'◆ 撮影→提出まで動きます（AI判定はデモ演出）', en:'◆ Capture→submit works (AI judgment is a demo)', vi:'◆ Chụp→gửi hoạt động (AI là demo)' })}
+      ${NOTE({ ja:'◆ 準備中：AI判定の運用を検討中です。正式な運用開始までは、これまでどおりの方法でお願いします（お試しでの提出は可能です）', en:'◆ In preparation: AI judgment is under discussion. Please continue the current method until the official start (you may try submitting here).', vi:'◆ Đang chuẩn bị: cách dùng AI đang được bàn. Vui lòng giữ cách hiện tại cho đến khi chính thức.' })}
       <div class="card" id="fpForm">
         <h3>${L({ ja:'提供直後の一枚を報告', en:'Report the first serving photo', vi:'Gửi ảnh món vừa phục vụ' })}</h3>
         <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="fp_store">${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
@@ -788,7 +788,7 @@
       todays.forEach(e => { if (byStore[e.store] != null) byStore[e.store]++; });
       const storeRows = Object.entries(byStore).sort((a,b)=>b[1]-a[1]);
       return `
-        ${NOTE({ ja:'◆ 全店の本日の来店経路を集約表示（本部・閲覧モード。記録は各店舗で行います）', en:'◆ Aggregated arrival routes for all stores (HQ view)', vi:'◆ Tổng hợp nguồn khách toàn hệ thống (chế độ HQ)' })}
+        ${NOTE({ ja:'◆ 全店の本日の来店経路を集約表示（本部・閲覧モード。記録は各店舗で行います）／※サーベイを使っている店舗は、来店経路もサーベイ側で取得します（二重入力は不要です）', en:'◆ Aggregated arrival routes (HQ view). Stores using the survey collect this in the survey instead.', vi:'◆ Tổng hợp nguồn khách (HQ). Cửa hàng dùng khảo sát thì thu thập ở khảo sát.' })}
         <div class="card">
           <h3>${L({ ja:'本日の来店経路（全店）', en:'Arrival routes today (all stores)', vi:'Nguồn khách hôm nay (toàn bộ)' })}</h3>
           <div class="stat-row"><div class="stat"><div class="n">${total}</div><div class="k">${L({ ja:'合計', en:'Total', vi:'Tổng' })}</div></div></div>
@@ -837,7 +837,7 @@
           <div class="stat"><div class="n" id="or_diff">±0</div><div class="k">${L({ ja:'準備金との差', en:'vs float', vi:'So với quỹ' })}</div></div>
         </div>
         <button class="btn-primary" id="submitOr">${L({ ja:'開局する', en:'Open register', vi:'Mở quầy' })}</button>
-        <div class="hint">${L({ ja:'※デモ：この端末に保存され、履歴に反映されます', en:'Demo: saved on this device and shown in history', vi:'Demo: lưu trên máy này' })}</div>
+        <div class="hint">${L({ ja:'保存すると履歴に反映されます', en:'Saved and shown in history', vi:'Được lưu và hiển thị trong lịch sử' })}</div>
       </div>
       <div class="card"><h3>${L({ ja:'最近の開局', en:'Recent opens', vi:'Mở quầy gần đây' })}</h3>
         <div>${recent.length ? recent.map(orRow).join('') : `<div class="muted">${L({ ja:'まだありません', en:'None yet', vi:'Chưa có' })}</div>`}</div>
@@ -896,7 +896,7 @@
         <button class="stag st-new" id="checkReset" style="cursor:pointer;margin-top:10px">${L({ja:'翌日用にリセット',en:'Reset for next day',vi:'Đặt lại cho ngày mai'})}</button>
       </div>
       ${groupsHTML}
-      <div class="hint">${L({ ja:'※デモ：チェックはこの端末に保存されます', en:'Demo: checks are saved on this device', vi:'Demo: lưu trạng thái trên máy này' })}</div>`;
+      <div class="hint">${L({ ja:'チェックした内容は保存されます', en:'Your checks are saved', vi:'Nội dung kiểm tra được lưu' })}</div>`;
   };
 
   /* ④ マニュアル（モック）*/
@@ -908,7 +908,7 @@
     ['05','video',{ja:'衛生管理',en:'Hygiene',vi:'Vệ sinh'},{ja:'清掃ルール／食中毒対策／食材管理',en:'Cleaning / food safety / ingredients',vi:'Vệ sinh / an toàn TP / nguyên liệu'}]
   ];
   APP_VIEWS.manual = () => `
-    ${NOTE({ ja:'◆ デモ表示（本部マニュアル目次に沿った構成）', en:'◆ Demo (based on the HQ manual index)', vi:'◆ Demo (theo mục lục cẩm nang HQ)' })}
+    ${NOTE({ ja:'◆ 準備中：本部マニュアル目次に沿った構成（中身は順次追加します）', en:'◆ In preparation: structured by the HQ manual index', vi:'◆ Đang chuẩn bị: theo mục lục cẩm nang HQ' })}
     <div class="card">
       ${MANUAL.map(([no,ic,t,s])=>`<div class="mrow" data-mock="1"><div class="mi">${svg(ic)}</div><div class="mt"><b>${no}. ${esc(L(t))}</b><span>${esc(L(s))}</span></div><span class="chev">${svg('chev')}</span></div>`).join('')}
     </div>
@@ -948,33 +948,22 @@
   const SURVEY_URL = 'https://yosakurasurvey.vercel.app/store2.html';
   APP_VIEWS.survey = () => {
     const vis = visibleStores();
-    const store = vis[0];
-    const rows = getSurvey().filter(r=>vis.includes(r.store));
+    const rows = getSurvey().filter(r => vis.includes(r.store));
     const n = rows.length;
-    const avg = n ? (rows.reduce((s,r)=>s+(Number(r.sat)||0),0)/n) : 0;
+    const avg = n ? (rows.reduce((s, r) => s + (Number(r.sat) || 0), 0) / n) : 0;
     return `
-      ${NOTE({ ja:'◆ 実際のiPadサーベイ運用マニュアルに準拠。回答は自店・本部の集計に反映されます。', en:'◆ Based on the real iPad survey manual.', vi:'◆ Theo cẩm nang khảo sát iPad thực tế.' })}
+      ${NOTE({ ja:'◆ サーベイはサーベイ（iPadの本番フォーム）で運用します。このアプリは入口と運用メモの役割です。', en:'◆ Surveys are run in the live iPad form. This app provides the entry point and operating notes.', vi:'◆ Khảo sát chạy trên form iPad thật. Ứng dụng chỉ là lối vào và ghi chú vận hành.' })}
       <div class="card">
+        <h3>${L({ ja:'お客様アンケート（本番）', en:'Guest survey (live)', vi:'Khảo sát khách (thật)' })}</h3>
         <button class="btn-primary" id="surveyOpen" data-url="${SURVEY_URL}">${L({ ja:'本番サーベイを開く（お客様のiPad用）', en:'Open live survey (for guests)', vi:'Mở khảo sát thật (cho khách)' })}</button>
         <div class="hint">${L({ ja:'声かけは短く：「お時間がありましたら、アンケートにご協力をお願いいたします。」／回答は誘導せず、満足度を最優先に。', en:'Keep it short; never lead the answer; prioritize the guest.', vi:'Nói ngắn gọn; không gợi ý câu trả lời.' })}</div>
-      </div>
-      <div class="card" id="surveyForm">
-        <h3>${L({ ja:'アンケート（デモ入力）', en:'Survey (demo input)', vi:'Khảo sát (demo)' })}</h3>
-        <div class="muted" style="margin-bottom:6px">${esc(store)}</div>
-        <label class="fld"><span>${L({ ja:'満足度', en:'Satisfaction', vi:'Mức hài lòng' })}</span>
-          <div class="seg" data-seg="sat">${SAT_FACES.map(f=>`<button type="button" data-v="${f.v}" class="${f.v===5?'on':''}" title="${esc(L(f.t))}" style="font-size:20px">${f.e}</button>`).join('')}</div></label>
-        <label class="fld"><span>${L({ ja:'来店のきっかけ', en:'How did you hear about us?', vi:'Nguồn biết đến' })}</span>
-          <select id="survey_route">${ROUTES.map(r=>`<option value="${r.v}">${esc(L(r.t))}</option>`).join('')}</select></label>
-        <label class="fld"><span>${L({ ja:'改善してほしい点（複数選択可・任意）', en:'Points to improve (multi, optional)', vi:'Điểm cần cải thiện' })}</span>
-          <div class="seg-multi" data-multiseg="issue">${SURVEY_ISSUES.map(o=>`<button type="button" class="chip" data-v="${o.v}">${esc(L(o.t))}</button>`).join('')}</div></label>
-        <label class="fld"><span>${L({ ja:'ご感想（任意）', en:'Comments (optional)', vi:'Nhận xét' })}</span><textarea id="survey_note" placeholder="${L({ ja:'ご意見・ご感想をお聞かせください', en:'Your feedback', vi:'Ý kiến của bạn' })}"></textarea></label>
-        <button class="btn-primary" id="submitSurvey">${L({ ja:'送信する', en:'Submit', vi:'Gửi' })}</button>
         <div class="hint">${L({ ja:'※「大変満足／満足」の時だけ、控えめに口コミQRをご案内（断られたらすぐ引く）。', en:'Only when highly satisfied, gently offer the review QR.', vi:'Chỉ khi rất hài lòng mới mời đánh giá.' })}</div>
       </div>
-      <div class="card">
-        <h3>${L(vis.length>1 ? { ja:'集計（全店）', en:'Summary (all stores)', vi:'Tổng hợp (toàn bộ)' } : { ja:'集計（自店）', en:'Summary (this store)', vi:'Tổng hợp (cửa hàng)' })}</h3>
-        <div class="stat-row"><div class="stat"><div class="n">${n}</div><div class="k">${L({ ja:'回答数', en:'Responses', vi:'Phản hồi' })}</div></div><div class="stat"><div class="n">${n?avg.toFixed(1):'—'}</div><div class="k">${L({ ja:'平均満足度', en:'Avg. satisfaction', vi:'Hài lòng TB' })}</div></div></div>
-      </div>`;
+      ${n ? `<div class="card">
+        <h3>${L({ ja:'これまでにこのアプリから記録した分', en:'Recorded via this app so far', vi:'Đã ghi qua ứng dụng' })}</h3>
+        <div class="stat-row"><div class="stat"><div class="n">${n}</div><div class="k">${L({ ja:'回答数', en:'Responses', vi:'Phản hồi' })}</div></div><div class="stat"><div class="n">${avg.toFixed(1)}</div><div class="k">${L({ ja:'平均満足度', en:'Avg. satisfaction', vi:'Hài lòng TB' })}</div></div></div>
+        <p class="hint" style="display:block">${L({ ja:'※ 集計の正はサーベイ側です。こちらは過去にこのアプリから入力された分のみを表示しています。', en:'The survey tool is the source of truth. This shows only entries made in this app.', vi:'Số liệu chuẩn nằm ở công cụ khảo sát.' })}</p>
+      </div>` : ''}`;
   };
 
   /* ⑥ 総括表（動く：実日報フォーマットで入力→保存→履歴＆本部集約）*/
@@ -1020,7 +1009,7 @@
         <label class="fld"><span>${L({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' })}</span><textarea id="sk_note" placeholder="${L({ja:'本日の気づき・清掃箇所など',en:'Findings, cleaning done, etc.',vi:'Ghi chú, vệ sinh đã làm...'})}"></textarea></label>
         <label class="fld"><span>${L({ ja:'翌日の食材発注', en:'Tomorrow ingredient order', vi:'Đặt NL ngày mai' })}</span><textarea id="sk_order" placeholder="${L({ja:'例：豆乳6／寿司のエビ2／お米 …',en:'e.g. soy milk 6 / shrimp 2 / rice …',vi:'vd: sữa đậu 6 / tôm 2 / gạo …'})}"></textarea></label>
         <button class="btn-primary" id="submitSk">${L({ja:'提出する',en:'Submit',vi:'Nộp'})}</button>
-        <div class="hint">${L({ja:'※デモ：この端末に保存され、下の履歴と「本部ダッシュボード」に反映されます',en:'Demo: saved on this device and shown below and in the HQ Dashboard',vi:'Demo: lưu trên máy này, hiển thị bên dưới và ở Bảng điều khiển'})}</div>
+        <div class="hint">${L({ja:'保存すると、下の履歴と「本部ダッシュボード」に反映されます',en:'Saved and shown below and in the HQ Dashboard',vi:'Được lưu và hiển thị bên dưới và ở Bảng điều khiển'})}</div>
       </div>
       <div class="card">
         <h3>${L({ ja:'最近の総括表', en:'Recent daily reports', vi:'Báo cáo gần đây' })}</h3>
@@ -1173,7 +1162,7 @@
     <div class="card">
       <h3>${L({ ja:'取引先マスター', en:'Vendor master', vi:'Danh sách nhà cung cấp' })}</h3>
       ${VENDORS.map(([n,k,how,when])=>`<div class="rep"><div class="body"><div class="l1">${esc(L(n))} <span class="muted" style="font-weight:400">・ ${esc(L(k))}</span></div><div class="l2">${esc(L(how))}</div></div><span class="amt" style="color:var(--sumi)">${esc(L(when))}</span></div>`).join('')}
-      <button class="btn-primary" style="margin-top:14px" id="demoInvoice">${L({ja:'請求書の受領状況を確認（デモ）',en:'Check invoice status (demo)',vi:'Kiểm tra hóa đơn (demo)'})}</button>
+      <button class="btn-primary" style="margin-top:14px" id="demoInvoice">${L({ja:'請求書の受領状況を確認（準備中）',en:'Check invoice status (in preparation)',vi:'Kiểm tra hóa đơn (đang chuẩn bị)'})}</button>
     </div>
     <p class="hint">${L({ ja:'本部宛か担当直送かが混在していた請求を一覧で見える化。備品POP等は納品後ロイヤリティに加算して加盟店へ請求。', en:'Makes billing routes visible. Supplies/POP are billed to franchisees via royalty after delivery.', vi:'Làm rõ luồng hóa đơn. Vật tư/POP tính cho cửa hàng qua royalty sau khi giao.' })}</p>`;
 
@@ -1185,7 +1174,7 @@
     ['B',{ja:'新人',en:'Newcomer',vi:'Mới vào'},{ja:'入って間もないスタッフ',en:'Recently joined staff',vi:'Nhân viên mới'}]
   ];
   APP_VIEWS.hr = () => `
-    ${NOTE({ ja:'◆ キャリアアップ制度・面談を一元管理（イメージ）', en:'◆ Career ranks & interviews, centralized (mockup)', vi:'◆ Xếp hạng & phỏng vấn tập trung (mô phỏng)' })}
+    ${NOTE({ ja:'◆ 準備中：キャリアアップ制度・面談の一元管理（画面イメージ）', en:'◆ In preparation: career ranks & interviews', vi:'◆ Đang chuẩn bị: xếp hạng & phỏng vấn' })}
     <div class="card">
       <h3>${L({ ja:'ランク制度', en:'Rank system', vi:'Hệ thống xếp hạng' })}</h3>
       ${RANKS.map(([r,t,d])=>`<div class="rep"><span class="rankb">${r}</span><div class="body"><div class="l1">${esc(L(t))}</div><div class="l2">${esc(L(d))}</div></div></div>`).join('')}
@@ -1229,7 +1218,7 @@
       <h3>${L({ ja:'発注する', en:'Place order', vi:'Đặt hàng' })}</h3>
       <label class="fld"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><select>${ORDER_ITEMS.map(it=>`<option>${esc(L(it.n))}</option>`).join('')}</select></label>
       <label class="fld"><span>${L({ ja:'数量', en:'Quantity', vi:'Số lượng' })}</span><input type="text" inputmode="numeric" placeholder="30"></label>
-      <button class="btn-primary" id="demoOrder">${L({ja:'発注する（デモ）',en:'Order (demo)',vi:'Đặt (demo)'})}</button>
+      <button class="btn-primary" id="demoOrder">${L({ja:'発注する（準備中）',en:'Order (in preparation)',vi:'Đặt (đang chuẩn bị)'})}</button>
       <div class="hint">${L({ ja:'納期は通常 発注後 約1週間。お品代は注文先業者の請求書に準じ、POP等は納品後ロイヤリティに加算して請求。POP修正500円〜／新規2,000円〜（要素追加は本部承認）。', en:'Lead time ~1 week. Costs follow vendor invoices; POP etc. billed via royalty. POP edit from 500 yen / new from 2,000 yen (additions need HQ approval).', vi:'Giao ~1 tuần. Chi phí theo hóa đơn NCC; POP tính qua royalty. Sửa POP từ 500 yen / mới từ 2,000 yen (thêm mục cần HQ duyệt).' })}</div>
     </div>`;
 
@@ -1247,7 +1236,7 @@
       {ja:'7DAYS 研修',en:'7DAYS training',vi:'Đào tạo 7DAYS'} ] }
   ];
   APP_VIEWS.links = () => `
-    ${NOTE({ ja:'◆ 各店に必要なリンクを1画面に集約（デモ）', en:'◆ Key links for each store in one place (demo)', vi:'◆ Liên kết cần thiết ở một nơi (demo)' })}
+    ${NOTE({ ja:'◆ 準備中：各店に必要なリンクを1画面に集約', en:'◆ In preparation: key links for each store in one place', vi:'◆ Đang chuẩn bị: liên kết cần thiết ở một nơi' })}
     ${LINK_GROUPS.map(sec=>`
       <div class="card">
         <h3>${esc(L(sec.g))}</h3>
@@ -1265,12 +1254,12 @@
     {ja:'茶碗',en:'Rice bowls',vi:'Chén cơm'}
   ];
   APP_VIEWS.inventory = () => `
-    ${NOTE({ ja:'◆ 棚卸をスマホ/PCから入力（デモ・保存はこの端末）', en:'◆ Enter stocktake from phone/PC (demo, saved on device)', vi:'◆ Nhập kiểm kho từ điện thoại/PC (demo)' })}
+    ${NOTE({ ja:'◆ 準備中：棚卸をスマホ/PCから入力（保存はこの端末）', en:'◆ In preparation: enter stocktake from phone/PC (saved on device)', vi:'◆ Đang chuẩn bị: nhập kiểm kho (lưu trên máy)' })}
     <div class="card">
       <h3>${L({ ja:'在庫入力', en:'Enter stock', vi:'Nhập tồn kho' })}</h3>
       <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select>${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
       ${INV_ITEMS.map(it=>`<div class="rep"><div class="body"><div class="l1">${esc(L(it))}</div></div><input type="text" inputmode="numeric" placeholder="0" style="width:70px;text-align:center;padding:8px"></div>`).join('')}
-      <button class="btn-primary" style="margin-top:12px" id="demoInv">${L({ja:'保存（デモ）',en:'Save (demo)',vi:'Lưu (demo)'})}</button>
+      <button class="btn-primary" style="margin-top:12px" id="demoInv">${L({ja:'保存（準備中）',en:'Save (in preparation)',vi:'Lưu (đang chuẩn bị)'})}</button>
       <div class="hint">${L({ ja:'本番では発注システムと連動し、基準を下回った品目を発注候補として自動抽出する構想。', en:'In production, links to ordering and auto-suggests items below threshold.', vi:'Bản chính: liên kết đặt hàng, tự gợi ý mặt hàng dưới ngưỡng.' })}</div>
     </div>`;
 
@@ -1426,7 +1415,7 @@
       const storeLabel = (s) => s === 'all' ? L({ ja:'全店（本部）', en:'All stores (HQ)', vi:'Tất cả (HQ)' }) : s;
       return `<div class="sheet">
         <div class="grip"></div>
-        <h3>${L({ ja:'表示を切り替える', en:'Switch view', vi:'Đổi hiển thị' })}<span class="demo-tag">${L({ja:'デモ',en:'Demo',vi:'Demo'})}</span></h3>
+        <h3>${L({ ja:'表示を切り替える', en:'Switch view', vi:'Đổi hiển thị' })}<span class="demo-tag">${L({ja:'確認用',en:'For review',vi:'Để xem'})}</span></h3>
         <div class="sub">${L({ ja:'本部は全店を閲覧できます。スタッフ・店長・加盟店オーナーは自分の店舗のみ（数値なども自店だけ）。', en:'HQ sees all stores. Staff, managers and franchisees see only their own store, including numbers.', vi:'HQ xem mọi cửa hàng. Nhân viên/quản lý/chủ chỉ xem cửa hàng của mình, kể cả số liệu.' })}</div>
         <div class="idlabel">${L({ ja:'役割', en:'Role', vi:'Vai trò' })}</div>
         ${Object.entries(ROLES).map(([k,v])=>`
@@ -1526,7 +1515,9 @@
   // 提出物マスタ（本部が設定）。obligation: required(必須)/store(店舗運用)/off(対象外)
   function defaultMasters() {
     return [
-      { id:'firstphoto', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'}, oblig:'required', freq:'daily', due:'23:59', target:'except_course', hqReview:'exception', detect:'fp', linkApp:'firstphoto' },
+      // ★一食目写真：AI判定の運用が未確定（木村さんと協議中）のため、当面は提出物の対象から外す（準備中）。
+      //   運用が決まったら oblig を 'required' に戻すだけで有効化できる。
+      { id:'firstphoto', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'}, oblig:'off', freq:'daily', due:'23:59', target:'except_course', hqReview:'exception', detect:'fp', linkApp:'firstphoto' },
       { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},       oblig:'required', freq:'daily', due:'23:59', target:'all',          hqReview:'each',      detect:'sk', linkApp:'soukatsu' },
       { id:'openphoto',  name:{ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'},          oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'subrec', linkApp:'openphoto' },
       { id:'cleaning',   name:{ja:'開店清掃チェック',en:'Opening cleaning',vi:'Vệ sinh mở cửa'}, oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'none', linkApp:'checklist' },
@@ -1780,6 +1771,78 @@
       </div>`;
   };
 
+  /* ---------- 本部：受信箱（現場からの報告を確認して対応する窓口） ----------
+     現場が報告しても本部の受け皿がないと報告が流れてしまうため、
+     「未対応の報告」を1画面に集め、確認済み／対応済みにできるようにする。
+     対応状況は全端末で共有（本部メンバー全員が同じ状態を見る）。 */
+  const HQ_ACK_KIND = 'hqack';
+  function ackKey(kind, t, store) { return `${kind}|${t}|${store || ''}`; }
+  function getAckMap() {
+    const map = {};
+    subRows(HQ_ACK_KIND).sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(r => {
+      const p = parseNote(r.note); if (r.item) map[r.item] = { state: p.state || '', by: p.by || '', ts: r.t, memo: p.memo || '' };
+    });
+    return map;
+  }
+  function setAck(key, state, memo) {
+    postSub(HQ_ACK_KIND, getStoreSel() || '*', key, { state, by: L(ROLES[getRole()].label), memo: memo || '' });
+    pushAudit('hq_ack', `${key}:${state}`);
+  }
+  // 本部が確認すべき「現場からの報告」を集める（種類をまたいで1本化）
+  function collectHqItems() {
+    const vis = visibleStores();
+    const acks = getAckMap();
+    const items = [];
+    const add = (kind, label, t, store, title, detail, photos) => {
+      const key = ackKey(kind, t, store);
+      const ack = acks[key] || {};
+      items.push({ kind, label, t, store, title, detail, photos: photos || [], key, state: ack.state || '', by: ack.by, memo: ack.memo });
+    };
+    try {
+      getKz().filter(r => vis.includes(r.store)).forEach(r => add('kizuki', { ja:'気づき', en:'Insight', vi:'Ghi nhận' }, r.t, r.store, kzCatLabel(r.cat), r.note, r.photos));
+      getReports().filter(r => (r.kind === 'a' || r.kind === 'b') && vis.includes(r.store)).forEach(r => add('waste', { ja:'食べ残し', en:'Waste', vi:'Đồ thừa' }, r.t, r.store, r.item, L(r.note) || '', r.photos));
+      getFP().filter(r => vis.includes(r.store)).forEach(r => add('firstphoto', { ja:'1食目写真', en:'First-plate', vi:'Ảnh món đầu' }, r.t, r.store, r.item || '', '', r.photos));
+      getReports().filter(r => r.kind === 'svfb' && vis.includes(r.store)).forEach(r => add('svfb', { ja:'巡回FB', en:'Visit FB', vi:'Phản hồi' }, r.t, r.store, r.item || '', String(r.note || '').slice(0, 60), r.photos));
+      subRows(SUB_KINDS.open).filter(r => vis.includes(r.store)).forEach(r => add('openphoto', { ja:'オープン写真', en:'Opening photo', vi:'Ảnh mở cửa' }, r.t, r.store, '', '', r.photos));
+    } catch (e) {}
+    return items.sort((a, b) => b.t - a.t);
+  }
+
+  APP_VIEWS.inbox = () => {
+    if (getRole() !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
+    const showDone = localStorage.getItem('yosakura_inbox_showdone') === '1';
+    const all = collectHqItems();
+    const open = all.filter(i => i.state !== 'done');
+    const list = (showDone ? all : open).slice(0, 40);
+    const row = (i) => {
+      const ph = i.photos && i.photos.length ? `<img class="rep-photo" src="${photoThumb(i.photos[0])}" data-full="${photoFull(i.photos[0])}" alt="">` : `<span class="kind ${i.state==='done'?'b':'a'}">${esc(L(i.label))}</span>`;
+      const st = i.state === 'done'
+        ? `<div class="l2" style="color:#2a7">${L({ja:'対応済み',en:'Done',vi:'Đã xử lý'})}${i.by?` ・${esc(i.by)}`:''}${i.memo?` ・${esc(i.memo)}`:''}</div>`
+        : `<div class="l2"><button class="mini" data-ackdone="${esc(i.key)}">${L({ja:'対応済みにする',en:'Mark done',vi:'Đã xử lý'})}</button> <button class="mini" data-ackmemo="${esc(i.key)}">${L({ja:'メモを付けて完了',en:'Done with note',vi:'Xong kèm ghi chú'})}</button></div>`;
+      return `<div class="rep" style="align-items:flex-start">${ph}<div class="body">
+        <div class="l1">${esc(L(i.label))}${i.title?` ・${esc(i.title)}`:''}</div>
+        <div class="l2">${esc(storeShort(i.store))} ・ ${timeAgo(i.t)}</div>
+        ${i.detail?`<div class="l2" style="color:var(--sumi)">${esc(String(i.detail).slice(0,90))}</div>`:''}
+        ${st}</div></div>`;
+    };
+    const byKind = {};
+    open.forEach(i => { const k = L(i.label); byKind[k] = (byKind[k] || 0) + 1; });
+    return `
+      <div class="card">
+        <h3>${L({ja:'未対応の報告',en:'Needs response',vi:'Chưa xử lý'})} <small style="color:#8a8">${open.length}</small></h3>
+        <p class="hint" style="display:block">${L({ja:'現場からの報告のうち、本部がまだ対応していないものです。対応したら「対応済みにする」を押してください（全端末で共有されます）。',en:'Reports not yet handled by HQ. Mark done after you respond (shared across devices).',vi:'Báo cáo HQ chưa xử lý. Bấm đã xử lý sau khi phản hồi (chia sẻ mọi máy).'})}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          ${Object.keys(byKind).map(k => `<span class="kind a">${esc(k)} ${byKind[k]}</span>`).join('') || `<span class="kind b">${L({ja:'未対応なし',en:'All clear',vi:'Không còn'})}</span>`}
+        </div>
+        <button class="mini ${showDone?'on':''}" data-inboxdone="1">${showDone?'☑':'☐'} ${L({ja:'対応済みも表示',en:'Show done',vi:'Hiện đã xử lý'})}</button>
+      </div>
+      <div class="card">
+        <h3>${showDone?L({ja:'すべての報告',en:'All reports',vi:'Tất cả'}):L({ja:'対応が必要な報告',en:'To respond',vi:'Cần xử lý'})}</h3>
+        ${list.length ? list.map(row).join('') : `<div class="muted">${L({ja:'ありません',en:'None',vi:'Không có'})}</div>`}
+      </div>
+      <p class="hint" style="display:block">${L({ja:'※ 提出物（1食目写真・日報など）の提出状況は「加盟店・提出物管理」でご確認ください。',en:'For submission status, see “Submissions”.',vi:'Xem trạng thái nộp tại “Nộp tài liệu”.'})}</p>`;
+  };
+
   /* ---------- 本部：バックエンド設定（専用の保存先へ切り替える） ---------- */
   APP_VIEWS.backend = () => {
     if (getRole() !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
@@ -1838,8 +1901,16 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend]');
+      const t = e.target.closest('[data-tsub],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-inboxdone]');
       if (!t) return;
+      if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(); return; }
+      if (t.dataset.ackdone) { setAck(t.dataset.ackdone, 'done', ''); toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(); return; }
+      if (t.dataset.ackmemo) {
+        const memo = prompt(L({ja:'対応した内容をメモできます（任意）',en:'Add a note (optional)',vi:'Ghi chú (tùy chọn)'}) || '', '');
+        if (memo === null) return;
+        setAck(t.dataset.ackmemo, 'done', memo.trim());
+        toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(); return;
+      }
       if (t.dataset.fbsend) {
         const noteEl = document.getElementById('fb_note');
         const note = (noteEl && noteEl.value || '').trim();
@@ -1937,6 +2008,11 @@
       name:{ ja:'提出履歴', en:'Submission history', vi:'Lịch sử nộp' },
       desc:{ ja:'直近7日の提出・判定を確認', en:'Last 7 days of submissions', vi:'7 ngày gần đây' } });
   }
+  if (!appById('inbox')) {
+    APPS.unshift({ id:'inbox', group:'hq', icon:'inbox', live:true, roles:['hq'],
+      name:{ ja:'報告の確認（受信箱）', en:'Inbox (field reports)', vi:'Hộp thư báo cáo' },
+      desc:{ ja:'現場からの報告を確認して対応済みにする', en:'Review field reports and mark done', vi:'Xem báo cáo và đánh dấu xử lý' } });
+  }
   if (!appById('appfb')) {
     APPS.push({ id:'appfb', group:'learn', icon:'idea', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'アプリへのご意見', en:'App feedback', vi:'Góp ý ứng dụng' },
@@ -1977,13 +2053,13 @@
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab === 'home' ? '/home' : `/home?tab=${b.dataset.tab}`));
     document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { if (b.dataset.open === 'guide') openTour(0); else go(`/app/${b.dataset.open}`); });
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
-    document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'デモのため、この先はイメージです', en:'Demo: further screens are mockups', vi:'Demo: màn hình tiếp theo là mô phỏng' })));
-    // デモ操作ボタン（本番で有効化予定）にも必ずフィードバックを返す＝無反応ボタンを排除
+    document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'この画面は準備中です（順次追加します）', en:'This screen is in preparation', vi:'Màn hình đang chuẩn bị' })));
+    // 準備中のボタンにも必ずフィードバックを返す＝無反応ボタンを排除
     const demoBtns = {
-      demoInvoice: { ja:'請求書の受領状況を確認しました（デモ）', en:'Checked invoice status (demo)', vi:'Đã kiểm tra hóa đơn (demo)' },
-      demoReminder:{ ja:'未提出店への連絡文を生成しました（デモ）', en:'Reminder drafted (demo)', vi:'Đã soạn nhắc (demo)' },
-      demoOrder:   { ja:'発注を受け付けました（デモ）', en:'Order received (demo)', vi:'Đã nhận đặt hàng (demo)' },
-      demoInv:     { ja:'在庫を保存しました（デモ）', en:'Stock saved (demo)', vi:'Đã lưu tồn kho (demo)' }
+      demoInvoice: { ja:'この機能は準備中です', en:'This feature is in preparation', vi:'Tính năng đang chuẩn bị' },
+      demoReminder:{ ja:'この機能は準備中です', en:'This feature is in preparation', vi:'Tính năng đang chuẩn bị' },
+      demoOrder:   { ja:'この機能は準備中です', en:'This feature is in preparation', vi:'Tính năng đang chuẩn bị' },
+      demoInv:     { ja:'この機能は準備中です', en:'This feature is in preparation', vi:'Tính năng đang chuẩn bị' }
     };
     Object.keys(demoBtns).forEach(id => { const b = byId(id); if (b) b.onclick = () => toast(L(demoBtns[id])); });
     document.querySelectorAll('.rep-photo').forEach(im => im.onclick = () => openLightbox(im.dataset.full));
@@ -2136,12 +2212,10 @@
       const item = document.getElementById('fp_item').value.trim();
       const store = document.getElementById('fp_store').value;
       if (!photos.length) { toast(L({ ja:'写真を追加してください', en:'Please add a photo', vi:'Vui lòng thêm ảnh' })); return; }
-      const ai = Math.random() < 0.25 ? 'ng' : 'ok';   // AI判定（デモ演出・本部FBで上書き可）
+      const ai = '';   // AIは未接続のため判定しない（本部が確認して判定を付ける）
       const fps = getFP(); fps.push({ id: 'fp' + Date.now() + Math.random().toString(36).slice(2,6), store, item, photos, ai, t: Date.now() });
       try { saveFP(fps.slice(-15)); } catch (e) { saveFP(fps.slice(-5)); }
-      toast(ai === 'ok'
-        ? L({ ja:'AI判定：基準内。提出しました', en:'AI: OK. Submitted', vi:'AI: Đạt. Đã gửi' })
-        : L({ ja:'AI判定：要確認。本部へ通知しました', en:'AI: needs check. HQ notified', vi:'AI: cần xem. Đã báo HQ' }));
+      toast(L({ ja:'提出しました。ありがとうございます！', en:'Submitted. Thank you!', vi:'Đã gửi. Cảm ơn!' }));
       render();
     };
 
