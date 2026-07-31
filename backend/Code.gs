@@ -5,8 +5,8 @@
  *
  * ★スケール対策（2026-07-25 追加）：
  *   ① doGet は「直近ぶんだけ」読むため、シートが巨大化しても速度が落ちない（READ_TAIL）。
- *   ② purgeOldPhotos() を1日1回のトリガーで回すと、古い写真を自動でゴミ箱へ（Drive容量対策）。
- *      設定：GASエディタ左の「トリガー(時計アイコン)」→ 関数=purgeOldPhotos / 種類=時間主導型 / 日タイマー。
+ *   ② purgeOldData() を1日1回のトリガーで回すと、90日を過ぎた写真・動画・提出データを自動削除。
+ *      設定：GASエディタ左の「トリガー(時計アイコン)」→ 関数=purgeOldData / 種類=時間主導型 / 日タイマー。
  */
 var SHEET_NAME = 'reports';
 var HEADERS = ['id', 'ts', 'kind', 'store', 'item', 'level', 'note', 'photos'];
@@ -14,12 +14,16 @@ var PHOTO_FOLDER = '世桜アプリ_写真';
 var READ_TAIL = 2000;        // doGetで読む「直近の行数」の上限（シート全体は読まない＝高速）
 var RETURN_MAX = 800;        // 返す最新レコード数の上限
 
-/* ★保存期間・自動削除の設定（2026-07-31 安全化）
- * MTGでは「保存2ヶ月」で整理中だが、削除対象・起算日が未確定のため、
- * 自動削除は初期OFF。確定後に ENABLE_AUTO_PURGE を true にし、PHOTO_TTL_DAYS を60日等へ変更する。
- * まずは listPurgeTargets() で「削除される予定の写真」を確認できる（削除はしない）。*/
-var PHOTO_TTL_DAYS   = getSetting_('PHOTO_TTL_DAYS', 90);      // 保持日数（設定値で変更可）
-var ENABLE_AUTO_PURGE = getSetting_('ENABLE_AUTO_PURGE', false); // 自動削除の有効/無効（初期OFF）
+/* ★保存期間・自動削除の設定（2026-07-31 仕様確定：90日）
+ * 写真・動画・提出データを「90日」で自動削除する。
+ * ・削除の起算日＝そのデータが作られた日時（写真＝Driveの作成日、提出＝行のts）
+ * ・1日1回のトリガーで purgeOldData() を回す（写真＋提出データの両方を削除）
+ * ・★設定（提出物マスタ・定休日）は消さない（消すとアプリの設定が失われるため）
+ * ・削除の前に listPurgeTargets() で「消える予定」を確認できる（確認だけで削除はしない）*/
+var PHOTO_TTL_DAYS    = getSetting_('PHOTO_TTL_DAYS', 90);      // 保持日数（写真・動画・提出データ共通）
+var ENABLE_AUTO_PURGE = getSetting_('ENABLE_AUTO_PURGE', true);  // 自動削除の有効/無効
+// 削除しないkind（アプリの設定情報。消すと提出物マスタや定休日が失われる）
+var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb'];
 
 // スクリプトプロパティから設定を読む（無ければ既定値）。管理画面や手動で変更できる。
 function getSetting_(key, def) {
@@ -77,7 +81,7 @@ function createRequiredSheets() {
     rm.appendRow(['用途', '世桜アプリの本番データ保存先（提出・判定・設定・写真ID）']);
     rm.appendRow(['注意', 'reportsシートを直接編集・削除しないでください（アプリの表示に影響します）']);
     rm.appendRow(['写真', 'Googleドライブの「世桜アプリ_写真」フォルダに保存されます']);
-    rm.appendRow(['自動削除', '初期は無効（ENABLE_AUTO_PURGE=false）。保存期間の確定後に有効化します']);
+    rm.appendRow(['自動削除', '90日で自動削除（写真・動画・提出データ）。設定（提出物マスタ・定休日・ご意見）は削除しません']);
     rm.appendRow(['kindの例', 'a/b=食べ残し, kizuki=気づき, soukatsu=総括表, video=店内動画, survey, route, open, svfb']);
     rm.appendRow(['提出管理', 'submaster=提出物マスタ, substat=判定/本部確認, subholiday=定休日, subrec=提出実績, appfb=ご意見']);
   }
@@ -88,8 +92,8 @@ function createRequiredSheets() {
 function initScriptProperties_() {
   var sp = PropertiesService.getScriptProperties();
   var defaults = {
-    ENABLE_AUTO_PURGE: 'false',  // 写真の自動削除（初期は無効）
-    PHOTO_TTL_DAYS: '90',        // 保存期間（確定後に60等へ変更）
+    ENABLE_AUTO_PURGE: 'true',   // 自動削除（写真・動画・提出データ）
+    PHOTO_TTL_DAYS: '90',        // 保存期間＝90日（写真・動画・提出データ共通）
     ENV: 'pilot',                // pilot（本部直営店の試験運用）→ prod
     READ_TAIL: String(READ_TAIL),
     RETURN_MAX: String(RETURN_MAX)
@@ -128,8 +132,11 @@ function validateBackendConfiguration() {
   var folderOk = false, folderInfo = '';
   try { var f = getPhotoFolder(); folderOk = true; folderInfo = f.getName() + ' / ' + f.getId(); } catch (e) { folderInfo = String(e); }
   ck('写真フォルダにアクセスできる', folderOk, folderInfo);
-  ck('自動削除が無効になっている（初期は無効が正）', String(sp.getProperty('ENABLE_AUTO_PURGE')) !== 'true', 'ENABLE_AUTO_PURGE=' + sp.getProperty('ENABLE_AUTO_PURGE'));
-  ck('保存期間が設定されている', !!sp.getProperty('PHOTO_TTL_DAYS'), 'PHOTO_TTL_DAYS=' + sp.getProperty('PHOTO_TTL_DAYS'));
+  ck('自動削除が有効になっている（90日仕様）', String(sp.getProperty('ENABLE_AUTO_PURGE')) === 'true', 'ENABLE_AUTO_PURGE=' + sp.getProperty('ENABLE_AUTO_PURGE'));
+  ck('保存期間が90日である', String(sp.getProperty('PHOTO_TTL_DAYS')) === '90', 'PHOTO_TTL_DAYS=' + sp.getProperty('PHOTO_TTL_DAYS'));
+  var hasTrigger = false;
+  try { hasTrigger = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'purgeOldData'; }); } catch (e) {}
+  ck('削除トリガー(purgeOldData)が設定されている', hasTrigger, hasTrigger ? '毎日実行されます' : '未設定：GASの時計アイコン→日タイマーで purgeOldData を追加してください');
   ck('環境が設定されている', !!sp.getProperty('ENV'), 'ENV=' + sp.getProperty('ENV'));
 
   var ng = checks.filter(function (c) { return !c.ok; });
@@ -239,20 +246,100 @@ function purgeOldPhotos() {
 }
 
 /**
- * 削除予定の写真の一覧を返す（★削除はしない）。保存期間の確定前に、影響範囲を確認するために使う。
+ * 提出データ（reportsシートの行）を保存期間で自動削除する。
+ * ★設定（PURGE_KEEP_KINDS＝提出物マスタ・定休日・ご意見）は消さない。
+ * 行は下から消して行番号のズレを防ぐ。処理が途中で止まっても壊れない（消えた分だけ減る）。
+ */
+function purgeOldRows() {
+  if (!ENABLE_AUTO_PURGE) {
+    Logger.log('purgeOldRows: DISABLED (ENABLE_AUTO_PURGE=false).');
+    return { enabled: false, deleted: 0 };
+  }
+  var sh = getSheet();
+  var last = sh.getLastRow();
+  if (last < 2) return { enabled: true, deleted: 0 };
+  var cutoff = Date.now() - PHOTO_TTL_DAYS * 24 * 60 * 60 * 1000;
+  var values = sh.getRange(2, 1, last - 1, HEADERS.length).getValues(); // 2行目以降（1行目はヘッダー）
+  var rowsToDelete = [];
+  for (var i = 0; i < values.length; i++) {
+    var ts = Number(values[i][1]) || 0;      // ts列
+    var kind = String(values[i][2] || '');   // kind列
+    if (!ts) continue;                        // 日時が無い行は触らない（安全側）
+    if (PURGE_KEEP_KINDS.indexOf(kind) !== -1) continue; // 設定は残す
+    if (ts < cutoff) rowsToDelete.push(i + 2); // 実際の行番号
+  }
+  // 連続した行はまとめて削除（API呼び出しを減らす）。必ず下から。
+  var deleted = 0;
+  for (var j = rowsToDelete.length - 1; j >= 0; ) {
+    var end = rowsToDelete[j], start = end, k = j;
+    while (k > 0 && rowsToDelete[k - 1] === rowsToDelete[k] - 1) { k--; start = rowsToDelete[k]; }
+    sh.deleteRows(start, end - start + 1);
+    deleted += (end - start + 1);
+    j = k - 1;
+  }
+  logPurge_('rows', deleted, PHOTO_TTL_DAYS);
+  Logger.log('purgeOldRows: deleted ' + deleted + ' row(s) older than ' + PHOTO_TTL_DAYS + ' days');
+  return { enabled: true, deleted: deleted, ttlDays: PHOTO_TTL_DAYS };
+}
+
+/**
+ * ★1日1回のトリガーはこの関数を指定する（写真・動画＋提出データをまとめて削除）。
+ * 設定：GASエディタ左の「トリガー(時計アイコン)」→ 関数=purgeOldData / 時間主導型 / 日タイマー（深夜帯推奨）
+ */
+function purgeOldData() {
+  var photos = purgeOldPhotos();
+  var rows = purgeOldRows();
+  var out = { ttlDays: PHOTO_TTL_DAYS, enabled: ENABLE_AUTO_PURGE, photos: photos, rows: rows };
+  Logger.log(JSON.stringify(out));
+  return out;
+}
+
+// 削除の記録を _purgelog シートへ残す（いつ・何を・何件消したか）
+function logPurge_(target, count, ttl) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName('_purgelog');
+    if (!sh) { sh = ss.insertSheet('_purgelog'); sh.appendRow(['実行日時', '対象', '削除件数', '保存日数']); }
+    sh.appendRow([new Date(), target, count, ttl]);
+  } catch (e) {}
+}
+
+/**
+ * 削除予定の一覧を返す（★削除はしない）。実行前に影響範囲を確認するために使う。
  * doGet(?action=purgeTargets) でも呼べる。
  */
 function listPurgeTargets() {
+  var cutoffMs = Date.now() - PHOTO_TTL_DAYS * 24 * 60 * 60 * 1000;
+  var cutoff = new Date(cutoffMs);
+  // 写真
   var folder = getPhotoFolder();
-  var cutoff = new Date(Date.now() - PHOTO_TTL_DAYS * 24 * 60 * 60 * 1000);
   var files = folder.getFiles();
-  var targets = [], total = 0;
+  var photoTargets = [], photoTotal = 0;
   while (files.hasNext()) {
-    var f = files.next(); total++;
+    var f = files.next(); photoTotal++;
     var created = f.getDateCreated();
-    if (created < cutoff) targets.push({ id: f.getId(), name: f.getName(), created: created.toISOString() });
+    if (created < cutoff) photoTargets.push({ id: f.getId(), name: f.getName(), created: created.toISOString() });
   }
-  return { ttlDays: PHOTO_TTL_DAYS, autoPurgeEnabled: ENABLE_AUTO_PURGE, totalPhotos: total, wouldTrash: targets.length, sample: targets.slice(0, 50) };
+  // 提出データ（行）
+  var sh = getSheet(); var last = sh.getLastRow();
+  var rowTotal = 0, rowTargets = 0, keepCount = 0, byKind = {};
+  if (last >= 2) {
+    var values = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
+    rowTotal = values.length;
+    for (var i = 0; i < values.length; i++) {
+      var ts = Number(values[i][1]) || 0, kind = String(values[i][2] || '');
+      if (PURGE_KEEP_KINDS.indexOf(kind) !== -1) { keepCount++; continue; }
+      if (ts && ts < cutoffMs) { rowTargets++; byKind[kind] = (byKind[kind] || 0) + 1; }
+    }
+  }
+  return {
+    ttlDays: PHOTO_TTL_DAYS,
+    autoPurgeEnabled: ENABLE_AUTO_PURGE,
+    cutoff: cutoff.toISOString(),
+    keepKinds: PURGE_KEEP_KINDS,
+    photos: { total: photoTotal, wouldTrash: photoTargets.length, sample: photoTargets.slice(0, 20) },
+    rows: { total: rowTotal, wouldDelete: rowTargets, keptAsConfig: keepCount, byKind: byKind }
+  };
 }
 
 function normNote(n) { if (n && typeof n === 'object') return n.ja || ''; return n || ''; }
