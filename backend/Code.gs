@@ -64,6 +64,26 @@ function getSheet() {
   return sh;
 }
 
+/* ★削除トリガー（毎日実行）を設定する。エディタが不安定でも、これを1回実行すれば設定できる。
+   既に同じトリガーがあれば作らない（重複防止）。 */
+function ensureDailyPurgeTrigger() {
+  var exists = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === 'purgeOldData'; });
+  if (exists.length) {
+    var out0 = { 結果: '既に設定済み', 件数: exists.length };
+    Logger.log(JSON.stringify(out0)); return out0;
+  }
+  ScriptApp.newTrigger('purgeOldData').timeBased().atHour(3).everyDays(1).create();
+  var out = { 結果: '設定しました', 内容: '毎日 午前3時台に purgeOldData を実行' };
+  Logger.log(JSON.stringify(out)); return out;
+}
+
+/* 現在のトリガー一覧を確認する（変更しません） */
+function listTriggers() {
+  var ts = ScriptApp.getProjectTriggers().map(function (t) { return { 関数: t.getHandlerFunction(), 種類: String(t.getEventType()) }; });
+  var out = { 件数: ts.length, 一覧: ts };
+  Logger.log(JSON.stringify(out, null, 2)); return out;
+}
+
 /* ★まずこれを実行して動作を確認する（何も変更しません）
    ここで承認画面が出たら「詳細」→「（安全ではないページ）に移動」→「許可」。
    これが成功すれば、スクリプト自体は正常に動いています。 */
@@ -231,6 +251,18 @@ function doGet(e) {
     // 容量の確認：?action=storage で使用量・増加ペース・90日/60日の見込みを返す
     if (e && e.parameter && e.parameter.action === 'storage') {
       return json({ ok: true, storage: storageReport() });
+    }
+    // 構成の点検：?action=validate（変更しません）
+    if (e && e.parameter && e.parameter.action === 'validate') {
+      return json({ ok: true, validate: validateBackendConfiguration() });
+    }
+    // トリガーの確認：?action=triggers（変更しません）
+    if (e && e.parameter && e.parameter.action === 'triggers') {
+      return json({ ok: true, triggers: listTriggers() });
+    }
+    // トリガーの設定：?action=setupTrigger（毎日の自動削除を有効化。重複は作りません）
+    if (e && e.parameter && e.parameter.action === 'setupTrigger') {
+      return json({ ok: true, setup: ensureDailyPurgeTrigger() });
     }
     var sh = getSheet();
     var lastRow = sh.getLastRow();
