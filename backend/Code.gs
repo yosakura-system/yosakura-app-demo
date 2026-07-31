@@ -35,8 +35,28 @@ function getSetting_(key, def) {
   } catch (e) { return def; }
 }
 
-function getSheet() {
+/* スプレッドシートの取得（3段構え）
+   ① Script Properties の SPREADSHEET_ID があればそれを開く（スクリプトを単独作成した場合はこれ）
+   ② 無ければ「このスクリプトが紐づくシート」（拡張機能→Apps Scriptで作った場合）
+   ③ どちらも無ければ、何をすればよいかを日本語で知らせる
+   ※ IDはコードに直接書かず、Script Properties で管理する（公開リポジトリに残さないため） */
+function getSS_() {
+  var id = getSetting_('SPREADSHEET_ID', '');
+  if (id) {
+    try { return SpreadsheetApp.openById(String(id)); }
+    catch (e) { throw new Error('SPREADSHEET_ID のシートを開けません。IDが正しいか、このアカウントに編集権限があるかご確認ください。（' + e + '）'); }
+  }
   var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    throw new Error('スプレッドシートに接続できません。次のどちらかで解決します：'
+      + '(A) プロジェクトの設定 →「スクリプト プロパティ」に SPREADSHEET_ID を追加し、対象シートのIDを入れる。'
+      + '(B) 対象のスプレッドシートを開き「拡張機能 → Apps Script」から作り直す。');
+  }
+  return ss;
+}
+
+function getSheet() {
+  var ss = getSS_();
   var sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) { sh = ss.insertSheet(SHEET_NAME); sh.appendRow(HEADERS); }
   if (sh.getLastRow() === 0) sh.appendRow(HEADERS);
@@ -57,7 +77,7 @@ function setupYosakuraBackend() {
 
 // 必要なシートとヘッダーを作る（既存があれば触らず、不足ヘッダーのみ追記）
 function createRequiredSheets() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSS_();
   var plan = [
     { name: SHEET_NAME, headers: HEADERS, note: 'アプリの全データ（1行＝1件）。kindで種類を判別' },
     { name: '_readme',  headers: ['項目', '説明'], note: 'この保存先の説明' }
@@ -116,7 +136,7 @@ function ensurePhotoFolder_() {
 
 /* 構成が正しいかを点検する（実行して結果をログで確認）。データは変更しません。 */
 function validateBackendConfiguration() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSS_();
   var sp = PropertiesService.getScriptProperties();
   var sh = ss.getSheetByName(SHEET_NAME);
   var checks = [];
@@ -301,7 +321,7 @@ function purgeOldData() {
 // 削除の記録を _purgelog シートへ残す（いつ・何を・何件消したか）
 function logPurge_(target, count, ttl) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSS_();
     var sh = ss.getSheetByName('_purgelog');
     if (!sh) { sh = ss.insertSheet('_purgelog'); sh.appendRow(['実行日時', '対象', '削除件数', '保存日数']); }
     sh.appendRow([new Date(), target, count, ttl]);
