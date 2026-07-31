@@ -281,8 +281,8 @@ function doPost(e) {
  */
 function purgeOldPhotos() {
   if (!autoPurgeOn_()) {
-    Logger.log('purgeOldPhotos: DISABLED (autoPurgeOn_()=false). No files were trashed.');
-    return { enabled: false, trashed: 0, note: '自動削除は無効です。ScriptプロパティでENABLE_AUTO_PURGE=trueにすると有効化されます。' };
+    Logger.log('purgeOldPhotos: DISABLED (ENABLE_AUTO_PURGE=false). No files were trashed.');
+    return { enabled: false, trashed: 0, note: '自動削除は無効です。スクリプト プロパティで ENABLE_AUTO_PURGE=true にすると有効化されます。' };
   }
   var folder = getPhotoFolder();
   var cutoff = new Date(Date.now() - ttlDays_() * 24 * 60 * 60 * 1000);
@@ -303,7 +303,7 @@ function purgeOldPhotos() {
  */
 function purgeOldRows() {
   if (!autoPurgeOn_()) {
-    Logger.log('purgeOldRows: DISABLED (autoPurgeOn_()=false).');
+    Logger.log('purgeOldRows: DISABLED (ENABLE_AUTO_PURGE=false).');
     return { enabled: false, deleted: 0 };
   }
   var sh = getSheet();
@@ -397,7 +397,7 @@ function storageReport() {
     '60日運用時の見込みMB': mb(projected60),
     月別: Object.keys(byMonth).sort().reduce(function (o, k) { o[k] = byMonth[k].count + '枚 / ' + mb(byMonth[k].bytes) + 'MB'; return o; }, {}),
     ドライブ容量: quota,
-    判断の目安: '「90日運用時の見込みMB」が空き容量に対して大きい場合は、ttlDays_() を 60 に変更するか、容量の大きいアカウントへ移行を検討'
+    判断の目安: '「90日運用時の見込みMB」が空き容量に対して大きい場合は、スクリプト プロパティの PHOTO_TTL_DAYS を 60 に変更するか、容量の大きいアカウントへ移行を検討'
   };
   Logger.log(JSON.stringify(out, null, 2));
   return out;
