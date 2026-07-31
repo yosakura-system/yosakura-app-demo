@@ -20,8 +20,9 @@ var RETURN_MAX = 800;        // 返す最新レコード数の上限
  * ・1日1回のトリガーで purgeOldData() を回す（写真＋提出データの両方を削除）
  * ・★設定（提出物マスタ・定休日）は消さない（消すとアプリの設定が失われるため）
  * ・削除の前に listPurgeTargets() で「消える予定」を確認できる（確認だけで削除はしない）*/
-var PHOTO_TTL_DAYS    = getSetting_('PHOTO_TTL_DAYS', 90);      // 保持日数（写真・動画・提出データ共通）
-var ENABLE_AUTO_PURGE = getSetting_('ENABLE_AUTO_PURGE', true);  // 自動削除の有効/無効
+/* ★設定は「使うときに読む」（読み込み時に読むと、初回の承認前に不明なエラーになることがあるため） */
+function ttlDays_()        { return Number(getSetting_('PHOTO_TTL_DAYS', 90)) || 90; }  // 保持日数
+function autoPurgeOn_()    { return getSetting_('ENABLE_AUTO_PURGE', true) === true; }  // 自動削除の有効/無効
 // 削除しないkind（アプリの設定情報。消すと提出物マスタや定休日が失われる）
 var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb'];
 
@@ -61,6 +62,32 @@ function getSheet() {
   if (!sh) { sh = ss.insertSheet(SHEET_NAME); sh.appendRow(HEADERS); }
   if (sh.getLastRow() === 0) sh.appendRow(HEADERS);
   return sh;
+}
+
+/* ★まずこれを実行して動作を確認する（何も変更しません）
+   ここで承認画面が出たら「詳細」→「（安全ではないページ）に移動」→「許可」。
+   これが成功すれば、スクリプト自体は正常に動いています。 */
+function hello() {
+  var msg = 'OK: スクリプトは動作しています / ' + new Date();
+  Logger.log(msg);
+  return msg;
+}
+
+/* ★接続先の確認（承認後に実行）。どのシートに繋がるかを表示します（変更しません）。 */
+function whichSheet() {
+  var id = getSetting_('SPREADSHEET_ID', '');
+  var out = { SPREADSHEET_IDの設定: id ? 'あり' : 'なし（このスクリプトに紐づくシートを使います）' };
+  try {
+    var ss = getSS_();
+    out.接続できたシート名 = ss.getName();
+    out.シートID = ss.getId();
+    out.結果 = 'OK';
+  } catch (e) {
+    out.結果 = 'NG';
+    out.エラー = String(e.message || e);
+  }
+  Logger.log(JSON.stringify(out, null, 2));
+  return out;
 }
 
 /* ============================================================
@@ -248,25 +275,25 @@ function doPost(e) {
 
 /**
  * 古い写真を自動でゴミ箱へ（Drive容量対策）。1日1回のトリガーで実行する想定。
- * ★安全化（2026-07-31）：ENABLE_AUTO_PURGE が false の間は「何も削除しない」。
- *   保存期間（PHOTO_TTL_DAYS）と有効化（ENABLE_AUTO_PURGE）が確定するまで削除を止める。
+ * ★安全化（2026-07-31）：autoPurgeOn_() が false の間は「何も削除しない」。
+ *   保存期間（ttlDays_()）と有効化（autoPurgeOn_()）が確定するまで削除を止める。
  *   削除される予定の写真は listPurgeTargets() で事前に確認できる。
  */
 function purgeOldPhotos() {
-  if (!ENABLE_AUTO_PURGE) {
-    Logger.log('purgeOldPhotos: DISABLED (ENABLE_AUTO_PURGE=false). No files were trashed.');
+  if (!autoPurgeOn_()) {
+    Logger.log('purgeOldPhotos: DISABLED (autoPurgeOn_()=false). No files were trashed.');
     return { enabled: false, trashed: 0, note: '自動削除は無効です。ScriptプロパティでENABLE_AUTO_PURGE=trueにすると有効化されます。' };
   }
   var folder = getPhotoFolder();
-  var cutoff = new Date(Date.now() - PHOTO_TTL_DAYS * 24 * 60 * 60 * 1000);
+  var cutoff = new Date(Date.now() - ttlDays_() * 24 * 60 * 60 * 1000);
   var files = folder.getFiles();
   var removed = 0;
   while (files.hasNext()) {
     var f = files.next();
     try { if (f.getDateCreated() < cutoff) { f.setTrashed(true); removed++; } } catch (_) {}
   }
-  Logger.log('purgeOldPhotos: trashed ' + removed + ' file(s) older than ' + PHOTO_TTL_DAYS + ' days');
-  return { enabled: true, trashed: removed, ttlDays: PHOTO_TTL_DAYS };
+  Logger.log('purgeOldPhotos: trashed ' + removed + ' file(s) older than ' + ttlDays_() + ' days');
+  return { enabled: true, trashed: removed, ttlDays: ttlDays_() };
 }
 
 /**
@@ -275,14 +302,14 @@ function purgeOldPhotos() {
  * 行は下から消して行番号のズレを防ぐ。処理が途中で止まっても壊れない（消えた分だけ減る）。
  */
 function purgeOldRows() {
-  if (!ENABLE_AUTO_PURGE) {
-    Logger.log('purgeOldRows: DISABLED (ENABLE_AUTO_PURGE=false).');
+  if (!autoPurgeOn_()) {
+    Logger.log('purgeOldRows: DISABLED (autoPurgeOn_()=false).');
     return { enabled: false, deleted: 0 };
   }
   var sh = getSheet();
   var last = sh.getLastRow();
   if (last < 2) return { enabled: true, deleted: 0 };
-  var cutoff = Date.now() - PHOTO_TTL_DAYS * 24 * 60 * 60 * 1000;
+  var cutoff = Date.now() - ttlDays_() * 24 * 60 * 60 * 1000;
   var values = sh.getRange(2, 1, last - 1, HEADERS.length).getValues(); // 2行目以降（1行目はヘッダー）
   var rowsToDelete = [];
   for (var i = 0; i < values.length; i++) {
@@ -301,9 +328,9 @@ function purgeOldRows() {
     deleted += (end - start + 1);
     j = k - 1;
   }
-  logPurge_('rows', deleted, PHOTO_TTL_DAYS);
-  Logger.log('purgeOldRows: deleted ' + deleted + ' row(s) older than ' + PHOTO_TTL_DAYS + ' days');
-  return { enabled: true, deleted: deleted, ttlDays: PHOTO_TTL_DAYS };
+  logPurge_('rows', deleted, ttlDays_());
+  Logger.log('purgeOldRows: deleted ' + deleted + ' row(s) older than ' + ttlDays_() + ' days');
+  return { enabled: true, deleted: deleted, ttlDays: ttlDays_() };
 }
 
 /**
@@ -313,7 +340,7 @@ function purgeOldRows() {
 function purgeOldData() {
   var photos = purgeOldPhotos();
   var rows = purgeOldRows();
-  var out = { ttlDays: PHOTO_TTL_DAYS, enabled: ENABLE_AUTO_PURGE, photos: photos, rows: rows };
+  var out = { ttlDays: ttlDays_(), enabled: autoPurgeOn_(), photos: photos, rows: rows };
   Logger.log(JSON.stringify(out));
   return out;
 }
@@ -360,8 +387,8 @@ function storageReport() {
   try { quota = { 使用中GB: Math.round(DriveApp.getStorageUsed() / 1073741824 * 100) / 100, 上限GB: Math.round(DriveApp.getStorageLimit() / 1073741824 * 100) / 100 }; } catch (e) {}
 
   var out = {
-    保存日数の設定: PHOTO_TTL_DAYS,
-    自動削除: ENABLE_AUTO_PURGE ? '有効' : '無効',
+    保存日数の設定: ttlDays_(),
+    自動削除: autoPurgeOn_() ? '有効' : '無効',
     写真枚数: total,
     写真の合計MB: mb(bytes),
     実績日数: days,
@@ -370,7 +397,7 @@ function storageReport() {
     '60日運用時の見込みMB': mb(projected60),
     月別: Object.keys(byMonth).sort().reduce(function (o, k) { o[k] = byMonth[k].count + '枚 / ' + mb(byMonth[k].bytes) + 'MB'; return o; }, {}),
     ドライブ容量: quota,
-    判断の目安: '「90日運用時の見込みMB」が空き容量に対して大きい場合は、PHOTO_TTL_DAYS を 60 に変更するか、容量の大きいアカウントへ移行を検討'
+    判断の目安: '「90日運用時の見込みMB」が空き容量に対して大きい場合は、ttlDays_() を 60 に変更するか、容量の大きいアカウントへ移行を検討'
   };
   Logger.log(JSON.stringify(out, null, 2));
   return out;
@@ -381,7 +408,7 @@ function storageReport() {
  * doGet(?action=purgeTargets) でも呼べる。
  */
 function listPurgeTargets() {
-  var cutoffMs = Date.now() - PHOTO_TTL_DAYS * 24 * 60 * 60 * 1000;
+  var cutoffMs = Date.now() - ttlDays_() * 24 * 60 * 60 * 1000;
   var cutoff = new Date(cutoffMs);
   // 写真
   var folder = getPhotoFolder();
@@ -405,8 +432,8 @@ function listPurgeTargets() {
     }
   }
   return {
-    ttlDays: PHOTO_TTL_DAYS,
-    autoPurgeEnabled: ENABLE_AUTO_PURGE,
+    ttlDays: ttlDays_(),
+    autoPurgeEnabled: autoPurgeOn_(),
     cutoff: cutoff.toISOString(),
     keepKinds: PURGE_KEEP_KINDS,
     photos: { total: photoTotal, wouldTrash: photoTargets.length, sample: photoTargets.slice(0, 20) },
