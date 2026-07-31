@@ -181,6 +181,10 @@ function doGet(e) {
     if (e && e.parameter && e.parameter.action === 'purgeTargets') {
       return json({ ok: true, purge: listPurgeTargets() });
     }
+    // 容量の確認：?action=storage で使用量・増加ペース・90日/60日の見込みを返す
+    if (e && e.parameter && e.parameter.action === 'storage') {
+      return json({ ok: true, storage: storageReport() });
+    }
     var sh = getSheet();
     var lastRow = sh.getLastRow();
     var store = e && e.parameter ? e.parameter.store : '';
@@ -302,6 +306,54 @@ function logPurge_(target, count, ttl) {
     if (!sh) { sh = ss.insertSheet('_purgelog'); sh.appendRow(['実行日時', '対象', '削除件数', '保存日数']); }
     sh.appendRow([new Date(), target, count, ttl]);
   } catch (e) {}
+}
+
+/**
+ * ★容量レポート：写真の使用量・増加ペース・このまま90日運用した場合の見込みを返す。
+ * 「90日のままで足りるか／60日に短縮すべきか／別アカウントへ移すべきか」の判断に使う。
+ * 実行方法：関数 storageReport を選んで実行 → ログを見る（データは変更しません）。
+ */
+function storageReport() {
+  var folder = getPhotoFolder();
+  var files = folder.getFiles();
+  var total = 0, bytes = 0, oldest = null, newest = null;
+  var byMonth = {};
+  while (files.hasNext()) {
+    var f = files.next();
+    var size = 0; try { size = f.getSize(); } catch (e) {}
+    var created = f.getDateCreated();
+    total++; bytes += size;
+    if (!oldest || created < oldest) oldest = created;
+    if (!newest || created > newest) newest = created;
+    var key = Utilities.formatDate(created, 'Asia/Tokyo', 'yyyy-MM');
+    if (!byMonth[key]) byMonth[key] = { count: 0, bytes: 0 };
+    byMonth[key].count++; byMonth[key].bytes += size;
+  }
+  var mb = function (b) { return Math.round(b / 1024 / 1024 * 10) / 10; };
+  // 増加ペース（実績日数から1日あたりを算出）
+  var days = (oldest && newest) ? Math.max(1, Math.round((newest - oldest) / 86400000) + 1) : 1;
+  var perDayBytes = bytes / days;
+  var projected90 = perDayBytes * 90;   // 90日運用時に常時保持される見込み
+  var projected60 = perDayBytes * 60;   // 60日に短縮した場合
+  // Driveの空き容量（取得できる場合のみ）
+  var quota = null;
+  try { quota = { 使用中GB: Math.round(DriveApp.getStorageUsed() / 1073741824 * 100) / 100, 上限GB: Math.round(DriveApp.getStorageLimit() / 1073741824 * 100) / 100 }; } catch (e) {}
+
+  var out = {
+    保存日数の設定: PHOTO_TTL_DAYS,
+    自動削除: ENABLE_AUTO_PURGE ? '有効' : '無効',
+    写真枚数: total,
+    写真の合計MB: mb(bytes),
+    実績日数: days,
+    '1日あたりMB': mb(perDayBytes),
+    '90日運用時の見込みMB': mb(projected90),
+    '60日運用時の見込みMB': mb(projected60),
+    月別: Object.keys(byMonth).sort().reduce(function (o, k) { o[k] = byMonth[k].count + '枚 / ' + mb(byMonth[k].bytes) + 'MB'; return o; }, {}),
+    ドライブ容量: quota,
+    判断の目安: '「90日運用時の見込みMB」が空き容量に対して大きい場合は、PHOTO_TTL_DAYS を 60 に変更するか、容量の大きいアカウントへ移行を検討'
+  };
+  Logger.log(JSON.stringify(out, null, 2));
+  return out;
 }
 
 /**
