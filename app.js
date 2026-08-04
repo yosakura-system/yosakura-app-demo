@@ -76,7 +76,9 @@
     pin:    '<path d="M12 21s7-6.3 7-11a7 7 0 0 0-14 0c0 4.7 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/>',
     coins:  '<ellipse cx="12" cy="6.4" rx="6.5" ry="2.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 6.4v5c0 1.55 2.9 2.8 6.5 2.8s6.5-1.25 6.5-2.8v-5M5.5 11.4v5c0 1.55 2.9 2.8 6.5 2.8s6.5-1.25 6.5-2.8v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
     chat:   '<path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 10h9M7.5 13h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
-    qr:     '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 14h3v3h-3zM19 14h1v1h-1zM19 19h1v1h-1zM14 19h3v1h-3z" fill="currentColor"/>'
+    qr:     '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 14h3v3h-3zM19 14h1v1h-1zM19 19h1v1h-1zM14 19h3v1h-3z" fill="currentColor"/>',
+    phone:  '<path d="M6.5 3.5h3l1.4 4-2 1.4a11 11 0 0 0 5.2 5.2l1.4-2 4 1.4v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.5 5.7 2 2 0 0 1 6.5 3.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+    shield: '<path d="M12 3.5l7 2.5v5c0 4.4-3 7.7-7 9.5-4-1.8-7-5.1-7-9.5V6l7-2.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12l2 2 4-4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
   };
   const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${I[k] || ''}</svg>`;
 
@@ -1997,6 +1999,130 @@
     });
   })();
 
+  /* ===================================================================
+     緊急連絡先（emg）＝共通枠を用意し、店舗ごとに業者名・電話・メモを登録。
+     店長・オーナー・本部が編集、スタッフは閲覧＋ワンタップ発信。全端末同期。
+  =================================================================== */
+  const EMG_SLOTS = [
+    { id:'police',    fix:'110', t:{ ja:'警察',           en:'Police',              vi:'Cảnh sát' } },
+    { id:'fire',      fix:'119', t:{ ja:'消防',           en:'Fire',                vi:'Cứu hỏa' } },
+    { id:'ambulance', fix:'119', t:{ ja:'救急',           en:'Ambulance',           vi:'Cấp cứu' } },
+    { id:'hospital',  t:{ ja:'最寄りの病院',       en:'Nearest hospital',    vi:'Bệnh viện gần nhất' } },
+    { id:'electric',  t:{ ja:'電気',               en:'Electricity',         vi:'Điện lực' } },
+    { id:'gas',       t:{ ja:'ガス',               en:'Gas',                 vi:'Gas' } },
+    { id:'water',     t:{ ja:'水道',               en:'Water',               vi:'Cấp nước' } },
+    { id:'building',  t:{ ja:'ビル管理会社',       en:'Building management', vi:'Quản lý tòa nhà' } },
+    { id:'facility',  t:{ ja:'設備修理業者',       en:'Facility repair',     vi:'Sửa chữa thiết bị' } },
+    { id:'kitchen',   t:{ ja:'厨房機器業者',       en:'Kitchen equipment',   vi:'Thiết bị bếp' } },
+    { id:'other',     t:{ ja:'その他緊急連絡先',   en:'Other emergency',     vi:'Khẩn cấp khác' } }
+  ];
+  const emgSlotLabel = (id) => { const s = EMG_SLOTS.find(x => x.id === id); return s ? L(s.t) : id; };
+  const getEmg = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_emg')) || {}; } catch { return {}; } };
+  const saveEmg = (o) => { try { localStorage.setItem('yosakura_demo_emg', JSON.stringify(o)); } catch (e) {} };
+  const emgOf = (store) => (getEmg()[store] || {}).slots || {};
+  const canEditEmg = () => ['manager','owner','hq'].includes(getRole());
+  function seedEmg() {
+    if (localStorage.getItem('yosakura_demo_emg')) return;
+    saveEmg({ '和牛世桜 広島店': { slots: {
+      hospital: { vendor:'広島市民病院', phone:'082-221-2291', memo:'徒歩8分' },
+      building: { vendor:'—', phone:'', memo:'' },
+      kitchen:  { vendor:'厨房サービス中国', phone:'', memo:'フライヤー担当' }
+    }, t: Date.now() } });
+  }
+  APP_VIEWS.emergency = () => {
+    const vis = visibleStores();
+    const editable = canEditEmg();
+    // 本部・全店＝各店の登録状況を一覧（編集は店舗を選んでから＝右上の店舗切替）
+    if (vis.length > 1) {
+      const map = getEmg();
+      return `
+        ${NOTE({ ja:'◆ 緊急連絡先は店舗ごとに登録します。編集は右上で対象店舗を選ぶと行えます', en:'◆ Contacts are per store. Pick a store (top-right) to edit.', vi:'◆ Danh bạ theo từng cửa hàng. Chọn cửa hàng (góc phải) để sửa.' })}
+        <div class="card"><h3>${L({ ja:'店舗別の登録状況', en:'Registration by store', vi:'Tình trạng theo cửa hàng' })}</h3>
+          ${vis.map(s => { const n = Object.values((map[s]||{}).slots || {}).filter(v => v && v.phone).length;
+            return `<div class="rep"><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${n ? L({ ja:`${n}件 登録済み`, en:`${n} registered`, vi:`Đã đăng ký ${n}` }) : L({ ja:'未登録', en:'Not set', vi:'Chưa đăng ký' })}</div></div><span class="amt">${n}</span></div>`; }).join('')}
+        </div>
+        <p class="hint">${L({ ja:'※ 共通枠：警察・消防・救急・病院・電気・ガス・水道・ビル管理・設備・厨房機器・その他', en:'Fixed slots: police, fire, ambulance, hospital, utilities, building, facility, kitchen, other', vi:'Khung cố định: cảnh sát, cứu hỏa, cấp cứu, bệnh viện, tiện ích, tòa nhà, thiết bị, bếp, khác' })}</p>`;
+    }
+    const store = vis[0];
+    const slots = emgOf(store);
+    const rows = EMG_SLOTS.map(s => {
+      const cur = slots[s.id] || {};
+      const phone = cur.phone || s.fix || '';
+      if (editable) {
+        return `<div class="card" style="padding:12px 14px;margin-bottom:8px">
+          <div style="font-weight:700;font-size:13px;margin-bottom:8px">${esc(L(s.t))}</div>
+          <div class="sk-grid">
+            <label class="fld"><span>${L({ ja:'業者・宛先', en:'Vendor', vi:'Đơn vị' })}</span><input type="text" class="emg_vendor" data-slot="${s.id}" value="${esc(cur.vendor||'')}" placeholder="${esc(L({ ja:'例）〇〇設備', en:'e.g. ABC Corp', vi:'vd: Cty ABC' }))}"></label>
+            <label class="fld"><span>${L({ ja:'電話番号', en:'Phone', vi:'Điện thoại' })}</span><input type="tel" inputmode="tel" class="emg_phone" data-slot="${s.id}" value="${esc(cur.phone||'')}" placeholder="${esc(s.fix || L({ ja:'番号', en:'Number', vi:'Số' }))}"></label>
+          </div>
+          <label class="fld"><span>${L({ ja:'メモ（任意）', en:'Memo (optional)', vi:'Ghi chú' })}</span><input type="text" class="emg_memo" data-slot="${s.id}" value="${esc(cur.memo||'')}"></label>
+        </div>`;
+      }
+      return `<div class="rep">
+        <div class="body"><div class="l1">${esc(L(s.t))}${cur.vendor?`　<span class="muted">${esc(cur.vendor)}</span>`:''}</div>
+        <div class="l2">${phone ? `<a href="tel:${esc(phone.replace(/[^0-9+]/g,''))}">${esc(phone)}</a>` : L({ ja:'未登録', en:'Not set', vi:'Chưa đăng ký' })}${cur.memo?`　・${esc(cur.memo)}`:''}</div></div>
+        ${phone ? `<a class="amt" style="text-decoration:none" href="tel:${esc(phone.replace(/[^0-9+]/g,''))}">${svg('phone')}</a>` : ''}
+      </div>`;
+    }).join('');
+    return `
+      ${NOTE({ ja:'◆ 水漏れ・停電・ガス・設備不具合・急病などのとき、すぐ連絡先を確認できます', en:'◆ Quickly find who to call for leaks, outages, gas, equipment or sudden illness', vi:'◆ Tra nhanh số cần gọi khi rò nước, mất điện, gas, thiết bị hỏng hay cấp cứu' })}
+      <div class="card"><h3>${L({ ja:'緊急連絡先', en:'Emergency contacts', vi:'Liên hệ khẩn cấp' })}</h3>
+        <div class="muted" style="margin-bottom:10px">${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}：${esc(store)}</div>
+        ${editable ? '' : `<p class="hint" style="margin-top:0">${L({ ja:'※ 番号をタップすると発信します。登録・編集は店長・オーナー・本部が行います', en:'Tap a number to call. Managers/owners/HQ can edit.', vi:'Chạm số để gọi. Quản lý/chủ/HQ có thể sửa.' })}</p>`}
+      </div>
+      ${editable ? rows + `<button class="btn-primary" id="emgSave">${L({ ja:'保存する', en:'Save', vi:'Lưu' })}</button><div class="hint">${L({ ja:'保存すると全端末で共有されます', en:'Saved and shared across devices', vi:'Được lưu và chia sẻ mọi thiết bị' })}</div>` : `<div class="card" style="padding:6px 14px">${rows}</div>`}`;
+  };
+
+  /* ===================================================================
+     公益通報・コンプライアンス窓口（whistle）＝スタッフ画面から削除不可の固定項目。
+     店長・オーナーに相談しにくい問題を本部へ直接。通報先・担当は本部が別途決定。
+  =================================================================== */
+  const WHISTLE_CATS = [
+    { v:'power',   t:{ ja:'パワーハラスメント',   en:'Power harassment',    vi:'Quấy rối quyền lực' } },
+    { v:'sexual',  t:{ ja:'セクシュアルハラスメント', en:'Sexual harassment', vi:'Quấy rối tình dục' } },
+    { v:'abuse',   t:{ ja:'暴言・威圧',           en:'Verbal abuse',        vi:'Lăng mạ/đe dọa' } },
+    { v:'fraud',   t:{ ja:'不正行為',             en:'Misconduct',          vi:'Gian lận' } },
+    { v:'legal',   t:{ ja:'法令違反',             en:'Legal violation',     vi:'Vi phạm pháp luật' } },
+    { v:'hygiene', t:{ ja:'衛生上の重大問題',     en:'Serious hygiene issue', vi:'Vệ sinh nghiêm trọng' } },
+    { v:'other',   t:{ ja:'その他重大な相談',     en:'Other serious matter', vi:'Vấn đề nghiêm trọng khác' } }
+  ];
+  const whistleCatLabel = (v) => { const c = WHISTLE_CATS.find(x => x.v === v); return c ? L(c.t) : v; };
+  const getWhistle = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_whistle')) || []; } catch { return []; } };
+  const saveWhistle = (a) => { try { localStorage.setItem('yosakura_demo_whistle', JSON.stringify(a)); } catch (e) {} };
+  const getWhistleDone = () => { try { return JSON.parse(localStorage.getItem('yosakura_whistle_done')) || []; } catch { return []; } };
+  APP_VIEWS.whistle = () => {
+    // 本部＝受け付けた通報を一覧で確認
+    if (getRole() === 'hq') {
+      const done = getWhistleDone();
+      const list = getWhistle().slice().sort((a,b) => b.t - a.t);
+      return `
+        ${NOTE({ ja:'◆ スタッフから直接届いた通報です。取り扱いは慎重に（担当・保存方法は本部で決定）', en:'◆ Reports sent directly by staff. Handle with care (owner & retention set by HQ).', vi:'◆ Báo cáo gửi trực tiếp từ nhân viên. Xử lý thận trọng.' })}
+        <div class="card"><h3>${L({ ja:'受け付けた通報', en:'Received reports', vi:'Báo cáo đã nhận' })}</h3>
+          ${list.length ? list.map(r => `<div class="rep">
+            <span class="kind ${done.includes(r.t)?'':'a'}">${esc(whistleCatLabel(r.cat))}</span>
+            <div class="body"><div class="l1">${esc(r.body||'—')}</div>
+            <div class="l2">${r.anon ? L({ ja:'匿名', en:'Anonymous', vi:'Ẩn danh' }) : esc(r.store||'—')} ・ ${timeAgo(r.t)}</div></div>
+            <button class="mini ${done.includes(r.t)?'on':''}" data-whdone="${r.t}">${done.includes(r.t) ? L({ ja:'対応済', en:'Done', vi:'Đã xử lý' }) : L({ ja:'未対応', en:'Open', vi:'Chưa xử lý' })}</button>
+          </div>`).join('') : `<div class="muted">${L({ ja:'まだ通報はありません', en:'No reports yet', vi:'Chưa có báo cáo' })}</div>`}
+        </div>
+        <p class="hint">${L({ ja:'※ 通報先メール・受付担当・匿名可否・保存方法・対応フローは本部で決定してください（未確定）', en:'HQ to decide report address, handler, anonymity, retention and response flow (pending).', vi:'HQ quyết định địa chỉ, người phụ trách, ẩn danh, lưu trữ và quy trình (chưa chốt).' })}</p>`;
+    }
+    // スタッフ・店長・オーナー＝通報フォーム
+    const store = visibleStores()[0];
+    return `
+      ${NOTE({ ja:'◆ 店長・オーナーに相談しにくい問題を、本部へ直接お伝えいただく窓口です', en:'◆ A channel to report issues to HQ directly when hard to raise with your manager/owner', vi:'◆ Kênh báo cáo trực tiếp tới HQ khi khó nói với quản lý/chủ' })}
+      <div class="card" id="whForm">
+        <h3>${L({ ja:'公益通報・コンプライアンス窓口', en:'Whistleblowing / Compliance', vi:'Tố giác / Tuân thủ' })}</h3>
+        <label class="fld"><span>${L({ ja:'種類', en:'Category', vi:'Loại' })}</span>
+          <div class="seg" data-seg="whcat" style="flex-wrap:wrap">${WHISTLE_CATS.map((c,i) => `<button type="button" data-v="${c.v}" class="${i===0?'on':''}">${L(c.t)}</button>`).join('')}</div></label>
+        <label class="fld"><span>${L({ ja:'内容', en:'Details', vi:'Nội dung' })}</span>
+          <textarea id="wh_body" placeholder="${esc(L({ ja:'事実を具体的に。日時・場所・関係者など分かる範囲で。', en:'Describe the facts: when, where, who, as far as you know.', vi:'Mô tả sự việc: khi nào, ở đâu, ai, trong khả năng biết.' }))}"></textarea></label>
+        <label class="check-inline"><input type="checkbox" id="wh_anon"> ${L({ ja:'匿名で送信する（店舗名を伝えない）', en:'Send anonymously (hide store)', vi:'Gửi ẩn danh (ẩn cửa hàng)' })}</label>
+        <button class="btn-primary" id="whSubmit" style="margin-top:12px">${L({ ja:'本部へ送信', en:'Send to HQ', vi:'Gửi tới HQ' })}</button>
+        <div class="hint">${L({ ja:'※ この窓口はスタッフ画面から外せない固定項目です。内容は本部のみが確認します。', en:'This channel is a fixed item and cannot be removed. Only HQ can view submissions.', vi:'Kênh này cố định, không thể gỡ. Chỉ HQ xem được.' })}</div>
+      </div>`;
+  };
+
   // 提出管理モジュールをアプリ一覧へ追加（店舗ロール中心・本部も閲覧可）
   if (!appById('openphoto')) {
     APPS.unshift({ id:'openphoto', group:'genba', icon:'camera', live:true, roles:['staff','manager','owner','hq'],
@@ -2027,6 +2153,16 @@
     APPS.unshift({ id:'kyou', group:'genba', icon:'check', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'今日出すもの', en:'Today to submit', vi:'Cần nộp hôm nay' },
       desc:{ ja:'当日の提出物と未提出をひと目で', en:'Today’s items & missing at a glance', vi:'Mục cần nộp & còn thiếu' } });
+  }
+  if (!appById('emergency')) {
+    APPS.push({ id:'emergency', group:'genba', icon:'phone', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'緊急連絡先', en:'Emergency contacts', vi:'Liên hệ khẩn cấp' },
+      desc:{ ja:'警察・消防・設備業者など、店舗別にすぐ確認', en:'Police, fire, vendors — by store', vi:'Cảnh sát, cứu hỏa, đơn vị — theo cửa hàng' } });
+  }
+  if (!appById('whistle')) {
+    APPS.push({ id:'whistle', group:'genba', icon:'shield', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'公益通報・コンプラ窓口', en:'Whistleblowing', vi:'Tố giác / Tuân thủ' },
+      desc:{ ja:'相談しにくい問題を本部へ直接（固定）', en:'Report directly to HQ (fixed item)', vi:'Báo cáo trực tiếp tới HQ (cố định)' } });
   }
 
   function render() {
@@ -2077,6 +2213,54 @@
           if (lvl) { lvl.innerHTML = (kind==='a'?LEVELS_A:LEVELS_B).map((o,i)=>`<button type="button" data-v="${o.v}" class="${i===0?'on':''}">${L(o.t)}</button>`).join(''); rebindSeg(lvl); }
         }
       });
+    });
+
+    // 緊急連絡先：全枠をまとめて保存（店舗ごとに最新版が正・全端末共有）
+    const emgSave = byId('emgSave');
+    if (emgSave) emgSave.onclick = () => {
+      const store = visibleStores()[0];
+      const slots = {};
+      document.querySelectorAll('.emg_phone').forEach(inp => {
+        const id = inp.dataset.slot;
+        const vendor = ((document.querySelector('.emg_vendor[data-slot="' + id + '"]') || {}).value || '').trim();
+        const phone = (inp.value || '').trim();
+        const memo = ((document.querySelector('.emg_memo[data-slot="' + id + '"]') || {}).value || '').trim();
+        if (vendor || phone || memo) slots[id] = { vendor, phone, memo };
+      });
+      const t = Date.now();
+      const all = getEmg(); all[store] = { slots, t }; saveEmg(all);
+      lastSync = t;
+      toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' }));
+      render();
+      postReport({ kind:'emg', store, note: JSON.stringify({ slots }), t });
+    };
+
+    // 公益通報：本部へ送信（匿名可）
+    const whSubmit = byId('whSubmit');
+    if (whSubmit) whSubmit.onclick = () => {
+      const catEl = document.querySelector('[data-seg="whcat"] .on');
+      const cat = catEl ? catEl.dataset.v : 'other';
+      const bodyEl = byId('wh_body');
+      const body = bodyEl ? bodyEl.value.trim() : '';
+      if (!body) { toast(L({ ja:'内容を入力してください', en:'Please enter details', vi:'Vui lòng nhập nội dung' })); return; }
+      const anon = !!(byId('wh_anon') && byId('wh_anon').checked);
+      const store = anon ? '' : visibleStores()[0];
+      const t = Date.now();
+      const arr = getWhistle(); arr.push({ store, cat, body, anon, t });
+      try { saveWhistle(arr.slice(-200)); } catch (e) { saveWhistle(arr.slice(-60)); }
+      lastSync = t;
+      toast(L({ ja:'本部へ送信しました。ありがとうございます。', en:'Sent to HQ. Thank you.', vi:'Đã gửi tới HQ. Cảm ơn.' }));
+      render();
+      postReport({ kind:'whistle', store, note: JSON.stringify({ cat, body, anon }), t });
+    };
+
+    // 公益通報（本部）：対応済みトグル（この端末で表示管理）
+    document.querySelectorAll('[data-whdone]').forEach(b => b.onclick = () => {
+      const tv = Number(b.dataset.whdone);
+      let done = getWhistleDone();
+      done = done.includes(tv) ? done.filter(x => x !== tv) : done.concat(tv);
+      try { localStorage.setItem('yosakura_whistle_done', JSON.stringify(done)); } catch (e) {}
+      render();
     });
 
     // 店舗を変えたらメニュー選択肢を出し分け＋「その他」トグルを配線（食べ残し報告）
@@ -2308,7 +2492,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[];
+    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[]; const emg={};
     (rows || []).forEach(r => {
       const t = Number(r.t) || 0, id = r.id, store = r.store || '';
       switch (r.kind) {
@@ -2320,12 +2504,15 @@
         case 'survey': survey.push({ store, sat:Number(r.level)||0, route:r.item, note:r.note, t, id }); break;
         case 'svfb': { const p=pj(r.note); svfb.push({ store, aspect:r.item, good:p.good||'', improve:p.improve||'', t, id }); } break;
         case 'video': video.push({ store, url:r.item, note:r.note, t, id }); break;
+        case 'emg': { const p=pj(r.note); if (!emg[store] || t >= emg[store].t) emg[store] = { slots: p.slots || {}, t }; } break; // 店舗ごとに最新版が正
+        case 'whistle': { const p=pj(r.note); whistle.push({ store, cat:p.cat||'other', body:p.body||'', anon:!!p.anon, t, id }); } break;
       }
     });
     const set = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a)); } catch (_) {} };
     set(LS.reports, food); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
     set('yosakura_demo_open', open); set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
+    set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle);
   }
   async function syncReports(force) {
     if (!useBackend()) return;
@@ -2354,7 +2541,7 @@
   document.documentElement.lang = LANG;
   if (!useBackend()) seedIfEmpty();
   // バックエンド接続時は全端末同期を使うためシードしない（＝実データのみ）。オフライン検証時のみ初期データを用意。
-  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); }
+  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); }
   render();
   syncReports(true);
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);

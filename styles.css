@@ -348,3 +348,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .tour__row { display: flex; align-items: center; gap: 8px; }
 .tour__skip { flex: 0 0 auto; background: none; border: none; color: var(--gray); font-weight: 700; font-size: 13px; padding: 14px 10px; cursor: pointer; font-family: var(--sans); }
 .tour__next { flex: 1; }
+
+/* 公益通報：匿名チェックのインライン表示 */
+.check-inline { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--sumi); margin-top: 10px; cursor: pointer; }
+.check-inline input { width: 17px; height: 17px; accent-color: var(--suou); }
