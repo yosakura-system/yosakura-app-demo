@@ -396,3 +396,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .news-thumb { display: block; width: 100%; max-height: 160px; object-fit: cover; border-radius: 12px; margin: 8px 0 2px; }
 .news-video { display: inline-block; margin: 6px 0 2px; font-size: 13px; font-weight: 700; color: var(--suou); text-decoration: none; }
 .news-item .rep-photos { margin: 4px 0; }
+
+/* サーベイ集計：低評価バー */
+.bar-fill.bar-low { background: #c96a6a; }

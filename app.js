@@ -1108,12 +1108,43 @@
         <div class="hint">${L({ ja:'声かけは短く：「お時間がありましたら、アンケートにご協力をお願いいたします。」／回答は誘導せず、満足度を最優先に。', en:'Keep it short; never lead the answer; prioritize the guest.', vi:'Nói ngắn gọn; không gợi ý câu trả lời.' })}</div>
         <div class="hint">${L({ ja:'※「大変満足／満足」の時だけ、控えめに口コミQRをご案内（断られたらすぐ引く）。', en:'Only when highly satisfied, gently offer the review QR.', vi:'Chỉ khi rất hài lòng mới mời đánh giá.' })}</div>
       </div>
-      ${n ? `<div class="card">
-        <h3>${L({ ja:'これまでにこのアプリから記録した分', en:'Recorded via this app so far', vi:'Đã ghi qua ứng dụng' })}</h3>
-        <div class="stat-row"><div class="stat"><div class="n">${n}</div><div class="k">${L({ ja:'回答数', en:'Responses', vi:'Phản hồi' })}</div></div><div class="stat"><div class="n">${avg.toFixed(1)}</div><div class="k">${L({ ja:'平均満足度', en:'Avg. satisfaction', vi:'Hài lòng TB' })}</div></div></div>
-        <p class="hint" style="display:block">${L({ ja:'※ 集計の正はサーベイ側です。こちらは過去にこのアプリから入力された分のみを表示しています。', en:'The survey tool is the source of truth. This shows only entries made in this app.', vi:'Số liệu chuẩn nằm ở công cụ khảo sát.' })}</p>
-      </div>` : ''}`;
+      ${(['manager','owner','hq'].includes(getRole()) && n) ? surveyAgg(rows, vis) : ''}`;
   };
+  // サーベイ集計（本部・オーナー・店長向け）：満足度分布／低評価／来店経路／月別推移／店舗別
+  function surveyAgg(rows, vis) {
+    const n = rows.length;
+    const avg = n ? rows.reduce((s, r) => s + (Number(r.sat) || 0), 0) / n : 0;
+    const low = rows.filter(r => (Number(r.sat) || 0) <= 2).length;
+    const dist = [5, 4, 3, 2, 1].map(s => ({ s, c: rows.filter(r => Number(r.sat) === s).length }));
+    const rc = {}; ROUTES.forEach(x => rc[x.v] = 0); rows.forEach(r => { if (rc[r.route] != null) rc[r.route]++; });
+    const ymOf = (t) => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+    const mc = {}; rows.forEach(r => { const k = ymOf(r.t); mc[k] = (mc[k] || 0) + 1; });
+    const months = Object.keys(mc).sort().slice(-6);
+    const barRow = (label, c, total, cls) => `<div class="bar-row"><div class="bl"><span>${esc(label)}</span><b>${c}</b></div><div class="bar-track"><div class="bar-fill ${cls||''}" style="width:${total ? Math.round(c / total * 100) : 0}%"></div></div></div>`;
+    const byStore = vis.length > 1 ? (() => {
+      const bs = {}; vis.forEach(s => bs[s] = { n: 0, sum: 0, low: 0 });
+      rows.forEach(r => { if (bs[r.store]) { bs[r.store].n++; bs[r.store].sum += Number(r.sat) || 0; if ((Number(r.sat) || 0) <= 2) bs[r.store].low++; } });
+      return `<div class="card"><h3>${L({ ja:'店舗別の評価', en:'By store', vi:'Theo cửa hàng' })}</h3>
+        ${vis.map(s => { const b = bs[s]; const a = b.n ? (b.sum / b.n) : 0; return `<div class="rep"><span class="amt" style="${b.low?'color:#a23b3b':''}">${b.n ? a.toFixed(1) : '—'}</span><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${L({ja:'回答',en:'Resp.',vi:'PH'})} ${b.n} ・ ${L({ja:'低評価',en:'Low',vi:'Thấp'})} ${b.low}</div></div></div>`; }).join('')}
+      </div>`;
+    })() : '';
+    return `
+      <div class="card">
+        <h3>${L({ ja:'サーベイ集計', en:'Survey summary', vi:'Tổng hợp khảo sát' })}</h3>
+        <div class="stat-row">
+          <div class="stat"><div class="n">${n}</div><div class="k">${L({ ja:'回答数', en:'Responses', vi:'Phản hồi' })}</div></div>
+          <div class="stat"><div class="n">${avg.toFixed(1)}</div><div class="k">${L({ ja:'平均満足度', en:'Avg.', vi:'TB' })}</div></div>
+          <div class="stat"><div class="n" style="${low?'color:#a23b3b':''}">${low}</div><div class="k">${L({ ja:'低評価(1-2)', en:'Low (1-2)', vi:'Thấp' })}</div></div>
+        </div>
+        <div class="idlabel" style="margin-top:12px">${L({ ja:'満足度の分布', en:'Rating distribution', vi:'Phân bố đánh giá' })}</div>
+        ${dist.map(d => barRow('★' + d.s, d.c, n, d.s <= 2 ? 'bar-low' : '')).join('')}
+        <div class="idlabel" style="margin-top:12px">${L({ ja:'来店経路', en:'Arrival route', vi:'Nguồn khách' })}</div>
+        ${ROUTES.map(r => barRow(L(r.t), rc[r.v], n)).join('')}
+        ${months.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'月別の回答数', en:'Responses by month', vi:'PH theo tháng' })}</div>${months.map(m => barRow(m, mc[m], Math.max(...months.map(x => mc[x])))).join('')}` : ''}
+      </div>
+      ${byStore}
+      <p class="hint" style="display:block">${L({ ja:'※ 来店国など一部項目は本番サーベイ側に蓄積されます。ここはアプリ入力分の集計です。', en:'Some fields (e.g. country) live in the survey tool. This aggregates app entries.', vi:'Một số mục nằm ở công cụ khảo sát.' })}</p>`;
+  }
 
   /* ⑥ 総括表（動く：実日報フォーマットで入力→保存→履歴＆本部集約）*/
   const yen = (n) => '¥' + (Number(n) || 0).toLocaleString('en-US');
