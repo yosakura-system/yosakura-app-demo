@@ -443,7 +443,7 @@
     staff:   ['kyou', 'openphoto', 'checklist', 'kizuki'],
     manager: ['kyou', 'openphoto', 'soukatsu', 'checklist'],
     owner:   ['kyou', 'openphoto', 'soukatsu', 'checklist'],
-    hq:      ['teishutsu', 'kyou', 'dashboard', 'svfb']
+    hq:      ['teishutsu', 'kyou', 'dashboard', 'inbox']
   };
   function installCardHTML() {
     if (installHidden()) return '';
@@ -457,7 +457,7 @@
       </div>`;
   }
   function homeInner(role) {
-    const tiles = (ids) => ids.map(appById).filter(a => a && canOpen(a, role)).map(a => tileHTML(a, role)).join('');
+    const tiles = (ids) => ids.map(appById).filter(a => a && !a.hide && canOpen(a, role)).map(a => tileHTML(a, role)).join('');
     const primary = tiles(HOME_PRIMARY[role] || HOME_PRIMARY.staff);
     const safety = tiles(['emergency', 'whistle']);
     const sec = (t) => `<div class="sec-h"><span class="bar"></span><h2>${L(t)}</h2></div>`;
