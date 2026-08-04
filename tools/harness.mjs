@@ -290,8 +290,8 @@ console.log('== 資料リンクの管理（materials）：本部専用・同期 
   // 同期：linkset（配列丸ごと）が distribute で復元される
   FETCH_ROWS = { ok:true, reports:[
     { kind:'linkset', store:'', note: JSON.stringify([
-      { id:'a1', title:'世桜の理念', url:'https://docs.google.com/presentation/d/EXAMPLE/edit', cat:'worldview', desc:'' },
-      { id:'a2', title:'スタッフの基本', url:'https://docs.google.com/document/d/EXAMPLE/edit', cat:'staff', desc:'' },
+      { id:'a1', title:'世桜の理念', url:'https://docs.google.com/presentation/d/EXAMPLE/edit', mcat:'philosophy', desc:'' },
+      { id:'a2', title:'スタッフの基本', url:'https://docs.google.com/document/d/EXAMPLE/edit', mcat:'sevendays', desc:'' },
     ]), t: Date.now(), id:'ls1' },
   ]};
   try { run(()=> setLS('hq', 'all', 'ja')); } catch(e){ FAIL++; console.log('  ✗ linkset load threw: '+e.message); }
@@ -303,6 +303,7 @@ await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/materials';
   const html = registry.app.innerHTML;
   ok(/data-openurl=/.test(html) && /matAdd/.test(html), '本部の管理画面に一覧と追加フォームが出る');
+  ok(/data-mcatstep=/.test(html), '各資料に大項目◀▶スライド切替が出る');
 }
 FETCH_ROWS = { ok:false };
 
@@ -310,8 +311,8 @@ console.log('== マニュアル：対応資料をタップで開く（linksetと
 {
   FETCH_ROWS = { ok:true, reports:[
     { kind:'linkset', store:'', note: JSON.stringify([
-      { id:'lk_w2', cat:'worldview', title:'世桜とは',     url:'https://docs.google.com/presentation/d/EX/edit',  desc:'スライド' },
-      { id:'lk_s1', cat:'staff',     title:'ハウスルール', url:'https://docs.google.com/spreadsheets/d/EX/edit', desc:'スプレッドシート' },
+      { id:'lk_w2', mcat:'philosophy', title:'世桜とは',     url:'https://docs.google.com/presentation/d/EX/edit',  desc:'スライド' },
+      { id:'lk_s1', mcat:'sevendays',  title:'ハウスルール', url:'https://docs.google.com/spreadsheets/d/EX/edit', desc:'スプレッドシート' },
     ]), t: Date.now(), id:'ls2' },
   ]};
   try { run(()=> setLS('staff', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ manual linkset load threw: '+e.message); }
