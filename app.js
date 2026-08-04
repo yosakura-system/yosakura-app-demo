@@ -1745,7 +1745,8 @@
       { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},       oblig:'required', freq:'daily', due:'23:59', target:'all',          hqReview:'each',      detect:'sk', linkApp:'soukatsu' },
       { id:'openphoto',  name:{ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'},          oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'subrec', linkApp:'openphoto' },
       { id:'cleaning',   name:{ja:'開店清掃チェック',en:'Opening cleaning',vi:'Vệ sinh mở cửa'}, oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'none', linkApp:'checklist' },
-      { id:'facade',     name:{ja:'内外装動画＋ポップ',en:'Interior video & POP',vi:'Video & POP'}, oblig:'required', freq:'monthly', due:'23:59', target:'all',       hqReview:'each',      detect:'video', linkApp:'storevideo' }
+      { id:'facade',     name:{ja:'内外装動画＋ポップ',en:'Interior video & POP',vi:'Video & POP'}, oblig:'required', freq:'monthly', due:'23:59', target:'all',       hqReview:'each',      detect:'video', linkApp:'storevideo' },
+      { id:'monthlynum', name:{ja:'月次数値（売上・在庫・原価率）',en:'Monthly numbers',vi:'Số liệu tháng'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'monthly', linkApp:'pl' }
     ];
   }
   /* 提出管理データの全端末共有：既存バックエンド(reports)に専用kindで保存し本部全員で共有（追加kindのみ・既存挙動は不変） */
@@ -1818,6 +1819,7 @@
       if (m.detect === 'sk')     return getSk().some(r => r.store === store && inScope(r.t));
       if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
       if (m.detect === 'video')  return getReports().some(r => r.kind === 'video' && r.store === store && inScope(r.t));
+      if (m.detect === 'monthly') return getMonthly().some(r => r.store === store && r.ym === new Date().toISOString().slice(0, 7));
       if (m.detect === 'subrec') return subRows(SUB_KINDS.open).some(r => r.store === store && String(r.item || '').split('|')[0] === m.id && inScope(r.t));
     } catch (e) {}
     return false;
@@ -1839,24 +1841,27 @@
   const OBLIG_LABEL = { required:{ja:'必須',en:'Required',vi:'Bắt buộc'}, store:{ja:'店舗運用',en:'Store-run',vi:'Cửa hàng'}, off:{ja:'対象外',en:'Off',vi:'Không'} };
   const JUDGE_LABEL = { '':{ja:'—',en:'—',vi:'—'}, in:{ja:'基準内',en:'In-std',vi:'Đạt'}, check:{ja:'要確認',en:'Check',vi:'Cần KT'}, out:{ja:'基準外',en:'Out-std',vi:'Không đạt'} };
 
-  /* ---------- 店舗向け：今日出すもの ---------- */
+  /* ---------- 店舗向け：提出物の行（今日／月次で共通） ---------- */
+  const subItemRow = (it) => {
+    const badgeTxt = it.manual ? L({ja:'手動',en:'Manual',vi:'Thủ công'}) : (it.submitted ? L({ja:'提出済',en:'Done',vi:'Đã nộp'}) : L({ja:'未提出',en:'To do',vi:'Chưa'}));
+    const badgeCls = it.manual ? '' : (it.submitted ? 'b' : 'a');
+    const due = it.m.freq === 'monthly' ? L({ja:'今月',en:'This month',vi:'Tháng này'}) : `${L({ja:'締切',en:'Due',vi:'Hạn'})} ${it.m.due}`;
+    const openBtn = ((it.manual || !it.submitted) && it.m.linkApp) ? `<button class="mini" data-tsub="${it.m.linkApp}">${L({ja:'開いて提出',en:'Open',vi:'Mở'})}${svg('chev')}</button>` : '';
+    const oflag = it.overdue ? ` <span style="color:#b23">${L({ja:'締切超過',en:'Overdue',vi:'Quá hạn'})}</span>` : '';
+    const noentry = it.manual ? ` <span class="hint" style="display:inline">※${L({ja:'自動判定なし（店舗運用・手動）',en:'no auto-check (store-run/manual)',vi:'không tự KT (thủ công)'})}</span>` : '';
+    return `<div class="rep"><span class="kind ${badgeCls}">${badgeTxt}</span>
+      <div class="body"><div class="l1">${esc(L(it.m.name))} <small style="color:#8a8">(${L(OBLIG_LABEL[it.m.oblig])})</small></div>
+      <div class="l2">${due}${oflag}${noentry}</div></div>${openBtn}</div>`;
+  };
+
+  /* ---------- 店舗向け：今日出すもの（日次） ---------- */
   APP_VIEWS.kyou = () => {
     const store = visibleStores()[0];
-    const items = todayItemsFor(store);
+    const items = todayItemsFor(store).filter(it => it.m.freq !== 'monthly');
     const dk = dateKeyFor(store, Date.now());
     const holiday = isHoliday(store, dk);
     const remain = items.filter(it => !it.manual && !it.submitted).length;
-    const rows = items.map(it => {
-      const badgeTxt = it.manual ? L({ja:'手動',en:'Manual',vi:'Thủ công'}) : (it.submitted ? L({ja:'提出済',en:'Done',vi:'Đã nộp'}) : L({ja:'未提出',en:'To do',vi:'Chưa'}));
-      const badgeCls = it.manual ? '' : (it.submitted ? 'b' : 'a');
-      const due = it.m.freq === 'monthly' ? L({ja:'今月',en:'This month',vi:'Tháng này'}) : `${L({ja:'締切',en:'Due',vi:'Hạn'})} ${it.m.due}`;
-      const openBtn = ((it.manual || !it.submitted) && it.m.linkApp) ? `<button class="mini" data-tsub="${it.m.linkApp}">${L({ja:'開いて提出',en:'Open',vi:'Mở'})}${svg('chev')}</button>` : '';
-      const oflag = it.overdue ? ` <span style="color:#b23">${L({ja:'締切超過',en:'Overdue',vi:'Quá hạn'})}</span>` : '';
-      const noentry = it.manual ? ` <span class="hint" style="display:inline">※${L({ja:'自動判定なし（店舗運用・手動）',en:'no auto-check (store-run/manual)',vi:'không tự KT (thủ công)'})}</span>` : '';
-      return `<div class="rep"><span class="kind ${badgeCls}">${badgeTxt}</span>
-        <div class="body"><div class="l1">${esc(L(it.m.name))} <small style="color:#8a8">(${L(OBLIG_LABEL[it.m.oblig])})</small></div>
-        <div class="l2">${due}${oflag}${noentry}</div></div>${openBtn}</div>`;
-    }).join('');
+    const rows = items.map(subItemRow).join('');
     return `
       <div class="card">
         <h3>${L({ja:'今日出すもの',en:'Today to submit',vi:'Cần nộp hôm nay'})} — ${esc(storeShort(store))} <small style="color:#8a8">${dk}</small></h3>
@@ -1864,6 +1869,22 @@
         ${rows}
       </div>
       <p class="hint" style="display:block">${L({ja:'※ 提出の有無は、実際の提出データ（全端末同期）から自動で判定しています。',en:'Status is auto-detected from real submitted data (synced).',vi:'Trạng thái tự nhận từ dữ liệu đã nộp (đồng bộ).'})}</p>`;
+  };
+
+  /* ---------- 店舗向け：月末・月次で出すもの（月次） ---------- */
+  APP_VIEWS.getsuji = () => {
+    const store = visibleStores()[0];
+    const items = todayItemsFor(store).filter(it => it.m.freq === 'monthly');
+    const ym = new Date().toISOString().slice(0, 7);
+    const remain = items.filter(it => !it.manual && !it.submitted).length;
+    const rows = items.length ? items.map(subItemRow).join('') : `<div class="muted">${L({ja:'今月の提出物はありません',en:'No monthly items',vi:'Không có mục tháng này'})}</div>`;
+    return `
+      <div class="card">
+        <h3>${L({ja:'月末・月次で出すもの',en:'Monthly to submit',vi:'Cần nộp hàng tháng'})} — ${esc(storeShort(store))} <small style="color:#8a8">${ym}</small></h3>
+        <p class="hint" style="display:block">${L({ja:'今月分の提出物です。残り',en:'This month. Remaining',vi:'Trong tháng. Còn lại'})} ${remain} ${L({ja:'件',en:'item(s)',vi:'mục'})}</p>
+        ${rows}
+      </div>
+      <p class="hint" style="display:block">${L({ja:'※ 月内に提出があれば自動で「提出済」になります（月次数値は「数値・原価率」画面の入力で判定）。',en:'Marked done when submitted within the month (numbers via the Cost screen).',vi:'Tự đánh dấu khi nộp trong tháng.'})}</p>`;
   };
 
   /* ---------- 本部向け：提出状況一覧・未提出抽出（実データ集約） ---------- */
@@ -2439,6 +2460,11 @@
     APPS.unshift({ id:'kyou', group:'genba', icon:'check', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'今日出すもの', en:'Today to submit', vi:'Cần nộp hôm nay' },
       desc:{ ja:'当日の提出物と未提出をひと目で', en:'Today’s items & missing at a glance', vi:'Mục cần nộp & còn thiếu' } });
+  }
+  if (!appById('getsuji')) {
+    APPS.unshift({ id:'getsuji', group:'genba', icon:'calendar', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'月末・月次で出すもの', en:'Monthly to submit', vi:'Cần nộp hàng tháng' },
+      desc:{ ja:'今月の提出物と未提出をひと目で', en:'This month’s items & missing', vi:'Mục tháng & còn thiếu' } });
   }
   if (!appById('news')) {
     APPS.push({ id:'news', group:'learn', icon:'bell', live:true, roles:['staff','manager','owner','hq'],
