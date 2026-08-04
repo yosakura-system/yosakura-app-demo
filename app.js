@@ -78,7 +78,8 @@
     chat:   '<path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 10h9M7.5 13h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
     qr:     '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 14h3v3h-3zM19 14h1v1h-1zM19 19h1v1h-1zM14 19h3v1h-3z" fill="currentColor"/>',
     phone:  '<path d="M6.5 3.5h3l1.4 4-2 1.4a11 11 0 0 0 5.2 5.2l1.4-2 4 1.4v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.5 5.7 2 2 0 0 1 6.5 3.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
-    shield: '<path d="M12 3.5l7 2.5v5c0 4.4-3 7.7-7 9.5-4-1.8-7-5.1-7-9.5V6l7-2.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12l2 2 4-4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
+    shield: '<path d="M12 3.5l7 2.5v5c0 4.4-3 7.7-7 9.5-4-1.8-7-5.1-7-9.5V6l7-2.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12l2 2 4-4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+    bell:   '<path d="M6 16V10a6 6 0 0 1 12 0v6l1.5 2.2H4.5L6 16z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'
   };
   const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${I[k] || ''}</svg>`;
 
@@ -452,11 +453,18 @@
     const primary = tiles(HOME_PRIMARY[role] || HOME_PRIMARY.staff);
     const safety = tiles(['emergency', 'whistle']);
     const sec = (t) => `<div class="sec-h"><span class="bar"></span><h2>${L(t)}</h2></div>`;
-    const news = `
-      <div class="card news-card">
-        <div class="news-h"><span class="news-ic">${svg('inbox')}</span><b>${L({ ja:'本部からのお知らせ', en:'News from HQ', vi:'Thông báo từ HQ' })}</b></div>
-        <p class="news-body">${L({ ja:'世桜ニュース・重要なお知らせがここに届きます。', en:'YOSAKURA news and important notices will appear here.', vi:'Tin tức và thông báo quan trọng của YOSAKURA sẽ hiển thị ở đây.' })}</p>
-      </div>`;
+    const latest = newsVisible(getNews()).sort((a, b) => b.t - a.t)[0];
+    const news = latest ? `
+      <button class="card news-card news-card--btn ${latest.level === 'important' ? 'news-card--imp' : ''}" data-open="news">
+        <div class="news-h"><span class="news-ic">${svg('bell')}</span><b>${latest.level === 'important' ? L({ ja:'重要なお知らせ', en:'Important', vi:'Quan trọng' }) : L({ ja:'本部からのお知らせ', en:'News from HQ', vi:'Thông báo từ HQ' })}</b><span class="news-ago">${timeAgo(latest.t)}</span></div>
+        <div class="news-title">${esc(latest.title || '')}</div>
+        ${latest.body ? `<p class="news-body">${esc(newsSnippet(latest.body))}</p>` : ''}
+        <span class="news-more">${L({ ja:'すべて見る', en:'See all', vi:'Xem tất cả' })} ${svg('chev')}</span>
+      </button>` : `
+      <button class="card news-card news-card--btn" data-open="news">
+        <div class="news-h"><span class="news-ic">${svg('bell')}</span><b>${L({ ja:'本部からのお知らせ', en:'News from HQ', vi:'Thông báo từ HQ' })}</b></div>
+        <p class="news-body">${role === 'hq' ? L({ ja:'タップしてお知らせを配信できます。', en:'Tap to post an announcement.', vi:'Chạm để đăng thông báo.' }) : L({ ja:'世桜ニュース・重要なお知らせがここに届きます。', en:'YOSAKURA news and notices will appear here.', vi:'Tin tức và thông báo sẽ hiển thị ở đây.' })}</p>
+      </button>`;
     const links = `
       <div class="homelinks">
         <button class="homelink" data-tab="genba"><span class="hl-ic">${svg('report')}</span><span class="hl-t">${L({ ja:'報告する', en:'Report', vi:'Báo cáo' })}</span><span class="hl-c">${svg('chev')}</span></button>
@@ -2055,6 +2063,14 @@
   const saveEmg = (o) => { try { localStorage.setItem('yosakura_demo_emg', JSON.stringify(o)); } catch (e) {} };
   const emgOf = (store) => (getEmg()[store] || {}).slots || {};
   const canEditEmg = () => ['manager','owner','hq'].includes(getRole());
+  function seedNews() {
+    if (localStorage.getItem('yosakura_demo_news')) return;
+    const now = Date.now();
+    saveNews([
+      { title:'お盆期間の発注前倒しのお願い', body:'和牛（銘洋）は日・木定休、鰻商社は8/8・9・11・14〜16が休業です。納品遅延を避けるため、発注は前倒しでお願いします。', level:'important', target:'all', t: now - 3600e3 * 5 },
+      { title:'清掃の好事例を共有しました', body:'藁焼き装置のステンレス汚れはウタマロで改善できます。定期清掃箇所に追加しました。', level:'normal', target:'all', t: now - 3600e3 * 30 }
+    ]);
+  }
   function seedEmg() {
     if (localStorage.getItem('yosakura_demo_emg')) return;
     saveEmg({ '和牛世桜 広島店': { slots: {
@@ -2157,6 +2173,55 @@
       </div>`;
   };
 
+  /* ===================================================================
+     本部からのお知らせ（news）＝本部が投稿→全端末に届く。ホームに最新を表示。
+     配信先は全店 or 特定店舗。重要フラグあり。全端末同期。
+  =================================================================== */
+  const getNews = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_news')) || []; } catch { return []; } };
+  const saveNews = (a) => { try { localStorage.setItem('yosakura_demo_news', JSON.stringify(a)); } catch (e) {} };
+  function newsVisible(list) { // 非本部は「全店向け＋自店向け」だけ、本部は全件
+    if (getRole() === 'hq') return list.slice();
+    const store = visibleStores()[0];
+    return list.filter(n => n.target === 'all' || n.target === store);
+  }
+  const newsTargetLabel = (t) => t === 'all' ? L({ ja:'全店', en:'All stores', vi:'Toàn bộ' }) : storeShort(t);
+  const newsSnippet = (s = '') => { s = String(s).replace(/\s+/g, ' ').trim(); return s.length > 64 ? s.slice(0, 64) + '…' : s; };
+  const newsBadge = (lv) => lv === 'important'
+    ? `<span class="kind a">${L({ ja:'重要', en:'Important', vi:'Quan trọng' })}</span>`
+    : `<span class="kind b">${L({ ja:'お知らせ', en:'News', vi:'Thông báo' })}</span>`;
+  const newsRow = (n) => `
+    <div class="rep news-item">
+      ${newsBadge(n.level)}
+      <div class="body">
+        <div class="l1">${esc(n.title || '—')}</div>
+        ${n.body ? `<div class="news-text">${esc(n.body)}</div>` : ''}
+        <div class="l2">${esc(newsTargetLabel(n.target))} ・ ${timeAgo(n.t)}</div>
+      </div>
+    </div>`;
+  APP_VIEWS.news = () => {
+    const list = newsVisible(getNews()).sort((a, b) => b.t - a.t);
+    const isHq = getRole() === 'hq';
+    const form = isHq ? `
+      <div class="card" id="newsForm">
+        <h3>${L({ ja:'お知らせを投稿', en:'Post an announcement', vi:'Đăng thông báo' })}</h3>
+        <label class="fld"><span>${L({ ja:'タイトル', en:'Title', vi:'Tiêu đề' })}</span>
+          <input type="text" id="news_title" placeholder="${esc(L({ ja:'例）お盆期間の発注前倒しのお願い', en:'e.g. Early ordering for the holiday', vi:'vd: Đặt hàng sớm dịp lễ' }))}"></label>
+        <label class="fld"><span>${L({ ja:'本文', en:'Body', vi:'Nội dung' })}</span>
+          <textarea id="news_body" placeholder="${esc(L({ ja:'お知らせの内容を入力', en:'Enter the announcement', vi:'Nhập nội dung' }))}"></textarea></label>
+        <label class="fld"><span>${L({ ja:'配信先', en:'Deliver to', vi:'Gửi đến' })}</span>
+          <select id="news_target"><option value="all">${L({ ja:'全店', en:'All stores', vi:'Toàn bộ' })}</option>${STORES.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('')}</select></label>
+        <label class="check-inline"><input type="checkbox" id="news_important"> ${L({ ja:'重要なお知らせとして目立たせる', en:'Mark as important', vi:'Đánh dấu quan trọng' })}</label>
+        <button class="btn-primary" id="newsPost" style="margin-top:12px">${L({ ja:'配信する', en:'Publish', vi:'Gửi' })}</button>
+        <div class="hint">${L({ ja:'配信すると各店のホームに届きます', en:'Delivered to each store’s home', vi:'Sẽ hiển thị trên trang chủ mỗi cửa hàng' })}</div>
+      </div>` : '';
+    return `
+      ${NOTE({ ja:'◆ 本部からのお知らせ・世桜ニュース', en:'◆ News and notices from HQ', vi:'◆ Thông báo & tin tức từ HQ' })}
+      ${form}
+      <div class="card"><h3>${L({ ja:'お知らせ一覧', en:'Announcements', vi:'Danh sách thông báo' })}</h3>
+        ${list.length ? list.map(newsRow).join('') : `<div class="muted">${L({ ja:'まだお知らせはありません', en:'No announcements yet', vi:'Chưa có thông báo' })}</div>`}
+      </div>`;
+  };
+
   // 提出管理モジュールをアプリ一覧へ追加（店舗ロール中心・本部も閲覧可）
   if (!appById('openphoto')) {
     APPS.unshift({ id:'openphoto', group:'genba', icon:'camera', live:true, roles:['staff','manager','owner','hq'],
@@ -2187,6 +2252,11 @@
     APPS.unshift({ id:'kyou', group:'genba', icon:'check', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'今日出すもの', en:'Today to submit', vi:'Cần nộp hôm nay' },
       desc:{ ja:'当日の提出物と未提出をひと目で', en:'Today’s items & missing at a glance', vi:'Mục cần nộp & còn thiếu' } });
+  }
+  if (!appById('news')) {
+    APPS.push({ id:'news', group:'learn', icon:'bell', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'お知らせ', en:'Announcements', vi:'Thông báo' },
+      desc:{ ja:'本部からのお知らせ・世桜ニュース', en:'News & notices from HQ', vi:'Thông báo & tin tức từ HQ' } });
   }
   if (!appById('emergency')) {
     APPS.push({ id:'emergency', group:'genba', icon:'phone', live:true, roles:['staff','manager','owner','hq'],
@@ -2267,6 +2337,23 @@
       toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' }));
       render();
       postReport({ kind:'emg', store, note: JSON.stringify({ slots }), t });
+    };
+
+    // お知らせ：本部が配信（全端末へ）
+    const newsPost = byId('newsPost');
+    if (newsPost) newsPost.onclick = () => {
+      const title = (byId('news_title') && byId('news_title').value.trim()) || '';
+      const body = (byId('news_body') && byId('news_body').value.trim()) || '';
+      if (!title && !body) { toast(L({ ja:'タイトルか本文を入力してください', en:'Please enter a title or body', vi:'Vui lòng nhập tiêu đề hoặc nội dung' })); return; }
+      const target = (byId('news_target') && byId('news_target').value) || 'all';
+      const level = (byId('news_important') && byId('news_important').checked) ? 'important' : 'normal';
+      const t = Date.now();
+      const arr = getNews(); arr.push({ title, body, level, target, t });
+      try { saveNews(arr.slice(-100)); } catch (e) { saveNews(arr.slice(-40)); }
+      lastSync = t;
+      toast(L({ ja:'お知らせを配信しました', en:'Announcement published', vi:'Đã đăng thông báo' }));
+      render();
+      postReport({ kind:'news', store:'', note: JSON.stringify({ title, body, level, target }), t });
     };
 
     // 公益通報：本部へ送信（匿名可）
@@ -2526,7 +2613,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[]; const emg={};
+    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[]; const emg={};
     (rows || []).forEach(r => {
       const t = Number(r.t) || 0, id = r.id, store = r.store || '';
       switch (r.kind) {
@@ -2540,13 +2627,14 @@
         case 'video': video.push({ store, url:r.item, note:r.note, t, id }); break;
         case 'emg': { const p=pj(r.note); if (!emg[store] || t >= emg[store].t) emg[store] = { slots: p.slots || {}, t }; } break; // 店舗ごとに最新版が正
         case 'whistle': { const p=pj(r.note); whistle.push({ store, cat:p.cat||'other', body:p.body||'', anon:!!p.anon, t, id }); } break;
+        case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', t, id }); } break;
       }
     });
     const set = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a)); } catch (_) {} };
     set(LS.reports, food); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
     set('yosakura_demo_open', open); set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
-    set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle);
+    set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news);
   }
   async function syncReports(force) {
     if (!useBackend()) return;
@@ -2575,7 +2663,7 @@
   document.documentElement.lang = LANG;
   if (!useBackend()) seedIfEmpty();
   // バックエンド接続時は全端末同期を使うためシードしない（＝実データのみ）。オフライン検証時のみ初期データを用意。
-  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); }
+  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); }
   render();
   syncReports(true);
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);

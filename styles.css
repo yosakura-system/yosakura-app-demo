@@ -372,3 +372,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .homelink .hl-t { flex: 1; font-size: 15px; font-weight: 700; color: var(--sumi); }
 .homelink .hl-c { color: var(--gray); display: grid; place-items: center; }
 .homelink .hl-c svg { width: 18px; height: 18px; }
+
+/* ホーム：お知らせカード（タップで一覧へ） */
+.news-card--btn { display: block; width: 100%; text-align: left; cursor: pointer; font-family: var(--sans); transition: transform .12s ease, box-shadow .2s ease; }
+.news-card--btn:active { transform: scale(.995); }
+.news-card--imp { border-color: #d8b4b4; box-shadow: 0 3px 14px rgba(150,40,40,.12); }
+.news-card--imp .news-ic { background: #f4e2e2; color: #a23b3b; }
+.news-h .news-ago { margin-left: auto; font-size: 11px; color: var(--gray); font-weight: 600; }
+.news-title { font-size: 14px; font-weight: 700; color: var(--sumi); margin: 2px 0 4px; }
+.news-more { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 700; color: var(--suou); margin-top: 6px; }
+.news-more svg { width: 15px; height: 15px; }
+.news-item .news-text { font-size: 13px; color: var(--sumi); line-height: 1.7; margin: 3px 0; white-space: pre-wrap; }
