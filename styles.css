@@ -383,3 +383,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .news-more { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 700; color: var(--suou); margin-top: 6px; }
 .news-more svg { width: 15px; height: 15px; }
 .news-item .news-text { font-size: 13px; color: var(--sumi); line-height: 1.7; margin: 3px 0; white-space: pre-wrap; }
+
+/* オープン・クローズチェック：店舗独自項目の追加・削除 */
+.check { position: relative; }
+.ck-del { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border-radius: 50%;
+  border: none; background: var(--suou-t); color: var(--sumi); font-size: 15px; line-height: 1; cursor: pointer; }
+.ck-add { display: flex; gap: 8px; padding: 8px 4px 6px; }
+.ck-add input { flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-family: var(--sans); font-size: 14px; }
+.ck-add .mini { flex: 0 0 auto; }

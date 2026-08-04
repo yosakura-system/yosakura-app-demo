@@ -138,9 +138,9 @@
     { id:'talk', group:'learn', icon:'chat', roles:['staff','manager','owner','hq'],
       name:{ ja:'接客スクリプト・食べ方ガイド', en:'Service Scripts', vi:'Kịch bản phục vụ' },
       desc:{ ja:'多言語の接客フレーズと食べ方案内', en:'Multilingual phrases & how-to-enjoy', vi:'Câu phục vụ đa ngữ' } },
-    { id:'checklist', group:'genba', icon:'check', roles:['staff','manager','owner','hq'],
-      name:{ ja:'開店・清掃チェック', en:'Opening & Cleaning', vi:'Mở cửa & Vệ sinh' },
-      desc:{ ja:'毎日の開店前チェック', en:'Daily pre-open checklist', vi:'Kiểm tra trước khi mở cửa' } },
+    { id:'checklist', group:'genba', icon:'check', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'オープン・クローズチェック', en:'Open & Close Check', vi:'Kiểm tra Mở & Đóng' },
+      desc:{ ja:'開店・閉店の点検（店舗独自項目も追加可）', en:'Opening & closing checks', vi:'Kiểm tra mở & đóng cửa' } },
     { id:'links', group:'other', icon:'link', soon:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'リンク集', en:'Quick Links', vi:'Liên kết' },
       desc:{ ja:'初期設定・発注などの必要リンク', en:'Setup, ordering and key links', vi:'Cài đặt, đặt hàng, liên kết' } },
@@ -930,27 +930,78 @@
       {ja:'営業中看板／暖簾／A型看板',en:'Open sign / noren / A-frame',vi:'Bảng hiệu / rèm / bảng A'},
       {ja:'食べ方POPの汚れ（早めに再発行）',en:'How-to-eat POP condition',vi:'Tình trạng POP cách ăn'} ] }
   ];
-  const CHECK_ITEMS = CHECK_GROUPS.reduce((a,g)=>a.concat(g.items), []); // フラット配列（done索引の互換用）
+  // クローズ（閉店）の本部共通項目＝業務順
+  const CLOSE_GROUPS = [
+    { g:{ja:'クローズ準備',en:'Closing prep',vi:'Chuẩn bị đóng'}, items:[
+      {ja:'ラストオーダーの確認',en:'Last order check',vi:'Kiểm tra last order'},
+      {ja:'当日の売上・レジ締め',en:'Daily sales & register close',vi:'Chốt doanh thu & quầy'},
+      {ja:'翌日の予約・仕込みの確認',en:'Tomorrow reservations & prep',vi:'Đặt chỗ & chuẩn bị ngày mai'} ] },
+    { g:{ja:'キッチン締め',en:'Kitchen closing',vi:'Đóng bếp'}, items:[
+      {ja:'食材の冷蔵・冷凍保管',en:'Store ingredients (fridge/freezer)',vi:'Bảo quản nguyên liệu'},
+      {ja:'器具・まな板・包丁の洗浄',en:'Clean tools / board / knife',vi:'Vệ sinh dụng cụ'},
+      {ja:'油・グリストラップの確認',en:'Oil & grease trap check',vi:'Kiểm tra dầu & bẫy mỡ'},
+      {ja:'ゴミの分別・搬出',en:'Sort & take out trash',vi:'Phân loại & đổ rác'} ] },
+    { g:{ja:'ホール締め',en:'Hall closing',vi:'Đóng sảnh'}, items:[
+      {ja:'客席・テーブルの清掃',en:'Clean seats & tables',vi:'Vệ sinh bàn ghế'},
+      {ja:'床清掃',en:'Floor cleaning',vi:'Lau sàn'},
+      {ja:'トイレの最終清掃',en:'Final restroom clean',vi:'Vệ sinh WC cuối'} ] },
+    { g:{ja:'火元・施錠・記録',en:'Fire / lock / record',vi:'Lửa / khóa / ghi'}, items:[
+      {ja:'火元・ガスの元栓の確認',en:'Fire & gas main check',vi:'Kiểm tra lửa & gas'},
+      {ja:'空調・照明・電源のオフ',en:'AC / lights / power off',vi:'Tắt điều hòa / đèn / nguồn'},
+      {ja:'クローズ写真の撮影',en:'Take closing photo',vi:'Chụp ảnh đóng cửa'},
+      {ja:'戸締り・施錠',en:'Lock up',vi:'Khóa cửa'} ] }
+  ];
+  const CK_COMMON = { open: CHECK_GROUPS, close: CLOSE_GROUPS };
+  const CK_MODES = [
+    { v:'open',  t:{ ja:'オープン', en:'Opening', vi:'Mở cửa' } },
+    { v:'close', t:{ ja:'クローズ', en:'Closing', vi:'Đóng cửa' } }
+  ];
+  const getCkMode = () => (localStorage.getItem('yosakura_ckmode') === 'close' ? 'close' : 'open');
+  // 店舗独自項目（店長・オーナーが追加）＝店舗×モードごと・全端末同期
+  const getCkItems = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckitem')) || {}; } catch { return {}; } };
+  const saveCkItems = (o) => { try { localStorage.setItem('yosakura_demo_ckitem', JSON.stringify(o)); } catch (e) {} };
+  const ckCustom = (store, mode) => getCkItems()[`${store}||${mode}`] || [];
+  // チェック状態＝店舗×モード×日付（日付が変わると自動で新しい一日になる）
+  const getCkDone = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckdone')) || {}; } catch { return {}; } };
+  const saveCkDone = (o) => { try { localStorage.setItem('yosakura_demo_ckdone', JSON.stringify(o)); } catch (e) {} };
+  const ckDoneKey = (store, mode) => `${store}||${mode}||${new Date().toISOString().slice(0,10)}`;
+  const ckCanEdit = () => ['manager','owner','hq'].includes(getRole());
   APP_VIEWS.checklist = () => {
-    const done = JSON.parse(localStorage.getItem(LS.checks) || '{}');
-    const total = CHECK_ITEMS.length;
-    const n = CHECK_ITEMS.filter((_,i)=>done[i]).length;
-    let idx = -1;
-    const groupsHTML = CHECK_GROUPS.map(gr => `
+    const store = visibleStores()[0];
+    const mode = getCkMode();
+    const groups = CK_COMMON[mode];
+    const custom = ckCustom(store, mode);
+    const done = getCkDone()[ckDoneKey(store, mode)] || {};
+    const editable = ckCanEdit();
+    const commonIds = [];
+    groups.forEach((gr, gi) => gr.items.forEach((_, ii) => commonIds.push(`${mode}-c-${gi}-${ii}`)));
+    const allIds = commonIds.concat(custom.map(c => c.id));
+    const total = allIds.length || 1;
+    const n = allIds.filter(id => done[id]).length;
+    const groupsHTML = groups.map((gr, gi) => `
       <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${esc(L(gr.g))}</h2></div>
       <div class="card" style="padding:4px 14px">
-        ${gr.items.map(it => { idx++; const i = idx; return `<div class="check ${done[i]?'done':''}" data-ci="${i}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}</span></div>`; }).join('')}
+        ${gr.items.map((it, ii) => { const id = `${mode}-c-${gi}-${ii}`; return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}</span></div>`; }).join('')}
       </div>`).join('');
+    const customHTML = `
+      <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'この店舗の追加項目', en:'Store-specific items', vi:'Mục riêng của cửa hàng' })}</h2></div>
+      <div class="card" style="padding:4px 14px">
+        ${custom.length ? custom.map(c => `<div class="check ${done[c.id]?'done':''}" data-ck="${c.id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(c.label)}</span>${editable ? `<button class="ck-del" data-ckdel="${c.id}" aria-label="delete">×</button>` : ''}</div>`).join('')
+          : `<div class="muted" style="padding:10px 4px">${L({ ja:'追加項目はありません', en:'No custom items', vi:'Chưa có mục thêm' })}</div>`}
+        ${editable ? `<div class="ck-add"><input type="text" id="ck_new" placeholder="${esc(L({ ja:'例）季節の掲示物を差し替え', en:'e.g. Swap seasonal signage', vi:'vd: Thay bảng theo mùa' }))}"><button class="mini" id="ckAdd">${L({ ja:'追加', en:'Add', vi:'Thêm' })}</button></div>` : ''}
+      </div>`;
     return `
-      ${NOTE({ ja:'◆ 和牛世桜 店舗管理チェックシート（2026.05最新版）に準拠', en:'◆ Based on the Wagyu Yosakura store-management checklist (2026.05)', vi:'◆ Theo bảng kiểm tra quản lý cửa hàng (2026.05)' })}
+      ${NOTE({ ja:'◆ オープン／クローズの点検。本部共通項目は削除できません。店舗独自の項目は店長・オーナーが追加できます', en:'◆ Opening/closing checks. HQ common items are fixed; managers/owners can add store-specific items.', vi:'◆ Kiểm tra mở/đóng. Mục chung của HQ cố định; quản lý/chủ có thể thêm mục riêng.' })}
       <div class="card" style="text-align:center">
-        <h3>${L({ ja:'本日の開店前チェック', en:'Today pre-open check', vi:'Kiểm tra trước mở cửa' })}</h3>
+        <div class="seg" data-seg="ckmode" style="margin-bottom:14px">${CK_MODES.map(m => `<button type="button" data-ckmode="${m.v}" class="${m.v===mode?'on':''}">${L(m.t)}</button>`).join('')}</div>
+        <h3>${mode==='open' ? L({ ja:'本日のオープン点検', en:'Today opening check', vi:'Kiểm tra mở cửa hôm nay' }) : L({ ja:'本日のクローズ点検', en:'Today closing check', vi:'Kiểm tra đóng cửa hôm nay' })}</h3>
+        <div class="muted" style="margin:2px 0 8px">${esc(store)}</div>
         <div style="font-size:26px;font-weight:700;letter-spacing:.02em">${n}<span style="color:var(--gray);font-size:17px">/${total}</span></div>
         <div class="bar-track" style="margin:9px 0 2px"><div class="bar-fill" style="width:${Math.round(n/total*100)}%"></div></div>
-        <button class="stag st-new" id="checkReset" style="cursor:pointer;margin-top:10px">${L({ja:'翌日用にリセット',en:'Reset for next day',vi:'Đặt lại cho ngày mai'})}</button>
       </div>
       ${groupsHTML}
-      <div class="hint">${L({ ja:'チェックした内容は保存されます', en:'Your checks are saved', vi:'Nội dung kiểm tra được lưu' })}</div>`;
+      ${customHTML}
+      <div class="hint">${L({ ja:'上から順に実施すれば完了です。チェックは店舗ごと・当日分として保存されます（翌日は自動でリセット）。', en:'Work top to bottom. Checks are saved per store for today (auto-resets next day).', vi:'Làm từ trên xuống. Lưu theo cửa hàng cho hôm nay (tự đặt lại ngày mai).' })}</div>`;
   };
 
   /* ④ マニュアル（モック）*/
@@ -2534,13 +2585,39 @@
       render();
     };
 
-    document.querySelectorAll('[data-ci]').forEach(row => row.onclick = () => {
-      const done = JSON.parse(localStorage.getItem(LS.checks) || '{}');
-      const i = row.dataset.ci; done[i] = !done[i];
-      localStorage.setItem(LS.checks, JSON.stringify(done));
-      render();
+    // オープン・クローズチェック：モード切替
+    document.querySelectorAll('[data-ckmode]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_ckmode', b.dataset.ckmode); render(); });
+    // チェックのON/OFF（店舗×モード×当日で保存）
+    document.querySelectorAll('[data-ck]').forEach(row => row.onclick = (e) => {
+      if (e.target.closest('[data-ckdel]')) return; // 削除ボタンは別処理
+      const store = visibleStores()[0], mode = getCkMode(), key = ckDoneKey(store, mode), id = row.dataset.ck;
+      const map = getCkDone(); const day = map[key] || {}; day[id] = !day[id]; map[key] = day;
+      // 古い日付のチェックは肥大化防止のため間引く（直近14日分のみ保持）
+      const keep = {}; const keys = Object.keys(map).sort().slice(-40); keys.forEach(k => keep[k] = map[k]);
+      saveCkDone(keep); render();
     });
-    if (byId('checkReset')) byId('checkReset').onclick = () => { localStorage.setItem(LS.checks, '{}'); toast(L({ ja:'チェックをリセットしました', en:'Checklist reset', vi:'Đã đặt lại' })); render(); };
+    // 店舗独自項目：追加
+    if (byId('ckAdd')) byId('ckAdd').onclick = () => {
+      const inp = byId('ck_new'); const label = inp ? inp.value.trim() : '';
+      if (!label) { toast(L({ ja:'項目名を入力してください', en:'Enter an item name', vi:'Nhập tên mục' })); return; }
+      const store = visibleStores()[0], mode = getCkMode(), mk2 = `${store}||${mode}`;
+      const all = getCkItems(); const list = (all[mk2] || []).slice();
+      list.push({ id: `${mode}-x-${Date.now().toString(36)}`, label });
+      all[mk2] = list; saveCkItems(all);
+      const t = Date.now(); lastSync = t;
+      toast(L({ ja:'追加しました', en:'Added', vi:'Đã thêm' })); render();
+      postReport({ kind:'ckitem', store, note: JSON.stringify({ mode, items: list }), t });
+    };
+    // 店舗独自項目：削除
+    document.querySelectorAll('[data-ckdel]').forEach(b => b.onclick = (e) => {
+      e.stopPropagation();
+      const store = visibleStores()[0], mode = getCkMode(), mk2 = `${store}||${mode}`, id = b.dataset.ckdel;
+      const all = getCkItems(); const list = (all[mk2] || []).filter(c => c.id !== id);
+      all[mk2] = list; saveCkItems(all);
+      const t = Date.now(); lastSync = t;
+      toast(L({ ja:'削除しました', en:'Removed', vi:'Đã xóa' })); render();
+      postReport({ kind:'ckitem', store, note: JSON.stringify({ mode, items: list }), t });
+    });
 
     // 来店経路：ワンタップ記録（全端末で本部に集約）
     document.querySelectorAll('[data-route]').forEach(b => b.onclick = () => {
@@ -2623,7 +2700,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[]; const emg={};
+    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[]; const emg={}; const ckitem={}, ckitemT={};
     (rows || []).forEach(r => {
       const t = Number(r.t) || 0, id = r.id, store = r.store || '';
       switch (r.kind) {
@@ -2638,13 +2715,14 @@
         case 'emg': { const p=pj(r.note); if (!emg[store] || t >= emg[store].t) emg[store] = { slots: p.slots || {}, t }; } break; // 店舗ごとに最新版が正
         case 'whistle': { const p=pj(r.note); whistle.push({ store, cat:p.cat||'other', body:p.body||'', anon:!!p.anon, t, id }); } break;
         case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', t, id }); } break;
+        case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モードごと最新版が正
       }
     });
     const set = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a)); } catch (_) {} };
     set(LS.reports, food); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
     set('yosakura_demo_open', open); set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
-    set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news);
+    set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_ckitem', ckitem);
   }
   async function syncReports(force) {
     if (!useBackend()) return;
