@@ -478,14 +478,14 @@
     const cpost = commForView(getComm().slice().sort((a, b) => b.t - a.t))[0];
     const communityCard = cpost ? `
       <button class="card news-card news-card--btn" data-open="community">
-        <div class="news-h"><span class="news-ic">👏</span><b>${L({ ja:'みんなの投稿', en:'Community', vi:'Cộng đồng' })}</b><span class="news-ago">${timeAgo(cpost.t)}</span></div>
+        <div class="news-h"><span class="news-ic">${svg('chat')}</span><b>${L({ ja:'みんなの投稿', en:'Community', vi:'Cộng đồng' })}</b><span class="news-ago">${timeAgo(cpost.t)}</span></div>
         <div class="news-title">${esc(commCatLabel(cpost.cat))}</div>
         <p class="news-body">${esc(newsSnippet(cpost.body))}</p>
         ${(cpost.photos && cpost.photos.length) ? `<img class="news-thumb" src="${photoThumb(cpost.photos[0])}" alt="">` : ''}
-        <span class="news-more">${commLikeN(cpost) ? `👏 ${commLikeN(cpost)} ・ ` : ''}${L({ ja:'みんなの投稿を見る', en:'See community', vi:'Xem cộng đồng' })} ${svg('chev')}</span>
+        <span class="news-more">${commLikeN(cpost) ? `♥ ${commLikeN(cpost)} ・ ` : ''}${L({ ja:'みんなの投稿を見る', en:'See community', vi:'Xem cộng đồng' })} ${svg('chev')}</span>
       </button>` : `
       <button class="card news-card news-card--btn" data-open="community">
-        <div class="news-h"><span class="news-ic">👏</span><b>${L({ ja:'みんなの投稿', en:'Community', vi:'Cộng đồng' })}</b></div>
+        <div class="news-h"><span class="news-ic">${svg('chat')}</span><b>${L({ ja:'みんなの投稿', en:'Community', vi:'Cộng đồng' })}</b></div>
         <p class="news-body">${L({ ja:'現場のグッドストーリー（お客様が喜んだこと・ファインプレー）をここで共有しましょう。', en:'Share good stories from the field here.', vi:'Chia sẻ câu chuyện hay tại đây.' })}</p>
       </button>`;
     const links = `
@@ -2499,7 +2499,7 @@
         <div class="l1">${esc(p.body || '—')}</div>
         ${(p.photos && p.photos.length) ? `<div class="rep-photos">${p.photos.map(x => `<img class="rep-photo" src="${photoThumb(x)}" data-full="${photoFull(x)}" alt="" loading="lazy">`).join('')}</div>` : ''}
         <div class="l2">${esc(storeShort(p.store))}${p.by ? ` ・${esc(p.by)}` : ''} ・ ${timeAgo(p.t)}</div>
-        <div class="l2" style="margin-top:6px"><button class="mini ${liked ? 'on' : ''}" data-commlike="${esc(key)}"${liked ? ' disabled' : ''}>👏 ${L({ ja:'いいね', en:'Like', vi:'Thích' })}${n ? ` ${n}` : ''}</button></div>
+        <div class="l2" style="margin-top:6px"><button class="mini ${liked ? 'on' : ''}" data-commlike="${esc(key)}"${liked ? ' disabled' : ''}>${liked ? '♥' : '♡'} ${L({ ja:'いいね', en:'Like', vi:'Thích' })}${n ? ` ${n}` : ''}</button></div>
         ${mod}
       </div>
     </div>`;
