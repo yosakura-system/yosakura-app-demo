@@ -153,9 +153,9 @@
     { id:'storevideo', group:'storeops', icon:'video', roles:['staff','manager','owner','hq'],
       name:{ ja:'店内動画の共有', en:'In-store Video', vi:'Video trong quán' },
       desc:{ ja:'店内一周の動画リンクを共有', en:'Share store walkthrough videos', vi:'Chia sẻ video trong quán' } },
-    { id:'manual', group:'learn', icon:'book', soon:true, roles:['staff','manager','owner','hq'],
+    { id:'manual', group:'learn', icon:'book', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' },
-      desc:{ ja:'理念・接客・衛生・商品', en:'Values, service, hygiene, menu', vi:'Triết lý, phục vụ, vệ sinh' } },
+      desc:{ ja:'権限・業態別に表示（理念・接客・衛生・商品）', en:'By role & store type', vi:'Theo vai trò & loại hình' } },
     { id:'survey', group:'learn', icon:'star', roles:['staff','manager','owner','hq'],
       name:{ ja:'サーベイ', en:'Survey', vi:'Khảo sát' },
       desc:{ ja:'お客様アンケート運用', en:'Customer survey operation', vi:'Khảo sát khách hàng' } },
@@ -1004,20 +1004,57 @@
       <div class="hint">${L({ ja:'上から順に実施すれば完了です。チェックは店舗ごと・当日分として保存されます（翌日は自動でリセット）。', en:'Work top to bottom. Checks are saved per store for today (auto-resets next day).', vi:'Làm từ trên xuống. Lưu theo cửa hàng cho hôm nay (tự đặt lại ngày mai).' })}</div>`;
   };
 
-  /* ④ マニュアル（モック）*/
-  const MANUAL = [
-    ['01','book',{ja:'店舗の世界観・理念',en:'Brand & Philosophy',vi:'Thương hiệu & Triết lý'},{ja:'世桜とは／5つの価値／世桜10訓',en:'About YOSAKURA / 5 values / 10 rules',vi:'Về YOSAKURA / 5 giá trị / 10 quy tắc'}],
-    ['02','check',{ja:'スタッフの基本',en:'Staff Basics',vi:'Cơ bản nhân viên'},{ja:'ハウスルール／シフト／優先順位',en:'House rules / shifts / priorities',vi:'Nội quy / ca / ưu tiên'}],
-    ['03','star',{ja:'接客・ホール',en:'Service & Hall',vi:'Phục vụ & Sảnh'},{ja:'おもてなし／クレーム対応／サーベイ',en:'Hospitality / complaints / survey',vi:'Hiếu khách / khiếu nại / khảo sát'}],
-    ['04','gauge',{ja:'集客・マーケ',en:'Marketing',vi:'Marketing'},{ja:'Google口コミ／導線／冊子',en:'Google reviews / funnel / booklet',vi:'Đánh giá Google / phễu / sổ tay'}],
-    ['05','video',{ja:'衛生管理',en:'Hygiene',vi:'Vệ sinh'},{ja:'清掃ルール／食中毒対策／食材管理',en:'Cleaning / food safety / ingredients',vi:'Vệ sinh / an toàn TP / nguyên liệu'}]
+  /* ④ マニュアル（権限別×業態別に出し分け）
+     店舗名から業態を判定し、共通マニュアル＋その店舗の業態マニュアルを表示。
+     さらに閲覧できるロールで絞る（スタッフには管理者向けを出さない）。 */
+  const GYOTAI = [
+    { code:'sushi',    key:['寿司','手巻き'], label:{ ja:'寿司', en:'Sushi', vi:'Sushi' } },
+    { code:'gyukatsu', key:['牛カツ'],        label:{ ja:'牛カツ', en:'Gyukatsu', vi:'Gyukatsu' } },
+    { code:'unagi',    key:['鰻'],            label:{ ja:'鰻', en:'Unagi (eel)', vi:'Lươn' } },
+    { code:'wagyu',    key:['和牛'],          label:{ ja:'和牛', en:'Wagyu', vi:'Wagyu' } },
+    { code:'washoku',  key:['日本料理'],      label:{ ja:'日本料理', en:'Japanese cuisine', vi:'Ẩm thực Nhật' } }
   ];
-  APP_VIEWS.manual = () => `
-    ${NOTE({ ja:'◆ 準備中：本部マニュアル目次に沿った構成（中身は順次追加します）', en:'◆ In preparation: structured by the HQ manual index', vi:'◆ Đang chuẩn bị: theo mục lục cẩm nang HQ' })}
-    <div class="card">
-      ${MANUAL.map(([no,ic,t,s])=>`<div class="mrow" data-mock="1"><div class="mi">${svg(ic)}</div><div class="mt"><b>${no}. ${esc(L(t))}</b><span>${esc(L(s))}</span></div><span class="chev">${svg('chev')}</span></div>`).join('')}
-    </div>
-    <div class="hint">${L({ ja:'動画マニュアルもこの中に統合していく構想', en:'Video manuals will also be integrated here', vi:'Cẩm nang video cũng sẽ được tích hợp' })}</div>`;
+  const storeGyotai = (store) => { const g = GYOTAI.find(x => x.key.some(k => (store || '').includes(k))); return g ? g.code : null; };
+  const gyotaiLabel = (code) => { const g = GYOTAI.find(x => x.code === code); return g ? L(g.label) : code; };
+  // roles: 閲覧できるロール（'all'は全員）／gyotai: 'all' or 業態code
+  const MANUAL_CATALOG = [
+    { ic:'book',  gyotai:'all', roles:['all'],               t:{ja:'世桜とは・理念',en:'Brand & Philosophy',vi:'Thương hiệu & Triết lý'}, s:{ja:'5つの価値／ビジョン／ブランドコア',en:'5 values / vision / brand core',vi:'5 giá trị / tầm nhìn'} },
+    { ic:'star',  gyotai:'all', roles:['all'],               t:{ja:'接客・ホール',en:'Service & Hall',vi:'Phục vụ & Sảnh'}, s:{ja:'おもてなし／多言語対応／クレーム対応',en:'Hospitality / multilingual / complaints',vi:'Hiếu khách / đa ngữ / khiếu nại'} },
+    { ic:'camera',gyotai:'all', roles:['all'],               t:{ja:'提供時のあるべき姿',en:'Serving standards',vi:'Chuẩn phục vụ'}, s:{ja:'盛り付け・グラム規定・提供基準（最重要）',en:'Plating, grams, serving rules (key)',vi:'Trình bày, định lượng (quan trọng)'} },
+    { ic:'check', gyotai:'all', roles:['all'],               t:{ja:'清掃',en:'Cleaning',vi:'Vệ sinh'}, s:{ja:'清掃基準／好事例（ウタマロ等）',en:'Cleaning standards / good practices',vi:'Chuẩn vệ sinh / thực hành tốt'} },
+    { ic:'video', gyotai:'all', roles:['all'],               t:{ja:'衛生管理',en:'Hygiene',vi:'Vệ sinh an toàn'}, s:{ja:'手洗い／食中毒対策／食材管理',en:'Handwash / food safety / ingredients',vi:'Rửa tay / an toàn TP'} },
+    { ic:'grad',  gyotai:'all', roles:['staff','manager'],   t:{ja:'セブンデイズ（新人教育）',en:'Seven Days (onboarding)',vi:'Seven Days (đào tạo)'}, s:{ja:'アルバイトが最低限理解する内容',en:'Minimum for new part-timers',vi:'Cơ bản cho nhân viên mới'} },
+    { ic:'star',  gyotai:'all', roles:['all'],               t:{ja:'サーベイ運用',en:'Survey operation',vi:'Vận hành khảo sát'}, s:{ja:'iPad案内／回答の取り方',en:'iPad guidance / collecting answers',vi:'Hướng dẫn iPad'} },
+    { ic:'table', gyotai:'all', roles:['manager','owner'],   t:{ja:'店舗運営',en:'Store operations',vi:'Vận hành cửa hàng'}, s:{ja:'数値管理／シフト／発注',en:'Numbers / shifts / ordering',vi:'Số liệu / ca / đặt hàng'} },
+    { ic:'yen',   gyotai:'all', roles:['owner'],             t:{ja:'オーナー向け経営',en:'Owner: management',vi:'Chủ: quản lý'}, s:{ja:'PL／原価率／複数店舗管理',en:'P/L / cost ratio / multi-store',vi:'P/L / giá vốn / nhiều cửa hàng'} },
+    { ic:'hq',    gyotai:'all', roles:['hq'],                t:{ja:'本部運用',en:'HQ operations',vi:'Vận hành HQ'}, s:{ja:'権限設定／提出物管理／AI判定',en:'Permissions / submissions / AI',vi:'Phân quyền / nộp bài / AI'} },
+    { ic:'food',  gyotai:'unagi',    roles:['all'], t:{ja:'鰻の焼成・タレ',en:'Eel grilling & sauce',vi:'Nướng lươn & sốt'}, s:{ja:'あぶり直し／タレ／提供の説明',en:'Re-grilling / sauce / explanation',vi:'Nướng lại / sốt / giải thích'} },
+    { ic:'food',  gyotai:'sushi',    roles:['all'], t:{ja:'寿司オペレーション',en:'Sushi operation',vi:'Vận hành sushi'}, s:{ja:'シャリ／握り／衛生',en:'Rice / nigiri / hygiene',vi:'Cơm / nắm / vệ sinh'} },
+    { ic:'food',  gyotai:'gyukatsu', roles:['all'], t:{ja:'牛カツの提供基準',en:'Gyukatsu serving',vi:'Phục vụ gyukatsu'}, s:{ja:'揚げ／断面／盛り付け（和牛のみ使用）',en:'Frying / cut / plating',vi:'Chiên / lát cắt / trình bày'} },
+    { ic:'food',  gyotai:'wagyu',    roles:['all'], t:{ja:'和牛の扱い',en:'Wagyu handling',vi:'Xử lý wagyu'}, s:{ja:'カット／藁焼き／保管',en:'Cutting / straw-grill / storage',vi:'Cắt / nướng rơm / bảo quản'} },
+    { ic:'food',  gyotai:'washoku',  roles:['all'], t:{ja:'日本料理コース',en:'Japanese course',vi:'Set Nhật'}, s:{ja:'おまかせの流れ／季節の献立',en:'Omakase flow / seasonal menu',vi:'Quy trình omakase'} }
+  ];
+  const manualVisibleRole = (m, role) => role === 'hq' || m.roles.includes('all') || m.roles.includes(role);
+  const manualRow = (m) => `<div class="mrow" data-mock="1"><div class="mi">${svg(m.ic)}</div><div class="mt"><b>${esc(L(m.t))}</b><span>${esc(L(m.s))}</span></div><span class="chev">${svg('chev')}</span></div>`;
+  APP_VIEWS.manual = () => {
+    const role = getRole();
+    const store = visibleStores()[0];
+    const gy = getRole() === 'hq' && getStoreSel() === 'all' ? null : storeGyotai(store);
+    const common = MANUAL_CATALOG.filter(m => m.gyotai === 'all' && manualVisibleRole(m, role));
+    // 業態別：店舗の業態のみ（本部・全店表示のときは全業態）
+    const gyList = MANUAL_CATALOG.filter(m => m.gyotai !== 'all' && manualVisibleRole(m, role) && (gy ? m.gyotai === gy : true));
+    const byGyotai = {};
+    gyList.forEach(m => { (byGyotai[m.gyotai] = byGyotai[m.gyotai] || []).push(m); });
+    const gySections = Object.keys(byGyotai).map(code => `
+      <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${esc(gyotaiLabel(code))}${L({ ja:'のマニュアル', en:' manuals', vi:'' })}</h2></div>
+      <div class="card" style="padding:2px 0">${byGyotai[code].map(manualRow).join('')}</div>`).join('');
+    return `
+      ${NOTE({ ja:`◆ ${role==='hq'&&!gy ? '全店・全業態のマニュアルを表示（本部）' : (gy ? gyotaiLabel(gy)+'業態のマニュアルを表示中' : 'マニュアル')}。権限に応じて表示が変わります（中身は順次追加）`, en:'◆ Manuals filtered by role and store type (content added progressively)', vi:'◆ Cẩm nang lọc theo vai trò & loại hình (nội dung bổ sung dần)' })}
+      <div class="sec-h" style="margin:6px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'全業態共通', en:'All types', vi:'Chung' })}</h2></div>
+      <div class="card" style="padding:2px 0">${common.map(manualRow).join('')}</div>
+      ${gySections}
+      <div class="hint">${L({ ja:'動画マニュアルもこの中に統合していく構想です。', en:'Video manuals will also be integrated here.', vi:'Cẩm nang video cũng sẽ được tích hợp.' })}</div>`;
+  };
 
   /* ⑤ サーベイ（モック）*/
   /* ⑥ サーベイ（動く：お客様が満足度・来店経路・ご感想を回答→自店で集計）*/
