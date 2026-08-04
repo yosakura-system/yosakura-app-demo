@@ -132,9 +132,9 @@
     { id:'route', group:'genba', icon:'pin', roles:['staff','manager','owner','hq'],
       name:{ ja:'来店経路の記録', en:'Arrival Route', vi:'Nguồn khách' },
       desc:{ ja:'来店きっかけをワンタップで', en:'One-tap arrival source', vi:'Nguồn khách 1 chạm' } },
-    { id:'review', group:'genba', icon:'qr', roles:['staff','manager','owner','hq'],
+    { id:'review', group:'other', icon:'qr', roles:['staff','manager','owner','hq'],
       name:{ ja:'口コミQR', en:'Review QR', vi:'QR đánh giá' },
-      desc:{ ja:'Googleレビュー投稿ページへ直接ご案内', en:'Direct link to Google review', vi:'Dẫn thẳng tới đánh giá Google' } },
+      desc:{ ja:'紙での提示が基本。必要時のみ使用', en:'Paper first; use only when needed', vi:'Ưu tiên giấy; chỉ dùng khi cần' } },
     { id:'talk', group:'learn', icon:'chat', roles:['staff','manager','owner','hq'],
       name:{ ja:'接客スクリプト・食べ方ガイド', en:'Service Scripts', vi:'Kịch bản phục vụ' },
       desc:{ ja:'多言語の接客フレーズと食べ方案内', en:'Multilingual phrases & how-to-enjoy', vi:'Câu phục vụ đa ngữ' } },
@@ -144,7 +144,7 @@
     { id:'links', group:'other', icon:'link', soon:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'リンク集', en:'Quick Links', vi:'Liên kết' },
       desc:{ ja:'初期設定・発注などの必要リンク', en:'Setup, ordering and key links', vi:'Cài đặt, đặt hàng, liên kết' } },
-    { id:'inventory', group:'storeops', icon:'box', soon:true, roles:['manager','owner','hq'],
+    { id:'inventory', group:'storeops', icon:'box', soon:true, hide:true, roles:['manager','owner','hq'], // 8/4: 棚卸は月末提出物へ統合＝独立は外す
       name:{ ja:'棚卸・在庫入力', en:'Stocktake', vi:'Kiểm kho' },
       desc:{ ja:'品目ごとの在庫をスマホで入力', en:'Enter stock by item on your phone', vi:'Nhập tồn kho theo mặt hàng' } },
     { id:'openreg', group:'storeops', icon:'coins', roles:['manager','owner','hq'],
@@ -174,7 +174,7 @@
     { id:'order', group:'storeops', icon:'cart', soon:true, roles:['manager','owner','hq'],
       name:{ ja:'備品・食材の発注', en:'Order Supplies', vi:'Đặt vật tư' },
       desc:{ ja:'カタログから本部へ発注', en:'Order from the HQ catalog', vi:'Đặt từ danh mục HQ' } },
-    { id:'schedule', group:'biz', icon:'calendar', soon:true, roles:['owner','hq'],
+    { id:'schedule', group:'biz', icon:'calendar', soon:true, hide:true, roles:['owner','hq'], // 8/4: 開業関係は初期で外す（D-90は未確定）
       name:{ ja:'開業スケジュール D-90', en:'Opening Schedule D-90', vi:'Lịch khai trương D-90' },
       desc:{ ja:'契約〜開業のマスター工程', en:'Contract to opening master plan', vi:'Từ hợp đồng đến khai trương' } },
     { id:'pl', group:'biz', icon:'yen', soon:true, roles:['owner','hq'],
@@ -183,16 +183,16 @@
     { id:'dashboard', group:'hq', icon:'gauge', roles:['hq'],
       name:{ ja:'本部ダッシュボード', en:'HQ Dashboard', vi:'Bảng điều khiển' },
       desc:{ ja:'全店の報告を自動集約', en:'Auto-aggregate all reports', vi:'Tổng hợp báo cáo tự động' } },
-    { id:'tasks', group:'hq', icon:'task', roles:['hq'],
+    { id:'tasks', group:'hq', icon:'task', hide:true, roles:['hq'], // 8/4: 課題管理は増田さんのGoogle一元管理表が正・二重管理しない
       name:{ ja:'課題・タスク管理', en:'Task Management', vi:'Quản lý công việc' },
       desc:{ ja:'本部の全課題を担当・状況で管理', en:'All HQ tasks by owner & status', vi:'Công việc theo phụ trách & trạng thái' } },
-    { id:'invoice', group:'hq', icon:'invoice', soon:true, roles:['hq'],
+    { id:'invoice', group:'hq', icon:'invoice', soon:true, hide:true, roles:['hq'], // 8/4: 請求関係は初期ダッシュから外す
       name:{ ja:'請求・支払管理', en:'Billing & Payment', vi:'Hóa đơn & Thanh toán' },
       desc:{ ja:'取引先ごとの請求方法・締日', en:'Vendor billing method & cutoff', vi:'Cách & kỳ hạn thanh toán' } },
     { id:'teishutsu', group:'hq', icon:'inbox', roles:['hq'],
       name:{ ja:'加盟店・提出物管理', en:'Submissions', vi:'Nộp tài liệu' },
       desc:{ ja:'提出状況と未提出の自動抽出', en:'Track & flag missing submissions', vi:'Theo dõi tài liệu chưa nộp' } },
-    { id:'camera', group:'hq', icon:'video', soon:true, roles:['hq'],
+    { id:'camera', group:'hq', icon:'video', soon:true, hide:true, roles:['hq'], // 8/4: 防犯カメラは初期ダッシュから外す
       name:{ ja:'防犯カメラ確認', en:'Security Cameras', vi:'Camera an ninh' },
       desc:{ ja:'本部から全店を一括確認', en:'Check all stores from HQ', vi:'Xem mọi cửa hàng từ HQ' } },
     { id:'svfb', group:'hq', icon:'report', roles:['hq'],
@@ -498,7 +498,7 @@
     const gids = TAB_GROUPS[tab] || ['genba'];
     let sections = '';
     for (const gid of gids) {
-      const apps = APPS.filter(a => a.group === gid && canOpen(a, role));
+      const apps = APPS.filter(a => a.group === gid && !a.hide && canOpen(a, role));
       if (!apps.length) continue;
       sections += `
         <div class="sec-h"><span class="bar"></span><h2>${esc(groupName(gid))}</h2></div>
@@ -538,7 +538,7 @@
   function viewApp(id) {
     if (id === 'guide') { setTimeout(() => openTour(0), 20); return viewHome('learn'); }
     const a = appById(id);
-    if (!a) return viewHome('home');
+    if (!a || a.hide) return viewHome('home'); // 初期リリースで外した機能は開かない
     if (!canOpen(a, getRole())) { toast(L({ ja:'この機能を開く権限がありません', en:'You do not have permission for this', vi:'Bạn không có quyền mở mục này' })); return viewHome('home'); }
     const body = APP_VIEWS[id] ? APP_VIEWS[id](a) : mockGeneric(a);
     const inner = `
