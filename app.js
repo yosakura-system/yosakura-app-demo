@@ -426,39 +426,73 @@
       </nav>`;
   }
 
-  /* ---------- ホーム ---------- */
-  function viewHome(tab) {
-    const role = getRole();
-    if (tab === 'hq' && role !== 'hq') tab = 'home'; // 本部権限が無ければホームへ
-    const filter = { home:null, genba:'genba', learn:'learn', hq:'hq' }[tab];
-    const groups = filter ? [filter] : GROUPS.map(g => g.id);
-
-    const install = (tab === 'home' && !installHidden()) ? `
+  /* ---------- ホーム ----------
+     高原社長の要望＝ホームはシンプルに、よく使うものへワンクリックで届く入口に徹する。
+     全機能は並べず「お知らせ／よく使う／緊急・相談／各メニューへの導線」だけを置く。
+     全機能の一覧は 報告・学ぶ・本部 の各タブに残す。 */
+  const HOME_PRIMARY = { // 役割ごとの「よく使う」＝ホームに大きく出す入口（ワンクリック）
+    staff:   ['kyou', 'openphoto', 'checklist', 'kizuki'],
+    manager: ['kyou', 'openphoto', 'soukatsu', 'checklist'],
+    owner:   ['kyou', 'openphoto', 'soukatsu', 'checklist'],
+    hq:      ['teishutsu', 'kyou', 'dashboard', 'svfb']
+  };
+  function installCardHTML() {
+    if (installHidden()) return '';
+    return `
       <div class="install-card">
         <button class="install-x" id="installDismiss" aria-label="close">×</button>
         <img class="hdr__logo" style="width:40px;height:40px" src="icons/icon-192.png" alt="">
         <div class="txt"><b>${L({ ja:'ホーム画面に世桜を追加', en:'Add YOSAKURA to Home Screen', vi:'Thêm YOSAKURA vào màn hình' })}</b>
           <span>${L({ ja:'アプリのように起動。世桜のロゴが立ち上がります。', en:'Launch like an app with the YOSAKURA logo.', vi:'Khởi động như ứng dụng với logo YOSAKURA.' })}</span></div>
         <button id="installBtn">${L({ ja:'追加', en:'Add', vi:'Thêm' })}</button>
-      </div>` : '';
+      </div>`;
+  }
+  function homeInner(role) {
+    const tiles = (ids) => ids.map(appById).filter(a => a && canOpen(a, role)).map(a => tileHTML(a, role)).join('');
+    const primary = tiles(HOME_PRIMARY[role] || HOME_PRIMARY.staff);
+    const safety = tiles(['emergency', 'whistle']);
+    const sec = (t) => `<div class="sec-h"><span class="bar"></span><h2>${L(t)}</h2></div>`;
+    const news = `
+      <div class="card news-card">
+        <div class="news-h"><span class="news-ic">${svg('inbox')}</span><b>${L({ ja:'本部からのお知らせ', en:'News from HQ', vi:'Thông báo từ HQ' })}</b></div>
+        <p class="news-body">${L({ ja:'世桜ニュース・重要なお知らせがここに届きます。', en:'YOSAKURA news and important notices will appear here.', vi:'Tin tức và thông báo quan trọng của YOSAKURA sẽ hiển thị ở đây.' })}</p>
+      </div>`;
+    const links = `
+      <div class="homelinks">
+        <button class="homelink" data-tab="genba"><span class="hl-ic">${svg('report')}</span><span class="hl-t">${L({ ja:'報告する', en:'Report', vi:'Báo cáo' })}</span><span class="hl-c">${svg('chev')}</span></button>
+        <button class="homelink" data-tab="learn"><span class="hl-ic">${svg('grad')}</span><span class="hl-t">${L({ ja:'学ぶ', en:'Learn', vi:'Học tập' })}</span><span class="hl-c">${svg('chev')}</span></button>
+        ${role === 'hq' ? `<button class="homelink" data-tab="hq"><span class="hl-ic">${svg('hq')}</span><span class="hl-t">${L({ ja:'本部メニュー', en:'HQ menu', vi:'Menu HQ' })}</span><span class="hl-c">${svg('chev')}</span></button>` : ''}
+      </div>`;
+    return `
+      <main class="screen">
+        <div class="brandhead"><img class="brandhead__logo" src="icons/logo-full.png" alt="日本料理 世桜 -yosakura-"></div>
+        ${installCardHTML()}
+        ${news}
+        ${sec({ ja:'よく使う', en:'Quick access', vi:'Hay dùng' })}
+        <div class="grid">${primary}</div>
+        ${safety ? sec({ ja:'緊急・相談', en:'Emergency & Report', vi:'Khẩn cấp & Tố giác' }) + `<div class="grid">${safety}</div>` : ''}
+        ${sec({ ja:'メニュー', en:'Menu', vi:'Menu' })}
+        ${links}
+        <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}</div>
+      </main>`;
+  }
+  function viewHome(tab) {
+    const role = getRole();
+    if (tab === 'hq' && role !== 'hq') tab = 'home'; // 本部権限が無ければホームへ
 
-    let sections = '';
-    for (const gid of groups) {
-      const apps = APPS.filter(a => a.group === gid && canOpen(a, role)); // 使える機能だけ表示
-      if (!apps.length) continue;                                          // 空セクションは非表示
-      sections += `
-        <div class="sec-h"><span class="bar"></span><h2>${esc(groupName(gid))}</h2></div>
-        <div class="grid">${apps.map(a => tileHTML(a, role)).join('')}</div>`;
-    }
+    // ホーム＝シンプルな入口（全機能は並べない）
+    if (tab === 'home') return shell(homeInner(role), 'home');
 
-    const heroBlock = tab === 'home'
-      ? `<div class="brandhead"><img class="brandhead__logo" src="icons/logo-full.png" alt="日本料理 世桜 -yosakura-"></div>`
-      : `<div class="hero"><h1 class="hero__title">${L({ home:'', genba:{ja:'報告する',en:'Report',vi:'Báo cáo'}, learn:{ja:'学ぶ',en:'Learn',vi:'Học tập'}, hq:{ja:'本部メニュー',en:'HQ Menu',vi:'Menu bộ phận'} }[tab])}</h1></div>`;
-
+    // 報告・学ぶ・本部の各タブ＝そのグループの全機能を一覧（従来どおり）
+    const filter = { genba:'genba', learn:'learn', hq:'hq' }[tab] || 'genba';
+    const apps = APPS.filter(a => a.group === filter && canOpen(a, role));
+    const sections = apps.length
+      ? `<div class="grid">${apps.map(a => tileHTML(a, role)).join('')}</div>`
+      : `<div class="muted" style="text-align:center;padding:20px">${L({ ja:'表示できる項目がありません', en:'Nothing to show', vi:'Không có mục nào' })}</div>`;
+    const heroBlock = `<div class="hero"><h1 class="hero__title">${L({ genba:{ja:'報告する',en:'Report',vi:'Báo cáo'}, learn:{ja:'学ぶ',en:'Learn',vi:'Học tập'}, hq:{ja:'本部メニュー',en:'HQ Menu',vi:'Menu bộ phận'} }[filter])}</h1></div>`;
     const inner = `
       <main class="screen">
         ${heroBlock}
-        ${install}
         ${sections}
         <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}</div>
       </main>`;

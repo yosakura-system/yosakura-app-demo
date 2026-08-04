@@ -352,3 +352,23 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 /* 公益通報：匿名チェックのインライン表示 */
 .check-inline { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--sumi); margin-top: 10px; cursor: pointer; }
 .check-inline input { width: 17px; height: 17px; accent-color: var(--suou); }
+
+/* ホーム：本部からのお知らせカード */
+.news-card { display: block; }
+.news-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.news-h .news-ic { width: 28px; height: 28px; border-radius: 8px; background: var(--suou-t); color: var(--suou); display: grid; place-items: center; flex: 0 0 auto; }
+.news-h .news-ic svg { width: 17px; height: 17px; }
+.news-h b { font-size: 14px; color: var(--sumi); }
+.news-body { font-size: 13px; color: var(--gray); line-height: 1.7; margin: 0; }
+
+/* ホーム：各メニューへの導線（ワンクリック） */
+.homelinks { display: flex; flex-direction: column; gap: 10px; }
+.homelink { display: flex; align-items: center; gap: 12px; width: 100%; padding: 15px 16px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-s);
+  cursor: pointer; font-family: var(--sans); text-align: left; transition: transform .12s ease, box-shadow .2s ease; }
+.homelink:active { transform: scale(.99); }
+.homelink .hl-ic { width: 38px; height: 38px; border-radius: 11px; background: var(--suou-t); color: var(--suou); display: grid; place-items: center; flex: 0 0 auto; }
+.homelink .hl-ic svg { width: 21px; height: 21px; }
+.homelink .hl-t { flex: 1; font-size: 15px; font-weight: 700; color: var(--sumi); }
+.homelink .hl-c { color: var(--gray); display: grid; place-items: center; }
+.homelink .hl-c svg { width: 18px; height: 18px; }
