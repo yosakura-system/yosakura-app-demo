@@ -281,5 +281,32 @@ await new Promise(r=>setTimeout(r, 50));
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== 資料・学習リンク（materials）：本部編集・同期・タップで開く ==');
+{
+  // 本部：フォームが出る／スタッフ：フォーム無し（閲覧のみ）
+  const hqForm = renderView('materials','hq','all','ja');
+  ok(/matAdd/.test(hqForm) && /mat_url/.test(hqForm), 'hq に追加フォームが出る');
+  const staffV = renderView('materials','staff',S_HIROSHIMA,'ja');
+  ok(!/matAdd/.test(staffV), 'スタッフには編集フォームを出さない');
+  // 同期：linkset（配列丸ごと）が distribute で復元され、httpリンクは「開く」ボタンが出る
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'linkset', store:'', note: JSON.stringify([
+      { id:'a1', title:'世桜の理念', url:'https://docs.google.com/presentation/d/EXAMPLE/edit', cat:'worldview', desc:'' },
+      { id:'a2', title:'スタッフの基本', url:'https://docs.google.com/document/d/EXAMPLE/edit', cat:'staff', desc:'' },
+    ]), t: Date.now(), id:'ls1' },
+  ]};
+  try { run(()=> setLS('staff', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ linkset load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  const lk = JSON.parse(localStorage.getItem('yosakura_demo_links')||'[]');
+  ok(lk.length===2 && lk.some(x=>x.title==='世桜の理念'), 'linkset distributed to local list');
+  location.hash = '#/app/materials';
+  const html = registry.app.innerHTML;
+  ok(/data-openurl=/.test(html) && /世桜の理念/.test(html), 'スタッフ閲覧で「開く」リンクが出る');
+  ok(!/matAdd/.test(html), 'スタッフ閲覧に編集フォームは無い');
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

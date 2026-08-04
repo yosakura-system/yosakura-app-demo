@@ -159,6 +159,9 @@
     { id:'manual', group:'learn', icon:'book', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' },
       desc:{ ja:'権限・業態別に表示（理念・接客・衛生・商品）', en:'By role & store type', vi:'Theo vai trò & loại hình' } },
+    { id:'materials', group:'learn', icon:'link', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'資料・学習リンク', en:'Materials & Links', vi:'Tài liệu & Liên kết' },
+      desc:{ ja:'理念・スタッフの基本などをタップで開く', en:'Tap to open brand & staff materials', vi:'Chạm để mở tài liệu' } },
     { id:'survey', group:'storeops', icon:'star', roles:['staff','manager','owner','hq'],
       name:{ ja:'サーベイ・集計', en:'Survey & Results', vi:'Khảo sát & Kết quả' },
       desc:{ ja:'お客様アンケートの運用と結果集計（満足度・来店経路・月別）', en:'Run survey & view results', vi:'Vận hành & xem kết quả' } },
@@ -2305,6 +2308,13 @@
       { title:'清掃の好事例を共有しました', body:'藁焼き装置のステンレス汚れはウタマロで改善できます。定期清掃箇所に追加しました。', level:'normal', target:'all', t: now - 3600e3 * 30 }
     ]);
   }
+  function seedMaterials() {
+    if (localStorage.getItem('yosakura_demo_links')) return;
+    saveLinks([
+      { id:'lk_demo1', title:'世桜の理念・ブランドコア（例）', url:'', cat:'worldview', desc:'本部が実際のSlides/DocsのURLを登録します' },
+      { id:'lk_demo2', title:'スタッフの基本・接客の心得（例）', url:'', cat:'staff', desc:'登録するとタップで資料が開きます' }
+    ]);
+  }
   function seedCommunity() {
     if (localStorage.getItem('yosakura_demo_community')) return;
     const now = Date.now();
@@ -2559,6 +2569,49 @@
         <h3>${L({ ja:'みんなの投稿', en:'Community feed', vi:'Bảng tin' })}</h3>
         ${list.length ? list.map(commRow).join('') : `<div class="muted">${L({ ja:'まだ投稿はありません。最初の一件を投稿してみましょう！', en:'No posts yet — be the first!', vi:'Chưa có bài. Hãy là người đầu tiên!' })}</div>`}
       </div>`;
+  };
+
+  /* ---------- 学ぶ：資料・学習リンク（本部が編集・全端末同期／タップで資料を開く）----------
+     Slides/Docs 等のURLをバックエンドに保存（公開リポジトリにURLを直書きしない）。
+     一覧の最新版が正（linkset＝配列を丸ごと保存し最新採用）。 */
+  const MAT_CATS = [
+    { v:'worldview', t:{ ja:'店舗の世界観・理念', en:'Brand & Philosophy', vi:'Thương hiệu & Triết lý' } },
+    { v:'staff',     t:{ ja:'スタッフの基本',     en:'Staff basics',        vi:'Cơ bản nhân viên' } },
+    { v:'other',     t:{ ja:'その他の資料',       en:'Other materials',     vi:'Tài liệu khác' } }
+  ];
+  const getLinks = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_links')) || []; } catch { return []; } };
+  const saveLinks = (a) => { try { localStorage.setItem('yosakura_demo_links', JSON.stringify(a)); } catch (e) {} };
+  const isHttp = (u) => /^https?:\/\//i.test(u || '');
+  APP_VIEWS.materials = () => {
+    const isHq = getRole() === 'hq';
+    const links = getLinks();
+    const byCat = (v) => links.filter(l => (l.cat || 'other') === v).sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+    const linkRow = (l) => `<div class="rep">
+        <span class="hl-ic" style="flex:0 0 auto">${svg('link')}</span>
+        <div class="body"><div class="l1">${esc(l.title || l.url)}</div>${l.desc ? `<div class="l2">${esc(l.desc)}</div>` : ''}</div>
+        ${isHttp(l.url) ? `<button class="mini" data-openurl="${esc(l.url)}">${L({ ja:'開く', en:'Open', vi:'Mở' })}${svg('chev')}</button>` : ''}
+        ${isHq ? `<button class="mini" data-matdel="${esc(l.id)}">✕</button>` : ''}
+      </div>`;
+    const section = (c) => { const rows = byCat(c.v); return rows.length ? `<div class="card"><h3>${esc(L(c.t))}</h3>${rows.map(linkRow).join('')}</div>` : ''; };
+    const form = isHq ? `
+      <div class="card" id="matForm">
+        <h3>${L({ ja:'資料リンクを追加（本部）', en:'Add a material link (HQ)', vi:'Thêm liên kết (HQ)' })}</h3>
+        <label class="fld"><span>${L({ ja:'タイトル', en:'Title', vi:'Tiêu đề' })}</span>
+          <input type="text" id="mat_title" placeholder="${esc(L({ ja:'例）世桜の理念・ブランドコア', en:'e.g. Brand philosophy', vi:'vd: Triết lý' }))}"></label>
+        <label class="fld"><span>${L({ ja:'リンク（Slides/Docs等のURL）', en:'Link (URL)', vi:'Liên kết (URL)' })}</span>
+          <input type="url" id="mat_url" placeholder="https://..."></label>
+        <label class="fld"><span>${L({ ja:'区分', en:'Category', vi:'Danh mục' })}</span>
+          <select id="mat_cat">${MAT_CATS.map(c => `<option value="${c.v}">${esc(L(c.t))}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'ひとことメモ（任意）', en:'Note (optional)', vi:'Ghi chú' })}</span>
+          <input type="text" id="mat_desc"></label>
+        <button class="btn-primary" id="matAdd">${L({ ja:'追加する', en:'Add', vi:'Thêm' })}</button>
+        <div class="hint">${L({ ja:'追加すると全店に共有され、タップで資料が開きます。', en:'Shared to all stores; tap to open.', vi:'Chia sẻ toàn bộ; chạm để mở.' })}</div>
+      </div>` : '';
+    const body = MAT_CATS.map(section).join('');
+    return `
+      ${NOTE({ ja:'◆ 世桜の資料をタップで開けます（本部が登録・全店で共有）', en:'◆ Tap to open YOSAKURA materials (HQ-managed)', vi:'◆ Chạm để mở tài liệu (HQ quản lý)' })}
+      ${form}
+      ${body || `<div class="card"><div class="muted">${L({ ja:'まだ資料が登録されていません。' + (isHq ? '上のフォームから追加できます。' : '本部が順次追加します。'), en:'No materials registered yet.', vi:'Chưa có tài liệu.' })}</div></div>`}`;
   };
 
   // 提出管理モジュールをアプリ一覧へ追加（店舗ロール中心・本部も閲覧可）
@@ -2870,6 +2923,26 @@
     document.querySelectorAll('[data-commpub]').forEach(b => b.onclick = () => setCommState(b.dataset.commpub, 'published'));
     document.querySelectorAll('[data-commhide]').forEach(b => b.onclick = () => setCommState(b.dataset.commhide, 'hidden'));
 
+    // 資料・学習リンク：本部が追加／削除（全端末同期）・誰でもタップで開く
+    const matAdd = document.getElementById('matAdd');
+    if (matAdd) matAdd.onclick = () => {
+      const title = ((byId('mat_title') || {}).value || '').trim();
+      const url = ((byId('mat_url') || {}).value || '').trim();
+      const cat = (byId('mat_cat') || {}).value || 'other';
+      const desc = ((byId('mat_desc') || {}).value || '').trim();
+      if (!title || !isHttp(url)) { toast(L({ ja:'タイトルと正しいURL（https://）を入力してください', en:'Enter a title and a valid https URL', vi:'Nhập tiêu đề và URL https hợp lệ' })); return; }
+      const links = getLinks(); links.push({ id:'lk' + Date.now(), title, url, cat, desc });
+      saveLinks(links); const t = Date.now(); lastSync = t;
+      toast(L({ ja:'資料リンクを追加しました', en:'Material added', vi:'Đã thêm' })); render();
+      postReport({ kind:'linkset', store:'', note: JSON.stringify(links), t });
+    };
+    document.querySelectorAll('[data-matdel]').forEach(b => b.onclick = () => {
+      const links = getLinks().filter(l => l.id !== b.dataset.matdel);
+      saveLinks(links); const t = Date.now(); lastSync = t; render();
+      postReport({ kind:'linkset', store:'', note: JSON.stringify(links), t });
+    });
+    document.querySelectorAll('[data-openurl]').forEach(b => b.onclick = () => window.open(b.dataset.openurl, '_blank', 'noopener'));
+
     // ③ 口コミQR：保存・開く・コピー
     if (byId('reviewSave')) byId('reviewSave').onclick = () => {
       const store = visibleStores()[0]; const u = byId('review_url').value.trim();
@@ -3053,7 +3126,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={};
+    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; let linkset=null, linksetT=null;
     (rows || []).forEach(r => {
       const t = Number(r.t) || 0, id = r.id, store = r.store || '';
       switch (r.kind) {
@@ -3073,6 +3146,7 @@
         case 'community': { const p=pj(r.note); comm.push({ store, cat:r.item, body:p.body||'', by:p.by||'', photos:r.photos||[], t, id }); } break;
         case 'commmod': { const p=pj(r.note); const k=r.item; if (commmodT[k]==null || t>=commmodT[k]) { commmod[k]={ state:p.state||'published', t }; commmodT[k]=t; } } break; // 投稿キーごと最新の公開状態が正
         case 'commlike': { const k=r.item; commlike[k]=(commlike[k]||0)+1; } break; // 拍手は件数を合算
+        case 'linkset': { const p=pj(r.note); if (Array.isArray(p) && (linksetT==null || t>=linksetT)) { linkset=p; linksetT=t; } } break; // 資料リンク一覧は最新版が正
       }
     });
     const set = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a)); } catch (_) {} };
@@ -3081,6 +3155,7 @@
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
     set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_ckitem', ckitem); set('yosakura_demo_monthly', Object.values(monthly));
     set('yosakura_demo_community', comm); set('yosakura_demo_commmod', commmod); set('yosakura_demo_commlike', commlike);
+    if (linkset !== null) set('yosakura_demo_links', linkset); // linksetが無い同期では既存の資料リンクを保持
   }
   async function syncReports(force) {
     if (!useBackend()) return;
@@ -3109,7 +3184,7 @@
   document.documentElement.lang = LANG;
   if (!useBackend()) seedIfEmpty();
   // バックエンド接続時は全端末同期を使うためシードしない（＝実データのみ）。オフライン検証時のみ初期データを用意。
-  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); }
+  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); seedMaterials(); }
   render();
   syncReports(true);
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
