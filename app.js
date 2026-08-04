@@ -159,9 +159,9 @@
     { id:'manual', group:'learn', icon:'book', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' },
       desc:{ ja:'権限・業態別に表示（理念・接客・衛生・商品）', en:'By role & store type', vi:'Theo vai trò & loại hình' } },
-    { id:'survey', group:'learn', icon:'star', roles:['staff','manager','owner','hq'],
-      name:{ ja:'サーベイ', en:'Survey', vi:'Khảo sát' },
-      desc:{ ja:'お客様アンケート運用', en:'Customer survey operation', vi:'Khảo sát khách hàng' } },
+    { id:'survey', group:'storeops', icon:'star', roles:['staff','manager','owner','hq'],
+      name:{ ja:'サーベイ・集計', en:'Survey & Results', vi:'Khảo sát & Kết quả' },
+      desc:{ ja:'お客様アンケートの運用と結果集計（満足度・来店経路・月別）', en:'Run survey & view results', vi:'Vận hành & xem kết quả' } },
     { id:'guide', group:'other', icon:'play', roles:['staff','manager','owner','hq'],
       name:{ ja:'使い方ガイド', en:'How to use', vi:'Hướng dẫn' },
       desc:{ ja:'このアプリの使い方（1分）', en:'Quick app guide (1 min)', vi:'Hướng dẫn nhanh (1 phút)' } },
@@ -1118,11 +1118,16 @@
         <div class="hint">${L({ ja:'声かけは短く：「お時間がありましたら、アンケートにご協力をお願いいたします。」／回答は誘導せず、満足度を最優先に。', en:'Keep it short; never lead the answer; prioritize the guest.', vi:'Nói ngắn gọn; không gợi ý câu trả lời.' })}</div>
         <div class="hint">${L({ ja:'※「大変満足／満足」の時だけ、控えめに口コミQRをご案内（断られたらすぐ引く）。', en:'Only when highly satisfied, gently offer the review QR.', vi:'Chỉ khi rất hài lòng mới mời đánh giá.' })}</div>
       </div>
-      ${(['manager','owner','hq'].includes(getRole()) && n) ? surveyAgg(rows, vis) : ''}`;
+      ${['manager','owner','hq'].includes(getRole()) ? surveyAgg(rows, vis) : ''}`;
   };
   // サーベイ集計（本部・オーナー・店長向け）：満足度分布／低評価／来店経路／月別推移／店舗別
   function surveyAgg(rows, vis) {
     const n = rows.length;
+    if (!n) return `
+      <div class="card">
+        <h3>${L({ ja:'サーベイ集計', en:'Survey results', vi:'Kết quả khảo sát' })}</h3>
+        <p class="muted">${L({ ja:'まだサーベイの回答がありません。お客様の回答が入ると、満足度の分布・来店経路・月別の回答数・店舗別の評価がここに表示されます。', en:'No survey responses yet. Once guests reply, satisfaction, arrival routes, monthly counts and per-store scores appear here.', vi:'Chưa có phản hồi. Khi có, kết quả sẽ hiển thị ở đây.' })}</p>
+      </div>`;
     const avg = n ? rows.reduce((s, r) => s + (Number(r.sat) || 0), 0) / n : 0;
     const low = rows.filter(r => (Number(r.sat) || 0) <= 2).length;
     const dist = [5, 4, 3, 2, 1].map(s => ({ s, c: rows.filter(r => Number(r.sat) === s).length }));

@@ -207,6 +207,18 @@ console.log('== 来店経路の記録は「報告」タブから外れている�
   ok(!/来店経路の記録/.test(html), '報告タブに来店経路の記録カードが無い（hide）');
 }
 
+console.log('== サーベイ集計が見つかる（0件でも表示・報告タブに配置）==');
+{
+  const hq = renderView('survey','hq','all','ja'); // 回答0件（バックエンド既定でseed無し）
+  ok(/サーベイ集計/.test(hq), 'hq/0件でも「サーベイ集計」の空状態が出る');
+  const staff = renderView('survey','staff',S_HIROSHIMA,'ja');
+  ok(!/サーベイ集計/.test(staff), 'スタッフには集計を出さない（入口のみ）');
+  let tab = '';
+  try { run(()=> setLS('hq','all','ja')); location.hash = '#/home?tab=genba'; tab = registry.app.innerHTML; }
+  catch(e){ FAIL++; console.log('  ✗ genba-tab(hq) threw: '+e.message); }
+  ok(/サーベイ・集計/.test(tab), '報告タブに「サーベイ・集計」が並ぶ');
+}
+
 console.log('== ホームに「みんなの投稿」カードが出る ==');
 for (const role of ['staff','manager','hq']) {
   let html = '';
