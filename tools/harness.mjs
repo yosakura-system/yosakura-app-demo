@@ -308,5 +308,24 @@ await new Promise(r=>setTimeout(r, 50));
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== マニュアル：対応資料をタップで開く（linksetと連携）==');
+{
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'linkset', store:'', note: JSON.stringify([
+      { id:'lk_w2', cat:'worldview', title:'世桜とは',     url:'https://docs.google.com/presentation/d/EX/edit',  desc:'スライド' },
+      { id:'lk_s1', cat:'staff',     title:'ハウスルール', url:'https://docs.google.com/spreadsheets/d/EX/edit', desc:'スプレッドシート' },
+    ]), t: Date.now(), id:'ls2' },
+  ]};
+  try { run(()=> setLS('staff', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ manual linkset load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  location.hash = '#/app/manual';
+  const html = registry.app.innerHTML;
+  ok(/data-openurl=/.test(html), 'マニュアルに資料のタップ開くリンクが出る');
+  ok(/世桜とは/.test(html) && /ハウスルール/.test(html), '理念/セブンデイズに対応資料が紐づく');
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
