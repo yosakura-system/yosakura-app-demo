@@ -154,5 +154,58 @@ await new Promise(r=>setTimeout(r, 50));
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== みんなの投稿 (community) ==');
+{
+  const staff = renderView('community','staff',S_HIROSHIMA,'ja');
+  ok(/submitComm/.test(staff) && /data-seg="commcat"/.test(staff), 'staff sees post form');
+  ok(!/data-commpub/.test(staff) && !/data-commhide/.test(staff), 'staff has no moderation buttons');
+  const en = renderView('community','manager',S_HIROSHIMA,'en');
+  ok(/Share a good story/.test(en), 'manager/en renders');
+}
+console.log('== community: distribute() で 投稿/公開状態/拍手 が復元される ==');
+{
+  const now = Date.now();
+  const key = `${now}|寿司世桜 心斎橋店`;
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'community', store:'寿司世桜 心斎橋店', item:'guest', note: JSON.stringify({ body:'記念日のお祝いで喜ばれました', by:'スタッフ' }), t: now, id:'c1' },
+    { kind:'commmod', store:'寿司世桜 心斎橋店', item:key, note: JSON.stringify({ state:'published' }), t: now+1, id:'m1' },
+    { kind:'commlike', store:'寿司世桜 心斎橋店', item:key, t: now+2, id:'l1' },
+    { kind:'commlike', store:'寿司世桜 心斎橋店', item:key, t: now+3, id:'l2' },
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  const comm = JSON.parse(localStorage.getItem('yosakura_demo_community')||'[]');
+  ok(comm.length===1 && comm[0].body==='記念日のお祝いで喜ばれました', 'community post distributed to local list');
+  const mod = JSON.parse(localStorage.getItem('yosakura_demo_commmod')||'{}');
+  const k = Object.keys(mod)[0];
+  ok(k && mod[k].state==='published', 'commmod published state distributed');
+  const likes = JSON.parse(localStorage.getItem('yosakura_demo_commlike')||'{}');
+  ok(Object.values(likes)[0]===2, 'commlike counted across devices (2)');
+  location.hash = '#/app/community';
+  const hq = registry.app.innerHTML;
+  ok(/data-commhide/.test(hq), 'hq sees published post with take-down button');
+}
+FETCH_ROWS = { ok:false };
+
+console.log('== 口コミQR は「その他」タブの導線から外れている（議事録12-4/23）==');
+{
+  let html = '';
+  try { run(()=> setLS('staff', S_HIROSHIMA, 'ja')); location.hash = '#/home?tab=other'; html = registry.app.innerHTML; }
+  catch(e){ FAIL++; console.log('  ✗ other-tab render threw: '+e.message); }
+  ok(html.length > 100, 'その他タブが描画される');
+  ok(!/口コミQR/.test(html), 'その他タブに口コミQRの導線が無い（hide）');
+}
+
+console.log('== ホームに「みんなの投稿」カードが出る ==');
+for (const role of ['staff','manager','hq']) {
+  let html = '';
+  try { run(()=> setLS(role, role==='hq'?'all':S_HIROSHIMA, 'ja')); location.hash = '#/home'; html = registry.app.innerHTML; }
+  catch(e){ FAIL++; console.log(`  ✗ home/${role} threw: `+e.message); }
+  ok(html.length > 500, `home/${role} rendered`);
+  ok(/みんなの投稿/.test(html) && /data-open="community"/.test(html), `home/${role} has community card`);
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

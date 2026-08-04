@@ -132,7 +132,10 @@
     { id:'route', group:'genba', icon:'pin', roles:['staff','manager','owner','hq'],
       name:{ ja:'来店経路の記録', en:'Arrival Route', vi:'Nguồn khách' },
       desc:{ ja:'来店きっかけをワンタップで', en:'One-tap arrival source', vi:'Nguồn khách 1 chạm' } },
-    { id:'review', group:'other', icon:'qr', roles:['staff','manager','owner','hq'],
+    { id:'community', group:'genba', icon:'chat', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'みんなの投稿', en:'Community', vi:'Cộng đồng' },
+      desc:{ ja:'現場のグッドストーリーを全店で共有', en:'Share good stories across stores', vi:'Chia sẻ câu chuyện hay' } },
+    { id:'review', group:'other', icon:'qr', hide:true, roles:['staff','manager','owner','hq'], // 議事録12-4/23: 口コミQRはアプリ掲載を一旦外す（紙運用が基本）
       name:{ ja:'口コミQR', en:'Review QR', vi:'QR đánh giá' },
       desc:{ ja:'紙での提示が基本。必要時のみ使用', en:'Paper first; use only when needed', vi:'Ưu tiên giấy; chỉ dùng khi cần' } },
     { id:'talk', group:'learn', icon:'chat', roles:['staff','manager','owner','hq'],
@@ -472,6 +475,19 @@
         <div class="news-h"><span class="news-ic">${svg('bell')}</span><b>${L({ ja:'本部からのお知らせ', en:'News from HQ', vi:'Thông báo từ HQ' })}</b></div>
         <p class="news-body">${role === 'hq' ? L({ ja:'タップしてお知らせを配信できます。', en:'Tap to post an announcement.', vi:'Chạm để đăng thông báo.' }) : L({ ja:'世桜ニュース・重要なお知らせがここに届きます。', en:'YOSAKURA news and notices will appear here.', vi:'Tin tức và thông báo sẽ hiển thị ở đây.' })}</p>
       </button>`;
+    const cpost = commForView(getComm().slice().sort((a, b) => b.t - a.t))[0];
+    const communityCard = cpost ? `
+      <button class="card news-card news-card--btn" data-open="community">
+        <div class="news-h"><span class="news-ic">👏</span><b>${L({ ja:'みんなの投稿', en:'Community', vi:'Cộng đồng' })}</b><span class="news-ago">${timeAgo(cpost.t)}</span></div>
+        <div class="news-title">${esc(commCatLabel(cpost.cat))}</div>
+        <p class="news-body">${esc(newsSnippet(cpost.body))}</p>
+        ${(cpost.photos && cpost.photos.length) ? `<img class="news-thumb" src="${photoThumb(cpost.photos[0])}" alt="">` : ''}
+        <span class="news-more">${commLikeN(cpost) ? `👏 ${commLikeN(cpost)} ・ ` : ''}${L({ ja:'みんなの投稿を見る', en:'See community', vi:'Xem cộng đồng' })} ${svg('chev')}</span>
+      </button>` : `
+      <button class="card news-card news-card--btn" data-open="community">
+        <div class="news-h"><span class="news-ic">👏</span><b>${L({ ja:'みんなの投稿', en:'Community', vi:'Cộng đồng' })}</b></div>
+        <p class="news-body">${L({ ja:'現場のグッドストーリー（お客様が喜んだこと・ファインプレー）をここで共有しましょう。', en:'Share good stories from the field here.', vi:'Chia sẻ câu chuyện hay tại đây.' })}</p>
+      </button>`;
     const links = `
       <div class="homelinks">
         <button class="homelink" data-tab="genba"><span class="hl-ic">${svg('report')}</span><span class="hl-t">${L({ ja:'報告する', en:'Report', vi:'Báo cáo' })}</span><span class="hl-c">${svg('chev')}</span></button>
@@ -484,6 +500,7 @@
         <div class="brandhead"><img class="brandhead__logo" src="icons/logo-full.png" alt="日本料理 世桜 -yosakura-"></div>
         ${installCardHTML()}
         ${news}
+        ${communityCard}
         ${sec({ ja:'よく使う', en:'Quick access', vi:'Hay dùng' })}
         <div class="grid">${primary}</div>
         ${safety ? sec({ ja:'緊急・相談', en:'Emergency & Report', vi:'Khẩn cấp & Tố giác' }) + `<div class="grid">${safety}</div>` : ''}
@@ -2265,6 +2282,18 @@
       { title:'清掃の好事例を共有しました', body:'藁焼き装置のステンレス汚れはウタマロで改善できます。定期清掃箇所に追加しました。', level:'normal', target:'all', t: now - 3600e3 * 30 }
     ]);
   }
+  function seedCommunity() {
+    if (localStorage.getItem('yosakura_demo_community')) return;
+    const now = Date.now();
+    saveComm([
+      { store:'寿司世桜 心斎橋店', cat:'guest', body:'記念日でご来店のお客様に、メッセージ入りのデザートプレートをお出ししたら涙ぐんで喜んでくださいました。写真も撮らせていただきました！', by:'スタッフ', photos:[], t: now - 3600e3 * 6 },
+      { store:'和牛世桜 広島店', cat:'play', body:'お子様連れのお客様に待ち時間で折り紙をお渡ししたら大喜び。ご両親もゆっくりお食事できたと感謝されました。', by:'', photos:[], t: now - 3600e3 * 20 },
+      { store:'日本鰻世桜 富士山店', cat:'win', body:'今月のGoogle口コミが目標の30件を突破しました！スタッフ全員で「提供時の一言」を大切にした成果です。', by:'店長', photos:[], t: now - 3600e3 * 40 }
+    ]);
+    const map = {};
+    getComm().forEach(p => { map[`${p.t}|${p.store}`] = { state:'published', t: p.t }; }); // デモは公開済みで表示
+    try { localStorage.setItem('yosakura_demo_commmod', JSON.stringify(map)); } catch (e) {}
+  }
   function seedEmg() {
     if (localStorage.getItem('yosakura_demo_emg')) return;
     saveEmg({ '和牛世桜 広島店': { slots: {
@@ -2420,6 +2449,92 @@
       ${form}
       <div class="card"><h3>${L({ ja:'お知らせ一覧', en:'Announcements', vi:'Danh sách thông báo' })}</h3>
         ${list.length ? list.map(newsRow).join('') : `<div class="muted">${L({ ja:'まだお知らせはありません', en:'No announcements yet', vi:'Chưa có thông báo' })}</div>`}
+      </div>`;
+  };
+
+  /* ---------- みんなの投稿（コミュニティ／グッドストーリー）----------
+     現場発のポジティブ投稿を全店で共有（お客様が喜んだこと・スタッフのファインプレー・達成など）。
+     本部承認後に全店へ公開（事前モデレーション）。いいね（拍手）で認め合う。全端末同期。 */
+  const COMM_CATS = [
+    { v:'guest', t:{ ja:'お客様が喜んだ', en:'Guest delight', vi:'Khách vui' } },
+    { v:'play',  t:{ ja:'スタッフのファインプレー', en:'Great play', vi:'Pha xử lý hay' } },
+    { v:'win',   t:{ ja:'達成・記録', en:'Achievement', vi:'Thành tích' } },
+    { v:'other', t:{ ja:'その他', en:'Other', vi:'Khác' } }
+  ];
+  const commCatLabel = (v) => { const f = COMM_CATS.find(x => x.v === v); return f ? L(f.t) : v; };
+  const commKey = (p) => `${p.t}|${p.store}`;
+  const getComm = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_community')) || []; } catch { return []; } };
+  const saveComm = (a) => { try { localStorage.setItem('yosakura_demo_community', JSON.stringify(a)); } catch (e) {} };
+  const getCommMod = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_commmod')) || {}; } catch { return {}; } };
+  const getCommLike = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_commlike')) || {}; } catch { return {}; } };
+  const getLiked = () => { try { return JSON.parse(localStorage.getItem('yosakura_comm_liked')) || []; } catch { return []; } };
+  const commState = (p) => (getCommMod()[commKey(p)] || {}).state || 'pending';
+  const commLikeN = (p) => Number(getCommLike()[commKey(p)] || 0);
+  // 全店コミュニティ＝店舗で絞らない。非本部は公開済みのみ、本部は保留も見える。
+  function commForView(list) {
+    if (getRole() === 'hq') return list.slice();
+    return list.filter(p => commState(p) === 'published');
+  }
+  function setCommState(key, state) {
+    const map = getCommMod(); map[key] = { state, t: Date.now() };
+    try { localStorage.setItem('yosakura_demo_commmod', JSON.stringify(map)); } catch (e) {}
+    const store = key.split('|')[1] || '';
+    lastSync = Date.now(); pushAudit('comm_' + state, key); render();
+    postReport({ kind:'commmod', store, item:key, note: JSON.stringify({ state }), t: Date.now() });
+  }
+  const commBadge = (p) => {
+    const st = commState(p);
+    if (st === 'published') return `<span class="kind b">${esc(commCatLabel(p.cat))}</span>`;
+    if (st === 'hidden')    return `<span class="kind a">${L({ ja:'非公開', en:'Hidden', vi:'Ẩn' })}</span>`;
+    return `<span class="kind a">${L({ ja:'公開待ち', en:'Pending', vi:'Chờ duyệt' })}</span>`;
+  };
+  const commRow = (p) => {
+    const key = commKey(p), liked = getLiked().includes(key), n = commLikeN(p), isHq = getRole() === 'hq', st = commState(p);
+    const mod = isHq ? `<div class="l2" style="margin-top:6px">${st !== 'published'
+        ? `<button class="mini" data-commpub="${esc(key)}">${L({ ja:'公開する', en:'Publish', vi:'Duyệt' })}</button>`
+        : `<button class="mini on" data-commhide="${esc(key)}">${L({ ja:'公開中（取り下げ）', en:'Published (hide)', vi:'Đang hiện (ẩn)' })}</button>`}</div>` : '';
+    return `<div class="rep" style="align-items:flex-start">
+      ${commBadge(p)}
+      <div class="body">
+        <div class="l1">${esc(p.body || '—')}</div>
+        ${(p.photos && p.photos.length) ? `<div class="rep-photos">${p.photos.map(x => `<img class="rep-photo" src="${photoThumb(x)}" data-full="${photoFull(x)}" alt="" loading="lazy">`).join('')}</div>` : ''}
+        <div class="l2">${esc(storeShort(p.store))}${p.by ? ` ・${esc(p.by)}` : ''} ・ ${timeAgo(p.t)}</div>
+        <div class="l2" style="margin-top:6px"><button class="mini ${liked ? 'on' : ''}" data-commlike="${esc(key)}"${liked ? ' disabled' : ''}>👏 ${L({ ja:'いいね', en:'Like', vi:'Thích' })}${n ? ` ${n}` : ''}</button></div>
+        ${mod}
+      </div>
+    </div>`;
+  };
+  APP_VIEWS.community = () => {
+    const isHq = getRole() === 'hq';
+    const all = getComm().sort((a, b) => b.t - a.t);
+    const list = commForView(all).slice(0, 40);
+    const pend = isHq ? all.filter(p => commState(p) === 'pending').length : 0;
+    const stores = visibleStores();
+    const form = `
+      <div class="card" id="commForm">
+        <h3>${L({ ja:'エピソードを投稿', en:'Share a good story', vi:'Chia sẻ câu chuyện' })}</h3>
+        <p class="hint" style="display:block">${L({ ja:'お客様に喜ばれたこと・スタッフのファインプレー・達成などを、全店で共有しましょう。', en:'Share guest delights, great plays and wins across all stores.', vi:'Chia sẻ khoảnh khắc khách vui, pha xử lý hay, thành tích.' })}</p>
+        <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
+          <select id="comm_store">${stores.map(s => `<option>${esc(s)}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'カテゴリ', en:'Category', vi:'Danh mục' })}</span>
+          <div class="seg" data-seg="commcat">${COMM_CATS.map((c, i) => `<button type="button" data-v="${c.v}" class="${i === 0 ? 'on' : ''}">${L(c.t)}</button>`).join('')}</div></label>
+        <label class="fld"><span>${L({ ja:'エピソード', en:'Story', vi:'Câu chuyện' })}</span>
+          <textarea id="comm_body" placeholder="${esc(L({ ja:'例）常連のお客様のお誕生日に一言お祝いを添えたら、とても喜んでくださいました！', en:'e.g. We surprised a regular guest on their birthday…', vi:'vd: Chúc mừng sinh nhật khách quen…' }))}"></textarea></label>
+        <label class="fld"><span>${L({ ja:'写真（任意）', en:'Photo (optional)', vi:'Ảnh (tùy chọn)' })}</span>
+          <div class="photo-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ ja:'写真を追加', en:'Add photos', vi:'Thêm ảnh' })}</b></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
+          <div class="photo-thumbs" id="photoThumbs"></div></label>
+        <label class="fld"><span>${L({ ja:'お名前・ニックネーム（任意）', en:'Name (optional)', vi:'Tên (tùy chọn)' })}</span>
+          <input type="text" id="comm_by" placeholder="${esc(L({ ja:'例）田中', en:'e.g. Tanaka', vi:'vd: Tanaka' }))}"></label>
+        <button class="btn-primary" id="submitComm">${L({ ja:'投稿する', en:'Post', vi:'Đăng' })}</button>
+        <div class="hint">${L({ ja:'※ 投稿は本部の確認後に全店へ公開されます。', en:'Posts appear to all stores after HQ review.', vi:'Bài đăng sẽ hiển thị sau khi HQ duyệt.' })}</div>
+      </div>`;
+    return `
+      ${NOTE({ ja:'◆ 現場発のグッドストーリーを全店で共有（本部承認後に公開）', en:'◆ Good stories from the field, shared across stores', vi:'◆ Câu chuyện hay từ cửa hàng' })}
+      ${isHq && pend ? `<div class="card" style="border-color:#caa"><b>${L({ ja:'公開待ちの投稿', en:'Pending posts', vi:'Chờ duyệt' })}：${pend}</b><p class="hint" style="display:block">${L({ ja:'下の一覧で「公開する」を押すと全店に表示されます。', en:'Press Publish below to show to all stores.', vi:'Bấm Duyệt để hiển thị.' })}</p></div>` : ''}
+      ${form}
+      <div class="card">
+        <h3>${L({ ja:'みんなの投稿', en:'Community feed', vi:'Bảng tin' })}</h3>
+        ${list.length ? list.map(commRow).join('') : `<div class="muted">${L({ ja:'まだ投稿はありません。最初の一件を投稿してみましょう！', en:'No posts yet — be the first!', vi:'Chưa có bài. Hãy là người đầu tiên!' })}</div>`}
       </div>`;
   };
 
@@ -2699,6 +2814,39 @@
       postReport({ kind:'kizuki', store, item:cat, note, photos, t });
     };
 
+    // みんなの投稿：投稿（本部承認後に公開）
+    const subComm = document.getElementById('submitComm');
+    if (subComm) subComm.onclick = () => {
+      const catEl = document.querySelector('[data-seg="commcat"] .on');
+      const cat = catEl ? catEl.dataset.v : 'guest';
+      const store = (document.getElementById('comm_store') || {}).value || visibleStores()[0];
+      const body = ((document.getElementById('comm_body') || {}).value || '').trim();
+      if (!body) { toast(L({ ja:'エピソードを入力してください', en:'Please enter your story', vi:'Vui lòng nhập nội dung' })); return; }
+      const by = ((document.getElementById('comm_by') || {}).value || '').trim();
+      const thumbsEl = document.getElementById('photoThumbs');
+      const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0, 4) : [];
+      const t = Date.now();
+      const arr = getComm(); arr.push({ store, cat, body, by, photos, t });
+      try { saveComm(arr.slice(-200)); } catch (e) { saveComm(arr.slice(-60)); }
+      lastSync = t;
+      toast(L({ ja:'投稿しました！本部の確認後に全店へ公開されます。', en:'Posted! It will appear after HQ review.', vi:'Đã đăng! Sẽ hiển thị sau khi HQ duyệt.' }));
+      render();
+      postReport({ kind:'community', store, item:cat, note: JSON.stringify({ body, by }), photos, t });
+    };
+    // いいね（拍手）＝この端末で一度だけ。カウントは全端末で合算。
+    document.querySelectorAll('[data-commlike]').forEach(b => b.onclick = () => {
+      const key = b.dataset.commlike; const liked = getLiked();
+      if (liked.includes(key)) return;
+      liked.push(key); try { localStorage.setItem('yosakura_comm_liked', JSON.stringify(liked)); } catch (e) {}
+      const map = getCommLike(); map[key] = Number(map[key] || 0) + 1;
+      try { localStorage.setItem('yosakura_demo_commlike', JSON.stringify(map)); } catch (e) {}
+      lastSync = Date.now(); render();
+      postReport({ kind:'commlike', store: key.split('|')[1] || '', item:key, t: Date.now() });
+    });
+    // 本部：公開／非公開
+    document.querySelectorAll('[data-commpub]').forEach(b => b.onclick = () => setCommState(b.dataset.commpub, 'published'));
+    document.querySelectorAll('[data-commhide]').forEach(b => b.onclick = () => setCommState(b.dataset.commhide, 'hidden'));
+
     // ③ 口コミQR：保存・開く・コピー
     if (byId('reviewSave')) byId('reviewSave').onclick = () => {
       const store = visibleStores()[0]; const u = byId('review_url').value.trim();
@@ -2882,7 +3030,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[]; const emg={}; const ckitem={}, ckitemT={}; const monthly={}, monthlyT={};
+    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={};
     (rows || []).forEach(r => {
       const t = Number(r.t) || 0, id = r.id, store = r.store || '';
       switch (r.kind) {
@@ -2899,6 +3047,9 @@
         case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', video:p.video||'', photos:r.photos||[], t, id }); } break;
         case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モードごと最新版が正
         case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正
+        case 'community': { const p=pj(r.note); comm.push({ store, cat:r.item, body:p.body||'', by:p.by||'', photos:r.photos||[], t, id }); } break;
+        case 'commmod': { const p=pj(r.note); const k=r.item; if (commmodT[k]==null || t>=commmodT[k]) { commmod[k]={ state:p.state||'published', t }; commmodT[k]=t; } } break; // 投稿キーごと最新の公開状態が正
+        case 'commlike': { const k=r.item; commlike[k]=(commlike[k]||0)+1; } break; // 拍手は件数を合算
       }
     });
     const set = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a)); } catch (_) {} };
@@ -2906,6 +3057,7 @@
     set('yosakura_demo_open', open); set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
     set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_ckitem', ckitem); set('yosakura_demo_monthly', Object.values(monthly));
+    set('yosakura_demo_community', comm); set('yosakura_demo_commmod', commmod); set('yosakura_demo_commlike', commlike);
   }
   async function syncReports(force) {
     if (!useBackend()) return;
@@ -2934,7 +3086,7 @@
   document.documentElement.lang = LANG;
   if (!useBackend()) seedIfEmpty();
   // バックエンド接続時は全端末同期を使うためシードしない（＝実データのみ）。オフライン検証時のみ初期データを用意。
-  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); }
+  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); }
   render();
   syncReports(true);
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
