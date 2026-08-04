@@ -113,6 +113,7 @@
     { id:'learn',    name:{ ja:'学ぶ', en:'Learn', vi:'Học tập' } },
     { id:'storeops', name:{ ja:'店舗運営', en:'Store Ops', vi:'Vận hành' } },
     { id:'biz',      name:{ ja:'開業・経営', en:'Opening & Business', vi:'Khai trương & Kinh doanh' } },
+    { id:'other',    name:{ ja:'その他・設定', en:'More & Settings', vi:'Khác & Cài đặt' } },
     { id:'hq',       name:{ ja:'本部', en:'Headquarters', vi:'Bộ phận chính' } }
   ];
   const groupName = (id) => { const g = GROUPS.find(x => x.id === id); return g ? L(g.name) : id; };
@@ -140,7 +141,7 @@
     { id:'checklist', group:'genba', icon:'check', roles:['staff','manager','owner','hq'],
       name:{ ja:'開店・清掃チェック', en:'Opening & Cleaning', vi:'Mở cửa & Vệ sinh' },
       desc:{ ja:'毎日の開店前チェック', en:'Daily pre-open checklist', vi:'Kiểm tra trước khi mở cửa' } },
-    { id:'links', group:'genba', icon:'link', soon:true, roles:['staff','manager','owner','hq'],
+    { id:'links', group:'other', icon:'link', soon:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'リンク集', en:'Quick Links', vi:'Liên kết' },
       desc:{ ja:'初期設定・発注などの必要リンク', en:'Setup, ordering and key links', vi:'Cài đặt, đặt hàng, liên kết' } },
     { id:'inventory', group:'storeops', icon:'box', soon:true, roles:['manager','owner','hq'],
@@ -158,7 +159,7 @@
     { id:'survey', group:'learn', icon:'star', roles:['staff','manager','owner','hq'],
       name:{ ja:'サーベイ', en:'Survey', vi:'Khảo sát' },
       desc:{ ja:'お客様アンケート運用', en:'Customer survey operation', vi:'Khảo sát khách hàng' } },
-    { id:'guide', group:'learn', icon:'play', roles:['staff','manager','owner','hq'],
+    { id:'guide', group:'other', icon:'play', roles:['staff','manager','owner','hq'],
       name:{ ja:'使い方ガイド', en:'How to use', vi:'Hướng dẫn' },
       desc:{ ja:'このアプリの使い方（1分）', en:'Quick app guide (1 min)', vi:'Hướng dẫn nhanh (1 phút)' } },
     { id:'soukatsu', group:'storeops', icon:'table', roles:['manager','owner','hq'],
@@ -408,7 +409,8 @@
     const tabs = [
       ['home', { ja:'ホーム', en:'Home', vi:'Trang chủ' }, 'home'],
       ['genba', { ja:'報告', en:'Report', vi:'Báo cáo' }, 'report'],
-      ['learn', { ja:'学ぶ', en:'Learn', vi:'Học' }, 'grad']
+      ['learn', { ja:'学ぶ', en:'Learn', vi:'Học' }, 'grad'],
+      ['other', { ja:'その他', en:'More', vi:'Khác' }, 'dots']
     ];
     if (roleKey === 'hq') tabs.push(['hq', { ja:'本部', en:'HQ', vi:'HQ' }, 'hq']); // 本部権限のみ
     return `
@@ -469,6 +471,7 @@
       <div class="homelinks">
         <button class="homelink" data-tab="genba"><span class="hl-ic">${svg('report')}</span><span class="hl-t">${L({ ja:'報告する', en:'Report', vi:'Báo cáo' })}</span><span class="hl-c">${svg('chev')}</span></button>
         <button class="homelink" data-tab="learn"><span class="hl-ic">${svg('grad')}</span><span class="hl-t">${L({ ja:'学ぶ', en:'Learn', vi:'Học tập' })}</span><span class="hl-c">${svg('chev')}</span></button>
+        <button class="homelink" data-tab="other"><span class="hl-ic">${svg('dots')}</span><span class="hl-t">${L({ ja:'その他・設定', en:'More & Settings', vi:'Khác & Cài đặt' })}</span><span class="hl-c">${svg('chev')}</span></button>
         ${role === 'hq' ? `<button class="homelink" data-tab="hq"><span class="hl-ic">${svg('hq')}</span><span class="hl-t">${L({ ja:'本部メニュー', en:'HQ menu', vi:'Menu HQ' })}</span><span class="hl-c">${svg('chev')}</span></button>` : ''}
       </div>`;
     return `
@@ -491,13 +494,18 @@
     // ホーム＝シンプルな入口（全機能は並べない）
     if (tab === 'home') return shell(homeInner(role), 'home');
 
-    // 報告・学ぶ・本部の各タブ＝そのグループの全機能を一覧（従来どおり）
-    const filter = { genba:'genba', learn:'learn', hq:'hq' }[tab] || 'genba';
-    const apps = APPS.filter(a => a.group === filter && canOpen(a, role));
-    const sections = apps.length
-      ? `<div class="grid">${apps.map(a => tileHTML(a, role)).join('')}</div>`
-      : `<div class="muted" style="text-align:center;padding:20px">${L({ ja:'表示できる項目がありません', en:'Nothing to show', vi:'Không có mục nào' })}</div>`;
-    const heroBlock = `<div class="hero"><h1 class="hero__title">${L({ genba:{ja:'報告する',en:'Report',vi:'Báo cáo'}, learn:{ja:'学ぶ',en:'Learn',vi:'Học tập'}, hq:{ja:'本部メニュー',en:'HQ Menu',vi:'Menu bộ phận'} }[filter])}</h1></div>`;
+    // 報告・学ぶ・その他・本部の各タブ＝対応グループの全機能を一覧（グループ見出し付き）
+    const gids = TAB_GROUPS[tab] || ['genba'];
+    let sections = '';
+    for (const gid of gids) {
+      const apps = APPS.filter(a => a.group === gid && canOpen(a, role));
+      if (!apps.length) continue;
+      sections += `
+        <div class="sec-h"><span class="bar"></span><h2>${esc(groupName(gid))}</h2></div>
+        <div class="grid">${apps.map(a => tileHTML(a, role)).join('')}</div>`;
+    }
+    if (!sections) sections = `<div class="muted" style="text-align:center;padding:20px">${L({ ja:'表示できる項目がありません', en:'Nothing to show', vi:'Không có mục nào' })}</div>`;
+    const heroBlock = `<div class="hero"><h1 class="hero__title">${L({ genba:{ja:'報告する',en:'Report',vi:'Báo cáo'}, learn:{ja:'学ぶ',en:'Learn',vi:'Học tập'}, other:{ja:'その他・設定',en:'More & Settings',vi:'Khác & Cài đặt'}, hq:{ja:'本部メニュー',en:'HQ Menu',vi:'Menu bộ phận'} }[tab])}</h1></div>`;
     const inner = `
       <main class="screen">
         ${heroBlock}
@@ -544,7 +552,9 @@
       </main>`;
     return shell(inner, groupTab(a.group));
   }
-  const groupTab = (g) => (g === 'genba' || g === 'learn' || g === 'hq') ? g : 'home';
+  // グループ→タブの対応（開いている画面のタブを正しくハイライト）
+  const TAB_GROUPS = { genba:['genba','storeops'], learn:['learn'], other:['other','biz'], hq:['hq'] };
+  const groupTab = (g) => g === 'learn' ? 'learn' : g === 'hq' ? 'hq' : (g === 'other' || g === 'biz') ? 'other' : 'genba';
 
   const NOTE = (o) => `<p class="mock-note">${L(o)}</p>`;
   const demoImg = { ja:'◆ この画面は準備中です（画面イメージ）', en:'◆ This screen is in preparation (mockup)', vi:'◆ Màn hình đang chuẩn bị (mô phỏng)' };
@@ -2239,7 +2249,7 @@
       desc:{ ja:'現場からの報告を確認して対応済みにする', en:'Review field reports and mark done', vi:'Xem báo cáo và đánh dấu xử lý' } });
   }
   if (!appById('appfb')) {
-    APPS.push({ id:'appfb', group:'learn', icon:'idea', live:true, roles:['staff','manager','owner','hq'],
+    APPS.push({ id:'appfb', group:'other', icon:'idea', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'アプリへのご意見', en:'App feedback', vi:'Góp ý ứng dụng' },
       desc:{ ja:'使ってみて気づいたことをお送りください', en:'Tell us what you noticed', vi:'Cho biết điều bạn nhận thấy' } });
   }
