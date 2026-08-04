@@ -259,5 +259,27 @@ console.log('== 提出物マスタ基盤：週次/四半期の頻度・業態の
   ok(/卓上POP交換_月/.test(wg_get), '和牛/月次：牛カツ以外POPが出る（gyotai_ex）');
 }
 
+console.log('== サーベイ集計：来店国を表示（note JSON {c,f} を復元）==');
+{
+  const now = Date.now();
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'survey', store:'牛カツ世桜 長堀橋店', level:'5', item:'google',    note: JSON.stringify({ c:'Korea', f:'【問題なし】good' }), t: now,      id:'s1' },
+    { kind:'survey', store:'牛カツ世桜 長堀橋店', level:'4', item:'instagram', note: JSON.stringify({ c:'Japan', f:'' }),                t: now-1000, id:'s2' },
+    { kind:'survey', store:'牛カツ世桜 長堀橋店', level:'5', item:'google',    note: JSON.stringify({ c:'TEST_KOREA', f:'テスト', src:'imptest' }), t: now-2000, id:'s3' },
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ survey load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  const sv = JSON.parse(localStorage.getItem('yosakura_demo_survey')||'[]');
+  ok(sv.length===2 && sv.some(r=>r.country==='Korea') && sv.some(r=>r.country==='Japan'), 'survey country restored from note JSON');
+  ok(!sv.some(r=>String(r.country).startsWith('TEST_')), 'TEST_ 接頭辞のサーベイ行は集計から除外');
+  ok(sv.some(r=>String(r.note).includes('good')), 'survey feedback restored from note.f');
+  location.hash = '#/app/survey';
+  const hq = registry.app.innerHTML;
+  ok(/来店国/.test(hq) && /Korea/.test(hq), 'hq survey agg shows 来店国 (Korea)');
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
