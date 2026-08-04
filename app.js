@@ -1038,16 +1038,16 @@
   const gyotaiLabel = (code) => { const g = GYOTAI.find(x => x.code === code); return g ? L(g.label) : code; };
   // roles: 閲覧できるロール（'all'は全員）／gyotai: 'all' or 業態code
   const MANUAL_CATALOG = [
-    { ic:'book',  gyotai:'all', roles:['all'],               t:{ja:'世桜とは・理念',en:'Brand & Philosophy',vi:'Thương hiệu & Triết lý'}, s:{ja:'5つの価値／ビジョン／ブランドコア',en:'5 values / vision / brand core',vi:'5 giá trị / tầm nhìn'} },
-    { ic:'star',  gyotai:'all', roles:['all'],               t:{ja:'接客・ホール',en:'Service & Hall',vi:'Phục vụ & Sảnh'}, s:{ja:'おもてなし／多言語対応／クレーム対応',en:'Hospitality / multilingual / complaints',vi:'Hiếu khách / đa ngữ / khiếu nại'} },
+    { ic:'book',  gyotai:'all', roles:['all'],               mat:['lk_w2','lk_w1','lk_w3','lk_w4','lk_w5','lk_w6'], t:{ja:'世桜とは・理念',en:'Brand & Philosophy',vi:'Thương hiệu & Triết lý'}, s:{ja:'5つの価値／ビジョン／ブランドコア',en:'5 values / vision / brand core',vi:'5 giá trị / tầm nhìn'} },
+    { ic:'star',  gyotai:'all', roles:['all'],               mat:['lk_s5','lk_s4'], t:{ja:'接客・ホール',en:'Service & Hall',vi:'Phục vụ & Sảnh'}, s:{ja:'おもてなし／多言語対応／クレーム対応',en:'Hospitality / multilingual / complaints',vi:'Hiếu khách / đa ngữ / khiếu nại'} },
     { ic:'camera',gyotai:'all', roles:['all'],               t:{ja:'提供時のあるべき姿',en:'Serving standards',vi:'Chuẩn phục vụ'}, s:{ja:'盛り付け・グラム規定・提供基準（最重要）',en:'Plating, grams, serving rules (key)',vi:'Trình bày, định lượng (quan trọng)'} },
     { ic:'check', gyotai:'all', roles:['all'],               t:{ja:'清掃',en:'Cleaning',vi:'Vệ sinh'}, s:{ja:'清掃基準／好事例（ウタマロ等）',en:'Cleaning standards / good practices',vi:'Chuẩn vệ sinh / thực hành tốt'} },
-    { ic:'video', gyotai:'all', roles:['all'],               t:{ja:'衛生管理',en:'Hygiene',vi:'Vệ sinh an toàn'}, s:{ja:'手洗い／食中毒対策／食材管理',en:'Handwash / food safety / ingredients',vi:'Rửa tay / an toàn TP'} },
-    { ic:'grad',  gyotai:'all', roles:['staff','manager'],   t:{ja:'セブンデイズ（新人教育）',en:'Seven Days (onboarding)',vi:'Seven Days (đào tạo)'}, s:{ja:'アルバイトが最低限理解する内容',en:'Minimum for new part-timers',vi:'Cơ bản cho nhân viên mới'} },
+    { ic:'video', gyotai:'all', roles:['all'],               mat:['lk_s2','lk_s3'], t:{ja:'衛生管理・身だしなみ',en:'Hygiene & grooming',vi:'Vệ sinh & tác phong'}, s:{ja:'身だしなみ／手洗い／食中毒対策',en:'Grooming / handwash / food safety',vi:'Tác phong / rửa tay / an toàn TP'} },
+    { ic:'grad',  gyotai:'all', roles:['staff','manager'],   mat:['lk_s1','lk_s2','lk_s4'], t:{ja:'セブンデイズ（新人教育）',en:'Seven Days (onboarding)',vi:'Seven Days (đào tạo)'}, s:{ja:'ハウスルール／身だしなみ／朝礼',en:'House rules / grooming / morning brief',vi:'Nội quy / tác phong / họp sáng'} },
     { ic:'star',  gyotai:'all', roles:['all'],               t:{ja:'サーベイ運用',en:'Survey operation',vi:'Vận hành khảo sát'}, s:{ja:'iPad案内／回答の取り方',en:'iPad guidance / collecting answers',vi:'Hướng dẫn iPad'} },
-    { ic:'table', gyotai:'all', roles:['manager','owner'],   t:{ja:'店舗運営',en:'Store operations',vi:'Vận hành cửa hàng'}, s:{ja:'数値管理／シフト／発注',en:'Numbers / shifts / ordering',vi:'Số liệu / ca / đặt hàng'} },
-    { ic:'yen',   gyotai:'all', roles:['owner'],             t:{ja:'オーナー向け経営',en:'Owner: management',vi:'Chủ: quản lý'}, s:{ja:'PL／原価率／複数店舗管理',en:'P/L / cost ratio / multi-store',vi:'P/L / giá vốn / nhiều cửa hàng'} },
-    { ic:'hq',    gyotai:'all', roles:['hq'],                t:{ja:'本部運用',en:'HQ operations',vi:'Vận hành HQ'}, s:{ja:'権限設定／提出物管理／AI判定',en:'Permissions / submissions / AI',vi:'Phân quyền / nộp bài / AI'} },
+    { ic:'table', gyotai:'all', roles:['manager','owner'],   mat:['lk_s6','lk_s5'], t:{ja:'店舗運営',en:'Store operations',vi:'Vận hành cửa hàng'}, s:{ja:'タイムカード・シフト・鍵／優先順位',en:'Timecard / shift / priorities',vi:'Chấm công / ca / ưu tiên'} },
+    { ic:'yen',   gyotai:'all', roles:['owner'],             mat:['lk_s8','lk_w6'], t:{ja:'オーナー向け経営',en:'Owner: management',vi:'Chủ: quản lý'}, s:{ja:'キャリアアップ／5つの価値と役割',en:'Career path / values & roles',vi:'Thăng tiến / giá trị & vai trò'} },
+    { ic:'hq',    gyotai:'all', roles:['hq'],                mat:['lk_s7'], t:{ja:'本部運用',en:'HQ operations',vi:'Vận hành HQ'}, s:{ja:'研修トレーナー育成／権限／提出物管理',en:'Trainer development / perms / submissions',vi:'Đào tạo trainer / quyền / nộp bài'} },
     { ic:'food',  gyotai:'unagi',    roles:['all'], t:{ja:'鰻の焼成・タレ',en:'Eel grilling & sauce',vi:'Nướng lươn & sốt'}, s:{ja:'あぶり直し／タレ／提供の説明',en:'Re-grilling / sauce / explanation',vi:'Nướng lại / sốt / giải thích'} },
     { ic:'food',  gyotai:'sushi',    roles:['all'], t:{ja:'寿司オペレーション',en:'Sushi operation',vi:'Vận hành sushi'}, s:{ja:'シャリ／握り／衛生',en:'Rice / nigiri / hygiene',vi:'Cơm / nắm / vệ sinh'} },
     { ic:'food',  gyotai:'gyukatsu', roles:['all'], t:{ja:'牛カツの提供基準',en:'Gyukatsu serving',vi:'Phục vụ gyukatsu'}, s:{ja:'揚げ／断面／盛り付け（和牛のみ使用）',en:'Frying / cut / plating',vi:'Chiên / lát cắt / trình bày'} },
@@ -1055,7 +1055,12 @@
     { ic:'food',  gyotai:'washoku',  roles:['all'], t:{ja:'日本料理コース',en:'Japanese course',vi:'Set Nhật'}, s:{ja:'おまかせの流れ／季節の献立',en:'Omakase flow / seasonal menu',vi:'Quy trình omakase'} }
   ];
   const manualVisibleRole = (m, role) => role === 'hq' || m.roles.includes('all') || m.roles.includes(role);
-  const manualRow = (m) => `<div class="mrow" data-mock="1"><div class="mi">${svg(m.ic)}</div><div class="mt"><b>${esc(L(m.t))}</b><span>${esc(L(m.s))}</span></div><span class="chev">${svg('chev')}</span></div>`;
+  const manualRow = (m) => {
+    const mats = m.mat ? getLinks().filter(l => m.mat.includes(l.id)) : [];
+    const head = `<div class="mrow"${mats.length ? '' : ' data-mock="1"'}><div class="mi">${svg(m.ic)}</div><div class="mt"><b>${esc(L(m.t))}</b><span>${esc(L(m.s))}</span></div><span class="chev">${mats.length ? `<small style="color:#8a8">${L({ ja:'資料', en:'Docs', vi:'TL' })}${mats.length}</small>` : svg('chev')}</span></div>`;
+    const subs = mats.map(l => `<div class="mrow mrow--sub" data-openurl="${esc(l.url)}" style="padding-left:22px"><div class="mi">${svg('link')}</div><div class="mt"><b>${esc(l.title)}</b><span>${l.desc ? esc(l.desc) + ' ・ ' : ''}${L({ ja:'タップで開く', en:'Tap to open', vi:'Chạm để mở' })}</span></div><span class="chev">${svg('chev')}</span></div>`).join('');
+    return head + subs;
+  };
   APP_VIEWS.manual = () => {
     const role = getRole();
     const store = visibleStores()[0];
