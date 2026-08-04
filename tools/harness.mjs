@@ -228,5 +228,36 @@ for (const role of ['staff','manager','hq']) {
   ok(/みんなの投稿/.test(html) && /data-open="community"/.test(html), `home/${role} has community card`);
 }
 
+console.log('== 提出物マスタ基盤：週次/四半期の頻度・業態の出し分け ==');
+{
+  const M = [
+    { id:'wpop',  name:{ja:'卓上POP交換_週',en:'W-POP',vi:'W'}, oblig:'required', freq:'weekly',    due:'23:59', target:'gyotai_in', gyotai:['gyukatsu'], hqReview:'none', detect:'none', linkApp:'' },
+    { id:'compl', name:{ja:'コンプラチェック',  en:'Compl',vi:'C'}, oblig:'required', freq:'quarterly', due:'23:59', target:'all',                            hqReview:'each', detect:'none', linkApp:'' },
+    { id:'mpop',  name:{ja:'卓上POP交換_月',en:'M-POP',vi:'M'}, oblig:'required', freq:'monthly',   due:'23:59', target:'gyotai_ex', gyotai:['gyukatsu'], hqReview:'none', detect:'none', linkApp:'' }
+  ];
+  const S_GYUKATSU = '牛カツ世桜 富士山店';
+  const renderWith = (appId, role, storeSel) => {
+    let html = '';
+    try {
+      run(() => { setLS(role, storeSel, 'ja'); localStorage.setItem('yosakura_sub_master_v1', JSON.stringify(M)); });
+      location.hash = '#/app/' + appId; html = registry.app.innerHTML;
+    } catch (e) { FAIL++; console.log(`  ✗ ${appId}/${role} threw: ` + e.message); }
+    return html;
+  };
+  // 牛カツ店：今日=週次POPが出る／四半期・月次は出ない
+  const gk_kyou = renderWith('kyou', 'manager', S_GYUKATSU);
+  ok(/卓上POP交換_週/.test(gk_kyou), '牛カツ/今日：週次POP（今週）が出る');
+  ok(!/コンプラチェック/.test(gk_kyou), '牛カツ/今日：四半期は今日に出ない');
+  // 牛カツ店：月次=四半期が出る／牛カツ以外POP(mpop)は出ない
+  const gk_get = renderWith('getsuji', 'manager', S_GYUKATSU);
+  ok(/コンプラチェック/.test(gk_get), '牛カツ/月次：四半期コンプラが出る');
+  ok(!/卓上POP交換_月/.test(gk_get), '牛カツ/月次：牛カツ以外POP(gyotai_ex)は出ない');
+  // 和牛店（牛カツ以外）：今日に週次POP(gyukatsu)は出ない／月次に牛カツ以外POPが出る
+  const wg_kyou = renderWith('kyou', 'manager', S_HIROSHIMA);
+  ok(!/卓上POP交換_週/.test(wg_kyou), '和牛/今日：牛カツ限定の週次POPは出ない（gyotai_in）');
+  const wg_get = renderWith('getsuji', 'manager', S_HIROSHIMA);
+  ok(/卓上POP交換_月/.test(wg_get), '和牛/月次：牛カツ以外POPが出る（gyotai_ex）');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
