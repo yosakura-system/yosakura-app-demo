@@ -121,8 +121,8 @@
   /* ---------- アプリ登録 ---------- */
   const APPS = [
     { id:'tabemono', group:'genba', icon:'food', live:true, roles:['staff','manager','owner','hq'],
-      name:{ ja:'食べ残し・食材ロス報告', en:'Food Waste & Loss', vi:'Thức ăn thừa & hao hụt' },
-      desc:{ ja:'お客様の残し／食材ロスを記録', en:'Log leftovers / ingredient loss', vi:'Ghi đồ thừa / hao hụt' } },
+      name:{ ja:'食べ残し報告', en:'Food Waste', vi:'Thức ăn thừa' },
+      desc:{ ja:'お客様の食べ残しを写真で報告（食材ロスは将来）', en:'Report customer leftovers by photo', vi:'Báo cáo đồ khách để thừa bằng ảnh' } },
     { id:'firstphoto', group:'genba', icon:'camera', soon:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'一食目写真の報告', en:'First-plate Photo', vi:'Ảnh món đầu tiên' },
       desc:{ ja:'提供直後の一枚を本部へ', en:'Send the first serving photo', vi:'Gửi ảnh ngay khi phục vụ' } },
@@ -234,9 +234,7 @@
     saveReports([
       { kind:'a', store:'日本鰻世桜 富士山店', item:'うな重（並）', level:'half', note:{ ja:'ご飯を残されるお客様が多い', en:'Many guests leave rice', vi:'Nhiều khách để lại cơm' }, t: now-3600e3*20 },
       { kind:'a', store:'寿司世桜 心斎橋店',   item:'デザート（抹茶）', level:'third', note:{ ja:'抹茶チョコが重いとの声', en:'Matcha choco feels heavy', vi:'Socola matcha hơi ngán' }, t: now-3600e3*28 },
-      { kind:'b', store:'和牛世桜 広島店',     item:'副菜の仕込み', level:'much', note:{ ja:'夜の副菜を仕込み過ぎ', en:'Over-prepped side dishes', vi:'Chuẩn bị dư món phụ' }, t: now-3600e3*30 },
-      { kind:'a', store:'牛カツ世桜 富士山店', item:'キャベツ', level:'little', note:'', t: now-3600e3*44 },
-      { kind:'b', store:'日本鰻世桜 富士山店', item:'うなぎのタレ', level:'small', note:'', t: now-3600e3*46 }
+      { kind:'a', store:'牛カツ世桜 富士山店', item:'キャベツ', level:'little', note:'', t: now-3600e3*44 }
     ]);
   }
 
@@ -654,13 +652,8 @@
     const segL = (arr) => arr.map((o,i)=>`<button type="button" data-v="${o.v}" class="${i===0?'on':''}">${L(o.t)}</button>`).join('');
     return `
       <div class="card" id="repForm">
-        <h3>${L({ ja:'報告する', en:'Report', vi:'Báo cáo' })}</h3>
-        <label class="fld"><span>${L({ ja:'種別', en:'Type', vi:'Loại' })}</span>
-          <div class="seg" data-seg="kind">
-            <button type="button" data-v="a" class="on">${L({ ja:'お客様の食べ残し', en:'Customer leftovers', vi:'Khách để thừa' })}</button>
-            <button type="button" data-v="b">${L({ ja:'食材ロス', en:'Ingredient loss', vi:'Hao hụt NL' })}</button>
-          </div>
-        </label>
+        <h3>${L({ ja:'お客様の食べ残しを報告', en:'Report customer leftovers', vi:'Báo cáo khách để thừa' })}</h3>
+        ${NOTE({ ja:'◆ 客席から下げた食べ残しをバックキッチン等で撮影→報告。残されやすい商品の傾向を把握します（食材ロスの入力・集計は将来対応）', en:'◆ Photograph leftovers after clearing → report. Ingredient-loss entry is a future feature.', vi:'◆ Chụp đồ thừa sau khi dọn → báo cáo. Nhập hao hụt nguyên liệu là tính năng tương lai.' })}
         <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
           <select id="f_store">${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select>
         </label>
@@ -2668,7 +2661,8 @@
 
     const sub = document.getElementById('submitRep');
     if (sub) sub.onclick = () => {
-      const kind = document.querySelector('[data-seg="kind"] .on').dataset.v;
+      const kindEl = document.querySelector('[data-seg="kind"] .on');
+      const kind = kindEl ? kindEl.dataset.v : 'a'; // 初期は食べ残し(a)のみ
       const level = document.querySelector('[data-seg="level"] .on').dataset.v;
       const store = document.getElementById('f_store').value;
       const itemEl = document.getElementById('f_item');
