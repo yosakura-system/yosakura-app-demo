@@ -321,7 +321,7 @@ await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/manual';
   const html = registry.app.innerHTML;
   ok(/data-openurl=/.test(html), 'マニュアルに資料のタップ開くリンクが出る');
-  ok(/世桜とは/.test(html) && /ハウスルール/.test(html), '理念/セブンデイズに対応資料が紐づく');
+  ok(/世桜とは/.test(html) && /ハウスルール/.test(html), '理念/7DAYSに対応資料が紐づく');
 }
 FETCH_ROWS = { ok:false };
 
