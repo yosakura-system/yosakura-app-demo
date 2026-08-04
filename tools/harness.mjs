@@ -198,6 +198,15 @@ console.log('== 口コミQR は「その他」タブの導線から外れてい�
   ok(!/口コミQR/.test(html), 'その他タブに口コミQRの導線が無い（hide）');
 }
 
+console.log('== 来店経路の記録は「報告」タブから外れている（議事録12-1・サーベイで回収）==');
+{
+  let html = '';
+  try { run(()=> setLS('staff', S_HIROSHIMA, 'ja')); location.hash = '#/home?tab=genba'; html = registry.app.innerHTML; }
+  catch(e){ FAIL++; console.log('  ✗ genba-tab render threw: '+e.message); }
+  ok(html.length > 100, '報告タブが描画される');
+  ok(!/来店経路の記録/.test(html), '報告タブに来店経路の記録カードが無い（hide）');
+}
+
 console.log('== ホームに「みんなの投稿」カードが出る ==');
 for (const role of ['staff','manager','hq']) {
   let html = '';

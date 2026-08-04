@@ -129,7 +129,7 @@
     { id:'kizuki', group:'genba', icon:'idea', roles:['staff','manager','owner','hq'],
       name:{ ja:'気づきの報告', en:'Daily Insights', vi:'Ghi nhận cuối ca' },
       desc:{ ja:'クローズ後の気づきを本部へ共有', en:'Share end-of-shift insights', vi:'Chia sẻ ghi nhận sau ca' } },
-    { id:'route', group:'genba', icon:'pin', roles:['staff','manager','owner','hq'],
+    { id:'route', group:'genba', icon:'pin', hide:true, roles:['staff','manager','owner','hq'], // 議事録12-1: 来店経路はサーベイで回収（アプリに重複入力を作らない）。結果は「サーベイ集計」で表示
       name:{ ja:'来店経路の記録', en:'Arrival Route', vi:'Nguồn khách' },
       desc:{ ja:'来店きっかけをワンタップで', en:'One-tap arrival source', vi:'Nguồn khách 1 chạm' } },
     { id:'community', group:'genba', icon:'chat', live:true, roles:['staff','manager','owner','hq'],
