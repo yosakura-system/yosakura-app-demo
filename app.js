@@ -177,9 +177,9 @@
     { id:'schedule', group:'biz', icon:'calendar', soon:true, hide:true, roles:['owner','hq'], // 8/4: 開業関係は初期で外す（D-90は未確定）
       name:{ ja:'開業スケジュール D-90', en:'Opening Schedule D-90', vi:'Lịch khai trương D-90' },
       desc:{ ja:'契約〜開業のマスター工程', en:'Contract to opening master plan', vi:'Từ hợp đồng đến khai trương' } },
-    { id:'pl', group:'biz', icon:'yen', soon:true, roles:['owner','hq'],
-      name:{ ja:'数値・PL', en:'Numbers & P/L', vi:'Số liệu & P/L' },
-      desc:{ ja:'損益・KPIの見える化', en:'Profit and KPI visibility', vi:'Lợi nhuận & KPI' } },
+    { id:'pl', group:'storeops', icon:'yen', live:true, roles:['manager','owner','hq'],
+      name:{ ja:'数値・原価率', en:'Numbers & Cost', vi:'Số liệu & Giá vốn' },
+      desc:{ ja:'月次の売上・仕入・在庫から原価率を自動計算', en:'Monthly cost ratio from sales/stock', vi:'Tự tính giá vốn theo tháng' } },
     { id:'dashboard', group:'hq', icon:'gauge', roles:['hq'],
       name:{ ja:'本部ダッシュボード', en:'HQ Dashboard', vi:'Bảng điều khiển' },
       desc:{ ja:'全店の報告を自動集約', en:'Auto-aggregate all reports', vi:'Tổng hợp báo cáo tự động' } },
@@ -1190,14 +1190,55 @@
       ${TL.map(([d,t])=>`<div class="ev"><div class="d">${d}</div><div class="t">${esc(L(t))}</div></div>`).join('')}
     </div></div>`;
 
-  /* ⑧ 数値・PL（モック）*/
-  APP_VIEWS.pl = () => `
-    ${NOTE(demoImg)}
-    <div class="card">
-      <h3>${L({ ja:'今月の損益（サンプル）', en:'This month P/L (sample)', vi:'P/L tháng này (mẫu)' })}</h3>
-      ${bar(L({ja:'売上',en:'Sales',vi:'Doanh thu'}),100)}${bar(L({ja:'原価',en:'Cost',vi:'Giá vốn'}),32)}${bar(L({ja:'人件費',en:'Labor',vi:'Nhân sự'}),28)}${bar(L({ja:'その他経費',en:'Other',vi:'Khác'}),18)}${bar(L({ja:'営業利益',en:'Op. profit',vi:'Lợi nhuận'}),22,true)}
-      <p class="muted" style="margin-top:12px">${L({ ja:'300店フェーズでは、全店のPLを同じ様式で本部が一覧・比較できる構想。', en:'At 300 stores, HQ can list and compare every P/L in one format.', vi:'Ở quy mô 300 cửa hàng, HQ so sánh mọi P/L cùng định dạng.' })}</p>
-    </div>`;
+  /* ⑧ 数値・原価率（月次）＝月初在庫＋当月仕入－月末在庫＝当月原価、原価率＝原価÷売上。
+     前月末在庫は翌月の月初在庫へ自動引継。全端末同期（店舗×月ごと最新版が正）。 */
+  const getMonthly = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_monthly')) || []; } catch { return []; } };
+  const saveMonthly = (a) => { try { localStorage.setItem('yosakura_demo_monthly', JSON.stringify(a)); } catch (e) {} };
+  const plCalc = (m) => { const sales = Number(m.sales) || 0; const cost = (Number(m.open) || 0) + (Number(m.purchase) || 0) - (Number(m.close) || 0); const costRate = sales ? cost / sales * 100 : 0; const gross = sales - cost; const grossRate = sales ? gross / sales * 100 : 0; return { sales, cost, costRate, gross, grossRate }; };
+  const prevYm = (ym) => { const [y, m] = (ym || '').split('-').map(Number); if (!y) return ''; const d = new Date(y, m - 2, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const plMonthsOf = (store) => getMonthly().filter(r => r.store === store).sort((a, b) => a.ym < b.ym ? 1 : -1);
+  const plPrevClose = (store, ym) => { const r = getMonthly().find(x => x.store === store && x.ym === prevYm(ym)); return r ? r.close : ''; };
+  const pct = (v) => (Number(v) || 0).toFixed(1) + '%';
+  const plRow = (m) => { const c = plCalc(m); return `<div class="rep"><span class="kind ${c.costRate>0&&c.costRate<=35?'b':'a'}">${esc(m.ym)}</span><div class="body"><div class="l1">${L({ja:'売上',en:'Sales',vi:'DT'})} ${yen(c.sales)} ・ ${L({ja:'原価率',en:'Cost',vi:'Giá vốn'})} <b>${pct(c.costRate)}</b></div><div class="l2">${L({ja:'原価',en:'Cost',vi:'Giá vốn'})} ${yen(c.cost)} ・ ${L({ja:'粗利',en:'Gross',vi:'Lãi gộp'})} ${yen(c.gross)}（${pct(c.grossRate)}）</div></div></div>`; };
+  APP_VIEWS.pl = () => {
+    const vis = visibleStores();
+    // 複数店舗（オーナー所有／本部全店）＝直近月の原価率を店舗比較
+    if (vis.length > 1) {
+      return `
+        ${NOTE({ ja:'◆ 各店の直近月の売上・原価率を比較（入力は店舗を選ぶと行えます）', en:'◆ Compare latest-month sales & cost ratio by store', vi:'◆ So sánh doanh thu & giá vốn tháng gần nhất theo cửa hàng' })}
+        <div class="card"><h3>${L({ ja:'店舗別（直近月）', en:'By store (latest month)', vi:'Theo cửa hàng' })}</h3>
+          ${vis.map(s => { const m = plMonthsOf(s)[0]; if (!m) return `<div class="rep"><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${L({ja:'未入力',en:'No data',vi:'Chưa nhập'})}</div></div></div>`; const c = plCalc(m); return `<div class="rep"><span class="amt">${pct(c.costRate)}</span><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${esc(m.ym)} ・ ${L({ja:'売上',en:'Sales',vi:'DT'})} ${yen(c.sales)} ・ ${L({ja:'粗利',en:'Gross',vi:'Lãi'})} ${yen(c.gross)}</div></div></div>`; }).join('')}
+        </div>
+        <p class="hint">${L({ ja:'※ 入力は右上で対象店舗を選んでから', en:'Pick a store (top-right) to enter data', vi:'Chọn cửa hàng (góc phải) để nhập' })}</p>`;
+    }
+    const store = vis[0];
+    const rows = plMonthsOf(store);
+    const nowYm = new Date().toISOString().slice(0, 7);
+    const cur = rows.find(r => r.ym === nowYm) || {};
+    const openDef = cur.open != null && cur.open !== '' ? cur.open : plPrevClose(store, nowYm);
+    return `
+      ${NOTE({ ja:'◆ 月次の売上・仕入・在庫を入力→原価率を自動計算。前月末在庫は今月の月初在庫へ自動で引き継ぎます', en:'◆ Enter monthly sales/purchases/stock → cost ratio auto-calculated', vi:'◆ Nhập doanh thu/nhập hàng/tồn kho → tự tính giá vốn' })}
+      <div class="card" id="plForm">
+        <h3>${L({ ja:'月次数値の入力', en:'Monthly numbers', vi:'Số liệu tháng' })} — ${esc(storeShort(store))}</h3>
+        <div class="sk-grid">
+          <label class="fld"><span>${L({ ja:'対象月', en:'Month', vi:'Tháng' })}</span><input type="month" id="pl_ym" value="${esc(nowYm)}"></label>
+          <label class="fld"><span>${L({ ja:'売上（税抜・月合計）', en:'Sales (monthly)', vi:'Doanh thu tháng' })}</span><input type="text" inputmode="numeric" id="pl_sales" value="${esc(cur.sales||'')}" placeholder="0"></label>
+          <label class="fld"><span>${L({ ja:'当月仕入（合計）', en:'Purchases', vi:'Nhập hàng' })}</span><input type="text" inputmode="numeric" id="pl_purchase" value="${esc(cur.purchase||'')}" placeholder="0"></label>
+          <label class="fld"><span>${L({ ja:'月初在庫', en:'Opening stock', vi:'Tồn đầu kỳ' })}</span><input type="text" inputmode="numeric" id="pl_open" value="${esc(openDef||'')}" placeholder="0"></label>
+          <label class="fld"><span>${L({ ja:'月末在庫（棚卸）', en:'Closing stock', vi:'Tồn cuối kỳ' })}</span><input type="text" inputmode="numeric" id="pl_close" value="${esc(cur.close||'')}" placeholder="0"></label>
+        </div>
+        <div class="stat-row" style="margin-top:8px">
+          <div class="stat"><div class="n" id="pl_cost">¥0</div><div class="k">${L({ ja:'当月原価', en:'Cost', vi:'Giá vốn' })}</div></div>
+          <div class="stat"><div class="n" id="pl_costrate">—</div><div class="k">${L({ ja:'原価率', en:'Cost ratio', vi:'Tỷ lệ giá vốn' })}</div></div>
+          <div class="stat"><div class="n" id="pl_grossrate">—</div><div class="k">${L({ ja:'粗利率', en:'Gross margin', vi:'Biên lãi gộp' })}</div></div>
+        </div>
+        <button class="btn-primary" id="plSave">${L({ ja:'保存する', en:'Save', vi:'Lưu' })}</button>
+        <div class="hint">${L({ ja:'原価率＝（月初在庫＋当月仕入－月末在庫）÷売上', en:'Cost ratio = (open + purchases − close) ÷ sales', vi:'Giá vốn = (đầu + nhập − cuối) ÷ doanh thu' })}</div>
+      </div>
+      <div class="card"><h3>${L({ ja:'月別の推移', en:'Monthly history', vi:'Lịch sử theo tháng' })}</h3>
+        ${rows.length ? rows.map(plRow).join('') : `<div class="muted">${L({ ja:'まだ入力がありません', en:'No data yet', vi:'Chưa có' })}</div>`}
+      </div>`;
+  };
 
   /* ⑨ 本部ダッシュボード（動く）*/
   APP_VIEWS.dashboard = () => {
@@ -2454,6 +2495,39 @@
       postReport({ kind:'emg', store, note: JSON.stringify({ slots }), t });
     };
 
+    // 数値・原価率：ライブ計算＋月変更で月初在庫を自動引継＋保存
+    const plForm = byId('plForm');
+    if (plForm) {
+      const num = (id) => Number((byId(id) && byId(id).value.replace(/[^0-9.-]/g, '')) || 0);
+      const recalc = () => {
+        const c = plCalc({ sales: num('pl_sales'), purchase: num('pl_purchase'), open: num('pl_open'), close: num('pl_close') });
+        if (byId('pl_cost')) byId('pl_cost').textContent = yen(c.cost);
+        if (byId('pl_costrate')) byId('pl_costrate').textContent = c.sales ? c.costRate.toFixed(1) + '%' : '—';
+        if (byId('pl_grossrate')) byId('pl_grossrate').textContent = c.sales ? c.grossRate.toFixed(1) + '%' : '—';
+      };
+      ['pl_sales','pl_purchase','pl_open','pl_close'].forEach(id => { if (byId(id)) byId(id).oninput = recalc; });
+      recalc();
+      if (byId('pl_ym')) byId('pl_ym').onchange = () => {
+        const store = visibleStores()[0], ym = byId('pl_ym').value;
+        const ex = getMonthly().find(r => r.store === store && r.ym === ym);
+        if (byId('pl_sales')) byId('pl_sales').value = ex && ex.sales != null ? ex.sales : '';
+        if (byId('pl_purchase')) byId('pl_purchase').value = ex && ex.purchase != null ? ex.purchase : '';
+        if (byId('pl_close')) byId('pl_close').value = ex && ex.close != null ? ex.close : '';
+        if (byId('pl_open')) byId('pl_open').value = (ex && ex.open != null && ex.open !== '') ? ex.open : plPrevClose(store, ym); // 前月末在庫→月初へ
+        recalc();
+      };
+      if (byId('plSave')) byId('plSave').onclick = () => {
+        const store = visibleStores()[0], ym = byId('pl_ym').value;
+        if (!ym) { toast(L({ ja:'対象月を選んでください', en:'Pick a month', vi:'Chọn tháng' })); return; }
+        const rec = { store, ym, sales: num('pl_sales'), purchase: num('pl_purchase'), open: num('pl_open'), close: num('pl_close'), t: Date.now() };
+        const arr = getMonthly().filter(r => !(r.store === store && r.ym === ym)); arr.push(rec);
+        try { saveMonthly(arr.slice(-300)); } catch (e) { saveMonthly(arr.slice(-120)); }
+        lastSync = rec.t;
+        toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' })); render();
+        postReport({ kind:'monthly', store, note: JSON.stringify({ ym, sales: rec.sales, purchase: rec.purchase, open: rec.open, close: rec.close }), t: rec.t });
+      };
+    }
+
     // お知らせ：本部が配信（全端末へ）
     const newsPost = byId('newsPost');
     if (newsPost) newsPost.onclick = () => {
@@ -2757,7 +2831,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[]; const emg={}; const ckitem={}, ckitemT={};
+    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[]; const emg={}; const ckitem={}, ckitemT={}; const monthly={}, monthlyT={};
     (rows || []).forEach(r => {
       const t = Number(r.t) || 0, id = r.id, store = r.store || '';
       switch (r.kind) {
@@ -2773,13 +2847,14 @@
         case 'whistle': { const p=pj(r.note); whistle.push({ store, cat:p.cat||'other', body:p.body||'', anon:!!p.anon, t, id }); } break;
         case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', video:p.video||'', photos:r.photos||[], t, id }); } break;
         case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モードごと最新版が正
+        case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正
       }
     });
     const set = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a)); } catch (_) {} };
     set(LS.reports, food); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
     set('yosakura_demo_open', open); set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
-    set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_ckitem', ckitem);
+    set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_ckitem', ckitem); set('yosakura_demo_monthly', Object.values(monthly));
   }
   async function syncReports(force) {
     if (!useBackend()) return;
