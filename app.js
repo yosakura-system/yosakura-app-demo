@@ -1038,16 +1038,16 @@
   const gyotaiLabel = (code) => { const g = GYOTAI.find(x => x.code === code); return g ? L(g.label) : code; };
   // roles: 閲覧できるロール（'all'は全員）／gyotai: 'all' or 業態code
   const MANUAL_CATALOG = [
-    { ic:'book',  gyotai:'all', roles:['all'],               mat:['lk_w2','lk_w1','lk_w3','lk_w4','lk_w5','lk_w6'], t:{ja:'世桜とは・理念',en:'Brand & Philosophy',vi:'Thương hiệu & Triết lý'}, s:{ja:'5つの価値／ビジョン／ブランドコア',en:'5 values / vision / brand core',vi:'5 giá trị / tầm nhìn'} },
-    { ic:'star',  gyotai:'all', roles:['all'],               mat:['lk_s5','lk_d10'], t:{ja:'接客・ホール',en:'Service & Hall',vi:'Phục vụ & Sảnh'}, s:{ja:'おもてなし／営業中の優先順位／世桜BOOK案内',en:'Hospitality / priorities / guide',vi:'Hiếu khách / ưu tiên'} },
-    { ic:'camera',gyotai:'all', roles:['all'],               t:{ja:'提供時のあるべき姿',en:'Serving standards',vi:'Chuẩn phục vụ'}, s:{ja:'盛り付け・グラム規定・提供基準（最重要）',en:'Plating, grams, serving rules (key)',vi:'Trình bày, định lượng (quan trọng)'} },
-    { ic:'check', gyotai:'all', roles:['all'],               t:{ja:'清掃',en:'Cleaning',vi:'Vệ sinh'}, s:{ja:'清掃基準／好事例（ウタマロ等）',en:'Cleaning standards / good practices',vi:'Chuẩn vệ sinh / thực hành tốt'} },
-    { ic:'video', gyotai:'all', roles:['all'],               mat:['lk_s2','lk_s3'], t:{ja:'衛生管理・身だしなみ',en:'Hygiene & grooming',vi:'Vệ sinh & tác phong'}, s:{ja:'身だしなみ／手洗い／食中毒対策',en:'Grooming / handwash / food safety',vi:'Tác phong / rửa tay / an toàn TP'} },
-    { ic:'grad',  gyotai:'all', roles:['staff','manager'],   mat:['lk_d1','lk_d2','lk_d3','lk_d4','lk_d5','lk_d6','lk_d7','lk_d8','lk_s1','lk_s4'], t:{ja:'7DAYS（新人教育）',en:'7DAYS (onboarding)',vi:'7DAYS (đào tạo)'}, s:{ja:'7DAYS研修（1〜7日目・活用）／ハウスルール／朝礼',en:'7DAYS (day1-7) / house rules / morning brief',vi:'7DAYS / nội quy / họp sáng'} },
-    { ic:'star',  gyotai:'all', roles:['all'],               t:{ja:'サーベイ運用',en:'Survey operation',vi:'Vận hành khảo sát'}, s:{ja:'iPad案内／回答の取り方',en:'iPad guidance / collecting answers',vi:'Hướng dẫn iPad'} },
-    { ic:'table', gyotai:'all', roles:['manager','owner'],   mat:['lk_s6'], t:{ja:'店舗運営',en:'Store operations',vi:'Vận hành cửa hàng'}, s:{ja:'タイムカード・シフト・鍵管理',en:'Timecard / shift / key management',vi:'Chấm công / ca / chìa khóa'} },
-    { ic:'yen',   gyotai:'all', roles:['owner'],             mat:['lk_s8'], t:{ja:'オーナー向け経営',en:'Owner: management',vi:'Chủ: quản lý'}, s:{ja:'キャリアアップ実践ガイド／経営の考え方',en:'Career path / management',vi:'Thăng tiến / quản lý'} },
-    { ic:'hq',    gyotai:'all', roles:['hq'],                mat:['lk_s7','lk_d9'], t:{ja:'本部運用',en:'HQ operations',vi:'Vận hành HQ'}, s:{ja:'研修トレーナー育成／7DAYS研修プログラム／権限',en:'Trainer dev / 7DAYS program / perms',vi:'Đào tạo trainer / 7DAYS / quyền'} },
+    { ic:'book',  gyotai:'all', roles:['all'],               gid:'philosophy', t:{ja:'世桜とは・理念',en:'Brand & Philosophy',vi:'Thương hiệu & Triết lý'}, s:{ja:'5つの価値／ビジョン／ブランドコア',en:'5 values / vision / brand core',vi:'5 giá trị / tầm nhìn'} },
+    { ic:'star',  gyotai:'all', roles:['all'],               gid:'service', t:{ja:'接客・ホール',en:'Service & Hall',vi:'Phục vụ & Sảnh'}, s:{ja:'おもてなし／営業中の優先順位／世桜BOOK案内',en:'Hospitality / priorities / guide',vi:'Hiếu khách / ưu tiên'} },
+    { ic:'camera',gyotai:'all', roles:['all'],               gid:'serving', t:{ja:'提供時のあるべき姿',en:'Serving standards',vi:'Chuẩn phục vụ'}, s:{ja:'盛り付け・グラム規定・提供基準（最重要）',en:'Plating, grams, serving rules (key)',vi:'Trình bày, định lượng (quan trọng)'} },
+    { ic:'check', gyotai:'all', roles:['all'],               gid:'cleaning', t:{ja:'清掃',en:'Cleaning',vi:'Vệ sinh'}, s:{ja:'清掃基準／好事例（ウタマロ等）',en:'Cleaning standards / good practices',vi:'Chuẩn vệ sinh / thực hành tốt'} },
+    { ic:'video', gyotai:'all', roles:['all'],               gid:'hygiene', t:{ja:'衛生管理・身だしなみ',en:'Hygiene & grooming',vi:'Vệ sinh & tác phong'}, s:{ja:'身だしなみ／手洗い／食中毒対策',en:'Grooming / handwash / food safety',vi:'Tác phong / rửa tay / an toàn TP'} },
+    { ic:'grad',  gyotai:'all', roles:['staff','manager'],   gid:'sevendays', t:{ja:'7DAYS（新人教育）',en:'7DAYS (onboarding)',vi:'7DAYS (đào tạo)'}, s:{ja:'7DAYS研修（1〜7日目・活用）／ハウスルール／朝礼',en:'7DAYS (day1-7) / house rules / morning brief',vi:'7DAYS / nội quy / họp sáng'} },
+    { ic:'star',  gyotai:'all', roles:['all'],               gid:'survey', t:{ja:'サーベイ運用',en:'Survey operation',vi:'Vận hành khảo sát'}, s:{ja:'iPad案内／回答の取り方',en:'iPad guidance / collecting answers',vi:'Hướng dẫn iPad'} },
+    { ic:'table', gyotai:'all', roles:['manager','owner'],   gid:'storeops', t:{ja:'店舗運営',en:'Store operations',vi:'Vận hành cửa hàng'}, s:{ja:'タイムカード・シフト・鍵管理',en:'Timecard / shift / key management',vi:'Chấm công / ca / chìa khóa'} },
+    { ic:'yen',   gyotai:'all', roles:['owner'],             gid:'owner', t:{ja:'オーナー向け経営',en:'Owner: management',vi:'Chủ: quản lý'}, s:{ja:'キャリアアップ実践ガイド／経営の考え方',en:'Career path / management',vi:'Thăng tiến / quản lý'} },
+    { ic:'hq',    gyotai:'all', roles:['hq'],                gid:'hq', t:{ja:'本部運用',en:'HQ operations',vi:'Vận hành HQ'}, s:{ja:'研修トレーナー育成／7DAYS研修プログラム／権限',en:'Trainer dev / 7DAYS program / perms',vi:'Đào tạo trainer / 7DAYS / quyền'} },
     { ic:'food',  gyotai:'unagi',    roles:['all'], t:{ja:'鰻の焼成・タレ',en:'Eel grilling & sauce',vi:'Nướng lươn & sốt'}, s:{ja:'あぶり直し／タレ／提供の説明',en:'Re-grilling / sauce / explanation',vi:'Nướng lại / sốt / giải thích'} },
     { ic:'food',  gyotai:'sushi',    roles:['all'], t:{ja:'寿司オペレーション',en:'Sushi operation',vi:'Vận hành sushi'}, s:{ja:'シャリ／握り／衛生',en:'Rice / nigiri / hygiene',vi:'Cơm / nắm / vệ sinh'} },
     { ic:'food',  gyotai:'gyukatsu', roles:['all'], t:{ja:'牛カツの提供基準',en:'Gyukatsu serving',vi:'Phục vụ gyukatsu'}, s:{ja:'揚げ／断面／盛り付け（和牛のみ使用）',en:'Frying / cut / plating',vi:'Chiên / lát cắt / trình bày'} },
@@ -1055,8 +1055,11 @@
     { ic:'food',  gyotai:'washoku',  roles:['all'], t:{ja:'日本料理コース',en:'Japanese course',vi:'Set Nhật'}, s:{ja:'おまかせの流れ／季節の献立',en:'Omakase flow / seasonal menu',vi:'Quy trình omakase'} }
   ];
   const manualVisibleRole = (m, role) => role === 'hq' || m.roles.includes('all') || m.roles.includes(role);
+  // マニュアルの大項目リスト（本部が資料をここへ振り分ける。順番＝◀▶で切り替わる順）
+  const MANUAL_GROUPS = MANUAL_CATALOG.filter(m => m.gid).map(m => ({ v: m.gid, t: m.t }));
+  const mgroupLabel = (v) => { const g = MANUAL_GROUPS.find(x => x.v === v); return g ? L(g.t) : L({ ja:'未分類', en:'Unsorted', vi:'Chưa phân loại' }); };
   const manualRow = (m) => {
-    const mats = m.mat ? getLinks().filter(l => m.mat.includes(l.id)) : [];
+    const mats = m.gid ? getLinks().filter(l => l.mcat === m.gid).sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))) : [];
     const head = `<div class="mrow"${mats.length ? '' : ' data-mock="1"'}><div class="mi">${svg(m.ic)}</div><div class="mt"><b>${esc(L(m.t))}</b><span>${esc(L(m.s))}</span></div><span class="chev">${mats.length ? `<small style="color:#8a8">${L({ ja:'資料', en:'Docs', vi:'TL' })}${mats.length}</small>` : svg('chev')}</span></div>`;
     const subs = mats.map(l => `<div class="mrow mrow--sub" data-openurl="${esc(l.url)}" style="padding-left:22px"><div class="mi">${svg('link')}</div><div class="mt"><b>${esc(l.title)}</b><span>${l.desc ? esc(l.desc) + ' ・ ' : ''}${L({ ja:'タップで開く', en:'Tap to open', vi:'Chạm để mở' })}</span></div><span class="chev">${svg('chev')}</span></div>`).join('');
     return head + subs;
@@ -2316,8 +2319,8 @@
   function seedMaterials() {
     if (localStorage.getItem('yosakura_demo_links')) return;
     saveLinks([
-      { id:'lk_demo1', title:'世桜の理念・ブランドコア（例）', url:'', cat:'worldview', desc:'本部が実際のSlides/DocsのURLを登録します' },
-      { id:'lk_demo2', title:'スタッフの基本・接客の心得（例）', url:'', cat:'staff', desc:'登録するとタップで資料が開きます' }
+      { id:'lk_demo1', title:'世桜の理念・ブランドコア（例）', url:'', mcat:'philosophy', desc:'本部が実際のSlides/DocsのURLを登録します' },
+      { id:'lk_demo2', title:'スタッフの基本・接客の心得（例）', url:'', mcat:'sevendays', desc:'登録するとタップで資料が開きます' }
     ]);
   }
   function seedCommunity() {
@@ -2579,44 +2582,44 @@
   /* ---------- 学ぶ：資料・学習リンク（本部が編集・全端末同期／タップで資料を開く）----------
      Slides/Docs 等のURLをバックエンドに保存（公開リポジトリにURLを直書きしない）。
      一覧の最新版が正（linkset＝配列を丸ごと保存し最新採用）。 */
-  const MAT_CATS = [
-    { v:'worldview', t:{ ja:'店舗の世界観・理念', en:'Brand & Philosophy', vi:'Thương hiệu & Triết lý' } },
-    { v:'staff',     t:{ ja:'スタッフの基本',     en:'Staff basics',        vi:'Cơ bản nhân viên' } },
-    { v:'other',     t:{ ja:'その他の資料',       en:'Other materials',     vi:'Tài liệu khác' } }
-  ];
   const getLinks = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_links')) || []; } catch { return []; } };
   const saveLinks = (a) => { try { localStorage.setItem('yosakura_demo_links', JSON.stringify(a)); } catch (e) {} };
   const isHttp = (u) => /^https?:\/\//i.test(u || '');
   APP_VIEWS.materials = () => {
-    const isHq = getRole() === 'hq';
     const links = getLinks();
-    const byCat = (v) => links.filter(l => (l.cat || 'other') === v).sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
-    const linkRow = (l) => `<div class="rep">
+    const stepper = (l) => `<span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle">
+        <button class="mini" data-mcatstep="${esc(l.id)}|prev" aria-label="prev">◀</button>
+        <b style="min-width:108px;text-align:center;display:inline-block;font-size:12px;color:var(--sumi)">${esc(mgroupLabel(l.mcat))}</b>
+        <button class="mini" data-mcatstep="${esc(l.id)}|next" aria-label="next">▶</button></span>`;
+    const linkRow = (l) => `<div class="rep" style="align-items:flex-start">
         <span class="hl-ic" style="flex:0 0 auto">${svg('link')}</span>
-        <div class="body"><div class="l1">${esc(l.title || l.url)}</div>${l.desc ? `<div class="l2">${esc(l.desc)}</div>` : ''}</div>
-        ${isHttp(l.url) ? `<button class="mini" data-openurl="${esc(l.url)}">${L({ ja:'開く', en:'Open', vi:'Mở' })}${svg('chev')}</button>` : ''}
-        ${isHq ? `<button class="mini" data-matdel="${esc(l.id)}">✕</button>` : ''}
+        <div class="body"><div class="l1">${esc(l.title || l.url)}</div>
+          <div class="l2">${l.desc ? esc(l.desc) + ' ・ ' : ''}${isHttp(l.url) ? `<button class="mini" data-openurl="${esc(l.url)}">${L({ ja:'開く', en:'Open', vi:'Mở' })}</button>` : ''}</div>
+          <div class="l2" style="margin-top:6px">${L({ ja:'大項目', en:'Group', vi:'Nhóm' })}：${stepper(l)}</div></div>
+        <button class="mini" data-matdel="${esc(l.id)}">✕</button>
       </div>`;
-    const section = (c) => { const rows = byCat(c.v); return rows.length ? `<div class="card"><h3>${esc(L(c.t))}</h3>${rows.map(linkRow).join('')}</div>` : ''; };
-    const form = isHq ? `
+    const section = (g) => { const rows = links.filter(l => l.mcat === g.v).sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))); return rows.length ? `<div class="card"><h3>${esc(L(g.t))} <small style="color:#8a8">${rows.length}</small></h3>${rows.map(linkRow).join('')}</div>` : ''; };
+    const unsorted = links.filter(l => !MANUAL_GROUPS.some(g => g.v === l.mcat)).sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+    const form = `
       <div class="card" id="matForm">
         <h3>${L({ ja:'資料リンクを追加（本部）', en:'Add a material link (HQ)', vi:'Thêm liên kết (HQ)' })}</h3>
         <label class="fld"><span>${L({ ja:'タイトル', en:'Title', vi:'Tiêu đề' })}</span>
           <input type="text" id="mat_title" placeholder="${esc(L({ ja:'例）世桜の理念・ブランドコア', en:'e.g. Brand philosophy', vi:'vd: Triết lý' }))}"></label>
         <label class="fld"><span>${L({ ja:'リンク（Slides/Docs等のURL）', en:'Link (URL)', vi:'Liên kết (URL)' })}</span>
           <input type="url" id="mat_url" placeholder="https://..."></label>
-        <label class="fld"><span>${L({ ja:'区分', en:'Category', vi:'Danh mục' })}</span>
-          <select id="mat_cat">${MAT_CATS.map(c => `<option value="${c.v}">${esc(L(c.t))}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'大項目（マニュアルのどこに出すか）', en:'Manual group', vi:'Nhóm cẩm nang' })}</span>
+          <select id="mat_cat">${MANUAL_GROUPS.map(g => `<option value="${g.v}">${esc(L(g.t))}</option>`).join('')}</select></label>
         <label class="fld"><span>${L({ ja:'ひとことメモ（任意）', en:'Note (optional)', vi:'Ghi chú' })}</span>
           <input type="text" id="mat_desc"></label>
         <button class="btn-primary" id="matAdd">${L({ ja:'追加する', en:'Add', vi:'Thêm' })}</button>
-        <div class="hint">${L({ ja:'追加すると全店に共有され、タップで資料が開きます。', en:'Shared to all stores; tap to open.', vi:'Chia sẻ toàn bộ; chạm để mở.' })}</div>
-      </div>` : '';
-    const body = MAT_CATS.map(section).join('');
+        <div class="hint">${L({ ja:'追加すると全店のマニュアルに反映されます。大項目は各資料の ◀▶ でいつでも切り替えられます。', en:'Reflected in all stores. Move between groups with ◀▶ anytime.', vi:'Áp dụng toàn bộ. Đổi nhóm bằng ◀▶.' })}</div>
+      </div>`;
+    const body = MANUAL_GROUPS.map(section).join('') + (unsorted.length
+      ? `<div class="card"><h3>${L({ ja:'未分類', en:'Unsorted', vi:'Chưa phân loại' })} <small style="color:#8a8">${unsorted.length}</small></h3>${unsorted.map(linkRow).join('')}</div>` : '');
     return `
-      ${NOTE({ ja:'◆ 世桜の資料をタップで開けます（本部が登録・全店で共有）', en:'◆ Tap to open YOSAKURA materials (HQ-managed)', vi:'◆ Chạm để mở tài liệu (HQ quản lý)' })}
+      ${NOTE({ ja:'◆ 資料の登録と、マニュアルの大項目への振り分け（本部専用）。各資料の ◀▶ で大項目を切り替えられます。', en:'◆ Register materials and assign to manual groups (HQ). Use ◀▶ to move.', vi:'◆ Đăng ký & phân nhóm (HQ). Dùng ◀▶ để chuyển.' })}
       ${form}
-      ${body || `<div class="card"><div class="muted">${L({ ja:'まだ資料が登録されていません。' + (isHq ? '上のフォームから追加できます。' : '本部が順次追加します。'), en:'No materials registered yet.', vi:'Chưa có tài liệu.' })}</div></div>`}`;
+      ${body || `<div class="card"><div class="muted">${L({ ja:'まだ資料が登録されていません。上のフォームから追加できます。', en:'No materials yet.', vi:'Chưa có tài liệu.' })}</div></div>`}`;
   };
 
   // 提出管理モジュールをアプリ一覧へ追加（店舗ロール中心・本部も閲覧可）
@@ -2933,16 +2936,26 @@
     if (matAdd) matAdd.onclick = () => {
       const title = ((byId('mat_title') || {}).value || '').trim();
       const url = ((byId('mat_url') || {}).value || '').trim();
-      const cat = (byId('mat_cat') || {}).value || 'other';
+      const mcat = (byId('mat_cat') || {}).value || (MANUAL_GROUPS[0] && MANUAL_GROUPS[0].v) || '';
       const desc = ((byId('mat_desc') || {}).value || '').trim();
       if (!title || !isHttp(url)) { toast(L({ ja:'タイトルと正しいURL（https://）を入力してください', en:'Enter a title and a valid https URL', vi:'Nhập tiêu đề và URL https hợp lệ' })); return; }
-      const links = getLinks(); links.push({ id:'lk' + Date.now(), title, url, cat, desc });
+      const links = getLinks(); links.push({ id:'lk' + Date.now(), title, url, mcat, desc });
       saveLinks(links); const t = Date.now(); lastSync = t;
       toast(L({ ja:'資料リンクを追加しました', en:'Material added', vi:'Đã thêm' })); render();
       postReport({ kind:'linkset', store:'', note: JSON.stringify(links), t });
     };
     document.querySelectorAll('[data-matdel]').forEach(b => b.onclick = () => {
       const links = getLinks().filter(l => l.id !== b.dataset.matdel);
+      saveLinks(links); const t = Date.now(); lastSync = t; render();
+      postReport({ kind:'linkset', store:'', note: JSON.stringify(links), t });
+    });
+    // 大項目を ◀▶ でスライド切替（本部）→ マニュアルの表示先が変わる・全端末同期
+    document.querySelectorAll('[data-mcatstep]').forEach(b => b.onclick = () => {
+      const [id, dir] = b.dataset.mcatstep.split('|');
+      const order = MANUAL_GROUPS.map(g => g.v); if (!order.length) return;
+      const links = getLinks(); const l = links.find(x => x.id === id); if (!l) return;
+      let i = order.indexOf(l.mcat); i = i < 0 ? 0 : (i + (dir === 'next' ? 1 : -1) + order.length) % order.length;
+      l.mcat = order[i];
       saveLinks(links); const t = Date.now(); lastSync = t; render();
       postReport({ kind:'linkset', store:'', note: JSON.stringify(links), t });
     });
