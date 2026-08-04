@@ -1081,9 +1081,9 @@
     if (localStorage.getItem('yosakura_demo_survey')) return;
     const now = Date.now(), st = '寿司世桜 心斎橋店';
     saveSurvey([
-      { store:st, sat:5, route:'tiktok', note:'', t:now-3600e3*5 },
-      { store:st, sat:4, route:'google', note:'Great dashi!', t:now-3600e3*9 },
-      { store:st, sat:5, route:'instagram', note:'', t:now-3600e3*28 }
+      { store:st, sat:5, route:'tiktok', note:'', country:'Korea', t:now-3600e3*5 },
+      { store:st, sat:4, route:'google', note:'Great dashi!', country:'USA', t:now-3600e3*9 },
+      { store:st, sat:5, route:'instagram', note:'', country:'Japan', t:now-3600e3*28 }
     ]);
   }
   // iPadサーベイ運用マニュアル準拠：顔文字の満足度／改善点（複数選択）／高満足時のみ口コミ案内
@@ -1132,9 +1132,12 @@
     const low = rows.filter(r => (Number(r.sat) || 0) <= 2).length;
     const dist = [5, 4, 3, 2, 1].map(s => ({ s, c: rows.filter(r => Number(r.sat) === s).length }));
     const rc = {}; ROUTES.forEach(x => rc[x.v] = 0); rows.forEach(r => { if (rc[r.route] != null) rc[r.route]++; });
+    const cc = {}; rows.forEach(r => { if (r.country) cc[r.country] = (cc[r.country] || 0) + 1; });
+    const countryRows = Object.entries(cc).sort((a, b) => b[1] - a[1]);
     const ymOf = (t) => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
-    const mc = {}; rows.forEach(r => { const k = ymOf(r.t); mc[k] = (mc[k] || 0) + 1; });
-    const months = Object.keys(mc).sort().slice(-6);
+    const mc = {}, msum = {}; rows.forEach(r => { const k = ymOf(r.t); mc[k] = (mc[k] || 0) + 1; msum[k] = (msum[k] || 0) + (Number(r.sat) || 0); });
+    const mavg = (k) => mc[k] ? (msum[k] / mc[k]) : 0;
+    const months = Object.keys(mc).sort().slice(-12); // 過去最大12か月まで表示
     const barRow = (label, c, total, cls) => `<div class="bar-row"><div class="bl"><span>${esc(label)}</span><b>${c}</b></div><div class="bar-track"><div class="bar-fill ${cls||''}" style="width:${total ? Math.round(c / total * 100) : 0}%"></div></div></div>`;
     const byStore = vis.length > 1 ? (() => {
       const bs = {}; vis.forEach(s => bs[s] = { n: 0, sum: 0, low: 0 });
@@ -1155,10 +1158,11 @@
         ${dist.map(d => barRow('★' + d.s, d.c, n, d.s <= 2 ? 'bar-low' : '')).join('')}
         <div class="idlabel" style="margin-top:12px">${L({ ja:'来店経路', en:'Arrival route', vi:'Nguồn khách' })}</div>
         ${ROUTES.map(r => barRow(L(r.t), rc[r.v], n)).join('')}
-        ${months.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'月別の回答数', en:'Responses by month', vi:'PH theo tháng' })}</div>${months.map(m => barRow(m, mc[m], Math.max(...months.map(x => mc[x])))).join('')}` : ''}
+        ${countryRows.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'来店国', en:'Country', vi:'Quốc gia' })}</div>${countryRows.map(([c, ct]) => barRow(c, ct, n)).join('')}` : ''}
+        ${months.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'月別（回答数・平均満足度）', en:'By month (responses & avg)', vi:'Theo tháng (PH & TB)' })}</div>${months.map(m => barRow(`${m}　★${mavg(m).toFixed(1)}`, mc[m], Math.max(...months.map(x => mc[x])))).join('')}` : ''}
       </div>
       ${byStore}
-      <p class="hint" style="display:block">${L({ ja:'※ 来店国など一部項目は本番サーベイ側に蓄積されます。ここはアプリ入力分の集計です。', en:'Some fields (e.g. country) live in the survey tool. This aggregates app entries.', vi:'Một số mục nằm ở công cụ khảo sát.' })}</p>`;
+      <p class="hint" style="display:block">${L({ ja:'※ サーベイ回答（本番フォーム）から集計しています。来店国はデータがある場合に表示します。', en:'Aggregated from live survey responses. Country appears when available.', vi:'Tổng hợp từ phản hồi khảo sát. Quốc gia hiển thị khi có.' })}</p>`;
   }
 
   /* ⑥ 総括表（動く：実日報フォーマットで入力→保存→履歴＆本部集約）*/
@@ -3058,7 +3062,7 @@
         case 'route': route.push({ store, route:r.item, t, id }); break;
         case 'open': { const p=pj(r.note); open.push({ store, date:p.date||'', denom:p.denom||{}, total:Number(p.total)||0, t, id }); } break;
         case 'soukatsu': { const p=pj(r.note); sk.push(Object.assign({ store, t, id }, p)); } break;
-        case 'survey': survey.push({ store, sat:Number(r.level)||0, route:r.item, note:r.note, t, id }); break;
+        case 'survey': { const p = pj(r.note); const j = p && typeof p === 'object' && ('c' in p || 'f' in p); const ctry = j ? (p.c || '') : ''; if (/^TEST_/.test(ctry)) break; survey.push({ store, sat:Number(r.level)||0, route:r.item, note: j ? (p.f || '') : (r.note || ''), country: ctry, t, id }); } break; // TEST_ 接頭辞の国はテスト行として集計除外
         case 'svfb': { const p=pj(r.note); svfb.push({ store, aspect:r.item, good:p.good||'', improve:p.improve||'', t, id }); } break;
         case 'video': video.push({ store, url:r.item, note:r.note, t, id }); break;
         case 'emg': { const p=pj(r.note); if (!emg[store] || t >= emg[store].t) emg[store] = { slots: p.slots || {}, t }; } break; // 店舗ごとに最新版が正
