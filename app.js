@@ -195,7 +195,7 @@
     { id:'camera', group:'hq', icon:'video', soon:true, hide:true, roles:['hq'], // 8/4: 防犯カメラは初期ダッシュから外す
       name:{ ja:'防犯カメラ確認', en:'Security Cameras', vi:'Camera an ninh' },
       desc:{ ja:'本部から全店を一括確認', en:'Check all stores from HQ', vi:'Xem mọi cửa hàng từ HQ' } },
-    { id:'svfb', group:'hq', icon:'report', roles:['hq'],
+    { id:'svfb', group:'hq', icon:'report', hide:true, roles:['hq'], // 8/4(19-2/19-3): 店舗フィードバックは初期で外す→気づき報告・サーベイへ統合
       name:{ ja:'店舗巡回フィードバック', en:'Store Visit Feedback', vi:'Phản hồi cửa hàng' },
       desc:{ ja:'接客/提供/品質/内装/多言語を観点別に記録', en:'SV feedback by aspect', vi:'Ghi nhận theo tiêu chí' } }
   ];
@@ -467,7 +467,8 @@
         <div class="news-h"><span class="news-ic">${svg('bell')}</span><b>${latest.level === 'important' ? L({ ja:'重要なお知らせ', en:'Important', vi:'Quan trọng' }) : L({ ja:'本部からのお知らせ', en:'News from HQ', vi:'Thông báo từ HQ' })}</b><span class="news-ago">${timeAgo(latest.t)}</span></div>
         <div class="news-title">${esc(latest.title || '')}</div>
         ${latest.body ? `<p class="news-body">${esc(newsSnippet(latest.body))}</p>` : ''}
-        <span class="news-more">${L({ ja:'すべて見る', en:'See all', vi:'Xem tất cả' })} ${svg('chev')}</span>
+        ${(latest.photos && latest.photos.length) ? `<img class="news-thumb" src="${photoThumb(latest.photos[0])}" alt="">` : ''}
+        <span class="news-more">${(latest.photos && latest.photos.length) ? '📷 ' : ''}${latest.video ? '▶ ' : ''}${L({ ja:'すべて見る', en:'See all', vi:'Xem tất cả' })} ${svg('chev')}</span>
       </button>` : `
       <button class="card news-card news-card--btn" data-open="news">
         <div class="news-h"><span class="news-ic">${svg('bell')}</span><b>${L({ ja:'本部からのお知らせ', en:'News from HQ', vi:'Thông báo từ HQ' })}</b></div>
@@ -2302,6 +2303,8 @@
       <div class="body">
         <div class="l1">${esc(n.title || '—')}</div>
         ${n.body ? `<div class="news-text">${esc(n.body)}</div>` : ''}
+        ${(n.photos && n.photos.length) ? `<div class="rep-photos">${n.photos.map(p => `<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="" loading="lazy">`).join('')}</div>` : ''}
+        ${n.video ? `<a class="news-video" href="${esc(n.video)}" target="_blank" rel="noopener">▶ ${L({ ja:'動画を見る', en:'Watch video', vi:'Xem video' })}</a>` : ''}
         <div class="l2">${esc(newsTargetLabel(n.target))} ・ ${timeAgo(n.t)}</div>
       </div>
     </div>`;
@@ -2315,6 +2318,11 @@
           <input type="text" id="news_title" placeholder="${esc(L({ ja:'例）お盆期間の発注前倒しのお願い', en:'e.g. Early ordering for the holiday', vi:'vd: Đặt hàng sớm dịp lễ' }))}"></label>
         <label class="fld"><span>${L({ ja:'本文', en:'Body', vi:'Nội dung' })}</span>
           <textarea id="news_body" placeholder="${esc(L({ ja:'お知らせの内容を入力', en:'Enter the announcement', vi:'Nhập nội dung' }))}"></textarea></label>
+        <label class="fld"><span>${L({ ja:'画像（任意・複数可）', en:'Images (optional)', vi:'Ảnh (tùy chọn)' })}</span>
+          <div class="photo-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ ja:'画像を追加', en:'Add images', vi:'Thêm ảnh' })}</b></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
+          <div class="photo-thumbs" id="photoThumbs"></div></label>
+        <label class="fld"><span>${L({ ja:'動画リンク（任意・YouTube等）', en:'Video link (optional)', vi:'Link video (tùy chọn)' })}</span>
+          <input type="url" id="news_video" placeholder="https://..."></label>
         <label class="fld"><span>${L({ ja:'配信先', en:'Deliver to', vi:'Gửi đến' })}</span>
           <select id="news_target"><option value="all">${L({ ja:'全店', en:'All stores', vi:'Toàn bộ' })}</option>${STORES.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('')}</select></label>
         <label class="check-inline"><input type="checkbox" id="news_important"> ${L({ ja:'重要なお知らせとして目立たせる', en:'Mark as important', vi:'Đánh dấu quan trọng' })}</label>
@@ -2454,13 +2462,16 @@
       if (!title && !body) { toast(L({ ja:'タイトルか本文を入力してください', en:'Please enter a title or body', vi:'Vui lòng nhập tiêu đề hoặc nội dung' })); return; }
       const target = (byId('news_target') && byId('news_target').value) || 'all';
       const level = (byId('news_important') && byId('news_important').checked) ? 'important' : 'normal';
+      const video = (byId('news_video') && byId('news_video').value.trim()) || '';
+      const thumbsEl = byId('photoThumbs');
+      const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0, 6) : [];
       const t = Date.now();
-      const arr = getNews(); arr.push({ title, body, level, target, t });
+      const arr = getNews(); arr.push({ title, body, level, target, video, photos, t });
       try { saveNews(arr.slice(-100)); } catch (e) { saveNews(arr.slice(-40)); }
       lastSync = t;
       toast(L({ ja:'お知らせを配信しました', en:'Announcement published', vi:'Đã đăng thông báo' }));
       render();
-      postReport({ kind:'news', store:'', note: JSON.stringify({ title, body, level, target }), t });
+      postReport({ kind:'news', store:'', note: JSON.stringify({ title, body, level, target, video }), photos, t });
     };
 
     // 公益通報：本部へ送信（匿名可）
@@ -2760,7 +2771,7 @@
         case 'video': video.push({ store, url:r.item, note:r.note, t, id }); break;
         case 'emg': { const p=pj(r.note); if (!emg[store] || t >= emg[store].t) emg[store] = { slots: p.slots || {}, t }; } break; // 店舗ごとに最新版が正
         case 'whistle': { const p=pj(r.note); whistle.push({ store, cat:p.cat||'other', body:p.body||'', anon:!!p.anon, t, id }); } break;
-        case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', t, id }); } break;
+        case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', video:p.video||'', photos:r.photos||[], t, id }); } break;
         case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モードごと最新版が正
       }
     });
