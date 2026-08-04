@@ -1817,18 +1817,29 @@
     return next;
   }
 
-  // この提出物がこの店舗に適用されるか（対象設定＋コース除外＋対象外オフ）
+  // この提出物がこの店舗に適用されるか（対象設定＋コース除外＋業態出し分け＋対象外オフ）
   function appliesToStore(m, store) {
     if (m.oblig === 'off') return false;
     if (m.target === 'except_course' && storeMeta(store).course) return false;
     if (m.target === 'stores' && Array.isArray(m.stores) && !m.stores.includes(store)) return false;
+    if (m.target === 'gyotai_in' && Array.isArray(m.gyotai) && !m.gyotai.includes(storeMeta(store).gyotai)) return false; // 指定業態のみ（例：牛カツのみ）
+    if (m.target === 'gyotai_ex' && Array.isArray(m.gyotai) && m.gyotai.includes(storeMeta(store).gyotai)) return false;  // 指定業態を除く（例：牛カツ以外）
     return true;
   }
+  // 週キー（月曜始まり）＝週次提出の「今週提出済み」判定に使用
+  function weekKeyOf(dstr) {
+    const d = new Date(dstr + 'T00:00:00'); if (isNaN(d)) return dstr;
+    const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off);
+    return d.toISOString().slice(0, 10);
+  }
+  const quarterKeyOf = (dstr) => `${dstr.slice(0, 4)}Q${Math.floor((Number(dstr.slice(5, 7)) - 1) / 3) + 1}`;
   // 実データから「提出済みか」を判定（同期済みの実績を突き合わせ）
   function detectSubmitted(store, m, dk) {
     const sameDay = (t) => dateKeyFor(store, t) === dk;
     const sameMonth = (t) => dateKeyFor(store, t).slice(0, 7) === dk.slice(0, 7);
-    const inScope = m.freq === 'monthly' ? sameMonth : sameDay;
+    const sameWeek = (t) => weekKeyOf(dateKeyFor(store, t)) === weekKeyOf(dk);
+    const sameQuarter = (t) => quarterKeyOf(dateKeyFor(store, t)) === quarterKeyOf(dk);
+    const inScope = m.freq === 'monthly' ? sameMonth : m.freq === 'weekly' ? sameWeek : m.freq === 'quarterly' ? sameQuarter : sameDay;
     try {
       if (m.detect === 'fp')     return getFP().some(r => r.store === store && inScope(r.t));
       if (m.detect === 'sk')     return getSk().some(r => r.store === store && inScope(r.t));
@@ -1860,7 +1871,10 @@
   const subItemRow = (it) => {
     const badgeTxt = it.manual ? L({ja:'手動',en:'Manual',vi:'Thủ công'}) : (it.submitted ? L({ja:'提出済',en:'Done',vi:'Đã nộp'}) : L({ja:'未提出',en:'To do',vi:'Chưa'}));
     const badgeCls = it.manual ? '' : (it.submitted ? 'b' : 'a');
-    const due = it.m.freq === 'monthly' ? L({ja:'今月',en:'This month',vi:'Tháng này'}) : `${L({ja:'締切',en:'Due',vi:'Hạn'})} ${it.m.due}`;
+    const due = it.m.freq === 'monthly' ? L({ja:'今月',en:'This month',vi:'Tháng này'})
+      : it.m.freq === 'quarterly' ? L({ja:'今四半期',en:'This quarter',vi:'Quý này'})
+      : it.m.freq === 'weekly' ? L({ja:'今週',en:'This week',vi:'Tuần này'})
+      : `${L({ja:'締切',en:'Due',vi:'Hạn'})} ${it.m.due}`;
     const openBtn = ((it.manual || !it.submitted) && it.m.linkApp) ? `<button class="mini" data-tsub="${it.m.linkApp}">${L({ja:'開いて提出',en:'Open',vi:'Mở'})}${svg('chev')}</button>` : '';
     const oflag = it.overdue ? ` <span style="color:#b23">${L({ja:'締切超過',en:'Overdue',vi:'Quá hạn'})}</span>` : '';
     const noentry = it.manual ? ` <span class="hint" style="display:inline">※${L({ja:'自動判定なし（店舗運用・手動）',en:'no auto-check (store-run/manual)',vi:'không tự KT (thủ công)'})}</span>` : '';
@@ -1872,7 +1886,7 @@
   /* ---------- 店舗向け：今日出すもの（日次） ---------- */
   APP_VIEWS.kyou = () => {
     const store = visibleStores()[0];
-    const items = todayItemsFor(store).filter(it => it.m.freq !== 'monthly');
+    const items = todayItemsFor(store).filter(it => it.m.freq === 'daily' || it.m.freq === 'weekly');
     const dk = dateKeyFor(store, Date.now());
     const holiday = isHoliday(store, dk);
     const remain = items.filter(it => !it.manual && !it.submitted).length;
@@ -1889,7 +1903,7 @@
   /* ---------- 店舗向け：月末・月次で出すもの（月次） ---------- */
   APP_VIEWS.getsuji = () => {
     const store = visibleStores()[0];
-    const items = todayItemsFor(store).filter(it => it.m.freq === 'monthly');
+    const items = todayItemsFor(store).filter(it => it.m.freq === 'monthly' || it.m.freq === 'quarterly');
     const ym = new Date().toISOString().slice(0, 7);
     const remain = items.filter(it => !it.manual && !it.submitted).length;
     const rows = items.length ? items.map(subItemRow).join('') : `<div class="muted">${L({ja:'今月の提出物はありません',en:'No monthly items',vi:'Không có mục tháng này'})}</div>`;
@@ -1943,7 +1957,7 @@
       </div>
       <div class="card">
         <h3>${L({ja:'提出物マスタ（本部設定）',en:'Submission master (HQ)',vi:'Cấu hình mục nộp (HQ)'})}</h3>
-        ${masters.map(m => `<div class="rep"><span class="kind b">${L(OBLIG_LABEL[m.oblig])}</span><div class="body"><div class="l1">${esc(L(m.name))}</div><div class="l2">${m.freq==='daily'?L({ja:'毎日',en:'Daily',vi:'Hàng ngày'}):L({ja:'月1',en:'Monthly',vi:'Hàng tháng'})} ・ ${L({ja:'締切',en:'Due',vi:'Hạn'})} ${m.due} ・ ${m.hqReview==='each'?L({ja:'本部確認あり',en:'HQ review',vi:'HQ duyệt'}):m.hqReview==='exception'?L({ja:'例外のみ本部',en:'Exceptions to HQ',vi:'Ngoại lệ HQ'}):L({ja:'本部確認なし',en:'No HQ review',vi:'Không HQ'})}</div></div></div>`).join('')}
+        ${masters.map(m => `<div class="rep"><span class="kind b">${L(OBLIG_LABEL[m.oblig])}</span><div class="body"><div class="l1">${esc(L(m.name))}</div><div class="l2">${L({daily:{ja:'毎日',en:'Daily',vi:'Hàng ngày'},weekly:{ja:'週1',en:'Weekly',vi:'Hàng tuần'},monthly:{ja:'月1',en:'Monthly',vi:'Hàng tháng'},quarterly:{ja:'四半期',en:'Quarterly',vi:'Hàng quý'}}[m.freq]||{ja:'毎日',en:'Daily',vi:'Hàng ngày'})} ・ ${L({ja:'締切',en:'Due',vi:'Hạn'})} ${m.due} ・ ${m.hqReview==='each'?L({ja:'本部確認あり',en:'HQ review',vi:'HQ duyệt'}):m.hqReview==='exception'?L({ja:'例外のみ本部',en:'Exceptions to HQ',vi:'Ngoại lệ HQ'}):L({ja:'本部確認なし',en:'No HQ review',vi:'Không HQ'})}</div></div></div>`).join('')}
         <p class="hint" style="display:block">${L({ja:'※ この設定はこの端末に保存されています。全店で共有するにはバックエンド接続（次段階）が必要です。',en:'Saved on this device. Cross-store sharing needs backend (next step).',vi:'Lưu trên máy này. Cần backend để chia sẻ (bước sau).'})}</p>
       </div>
       <p class="hint" style="display:block">${L({ja:'※ 提出状況は実際の提出データ（同期済み）から自動集約しています。LINE通知・AI判定は未接続（手動運用中）。',en:'Auto-aggregated from real synced data. LINE & AI not connected (manual).',vi:'Tự tổng hợp từ dữ liệu thật (đã đồng bộ). LINE & AI chưa kết nối (thủ công).'})}</p>`;
