@@ -208,13 +208,19 @@
   const setRole = (r) => localStorage.setItem(LS.role, r);
   const getStoreSel = () => localStorage.getItem(LS.store) || STORES[0];
   const setStoreSel = (s) => localStorage.setItem(LS.store, s);
-  // 店舗スコープ：本部＝全店（または任意1店にドリルダウン）、非本部＝自店のみ
+  // 複数店舗オーナーの所有店舗（デモ用。実運用では本部の「権限設定表」で置き換える）
+  // 例：富士山のオーナー（長田翔太さん）＝鰻・牛カツの2店を所有
+  const OWNER_STORES = ['日本鰻世桜 富士山店', '牛カツ世桜 富士山店'];
+  // 店舗スコープ：本部＝全店（または任意1店）、オーナー＝所有店舗（横断 or 1店）、他＝自店のみ
   function visibleStores() {
     const role = getRole(), sel = getStoreSel();
     if (role === 'hq') return sel === 'all' ? STORES.slice() : [sel];
+    if (role === 'owner') return (sel === 'owned' || !OWNER_STORES.includes(sel)) ? OWNER_STORES.slice() : [sel];
     return [STORES.includes(sel) ? sel : STORES[0]];
   }
-  const storeShort = (s) => s === 'all' ? L({ ja:'全店', en:'All', vi:'Tất cả' }) : (s.split(' ').slice(1).join(' ') || s);
+  const storeShort = (s) => s === 'all' ? L({ ja:'全店', en:'All', vi:'Tất cả' })
+    : s === 'owned' ? L({ ja:'所有店舗', en:'My stores', vi:'CH của tôi' })
+    : (s.split(' ').slice(1).join(' ') || s);
   const getReports = () => { try { return JSON.parse(localStorage.getItem(LS.reports)) || []; } catch { return []; } };
   const saveReports = (a) => localStorage.setItem(LS.reports, JSON.stringify(a));
   const getFP = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_fp')) || []; } catch { return []; } };
@@ -1553,8 +1559,9 @@
   function openIdentitySheet() {
     const buildHTML = () => {
       const role = getRole(), sel = getStoreSel();
-      const storeOpts = role === 'hq' ? ['all', ...STORES] : STORES;
-      const storeLabel = (s) => s === 'all' ? L({ ja:'全店（本部）', en:'All stores (HQ)', vi:'Tất cả (HQ)' }) : s;
+      const storeOpts = role === 'hq' ? ['all', ...STORES] : role === 'owner' ? ['owned', ...OWNER_STORES] : STORES;
+      const storeLabel = (s) => s === 'all' ? L({ ja:'全店（本部）', en:'All stores (HQ)', vi:'Tất cả (HQ)' })
+        : s === 'owned' ? L({ ja:'所有店舗すべて（比較）', en:'All my stores (compare)', vi:'Tất cả CH của tôi (so sánh)' }) : s;
       return `<div class="sheet">
         <div class="grip"></div>
         <h3>${L({ ja:'表示を切り替える', en:'Switch view', vi:'Đổi hiển thị' })}<span class="demo-tag">${L({ja:'確認用',en:'For review',vi:'Để xem'})}</span></h3>
@@ -1578,8 +1585,10 @@
     const mask = el(`<div class="sheet-mask">${buildHTML()}</div>`);
     const wire = () => {
       mask.querySelectorAll('[data-role]').forEach(b => b.onclick = () => {
-        setRole(b.dataset.role);
-        if (b.dataset.role !== 'hq' && getStoreSel() === 'all') setStoreSel(STORES[0]);
+        const r = b.dataset.role; setRole(r);
+        const sel = getStoreSel();
+        if (r === 'owner') { if (sel !== 'owned' && !OWNER_STORES.includes(sel)) setStoreSel('owned'); }
+        else if (r !== 'hq' && (sel === 'all' || sel === 'owned')) setStoreSel(STORES[0]);
         rebuild();
       });
       mask.querySelectorAll('[data-store]').forEach(b => b.onclick = () => { setStoreSel(b.dataset.store); rebuild(); });
