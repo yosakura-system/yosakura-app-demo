@@ -327,10 +327,26 @@ console.log('== マニュアル：対応資料をタップで開く（linksetと
 }
 await new Promise(r=>setTimeout(r, 50));
 {
-  location.hash = '#/app/manual';
+  location.hash = '#/app/manual';   // スタッフで表示
   const html = registry.app.innerHTML;
   ok(/data-openurl=/.test(html), 'マニュアルに資料のタップ開くリンクが出る');
   ok(/世桜とは/.test(html) && /ハウスルール/.test(html), '理念/7DAYSに対応資料が紐づく');
+  ok(/\/preview/.test(html) && !/\/edit/.test(html), 'スタッフは読み取り専用(/preview)で開く（編集防止）');
+}
+console.log('== マニュアル：本部は編集リンクで開く ==');
+{
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'linkset', store:'', note: JSON.stringify([
+      { id:'lk_w2', mcat:'philosophy', title:'世桜とは', url:'https://docs.google.com/presentation/d/EX/edit', desc:'スライド' },
+    ]), t: Date.now(), id:'ls3' },
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ manual hq load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  location.hash = '#/app/manual';
+  const html = registry.app.innerHTML;
+  ok(/\/edit/.test(html), '本部は編集リンク(/edit)で開く');
 }
 FETCH_ROWS = { ok:false };
 
