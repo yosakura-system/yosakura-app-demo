@@ -399,3 +399,64 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 
 /* サーベイ集計：低評価バー */
 .bar-fill.bar-low { background: #c96a6a; }
+
+/* ============ 総括表のビジュアル（墨1色：色は増やさず「長さ」で比較する） ============ */
+/* 期間・指標の切替チップ */
+.seg-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+.chip { border: 1px solid var(--line); background: #FCFBF9; color: var(--gray); font-size: 11.5px; font-weight: 700;
+  padding: 7px 12px; border-radius: 999px; cursor: pointer; font-family: var(--sans); line-height: 1.2; }
+.chip.on { background: var(--suou); border-color: var(--suou); color: #fff; }
+.chip.off { opacity: .35; cursor: default; }
+
+/* 日別カラムチャート */
+.chartbox { margin: 8px 0 2px; }
+.charthead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.charthead .ct { font-size: 11px; font-weight: 800; color: var(--gray); letter-spacing: .08em; }
+.charthead b { font-size: 11.5px; font-weight: 800; color: var(--suou); white-space: nowrap; }
+.colchart { position: relative; display: flex; align-items: flex-end; gap: 2px; height: 118px; padding-top: 8px; }
+.colchart .col { flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: flex-end;
+  background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.colchart .cb { width: 100%; height: var(--h, 0%); min-height: 3px; background: var(--suou);
+  border-radius: 4px 4px 2px 2px; transition: height .25s ease; }
+.colchart .col.none .cb { height: 3px; background: #EDE8E0; border-radius: 2px; }
+.colchart .col.top .cb { background: var(--gold); }
+.colchart .col:active .cb { opacity: .55; }
+.avgline { position: absolute; left: 0; right: 0; border-top: 1px dashed #CFC7BB; pointer-events: none; }
+.avgline span { position: absolute; right: 0; top: -13px; font-size: 9.5px; color: var(--gray); background: var(--paper); padding: 0 3px; }
+.colaxis { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--gray); margin-top: 6px; }
+
+/* 店舗比較の行（タップで個店カルテ） */
+.spark { color: var(--suou); opacity: .8; flex: none; }
+.cmp { display: block; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line);
+  padding: 12px 2px; cursor: pointer; font-family: var(--sans); -webkit-tap-highlight-color: transparent; }
+.cmp:last-of-type { border-bottom: 0; }
+.cmp:active { background: #FAF8F5; }
+.cmp-top { display: flex; align-items: baseline; gap: 8px; }
+.cmp-rank { flex: none; width: 15px; font-family: var(--serif); font-size: 13px; color: var(--gray); }
+.cmp-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--sumi);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-val { font-size: 13px; font-weight: 800; color: var(--suou); white-space: nowrap; }
+.cmp-bar { height: 8px; background: #EEE7DD; border-radius: 999px; overflow: hidden; margin: 7px 0 5px; }
+.cmp-fill { height: 100%; background: linear-gradient(90deg, var(--suou), var(--suou-d)); border-radius: 999px; transition: width .3s ease; }
+.cmp-sub { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--gray); }
+.cmp-sub > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 個店カルテ：月送り・入力率・全項目グリッド */
+.mnav { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 0 0 14px; }
+.mnav b { font-family: var(--serif); font-size: 17px; letter-spacing: .04em; }
+.fillhead { display: flex; justify-content: space-between; align-items: baseline; font-size: 11.5px; color: var(--gray); margin-top: 4px; }
+.fillhead b { font-size: 12px; font-weight: 800; color: var(--suou); }
+.fillbar { height: 6px; background: #EEE7DD; border-radius: 999px; overflow: hidden; margin-top: 6px; }
+.fillbar i { display: block; height: 100%; background: var(--suou); border-radius: 999px; }
+.dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.dcell { border: 1px solid var(--line); border-radius: 11px; padding: 9px 10px; background: #FCFBF9; }
+.dcell .dk { display: block; font-size: 10px; color: var(--gray); margin-bottom: 3px; }
+.dcell .dv { font-size: 13.5px; font-weight: 800; color: var(--sumi); }
+.dcell.off { background: #fff; border-style: dashed; }
+.dcell.off .dv { color: #C4BCB2; font-weight: 700; }
+.dtext { font-size: 12.5px; line-height: 1.7; white-space: pre-wrap; margin: 4px 2px 10px; }
+.delta { font-size: 10px; font-weight: 800; color: var(--suou); }
+.delta.up::before { content: '▲'; margin-right: 1px; }
+.delta.dn::before { content: '▼'; margin-right: 1px; }
+.rep.tapable { cursor: pointer; }
+.rep.tapable:active { background: #FAF8F5; }
