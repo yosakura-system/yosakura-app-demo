@@ -550,6 +550,64 @@ console.log('== サーベイの来店きっかけ：各国語の回答をアプ�
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== サーベイの改善点：多言語の【…】を区分へ寄せて集計する ==');
+{
+  const sv = (sat, note, id, country) => ({ kind:'survey', store:S_HIROSHIMA, level:String(sat), item:'구글', note: JSON.stringify({ c:country||'Korea', f:note }), t: Date.now(), id });
+  FETCH_ROWS = { ok:true, reports:[
+    sv(5, '【특별한 문제는 없었어요】', 'i1'),                       // 指摘なし（韓）
+    sv(5, '【No particular issue】 Everything is perfect', 'i2'),   // 指摘なし（英）＋自由記述
+    sv(5, '【Không có vấn đề gì đặc biệt】 Ngon', 'i3'),            // 指摘なし（越）
+    sv(5, '【沒有特別的問題】 おいしい', 'i4'),                       // 指摘なし（中）
+    sv(4, '【Food came out slowly】 veryごおd', 'i5'),               // 提供時間
+    sv(2, '【料理がおいしくない、料理提供が遅い】 改善希望', 'i6'),      // 料理＋提供時間（複数）
+    sv(5, '【그 외 문제】 가격이 조금 부담되었습니다', 'i7'),            // その他
+  ]};
+  try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ issue parse threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/survey';
+  const html = registry.app.innerHTML;
+  const barOf = (label) => { const i = html.indexOf('>'+label+'<'); return i < 0 ? '' : html.slice(i, i + 200); };
+  ok(/いただいたご指摘/.test(html), '「いただいたご指摘」の集計が出る');
+  ok(/<b>2<\/b>/.test(barOf('提供時間')), '各国語の「提供が遅い」が提供時間に寄る（英語＋日本語で2件）');
+  ok(/<b>1<\/b>/.test(barOf('料理・味')), '1件で複数の指摘があっても、それぞれ数える');
+  ok(/<b>1<\/b>/.test(barOf('料理・味')), '「Food came out slowly」は提供時間だけに数える（料理・味に混ぜない）');
+  ok(/特にご指摘なし/.test(html) && /<span class="amt">4<\/span>/.test(html), '「特に問題なし」は4か国語ぶんまとめて4件になる');
+  ok(/お客様の声/.test(html), '自由記述の一覧が出る');
+  ok(/改善希望/.test(html) && html.indexOf('改善希望') < html.indexOf('Everything is perfect'), '評価の低い声を先に並べる');
+  ok(!/【/.test(html.slice(html.indexOf('お客様の声'))), '自由記述の表示から【…】のタグを取り除く');
+}
+FETCH_ROWS = { ok:false };
+
+console.log('== 実データにあった回答で、分類の取りこぼしが無いこと ==');
+{
+  // 日本料理世桜 心斎橋（おまかせ）／牛カツ長堀橋の実際の回答から採取
+  const sv = (sat, note, route, id) => ({ kind:'survey', store:S_HIROSHIMA, level:String(sat), item:route||'구글', note: JSON.stringify({ c:'China', f:note }), t: Date.now(), id });
+  FETCH_ROWS = { ok:true, reports:[
+    sv(4, '【上菜速度慢、菜品不好吃、饮品上得慢】', '谷歌', 'j1'),              // 中：提供が遅い＋料理
+    sv(3, '【음식이 맛없었어요、서비스가 좋지 않았어요】', 'NAVER 블로그', 'j2'), // 韓：料理＋接客
+    sv(4, '【それ以外の問題】', 'ネイバーブログ', 'j3'),                        // その他
+    sv(4, '【没有特别的问题】', '谷歌', 'j4'),                                  // 簡体字の「問題なし」
+    sv(5, '【No particular issue】 amazing', 'Other（friend recommendation）', 'j5'), // 紹介
+    sv(4, '', '酒店', 'j6'),                                                    // ホテル紹介
+  ]};
+  try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ real data threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/survey';
+  const html = registry.app.innerHTML;
+  // 「その他」は来店経路のバーにもあるため、セクションを分けて探す
+  const routeSec = html.slice(html.indexOf('来店経路'), html.indexOf('いただいたご指摘'));
+  const issueSec = html.slice(html.indexOf('いただいたご指摘'));
+  const barIn = (sec, label) => { const i = sec.indexOf('>'+label+'<'); return i < 0 ? '' : sec.slice(i, i + 200); };
+  ok(/<b>1<\/b>/.test(barIn(issueSec, '提供時間')), '中国語「上菜速度慢／饮品上得慢」を提供時間として数える');
+  ok(/<b>2<\/b>/.test(barIn(issueSec, '料理・味')), '中国語「菜品不好吃」と韓国語「음식이 맛없었어요」を料理・味として数える');
+  ok(/<b>1<\/b>/.test(barIn(issueSec, '接客')), '韓国語「서비스가 좋지 않았어요」を接客として数える');
+  ok(/<b>1<\/b>/.test(barIn(issueSec, 'その他')), '「それ以外の問題」をその他として数える');
+  ok(/特にご指摘なし/.test(html) && /<span class="amt">2<\/span>/.test(html), '簡体字「没有特别的问题」も「特に問題なし」として数える');
+  ok(/<b>2<\/b>/.test(barIn(routeSec, '紹介・口コミ')), '「friend recommendation」「酒店（ホテル）」を紹介として数える');
+  ok(/その他」の内訳/.test(html) && /NAVER|ネイバー/.test(html), 'ブログ経由は「その他」の内訳に残り、分類の抜けに気づける');
+}
+FETCH_ROWS = { ok:false };
+
 console.log('== 来店経路（本部）の注記が実態と合っている ==');
 {
   // この画面は議事録12-1でメニューから外している（hide）ため、注記はソース上で検証する
