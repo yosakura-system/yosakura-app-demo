@@ -350,5 +350,64 @@ await new Promise(r=>setTimeout(r, 50));
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== 総括表：店舗比較グラフ（本部・全店）==');
+{
+  const S_NAGA = '牛カツ世桜 長堀橋店';
+  const ym = new Date().toISOString().slice(0,7);
+  const d = (n) => ym + '-' + String(n).padStart(2,'0');
+  const sk = (store, day, sales, guests, extra) => ({ kind:'soukatsu', store, note: JSON.stringify(Object.assign({ date:d(day), sales, guests }, extra||{})), t: Date.now()-day*3600e3, id:'sk'+store+day });
+  FETCH_ROWS = { ok:true, reports:[
+    sk(S_HIROSHIMA, 1, 120000, 20), sk(S_HIROSHIMA, 2, 180000, 30), sk(S_HIROSHIMA, 3, 90000, 15),
+    sk(S_NAGA, 1, 60000, 12), sk(S_NAGA, 2, 75000, 15,
+      { net:50000, err:'0', mtd:135000, goal:3000000, foodct:'29', drinkct:'14', rvt:'2', rva:'70', hear:'9', disc:'0', food:'36.5', labor:'23.6', tipt:'21000', tipa:'84541', cancel:'31700', closer:'田中', note:'厨房の床を清掃', order:'豆乳6／お米' }),
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ compare load threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/soukatsu';
+  const html = registry.app.innerHTML;
+  ok(/店舗比較（総括表より）/.test(html), '本部の総括表に店舗比較カードが出る');
+  ok(/class="colchart"/.test(html), '日別カラムチャートが描画される');
+  ok(/class="spark"/.test(html), '店舗行にスパークライン（推移）が出る');
+  ok(/data-storelink="和牛世桜 広島店"/.test(html), '店舗行が個店カルテへのタップ導線を持つ');
+  ok(/data-skday=/.test(html), '棒・日報行から「その日の日報」を開ける');
+  ok(/data-go="\/app\/soukatsu\?p=prev/.test(html) && /m=guests/.test(html), '期間（今月/先月/直近30日）と指標（売上/客数/客単価）の切替がある');
+  ok(html.indexOf('cmp-rank">1<') < html.indexOf('cmp-rank">2<'), 'ランキング順に並ぶ');
+  ok(/全店 売上合計/.test(html), '全店合計のKPIが出る（増田さんご要望①）');
+
+  location.hash = '#/app/soukatsu?m=guests';
+  ok(/class="chip on"[^>]*>客数</.test(registry.app.innerHTML), '指標を客数に切り替えられる');
+
+  console.log('== 個店カルテ（#/store）==');
+  location.hash = '#/store?s=' + encodeURIComponent(S_NAGA);
+  const st = registry.app.innerHTML;
+  ok(/長堀橋店/.test(st), '個店カルテが開く');
+  ok(/曜日別の平均売上/.test(st), '曜日別の平均売上が出る');
+  ok(/最新の日報（全項目）/.test(st) && /レジ締め担当/.test(st) && /田中/.test(st), '売上・客数以外の全項目（口コミ・原価率・締め担当等）が表示される');
+  ok(/厨房の床を清掃/.test(st) && /豆乳6/.test(st), '特記事項・翌日発注も表示される');
+  ok(/入力済みの項目/.test(st) && /18<\/b>/.test(st), '入力済み項目数（アップされた分だけ表示）が分かる');
+  ok(/目標到達/.test(st), '月間目標への到達度が出る');
+  ok(/この店舗の他のデータ/.test(st), 'サーベイ・原価率など他データも同じ画面に出る');
+  ok(/dcell off/.test(st), '未入力の項目は「—」で分かる');
+
+  console.log('== 個店カルテ：権限（自店以外は開けない）==');
+  try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ store detail role threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/store?s=' + encodeURIComponent(S_NAGA);
+  const mg = registry.app.innerHTML;
+  ok(/広島店/.test(mg) && !/長堀橋店/.test(mg), '店長が他店を指定しても自店にフォールバックする');
+  location.hash = '#/app/soukatsu';
+  ok(/この店舗の詳細/.test(registry.app.innerHTML), '単店ロールには個店カルテへのボタンが出る');
+
+  for (const lang of ['en','vi']) {
+    try { run(()=> setLS('hq','all',lang)); } catch(e){ FAIL++; console.log('  ✗ compare '+lang+' threw: '+e.message); }
+    await new Promise(r=>setTimeout(r, 50));
+    location.hash = '#/app/soukatsu';
+    ok(/class="colchart"/.test(registry.app.innerHTML), '['+lang+'] 比較グラフが多言語でも描画される');
+    location.hash = '#/store?s=' + encodeURIComponent(S_HIROSHIMA);
+    ok(registry.app.innerHTML.length > 500, '['+lang+'] 個店カルテが多言語でも描画される');
+  }
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

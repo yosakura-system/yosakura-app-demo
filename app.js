@@ -1225,8 +1225,27 @@
     const vis = visibleStores();
     const recent = getSk().filter(r => vis.includes(r.store)).sort((a,b)=>b.t-a.t).slice(0,6);
     const today = new Date().toISOString().slice(0,10);
+    // 店舗比較（複数店舗を見られる本部・オーナー）／個店サマリー（1店舗）
+    const head = vis.length > 1 ? skCompare(vis, '/app/soukatsu') : (() => {
+      const s = vis[0], ym = todayYm();
+      const rows = getSk().filter(r => r.store === s && ymOfDate(r.date) === ym);
+      const st = skStats(rows);
+      const byDate = {}; rows.forEach(r => { byDate[r.date] = r; });
+      return `
+        <div class="card">
+          <h3>${L({ ja:'今月の推移', en:'This month', vi:'Tháng này' })} — ${esc(storeShort(s))}</h3>
+          <div class="stat-row">
+            <div class="stat"><div class="n">${esc(yenShort(st.sales))}</div><div class="k">${L({ ja:'売上合計', en:'Sales', vi:'Doanh thu' })}</div></div>
+            <div class="stat"><div class="n">${st.guests.toLocaleString('en-US')}</div><div class="k">${L({ ja:'客数合計', en:'Guests', vi:'Khách' })}</div></div>
+            <div class="stat"><div class="n">${st.per ? esc(yenShort(st.per)) : '—'}</div><div class="k">${L({ ja:'客単価', en:'Per guest', vi:'BQ/khách' })}</div></div>
+          </div>
+          ${colChart(daysOfYm(ym), (d) => byDate[d] ? numOr0(byDate[d].sales) : 0, { store:s, title:{ ja:'日別の売上', en:'Daily sales', vi:'Doanh thu theo ngày' } })}
+          <button class="btn-primary" data-storelink="${esc(s)}" style="margin-top:12px">${L({ ja:'この店舗の詳細（カルテ）を見る', en:'Open this store\'s detail', vi:'Xem chi tiết cửa hàng' })}</button>
+        </div>`;
+    })();
     return `
       ${NOTE({ ja:'◆ 実際の日報フォーマットで入力→保存できます（履歴と本部集約に反映）', en:'◆ Enter in the real daily-report format; it saves to history & HQ', vi:'◆ Nhập theo mẫu báo cáo ngày thực tế; lưu vào lịch sử & HQ' })}
+      ${head}
       <div class="card" id="skForm">
         <h3>${L({ ja:'本日の総括表', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
         <div class="sk-grid">
@@ -1270,7 +1289,7 @@
       </div>`;
   };
   const skRow = (r) => `
-    <div class="rep">
+    <div class="rep tapable" data-skday="${esc((r.store||'') + '||' + (r.date||''))}" role="button" tabindex="0">
       <span class="kind b">${esc((r.date||'').slice(5))}</span>
       <div class="body">
         <div class="l1">${yen(r.sales)} ・ ${esc(r.guests||0)}${L({ja:'名',en:' guests',vi:' khách'})}</div>
@@ -1278,6 +1297,277 @@
       </div>
       <span class="amt">${r.guests?yen(Math.round((Number(r.sales)||0)/(Number(r.guests)||1))):'—'}</span>
     </div>`;
+
+  /* ============================================================
+     ⑥-2 総括表のビジュアル化（店舗比較グラフ／個店カルテ）
+     - 色は増やさない：ブランド＝墨の1色。大小は「長さ」で、店舗の区別は「行と名前」で表す
+     - グラフは素のCSS/SVG＝外部ライブラリ不要・オフラインでも動く・端末幅に追従
+     - 個店の行をタップ→個店カルテ（#/store）。日付の行・棒をタップ→その日の日報（全項目）
+     ============================================================ */
+  const numOr0 = (v) => Number(String(v == null ? '' : v).replace(/[^0-9.-]/g, '')) || 0;
+  const hasVal = (v) => v !== undefined && v !== null && String(v).trim() !== '';
+  const yenShort = (n) => {
+    n = Number(n) || 0;
+    if (LANG === 'ja') return n >= 10000 ? '¥' + (n / 10000).toFixed(n >= 1000000 ? 0 : 1) + '万' : yen(n);
+    return n >= 1000 ? '¥' + (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'k' : yen(n);
+  };
+  const todayYm = () => new Date().toISOString().slice(0, 10).slice(0, 7);
+  const ymOfDate = (d) => String(d || '').slice(0, 7);
+  const addMonth = (ym, n) => { const [y, m] = String(ym).split('-').map(Number); if (!y) return ym; const d = new Date(y, m - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const daysOfYm = (ym) => { const [y, m] = String(ym).split('-').map(Number); const n = new Date(y, m, 0).getDate(); const out = []; for (let i = 1; i <= n; i++) out.push(ym + '-' + String(i).padStart(2, '0')); return out; };
+  const ymLabel = (ym) => LANG === 'ja' ? `${String(ym).slice(0, 4)}年${Number(String(ym).slice(5, 7))}月` : String(ym);
+  const WDAYS = [{ja:'日',en:'Sun',vi:'CN'},{ja:'月',en:'Mon',vi:'T2'},{ja:'火',en:'Tue',vi:'T3'},{ja:'水',en:'Wed',vi:'T4'},{ja:'木',en:'Thu',vi:'T5'},{ja:'金',en:'Fri',vi:'T6'},{ja:'土',en:'Sat',vi:'T7'}];
+  const wdOf = (date) => { const d = new Date(String(date) + 'T00:00:00'); return isNaN(d.getTime()) ? 0 : d.getDay(); };
+  const mdLabel = (date) => LANG === 'ja' ? `${Number(String(date).slice(5, 7))}/${Number(String(date).slice(8, 10))}` : String(date).slice(5);
+
+  // 集計（1店舗ぶん／全店合計 どちらにも使う）
+  const skStats = (rows) => {
+    const sales = rows.reduce((s, r) => s + numOr0(r.sales), 0);
+    const guests = rows.reduce((s, r) => s + numOr0(r.guests), 0);
+    return { sales, guests, days: rows.length, per: guests ? Math.round(sales / guests) : 0, avgDay: rows.length ? Math.round(sales / rows.length) : 0 };
+  };
+  const PERIODS = [
+    { v:'this', t:{ ja:'今月', en:'This month', vi:'Tháng này' } },
+    { v:'prev', t:{ ja:'先月', en:'Last month', vi:'Tháng trước' } },
+    { v:'d30',  t:{ ja:'直近30日', en:'Last 30 days', vi:'30 ngày qua' } }
+  ];
+  const daysOfPeriod = (p) => {
+    if (p === 'd30') { const out = []; for (let i = 29; i >= 0; i--) out.push(new Date(Date.now() - i * 864e5).toISOString().slice(0, 10)); return out; }
+    return daysOfYm(p === 'prev' ? addMonth(todayYm(), -1) : todayYm());
+  };
+  const METRICS = [
+    { v:'sales',  t:{ ja:'売上', en:'Sales', vi:'Doanh thu' },        get:(st)=>st.sales,  fmt:(n)=>yen(n) },
+    { v:'guests', t:{ ja:'客数', en:'Guests', vi:'Khách' },           get:(st)=>st.guests, fmt:(n)=>Number(n||0).toLocaleString('en-US') + L({ ja:'名', en:'', vi:'' }) },
+    { v:'per',    t:{ ja:'客単価', en:'Per guest', vi:'BQ/khách' },   get:(st)=>st.per,    fmt:(n)=>yen(n) }
+  ];
+
+  /* --- グラフ部品（墨1色・CSS/SVG） --- */
+  // スパークライン（直近の推移。系列は1本だけ＝凡例不要）
+  function spark(vals, w, h) {
+    w = w || 76; h = h || 22;
+    const v = (vals || []).filter(x => x != null && !isNaN(x));
+    if (v.length < 2) return '';
+    const max = Math.max(...v), min = Math.min(...v), rng = (max - min) || 1;
+    const pts = v.map((x, i) => `${(i / (v.length - 1) * (w - 3) + 1.5).toFixed(1)},${(h - 2.5 - ((x - min) / rng) * (h - 5)).toFixed(1)}`);
+    const last = pts[pts.length - 1].split(',');
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">
+      <polyline points="${pts.join(' ')}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${last[0]}" cy="${last[1]}" r="2.1" fill="currentColor"/></svg>`;
+  }
+  // 日別カラムチャート（1本＝1日。タップでその日の日報を開く）
+  function colChart(days, valueOf, opt) {
+    opt = opt || {};
+    const fmt = opt.fmt || yen;
+    const vals = days.map(d => numOr0(valueOf(d)));
+    const max = Math.max(1, ...vals);
+    const has = vals.filter(v => v > 0);
+    const avg = has.length ? has.reduce((s, v) => s + v, 0) / has.length : 0;
+    const topI = has.length ? vals.indexOf(Math.max(...vals)) : -1;
+    const cols = days.map((d, i) => {
+      const v = vals[i];
+      const h = v > 0 ? Math.max(4, Math.round(v / max * 100)) : 0;
+      const tap = opt.store ? ` data-skday="${esc(opt.store + '||' + d)}"` : '';
+      return `<button class="col${v > 0 ? '' : ' none'}${i === topI ? ' top' : ''}" style="--h:${h}%"${tap} title="${esc(mdLabel(d))}｜${v > 0 ? esc(fmt(v)) : '—'}" aria-label="${esc(mdLabel(d))} ${v > 0 ? esc(fmt(v)) : ''}"><span class="cb"></span></button>`;
+    }).join('');
+    return `
+      <div class="chartbox">
+        <div class="charthead"><span class="ct">${esc(L(opt.title || { ja:'日別の推移', en:'Daily trend', vi:'Theo ngày' }))}</span>
+          ${topI >= 0 ? `<b>${L({ ja:'最高', en:'Peak', vi:'Cao nhất' })} ${esc(mdLabel(days[topI]))}　${esc(fmt(vals[topI]))}</b>` : `<b class="muted">${L({ ja:'データなし', en:'No data', vi:'Chưa có' })}</b>`}
+        </div>
+        <div class="colchart">
+          ${avg > 0 ? `<div class="avgline" style="bottom:${Math.round(avg / max * 100)}%"><span>${L({ ja:'平均', en:'Avg', vi:'TB' })} ${esc(yenShort(avg))}</span></div>` : ''}
+          ${cols}
+        </div>
+        <div class="colaxis"><span>${esc(mdLabel(days[0]))}</span><span>${esc(mdLabel(days[Math.floor(days.length / 2)]))}</span><span>${esc(mdLabel(days[days.length - 1]))}</span></div>
+        ${opt.store ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の日報（全項目）が開きます', en:'Tap a bar to open that day\'s full report', vi:'Chạm vào cột để mở báo cáo ngày đó' })}</div>` : ''}
+      </div>`;
+  }
+  // 横棒（曜日別など・タップなし）
+  const hBar = (label, val, max, sub) => `
+    <div class="bar-row"><div class="bl"><span>${esc(label)}${sub ? ` <span class="muted">${esc(sub)}</span>` : ''}</span><b>${esc(val.txt)}</b></div>
+    <div class="bar-track"><div class="bar-fill" style="width:${max ? Math.round(val.n / max * 100) : 0}%"></div></div></div>`;
+
+  /* --- 店舗比較（本部＝全店／オーナー＝所有店）--- */
+  function skCompare(vis, base) {
+    const params = currentRoute().params;
+    const p = PERIODS.some(x => x.v === params.get('p')) ? params.get('p') : 'this';
+    const mv = METRICS.some(x => x.v === params.get('m')) ? params.get('m') : 'sales';
+    const metric = METRICS.find(x => x.v === mv);
+    const days = daysOfPeriod(p);
+    const from = days[0], to = days[days.length - 1];
+    const all = getSk().filter(r => vis.includes(r.store) && r.date >= from && r.date <= to);
+    const total = skStats(all);
+    const spDays = days.slice(-14);
+    const rows = vis.map(s => {
+      const rs = all.filter(r => r.store === s);
+      const st = skStats(rs);
+      const byD = {}; rs.forEach(r => { byD[r.date] = numOr0(r.sales) + (byD[r.date] || 0); });
+      return { store: s, st, val: metric.get(st), sp: spDays.map(d => byD[d] || 0) };
+    }).sort((a, b) => b.val - a.val);
+    const max = Math.max(1, ...rows.map(r => r.val));
+    const chip = (o, key, cur) => `<button class="chip${o.v === cur ? ' on' : ''}" data-go="${esc(base)}?p=${key === 'p' ? o.v : p}&m=${key === 'm' ? o.v : mv}">${esc(L(o.t))}</button>`;
+    const totalByDay = (d) => all.filter(r => r.date === d).reduce((s, r) => s + numOr0(r.sales), 0);
+    return `
+      <div class="card">
+        <h3>${L({ ja:'店舗比較（総括表より）', en:'Store comparison (from daily reports)', vi:'So sánh cửa hàng' })}</h3>
+        <div class="seg-chips">${PERIODS.map(o => chip(o, 'p', p)).join('')}</div>
+        <div class="stat-row">
+          <div class="stat"><div class="n">${esc(yenShort(total.sales))}</div><div class="k">${L({ ja:'全店 売上合計', en:'Total sales', vi:'Tổng doanh thu' })}</div></div>
+          <div class="stat"><div class="n">${total.guests.toLocaleString('en-US')}</div><div class="k">${L({ ja:'全店 客数', en:'Total guests', vi:'Tổng khách' })}</div></div>
+          <div class="stat"><div class="n">${esc(yenShort(total.per))}</div><div class="k">${L({ ja:'平均 客単価', en:'Avg / guest', vi:'BQ/khách' })}</div></div>
+        </div>
+        ${colChart(days, totalByDay, { title:{ ja:'全店合計の日別売上', en:'Daily sales (all stores)', vi:'Doanh thu ngày (toàn bộ)' } })}
+        <div class="idlabel" style="margin-top:16px">${L({ ja:'ランキング（並べ替え）', en:'Ranking', vi:'Xếp hạng' })}</div>
+        <div class="seg-chips">${METRICS.map(o => chip(o, 'm', mv)).join('')}</div>
+        ${rows.map((r, i) => `
+          <button class="cmp" data-storelink="${esc(r.store)}">
+            <div class="cmp-top"><span class="cmp-rank">${i + 1}</span><span class="cmp-name">${esc(storeShort(r.store))}</span><b class="cmp-val">${r.st.days ? esc(metric.fmt(r.val)) : '<span class="muted">' + L({ ja:'未入力', en:'No data', vi:'Chưa nhập' }) + '</span>'}</b></div>
+            <div class="cmp-bar"><div class="cmp-fill" style="width:${Math.round(r.val / max * 100)}%"></div></div>
+            <div class="cmp-sub"><span>${L({ ja:'入力', en:'Days', vi:'Ngày' })} ${r.st.days}${L({ ja:'日', en:'d', vi:'n' })}${r.st.days ? ` ・ ${L({ ja:'客数', en:'Guests', vi:'Khách' })} ${r.st.guests} ・ ${L({ ja:'客単価', en:'Per', vi:'BQ' })} ${esc(yenShort(r.st.per))}` : ''}</span>${spark(r.sp)}</div>
+          </button>`).join('')}
+        <div class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 店舗をタップすると、その店の詳細（カルテ）が開きます', en:'Tap a store to open its detail page', vi:'Chạm vào cửa hàng để xem chi tiết' })}</div>
+      </div>`;
+  }
+
+  /* --- 個店カルテ（#/store?s=店舗&ym=YYYY-MM）--- */
+  const SK_FIELDS = [
+    { k:'sales',   t:{ ja:'当日売上', en:'Sales', vi:'Doanh thu' },              f:'yen' },
+    { k:'guests',  t:{ ja:'客数', en:'Guests', vi:'Khách' },                     f:'num' },
+    { k:'net',     t:{ ja:'純売上', en:'Net sales', vi:'DT thuần' },             f:'yen' },
+    { k:'err',     t:{ ja:'レジ誤差', en:'Register error', vi:'Sai lệch quầy' }, f:'yen' },
+    { k:'mtd',     t:{ ja:'月累計売上', en:'Month-to-date', vi:'Lũy kế tháng' }, f:'yen' },
+    { k:'goal',    t:{ ja:'売上目標（月）', en:'Monthly goal', vi:'Mục tiêu tháng' }, f:'yen' },
+    { k:'foodct',  t:{ ja:'フード数', en:'Food items', vi:'Số món ăn' },         f:'num' },
+    { k:'drinkct', t:{ ja:'飲料数', en:'Drink items', vi:'Số đồ uống' },         f:'num' },
+    { k:'rvt',     t:{ ja:'口コミ 当日', en:'Reviews today', vi:'Đánh giá nay' }, f:'num' },
+    { k:'rva',     t:{ ja:'口コミ 累計', en:'Reviews total', vi:'Đánh giá tổng' }, f:'num' },
+    { k:'hear',    t:{ ja:'ヒアリング 当日', en:'Hearings today', vi:'Phỏng vấn nay' }, f:'num' },
+    { k:'disc',    t:{ ja:'値引き', en:'Discount', vi:'Giảm giá' },              f:'yen' },
+    { k:'food',    t:{ ja:'原価率', en:'Food cost', vi:'Giá vốn' },              f:'pct' },
+    { k:'labor',   t:{ ja:'人件費率', en:'Labor cost', vi:'Nhân sự' },           f:'pct' },
+    { k:'tipt',    t:{ ja:'チップ 当日', en:'Tips today', vi:'Tip nay' },        f:'yen' },
+    { k:'tipa',    t:{ ja:'チップ 累計', en:'Tips total', vi:'Tip tổng' },       f:'yen' },
+    { k:'cancel',  t:{ ja:'キャンセル 累計', en:'Cancel total', vi:'Hủy tổng' }, f:'yen' },
+    { k:'closer',  t:{ ja:'レジ締め担当', en:'Cash-up by', vi:'Người chốt sổ' }, f:'txt' }
+  ];
+  const skFmtVal = (f, v) => f === 'yen' ? yen(numOr0(v)) : f === 'pct' ? (numOr0(v).toFixed(1) + '%') : f === 'num' ? numOr0(v).toLocaleString('en-US') : esc(String(v));
+  // 日報1件の全項目（未入力は「—」＝アップされたら自動で埋まる）
+  function skFieldGrid(r) {
+    const filled = SK_FIELDS.filter(f => hasVal(r[f.k])).length;
+    const per = numOr0(r.guests) ? Math.round(numOr0(r.sales) / numOr0(r.guests)) : 0;
+    const fl = (hasVal(r.food) || hasVal(r.labor)) ? (numOr0(r.food) + numOr0(r.labor)).toFixed(1) + '%' : '';
+    return `
+      <div class="fillhead"><span>${L({ ja:'入力済みの項目', en:'Filled items', vi:'Mục đã nhập' })}</span><b>${filled} / ${SK_FIELDS.length}</b></div>
+      <div class="fillbar"><i style="width:${Math.round(filled / SK_FIELDS.length * 100)}%"></i></div>
+      <div class="stat-row" style="margin-top:12px">
+        <div class="stat"><div class="n">${esc(yenShort(numOr0(r.sales)))}</div><div class="k">${L({ ja:'売上', en:'Sales', vi:'DT' })}</div></div>
+        <div class="stat"><div class="n">${numOr0(r.guests)}</div><div class="k">${L({ ja:'客数', en:'Guests', vi:'Khách' })}</div></div>
+        <div class="stat"><div class="n">${per ? esc(yenShort(per)) : '—'}</div><div class="k">${L({ ja:'客単価', en:'Per guest', vi:'BQ/khách' })}</div></div>
+      </div>
+      ${fl ? `<p class="hint" style="display:block">FL ${esc(fl)}（${L({ ja:'原価', en:'Food', vi:'Giá vốn' })} ${esc(numOr0(r.food).toFixed(1))}% ＋ ${L({ ja:'人件費', en:'Labor', vi:'Nhân sự' })} ${esc(numOr0(r.labor).toFixed(1))}%）</p>` : ''}
+      <div class="dgrid">
+        ${SK_FIELDS.map(f => `<div class="dcell${hasVal(r[f.k]) ? '' : ' off'}"><span class="dk">${esc(L(f.t))}</span><b class="dv">${hasVal(r[f.k]) ? skFmtVal(f.f, r[f.k]) : '—'}</b></div>`).join('')}
+      </div>
+      ${hasVal(r.note) ? `<div class="idlabel" style="margin-top:14px">${L({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' })}</div><p class="dtext">${esc(r.note)}</p>` : ''}
+      ${hasVal(r.order) ? `<div class="idlabel">${L({ ja:'翌日の食材発注', en:'Tomorrow order', vi:'Đặt NL ngày mai' })}</div><p class="dtext">${esc(r.order)}</p>` : ''}
+      <p class="hint" style="display:block;margin-top:10px">${L({ ja:'※「—」は未入力の項目です。総括表に入力されると、ここに自動で表示されます。', en:'“—” means not entered yet; it fills in automatically once the daily report is submitted.', vi:'“—” là chưa nhập; sẽ tự hiển thị khi báo cáo được nộp.' })}</p>`;
+  }
+  // その日の日報を開く（シート）
+  function openSkDay(key) {
+    const i = String(key).lastIndexOf('||');
+    const store = String(key).slice(0, i), date = String(key).slice(i + 2);
+    const r = getSk().filter(x => x.store === store && x.date === date).sort((a, b) => b.t - a.t)[0];
+    const mask = el(`<div class="sheet-mask"><div class="sheet">
+      <div class="grip"></div>
+      <h3>${esc(mdLabel(date))}（${esc(L(WDAYS[wdOf(date)]))}）　${esc(storeShort(store))}</h3>
+      <div class="sub">${esc(store)}</div>
+      ${r ? skFieldGrid(r) : `<p class="muted">${L({ ja:'この日はまだ総括表が提出されていません。', en:'No daily report submitted for this day yet.', vi:'Chưa có báo cáo cho ngày này.' })}</p>`}
+      <button class="btn-primary" data-close="1" style="margin-top:14px">${L({ ja:'閉じる', en:'Close', vi:'Đóng' })}</button>
+    </div></div>`);
+    mask.addEventListener('click', (e) => { if (e.target === mask || (e.target.closest && e.target.closest('[data-close]'))) mask.remove(); });
+    document.body.appendChild(mask);
+  }
+
+  function viewStore(sParam, ymParam) {
+    const vis = visibleStores();
+    const store = vis.includes(sParam) ? sParam : (vis[0] || STORES[0]);
+    const ym = /^\d{4}-\d{2}$/.test(ymParam || '') ? ymParam : todayYm();
+    const all = getSk().filter(r => r.store === store);
+    const rows = all.filter(r => ymOfDate(r.date) === ym).sort((a, b) => a.date < b.date ? -1 : 1);
+    const st = skStats(rows);
+    const pst = skStats(all.filter(r => ymOfDate(r.date) === addMonth(ym, -1)));
+    const byDate = {}; rows.forEach(r => { byDate[r.date] = r; });
+    const days = daysOfYm(ym);
+    const latest = rows[rows.length - 1];
+    const goal = latest ? numOr0(latest.goal) : 0;
+    const mtd = latest && numOr0(latest.mtd) ? numOr0(latest.mtd) : st.sales;
+    const delta = (cur, prv) => !prv ? '' : `<span class="delta ${cur >= prv ? 'up' : 'dn'}">${(Math.abs((cur - prv) / prv * 100)).toFixed(1)}%</span>`;
+    const wd = WDAYS.map((w, i) => { const rs = rows.filter(r => wdOf(r.date) === i); const s = rs.reduce((a, r) => a + numOr0(r.sales), 0); return { w, n: rs.length, avg: rs.length ? Math.round(s / rs.length) : 0 }; });
+    const wdMax = Math.max(1, ...wd.map(x => x.avg));
+    const sv = getSurvey().filter(r => r.store === store);
+    const svAvg = sv.length ? sv.reduce((s, r) => s + (Number(r.sat) || 0), 0) / sv.length : 0;
+    const svLow = sv.filter(r => (Number(r.sat) || 0) <= 2).length;
+    const mo = getMonthly().find(r => r.store === store && r.ym === ym);
+    const moC = mo ? plCalc(mo) : null;
+    const inYm = (t) => new Date(Number(t) || 0).toISOString().slice(0, 7) === ym;
+    const kzN = getKz().filter(r => r.store === store && inYm(r.t)).length;
+    const fdN = getReports().filter(r => r.store === store && inYm(r.t)).length;
+    const nav = (n) => `/store?s=${encodeURIComponent(store)}&ym=${addMonth(ym, n)}`;
+    const canNext = ym < todayYm();
+    const inner = `
+      <main class="screen">
+        <div class="appbar"><button class="back" data-go="/app/soukatsu">${svg('back')}${L({ ja:'総括表', en:'Daily reports', vi:'Báo cáo' })}</button></div>
+        <div class="app-head">
+          <div class="ico">${svg('table')}</div>
+          <div><h1>${esc(storeShort(store))}</h1><p>${esc(store)}${storeGyotai(store) ? '　/　' + esc(gyotaiLabel(storeGyotai(store))) : ''}</p></div>
+        </div>
+        ${NOTE({ ja:'◆ 総括表（日報）に入力された内容を、この店舗ぶんだけまとめています', en:'◆ Everything submitted in this store\'s daily reports, in one place', vi:'◆ Tổng hợp báo cáo ngày của cửa hàng này' })}
+        <div class="card">
+          <div class="mnav">
+            <button class="chip" data-go="${esc(nav(-1))}">‹</button>
+            <b>${esc(ymLabel(ym))}</b>
+            <button class="chip${canNext ? '' : ' off'}"${canNext ? ` data-go="${esc(nav(1))}"` : ' disabled'}>›</button>
+          </div>
+          <div class="stat-row">
+            <div class="stat"><div class="n">${esc(yenShort(st.sales))}</div><div class="k">${L({ ja:'売上合計', en:'Sales', vi:'Doanh thu' })} ${delta(st.sales, pst.sales)}</div></div>
+            <div class="stat"><div class="n">${st.guests.toLocaleString('en-US')}</div><div class="k">${L({ ja:'客数合計', en:'Guests', vi:'Khách' })} ${delta(st.guests, pst.guests)}</div></div>
+            <div class="stat"><div class="n">${st.per ? esc(yenShort(st.per)) : '—'}</div><div class="k">${L({ ja:'客単価', en:'Per guest', vi:'BQ/khách' })} ${delta(st.per, pst.per)}</div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat"><div class="n">${st.days}</div><div class="k">${L({ ja:'入力日数', en:'Days entered', vi:'Số ngày' })}</div></div>
+            <div class="stat"><div class="n">${st.avgDay ? esc(yenShort(st.avgDay)) : '—'}</div><div class="k">${L({ ja:'1日平均', en:'Avg / day', vi:'TB/ngày' })}</div></div>
+            <div class="stat"><div class="n">${goal ? Math.round(mtd / goal * 100) + '%' : '—'}</div><div class="k">${L({ ja:'目標到達', en:'To goal', vi:'Đạt mục tiêu' })}</div></div>
+          </div>
+          ${goal ? `<div class="fillhead"><span>${L({ ja:'月間目標', en:'Monthly goal', vi:'Mục tiêu tháng' })} ${esc(yen(goal))}</span><b>${esc(yen(mtd))}</b></div><div class="fillbar"><i style="width:${Math.min(100, Math.round(mtd / goal * 100))}%"></i></div>` : ''}
+          ${colChart(days, (d) => byDate[d] ? numOr0(byDate[d].sales) : 0, { store, title:{ ja:'日別の売上', en:'Daily sales', vi:'Doanh thu theo ngày' } })}
+        </div>
+        <div class="card">
+          <h3>${L({ ja:'曜日別の平均売上', en:'Average sales by weekday', vi:'Doanh thu TB theo thứ' })}</h3>
+          ${st.days ? wd.map(x => hBar(L(x.w), { n: x.avg, txt: x.avg ? yenShort(x.avg) : '—' }, wdMax, x.n ? `（${x.n}${L({ ja:'日', en:'d', vi:'n' })}）` : '')).join('')
+            : `<div class="muted">${L({ ja:'この月はまだ入力がありません', en:'No entries this month', vi:'Chưa có dữ liệu tháng này' })}</div>`}
+        </div>
+        <div class="card">
+          <h3>${L({ ja:'最新の日報（全項目）', en:'Latest daily report (all fields)', vi:'Báo cáo mới nhất (tất cả)' })}${latest ? `　<span class="muted">${esc(mdLabel(latest.date))}</span>` : ''}</h3>
+          ${latest ? skFieldGrid(latest) : `<p class="muted">${L({ ja:'この月の日報がまだありません。提出されると、売上・客数のほか、口コミ・ヒアリング・原価率・チップ・発注など全項目がここに表示されます。', en:'No report yet this month. Once submitted, all fields appear here.', vi:'Chưa có báo cáo tháng này.' })}</p>`}
+        </div>
+        <div class="card">
+          <h3>${L({ ja:'この店舗の他のデータ', en:'Other data for this store', vi:'Dữ liệu khác' })}</h3>
+          <div class="dgrid">
+            <div class="dcell${sv.length ? '' : ' off'}"><span class="dk">${L({ ja:'サーベイ 平均満足度', en:'Survey avg.', vi:'Khảo sát TB' })}</span><b class="dv">${sv.length ? '★' + svAvg.toFixed(1) : '—'}</b></div>
+            <div class="dcell${sv.length ? '' : ' off'}"><span class="dk">${L({ ja:'サーベイ 回答数／低評価', en:'Responses / low', vi:'Phản hồi / thấp' })}</span><b class="dv">${sv.length ? sv.length + ' / ' + svLow : '—'}</b></div>
+            <div class="dcell${moC ? '' : ' off'}"><span class="dk">${L({ ja:'月次 原価率', en:'Monthly cost ratio', vi:'Giá vốn tháng' })}</span><b class="dv">${moC ? moC.costRate.toFixed(1) + '%' : '—'}</b></div>
+            <div class="dcell${moC ? '' : ' off'}"><span class="dk">${L({ ja:'月次 粗利', en:'Gross profit', vi:'Lãi gộp' })}</span><b class="dv">${moC ? esc(yenShort(moC.gross)) : '—'}</b></div>
+            <div class="dcell${kzN ? '' : ' off'}"><span class="dk">${L({ ja:'気づきの報告', en:'Insights', vi:'Ghi nhận' })}</span><b class="dv">${kzN ? kzN + L({ ja:'件', en:'', vi:'' }) : '—'}</b></div>
+            <div class="dcell${fdN ? '' : ' off'}"><span class="dk">${L({ ja:'食べ残し報告', en:'Leftover reports', vi:'Báo cáo đồ thừa' })}</span><b class="dv">${fdN ? fdN + L({ ja:'件', en:'', vi:'' }) : '—'}</b></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>${L({ ja:'日別の一覧', en:'By day', vi:'Theo ngày' })}</h3>
+          ${rows.length ? rows.slice().reverse().map(skRow).join('') : `<div class="muted">${L({ ja:'まだありません', en:'None yet', vi:'Chưa có' })}</div>`}
+        </div>
+      </main>`;
+    return shell(inner, 'genba');
+  }
 
   /* ⑦ 開業スケジュール D-90（モック）*/
   const TL = [
@@ -1370,7 +1660,8 @@
         if (!sk.length) return '';
         const latest = {}; sk.slice().sort((a,b)=>a.t-b.t).forEach(r => latest[r.store] = r);
         const rows = Object.values(latest).sort((a,b)=>b.t-a.t).slice(0,6);
-        return `<div class="card"><h3>${L({ ja:'最新の総括表（店舗別）', en:'Latest daily report by store', vi:'Báo cáo mới theo cửa hàng' })}</h3>${rows.map(skRow).join('')}</div>`;
+        return `${vis.length > 1 ? skCompare(vis, '/app/dashboard') : ''}
+          <div class="card"><h3>${L({ ja:'最新の総括表（店舗別）', en:'Latest daily report by store', vi:'Báo cáo mới theo cửa hàng' })}</h3>${rows.map(skRow).join('')}</div>`;
       })()}
       ${(() => {
         const kz = getKz().filter(r => vis.includes(r.store));
@@ -2741,6 +3032,7 @@
     const { path, params } = currentRoute();
     let html;
     if (path.startsWith('/app/')) html = viewApp(path.slice(5));
+    else if (path === '/store') html = viewStore(params.get('s') || '', params.get('ym') || ''); // 個店カルテ
     else if (path === '/home') html = viewHome(params.get('tab') || 'home');
     else html = viewHome('home');
     $app.innerHTML = html;
@@ -2760,6 +3052,10 @@
     if (byId('backBtn')) byId('backBtn').onclick = () => go('/home');
 
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab === 'home' ? '/home' : `/home?tab=${b.dataset.tab}`));
+    // 総括表のビジュアル：期間/指標の切替・個店カルテ・その日の日報
+    document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
+    document.querySelectorAll('[data-storelink]').forEach(b => b.onclick = () => go(`/store?s=${encodeURIComponent(b.dataset.storelink)}`));
+    document.querySelectorAll('[data-skday]').forEach(b => b.onclick = () => openSkDay(b.dataset.skday));
     document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { if (b.dataset.open === 'guide') openTour(0); else go(`/app/${b.dataset.open}`); });
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
     document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'この画面は準備中です（順次追加します）', en:'This screen is in preparation', vi:'Màn hình đang chuẩn bị' })));
