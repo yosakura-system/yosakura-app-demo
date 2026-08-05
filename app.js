@@ -92,7 +92,7 @@
 
   /* ---------- 役割（権限）---------- */
   const ROLES = {
-    staff:   { mark: '員', label: { ja:'スタッフ', en:'Staff', vi:'Nhân viên' },       desc: { ja:'加盟店・直営店の現場スタッフ', en:'On-site staff of stores', vi:'Nhân viên tại cửa hàng' } },
+    staff:   { mark: '店', label: { ja:'店舗iPad', en:'Store iPad', vi:'iPad cửa hàng' }, desc: { ja:'店舗の共用iPad（現場スタッフが使用）', en:'Shared store iPad (used by staff)', vi:'iPad chung (nhân viên dùng)' } },
     manager: { mark: '長', label: { ja:'店長', en:'Manager', vi:'Cửa hàng trưởng' },   desc: { ja:'店舗の店長・管理者', en:'Store manager', vi:'Quản lý cửa hàng' } },
     owner:   { mark: '主', label: { ja:'加盟店オーナー', en:'Franchisee', vi:'Chủ nhượng quyền' }, desc: { ja:'加盟店のオーナー様', en:'Franchise store owner', vi:'Chủ cửa hàng nhượng quyền' } },
     hq:      { mark: '本', label: { ja:'本部', en:'HQ', vi:'Bộ phận chính' },            desc: { ja:'世桜 本部（経営・高原社長ら）', en:'YOSAKURA headquarters', vi:'Trụ sở YOSAKURA' } }
@@ -168,9 +168,9 @@
     { id:'guide', group:'other', icon:'play', roles:['staff','manager','owner','hq'],
       name:{ ja:'使い方ガイド', en:'How to use', vi:'Hướng dẫn' },
       desc:{ ja:'このアプリの使い方（1分）', en:'Quick app guide (1 min)', vi:'Hướng dẫn nhanh (1 phút)' } },
-    { id:'soukatsu', group:'storeops', icon:'table', roles:['manager','owner','hq'],
-      name:{ ja:'総括表の入力', en:'Daily Summary', vi:'Tổng kết ngày' },
-      desc:{ ja:'日次の売上・客数・分析', en:'Daily sales, guests, review', vi:'Doanh thu, khách, phân tích' } },
+    { id:'soukatsu', group:'storeops', icon:'table', roles:['staff','manager','owner','hq'], // 日報は店舗iPad（現場）でも入力可（上原さんご要望）
+      name:{ ja:'総括表の入力（日報）', en:'Daily Summary', vi:'Tổng kết ngày' },
+      desc:{ ja:'日次の売上・客数・分析（店舗iPadでも入力可）', en:'Daily sales, guests, review', vi:'Doanh thu, khách, phân tích' } },
     { id:'mtg', group:'storeops', icon:'mtg', roles:['manager','owner','hq'],
       name:{ ja:'月例MTG', en:'Monthly Meeting', vi:'Họp hàng tháng' },
       desc:{ ja:'各店の定例MTGと議題を一元管理', en:'All stores meetings & agendas', vi:'Lịch họp & nội dung mọi cửa hàng' } },
@@ -313,7 +313,7 @@
       b:{ ja:'店舗の報告から本部の管理まで、これ1つで。役割と言語で表示が変わります。', en:'From store reports to HQ management, all in one. The view changes by role and language.', vi:'Từ báo cáo cửa hàng đến quản lý HQ, tất cả trong một. Hiển thị đổi theo vai trò và ngôn ngữ.' } },
     { icon:'hr',
       t:{ ja:'役割・言語を切り替え', en:'Switch role & language', vi:'Đổi vai trò & ngôn ngữ' },
-      b:{ ja:'右上のチップで役割（スタッフ／店長／加盟店オーナー／本部）を、🌐で言語（日・英・越）を切替。見える画面が変わります。', en:'Use the top-right chip to switch role, and 🌐 to switch language (JP/EN/VI). Visible screens change.', vi:'Dùng chip góc trên phải để đổi vai trò, và 🌐 để đổi ngôn ngữ (JP/EN/VI). Màn hình sẽ thay đổi.' } },
+      b:{ ja:'右上のチップで役割（店舗iPad／店長／加盟店オーナー／本部）を、🌐で言語（日・英・越）を切替。見える画面が変わります。', en:'Use the top-right chip to switch role, and 🌐 to switch language (JP/EN/VI). Visible screens change.', vi:'Dùng chip góc trên phải để đổi vai trò, và 🌐 để đổi ngôn ngữ (JP/EN/VI). Màn hình sẽ thay đổi.' } },
     { icon:'food',
       t:{ ja:'食べ残し・食材ロスを報告', en:'Report food waste & loss', vi:'Báo cáo thức ăn thừa & hao hụt' },
       b:{ ja:'「報告」から入力。写真も複数枚OK。送信すると本部にすぐ届きます。', en:'Fill it from “Report”. Multiple photos OK. On submit it reaches HQ instantly.', vi:'Nhập từ “Báo cáo”. Nhiều ảnh OK. Gửi xong sẽ đến HQ ngay.' } },
@@ -1711,7 +1711,7 @@
       return `<div class="sheet">
         <div class="grip"></div>
         <h3>${L({ ja:'表示を切り替える', en:'Switch view', vi:'Đổi hiển thị' })}<span class="demo-tag">${L({ja:'確認用',en:'For review',vi:'Để xem'})}</span></h3>
-        <div class="sub">${L({ ja:'本部は全店を閲覧できます。スタッフ・店長・加盟店オーナーは自分の店舗のみ（数値なども自店だけ）。', en:'HQ sees all stores. Staff, managers and franchisees see only their own store, including numbers.', vi:'HQ xem mọi cửa hàng. Nhân viên/quản lý/chủ chỉ xem cửa hàng của mình, kể cả số liệu.' })}</div>
+        <div class="sub">${L({ ja:'本部は全店を閲覧できます。店舗iPad・店長・加盟店オーナーは自分の店舗のみ（数値なども自店だけ）。', en:'HQ sees all stores. Store iPad, managers and franchisees see only their own store, including numbers.', vi:'HQ xem mọi cửa hàng. iPad cửa hàng/quản lý/chủ chỉ xem cửa hàng của mình.' })}</div>
         <div class="idlabel">${L({ ja:'役割', en:'Role', vi:'Vai trò' })}</div>
         ${Object.entries(ROLES).map(([k,v])=>`
           <button class="role-opt ${k===role?'on':''}" data-role="${k}">
