@@ -1515,7 +1515,10 @@
     const all = getSk().filter(r => r.store === store);
     const rows = all.filter(r => ymOfDate(r.date) === ym).sort((a, b) => a.date < b.date ? -1 : 1);
     const st = skStats(rows);
-    const pst = skStats(all.filter(r => ymOfDate(r.date) === addMonth(ym, -1)));
+    // 前月比：今月は途中なので「前月の同じ日数まで」と比べる（4日分と31日分を比べない）
+    const isCur = ym === todayYm();
+    const cut = isCur ? Number(todayKey().slice(8, 10)) : 31;
+    const pst = skStats(all.filter(r => ymOfDate(r.date) === addMonth(ym, -1) && Number(String(r.date).slice(8, 10)) <= cut));
     const byDate = {}; rows.forEach(r => { byDate[r.date] = r; });
     const days = daysOfYm(ym);
     const latest = rows[rows.length - 1];
@@ -1558,6 +1561,7 @@
             <div class="stat"><div class="n">${st.avgDay ? esc(yenShort(st.avgDay)) : '—'}</div><div class="k">${L({ ja:'1日平均', en:'Avg / day', vi:'TB/ngày' })}</div></div>
             <div class="stat"><div class="n">${goal ? Math.round(mtd / goal * 100) + '%' : '—'}</div><div class="k">${L({ ja:'目標到達', en:'To goal', vi:'Đạt mục tiêu' })}</div></div>
           </div>
+          ${pst.days ? `<p class="hint" style="display:block;margin:-4px 0 10px">${isCur ? L({ ja:'※ 前月比は「前月の同じ日（1〜' + cut + '日）まで」と比べています', en:'Month-over-month compares the same day range of last month', vi:'So sánh cùng khoảng ngày của tháng trước' }) : L({ ja:'※ 前月比は前月の実績と比べています', en:'Compared with last month', vi:'So với tháng trước' })}</p>` : ''}
           ${goal ? `<div class="fillhead"><span>${L({ ja:'月間目標', en:'Monthly goal', vi:'Mục tiêu tháng' })} ${esc(yen(goal))}</span><b>${esc(yen(mtd))}</b></div><div class="fillbar"><i style="width:${Math.min(100, Math.round(mtd / goal * 100))}%"></i></div>` : ''}
           ${colChart(days, (d) => byDate[d] ? numOr0(byDate[d].sales) : 0, { store, title:{ ja:'日別の売上', en:'Daily sales', vi:'Doanh thu theo ngày' } })}
         </div>
