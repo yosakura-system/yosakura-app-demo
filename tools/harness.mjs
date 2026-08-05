@@ -465,5 +465,76 @@ console.log('== 日報＝前日分を翌日12時まで（本部の実運用に�
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== 提出者名の記録（本部決定A-4：後から誰が出したか分かるように）==');
+{
+  const ymd = (d) => d.toLocaleDateString('en-CA');
+  const today = ymd(new Date());
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date: today, sales: 250000, guests: 40, by:'店長（山田）' }), t: Date.now(), id:'b1' },
+    { kind:'subrec', store:S_HIROSHIMA, item:'openphoto|' + today, note: JSON.stringify({ by:'店舗iPad（佐藤）', role:'staff' }), photos:[], t: Date.now(), id:'b2' },
+  ]};
+  try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ submitter load threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/store?s=' + encodeURIComponent(S_HIROSHIMA);
+  const st = registry.app.innerHTML;
+  ok(/提出者/.test(st) && /店長（山田）/.test(st), '日報の全項目に提出者が表示される');
+  ok(/18<\/b>/.test(st), '提出者は日報の入力項目数（分母）に混ぜない');
+
+  location.hash = '#/app/history';
+  const hist = registry.app.innerHTML;
+  ok(/提出者/.test(hist) && /佐藤/.test(hist), '提出履歴にその日の提出者が出る');
+  // distribute() に受け皿が無いと、バックエンドに届いている提出が同期のたびにローカルから消える
+  ok(/オープン写真✓/.test(hist), '同期で戻ってきたオープン写真の提出が「提出済」のまま残る');
+
+  location.hash = '#/app/openphoto';
+  const op = registry.app.innerHTML;
+  ok(/佐藤/.test(op), 'オープン写真の一覧に提出者が出る');
+
+  // 名前が未登録でも提出は妨げない（役割だけが残る）
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date: today, sales: 250000, guests: 40, by:'店長' }), t: Date.now(), id:'b3' },
+  ]};
+  const st2 = renderView('soukatsu','manager',S_HIROSHIMA,'ja');
+  ok(st2.length > 500, '提出者名が未登録でも画面は壊れない');
+}
+FETCH_ROWS = { ok:false };
+
+console.log('== 月間目標の設定（個店カルテの「目標到達」に入力口を与える）==');
+{
+  const ymd = (d) => d.toLocaleDateString('en-CA');
+  const today = ymd(new Date());
+  const ym = today.slice(0, 7);
+  const pl = renderView('pl','manager',S_HIROSHIMA,'ja');
+  ok(/id="pl_goal"/.test(pl), '「数値・原価率」に売上目標の入力欄がある');
+
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'monthly', store:S_HIROSHIMA, note: JSON.stringify({ ym, sales: 0, purchase: 0, open: 0, close: 0, goal: 1000000, by:'本部（増田）' }), t: Date.now(), id:'g1' },
+    { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date: today, sales: 250000, guests: 40 }), t: Date.now(), id:'g2' },
+  ]};
+  try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ goal load threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/store?s=' + encodeURIComponent(S_HIROSHIMA);
+  const st = registry.app.innerHTML;
+  ok(/25%/.test(st), '本部が設定した月間目標から到達度が計算される');
+  ok(/月間目標/.test(st) && /fillbar/.test(st), '目標に対する進捗バーが出る');
+
+  // 日報側の目標しか無い場合は従来どおりそちらを使う（後方互換）
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date: today, sales: 250000, guests: 40, goal: 500000 }), t: Date.now(), id:'g3' },
+  ]};
+  try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ goal fallback threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/store?s=' + encodeURIComponent(S_HIROSHIMA);
+  ok(/50%/.test(registry.app.innerHTML), '本部の設定が無ければ日報に入力された目標を使う');
+}
+FETCH_ROWS = { ok:false };
+
+console.log('== 来店経路（本部）の注記が実態と合っている ==');
+{
+  // この画面は議事録12-1でメニューから外している（hide）ため、注記はソース上で検証する
+  ok(!/共有同期の設定が必要/.test(code), '「集約には共有同期の設定が必要」という古い注記が消えている');
+  ok(/記録された内容は全端末で共有され/.test(code), '実態どおり「全端末で共有され自動で集約される」と説明している');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
