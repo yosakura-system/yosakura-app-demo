@@ -409,5 +409,32 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== 総括表の正規化（未来日付・二重提出・取消）==');
+{
+  const ymd = (d) => d.toLocaleDateString('en-CA');
+  const today = ymd(new Date());
+  const future = ymd(new Date(Date.now() + 6 * 864e5));
+  const yest = ymd(new Date(Date.now() - 864e5));
+  const two = ymd(new Date(Date.now() - 2 * 864e5));
+  const sk = (day, sales, guests, t, id) => ({ kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date: day, sales, guests }), t, id });
+  FETCH_ROWS = { ok:true, reports:[
+    sk(future, 1, 0, Date.now() + 6 * 864e5, 'f1'),          // 未来日付＝無効
+    sk(yest, 111111, 11, 1000, 'd1'),                        // 同じ日の古い提出
+    sk(yest, 222222, 22, 2000, 'd2'),                        // 同じ日の新しい提出＝こちらが正
+    sk(two, 99999, 9, 1000, 'c1'),                           // 誤り
+    sk(two, 0, 0, 2000, 'c2'),                               // 売上0＝取消
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ skClean load threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/store?s=' + encodeURIComponent(S_HIROSHIMA);
+  const html = registry.app.innerHTML;
+  ok(!/¥1 ・/.test(html) && !html.includes('"' + future + '"'), '未来日付の日報は表示・集計に出ない');
+  ok(/222,222/.test(html) && !/111,111/.test(html), '同じ店舗×日付は最新の提出が正（二重に並ばない）');
+  ok(!/99,999/.test(html), '売上0で出し直すと取消になる（追記式バックエンドでも訂正できる）');
+  const one = renderView('soukatsu','manager',S_HIROSHIMA,'ja');
+  ok(/id="sk_date"[^>]*max=/.test(one), '総括表の日付は未来を選べない（max付き）');
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
