@@ -1233,7 +1233,7 @@
       const byDate = {}; rows.forEach(r => { byDate[r.date] = r; });
       return `
         <div class="card">
-          <h3>${L({ ja:'今月の推移', en:'This month', vi:'Tháng này' })} — ${esc(storeShort(s))}</h3>
+          <h3>${L({ ja:'今月の推移', en:'This month', vi:'Tháng này' })} — ${esc(storeLabel(s))}</h3>
           <div class="stat-row">
             <div class="stat"><div class="n">${esc(yenShort(st.sales))}</div><div class="k">${L({ ja:'売上合計', en:'Sales', vi:'Doanh thu' })}</div></div>
             <div class="stat"><div class="n">${st.guests.toLocaleString('en-US')}</div><div class="k">${L({ ja:'客数合計', en:'Guests', vi:'Khách' })}</div></div>
@@ -1304,6 +1304,8 @@
      - グラフは素のCSS/SVG＝外部ライブラリ不要・オフラインでも動く・端末幅に追従
      - 個店の行をタップ→個店カルテ（#/store）。日付の行・棒をタップ→その日の日報（全項目）
      ============================================================ */
+  // 表示名：同じ地名に複数店（長堀橋＝牛カツ/鰻、富士山＝牛カツ/鰻、心斎橋＝寿司/日本料理）があるため業態を前置
+  const storeLabel = (s) => { const g = storeGyotai(s); return (g ? gyotaiLabel(g) + '・' : '') + storeShort(s); };
   const numOr0 = (v) => Number(String(v == null ? '' : v).replace(/[^0-9.-]/g, '')) || 0;
   const hasVal = (v) => v !== undefined && v !== null && String(v).trim() !== '';
   const yenShort = (n) => {
@@ -1346,7 +1348,7 @@
   function spark(vals, w, h) {
     w = w || 76; h = h || 22;
     const v = (vals || []).filter(x => x != null && !isNaN(x));
-    if (v.length < 2) return '';
+    if (v.length < 2 || !v.some(x => x > 0)) return ''; // データなしの店に平坦な線を描かない
     const max = Math.max(...v), min = Math.min(...v), rng = (max - min) || 1;
     const pts = v.map((x, i) => `${(i / (v.length - 1) * (w - 3) + 1.5).toFixed(1)},${(h - 2.5 - ((x - min) / rng) * (h - 5)).toFixed(1)}`);
     const last = pts[pts.length - 1].split(',');
@@ -1397,7 +1399,10 @@
     const from = days[0], to = days[days.length - 1];
     const all = getSk().filter(r => vis.includes(r.store) && r.date >= from && r.date <= to);
     const total = skStats(all);
-    const spDays = days.slice(-14);
+    // スパークラインは「今日まで」の直近14日（今月は先の日付が空欄なので線が消えてしまう）
+    const today = new Date().toISOString().slice(0, 10);
+    const past = days.filter(d => d <= today);
+    const spDays = (past.length ? past : days).slice(-14);
     const rows = vis.map(s => {
       const rs = all.filter(r => r.store === s);
       const st = skStats(rs);
@@ -1421,7 +1426,7 @@
         <div class="seg-chips">${METRICS.map(o => chip(o, 'm', mv)).join('')}</div>
         ${rows.map((r, i) => `
           <button class="cmp" data-storelink="${esc(r.store)}">
-            <div class="cmp-top"><span class="cmp-rank">${i + 1}</span><span class="cmp-name">${esc(storeShort(r.store))}</span><b class="cmp-val">${r.st.days ? esc(metric.fmt(r.val)) : '<span class="muted">' + L({ ja:'未入力', en:'No data', vi:'Chưa nhập' }) + '</span>'}</b></div>
+            <div class="cmp-top"><span class="cmp-rank">${i + 1}</span><span class="cmp-name">${esc(storeLabel(r.store))}</span><b class="cmp-val">${r.st.days ? esc(metric.fmt(r.val)) : '<span class="muted">' + L({ ja:'未入力', en:'No data', vi:'Chưa nhập' }) + '</span>'}</b></div>
             <div class="cmp-bar"><div class="cmp-fill" style="width:${Math.round(r.val / max * 100)}%"></div></div>
             <div class="cmp-sub"><span>${L({ ja:'入力', en:'Days', vi:'Ngày' })} ${r.st.days}${L({ ja:'日', en:'d', vi:'n' })}${r.st.days ? ` ・ ${L({ ja:'客数', en:'Guests', vi:'Khách' })} ${r.st.guests} ・ ${L({ ja:'客単価', en:'Per', vi:'BQ' })} ${esc(yenShort(r.st.per))}` : ''}</span>${spark(r.sp)}</div>
           </button>`).join('')}
@@ -1479,7 +1484,7 @@
     const r = getSk().filter(x => x.store === store && x.date === date).sort((a, b) => b.t - a.t)[0];
     const mask = el(`<div class="sheet-mask"><div class="sheet">
       <div class="grip"></div>
-      <h3>${esc(mdLabel(date))}（${esc(L(WDAYS[wdOf(date)]))}）　${esc(storeShort(store))}</h3>
+      <h3>${esc(mdLabel(date))}（${esc(L(WDAYS[wdOf(date)]))}）　${esc(storeLabel(store))}</h3>
       <div class="sub">${esc(store)}</div>
       ${r ? skFieldGrid(r) : `<p class="muted">${L({ ja:'この日はまだ総括表が提出されていません。', en:'No daily report submitted for this day yet.', vi:'Chưa có báo cáo cho ngày này.' })}</p>`}
       <button class="btn-primary" data-close="1" style="margin-top:14px">${L({ ja:'閉じる', en:'Close', vi:'Đóng' })}</button>
@@ -1519,7 +1524,7 @@
         <div class="appbar"><button class="back" data-go="/app/soukatsu">${svg('back')}${L({ ja:'総括表', en:'Daily reports', vi:'Báo cáo' })}</button></div>
         <div class="app-head">
           <div class="ico">${svg('table')}</div>
-          <div><h1>${esc(storeShort(store))}</h1><p>${esc(store)}${storeGyotai(store) ? '　/　' + esc(gyotaiLabel(storeGyotai(store))) : ''}</p></div>
+          <div><h1>${esc(storeLabel(store))}</h1><p>${esc(store)}${storeGyotai(store) ? '　/　' + esc(gyotaiLabel(storeGyotai(store))) : ''}</p></div>
         </div>
         ${NOTE({ ja:'◆ 総括表（日報）に入力された内容を、この店舗ぶんだけまとめています', en:'◆ Everything submitted in this store\'s daily reports, in one place', vi:'◆ Tổng hợp báo cáo ngày của cửa hàng này' })}
         <div class="card">
