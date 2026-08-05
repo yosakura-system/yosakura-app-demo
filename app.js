@@ -231,7 +231,22 @@
   const saveReports = (a) => localStorage.setItem(LS.reports, JSON.stringify(a));
   const getFP = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_fp')) || []; } catch { return []; } };
   const saveFP = (a) => localStorage.setItem('yosakura_demo_fp', JSON.stringify(a));
-  const getSk = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_soukatsu')) || []; } catch { return []; } };
+  // 端末の現地日付（YYYY-MM-DD）。toISOString はUTCのため、日本時間の午前9時前に「前日」になってしまう
+  const todayKey = () => { try { return new Date().toLocaleDateString('en-CA'); } catch (e) { return new Date().toISOString().slice(0, 10); } };
+  /* 総括表の正規化（表示・集計はすべてこれを通す）
+     ① 店舗×日付は「最新の提出」が正 ＝ 出し直しで上書きできる／同じ日が二重に並ばない
+     ② 売上0以下は「取消・未提出」扱いで出さない ＝ 誤りは0で出し直せば消える（追記式バックエンドでも訂正できる）
+     ③ 未来の日付は無効 ＝ まだ来ていない日の日報は存在しえない（誤入力・取込ミスの流入を止める） */
+  function skClean(arr) {
+    const today = todayKey(), latest = {};
+    (arr || []).forEach(r => {
+      if (!r || !r.date || r.date > today) return;
+      const k = (r.store || '') + '||' + r.date;
+      if (!latest[k] || (Number(r.t) || 0) >= (Number(latest[k].t) || 0)) latest[k] = r;
+    });
+    return Object.values(latest).filter(r => (Number(r.sales) || 0) > 0);
+  }
+  const getSk = () => { try { return skClean(JSON.parse(localStorage.getItem('yosakura_demo_soukatsu')) || []); } catch { return []; } };
   const saveSk = (a) => localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(a));
 
   function seedIfEmpty() {
@@ -936,7 +951,7 @@
   APP_VIEWS.openreg = () => {
     const vis = visibleStores();
     const recent = getOpen().filter(r=>vis.includes(r.store)).sort((a,b)=>b.t-a.t).slice(0,5);
-    const today = new Date().toISOString().slice(0,10);
+    const today = todayKey();
     return `
       ${NOTE({ ja:'◆ 開店時のレジ準備金を金種で入力→合計を自動計算（準備金 ¥100,000 目安）', en:'◆ Enter opening float by denomination; total auto-calculated', vi:'◆ Nhập tiền quỹ đầu ca theo mệnh giá; tự tính tổng' })}
       <div class="card" id="orForm">
@@ -1024,7 +1039,7 @@
   // チェック状態＝店舗×モード×日付（日付が変わると自動で新しい一日になる）
   const getCkDone = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckdone')) || {}; } catch { return {}; } };
   const saveCkDone = (o) => { try { localStorage.setItem('yosakura_demo_ckdone', JSON.stringify(o)); } catch (e) {} };
-  const ckDoneKey = (store, mode) => `${store}||${mode}||${new Date().toISOString().slice(0,10)}`;
+  const ckDoneKey = (store, mode) => `${store}||${mode}||${todayKey()}`;
   const ckCanEdit = () => ['manager','owner','hq'].includes(getRole());
   APP_VIEWS.checklist = () => {
     const store = visibleStores()[0];
@@ -1224,7 +1239,7 @@
   APP_VIEWS.soukatsu = () => {
     const vis = visibleStores();
     const recent = getSk().filter(r => vis.includes(r.store)).sort((a,b)=>b.t-a.t).slice(0,6);
-    const today = new Date().toISOString().slice(0,10);
+    const today = todayKey();
     // 店舗比較（複数店舗を見られる本部・オーナー）／個店サマリー（1店舗）
     const head = vis.length > 1 ? skCompare(vis, '/app/soukatsu') : (() => {
       const s = vis[0], ym = todayYm();
@@ -1250,7 +1265,7 @@
         <h3>${L({ ja:'本日の総括表', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
-          <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${today}"></label>
+          <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${today}" max="${today}"></label>
           <label class="fld"><span>${L({ja:'当日売上',en:'Sales',vi:'Doanh thu'})}</span><input type="text" inputmode="numeric" id="sk_sales" placeholder="186817"></label>
           <label class="fld"><span>${L({ja:'客数',en:'Guests',vi:'Khách'})}</span><input type="text" inputmode="numeric" id="sk_guests" placeholder="16"></label>
         </div>
@@ -1313,7 +1328,7 @@
     if (LANG === 'ja') return n >= 10000 ? '¥' + (n / 10000).toFixed(n >= 1000000 ? 0 : 1) + '万' : yen(n);
     return n >= 1000 ? '¥' + (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'k' : yen(n);
   };
-  const todayYm = () => new Date().toISOString().slice(0, 10).slice(0, 7);
+  const todayYm = () => todayKey().slice(0, 7);
   const ymOfDate = (d) => String(d || '').slice(0, 7);
   const addMonth = (ym, n) => { const [y, m] = String(ym).split('-').map(Number); if (!y) return ym; const d = new Date(y, m - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   const daysOfYm = (ym) => { const [y, m] = String(ym).split('-').map(Number); const n = new Date(y, m, 0).getDate(); const out = []; for (let i = 1; i <= n; i++) out.push(ym + '-' + String(i).padStart(2, '0')); return out; };
@@ -1334,7 +1349,7 @@
     { v:'d30',  t:{ ja:'直近30日', en:'Last 30 days', vi:'30 ngày qua' } }
   ];
   const daysOfPeriod = (p) => {
-    if (p === 'd30') { const out = []; for (let i = 29; i >= 0; i--) out.push(new Date(Date.now() - i * 864e5).toISOString().slice(0, 10)); return out; }
+    if (p === 'd30') { const out = []; for (let i = 29; i >= 0; i--) out.push(new Date(Date.now() - i * 864e5).toLocaleDateString('en-CA')); return out; }
     return daysOfYm(p === 'prev' ? addMonth(todayYm(), -1) : todayYm());
   };
   const METRICS = [
@@ -1400,7 +1415,7 @@
     const all = getSk().filter(r => vis.includes(r.store) && r.date >= from && r.date <= to);
     const total = skStats(all);
     // スパークラインは「今日まで」の直近14日（今月は先の日付が空欄なので線が消えてしまう）
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayKey();
     const past = days.filter(d => d <= today);
     const spDays = (past.length ? past : days).slice(-14);
     const rows = vis.map(s => {
