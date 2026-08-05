@@ -915,7 +915,7 @@
     { v:'google',    re:/google|グーグル|구글|谷歌|공굴/i },
     { v:'instagram', re:/instagram|インスタ|인스타|ig\b/i },
     { v:'tiktok',    re:/tiktok|ティックトック|틱톡|抖音/i },
-    { v:'referral',  re:/紹介|口コミ|referral|소개|추천|giới thiệu|介紹|推薦|朋友/i },
+    { v:'referral',  re:/紹介|口コミ|referral|recommend|friend|소개|추천|giới thiệu|介紹|推薦|朋友|hotel|ホテル|酒店|호텔/i },
     { v:'walkin',    re:/walk[\s-]?in|通りがかり|飛び込み|現場|현장|예약\s*없이|đi thẳng|vãng lai|路過|店頭/i },
     { v:'repeat',    re:/repeat|リピート|再訪|재방문|khách quen|常連/i }
   ];
@@ -1196,6 +1196,42 @@
     { v:'other', t:{ja:'その他',en:'Other',vi:'Khác'} }
   ];
   const surveyIssueLabel = (v) => { const f = SURVEY_ISSUES.find(x=>x.v===v); return f ? L(f.t) : v; };
+  /* 本番サーベイの改善点は、お客様が回答された言語のまま【…】で本文の先頭に入る。
+     （【특별한 문제는 없었어요】【No particular issue】【Không có vấn đề gì đặc biệt】
+       【沒有特別的問題】【特に問題は無かった】【Food came out slowly】【그 외 문제】…）
+     このままでは集計できないため、アプリの区分へ寄せる。1件で複数の指摘が入ることもある
+     （例：「料理がおいしくない、料理提供が遅い」＝料理・味／提供時間）。 */
+  const ISSUE_NONE_RE = /特に問題|問題は\s*(?:無|な)かった|no particular issue|no issue|không có vấn đề|沒有特別的問題|没有特别的问题|특별한\s*문제는?\s*없|문제\s*없/i;
+  const SURVEY_ISSUE_ALIASES = [
+    // 「Food came out slowly」は“料理”ではなく“提供の遅さ”。複合表現を先に判定して取り除く
+    { v:'timing',  re:/(?:food|dishe?s?|料理|餐點)\s*(?:came out|came)?\s*slow\w*|料理提供が遅|提供が遅|提供時間|came out slow\w*|took (?:too )?long|slow service|遅い|遅かった|wait(?:ing)? time|待たされ|늦게|느리|오래|上菜[^、。]*慢|上得慢|速度慢|等(?:待|太久)|slow\w*|late/i },
+    { v:'food',    re:/料理|味|おいし|美味し|不味|food|taste|flavou?r|맛|음식|餐點|菜品/i },
+    { v:'service',  re:/接客|サービス|態度|service|staff|서비스|접객|직원|服務|態度/i },
+    { v:'plating', re:/盛り付け|見た目|plating|presentation|플레이팅|담음새|擺盤/i },
+    { v:'space',   re:/内装|空間|座席|席|騒|ambien|interior|noisy|seat|인테리어|자리|시끄|空間|座位/i },
+    { v:'price',   re:/価格|値段|高い|高か|price|expensive|costly|가격|비싸|부담|價格|貴/i },
+    { v:'other',   re:/その他|それ以外|other|그\s*외|기타|其他|其它/i }
+  ];
+  // 本文から【…】／[改善点: …] を取り出して区分へ寄せる。指摘なしは ['none']。
+  const parseSurveyIssues = (note) => {
+    const s = String(note || '');
+    const m = s.match(/【([^】]*)】/) || s.match(/\[改善点[:：]\s*([^\]]*)\]/);
+    if (!m) return [];
+    const inner = m[1] || '';
+    if (ISSUE_NONE_RE.test(inner)) return ['none'];
+    const out = [];
+    let rest = inner;
+    SURVEY_ISSUE_ALIASES.forEach(a => {
+      if (!a.re.test(rest)) return;
+      if (out.indexOf(a.v) < 0) out.push(a.v);
+      // 判定に使った表現は取り除く。「料理提供が遅い」を提供時間と数えたあと、
+      // 残った「料理」でもう一度“料理・味”に数えてしまうのを防ぐため。
+      rest = rest.replace(new RegExp(a.re.source, 'gi'), ' ');
+    });
+    return out.length ? out : ['other'];
+  };
+  // 表示用：先頭の【…】／[改善点: …] を除いた、お客様が書かれた本文だけを返す
+  const surveyComment = (note) => String(note || '').replace(/^\s*【[^】]*】\s*/, '').replace(/^\s*\[改善点[:：][^\]]*\]\s*/, '').trim();
   const SURVEY_URL = 'https://yosakurasurvey.vercel.app/store2.html';
   APP_VIEWS.survey = () => {
     const vis = visibleStores();
@@ -1233,6 +1269,23 @@
       if (v === 'other' && String(r.route || '').trim()) { const k = String(r.route).trim(); otherRaw[k] = (otherRaw[k] || 0) + 1; }
     });
     const otherRows = Object.entries(otherRaw).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    // いただいたご指摘＝【…】の内容を区分へ寄せて集計（1件で複数の指摘が入ることがある）
+    const ic = {}; SURVEY_ISSUES.forEach(x => ic[x.v] = 0);
+    let noneN = 0, issueN = 0;
+    rows.forEach(r => {
+      const vs = parseSurveyIssues(r.note);
+      if (!vs.length) return;
+      if (vs[0] === 'none') { noneN++; return; }
+      issueN++;
+      vs.forEach(v => { if (ic[v] != null) ic[v]++; });
+    });
+    const issueRows = SURVEY_ISSUES.filter(x => ic[x.v] > 0).sort((a, b) => ic[b.v] - ic[a.v]);
+    // お客様の声＝自由記述があるものを、低評価から先に並べる（改善の手がかりになるため）
+    const voices = rows
+      .map(r => ({ r, c: surveyComment(r.note) }))
+      .filter(x => x.c)
+      .sort((a, b) => (Number(a.r.sat) || 0) - (Number(b.r.sat) || 0) || b.r.t - a.r.t)
+      .slice(0, 20);
     const cc = {}; rows.forEach(r => { if (r.country) cc[r.country] = (cc[r.country] || 0) + 1; });
     const countryRows = Object.entries(cc).sort((a, b) => b[1] - a[1]);
     const ymOf = (t) => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
@@ -1263,6 +1316,19 @@
         ${countryRows.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'来店国', en:'Country', vi:'Quốc gia' })}</div>${countryRows.map(([c, ct]) => barRow(c, ct, n)).join('')}` : ''}
         ${months.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'月別（回答数・平均満足度）', en:'By month (responses & avg)', vi:'Theo tháng (PH & TB)' })}</div>${months.map(m => barRow(`${m}　★${mavg(m).toFixed(1)}`, mc[m], Math.max(...months.map(x => mc[x])))).join('')}` : ''}
       </div>
+      ${(issueN || noneN) ? `<div class="card">
+        <h3>${L({ ja:'いただいたご指摘', en:'Reported issues', vi:'Điểm được góp ý' })}</h3>
+        ${issueRows.length
+          ? `${issueRows.map(x => barRow(L(x.t), ic[x.v], Math.max(1, issueN), 'bar-low')).join('')}
+             <p class="hint" style="display:block">${L({ ja:'※ ご指摘があった回答は' + issueN + '件です（1件で複数のご指摘をいただく場合があるため、合計は一致しません）。', en:'Responses containing an issue: ' + issueN + ' (one response can raise several).', vi:'Phản hồi có góp ý: ' + issueN + '.' })}</p>`
+          : `<p class="muted">${L({ ja:'ご指摘のあった回答はまだありません。', en:'No issues reported yet.', vi:'Chưa có góp ý.' })}</p>`}
+        ${noneN ? `<div class="rep"><span class="amt">${noneN}</span><div class="body"><div class="l1">${L({ ja:'特にご指摘なし', en:'No particular issue', vi:'Không có vấn đề' })}</div><div class="l2">${L({ ja:'回答全体の', en:'of all responses', vi:'trên tổng số' })} ${Math.round(noneN / n * 100)}%</div></div></div>` : ''}
+      </div>` : ''}
+      ${voices.length ? `<div class="card">
+        <h3>${L({ ja:'お客様の声', en:'Guest comments', vi:'Ý kiến khách' })}</h3>
+        <p class="hint" style="display:block;margin-top:-4px">${L({ ja:'評価の低い順に表示しています（改善の手がかりになるため）。原文のまま表示します。', en:'Lowest ratings first, shown in the original language.', vi:'Đánh giá thấp trước, giữ nguyên văn.' })}</p>
+        ${voices.map(({ r, c }) => `<div class="rep"><span class="amt" style="${(Number(r.sat)||0) <= 3 ? 'color:#a23b3b' : ''}">★${Number(r.sat) || '—'}</span><div class="body"><div class="l1">${esc(c)}</div><div class="l2">${esc(storeShort(r.store))}${r.country ? ' ・ ' + esc(r.country) : ''} ・ ${timeAgo(r.t)}</div></div></div>`).join('')}
+      </div>` : ''}
       ${byStore}
       <p class="hint" style="display:block">${L({ ja:'※ サーベイ回答（本番フォーム）から集計しています。来店国はデータがある場合に表示します。来店経路は、お客様が回答された言語（韓国語・中国語・ベトナム語など）の値をアプリの区分へ寄せて集計しています。', en:'Aggregated from live survey responses. Country appears when available. Arrival routes answered in other languages are mapped to these categories.', vi:'Tổng hợp từ phản hồi khảo sát. Nguồn khách trả lời bằng ngôn ngữ khác được quy về các nhóm này.' })}</p>`;
   }
