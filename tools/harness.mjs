@@ -436,5 +436,34 @@ console.log('== 総括表の正規化（未来日付・二重提出・取消）=
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== 日報＝前日分を翌日12時まで（本部の実運用に合わせる）==');
+{
+  const ymd = (d) => d.toLocaleDateString('en-CA');
+  const yest = ymd(new Date(Date.now() - 864e5));
+  const today = ymd(new Date());
+  FETCH_ROWS = { ok:true, reports:[
+    // 前日分の日報を「今朝」提出した想定＝提出時刻は今日でも、前日分として提出済みになる
+    { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date: yest, sales: 123456, guests: 20 }), t: Date.now(), id:'n1' },
+  ]};
+  try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ nippou load threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/kyou';
+  const html = registry.app.innerHTML;
+  ok(/前日分/.test(html), '「今日出すもの」の日報は前日分として表示される');
+  ok(new RegExp('前日分[^<]*' + yest.slice(5)).test(html), '対象日（前日の日付）が明示される');
+  const rowOf = (h, name) => { const i = h.indexOf(name); return i < 0 ? '' : h.slice(Math.max(0, i - 220), i + 220); };
+  ok(/提出済/.test(rowOf(html, '日報')), '翌朝に提出した前日分の日報が「提出済」と判定される');
+
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date: today, sales: 99999, guests: 9 }), t: Date.now(), id:'n2' },
+  ]};
+  try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ nippou2 threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/kyou';
+  const h2 = registry.app.innerHTML;
+  ok(/未提出/.test(rowOf(h2, '日報')), '当日分だけ出しても、前日分の日報は未提出のまま残る');
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

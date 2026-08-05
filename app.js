@@ -2130,7 +2130,7 @@
       // ★一食目写真：AI判定の運用が未確定（木村さんと協議中）のため、当面は提出物の対象から外す（準備中）。
       //   運用が決まったら oblig を 'required' に戻すだけで有効化できる。
       { id:'firstphoto', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'}, oblig:'off', freq:'daily', due:'23:59', target:'except_course', hqReview:'exception', detect:'fp', linkApp:'firstphoto' },
-      { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},       oblig:'required', freq:'daily', due:'23:59', target:'all',          hqReview:'each',      detect:'sk', linkApp:'soukatsu' },
+      { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},       oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 本部運用＝閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
       { id:'openphoto',  name:{ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'},          oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'subrec', linkApp:'openphoto' },
       { id:'cleaning',   name:{ja:'開店清掃チェック',en:'Opening cleaning',vi:'Vệ sinh mở cửa'}, oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'none', linkApp:'checklist' },
       { id:'facade',     name:{ja:'内外装動画＋ポップ',en:'Interior video & POP',vi:'Video & POP'}, oblig:'required', freq:'monthly', due:'23:59', target:'all',       hqReview:'each',      detect:'video', linkApp:'storevideo' },
@@ -2213,9 +2213,14 @@
     const sameWeek = (t) => weekKeyOf(dateKeyFor(store, t)) === weekKeyOf(dk);
     const sameQuarter = (t) => quarterKeyOf(dateKeyFor(store, t)) === quarterKeyOf(dk);
     const inScope = m.freq === 'monthly' ? sameMonth : m.freq === 'weekly' ? sameWeek : m.freq === 'quarterly' ? sameQuarter : sameDay;
+    // 日付文字列（YYYY-MM-DD）で同じ判定をする版＝日報のように「対象日」を持つ提出物に使う
+    const inScopeD = (d) => m.freq === 'monthly' ? String(d).slice(0, 7) === dk.slice(0, 7)
+      : m.freq === 'weekly' ? weekKeyOf(d) === weekKeyOf(dk)
+      : m.freq === 'quarterly' ? quarterKeyOf(d) === quarterKeyOf(dk)
+      : d === dk;
     try {
       if (m.detect === 'fp')     return getFP().some(r => r.store === store && inScope(r.t));
-      if (m.detect === 'sk')     return getSk().some(r => r.store === store && inScope(r.t));
+      if (m.detect === 'sk')     return getSk().some(r => r.store === store && (r.date ? inScopeD(r.date) : inScope(r.t))); // 対象日で判定（翌朝提出でも前日分として数える）
       if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
       if (m.detect === 'video')  return getReports().some(r => r.kind === 'video' && r.store === store && inScope(r.t));
       if (m.detect === 'monthly') return getMonthly().some(r => r.store === store && r.ym === new Date().toISOString().slice(0, 7));
@@ -2226,14 +2231,18 @@
 
   // ある店舗の当日の提出物リスト（今日出すもの）
   function todayItemsFor(store) {
-    const dk = dateKeyFor(store, Date.now());
-    const holiday = isHoliday(store, dk);
+    const today = dateKeyFor(store, Date.now());
+    const yday = dateKeyFor(store, Date.now() - 864e5);
     return getMasters().filter(m => appliesToStore(m, store)).map(m => {
+      // dueNextDay＝「前日分を翌日◯時までに出す」提出物（日報）。対象日は前日になる
+      const prev = !!m.dueNextDay && m.freq === 'daily';
+      const dk = prev ? yday : today;
+      const holiday = isHoliday(store, dk);
       const manual = m.detect === 'none'; // 自動判定できない（手動運用）
       const submitted = manual ? null : (holiday ? true : detectSubmitted(store, m, dk));
       const st = getStatus(store, m.id, dk);
       const overdue = !manual && !submitted && !holiday && nowHMFor(store) > (m.due || '23:59') && m.freq === 'daily';
-      return { m, dk, submitted, manual, holiday, overdue, status: st };
+      return { m, dk, submitted, manual, holiday, overdue, status: st, prev };
     });
   }
 
@@ -2247,6 +2256,7 @@
     const due = it.m.freq === 'monthly' ? L({ja:'今月',en:'This month',vi:'Tháng này'})
       : it.m.freq === 'quarterly' ? L({ja:'今四半期',en:'This quarter',vi:'Quý này'})
       : it.m.freq === 'weekly' ? L({ja:'今週',en:'This week',vi:'Tuần này'})
+      : it.prev ? `${L({ja:'前日分',en:'Yesterday',vi:'Hôm qua'})}（${esc(String(it.dk).slice(5))}）・${L({ja:'締切',en:'Due',vi:'Hạn'})} ${L({ja:'本日',en:'today',vi:'hôm nay'})} ${it.m.due}`
       : `${L({ja:'締切',en:'Due',vi:'Hạn'})} ${it.m.due}`;
     const openBtn = ((it.manual || !it.submitted) && it.m.linkApp) ? `<button class="mini" data-tsub="${it.m.linkApp}">${L({ja:'開いて提出',en:'Open',vi:'Mở'})}${svg('chev')}</button>` : '';
     const oflag = it.overdue ? ` <span style="color:#b23">${L({ja:'締切超過',en:'Overdue',vi:'Quá hạn'})}</span>` : '';
