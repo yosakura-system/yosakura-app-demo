@@ -209,9 +209,14 @@
   const canOpen = (app, role) => role === 'hq' || app.roles.includes(role);
 
   /* ---------- 状態 ---------- */
-  const LS = { role:'yosakura_demo_role', store:'yosakura_demo_store', reports:'yosakura_demo_reports', checks:'yosakura_demo_checks' };
+  const LS = { role:'yosakura_demo_role', store:'yosakura_demo_store', reports:'yosakura_demo_reports', checks:'yosakura_demo_checks', uname:'yosakura_demo_uname' };
   const getRole = () => localStorage.getItem(LS.role) || 'staff';
   const setRole = (r) => localStorage.setItem(LS.role, r);
+  // 提出者名＝この端末を使う方のお名前。一度登録すれば以後の提出に自動で残る（本部決定：提出物は後から誰が出したか分かるようにする）
+  const getUserName = () => (localStorage.getItem(LS.uname) || '').trim();
+  const setUserName = (n) => { try { localStorage.setItem(LS.uname, String(n || '').trim().slice(0, 20)); } catch (e) {} };
+  // 記録に残す表記＝「店長（山田）」。未登録でも提出は妨げない（役割だけが残る）
+  const submitterLabel = () => { const r = ROLES[getRole()] ? L(ROLES[getRole()].label) : getRole(); const n = getUserName(); return n ? `${r}（${n}）` : r; };
   const getStoreSel = () => localStorage.getItem(LS.store) || STORES[0];
   const setStoreSel = (s) => localStorage.setItem(LS.store, s);
   // 複数店舗オーナーの所有店舗（デモ用。実運用では本部の「権限設定表」で置き換える）
@@ -723,7 +728,7 @@
   /* ① 食べ残し・食材ロス報告（動く）*/
   APP_VIEWS.tabemono = () => {
     const vis = visibleStores();
-    const recent = getReports().filter(r => vis.includes(r.store)).sort((x,y)=>y.t-x.t).slice(0,5);
+    const recent = getReports().filter(r => (r.kind === 'a' || r.kind === 'b') && vis.includes(r.store)).sort((x,y)=>y.t-x.t).slice(0,5);
     const segL = (arr) => arr.map((o,i)=>`<button type="button" data-v="${o.v}" class="${i===0?'on':''}">${L(o.t)}</button>`).join('');
     return `
       <div class="card" id="repForm">
@@ -927,7 +932,7 @@
           <h3>${L({ ja:'店舗別の本日合計', en:'Today by store', vi:'Hôm nay theo cửa hàng' })}</h3>
           ${storeRows.map(([s,c])=>`<div class="rep"><div class="body"><div class="l1">${esc(s)}</div></div><span class="amt">${c}</span></div>`).join('')}
         </div>
-        <p class="hint">${L({ ja:'※ 記録は各店舗（スタッフ）が行います。端末をまたいで集約するには共有同期の設定が必要です（食べ残し報告は設定済み）。', en:'Logged by each store. Cross-device aggregation needs shared sync (Food Waste already has it).', vi:'Do từng cửa hàng ghi. Cần đồng bộ để tổng hợp giữa các máy.' })}</p>`;
+        <p class="hint">${L({ ja:'※ 記録は各店舗（スタッフ）が行います。記録された内容は全端末で共有され、本部にはここへ自動で集約されます。', en:'Logged by each store. Entries sync across all devices and aggregate here for HQ automatically.', vi:'Do từng cửa hàng ghi. Dữ liệu đồng bộ mọi thiết bị và tự tổng hợp cho HQ.' })}</p>`;
     }
     // 単一店舗＝ワンタップ記録
     const store = vis[0];
@@ -1490,6 +1495,7 @@
       </div>
       ${hasVal(r.note) ? `<div class="idlabel" style="margin-top:14px">${L({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' })}</div><p class="dtext">${esc(r.note)}</p>` : ''}
       ${hasVal(r.order) ? `<div class="idlabel">${L({ ja:'翌日の食材発注', en:'Tomorrow order', vi:'Đặt NL ngày mai' })}</div><p class="dtext">${esc(r.order)}</p>` : ''}
+      ${hasVal(r.by) ? `<div class="idlabel" style="margin-top:14px">${L({ ja:'提出者', en:'Submitted by', vi:'Người nộp' })}</div><p class="dtext">${esc(r.by)}</p>` : ''}
       <p class="hint" style="display:block;margin-top:10px">${L({ ja:'※「—」は未入力の項目です。総括表に入力されると、ここに自動で表示されます。', en:'“—” means not entered yet; it fills in automatically once the daily report is submitted.', vi:'“—” là chưa nhập; sẽ tự hiển thị khi báo cáo được nộp.' })}</p>`;
   }
   // その日の日報を開く（シート）
@@ -1522,7 +1528,6 @@
     const byDate = {}; rows.forEach(r => { byDate[r.date] = r; });
     const days = daysOfYm(ym);
     const latest = rows[rows.length - 1];
-    const goal = latest ? numOr0(latest.goal) : 0;
     const mtd = latest && numOr0(latest.mtd) ? numOr0(latest.mtd) : st.sales;
     const delta = (cur, prv) => !prv ? '' : `<span class="delta ${cur >= prv ? 'up' : 'dn'}">${(Math.abs((cur - prv) / prv * 100)).toFixed(1)}%</span>`;
     const wd = WDAYS.map((w, i) => { const rs = rows.filter(r => wdOf(r.date) === i); const s = rs.reduce((a, r) => a + numOr0(r.sales), 0); return { w, n: rs.length, avg: rs.length ? Math.round(s / rs.length) : 0 }; });
@@ -1532,9 +1537,11 @@
     const svLow = sv.filter(r => (Number(r.sat) || 0) <= 2).length;
     const mo = getMonthly().find(r => r.store === store && r.ym === ym);
     const moC = mo ? plCalc(mo) : null;
+    // 売上目標＝「数値・原価率」で設定した月間目標が正。未設定なら日報に入力された目標を使う
+    const goal = (mo && numOr0(mo.goal)) || (latest ? numOr0(latest.goal) : 0);
     const inYm = (t) => new Date(Number(t) || 0).toISOString().slice(0, 7) === ym;
     const kzN = getKz().filter(r => r.store === store && inYm(r.t)).length;
-    const fdN = getReports().filter(r => r.store === store && inYm(r.t)).length;
+    const fdN = getReports().filter(r => (r.kind === 'a' || r.kind === 'b') && r.store === store && inYm(r.t)).length;
     const nav = (n) => `/store?s=${encodeURIComponent(store)}&ym=${addMonth(ym, n)}`;
     const canNext = ym < todayYm();
     const inner = `
@@ -1644,7 +1651,9 @@
           <label class="fld"><span>${L({ ja:'当月仕入（合計）', en:'Purchases', vi:'Nhập hàng' })}</span><input type="text" inputmode="numeric" id="pl_purchase" value="${esc(cur.purchase||'')}" placeholder="0"></label>
           <label class="fld"><span>${L({ ja:'月初在庫', en:'Opening stock', vi:'Tồn đầu kỳ' })}</span><input type="text" inputmode="numeric" id="pl_open" value="${esc(openDef||'')}" placeholder="0"></label>
           <label class="fld"><span>${L({ ja:'月末在庫（棚卸）', en:'Closing stock', vi:'Tồn cuối kỳ' })}</span><input type="text" inputmode="numeric" id="pl_close" value="${esc(cur.close||'')}" placeholder="0"></label>
+          <label class="fld"><span>${L({ ja:'今月の売上目標', en:'Monthly sales goal', vi:'Mục tiêu doanh thu' })}</span><input type="text" inputmode="numeric" id="pl_goal" value="${esc(cur.goal||'')}" placeholder="3000000"></label>
         </div>
+        <p class="hint" style="display:block;margin:2px 0 8px">${L({ ja:'※ 売上目標は本部・オーナー・店長が設定します。設定すると各店の画面に「目標到達」と進捗バーが出ます。', en:'The sales goal is set by HQ/owner/manager and appears as progress on each store screen.', vi:'Mục tiêu do HQ/chủ/quản lý đặt; hiển thị tiến độ trên màn hình cửa hàng.' })}</p>
         <div class="stat-row" style="margin-top:8px">
           <div class="stat"><div class="n" id="pl_cost">¥0</div><div class="k">${L({ ja:'当月原価', en:'Cost', vi:'Giá vốn' })}</div></div>
           <div class="stat"><div class="n" id="pl_costrate">—</div><div class="k">${L({ ja:'原価率', en:'Cost ratio', vi:'Tỷ lệ giá vốn' })}</div></div>
@@ -1661,7 +1670,7 @@
   /* ⑨ 本部ダッシュボード（動く）*/
   APP_VIEWS.dashboard = () => {
     const vis = visibleStores();
-    const reps = getReports().filter(r => vis.includes(r.store));
+    const reps = getReports().filter(r => (r.kind === 'a' || r.kind === 'b') && vis.includes(r.store));
     const a = reps.filter(r=>r.kind==='a').length, b = reps.filter(r=>r.kind==='b').length;
     const byStore = {}; reps.forEach(r => byStore[r.store] = (byStore[r.store]||0)+1);
     const max = Math.max(1, ...Object.values(byStore));
@@ -2034,6 +2043,9 @@
             <span class="ri"><b>${L(v.label)}</b><span>${L(v.desc)}</span></span>
             ${k===role?`<span class="rc">${svg('tick')}</span>`:''}
           </button>`).join('')}
+        <div class="idlabel">${L({ ja:'お名前（提出の記録に残ります）', en:'Your name (recorded on submissions)', vi:'Tên của bạn (ghi vào mục đã nộp)' })}</div>
+        <label class="fld"><input type="text" id="idName" maxlength="20" value="${esc(getUserName())}" placeholder="${L({ ja:'例：山田', en:'e.g. Yamada', vi:'VD: Yamada' })}"></label>
+        <p class="hint" style="display:block;margin:-2px 0 12px">${L({ ja:'一度ご登録いただくと、以後の提出に自動で記録されます。未登録でも提出はできます（1食目写真は店舗名だけで大丈夫です）。', en:'Register once and it is recorded automatically on later submissions. You can still submit without it.', vi:'Đăng ký một lần, các lần nộp sau sẽ tự ghi. Không có tên vẫn nộp được.' })}</p>
         <div class="idlabel">${L({ ja:'店舗（見えるデータの範囲）', en:'Store (data scope)', vi:'Cửa hàng (phạm vi dữ liệu)' })}</div>
         ${storeOpts.map(s=>`
           <button class="role-opt store-opt ${s===sel?'on':''}" data-store="${esc(s)}">
@@ -2053,6 +2065,9 @@
         rebuild();
       });
       mask.querySelectorAll('[data-store]').forEach(b => b.onclick = () => { setStoreSel(b.dataset.store); rebuild(); });
+      // お名前＝入力のたびに保存（役割・店舗を切り替えてシートを作り直しても消えない）
+      const nameInput = mask.querySelector('#idName');
+      if (nameInput) nameInput.oninput = () => setUserName(nameInput.value);
       const done = mask.querySelector('[data-done]');
       if (done) done.onclick = () => { mask.remove(); render(); };
     };
@@ -2409,7 +2424,7 @@
         <div class="hint">${L({ja:'※ 写真が無いと提出できません（提出漏れ防止）。',en:'A photo is required to submit.',vi:'Cần có ảnh mới gửi được.'})}</div>
       </div>
       <div class="card"><h3>${L({ja:'最近のオープン写真',en:'Recent opening photos',vi:'Ảnh mở cửa gần đây'})}</h3>
-        ${recent.length ? recent.map(r=>`<div class="rep">${r.photos&&r.photos.length?`<img class="rep-photo" src="${photoThumb(r.photos[0])}" data-full="${photoFull(r.photos[0])}" alt="">`:`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}</div></div></div>`).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
+        ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?`<img class="rep-photo" src="${photoThumb(r.photos[0])}" data-full="${photoFull(r.photos[0])}" alt="">`:`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div></div></div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
       </div>`;
   };
 
@@ -2553,6 +2568,27 @@
       </div>`;
   };
 
+  /* ---------- 提出者（誰が出したか）＝記録があるものだけ返す ---------- */
+  function submitterOf(store, m, dk) {
+    try {
+      if (m.detect === 'subrec') {
+        const r = subRows(SUB_KINDS.open)
+          .filter(x => x.store === store && String(x.item || '').split('|')[0] === m.id && dateKeyFor(store, x.t) === dk)
+          .sort((a, b) => b.t - a.t)[0];
+        return r ? (parseNote(r.note).by || '') : '';
+      }
+      if (m.detect === 'sk') {
+        const r = getSk().filter(x => x.store === store && (x.date || dateKeyFor(store, x.t)) === dk).sort((a, b) => b.t - a.t)[0];
+        return r ? (r.by || '') : '';
+      }
+      if (m.detect === 'monthly') {
+        const r = getMonthly().find(x => x.store === store && x.ym === String(dk).slice(0, 7));
+        return r ? (r.by || '') : '';
+      }
+    } catch (e) {}
+    return '';
+  }
+
   /* ---------- 提出履歴（直近7日・実データ） ---------- */
   APP_VIEWS.history = () => {
     const store = visibleStores()[0];
@@ -2560,10 +2596,12 @@
     const days = []; for (let i = 0; i < 7; i++) days.push(dateKeyFor(store, Date.now() - i * 86400000));
     const rows = days.map(dk => {
       const chips = masters.map(m => { const sub = detectSubmitted(store, m, dk); const st = getStatus(store, m.id, dk); const jl = st.judge ? ` ${L(JUDGE_LABEL[st.judge])}` : ''; return `<span class="kind ${sub?'b':'a'}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(m.name))}${sub?'✓':'✗'}${jl}</span>`; }).join('');
-      return `<div class="rep"><div class="body"><div class="l1">${dk}${isHoliday(store,dk)?` <small style="color:#8a8">(${L({ja:'定休日',en:'Holiday',vi:'Nghỉ'})})</small>`:''}</div><div class="l2">${chips || '—'}</div></div></div>`;
+      // 提出者＝その日に提出された記録から（同じ方が複数出していれば1回だけ表示）
+      const who = [...new Set(masters.map(m => detectSubmitted(store, m, dk) ? submitterOf(store, m, dk) : '').filter(Boolean))];
+      return `<div class="rep"><div class="body"><div class="l1">${dk}${isHoliday(store,dk)?` <small style="color:#8a8">(${L({ja:'定休日',en:'Holiday',vi:'Nghỉ'})})</small>`:''}</div><div class="l2">${chips || '—'}</div>${who.length?`<div class="l2">${L({ja:'提出者',en:'Submitted by',vi:'Người nộp'})}：${esc(who.join('・'))}</div>`:''}</div></div>`;
     }).join('');
     return `<div class="card"><h3>${L({ja:'提出履歴（直近7日）',en:'History (last 7 days)',vi:'Lịch sử (7 ngày)'})} — ${esc(storeShort(store))}</h3>${rows}
-      <p class="hint" style="display:block">${L({ja:'※ 実際の提出データ（全端末同期）から表示しています。',en:'From real synced submission data.',vi:'Từ dữ liệu đã nộp (đồng bộ).'})}</p></div>`;
+      <p class="hint" style="display:block">${L({ja:'※ 実際の提出データ（全端末同期）から表示しています。提出者は、お名前をご登録いただいた端末からの提出に記録されます。',en:'From real synced submission data. The submitter is recorded when a name is registered on the device.',vi:'Từ dữ liệu đã nộp (đồng bộ). Người nộp được ghi khi thiết bị đã đăng ký tên.'})}</p></div>`;
   };
 
   // 委譲イベント（$appは再描画で中身が入れ替わるが要素自体は残るため一度だけ登録）
@@ -2645,7 +2683,7 @@
         const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0, 6) : [];
         if (!photos.length) { toast(L({ja:'写真を撮影・選択してください（提出漏れ防止）',en:'Please add a photo before submitting',vi:'Vui lòng thêm ảnh trước khi gửi'})); return; }
         const dk = dateKeyFor(store, Date.now());
-        postSub(SUB_KINDS.open, store, `openphoto|${dk}`, { by: getRole() }, photos);
+        postSub(SUB_KINDS.open, store, `openphoto|${dk}`, { by: submitterLabel(), role: getRole() }, photos);
         pushAudit('open_submit', store);
         toast(L({ja:'オープン写真を提出しました。ありがとうございます！',en:'Opening photo submitted. Thank you!',vi:'Đã gửi ảnh mở cửa. Cảm ơn!'}));
         go('/app/kyou');
@@ -3156,18 +3194,19 @@
         if (byId('pl_sales')) byId('pl_sales').value = ex && ex.sales != null ? ex.sales : '';
         if (byId('pl_purchase')) byId('pl_purchase').value = ex && ex.purchase != null ? ex.purchase : '';
         if (byId('pl_close')) byId('pl_close').value = ex && ex.close != null ? ex.close : '';
+        if (byId('pl_goal')) byId('pl_goal').value = ex && ex.goal ? ex.goal : '';
         if (byId('pl_open')) byId('pl_open').value = (ex && ex.open != null && ex.open !== '') ? ex.open : plPrevClose(store, ym); // 前月末在庫→月初へ
         recalc();
       };
       if (byId('plSave')) byId('plSave').onclick = () => {
         const store = visibleStores()[0], ym = byId('pl_ym').value;
         if (!ym) { toast(L({ ja:'対象月を選んでください', en:'Pick a month', vi:'Chọn tháng' })); return; }
-        const rec = { store, ym, sales: num('pl_sales'), purchase: num('pl_purchase'), open: num('pl_open'), close: num('pl_close'), t: Date.now() };
+        const rec = { store, ym, sales: num('pl_sales'), purchase: num('pl_purchase'), open: num('pl_open'), close: num('pl_close'), goal: num('pl_goal'), by: submitterLabel(), t: Date.now() };
         const arr = getMonthly().filter(r => !(r.store === store && r.ym === ym)); arr.push(rec);
         try { saveMonthly(arr.slice(-300)); } catch (e) { saveMonthly(arr.slice(-120)); }
         lastSync = rec.t;
         toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' })); render();
-        postReport({ kind:'monthly', store, note: JSON.stringify({ ym, sales: rec.sales, purchase: rec.purchase, open: rec.open, close: rec.close }), t: rec.t });
+        postReport({ kind:'monthly', store, note: JSON.stringify({ ym, sales: rec.sales, purchase: rec.purchase, open: rec.open, close: rec.close, goal: rec.goal, by: rec.by }), t: rec.t });
       };
     }
 
@@ -3512,7 +3551,8 @@
         foodct: v('sk_foodct'), drinkct: v('sk_drinkct'),
         rvt: v('sk_rvt'), rva: v('sk_rva'), hear: v('sk_hear'), disc: v('sk_disc'),
         food: v('sk_food'), labor: v('sk_labor'), tipt: v('sk_tipt'), tipa: v('sk_tipa'),
-        cancel: v('sk_cancel'), closer: v('sk_closer'), note: v('sk_note'), order: v('sk_order'), t: Date.now()
+        cancel: v('sk_cancel'), closer: v('sk_closer'), note: v('sk_note'), order: v('sk_order'),
+        by: submitterLabel(), t: Date.now()
       };
       const arr = getSk(); arr.push(rec);
       try { saveSk(arr.slice(-60)); } catch (e) { saveSk(arr.slice(-20)); }
@@ -3535,11 +3575,15 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; let linkset=null, linksetT=null;
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; let linkset=null, linksetT=null;
     (rows || []).forEach(r => {
       const t = Number(r.t) || 0, id = r.id, store = r.store || '';
       switch (r.kind) {
         case 'a': case 'b': food.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
+        // 提出物まわり（オープン写真の提出・提出物マスタ・判定/本部確認・定休日）＝subRows()が読む同じ置き場へ戻す。
+        // これを入れないと、提出はバックエンドに届いているのに次の同期でローカルから消え、「提出済み」が未提出に戻る。
+        case 'subrec': case 'submaster': case 'substat': case 'subholiday':
+          subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
         case 'route': route.push({ store, route:r.item, t, id }); break;
         case 'open': { const p=pj(r.note); open.push({ store, date:p.date||'', denom:p.denom||{}, total:Number(p.total)||0, t, id }); } break;
@@ -3551,7 +3595,7 @@
         case 'whistle': { const p=pj(r.note); whistle.push({ store, cat:p.cat||'other', body:p.body||'', anon:!!p.anon, t, id }); } break;
         case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', video:p.video||'', photos:r.photos||[], t, id }); } break;
         case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モードごと最新版が正
-        case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正
+        case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, goal:p.goal, by:p.by||'', t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正
         case 'community': { const p=pj(r.note); comm.push({ store, cat:r.item, body:p.body||'', by:p.by||'', photos:r.photos||[], t, id }); } break;
         case 'commmod': { const p=pj(r.note); const k=r.item; if (commmodT[k]==null || t>=commmodT[k]) { commmod[k]={ state:p.state||'published', t }; commmodT[k]=t; } } break; // 投稿キーごと最新の公開状態が正
         case 'commlike': { const k=r.item; commlike[k]=(commlike[k]||0)+1; } break; // 拍手は件数を合算
@@ -3559,7 +3603,7 @@
       }
     });
     const set = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a)); } catch (_) {} };
-    set(LS.reports, food); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
+    set(LS.reports, food.concat(subs)); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
     set('yosakura_demo_open', open); set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
     set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_ckitem', ckitem); set('yosakura_demo_monthly', Object.values(monthly));
