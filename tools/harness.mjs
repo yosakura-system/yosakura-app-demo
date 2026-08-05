@@ -226,6 +226,12 @@ for (const role of ['staff','manager','hq']) {
   catch(e){ FAIL++; console.log(`  ✗ home/${role} threw: `+e.message); }
   ok(html.length > 500, `home/${role} rendered`);
   ok(/みんなの投稿/.test(html) && /data-open="community"/.test(html), `home/${role} has community card`);
+  ok(/data-open="kyou"/.test(html) && /data-open="shukan"/.test(html) && /data-open="getsuji"/.test(html), `home/${role} に日次/週次/月次の窓口が出る`);
+  ok(/id="pinEdit"/.test(html), `home/${role} によく使う追加ボタンが出る`);
+}
+{
+  const wk = renderView('shukan','staff',S_HIROSHIMA,'ja');
+  ok(/今週出すもの/.test(wk), '週次業務ビュー（shukan）が描画される');
 }
 
 console.log('== 提出物マスタ基盤：週次/四半期の頻度・業態の出し分け ==');
@@ -244,10 +250,12 @@ console.log('== 提出物マスタ基盤：週次/四半期の頻度・業態の
     } catch (e) { FAIL++; console.log(`  ✗ ${appId}/${role} threw: ` + e.message); }
     return html;
   };
-  // 牛カツ店：今日=週次POPが出る／四半期・月次は出ない
+  // 牛カツ店：週次POPは「今週(shukan)」に出る／今日(kyou)・四半期には出ない
   const gk_kyou = renderWith('kyou', 'manager', S_GYUKATSU);
-  ok(/卓上POP交換_週/.test(gk_kyou), '牛カツ/今日：週次POP（今週）が出る');
+  ok(!/卓上POP交換_週/.test(gk_kyou), '牛カツ/今日：週次POPは今日に出ない（週次へ）');
   ok(!/コンプラチェック/.test(gk_kyou), '牛カツ/今日：四半期は今日に出ない');
+  const gk_shukan = renderWith('shukan', 'manager', S_GYUKATSU);
+  ok(/卓上POP交換_週/.test(gk_shukan), '牛カツ/週次：週次POPが「今週出すもの」に出る');
   // 牛カツ店：月次=四半期が出る／牛カツ以外POP(mpop)は出ない
   const gk_get = renderWith('getsuji', 'manager', S_GYUKATSU);
   ok(/コンプラチェック/.test(gk_get), '牛カツ/月次：四半期コンプラが出る');
@@ -303,7 +311,7 @@ await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/materials';
   const html = registry.app.innerHTML;
   ok(/data-openurl=/.test(html) && /matAdd/.test(html), '本部の管理画面に一覧と追加フォームが出る');
-  ok(/data-mcatstep=/.test(html), '各資料に大項目◀▶スライド切替が出る');
+  ok(/data-matcat=/.test(html), '各資料に大項目プルダウンが出る');
 }
 FETCH_ROWS = { ok:false };
 

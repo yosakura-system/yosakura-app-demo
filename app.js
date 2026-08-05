@@ -443,12 +443,37 @@
      高原社長の要望＝ホームはシンプルに、よく使うものへワンクリックで届く入口に徹する。
      全機能は並べず「お知らせ／よく使う／緊急・相談／各メニューへの導線」だけを置く。
      全機能の一覧は 報告・学ぶ・本部 の各タブに残す。 */
-  const HOME_PRIMARY = { // 役割ごとの「よく使う」＝ホームに大きく出す入口（ワンクリック）
-    staff:   ['kyou', 'openphoto', 'checklist', 'kizuki'],
-    manager: ['kyou', 'openphoto', 'soukatsu', 'checklist'],
-    owner:   ['kyou', 'openphoto', 'soukatsu', 'checklist'],
-    hq:      ['teishutsu', 'kyou', 'dashboard', 'inbox']
-  };
+  // 「よく使う」＝この端末で各自がピン留め（初期は空・全端末同期しない）
+  const PINS_KEY = 'yosakura_home_pins';
+  const getPins = () => { try { return JSON.parse(localStorage.getItem(PINS_KEY)) || []; } catch { return []; } };
+  const setPins = (a) => { try { localStorage.setItem(PINS_KEY, JSON.stringify(a)); } catch (e) {} };
+  const togglePin = (id) => { const p = getPins(); const i = p.indexOf(id); if (i < 0) p.push(id); else p.splice(i, 1); setPins(p); };
+  // よく使うの設定シート（この端末のみ）
+  function openPinSheet() {
+    const role = getRole();
+    const apps = APPS.filter(a => !a.hide && canOpen(a, role));
+    const build = () => {
+      const pins = getPins();
+      return `<div class="sheet">
+        <div class="grip"></div>
+        <h3>${L({ ja:'よく使うを設定', en:'Set quick access', vi:'Đặt lối tắt' })}<span class="demo-tag">${L({ ja:'この端末', en:'This device', vi:'Máy này' })}</span></h3>
+        <div class="sub">${L({ ja:'よく使う機能を選ぶとホームに並びます（設定はこの端末だけに保存されます）。', en:'Pinned features appear on Home (saved on this device only).', vi:'Tính năng đã ghim hiện ở Trang chủ (chỉ lưu trên máy này).' })}</div>
+        ${apps.map(a => `<button class="role-opt ${pins.includes(a.id) ? 'on' : ''}" data-pin="${a.id}">
+          <span class="rr">${svg(a.icon)}</span>
+          <span class="ri"><b>${esc(L(a.name))}</b><span>${esc(L(a.desc))}</span></span>
+          ${pins.includes(a.id) ? `<span class="rc">${svg('tick')}</span>` : ''}
+        </button>`).join('')}
+        <button class="btn-primary" data-done="1" style="margin-top:10px">${L({ ja:'完了', en:'Done', vi:'Xong' })}</button>
+      </div>`;
+    };
+    const mask = el(`<div class="sheet-mask">${build()}</div>`);
+    const wire = () => {
+      mask.querySelectorAll('[data-pin]').forEach(b => b.onclick = () => { togglePin(b.dataset.pin); mask.querySelector('.sheet').outerHTML = build(); wire(); });
+      const done = mask.querySelector('[data-done]'); if (done) done.onclick = () => { mask.remove(); render(); };
+    };
+    mask.addEventListener('click', (e) => { if (e.target === mask) { mask.remove(); render(); } });
+    document.body.appendChild(mask); wire();
+  }
   function installCardHTML() {
     if (installHidden()) return '';
     return `
@@ -462,8 +487,20 @@
   }
   function homeInner(role) {
     const tiles = (ids) => ids.map(appById).filter(a => a && !a.hide && canOpen(a, role)).map(a => tileHTML(a, role)).join('');
-    const primary = tiles(HOME_PRIMARY[role] || HOME_PRIMARY.staff);
+    const primary = tiles(getPins());
     const safety = tiles(['emergency', 'whistle']);
+    // 提出・業務（日次／週次／月次）の残り件数
+    const dstore = visibleStores()[0];
+    const ditems = todayItemsFor(dstore);
+    const remainOf = (fs) => ditems.filter(it => fs.includes(it.m.freq) && !it.manual && !it.submitted && !it.holiday).length;
+    const dutyRow = (open, label, n) => `<button class="homelink" data-open="${open}">
+        <span class="hl-ic">${svg('check')}</span><span class="hl-t">${L(label)}</span>
+        <span class="hl-c">${n > 0 ? `<b style="color:#b23">${n}</b><small style="color:#8a8"> ${L({ ja:'件', en:'', vi:'' })}</small>` : `<small style="color:#2a7">${L({ ja:'完了', en:'Done', vi:'Xong' })}</small>`} ${svg('chev')}</span></button>`;
+    const dutyBlock = `<div class="homelinks">
+        ${dutyRow('kyou', { ja:'日次業務', en:'Daily tasks', vi:'Hàng ngày' }, remainOf(['daily']))}
+        ${dutyRow('shukan', { ja:'週次業務', en:'Weekly tasks', vi:'Hàng tuần' }, remainOf(['weekly']))}
+        ${dutyRow('getsuji', { ja:'月次業務', en:'Monthly tasks', vi:'Hàng tháng' }, remainOf(['monthly', 'quarterly']))}
+      </div>`;
     const sec = (t) => `<div class="sec-h"><span class="bar"></span><h2>${L(t)}</h2></div>`;
     const latest = newsVisible(getNews()).sort((a, b) => b.t - a.t)[0];
     const news = latest ? `
@@ -504,8 +541,11 @@
         ${installCardHTML()}
         ${news}
         ${communityCard}
+        ${sec({ ja:'提出・業務', en:'Tasks', vi:'Nhiệm vụ' })}
+        ${dutyBlock}
         ${sec({ ja:'よく使う', en:'Quick access', vi:'Hay dùng' })}
-        <div class="grid">${primary}</div>
+        ${primary ? `<div class="grid">${primary}</div>` : ''}
+        <button class="homelink" id="pinEdit"><span class="hl-ic" style="font-size:20px;text-align:center">＋</span><span class="hl-t">${primary ? L({ ja:'よく使うを編集', en:'Edit quick access', vi:'Sửa lối tắt' }) : L({ ja:'よく使う機能を追加', en:'Add quick access', vi:'Thêm lối tắt' })}</span><span class="hl-c">${svg('chev')}</span></button>
         ${safety ? sec({ ja:'緊急・相談', en:'Emergency & Report', vi:'Khẩn cấp & Tố giác' }) + `<div class="grid">${safety}</div>` : ''}
         ${sec({ ja:'メニュー', en:'Menu', vi:'Menu' })}
         ${links}
@@ -1901,7 +1941,7 @@
   /* ---------- 店舗向け：今日出すもの（日次） ---------- */
   APP_VIEWS.kyou = () => {
     const store = visibleStores()[0];
-    const items = todayItemsFor(store).filter(it => it.m.freq === 'daily' || it.m.freq === 'weekly');
+    const items = todayItemsFor(store).filter(it => it.m.freq === 'daily');
     const dk = dateKeyFor(store, Date.now());
     const holiday = isHoliday(store, dk);
     const remain = items.filter(it => !it.manual && !it.submitted).length;
@@ -1913,6 +1953,21 @@
         ${rows}
       </div>
       <p class="hint" style="display:block">${L({ja:'※ 提出の有無は、実際の提出データ（全端末同期）から自動で判定しています。',en:'Status is auto-detected from real submitted data (synced).',vi:'Trạng thái tự nhận từ dữ liệu đã nộp (đồng bộ).'})}</p>`;
+  };
+
+  /* ---------- 店舗向け：今週出すもの（週次） ---------- */
+  APP_VIEWS.shukan = () => {
+    const store = visibleStores()[0];
+    const items = todayItemsFor(store).filter(it => it.m.freq === 'weekly');
+    const remain = items.filter(it => !it.manual && !it.submitted).length;
+    const rows = items.length ? items.map(subItemRow).join('') : `<div class="muted">${L({ja:'今週の提出物はありません',en:'No weekly items',vi:'Không có mục tuần này'})}</div>`;
+    return `
+      <div class="card">
+        <h3>${L({ja:'今週出すもの',en:'This week to submit',vi:'Cần nộp tuần này'})} — ${esc(storeShort(store))}</h3>
+        <p class="hint" style="display:block">${L({ja:'今週分の提出物です。残り',en:'This week. Remaining',vi:'Trong tuần. Còn lại'})} ${remain} ${L({ja:'件',en:'item(s)',vi:'mục'})}</p>
+        ${rows}
+      </div>
+      <p class="hint" style="display:block">${L({ja:'※ 週内に提出があれば自動で「提出済」になります。',en:'Marked done when submitted within the week.',vi:'Tự đánh dấu khi nộp trong tuần.'})}</p>`;
   };
 
   /* ---------- 店舗向け：月末・月次で出すもの（月次） ---------- */
@@ -2586,20 +2641,16 @@
   const saveLinks = (a) => { try { localStorage.setItem('yosakura_demo_links', JSON.stringify(a)); } catch (e) {} };
   const isHttp = (u) => /^https?:\/\//i.test(u || '');
   APP_VIEWS.materials = () => {
-    const links = getLinks();
-    const stepper = (l) => `<span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle">
-        <button class="mini" data-mcatstep="${esc(l.id)}|prev" aria-label="prev">◀</button>
-        <b style="min-width:108px;text-align:center;display:inline-block;font-size:12px;color:var(--sumi)">${esc(mgroupLabel(l.mcat))}</b>
-        <button class="mini" data-mcatstep="${esc(l.id)}|next" aria-label="next">▶</button></span>`;
-    const linkRow = (l) => `<div class="rep" style="align-items:flex-start">
+    const links = getLinks().slice().sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+    const opts = (sel) => MANUAL_GROUPS.map(g => `<option value="${g.v}"${g.v === sel ? ' selected' : ''}>${esc(L(g.t))}</option>`).join('');
+    const linkRow = (l) => `<div class="rep" style="align-items:center;gap:8px">
         <span class="hl-ic" style="flex:0 0 auto">${svg('link')}</span>
-        <div class="body"><div class="l1">${esc(l.title || l.url)}</div>
-          <div class="l2">${l.desc ? esc(l.desc) + ' ・ ' : ''}${isHttp(l.url) ? `<button class="mini" data-openurl="${esc(l.url)}">${L({ ja:'開く', en:'Open', vi:'Mở' })}</button>` : ''}</div>
-          <div class="l2" style="margin-top:6px">${L({ ja:'大項目', en:'Group', vi:'Nhóm' })}：${stepper(l)}</div></div>
-        <button class="mini" data-matdel="${esc(l.id)}">✕</button>
+        <div class="body" style="min-width:0"><div class="l1">${esc(l.title || l.url)}</div>
+          <div class="l2">${l.desc ? esc(l.desc) + ' ・ ' : ''}${isHttp(l.url) ? `<button class="mini" data-openurl="${esc(l.url)}">${L({ ja:'開く', en:'Open', vi:'Mở' })}</button>` : ''}</div></div>
+        <select class="mat-cat-sel" data-matcat="${esc(l.id)}" style="flex:0 0 auto;max-width:132px">${opts(l.mcat)}</select>
+        <button class="mini" data-matdel="${esc(l.id)}" style="flex:0 0 auto">✕</button>
       </div>`;
-    const section = (g) => { const rows = links.filter(l => l.mcat === g.v).sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))); return rows.length ? `<div class="card"><h3>${esc(L(g.t))} <small style="color:#8a8">${rows.length}</small></h3>${rows.map(linkRow).join('')}</div>` : ''; };
-    const unsorted = links.filter(l => !MANUAL_GROUPS.some(g => g.v === l.mcat)).sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+    const counts = MANUAL_GROUPS.map(g => `${esc(L(g.t))} ${links.filter(l => l.mcat === g.v).length}`).join(' ／ ');
     const form = `
       <div class="card" id="matForm">
         <h3>${L({ ja:'資料リンクを追加（本部）', en:'Add a material link (HQ)', vi:'Thêm liên kết (HQ)' })}</h3>
@@ -2612,14 +2663,17 @@
         <label class="fld"><span>${L({ ja:'ひとことメモ（任意）', en:'Note (optional)', vi:'Ghi chú' })}</span>
           <input type="text" id="mat_desc"></label>
         <button class="btn-primary" id="matAdd">${L({ ja:'追加する', en:'Add', vi:'Thêm' })}</button>
-        <div class="hint">${L({ ja:'追加すると全店のマニュアルに反映されます。大項目は各資料の ◀▶ でいつでも切り替えられます。', en:'Reflected in all stores. Move between groups with ◀▶ anytime.', vi:'Áp dụng toàn bộ. Đổi nhóm bằng ◀▶.' })}</div>
+        <div class="hint">${L({ ja:'追加すると全店のマニュアルに反映されます。', en:'Reflected in all stores.', vi:'Áp dụng toàn bộ.' })}</div>
       </div>`;
-    const body = MANUAL_GROUPS.map(section).join('') + (unsorted.length
-      ? `<div class="card"><h3>${L({ ja:'未分類', en:'Unsorted', vi:'Chưa phân loại' })} <small style="color:#8a8">${unsorted.length}</small></h3>${unsorted.map(linkRow).join('')}</div>` : '');
     return `
-      ${NOTE({ ja:'◆ 資料の登録と、マニュアルの大項目への振り分け（本部専用）。各資料の ◀▶ で大項目を切り替えられます。', en:'◆ Register materials and assign to manual groups (HQ). Use ◀▶ to move.', vi:'◆ Đăng ký & phân nhóm (HQ). Dùng ◀▶ để chuyển.' })}
+      ${NOTE({ ja:'◆ 資料の登録と、マニュアルの大項目への振り分け（本部専用）。右のプルダウンで大項目を選ぶだけで、その場で反映されます。', en:'◆ Register materials and pick the manual group from the dropdown (HQ).', vi:'◆ Đăng ký & chọn nhóm bằng menu (HQ).' })}
       ${form}
-      ${body || `<div class="card"><div class="muted">${L({ ja:'まだ資料が登録されていません。上のフォームから追加できます。', en:'No materials yet.', vi:'Chưa có tài liệu.' })}</div></div>`}`;
+      <div class="card">
+        <h3>${L({ ja:'登録済みの資料', en:'Registered materials', vi:'Tài liệu đã đăng ký' })} <small style="color:#8a8">${links.length}</small></h3>
+        <p class="hint" style="display:block">${L({ ja:'各資料の右の選択で「大項目」を変更（すぐ反映・全店に同期）。', en:'Change each material’s group with the dropdown (synced).', vi:'Đổi nhóm bằng menu (đồng bộ).' })}</p>
+        ${links.length ? links.map(linkRow).join('') : `<div class="muted">${L({ ja:'まだ資料が登録されていません。上のフォームから追加できます。', en:'No materials yet.', vi:'Chưa có tài liệu.' })}</div>`}
+      </div>
+      ${links.length ? `<p class="hint" style="display:block">${L({ ja:'大項目ごとの件数', en:'Count by group', vi:'Số theo nhóm' })}：${counts}</p>` : ''}`;
   };
 
   // 提出管理モジュールをアプリ一覧へ追加（店舗ロール中心・本部も閲覧可）
@@ -2653,6 +2707,11 @@
       name:{ ja:'今日出すもの', en:'Today to submit', vi:'Cần nộp hôm nay' },
       desc:{ ja:'当日の提出物と未提出をひと目で', en:'Today’s items & missing at a glance', vi:'Mục cần nộp & còn thiếu' } });
   }
+  if (!appById('shukan')) {
+    APPS.unshift({ id:'shukan', group:'genba', icon:'calendar', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'今週出すもの', en:'This week to submit', vi:'Cần nộp tuần này' },
+      desc:{ ja:'今週の提出物と未提出をひと目で', en:'This week’s items & missing', vi:'Mục tuần & còn thiếu' } });
+  }
   if (!appById('getsuji')) {
     APPS.unshift({ id:'getsuji', group:'genba', icon:'calendar', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'月末・月次で出すもの', en:'Monthly to submit', vi:'Cần nộp hàng tháng' },
@@ -2674,14 +2733,15 @@
       desc:{ ja:'相談しにくい問題を本部へ直接（固定）', en:'Report directly to HQ (fixed item)', vi:'Báo cáo trực tiếp tới HQ (cố định)' } });
   }
 
-  function render() {
+  function render(keepScroll) {
+    const y = keepScroll ? (window.scrollY || window.pageYOffset || 0) : 0;
     const { path, params } = currentRoute();
     let html;
     if (path.startsWith('/app/')) html = viewApp(path.slice(5));
     else if (path === '/home') html = viewHome(params.get('tab') || 'home');
     else html = viewHome('home');
     $app.innerHTML = html;
-    window.scrollTo(0, 0);
+    window.scrollTo(0, y);
     bind();
   }
 
@@ -2691,6 +2751,7 @@
     if (useBackend()) syncReports();
     if (byId('langBtn')) byId('langBtn').onclick = openLangSheet;
     if (byId('roleBtn')) byId('roleBtn').onclick = openIdentitySheet;
+    if (byId('pinEdit')) byId('pinEdit').onclick = openPinSheet;
     if (byId('installBtn')) byId('installBtn').onclick = triggerInstall;
     if (byId('installDismiss')) byId('installDismiss').onclick = () => { localStorage.setItem('yosakura_install_hide', '1'); render(); };
     if (byId('backBtn')) byId('backBtn').onclick = () => go('/home');
@@ -2946,17 +3007,14 @@
     };
     document.querySelectorAll('[data-matdel]').forEach(b => b.onclick = () => {
       const links = getLinks().filter(l => l.id !== b.dataset.matdel);
-      saveLinks(links); const t = Date.now(); lastSync = t; render();
+      saveLinks(links); const t = Date.now(); lastSync = t; render(true);
       postReport({ kind:'linkset', store:'', note: JSON.stringify(links), t });
     });
-    // 大項目を ◀▶ でスライド切替（本部）→ マニュアルの表示先が変わる・全端末同期
-    document.querySelectorAll('[data-mcatstep]').forEach(b => b.onclick = () => {
-      const [id, dir] = b.dataset.mcatstep.split('|');
-      const order = MANUAL_GROUPS.map(g => g.v); if (!order.length) return;
-      const links = getLinks(); const l = links.find(x => x.id === id); if (!l) return;
-      let i = order.indexOf(l.mcat); i = i < 0 ? 0 : (i + (dir === 'next' ? 1 : -1) + order.length) % order.length;
-      l.mcat = order[i];
-      saveLinks(links); const t = Date.now(); lastSync = t; render();
+    // 大項目をプルダウンで変更（本部）→ その場で反映・スクロール位置は保持・全端末同期
+    document.querySelectorAll('[data-matcat]').forEach(s => s.onchange = () => {
+      const links = getLinks(); const l = links.find(x => x.id === s.dataset.matcat); if (!l) return;
+      l.mcat = s.value;
+      saveLinks(links); const t = Date.now(); lastSync = t; render(true);
       postReport({ kind:'linkset', store:'', note: JSON.stringify(links), t });
     });
     document.querySelectorAll('[data-openurl]').forEach(b => b.onclick = () => window.open(b.dataset.openurl, '_blank', 'noopener'));
