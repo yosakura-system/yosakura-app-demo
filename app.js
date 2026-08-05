@@ -908,6 +908,24 @@
     { v:'other',     t:{ ja:'その他', en:'Other', vi:'Khác' } }
   ];
   const routeLabel = (v) => { const f = ROUTES.find(x=>x.v===v); return f ? L(f.t) : v; };
+  // サーベイの「来店きっかけ」は、お客様が回答された言語のままの値で入る
+  // （구글／グーグル／Instagram／인스타그램／Walk in／現場候位／đi thẳng vào／예약 없이 …）。
+  // そのままではアプリの区分と一致せず集計に載らないため、ここで寄せる。判定できないものは「その他」。
+  const ROUTE_ALIASES = [
+    { v:'google',    re:/google|グーグル|구글|谷歌|공굴/i },
+    { v:'instagram', re:/instagram|インスタ|인스타|ig\b/i },
+    { v:'tiktok',    re:/tiktok|ティックトック|틱톡|抖音/i },
+    { v:'referral',  re:/紹介|口コミ|referral|소개|추천|giới thiệu|介紹|推薦|朋友/i },
+    { v:'walkin',    re:/walk[\s-]?in|通りがかり|飛び込み|現場|현장|예약\s*없이|đi thẳng|vãng lai|路過|店頭/i },
+    { v:'repeat',    re:/repeat|リピート|再訪|재방문|khách quen|常連/i }
+  ];
+  const normalizeRoute = (raw) => {
+    const s = String(raw || '').trim();
+    if (!s) return '';
+    if (ROUTES.some(x => x.v === s)) return s; // アプリ内で記録した値はそのまま
+    const hit = ROUTE_ALIASES.find(a => a.re.test(s));
+    return hit ? hit.v : 'other';
+  };
   const dayStr = (t) => { const d = new Date(t); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
   APP_VIEWS.route = () => {
     const vis = visibleStores();
@@ -1205,7 +1223,16 @@
     const avg = n ? rows.reduce((s, r) => s + (Number(r.sat) || 0), 0) / n : 0;
     const low = rows.filter(r => (Number(r.sat) || 0) <= 2).length;
     const dist = [5, 4, 3, 2, 1].map(s => ({ s, c: rows.filter(r => Number(r.sat) === s).length }));
-    const rc = {}; ROUTES.forEach(x => rc[x.v] = 0); rows.forEach(r => { if (rc[r.route] != null) rc[r.route]++; });
+    // 来店経路＝各国語の回答をアプリの区分へ寄せて集計（寄せられなかった生の値は「その他」の内訳として出す）
+    const rc = {}; ROUTES.forEach(x => rc[x.v] = 0);
+    const otherRaw = {};
+    rows.forEach(r => {
+      const v = normalizeRoute(r.route);
+      if (!v) return;
+      if (rc[v] != null) rc[v]++;
+      if (v === 'other' && String(r.route || '').trim()) { const k = String(r.route).trim(); otherRaw[k] = (otherRaw[k] || 0) + 1; }
+    });
+    const otherRows = Object.entries(otherRaw).sort((a, b) => b[1] - a[1]).slice(0, 8);
     const cc = {}; rows.forEach(r => { if (r.country) cc[r.country] = (cc[r.country] || 0) + 1; });
     const countryRows = Object.entries(cc).sort((a, b) => b[1] - a[1]);
     const ymOf = (t) => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
@@ -1232,11 +1259,12 @@
         ${dist.map(d => barRow('★' + d.s, d.c, n, d.s <= 2 ? 'bar-low' : '')).join('')}
         <div class="idlabel" style="margin-top:12px">${L({ ja:'来店経路', en:'Arrival route', vi:'Nguồn khách' })}</div>
         ${ROUTES.map(r => barRow(L(r.t), rc[r.v], n)).join('')}
+        ${otherRows.length ? `<p class="hint" style="display:block;margin-top:2px">${L({ ja:'「その他」の内訳', en:'Breakdown of “Other”', vi:'Chi tiết “Khác”' })}：${otherRows.map(([k, c]) => esc(k) + ' ' + c).join(' ／ ')}</p>` : ''}
         ${countryRows.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'来店国', en:'Country', vi:'Quốc gia' })}</div>${countryRows.map(([c, ct]) => barRow(c, ct, n)).join('')}` : ''}
         ${months.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'月別（回答数・平均満足度）', en:'By month (responses & avg)', vi:'Theo tháng (PH & TB)' })}</div>${months.map(m => barRow(`${m}　★${mavg(m).toFixed(1)}`, mc[m], Math.max(...months.map(x => mc[x])))).join('')}` : ''}
       </div>
       ${byStore}
-      <p class="hint" style="display:block">${L({ ja:'※ サーベイ回答（本番フォーム）から集計しています。来店国はデータがある場合に表示します。', en:'Aggregated from live survey responses. Country appears when available.', vi:'Tổng hợp từ phản hồi khảo sát. Quốc gia hiển thị khi có.' })}</p>`;
+      <p class="hint" style="display:block">${L({ ja:'※ サーベイ回答（本番フォーム）から集計しています。来店国はデータがある場合に表示します。来店経路は、お客様が回答された言語（韓国語・中国語・ベトナム語など）の値をアプリの区分へ寄せて集計しています。', en:'Aggregated from live survey responses. Country appears when available. Arrival routes answered in other languages are mapped to these categories.', vi:'Tổng hợp từ phản hồi khảo sát. Nguồn khách trả lời bằng ngôn ngữ khác được quy về các nhóm này.' })}</p>`;
   }
 
   /* ⑥ 総括表（動く：実日報フォーマットで入力→保存→履歴＆本部集約）*/

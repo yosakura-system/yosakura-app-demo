@@ -529,6 +529,27 @@ console.log('== 月間目標の設定（個店カルテの「目標到達」に�
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== サーベイの来店きっかけ：各国語の回答をアプリの区分へ寄せて集計する ==');
+{
+  const sv = (route, id) => ({ kind:'survey', store:S_HIROSHIMA, level:'5', item:route, note: JSON.stringify({ c:'Korea', f:'' }), t: Date.now(), id });
+  FETCH_ROWS = { ok:true, reports:[
+    sv('구글','r1'), sv('グーグル','r2'), sv('Google','r3'),          // → Google
+    sv('Instagram','r4'), sv('인스타그램','r5'),                      // → Instagram
+    sv('Walk in','r6'), sv('現場候位','r7'), sv('예약 없이','r8'), sv('đi thẳng vào','r9'), // → 通りがかり
+    sv('其他（YouTube）','r10'),                                      // → その他（内訳に生の値が残る）
+  ]};
+  try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ route normalize threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/survey';
+  const html = registry.app.innerHTML;
+  const barOf = (label) => { const i = html.indexOf('>'+label+'<'); return i < 0 ? '' : html.slice(i, i + 200); };
+  ok(/<b>3<\/b>/.test(barOf('Google（マップ/検索）')), '구글・グーグル・Google が Google に寄る');
+  ok(/<b>2<\/b>/.test(barOf('Instagram')), 'Instagram・인스타그램 が Instagram に寄る');
+  ok(/<b>4<\/b>/.test(barOf('通りがかり')), 'Walk in・現場候位・예약 없이・đi thẳng vào が通りがかりに寄る');
+  ok(/その他」の内訳/.test(html) && /YouTube/.test(html), '寄せられなかった回答は「その他」の内訳に生の値で残る');
+}
+FETCH_ROWS = { ok:false };
+
 console.log('== 来店経路（本部）の注記が実態と合っている ==');
 {
   // この画面は議事録12-1でメニューから外している（hide）ため、注記はソース上で検証する
