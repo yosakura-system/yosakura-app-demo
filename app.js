@@ -1077,12 +1077,59 @@
       {ja:'クローズ写真の撮影',en:'Take closing photo',vi:'Chụp ảnh đóng cửa'},
       {ja:'戸締り・施錠',en:'Lock up',vi:'Khóa cửa'} ] }
   ];
-  const CK_COMMON = { open: CHECK_GROUPS, close: CLOSE_GROUPS };
-  const CK_MODES = [
-    { v:'open',  t:{ ja:'オープン', en:'Opening', vi:'Mở cửa' } },
-    { v:'close', t:{ ja:'クローズ', en:'Closing', vi:'Đóng cửa' } }
+  /* アイドルタイム＝午後営業の準備・抜け漏れ防止（提出物一覧の5番）。
+     ★項目は暫定です。本部で確定したものに差し替えます。 */
+  const IDLE_GROUPS = [
+    { g:{ja:'客席・ホール',en:'Hall & seats',vi:'Sảnh & bàn'}, items:[
+      {ja:'客席・テーブルの清掃と拭き上げ',en:'Clean & wipe seats and tables',vi:'Lau bàn ghế'},
+      {ja:'卓上の調味料・POPの補充と汚れ確認',en:'Refill & check condiments and POP',vi:'Bổ sung gia vị & POP'},
+      {ja:'カトラリー・おしぼりの補充',en:'Refill cutlery & towels',vi:'Bổ sung dao dĩa & khăn'} ] },
+    { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
+      {ja:'夜営業ぶんの仕込み確認',en:'Check prep for dinner',vi:'Kiểm tra chuẩn bị tối'},
+      {ja:'食材の残量と冷蔵保管の確認',en:'Check stock & refrigeration',vi:'Kiểm tra tồn & bảo quản lạnh'},
+      {ja:'まな板・包丁・器具の洗浄',en:'Clean board, knives, tools',vi:'Vệ sinh thớt, dao, dụng cụ'} ] },
+    { g:{ja:'補充・確認',en:'Restock & check',vi:'Bổ sung & kiểm tra'}, items:[
+      {ja:'ドリンク・氷の補充',en:'Refill drinks & ice',vi:'Bổ sung đồ uống & đá'},
+      {ja:'床・ゴミの確認',en:'Check floor & trash',vi:'Kiểm tra sàn & rác'},
+      {ja:'夜の予約状況の確認',en:'Check evening reservations',vi:'Kiểm tra đặt chỗ tối'} ] }
   ];
-  const getCkMode = () => (localStorage.getItem('yosakura_ckmode') === 'close' ? 'close' : 'open');
+  /* 桜チェック＝トイレの清掃（本部の「桜チェックシート」より）。
+     お店の裏の顔。他が綺麗でも桜が汚いと全体の印象が落ちる、という位置づけ。
+     HACCPの一般衛生管理（施設衛生管理）の記録としても使う。 */
+  const SAKURA_GROUPS = [
+    { g:{ja:'営業中の見回り',en:'During service',vi:'Trong giờ phục vụ'}, items:[
+      {ja:'便器：便座・蓋・ペーパーホルダーを拭く（汚れが目立つ場合は洗剤で洗浄）',en:'Toilet: wipe seat, lid, paper holder',vi:'Bồn cầu: lau bệ, nắp, giá giấy'},
+      {ja:'洗面台：鏡や洗面台まわりの水滴を拭き取る',en:'Basin: wipe water drops on mirror and basin',vi:'Bồn rửa: lau nước đọng'},
+      {ja:'消耗品：紙は残り1/3で交換・石鹸・ペーパータオルは半分で補充・芳香剤の残量',en:'Refill paper (at 1/3), soap, towels (at 1/2), check air freshener',vi:'Bổ sung giấy, xà phòng, khăn, kiểm tra thơm phòng'},
+      {ja:'全体：ゴミの処理、床の汚れ・臭気・異常がないか',en:'Overall: trash, floor stains, odor, anything unusual',vi:'Tổng thể: rác, sàn, mùi, bất thường'},
+      {ja:'清掃後は必ず手を洗う',en:'Always wash hands after cleaning',vi:'Luôn rửa tay sau khi dọn'} ] },
+    { g:{ja:'開店前・アイドルタイム・閉店時',en:'Open / idle / close',vi:'Mở cửa / giữa ca / đóng cửa'}, items:[
+      {ja:'便器：洗剤で内側を洗浄／外側・便座の裏・蝶番まで拭き取る',en:'Toilet: wash inside; wipe outside, under seat, hinges',vi:'Bồn cầu: rửa trong, lau ngoài & bản lề'},
+      {ja:'コード：後ろ側のコードの上の埃を拭き取る',en:'Cords: wipe dust on cords behind',vi:'Dây điện: lau bụi'},
+      {ja:'換気扇：カバーの埃を拭き取る',en:'Vent: wipe dust off the cover',vi:'Quạt hút: lau bụi nắp'},
+      {ja:'洗面台：洗剤で洗浄／蛇口・排水口も拭く',en:'Basin: wash; wipe tap and drain',vi:'Bồn rửa: rửa, lau vòi & thoát nước'},
+      {ja:'床：モップ掛けまたは拭き掃除',en:'Floor: mop or wipe',vi:'Sàn: lau'},
+      {ja:'鏡：ガラスクリーナーで水滴・指紋を落とす',en:'Mirror: remove drops and prints',vi:'Gương: lau vết nước & vân tay'},
+      {ja:'ドアノブ：アルコールで拭き取り（扉全体・周辺の壁も）',en:'Door handle: wipe with alcohol (door & wall too)',vi:'Tay nắm: lau cồn (cả cửa & tường)'},
+      {ja:'消耗品：紙・石鹸・ペーパータオル・芳香剤の補充',en:'Refill paper, soap, towels, air freshener',vi:'Bổ sung giấy, xà phòng, khăn, thơm phòng'},
+      {ja:'ゴミ：ゴミ袋の交換と周辺の清掃',en:'Trash: change bag & clean around',vi:'Rác: thay túi & dọn quanh'},
+      {ja:'臭気：芳香剤の設置と換気の状況',en:'Odor: air freshener & ventilation',vi:'Mùi: thơm phòng & thông gió'},
+      {ja:'異常：水漏れ・詰まり・破損がないか（あれば即報告）',en:'Issues: leaks, clogs, damage (report at once)',vi:'Bất thường: rò rỉ, tắc, hỏng (báo ngay)'},
+      {ja:'清掃後は必ず手を洗う',en:'Always wash hands after cleaning',vi:'Luôn rửa tay sau khi dọn'} ] }
+  ];
+  const CK_COMMON = { open: CHECK_GROUPS, idle: IDLE_GROUPS, close: CLOSE_GROUPS, sakura: SAKURA_GROUPS };
+  const CK_MODES = [
+    { v:'open',   t:{ ja:'オープン', en:'Opening', vi:'Mở cửa' } },
+    { v:'idle',   t:{ ja:'アイドル', en:'Idle time', vi:'Giữa ca' } },
+    { v:'close',  t:{ ja:'クローズ', en:'Closing', vi:'Đóng cửa' } },
+    { v:'sakura', t:{ ja:'桜（トイレ）', en:'Sakura (restroom)', vi:'Sakura (WC)' } }
+  ];
+  // モードごとの注意書き（現場が迷いやすいところだけ）
+  const CK_NOTES = {
+    idle:   { ja:'※ この項目は暫定です。本部で確定したものに差し替えます。', en:'Provisional items; to be replaced by the HQ version.', vi:'Mục tạm thời; sẽ thay bằng bản của HQ.' },
+    sakura: { ja:'※ 便器用の清掃具と鏡用の布は、他と分けて使ってください。清掃後は厨房に戻る前に手を洗い、靴裏の汚れを持ち込まないようにしてください。', en:'Use separate tools for the toilet bowl and the mirror. Wash hands before returning to the kitchen.', vi:'Dùng dụng cụ riêng cho bồn cầu và gương. Rửa tay trước khi vào bếp.' }
+  };
+  const getCkMode = () => { const v = localStorage.getItem('yosakura_ckmode'); return CK_MODES.some(m => m.v === v) ? v : 'open'; };
   // 店舗独自項目（店長・オーナーが追加）＝店舗×モードごと・全端末同期
   const getCkItems = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckitem')) || {}; } catch { return {}; } };
   const saveCkItems = (o) => { try { localStorage.setItem('yosakura_demo_ckitem', JSON.stringify(o)); } catch (e) {} };
@@ -1158,14 +1205,15 @@
       ${NOTE({ ja:'◆ オープン／クローズの点検。本部共通項目は削除できません。店舗独自の項目は店長・オーナーが追加できます', en:'◆ Opening/closing checks. HQ common items are fixed; managers/owners can add store-specific items.', vi:'◆ Kiểm tra mở/đóng. Mục chung của HQ cố định; quản lý/chủ có thể thêm mục riêng.' })}
       <div class="card" style="text-align:center">
         <div class="seg" data-seg="ckmode" style="margin-bottom:14px">${CK_MODES.map(m => `<button type="button" data-ckmode="${m.v}" class="${m.v===mode?'on':''}">${L(m.t)}</button>`).join('')}</div>
-        <h3>${mode==='open' ? L({ ja:'本日のオープン点検', en:'Today opening check', vi:'Kiểm tra mở cửa hôm nay' }) : L({ ja:'本日のクローズ点検', en:'Today closing check', vi:'Kiểm tra đóng cửa hôm nay' })}</h3>
+        <h3>${L({ ja:'本日の', en:'Today: ', vi:'Hôm nay: ' })}${esc(L((CK_MODES.find(m => m.v === mode) || {}).t || ''))}${L({ ja:'点検', en:' check', vi:'' })}</h3>
         <div class="muted" style="margin:2px 0 8px">${esc(store)}</div>
         <div style="font-size:26px;font-weight:700;letter-spacing:.02em">${n}<span style="color:var(--gray);font-size:17px">/${total}</span></div>
         <div class="bar-track" style="margin:9px 0 2px"><div class="bar-fill" style="width:${Math.round(n/total*100)}%"></div></div>
       </div>
       ${groupsHTML}
       ${customHTML}
-      <div class="hint">${L({ ja:'上から順に実施すれば完了です。チェックは店舗ごと・当日分として保存されます（翌日は自動でリセット）。', en:'Work top to bottom. Checks are saved per store for today (auto-resets next day).', vi:'Làm từ trên xuống. Lưu theo cửa hàng cho hôm nay (tự đặt lại ngày mai).' })}</div>`;
+      ${CK_NOTES[mode] ? `<div class="hint" style="display:block">${L(CK_NOTES[mode])}</div>` : ''}
+      <div class="hint">${L({ ja:'上から順に実施すれば完了です。チェックは店舗ごと・当日分として保存されます（翌日は自動でリセット）。実施状況は本部・オーナーからも確認できます。', en:'Work top to bottom. Checks are saved per store for today (auto-resets next day) and visible to HQ/owners.', vi:'Làm từ trên xuống. Lưu theo cửa hàng cho hôm nay; HQ/chủ có thể xem.' })}</div>`;
   };
 
   /* ④ マニュアル（権限別×業態別に出し分け）
@@ -2342,16 +2390,34 @@
   }
 
   // 提出物マスタ（本部が設定）。obligation: required(必須)/store(店舗運用)/off(対象外)
+  /* 提出物マスタ＝本部の「提出物・実行項目一覧」に合わせる（2026-08-07 増田さんより受領）。
+     並び順＝実際に出す順（開店前 → 営業中 → 閉店後）。この順で画面に並ぶ。
+     oblig: required=必須／store=店舗内共有の推奨／off=準備中
+     detect: 提出済みを自動で判定する方法（ckdone=アプリのチェックリスト実施） */
   function defaultMasters() {
     return [
+      // ── 毎日 ──
+      { id:'openphoto',  name:{ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'},                 oblig:'required', freq:'daily', due:'11:00', target:'all', hqReview:'none',      detect:'subrec', linkApp:'openphoto' },
+      { id:'ck_open',    name:{ja:'オープンチェックリスト',en:'Opening checklist',vi:'Checklist mở cửa'}, oblig:'store',  freq:'daily', due:'11:00', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'open',   linkApp:'checklist' },
       // ★一食目写真：AI判定の運用が未確定（木村さんと協議中）のため、当面は提出物の対象から外す（準備中）。
       //   運用が決まったら oblig を 'required' に戻すだけで有効化できる。
-      { id:'firstphoto', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'}, oblig:'off', freq:'daily', due:'23:59', target:'except_course', hqReview:'exception', detect:'fp', linkApp:'firstphoto' },
-      { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},       oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 本部運用＝閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
-      { id:'openphoto',  name:{ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'},          oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'subrec', linkApp:'openphoto' },
-      { id:'cleaning',   name:{ja:'開店清掃チェック',en:'Opening cleaning',vi:'Vệ sinh mở cửa'}, oblig:'store',    freq:'daily', due:'11:00', target:'all',          hqReview:'none',      detect:'none', linkApp:'checklist' },
-      { id:'facade',     name:{ja:'内外装動画＋ポップ',en:'Interior video & POP',vi:'Video & POP'}, oblig:'required', freq:'monthly', due:'23:59', target:'all',       hqReview:'each',      detect:'video', linkApp:'storevideo' },
-      { id:'monthlynum', name:{ja:'月次数値（売上・在庫・原価率）',en:'Monthly numbers',vi:'Số liệu tháng'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'monthly', linkApp:'pl' }
+      { id:'firstphoto', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'},          oblig:'off',      freq:'daily', due:'23:59', target:'except_course', hqReview:'exception', detect:'fp', linkApp:'firstphoto' },
+      { id:'ck_idle',    name:{ja:'アイドルタイムチェックリスト',en:'Idle-time checklist',vi:'Checklist giữa ca'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'idle',   linkApp:'checklist' },
+      { id:'ck_sakura',  name:{ja:'桜チェックリスト（トイレ）',en:'Sakura checklist (restroom)',vi:'Checklist WC'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'sakura', linkApp:'checklist' },
+      { id:'hygiene_d',  name:{ja:'定期衛生管理表（清掃のビフォーアフター）',en:'Hygiene log (before/after photos)',vi:'Vệ sinh (ảnh trước/sau)'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'none', linkApp:'checklist' },
+      { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
+      { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
+      // ── 毎週 ──
+      { id:'pop_week',   name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'weekly', due:'23:59', target:'gyotai_in', gyotai:['gyukatsu'], hqReview:'none', detect:'none', linkApp:'checklist' }, // 牛カツは油汚れ対策で週1
+      // ── 毎月 ──
+      { id:'monthlynum', name:{ja:'総括表（月次の数値）',en:'Monthly summary',vi:'Tổng kết tháng'},      oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'monthly', linkApp:'pl' }, // 毎月5日まで
+      { id:'pl',         name:{ja:'PL（損益）',en:'P&L',vi:'Báo cáo lãi lỗ'},                           oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', linkApp:'pl' },
+      { id:'hygiene_m',  name:{ja:'定期衛生管理（月次の指定箇所）',en:'Monthly hygiene (assigned spots)',vi:'Vệ sinh tháng (khu chỉ định)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', linkApp:'checklist' },
+      { id:'menubook',   name:{ja:'メニューブック・販促物の確認',en:'Menu book & POP check',vi:'Kiểm tra menu & POP'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', linkApp:'storevideo' },
+      { id:'facade',     name:{ja:'店舗内・外の動画',en:'Store interior/exterior video',vi:'Video trong/ngoài quán'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'video', linkApp:'storevideo' },
+      { id:'pop_month',  name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'monthly', due:'23:59', target:'gyotai_ex', gyotai:['gyukatsu'], hqReview:'none', detect:'none', linkApp:'checklist' },
+      // ── 四半期 ──
+      { id:'compliance', name:{ja:'コンプラチェック',en:'Compliance check',vi:'Kiểm tra tuân thủ'},     oblig:'required', freq:'quarterly', due:'23:59', target:'all', hqReview:'each', detect:'none', linkApp:'whistle' } // 4・7・10・1月の月末まで
     ];
   }
   /* 提出管理データの全端末共有：既存バックエンド(reports)に専用kindで保存し本部全員で共有（追加kindのみ・既存挙動は不変） */
@@ -2439,6 +2505,12 @@
       if (m.detect === 'fp')     return getFP().some(r => r.store === store && inScope(r.t));
       if (m.detect === 'sk')     return getSk().some(r => r.store === store && (r.date ? inScopeD(r.date) : inScope(r.t))); // 対象日で判定（翌朝提出でも前日分として数える）
       if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
+      // アプリのチェックリスト＝そのモードを1つでもチェックしていれば実施とみなす（全端末で共有済み）
+      if (m.detect === 'ckdone') {
+        const mode = m.ckMode || 'open';
+        const done = getCkDone()[`${store}||${mode}||${dk}`] || {};
+        return Object.keys(done).some(k => done[k]);
+      }
       if (m.detect === 'video')  return getReports().some(r => r.kind === 'video' && r.store === store && inScope(r.t));
       if (m.detect === 'monthly') return getMonthly().some(r => r.store === store && r.ym === new Date().toISOString().slice(0, 7));
       if (m.detect === 'subrec') return subRows(SUB_KINDS.open).some(r => r.store === store && String(r.item || '').split('|')[0] === m.id && inScope(r.t));

@@ -810,5 +810,61 @@ console.log('== 店舗名を本部の正式名称に合わせる（過去のデ�
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== 提出物を本部の「提出物・実行項目一覧」に合わせる（全17項目・出す順）==');
+{
+  const S_GYU = '牛カツ世桜 長堀橋店';
+  const kyou = renderView('kyou','manager',S_GYU,'ja');
+  // 出す順＝開店前 → 営業中 → 閉店後
+  const order = ['オープン写真','オープンチェックリスト','アイドルタイムチェックリスト','桜チェックリスト','クローズチェックリスト','日報'];
+  let prev = -1, ordered = true;
+  order.forEach(name => { const i = kyou.indexOf(name); if (i < 0 || i < prev) ordered = false; prev = i; });
+  ok(ordered, '日次の提出物が「出す順」に並ぶ（開店前→営業中→閉店後）');
+  ok(/桜チェックリスト/.test(kyou), '桜チェックリスト（トイレ）が日次に入っている');
+  ok(/定期衛生管理表/.test(kyou), '定期衛生管理表が日次に入っている');
+
+  // 業態の出し分け：卓上POPは牛カツが週次、それ以外は月次
+  const wkGyu = renderView('shukan','manager',S_GYU,'ja');
+  ok(/卓上POP/.test(wkGyu), '牛カツでは卓上POPの交換が「今週出すもの」に出る');
+  const wkUnagi = renderView('shukan','manager','日本鰻世桜 浅草橋店','ja');
+  ok(!/卓上POP/.test(wkUnagi), '牛カツ以外では週次に卓上POPが出ない');
+  const mtUnagi = renderView('getsuji','manager','日本鰻世桜 浅草橋店','ja');
+  ok(/卓上POP/.test(mtUnagi), '牛カツ以外では月次に卓上POPが出る');
+
+  // 月次・四半期
+  ok(/PL/.test(mtUnagi) && /店舗内・外の動画/.test(mtUnagi), '月次にPL・店舗内外動画が入っている');
+  ok(/コンプラチェック/.test(mtUnagi), '四半期のコンプラチェックが月次の画面に出る');
+
+  // チェックリストを実施すると「提出済み」になる
+  const ymd = (d) => d.toLocaleDateString('en-CA');
+  const today = ymd(new Date());
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'ckdone', store:S_GYU, item:`sakura||${today}`,
+      note: JSON.stringify({ done:{ 'sakura-c-0-0':true }, by:'店長（山田）' }), t: Date.now(), id:'k1' },
+  ]};
+  try { run(()=> setLS('manager', S_GYU, 'ja')); } catch(e){ FAIL++; console.log('  ✗ ckdone detect threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/kyou';
+  const html = registry.app.innerHTML;
+  const rowOf = (h, name) => { const i = h.indexOf(name); return i < 0 ? '' : h.slice(Math.max(0, i - 240), i + 240); };
+  ok(/提出済/.test(rowOf(html, '桜チェックリスト')), 'アプリでチェックすると、その項目が「提出済」になる');
+  ok(/未提出/.test(rowOf(html, 'クローズチェックリスト')), 'まだ実施していないチェックリストは「未提出」のまま');
+}
+FETCH_ROWS = { ok:false };
+
+console.log('== チェックリストが4種類（オープン・アイドル・クローズ・桜）==');
+{
+  const S_GK = '牛カツ世桜 長堀橋店';
+  const ck = renderView('checklist','manager',S_GK,'ja');
+  ok(/オープン/.test(ck) && /アイドル/.test(ck) && /クローズ/.test(ck) && /桜/.test(ck), '4つのモードが選べる');
+  // モードは run() の中で設定する（run が localStorage を初期化するため）
+  const inMode = (mode) => { run(()=> { setLS('manager', S_GK, 'ja'); localStorage.setItem('yosakura_ckmode', mode); }); location.hash = '#/app/checklist'; return registry.app.innerHTML; };
+  const sakura = inMode('sakura');
+  ok(/便器/.test(sakura) && /ドアノブ/.test(sakura), '桜チェックは本部のシートどおりの項目が並ぶ');
+  ok(/清掃具と鏡用の布は、他と分けて/.test(sakura), '取り違えやすい注意（清掃具を分ける）が出る');
+  const idle = inMode('idle');
+  ok(/夜営業ぶんの仕込み/.test(idle), 'アイドルタイムの項目が並ぶ');
+  ok(/暫定です/.test(idle), 'アイドルは暫定であることを明示している');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
