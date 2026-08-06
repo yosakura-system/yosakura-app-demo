@@ -882,5 +882,73 @@ console.log('== チェックリストが4種類（オープン・アイドル・
   ok(/柄杓で浮いた油/.test(thu), '清掃方法まで表示される（シートを開かずに実施できる）');
 }
 
+console.log('== 総点検：全画面 × 全ロール × 全言語 で例外が出ない ==');
+{
+  const ids = [...new Set([...code.matchAll(/id:'([a-zA-Z_]+)',\s*group:'/g)].map(m => m[1]))];
+  const stores = ['和牛世桜 広島店', '日本料理世桜本店', '牛カツ世桜 長堀橋店'];
+  let ng = 0, n = 0;
+  for (const id of ids) {
+    for (const role of ['staff','manager','owner','hq']) {
+      for (const lang of ['ja','en','vi']) {
+        const store = role === 'hq' ? 'all' : (role === 'owner' ? 'owned' : stores[0]);
+        n++;
+        if (renderView(id, role, store, lang) === '') ng++;
+      }
+    }
+  }
+  ok(ng === 0, `全画面が例外なく描画される（${ids.length}画面 × 4ロール × 3言語 = ${n}通り）`);
+
+  // 店舗を変えても壊れない（13店舗すべて）
+  let ng2 = 0;
+  const allStores = [...new Set([...code.matchAll(/'((?:日本料理|寿司|牛カツ|日本鰻|手巻き寿司|和牛)世桜[^']*)'/g)].map(m => m[1]))];
+  for (const s of allStores) {
+    for (const id of ['kyou','shukan','getsuji','checklist','soukatsu','pl','survey','history']) {
+      if (renderView(id, 'manager', s, 'ja') === '') ng2++;
+    }
+  }
+  ok(ng2 === 0, `全店舗で主要画面が描画される（${allStores.length}店舗）`);
+
+  // チェックリストは5モード＋曜日7通りすべて描画できる
+  let ng3 = 0;
+  for (const mode of ['open','idle','close','sakura','hygiene']) {
+    for (let d = 0; d < 7; d++) {
+      try {
+        run(()=> { setLS('manager','牛カツ世桜 長堀橋店','ja'); localStorage.setItem('yosakura_ckmode', mode); localStorage.setItem('yosakura_hygday', String(d)); });
+        location.hash = '#/app/checklist';
+        if (!registry.app.innerHTML || registry.app.innerHTML.length < 200) ng3++;
+      } catch (e) { ng3++; console.log('  ✗ checklist threw: ' + mode + '/' + d + ' ' + e.message); }
+    }
+  }
+  ok(ng3 === 0, 'チェックリストの5モード × 曜日7通りがすべて描画される');
+}
+
+console.log('== 総点検：設定の整合（IDの重複・リンク先の存在）==');
+{
+  // 提出物マスタのIDが重複していないか（重複すると提出判定が混ざる）
+  const mids = [...code.matchAll(/\{\s*id:'([a-z_]+)',\s*name:\{ja:/g)].map(m => m[1]);
+  const dupM = mids.filter((x, i) => mids.indexOf(x) !== i);
+  ok(dupM.length === 0, `提出物マスタのIDが重複していない${dupM.length ? '（重複: ' + dupM.join(',') + '）' : ''}`);
+
+  // linkApp の飛び先がアプリとして存在するか（存在しないとタップしてもホームに戻る）
+  const appIds = new Set([...code.matchAll(/id:'([a-zA-Z_]+)',\s*group:'/g)].map(m => m[1]));
+  const links = [...new Set([...code.matchAll(/linkApp:'([a-zA-Z_]+)'/g)].map(m => m[1]))];
+  const missing = links.filter(x => !appIds.has(x));
+  ok(missing.length === 0, `提出物のリンク先がすべて存在する${missing.length ? '（無い: ' + missing.join(',') + '）' : ''}`);
+
+  // アプリで出せない提出物には、どこへどう出すかが書いてある（現場が迷わないように）
+  const mt = renderView('getsuji','manager','日本鰻世桜 浅草橋店','ja');
+  ok(/写真共有の箇所は毎月本部より指定/.test(mt), '月次の定期衛生に提出方法が書いてある');
+  ok(/並べて写真を撮って店舗×本部GLINEへ/.test(mt), 'メニューブックの確認に提出方法が書いてある');
+  ok(/本部がシートを用意し/.test(mt), 'コンプラチェックに実施方法が書いてある');
+  // 誤ったリンク先が残っていないこと（コンプラ→公益通報など、意味の違う画面へ飛ばさない）
+  ok(!/linkApp:'whistle'/.test(code), 'コンプラチェックを公益通報の画面へ飛ばしていない');
+
+  // 店舗マスタと別名表の整合（別名の行き先が実在する店舗か）
+  const aliasTargets = [...code.matchAll(/'[^']+':\s*'((?:日本料理|寿司|牛カツ|日本鰻|手巻き寿司|和牛)世桜[^']*)'/g)].map(m => m[1]);
+  const storeSet = new Set([...code.matchAll(/'((?:日本料理|寿司|牛カツ|日本鰻|手巻き寿司|和牛)世桜[^']*)'/g)].map(m => m[1]));
+  const badAlias = aliasTargets.filter(x => !storeSet.has(x));
+  ok(badAlias.length === 0, `旧表記の読み替え先がすべて実在する店舗${badAlias.length ? '（不正: ' + badAlias.join(',') + '）' : ''}`);
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

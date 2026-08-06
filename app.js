@@ -2614,16 +2614,16 @@
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
       { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
       // ── 毎週 ──
-      { id:'pop_week',   name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'weekly', due:'23:59', target:'gyotai_in', gyotai:['gyukatsu'], hqReview:'none', detect:'none', linkApp:'checklist' }, // 牛カツは油汚れ対策で週1
+      { id:'pop_week',   name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'weekly', due:'23:59', target:'gyotai_in', gyotai:['gyukatsu'], hqReview:'none', detect:'none', how:{ja:'新しいものと交換する（店内での実施項目）',en:'Replace with new ones (in-store task)',vi:'Thay mới (việc tại quán)'} }, // 牛カツは油汚れ対策で週1
       // ── 毎月 ──
-      { id:'monthlynum', name:{ja:'総括表（月次の数値）',en:'Monthly summary',vi:'Tổng kết tháng'},      oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'monthly', linkApp:'pl' }, // 毎月5日まで
-      { id:'pl',         name:{ja:'PL（損益）',en:'P&L',vi:'Báo cáo lãi lỗ'},                           oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', linkApp:'pl' },
-      { id:'hygiene_m',  name:{ja:'定期衛生管理（月次の指定箇所）',en:'Monthly hygiene (assigned spots)',vi:'Vệ sinh tháng (khu chỉ định)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', linkApp:'checklist' },
-      { id:'menubook',   name:{ja:'メニューブック・販促物の確認',en:'Menu book & POP check',vi:'Kiểm tra menu & POP'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', linkApp:'storevideo' },
+      { id:'monthlynum', name:{ja:'総括表（毎月5日まで）',en:'Monthly summary (by the 5th)',vi:'Tổng kết tháng (đến ngày 5)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'monthly', linkApp:'pl' },
+      { id:'pl',         name:{ja:'PL（前月分を月末まで）',en:'P&L (previous month, by month end)',vi:'Lãi lỗ (tháng trước)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', linkApp:'pl' },
+      { id:'hygiene_m',  name:{ja:'定期衛生管理（月次の指定箇所）',en:'Monthly hygiene (assigned spots)',vi:'Vệ sinh tháng (khu chỉ định)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', how:{ja:'写真共有の箇所は毎月本部より指定。ビフォーアフターを撮影して店舗×本部GLINEへ',en:'HQ assigns the spots each month; send before/after photos to the store-HQ LINE group',vi:'HQ chỉ định khu vực hàng tháng; gửi ảnh trước/sau'} },
+      { id:'menubook',   name:{ja:'メニューブック・販促物の確認',en:'Menu book & POP check',vi:'Kiểm tra menu & POP'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', how:{ja:'汚れや破れがないか確認し、並べて写真を撮って店舗×本部GLINEへ',en:'Check for stains/tears, lay them out, photograph and send to the store-HQ LINE group',vi:'Kiểm tra bẩn/rách, chụp ảnh gửi nhóm LINE'} },
       { id:'facade',     name:{ja:'店舗内・外の動画',en:'Store interior/exterior video',vi:'Video trong/ngoài quán'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'video', linkApp:'storevideo' },
-      { id:'pop_month',  name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'monthly', due:'23:59', target:'gyotai_ex', gyotai:['gyukatsu'], hqReview:'none', detect:'none', linkApp:'checklist' },
+      { id:'pop_month',  name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'monthly', due:'23:59', target:'gyotai_ex', gyotai:['gyukatsu'], hqReview:'none', detect:'none', how:{ja:'新しいものと交換する（店内での実施項目）',en:'Replace with new ones (in-store task)',vi:'Thay mới (việc tại quán)'} },
       // ── 四半期 ──
-      { id:'compliance', name:{ja:'コンプラチェック',en:'Compliance check',vi:'Kiểm tra tuân thủ'},     oblig:'required', freq:'quarterly', due:'23:59', target:'all', hqReview:'each', detect:'none', linkApp:'whistle' } // 4・7・10・1月の月末まで
+      { id:'compliance', name:{ja:'コンプラチェック（4・7・10・1月）',en:'Compliance check (Apr/Jul/Oct/Jan)',vi:'Kiểm tra tuân thủ'}, oblig:'required', freq:'quarterly', due:'23:59', target:'all', hqReview:'each', detect:'none', how:{ja:'対象月に本部がシートを用意し、LINEで実施をご連絡します',en:'HQ prepares the sheet and announces it on LINE in the target month',vi:'HQ chuẩn bị bảng và thông báo qua LINE'} }
     ];
   }
   /* 提出管理データの全端末共有：既存バックエンド(reports)に専用kindで保存し本部全員で共有（追加kindのみ・既存挙動は不変） */
@@ -2756,8 +2756,10 @@
     const openBtn = ((it.manual || !it.submitted) && it.m.linkApp) ? `<button class="mini" data-tsub="${it.m.linkApp}">${L({ja:'開いて提出',en:'Open',vi:'Mở'})}${svg('chev')}</button>` : '';
     const oflag = it.overdue ? ` <span style="color:#b23">${L({ja:'締切超過',en:'Overdue',vi:'Quá hạn'})}</span>` : '';
     const noentry = it.manual ? ` <span class="hint" style="display:inline">※${L({ja:'自動判定なし（店舗運用・手動）',en:'no auto-check (store-run/manual)',vi:'không tự KT (thủ công)'})}</span>` : '';
+    // アプリで出せないもの＝どこへどう出すかを書いておく（現場が迷わないように）
+    const howTxt = (!it.m.linkApp && it.m.how) ? `<div class="l2" style="color:var(--gray)">${esc(L(it.m.how))}</div>` : '';
     return `<div class="rep"><span class="kind ${badgeCls}">${badgeTxt}</span>
-      <div class="body"><div class="l1">${esc(L(it.m.name))} <small style="color:#8a8">(${L(OBLIG_LABEL[it.m.oblig])})</small></div>
+      <div class="body"><div class="l1">${esc(L(it.m.name))} <small style="color:#8a8">(${L(OBLIG_LABEL[it.m.oblig])})</small></div>${howTxt}
       <div class="l2">${due}${oflag}${noentry}</div></div>${openBtn}</div>`;
   };
 
