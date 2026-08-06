@@ -727,8 +727,13 @@ console.log('== 勉強会（8/7 増田さんご要望：日程・録画・資料
   ok(!/studyAdd/.test(html), 'スタッフには登録フォームを出さない');
   ok(!/data-studydel/.test(html), 'スタッフには削除ボタンを出さない');
 
-  const hq = renderView('study','hq','all','ja');
+  run(()=> setLS('hq','all','ja'));
+  await new Promise(r=>setTimeout(r, 50));   // 同期でデータが入るのを待ってから描画する
+  location.hash = '#/app/study';
+  const hq = registry.app.innerHTML;
   ok(/studyAdd/.test(hq), '本部には登録フォームが出る');
+  ok(/data-studyedit/.test(hq) && /data-studydel/.test(hq), '本部には編集・削除ボタンが出る');
+  ok(/編集する/.test(hq) && /削除する/.test(hq), 'ボタンの文言が「編集する」「削除する」になっている');
 
   // 学ぶタブから開ける
   run(()=> setLS('staff', S_HIROSHIMA, 'ja'));
@@ -744,6 +749,27 @@ console.log('== 勉強会（8/7 増田さんご要望：日程・録画・資料
   await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/study';
   ok(!/消す前/.test(registry.app.innerHTML), '削除した回は表示されない');
+
+  // 編集：フォームに既存の内容が入り、同じIDで上書きされる
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'study', store:'', item:'st9',
+      note: JSON.stringify({ id:'st9', title:'編集前のタイトル', date:'2026-06-20',
+        video:'https://drive.google.com/file/d/zzz/view',
+        docs:[{title:'アジェンダ',url:'https://docs.google.com/presentation/d/ddd/edit'}], note:'メモです' }), t: 1000, id:'r5' },
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ study edit threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  localStorage.setItem('yosakura_study_edit', 'st9');
+  location.hash = '#/app/study';
+  const eh = registry.app.innerHTML;
+  ok(/勉強会を編集/.test(eh), '編集中はフォームの見出しが「編集」に変わる');
+  ok(/value="編集前のタイトル"/.test(eh), 'タイトルがフォームに読み込まれる');
+  ok(/value="2026-06-20"/.test(eh), '開催日が読み込まれる');
+  ok(/value="アジェンダ"/.test(eh), '資料の名前が読み込まれる');
+  ok(/メモです<\/textarea>/.test(eh), 'メモが読み込まれる');
+  ok(/studyCancel/.test(eh), '「編集をやめる」が出る');
+  ok(/保存する/.test(eh), 'ボタンが「保存する」に変わる');
+  localStorage.removeItem('yosakura_study_edit');
 }
 FETCH_ROWS = { ok:false };
 
