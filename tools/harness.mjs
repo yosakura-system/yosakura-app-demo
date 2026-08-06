@@ -702,5 +702,50 @@ console.log('== オープン/クローズの実施状況を、オーナー・本
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== 勉強会（8/7 増田さんご要望：日程・録画・資料）==');
+{
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'study', store:'', item:'st1',
+      note: JSON.stringify({ id:'st1', title:'2026年6月 勉強会', date:'2026-06-20',
+        video:'https://drive.google.com/file/d/xxx/view',
+        docs:[{title:'アジェンダスライド',url:'https://docs.google.com/presentation/d/aaa/edit'},
+              {title:'テーマスライド',url:'https://docs.google.com/presentation/d/bbb/edit'}],
+        note:'6月のテーマ' }), t: 1000, id:'r1' },
+    { kind:'study', store:'', item:'st2',
+      note: JSON.stringify({ id:'st2', title:'2026年7月 勉強会', date:'2026-07-18',
+        video:'https://drive.google.com/file/d/yyy/view',
+        docs:[{title:'アジェンダスライド',url:'https://docs.google.com/presentation/d/ccc/edit'}] }), t: 2000, id:'r2' },
+  ]};
+  try { run(()=> setLS('staff', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ study threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/study';
+  const html = registry.app.innerHTML;
+  ok(/2026年7月 勉強会/.test(html) && /2026年6月 勉強会/.test(html), '登録された勉強会が一覧に出る');
+  ok(html.indexOf('2026年7月') < html.indexOf('2026年6月'), '新しい回が上に来る');
+  ok(/録画を見る/.test(html), '録画を開ける');
+  ok(/アジェンダスライド/.test(html) && /テーマスライド/.test(html), '資料が名前つきで並ぶ（1回に複数可）');
+  ok(!/studyAdd/.test(html), 'スタッフには登録フォームを出さない');
+  ok(!/data-studydel/.test(html), 'スタッフには削除ボタンを出さない');
+
+  const hq = renderView('study','hq','all','ja');
+  ok(/studyAdd/.test(hq), '本部には登録フォームが出る');
+
+  // 学ぶタブから開ける
+  run(()=> setLS('staff', S_HIROSHIMA, 'ja'));
+  location.hash = '#/home?tab=learn';
+  ok(/勉強会/.test(registry.app.innerHTML), '学ぶタブに勉強会が並ぶ');
+
+  // 削除は deleted の行で表す（追記式のバックエンドでも消せる）
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'study', store:'', item:'st1', note: JSON.stringify({ id:'st1', title:'消す前' }), t: 1000, id:'r3' },
+    { kind:'study', store:'', item:'st1', note: JSON.stringify({ id:'st1', deleted:true }), t: 2000, id:'r4' },
+  ]};
+  try { run(()=> setLS('staff', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ study del threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/study';
+  ok(!/消す前/.test(registry.app.innerHTML), '削除した回は表示されない');
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

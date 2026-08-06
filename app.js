@@ -1288,8 +1288,30 @@
         <div class="hint">${L({ ja:'声かけは短く：「お時間がありましたら、アンケートにご協力をお願いいたします。」／回答は誘導せず、満足度を最優先に。', en:'Keep it short; never lead the answer; prioritize the guest.', vi:'Nói ngắn gọn; không gợi ý câu trả lời.' })}</div>
         <div class="hint">${L({ ja:'※「大変満足／満足」の時だけ、控えめに口コミQRをご案内（断られたらすぐ引く）。', en:'Only when highly satisfied, gently offer the review QR.', vi:'Chỉ khi rất hài lòng mới mời đánh giá.' })}</div>
       </div>
-      ${['manager','owner','hq'].includes(getRole()) ? surveyAgg(rows, vis) : ''}`;
+      ${['manager','owner','hq'].includes(getRole()) ? surveySheets() + surveyAgg(rows, vis) : ''}`;
   };
+  /* 集約シート（回答の生データ）への入口。
+     8/7 増田さんご要望。二重管理を避けるため、URLは既存の「資料リンク」で持つ
+     （大項目＝サーベイ運用）。本部が1度登録すれば、店長・オーナーもここから開ける。 */
+  function surveySheets() {
+    const mats = getLinks().filter(l => l.mcat === 'survey' && isHttp(l.url));
+    if (!mats.length) {
+      return getRole() === 'hq' ? `
+        <div class="card">
+          <h3>${L({ ja:'回答の集約シート', en:'Response sheets', vi:'Bảng tổng hợp' })}</h3>
+          <p class="muted">${L({ ja:'まだ登録されていません。「資料リンクの管理」で大項目を「サーベイ運用」にして登録すると、ここから開けるようになります。', en:'Not registered yet. Add it in “Manage material links” under “Survey operation”.', vi:'Chưa đăng ký. Thêm ở “Quản lý liên kết” với nhóm “Vận hành khảo sát”.' })}</p>
+          <button class="mini" data-open="materials">${L({ ja:'資料リンクの管理を開く', en:'Open material links', vi:'Mở quản lý liên kết' })}</button>
+        </div>` : '';
+    }
+    return `
+      <div class="card">
+        <h3>${L({ ja:'回答の集約シート', en:'Response sheets', vi:'Bảng tổng hợp' })}</h3>
+        <div class="homelinks">
+          ${mats.map(l => `<button class="homelink" data-openurl="${esc(l.url)}"><span class="hl-ic">${svg('table')}</span><span class="hl-t">${esc(l.title)}</span><span class="hl-c">${svg('chev')}</span></button>`).join('')}
+        </div>
+        <div class="hint">${L({ ja:'※ 集計はアプリが自動で行いますが、回答そのものを確認したいときはこちらから開けます。', en:'The app aggregates automatically; open these to see raw responses.', vi:'Ứng dụng tự tổng hợp; mở đây để xem phản hồi gốc.' })}</div>
+      </div>`;
+  }
   // サーベイ集計（本部・オーナー・店長向け）：満足度分布／低評価／来店経路／月別推移／店舗別
   function surveyAgg(rows, vis) {
     const n = rows.length;
@@ -3070,6 +3092,65 @@
       </div>`;
   };
 
+  /* ---------- 勉強会（8/7 増田さんご要望）----------
+     月に一度の勉強会を、日程・録画・資料をひとまとめにして残す。
+     参加できなかった方が後から追えることと、過去の回を探せることが目的。
+     URLはコードに書かず、本部が登録した内容をバックエンドで共有する。 */
+  const getStudy = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_study')) || []; } catch { return []; } };
+  const saveStudy = (a) => { try { localStorage.setItem('yosakura_demo_study', JSON.stringify(a)); } catch (e) {} };
+  const studyDateLabel = (d) => {
+    const m = String(d || '').match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);
+    if (!m) return String(d || '');
+    return m[3] ? `${m[1]}年${Number(m[2])}月${Number(m[3])}日` : `${m[1]}年${Number(m[2])}月`;
+  };
+  const studyRow = (s, isHq) => {
+    const docs = (s.docs || []).filter(d => d && isHttp(d.url));
+    return `
+      <div class="card">
+        <h3 style="font-size:14px">${esc(s.title || '—')}${s.date ? `　<span class="muted" style="font-size:12px">${esc(studyDateLabel(s.date))}</span>` : ''}</h3>
+        ${s.note ? `<p class="dtext">${esc(s.note)}</p>` : ''}
+        <div class="homelinks">
+          ${isHttp(s.video) ? `<button class="homelink" data-openurl="${esc(s.video)}"><span class="hl-ic">${svg('video')}</span><span class="hl-t">${L({ ja:'録画を見る', en:'Watch recording', vi:'Xem ghi hình' })}</span><span class="hl-c">${svg('chev')}</span></button>` : ''}
+          ${docs.map(d => `<button class="homelink" data-openurl="${esc(d.url)}"><span class="hl-ic">${svg('book')}</span><span class="hl-t">${esc(d.title || L({ ja:'資料', en:'Material', vi:'Tài liệu' }))}</span><span class="hl-c">${svg('chev')}</span></button>`).join('')}
+        </div>
+        ${(!isHttp(s.video) && !docs.length) ? `<p class="muted">${L({ ja:'録画・資料はまだ登録されていません', en:'No recording or materials yet', vi:'Chưa có ghi hình/tài liệu' })}</p>` : ''}
+        ${isHq ? `<button class="mini" data-studydel="${esc(s.id)}" style="margin-top:8px">${L({ ja:'削除', en:'Delete', vi:'Xóa' })}</button>` : ''}
+      </div>`;
+  };
+  APP_VIEWS.study = () => {
+    const isHq = getRole() === 'hq';
+    const list = getStudy().slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || b.t - a.t);
+    const docFields = [1, 2, 3].map(i => `
+      <div class="sk-grid">
+        <label class="fld"><span>${L({ ja:'資料' + i + ' の名前', en:'Material ' + i + ' name', vi:'Tên tài liệu ' + i })}</span>
+          <input type="text" id="st_doc${i}_t" placeholder="${esc(L({ ja:'例）アジェンダスライド', en:'e.g. Agenda slides', vi:'vd: Slide chương trình' }))}"></label>
+        <label class="fld"><span>${L({ ja:'資料' + i + ' のリンク', en:'Material ' + i + ' link', vi:'Link tài liệu ' + i })}</span>
+          <input type="url" id="st_doc${i}_u" placeholder="https://..."></label>
+      </div>`).join('');
+    const form = isHq ? `
+      <div class="card" id="studyForm">
+        <h3>${L({ ja:'勉強会を登録', en:'Add a study session', vi:'Thêm buổi học' })}</h3>
+        <div class="sk-grid">
+          <label class="fld"><span>${L({ ja:'タイトル', en:'Title', vi:'Tiêu đề' })}</span>
+            <input type="text" id="st_title" placeholder="${esc(L({ ja:'例）2026年7月 勉強会', en:'e.g. July 2026 session', vi:'vd: Buổi học 7/2026' }))}"></label>
+          <label class="fld"><span>${L({ ja:'開催日', en:'Date', vi:'Ngày' })}</span>
+            <input type="date" id="st_date"></label>
+        </div>
+        <label class="fld"><span>${L({ ja:'録画のリンク', en:'Recording link', vi:'Link ghi hình' })}</span>
+          <input type="url" id="st_video" placeholder="https://..."></label>
+        ${docFields}
+        <label class="fld"><span>${L({ ja:'メモ（任意）', en:'Note (optional)', vi:'Ghi chú' })}</span>
+          <textarea id="st_note" placeholder="${esc(L({ ja:'テーマや、見てほしいところ', en:'Theme or highlights', vi:'Chủ đề / điểm chính' }))}"></textarea></label>
+        <button class="btn-primary" id="studyAdd" style="margin-top:12px">${L({ ja:'登録する', en:'Add', vi:'Thêm' })}</button>
+        <div class="hint">${L({ ja:'登録すると全店の「勉強会」に表示されます。リンクの共有設定（閲覧できる範囲）は、リンク元でご確認ください。', en:'Visible to all stores once added. Check sharing settings at the source.', vi:'Hiển thị cho mọi cửa hàng. Kiểm tra quyền chia sẻ ở nguồn.' })}</div>
+      </div>` : '';
+    return `
+      ${NOTE({ ja:'◆ 勉強会の日程・録画・資料をまとめています。参加できなかった回も、あとから追えます', en:'◆ Study sessions: dates, recordings and materials in one place', vi:'◆ Buổi học: lịch, ghi hình và tài liệu' })}
+      ${form}
+      ${list.length ? list.map(s => studyRow(s, isHq)).join('')
+        : `<div class="card"><p class="muted">${L({ ja:'まだ登録がありません。' + (isHq ? '上のフォームから登録できます。' : '本部が登録すると、ここに表示されます。'), en:'Nothing yet.', vi:'Chưa có.' })}</p></div>`}`;
+  };
+
   /* ---------- みんなの投稿（コミュニティ／グッドストーリー）----------
      現場発のポジティブ投稿を全店で共有（お客様が喜んだこと・スタッフのファインプレー・達成など）。
      本部承認後に全店へ公開（事前モデレーション）。いいね（拍手）で認め合う。全端末同期。 */
@@ -3245,6 +3326,11 @@
       name:{ ja:'お知らせ', en:'Announcements', vi:'Thông báo' },
       desc:{ ja:'本部からのお知らせ・世桜ニュース', en:'News & notices from HQ', vi:'Thông báo & tin tức từ HQ' } });
   }
+  if (!appById('study')) {
+    APPS.push({ id:'study', group:'learn', icon:'grad', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'勉強会', en:'Study sessions', vi:'Buổi học' },
+      desc:{ ja:'日程・録画・資料をまとめて確認（過去の回も見られます）', en:'Dates, recordings and materials', vi:'Lịch, ghi hình và tài liệu' } });
+  }
   if (!appById('emergency')) {
     APPS.push({ id:'emergency', group:'genba', icon:'phone', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'緊急連絡先', en:'Emergency contacts', vi:'Liên hệ khẩn cấp' },
@@ -3386,6 +3472,29 @@
       render();
       postReport({ kind:'news', store:'', note: JSON.stringify({ title, body, level, target, video }), photos, t });
     };
+
+    // 勉強会：本部が登録／削除（全端末へ同期）
+    const studyAdd = byId('studyAdd');
+    if (studyAdd) studyAdd.onclick = () => {
+      const v = (id) => { const e = byId(id); return e ? String(e.value || '').trim() : ''; };
+      const title = v('st_title');
+      if (!title) { toast(L({ ja:'タイトルを入力してください', en:'Please enter a title', vi:'Vui lòng nhập tiêu đề' })); return; }
+      const docs = [1, 2, 3].map(i => ({ title: v(`st_doc${i}_t`), url: v(`st_doc${i}_u`) })).filter(d => isHttp(d.url));
+      const rec = { id: 'st' + Date.now(), title, date: v('st_date'), video: v('st_video'), docs, note: v('st_note'), t: Date.now() };
+      const arr = getStudy(); arr.push(rec);
+      try { saveStudy(arr.slice(-120)); } catch (e) { saveStudy(arr.slice(-40)); }
+      lastSync = rec.t;
+      toast(L({ ja:'登録しました', en:'Added', vi:'Đã thêm' })); render();
+      postReport({ kind:'study', store:'', item: rec.id, note: JSON.stringify(rec), t: rec.t });
+    };
+    document.querySelectorAll('[data-studydel]').forEach(b => b.onclick = () => {
+      const id = b.dataset.studydel;
+      if (!confirm(L({ ja:'この勉強会の登録を削除します。よろしいですか？', en:'Delete this session?', vi:'Xóa buổi học này?' }))) return;
+      const arr = getStudy().filter(s => s.id !== id); saveStudy(arr);
+      const t = Date.now(); lastSync = t;
+      toast(L({ ja:'削除しました', en:'Deleted', vi:'Đã xóa' })); render();
+      postReport({ kind:'study', store:'', item: id, note: JSON.stringify({ id, deleted: true }), t });
+    });
 
     // 公益通報：本部へ送信（匿名可）
     const whSubmit = byId('whSubmit');
@@ -3738,7 +3847,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; let linkset=null, linksetT=null;
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; let linkset=null, linksetT=null;
     (rows || []).forEach(r => {
       const t = Number(r.t) || 0, id = r.id, store = r.store || '';
       switch (r.kind) {
@@ -3760,6 +3869,8 @@
         case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モードごと最新版が正
         // オープン/クローズの実施状況＝店舗×モード×日付ごと最新が正。誰が実施したかは別に持つ
         case 'ckdone': { const p=pj(r.note); const k=`${store}||${r.item}`; if (ckdoneT[k]==null || t>=ckdoneT[k]) { ckdone[k]=p.done||{}; ckmeta[k]={ by:p.by||'', t }; ckdoneT[k]=t; } } break;
+        // 勉強会＝IDごと最新が正。削除は deleted:true の行で表す（追記式のため）
+        case 'study': { const p=pj(r.note); const k=r.item || (p && p.id); if (!k) break; if (studyT[k]==null || t>=studyT[k]) { study[k]=p; studyT[k]=t; } } break;
         case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, goal:p.goal, by:p.by||'', t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正
         case 'community': { const p=pj(r.note); comm.push({ store, cat:r.item, body:p.body||'', by:p.by||'', photos:r.photos||[], t, id }); } break;
         case 'commmod': { const p=pj(r.note); const k=r.item; if (commmodT[k]==null || t>=commmodT[k]) { commmod[k]={ state:p.state||'published', t }; commmodT[k]=t; } } break; // 投稿キーごと最新の公開状態が正
@@ -3773,6 +3884,7 @@
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
     set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_ckitem', ckitem); set('yosakura_demo_monthly', Object.values(monthly));
     if (Object.keys(ckdone).length) { set('yosakura_demo_ckdone', ckdone); set('yosakura_demo_ckmeta', ckmeta); } // 実施状況が1件も無い同期では、この端末の記録を消さない
+    if (Object.keys(study).length) set('yosakura_demo_study', Object.values(study).filter(s => s && !s.deleted));
     set('yosakura_demo_community', comm); set('yosakura_demo_commmod', commmod); set('yosakura_demo_commlike', commlike);
     if (linkset !== null) set('yosakura_demo_links', linkset); // linksetが無い同期では既存の資料リンクを保持
   }
