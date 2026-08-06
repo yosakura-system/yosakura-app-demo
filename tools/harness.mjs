@@ -950,5 +950,48 @@ console.log('== 総点検：設定の整合（IDの重複・リンク先の存�
   ok(badAlias.length === 0, `旧表記の読み替え先がすべて実在する店舗${badAlias.length ? '（不正: ' + badAlias.join(',') + '）' : ''}`);
 }
 
+console.log('== 旧表記のサーベイが、件数として落ちずに合算される ==');
+{
+  const mk = (store, i) => ({ kind:'survey', store, level:'5', item:'구글',
+    note: JSON.stringify({ c:'Korea', f:'' }), t: Date.now() - i * 1000, id: 'x' + store + i });
+  const reports = [];
+  for (let i = 0; i < 14; i++) reports.push(mk('日本料理世桜 心斎橋（おまかせ）', i)); // 旧表記
+  for (let i = 0; i < 41; i++) reports.push(mk('牛カツ世桜 長堀橋店', i));            // 現行表記
+  FETCH_ROWS = { ok:true, reports };
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/survey';
+  const html = registry.app.innerHTML;
+  const m = html.match(/<div class="n">(\d+)<\/div><div class="k">回答数/);
+  const shown = m ? Number(m[1]) : -1;
+  ok(shown === 55, `旧表記14件＋現行41件＝55件として集計される（実際に画面へ出た数=${shown}）`);
+}
+FETCH_ROWS = { ok:false };
+
+console.log('== 端末に旧表記が残っていても、起動時に正式名称へ直る ==');
+{
+  // 同期は「バックエンドの中身が前回と同じなら作り直さない」ため、
+  // 店舗名を変えても端末には旧表記が残る。この状態を再現して、起動時に直ることを確かめる。
+  const old = [];
+  for (let i = 0; i < 14; i++) old.push({ store:'日本料理世桜 心斎橋（おまかせ）', sat:5, route:'google', note:'', country:'Korea', t: Date.now() - i * 1000 });
+  for (let i = 0; i < 41; i++) old.push({ store:'牛カツ世桜 長堀橋店', sat:5, route:'google', note:'', country:'Korea', t: Date.now() - i * 1000 });
+  FETCH_ROWS = { ok:false }; // 同期は走らせない（＝作り直しが起きない状況を再現）
+  try {
+    run(()=> {
+      setLS('hq','all','ja');
+      localStorage.setItem('yosakura_demo_survey', JSON.stringify(old));
+      localStorage.setItem('yosakura_demo_raw', '[]'); // 前回の同期結果は入っている状態
+    });
+  } catch(e){ FAIL++; console.log('  ✗ migrate threw: '+e.message); }
+  location.hash = '#/app/survey';
+  const html = registry.app.innerHTML;
+  const m = html.match(/<div class="n">(\d+)<\/div><div class="k">回答数/);
+  const shown2 = m ? Number(m[1]) : -1;
+  ok(shown2 === 55, `端末に残った旧表記も集計に入る（実際に画面へ出た数=${shown2}）`);
+  const saved = JSON.parse(localStorage.getItem('yosakura_demo_survey') || '[]');
+  ok(saved.every(r => r.store !== '日本料理世桜 心斎橋（おまかせ）'), '保存されているデータ自体が正式名称へ書き換わる');
+  ok(saved.filter(r => r.store === '日本料理世桜本店').length === 14, '書き換え後も件数が変わらない（14件のまま）');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
