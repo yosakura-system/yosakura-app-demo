@@ -820,7 +820,7 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
   order.forEach(name => { const i = kyou.indexOf(name); if (i < 0 || i < prev) ordered = false; prev = i; });
   ok(ordered, '日次の提出物が「出す順」に並ぶ（開店前→営業中→閉店後）');
   ok(/桜チェックリスト/.test(kyou), '桜チェックリスト（トイレ）が日次に入っている');
-  ok(/定期衛生管理表/.test(kyou), '定期衛生管理表が日次に入っている');
+  ok(/定期衛生管理/.test(kyou), '定期衛生管理が日次に入っている');
 
   // 業態の出し分け：卓上POPは牛カツが週次、それ以外は月次
   const wkGyu = renderView('shukan','manager',S_GYU,'ja');
@@ -870,6 +870,16 @@ console.log('== チェックリストが4種類（オープン・アイドル・
   ok(/【?ホール|ホール/.test(open) && /キッチン/.test(open), 'ホールとキッチンの2系統に分かれている');
   const close = inMode('close');
   ok(/日計レポート/.test(close) && /キーボックス/.test(close), 'クローズも本部のシートどおりの内容');
+
+  // 定期衛生＝曜日ごとに清掃箇所が変わる（1週間で店全体を1周）
+  const hygOf = (day) => { run(()=> { setLS('manager', S_GK, 'ja'); localStorage.setItem('yosakura_ckmode','hygiene'); localStorage.setItem('yosakura_hygday', String(day)); }); location.hash = '#/app/checklist'; return registry.app.innerHTML; };
+  const mon = hygOf(1), thu = hygOf(4);
+  ok(/冷蔵庫（内部・外部）/.test(mon), '月曜は冷蔵庫まわりが出る');
+  ok(/グリストラップ/.test(thu), '木曜はグリストラップが出る');
+  ok(!/グリストラップ/.test(mon), '曜日が違えば別の箇所が出る');
+  ok(/曜日ごとに決められた箇所/.test(mon), '1週間で店全体を1周する運用が説明されている');
+  ok(/data-hygday="4"/.test(mon), '他の曜日へ切り替えられる（手が空いたら先にやってよい運用）');
+  ok(/柄杓で浮いた油/.test(thu), '清掃方法まで表示される（シートを開かずに実施できる）');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
