@@ -311,13 +311,43 @@
   const levelLabel = (v) => { const f = [...LEVELS_A, ...LEVELS_B].find(x => x.v === v); return f ? L(f.t) : v; };
 
   /* ---------- ユーティリティ ---------- */
-  /* 画面の下に表示する版（例：yosakura-hq-v52）。
-     「直したはずなのに変わらない」ときに、更新が端末へ届いているかを一目で確かめるため。
-     版は sw.js のキャッシュ名から読む（同期のたびに上がる）。 */
-  let BUILD_TAG = '';
+  /* 画面の下に表示する版（例：yosakura-hq-v59）。
+     APP_BUILD＝いま動いているこの画面の版（同期のたびに書き換わる。デモは 'dev' のまま）。
+     LATEST_BUILD＝配信されている最新の版（起動時に sw.js から読む）。
+     2つが違えば「新しい版があります」と出して、その場で最新にできるようにする。
+     ※ 以前は最新版の番号だけを表示していたため、端末が古い版のまま動いていても
+       画面には最新の番号が出てしまい、更新が届いていないことに気づけなかった。 */
+  const APP_BUILD = 'dev';
+  let LATEST_BUILD = '';
+  const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
   const el = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; };
   const esc = (s='') => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+  /* 画面下の版表示。いつでも押せる「最新にする」を添える（誰でも自分で確かめられるように）。
+     古い版のまま動いているときは、その旨をはっきり出す。 */
+  function buildNote() {
+    const stale = LATEST_BUILD && APP_BUILD !== 'dev' && LATEST_BUILD !== APP_BUILD;
+    const btn = `<button type="button" id="appUpdate" style="margin-left:8px;padding:3px 10px;border:1px solid #d9d2c8;border-radius:999px;background:#fff;font:inherit;font-size:11px;cursor:pointer">${L({ ja:'最新にする', en:'Update', vi:'Cập nhật' })}</button>`;
+    if (stale) {
+      return `　<span style="color:#8E354A">${L({ ja:'新しい版があります', en:'A newer version is available', vi:'Đã có bản mới' })}（${esc(APP_BUILD)} → ${esc(LATEST_BUILD)}）</span>${btn}`;
+    }
+    return `　<span style="opacity:.55">${esc(APP_BUILD)}</span>${btn}`;
+  }
+  /* 端末に残っている古い画面を捨てて、配信中の最新を取り直す。
+     お名前・役割・店舗などの設定（localStorage）は消さない。 */
+  async function forceUpdate() {
+    toast(L({ ja:'最新を取得しています…', en:'Fetching the latest…', vi:'Đang tải bản mới…' }));
+    try {
+      if ('serviceWorker' in navigator) {
+        const rs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(rs.map(r => r.unregister()));
+      }
+    } catch (e) {}
+    try {
+      if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }
+    } catch (e) {}
+    setTimeout(() => location.reload(), 300);
+  }
   let toastTimer;
   function toast(msg) {
     const el2 = document.getElementById('toast');
@@ -596,7 +626,7 @@
         ${safety ? sec({ ja:'緊急・相談', en:'Emergency & Report', vi:'Khẩn cấp & Tố giác' }) + `<div class="grid">${safety}</div>` : ''}
         ${sec({ ja:'メニュー', en:'Menu', vi:'Menu' })}
         ${links}
-        <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}${BUILD_TAG ? `　<span style="opacity:.55">${esc(BUILD_TAG)}</span>` : ''}</div>
+        <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}${buildNote()}</div>
       </main>`;
   }
   function viewHome(tab) {
@@ -623,7 +653,7 @@
       <main class="screen">
         ${heroBlock}
         ${sections}
-        <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}${BUILD_TAG ? `　<span style="opacity:.55">${esc(BUILD_TAG)}</span>` : ''}</div>
+        <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}${buildNote()}</div>
       </main>`;
     return shell(inner, tab);
   }
@@ -1314,7 +1344,15 @@
   ];
   const CK_COMMON = { open: CHECK_GROUPS, idle: IDLE_GROUPS, close: CLOSE_GROUPS, sakura: SAKURA_GROUPS };
   // 定期衛生は曜日で内容が変わる。表示中の曜日（既定＝今日）で切り替える
-  const getHygDay = () => { const v = Number(localStorage.getItem('yosakura_hygday')); return (v >= 0 && v <= 6) ? v : new Date().getDay(); };
+  /* 表示する曜日。既定は「今日」。
+     手が空いていれば他の曜日を先に実施してもよい運用のため切り替えも残すが、
+     日をまたいだら今日へ戻す（前日に選んだ曜日のまま開くと、今日の箇所を見落とすため）。
+     ※ 以前は未選択のとき Number(null)=0 となり、何曜日でも必ず日曜の箇所が開いていた。 */
+  const getHygDay = () => {
+    const [day, v] = String(localStorage.getItem('yosakura_hygday') || '').split('|');
+    const n = Number(v);
+    return (day === todayKey() && Number.isInteger(n) && n >= 0 && n <= 6) ? n : new Date().getDay();
+  };
   const ckGroupsOf = (mode) => mode === 'hygiene'
     ? ((HYGIENE_DAYS.find(x => x.d === getHygDay()) || {}).g || [])
     : (CK_COMMON[mode] || []);
@@ -4079,9 +4117,11 @@
     };
 
     // オープン・クローズチェック：モード切替
+    // 画面下の「最新にする」（古い画面のまま動いていないか、誰でも自分で確かめられるように）
+    const upd = document.getElementById('appUpdate'); if (upd) upd.onclick = forceUpdate;
     document.querySelectorAll('[data-ckmode]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_ckmode', b.dataset.ckmode); render(); });
     // 定期衛生：曜日の切替（手が空いていれば他の曜日を先に実施してもよい運用）
-    document.querySelectorAll('[data-hygday]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', b.dataset.hygday); render(); });
+    document.querySelectorAll('[data-hygday]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', `${todayKey()}|${b.dataset.hygday}`); render(); });
     // チェックのON/OFF（店舗×モード×当日で保存）
     document.querySelectorAll('[data-ck]').forEach(row => row.onclick = (e) => {
       if (e.target.closest('[data-ckdel]')) return; // 削除ボタンは別処理
@@ -4312,7 +4352,7 @@
   try {
     fetch('./sw.js', { cache: 'no-store' }).then(r => r.text()).then(t => {
       const m = String(t || '').match(/const CACHE = '([^']+)'/);
-      if (m && m[1] !== BUILD_TAG) { BUILD_TAG = m[1]; render(true); }
+      if (m && m[1] !== LATEST_BUILD) { LATEST_BUILD = m[1]; render(true); }
     }).catch(() => {});
   } catch (e) {}
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);

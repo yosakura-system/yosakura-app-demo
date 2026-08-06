@@ -228,6 +228,8 @@ for (const role of ['staff','manager','hq']) {
   ok(/みんなの投稿/.test(html) && /data-open="community"/.test(html), `home/${role} has community card`);
   ok(/data-open="kyou"/.test(html) && /data-open="shukan"/.test(html) && /data-open="getsuji"/.test(html), `home/${role} に日次/週次/月次の窓口が出る`);
   ok(/id="pinEdit"/.test(html), `home/${role} によく使う追加ボタンが出る`);
+  // 古い画面のまま動いていないか、誰でも自分で確かめて直せるように
+  ok(/id="appUpdate"/.test(html), `home/${role} の画面下に「最新にする」が出る`);
 }
 {
   const wk = renderView('shukan','staff',S_HIROSHIMA,'ja');
@@ -893,7 +895,8 @@ console.log('== チェックリストが4種類（オープン・アイドル・
   ok(/日計レポート/.test(close) && /キーボックス/.test(close), 'クローズも本部のシートどおりの内容');
 
   // 定期衛生＝曜日ごとに清掃箇所が変わる（1週間で店全体を1周）
-  const hygOf = (day) => { run(()=> { setLS('manager', S_GK, 'ja'); localStorage.setItem('yosakura_ckmode','hygiene'); localStorage.setItem('yosakura_hygday', String(day)); }); location.hash = '#/app/checklist'; return registry.app.innerHTML; };
+  const td = new Date().toLocaleDateString('en-CA'); // 曜日の選択は「その日だけ」有効
+  const hygOf = (day) => { run(()=> { setLS('manager', S_GK, 'ja'); localStorage.setItem('yosakura_ckmode','hygiene'); localStorage.setItem('yosakura_hygday', `${td}|${day}`); }); location.hash = '#/app/checklist'; return registry.app.innerHTML; };
   const mon = hygOf(1), thu = hygOf(4);
   ok(/冷蔵庫（内部・外部）/.test(mon), '月曜は冷蔵庫まわりが出る');
   ok(/グリストラップ/.test(thu), '木曜はグリストラップが出る');
@@ -901,6 +904,19 @@ console.log('== チェックリストが4種類（オープン・アイドル・
   ok(/曜日ごとに決められた箇所/.test(mon), '1週間で店全体を1周する運用が説明されている');
   ok(/data-hygday="4"/.test(mon), '他の曜日へ切り替えられる（手が空いたら先にやってよい運用）');
   ok(/柄杓で浮いた油/.test(thu), '清掃方法まで表示される（シートを開かずに実施できる）');
+
+  /* 何も選んでいないときは「今日」の箇所が開く。
+     以前は未選択が0と読まれ、何曜日でも必ず日曜の箇所が開いていた（2026-08-07 発覚）。*/
+  run(()=> { setLS('manager', S_GK, 'ja'); localStorage.setItem('yosakura_ckmode','hygiene'); localStorage.removeItem('yosakura_hygday'); });
+  location.hash = '#/app/checklist';
+  const hygToday = registry.app.innerHTML;
+  ok(new RegExp(`data-hygday="${new Date().getDay()}" class="on"`).test(hygToday),
+     '曜日を選んでいなければ、今日の箇所が開く');
+  // 前の日に選んだ曜日は持ち越さない（今日の箇所を見落とさないように）
+  run(()=> { setLS('manager', S_GK, 'ja'); localStorage.setItem('yosakura_ckmode','hygiene'); localStorage.setItem('yosakura_hygday', '2020-01-01|3'); });
+  location.hash = '#/app/checklist';
+  ok(new RegExp(`data-hygday="${new Date().getDay()}" class="on"`).test(registry.app.innerHTML),
+     '前日以前に選んだ曜日は持ち越さず、今日へ戻る');
 }
 
 console.log('== 総点検：全画面 × 全ロール × 全言語 で例外が出ない ==');
