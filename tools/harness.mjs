@@ -637,5 +637,33 @@ console.log('== 来店経路（本部）の注記が実態と合っている =='
   ok(/記録された内容は全端末で共有され/.test(code), '実態どおり「全端末で共有され自動で集約される」と説明している');
 }
 
+console.log('== 8/7 増田さんご要望：入口の整理 ==');
+{
+  // 開局（レジ準備金）は不要 → どのタブにも出ない
+  for (const role of ['manager','owner','hq']) {
+    const h = renderView('home', role, S_HIROSHIMA, 'ja');
+    ok(!/開局/.test(h), `[${role}] ホームに開局が出ない`);
+  }
+  const genba = run(()=> setLS('manager', S_HIROSHIMA, 'ja')) && (location.hash = '#/home?tab=genba', registry.app.innerHTML);
+  ok(!/開局/.test(genba), '「報告する」タブにも開局が出ない');
+
+  // 総括表は日次業務へ集約＝タブ一覧には出さないが、機能としては開ける
+  ok(!/総括表の入力/.test(genba), '「報告する」タブから総括表が消えている（日次業務へ集約）');
+  const sk = renderView('soukatsu','manager',S_HIROSHIMA,'ja');
+  ok(/id="submitSk"|総括表/.test(sk), '総括表そのものは開ける（今日出すものから入る）');
+
+  // 店舗側は「今日やること」が先、本部はお知らせが先
+  const staffHome = renderView('home','staff',S_HIROSHIMA,'ja');
+  ok(staffHome.indexOf('提出・業務') < staffHome.indexOf('本部からのお知らせ'),
+     '店舗iPadは「提出・業務」がお知らせより上にある（Zの法則）');
+  const hqHome = renderView('home','hq','all','ja');
+  ok(hqHome.indexOf('本部からのお知らせ') < hqHome.indexOf('提出・業務'),
+     '本部は従来どおりお知らせが先');
+
+  // 接客スクリプトからマニュアルへ飛べる
+  const talk = renderView('talk','staff',S_HIROSHIMA,'ja');
+  ok(/data-open="manual"/.test(talk), '接客スクリプトからマニュアルへ飛べる');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

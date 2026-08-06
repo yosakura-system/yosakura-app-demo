@@ -150,7 +150,7 @@
     { id:'inventory', group:'storeops', icon:'box', soon:true, hide:true, roles:['manager','owner','hq'], // 8/4: 棚卸は月末提出物へ統合＝独立は外す
       name:{ ja:'棚卸・在庫入力', en:'Stocktake', vi:'Kiểm kho' },
       desc:{ ja:'品目ごとの在庫をスマホで入力', en:'Enter stock by item on your phone', vi:'Nhập tồn kho theo mặt hàng' } },
-    { id:'openreg', group:'storeops', icon:'coins', roles:['manager','owner','hq'],
+    { id:'openreg', group:'storeops', icon:'coins', hide:true, roles:['manager','owner','hq'], // 8/7 増田さん: 開局（レジ開設）は不要
       name:{ ja:'開局（レジ準備金）', en:'Register Open', vi:'Mở quầy' },
       desc:{ ja:'金種を入力→合計を自動計算', en:'Enter float by denomination', vi:'Nhập tiền quỹ đầu ca' } },
     { id:'storevideo', group:'storeops', icon:'video', roles:['staff','manager','owner','hq'],
@@ -168,7 +168,8 @@
     { id:'guide', group:'other', icon:'play', roles:['staff','manager','owner','hq'],
       name:{ ja:'使い方ガイド', en:'How to use', vi:'Hướng dẫn' },
       desc:{ ja:'このアプリの使い方（1分）', en:'Quick app guide (1 min)', vi:'Hướng dẫn nhanh (1 phút)' } },
-    { id:'soukatsu', group:'storeops', icon:'table', roles:['staff','manager','owner','hq'], // 日報は店舗iPad（現場）でも入力可（上原さんご要望）
+    // 8/7 増田さん: 日次業務と重複するため「報告する」タブには出さない。日次業務（今日出すもの）から開く
+    { id:'soukatsu', group:'storeops', icon:'table', tabHide:true, roles:['staff','manager','owner','hq'], // 日報は店舗iPad（現場）でも入力可（上原さんご要望）
       name:{ ja:'総括表の入力（日報）', en:'Daily Summary', vi:'Tổng kết ngày' },
       desc:{ ja:'日次の売上・客数・分析（店舗iPadでも入力可）', en:'Daily sales, guests, review', vi:'Doanh thu, khách, phân tích' } },
     { id:'mtg', group:'storeops', icon:'mtg', roles:['manager','owner','hq'],
@@ -555,14 +556,16 @@
         <button class="homelink" data-tab="other"><span class="hl-ic">${svg('dots')}</span><span class="hl-t">${L({ ja:'その他・設定', en:'More & Settings', vi:'Khác & Cài đặt' })}</span><span class="hl-c">${svg('chev')}</span></button>
         ${role === 'hq' ? `<button class="homelink" data-tab="hq"><span class="hl-ic">${svg('hq')}</span><span class="hl-t">${L({ ja:'本部メニュー', en:'HQ menu', vi:'Menu HQ' })}</span><span class="hl-c">${svg('chev')}</span></button>` : ''}
       </div>`;
+    // 店舗（iPad・店長・オーナー）は「今日やること」を最初に見る＝画面の左上に置く。
+    // 本部はお知らせの配信・確認が主なので、従来どおりお知らせを先頭にする。
+    const dutySection = sec({ ja:'提出・業務', en:'Tasks', vi:'Nhiệm vụ' }) + dutyBlock;
+    const newsSection = news + communityCard;
+    const isStoreSide = role !== 'hq';
     return `
       <main class="screen">
         <div class="brandhead"><img class="brandhead__logo" src="icons/logo-full.png" alt="日本料理 世桜 -yosakura-"></div>
         ${installCardHTML()}
-        ${news}
-        ${communityCard}
-        ${sec({ ja:'提出・業務', en:'Tasks', vi:'Nhiệm vụ' })}
-        ${dutyBlock}
+        ${isStoreSide ? dutySection + newsSection : newsSection + dutySection}
         ${sec({ ja:'よく使う', en:'Quick access', vi:'Hay dùng' })}
         ${primary ? `<div class="grid">${primary}</div>` : ''}
         <button class="homelink" id="pinEdit"><span class="hl-ic" style="font-size:20px;text-align:center">＋</span><span class="hl-t">${primary ? L({ ja:'よく使うを編集', en:'Edit quick access', vi:'Sửa lối tắt' }) : L({ ja:'よく使う機能を追加', en:'Add quick access', vi:'Thêm lối tắt' })}</span><span class="hl-c">${svg('chev')}</span></button>
@@ -583,7 +586,8 @@
     const gids = TAB_GROUPS[tab] || ['genba'];
     let sections = '';
     for (const gid of gids) {
-      const apps = APPS.filter(a => a.group === gid && !a.hide && canOpen(a, role));
+      // tabHide＝機能は生きているが、タブの一覧には出さない（日次業務など別の入口へ集約したもの）
+      const apps = APPS.filter(a => a.group === gid && !a.hide && !a.tabHide && canOpen(a, role));
       if (!apps.length) continue;
       sections += `
         <div class="sec-h"><span class="bar"></span><h2>${esc(groupName(gid))}</h2></div>
@@ -2025,6 +2029,10 @@
   ];
   APP_VIEWS.talk = () => `
     ${NOTE({ ja:'◆ 提供時にそのまま使える多言語フレーズ（外国籍スタッフの方も安心）', en:'◆ Ready-to-use multilingual phrases for serving', vi:'◆ Câu đa ngữ dùng ngay khi phục vụ' })}
+    <div class="homelinks">
+      <button class="homelink" data-open="manual"><span class="hl-ic">${svg('book')}</span><span class="hl-t">${L({ ja:'トークスクリプト（マニュアル）を見る', en:'Open talk scripts (Manuals)', vi:'Xem kịch bản (Cẩm nang)' })}</span><span class="hl-c">${svg('chev')}</span></button>
+    </div>
+    <p class="hint" style="display:block;margin:-2px 0 10px">${L({ ja:'※ 詳しいトークスクリプトはマニュアルの「接客・ホール」にあります。', en:'Detailed scripts are in Manuals → Service & Hall.', vi:'Kịch bản chi tiết ở Cẩm nang → Phục vụ & Sảnh.' })}</p>
     ${TALK.map(sec=>`<div class="card"><h3>${esc(L(sec.h))}</h3>${sec.items.map(it=>`
       <div class="rep" style="display:block;padding:10px 2px">
         <div class="l1" style="margin-bottom:5px">${esc(it.ja)}</div>
