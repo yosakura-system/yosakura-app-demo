@@ -92,6 +92,55 @@ function findSurveyCols_(sheet) {
   return null;
 }
 
+/* ---------- 日時の解釈 ----------
+   シートに「2026/08/05 15:47:18」と表示されていれば、それを日本時間の 15:47:18 として扱う。
+   ★ getValue() が返す Date は、元シート側のタイムゾーン設定に影響される
+     （元シートが GMT+7 だと、同じ表示でも2時間ずれた時刻として読まれる）。
+     そのため「画面に表示されている文字列」を優先して解釈する。 */
+function parseSheetDateTime_(disp, raw) {
+  var s = String(disp || '').trim();
+  var m = s.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) {
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]),
+                    Number(m[4]), Number(m[5]), Number(m[6] || 0)).getTime();
+  }
+  if (raw instanceof Date) return raw.getTime();          // 表示が読めないときだけ元の値を使う
+  var p = Date.parse(s);
+  return isNaN(p) ? 0 : p;
+}
+
+/* ---------- タイムゾーンの点検（変更しません）----------
+   取り込んだ時刻がずれる場合に、どこでずれているかを確かめる。 */
+function checkSurveyTimeZone() {
+  var srcs;
+  try { srcs = surveySources_(); } catch (e) { return logSurvey_({ ok: false, error: String(e.message || e) }); }
+  var out = srcs.map(function (src) {
+    var row = { 店舗: src.store };
+    var ss;
+    try { ss = SpreadsheetApp.openById(String(src.id)); } catch (e) { row.備考 = '開けません'; return row; }
+    row.シートのタイムゾーン = ss.getSpreadsheetTimeZone();
+    var sheet = src.sheet ? ss.getSheetByName(String(src.sheet)) : ss.getSheets()[0];
+    if (!sheet) { row.備考 = 'シートなし'; return row; }
+    var cols = findSurveyCols_(sheet);
+    if (!cols) { row.備考 = '見出しなし'; return row; }
+    if (sheet.getLastRow() <= cols._headerRow) { row.備考 = '回答なし'; return row; }
+    var r = cols._headerRow + 1;
+    var cell = sheet.getRange(r, cols.ts + 1);
+    var raw = cell.getValue();
+    row.画面に表示されている値 = cell.getDisplayValue();
+    row.読み取った値 = (raw instanceof Date) ? Utilities.formatDate(raw, Session.getScriptTimeZone(), 'yyyy/MM/dd HH:mm:ss') : String(raw);
+    row.型 = (raw instanceof Date) ? 'Date' : typeof raw;
+    row.取り込む時刻 = Utilities.formatDate(new Date(parseSheetDateTime_(row.画面に表示されている値, raw)), Session.getScriptTimeZone(), 'yyyy/MM/dd HH:mm:ss');
+    return row;
+  });
+  return logSurvey_({
+    ok: true,
+    スクリプトのタイムゾーン: Session.getScriptTimeZone(),
+    各シート: out,
+    見方: '「画面に表示されている値」と「取り込む時刻」が一致していれば正しく取り込めます。「読み取った値」だけずれている場合は、元シート側のタイムゾーンが原因です。'
+  });
+}
+
 /* ---------- テスト投稿の判定 ----------
    本番の回答に紛れたテストを、集計から外すため。行は消さずに国名へ TEST_ を付ける。 */
 function isTestSurveyRow_(comment) {
@@ -117,11 +166,13 @@ function readSurveySource_(src) {
   if (lastRow <= cols._headerRow) { out.note = '回答がまだありません'; return out; }
 
   var lastCol = Math.max(1, sheet.getLastColumn());
-  var values = sheet.getRange(cols._headerRow + 1, 1, lastRow - cols._headerRow, lastCol).getValues();
+  var range = sheet.getRange(cols._headerRow + 1, 1, lastRow - cols._headerRow, lastCol);
+  var values = range.getValues();
+  var disps  = range.getDisplayValues();   // 画面に表示されている文字列（タイムゾーンの影響を受けない）
 
-  values.forEach(function (row) {
-    var rawTs = row[cols.ts];
-    var t = (rawTs instanceof Date) ? rawTs.getTime() : Date.parse(String(rawTs || ''));
+  values.forEach(function (row, ri) {
+    // 時刻は「シートに表示されているまま」を採用する（元シート側のTZ設定でずれないように）
+    var t = parseSheetDateTime_(disps[ri][cols.ts], row[cols.ts]);
     if (!t || isNaN(t)) return;                       // 日付として読めない行は飛ばす（集計欄など）
     var rating = Number(row[cols.rating]);
     if (!rating || isNaN(rating)) return;             // 評価が無い行は回答ではない
@@ -242,6 +293,114 @@ function validateSurveySources() {
   });
   return logSurvey_({ ok: true, 点検結果: out });
 }
+
+/* ================================================================
+   重複の調査と掃除
+   （2026-08-05に手作業で取り込んだぶんと、今回の自動取り込みが
+     二重に入ってしまった場合に使う。まず調べてから消す。）
+   ================================================================ */
+
+/* ---------- ① 調べる（何も変更しません）----------
+   survey 行がどう入っているかを一覧で返す。
+   ・同じ回答が2回入っているか
+   ・入っているとしたら、どの行に固まっているか
+   を確認してから、②で消す。 */
+function surveyRowsReport() {
+  var sh = getSheet();
+  var lastRow = sh.getLastRow();
+  if (lastRow < 2) return logSurvey_({ ok: true, 件数: 0 });
+  var values = sh.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+
+  var rows = [];
+  for (var i = 0; i < values.length; i++) {
+    if (values[i][2] !== SURVEY_KIND) continue;
+    rows.push({ row: i + 2, ts: Number(values[i][1]) || 0, store: String(values[i][3] || ''), item: String(values[i][4] || ''), note: String(values[i][6] || '') });
+  }
+  if (!rows.length) return logSurvey_({ ok: true, 件数: 0, 備考: 'survey の行がありません' });
+
+  // 店舗別の件数
+  var byStore = {};
+  rows.forEach(function (r) { byStore[r.store] = (byStore[r.store] || 0) + 1; });
+
+  // 同じ「店舗＋回答時刻」が複数あるか＝きれいに重複しているか
+  var keyCount = {};
+  rows.forEach(function (r) { var k = r.store + '||' + r.ts; keyCount[k] = (keyCount[k] || 0) + 1; });
+  var dupByTs = Object.keys(keyCount).filter(function (k) { return keyCount[k] > 1; }).length;
+
+  // 同じ「店舗＋本文」が複数あるか＝回答時刻がずれていても中身で重複していないか
+  var noteCount = {};
+  rows.forEach(function (r) { if (!r.note) return; var k = r.store + '||' + r.note; noteCount[k] = (noteCount[k] || 0) + 1; });
+  var dupByNote = Object.keys(noteCount).filter(function (k) { return noteCount[k] > 1; }).length;
+
+  // 連続したかたまり（行番号が飛ぶところで区切る）＝いつ取り込まれた集まりかが分かる
+  var blocks = [];
+  var cur = null;
+  rows.forEach(function (r) {
+    if (cur && r.row === cur.終わり + 1) { cur.終わり = r.row; cur.件数++; return; }
+    if (cur) blocks.push(cur);
+    cur = { 始まり: r.row, 終わり: r.row, 件数: 1 };
+  });
+  if (cur) blocks.push(cur);
+
+  var sample = rows.slice(0, 3).concat(rows.slice(-3)).map(function (r) {
+    return { 行: r.row, 回答時刻: new Date(r.ts).toLocaleString('ja-JP'), 店舗: r.store, きっかけ: r.item, 本文: r.note.slice(0, 40) };
+  });
+
+  return logSurvey_({
+    ok: true,
+    survey行の総数: rows.length,
+    店舗別: byStore,
+    同じ店舗と回答時刻が重複: dupByTs + '件',
+    同じ店舗と本文が重複: dupByNote + '件',
+    連続したかたまり: blocks,
+    サンプル: sample,
+    次の手順: '「連続したかたまり」を見て、古い方のかたまり（先に入ったぶん）の行範囲を deleteSurveyRows(始まり, 終わり) に渡してください。'
+  });
+}
+
+/* ---------- ② 消す（行範囲を指定して削除）----------
+   使い方：GASエディタで下の from / to を書き換えてから runDeleteSurveyRows を実行する。
+   ・survey 以外の行が含まれていたら、安全のため何も削除せず中止します
+   ・削除の前に、消す対象の件数と中身をログに出します */
+function deleteSurveyRows(from, to) {
+  if (!from || !to || to < from) return logSurvey_({ ok: false, error: '行範囲が正しくありません（from, to を指定してください）' });
+  var sh = getSheet();
+  var n = to - from + 1;
+  var values = sh.getRange(from, 1, n, HEADERS.length).getValues();
+
+  // 安全確認：指定範囲がすべて survey 行であること
+  var notSurvey = [];
+  for (var i = 0; i < values.length; i++) {
+    if (values[i][2] !== SURVEY_KIND) notSurvey.push({ 行: from + i, kind: values[i][2], 店舗: values[i][3] });
+  }
+  if (notSurvey.length) {
+    return logSurvey_({
+      ok: false,
+      error: '指定範囲に survey 以外の行が含まれているため、何も削除していません',
+      該当: notSurvey.slice(0, 10)
+    });
+  }
+
+  sh.deleteRows(from, n);
+  return logSurvey_({ ok: true, 削除しました: n + '行', 範囲: from + '〜' + to, 備考: 'アプリを再読み込みすると件数が減ります' });
+}
+
+/* ↓ ここを書き換えてから実行する（surveyRowsReport の結果を見て決める） */
+function runDeleteSurveyRows() {
+  var from = 0;   // ← 消したいかたまりの「始まり」
+  var to   = 0;   // ← 消したいかたまりの「終わり」
+  if (!from || !to) return logSurvey_({ ok: false, error: 'from と to を書き換えてから実行してください（surveyRowsReport の結果を参照）' });
+  return deleteSurveyRows(from, to);
+}
+
+/* ================================================================
+   2026-08-07 の掃除用（この3つは今回限り。片付いたら消して構いません）
+   ★必ず この順番（下の行から先）に実行すること。
+     先に小さい行を消すと、あとの行番号がずれます。
+   ================================================================ */
+function 掃除1_今日の取り込み分を消す()   { return deleteSurveyRows(334, 389); } // 時刻がずれて入ったぶん
+function 掃除2_8月5日の手動取り込みを消す() { return deleteSurveyRows(11, 64); }  // 二重になっていたぶん
+function 掃除3_接続テストの行を消す()     { return deleteSurveyRows(7, 7); }    // TEST_KOREA の1行
 
 /* 実行結果をログに出しつつ、そのまま返す（GASエディタの実行ログで読めるように） */
 function logSurvey_(o) {
