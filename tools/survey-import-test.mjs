@@ -38,7 +38,18 @@ const sheetMock = {
       for (let i = 0; i < numCols; i++) out.push(r[col - 1 + i] === undefined ? '' : r[col - 1 + i]);
       return out;
     });
-    return { getValues: () => slice };
+    // getValue/getDisplayValue は「元シートのタイムゾーンが GMT+7」の状況を再現する。
+    // ＝ 画面には 11:40:59 と出ているのに、読み取ると 13:40:59 の Date が返る。
+    const shifted = slice.map(r => r.map(v => {
+      const m = typeof v === 'string' && v.match(/^(\d{4})\/(\d{2})\/(\d{2}) (\d{1,2}):(\d{2}):(\d{2})$/);
+      return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4] + 2, +m[5], +m[6]) : v;
+    }));
+    return {
+      getValues: () => shifted,
+      getDisplayValues: () => slice.map(r => r.map(v => String(v))),
+      getValue: () => shifted[0][0],
+      getDisplayValue: () => String(slice[0][0])
+    };
   }
 };
 let appended = [];
@@ -78,7 +89,8 @@ ok(cols && cols.country === 1 && cols.route === 3 && cols.comment === 4, '国名
 console.log('== 1店舗ぶんの読み取り ==');
 const r = sandbox.readSurveySource_({ store: '牛カツ世桜 長堀橋店', id: 'OK_ID' });
 ok(r.rows.length === 10, `回答だけを読む（集計欄・空行を除く）／実際=${r.rows.length}`);
-ok(r.rows[0].t === new Date('2026/07/09 11:40:59').getTime(), '日時を正しく解釈する');
+ok(r.rows[0].t === new Date('2026/07/09 11:40:59').getTime(),
+   '元シートのタイムゾーンがずれていても、画面に表示されている時刻のまま取り込む');
 ok(r.rows[0].route === '구글', '来店きっかけは原文のまま保つ（寄せるのはアプリ側）');
 
 console.log('== テスト投稿の扱い ==');
