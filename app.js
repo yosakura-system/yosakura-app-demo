@@ -1251,17 +1251,86 @@
       {ja:'異常：水漏れ・詰まり・破損がないか（あれば即報告）',en:'Issues: leaks, clogs, damage (report at once)',vi:'Bất thường: rò rỉ, tắc, hỏng (báo ngay)'},
       {ja:'清掃後は必ず手を洗う',en:'Always wash hands after cleaning',vi:'Luôn rửa tay sau khi dọn'} ] }
   ];
+  /* 定期衛生管理＝曜日ごとに決められた箇所を清掃し、1週間でお店全体を1周する。
+     掃除は上から下の順（ホコリは上から下へ落ちるため）。
+     手が空いていれば他の曜日を先に実施してもよい＝画面で曜日を切り替えられるようにする。 */
+  const HYGIENE_DAYS = [
+    // 0=日曜
+    { d:0, g:[
+      { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
+        {ja:'高度な機材（扉・LED）',d:{ja:'高度な機材の清掃方法マニュアルに沿って行う'}},
+        {ja:'製氷機',d:{ja:'側面と扉の中を拭く／パッキンは所定の方法で／フィルターとその周辺／スコップは洗剤で洗って拭く／氷を全部出して中をアルコールで拭く'}} ] },
+      { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
+        {ja:'荷物かご',d:{ja:'洗えるものは洗ってしっかり乾かす／洗えないものはアルコールと水拭きで／収納スペースもリセット'}},
+        {ja:'収納スペースの整理整頓',d:{ja:'全部退けて拭く／いるものといらないものを分ける／定位置に収納／テプラが剥がれていたら貼り直す'}} ] } ] },
+    { d:1, g:[
+      { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
+        {ja:'ゴミ箱の洗浄',d:{ja:'キッチンとトイレのゴミ箱／全体にマジックリン／不要なスポンジで磨く（特に底）／水で流し、逆さにして水気を切る'}},
+        {ja:'冷蔵庫（内部・外部）',d:{ja:'中身を全部出す／ダスターを湿らせアルコールで拭く／ストック用ケースはシンクで洗浄／戻す時に汚れていれば拭く／外側の扉も'}},
+        {ja:'冷蔵庫（フィルター）',d:{ja:'取り外してシンクで洗い流す（落ちなければ中性洗剤）／乾かしてから戻す'}} ] },
+      { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
+        {ja:'壁から出ている部分の埃取り',d:{ja:'照明・防犯カメラ・棚・格子やレールなど。店内を見渡して最低7カ所／机や椅子の裏側も'}},
+        {ja:'窓・扉の拭き上げ',d:{ja:'上から順に／ガラスはガラスクリーナーとマイクロファイバー／扉上のバネやベル、取手の埃もアルコールで'}} ] } ] },
+    { d:2, g:[
+      { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
+        {ja:'ダクト・油うけ',d:{ja:'電源OFFにしてフィルター・カバー・油受けを外す／ケミクール等で洗う／ダクト内の溝や壁も拭く／最後にアルコールで（客席から見える面は水垢に注意）'}},
+        {ja:'電子レンジの清掃',d:{ja:'外側（取っ手・ガラス面・本体上・側面）と内側（ガラス面・天井・側面・底）／中性洗剤で拭き取り→水拭き→乾燥／設置場所の周りと下も'}},
+        {ja:'収納棚の清掃・整頓',d:{ja:'全部退けて拭く／いる・いらないを分ける／定位置に収納／テプラの貼り直し'}} ] },
+      { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
+        {ja:'掃除道具の確認・清掃',d:{ja:'破損や汚れを確認し、清潔で安全に使える状態に／倉庫内を全部出して清掃／使いやすい配置に／テプラの貼り直し'}},
+        {ja:'収納かごを全部洗う',d:{ja:'洗えるものは洗ってしっかり乾かす／洗えないものはアルコールか水拭きで'}},
+        {ja:'作業台の拭き上げ・整理整頓',d:{ja:'全部退けて拭く／いる・いらないを分ける／定位置に収納／テプラの貼り直し'}} ] } ] },
+    { d:3, g:[
+      { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
+        {ja:'食器類のケース・破損確認',d:{ja:'食器を出してケース内をアルコールで拭く／戻してテプラを貼り直す／ひび割れや破損がないか確認'}},
+        {ja:'冷凍庫（内部・外部）',d:{ja:'中身を全部出す／ダスターを湿らせアルコールで拭く／ストック用ケースはシンクで洗浄／外側の扉も'}},
+        {ja:'冷凍庫（フィルター）',d:{ja:'取り外してシンクで洗い流す／乾かしてから戻す'}} ] },
+      { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
+        {ja:'レジカウンター周辺',d:{ja:'レジ周りの埃／整理整頓／アルコールで全体を拭く／金銭トレイ・チラシ立ても／カウンターの後ろも／傘立ては水を捨てて掃除'}},
+        {ja:'バックヤード',d:{ja:'何がどこにあるか見て分かるように整理し、名称を表示／昼と夜の物を分ける／使ったものは必ず元に戻す'}},
+        {ja:'壁から出ている部分の埃取り',d:{ja:'照明・防犯カメラ・棚・格子やレールなど（最低7カ所）／机や椅子の裏側も'}} ] } ] },
+    { d:4, g:[
+      { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
+        {ja:'グリストラップ',d:{ja:'柄杓で浮いた油を取りザルでゴミを取る／カゴ内のゴミを捨てる／ブラシでカゴとグリスト内を洗浄／水が透明になったら部品を戻して蓋（必ず換気。油の廃棄方法に注意）'}},
+        {ja:'ゴミ箱の洗浄',d:{ja:'キッチンとトイレのゴミ箱／マジックリンをかけて磨く（特に底）／水で流して逆さに'}} ] },
+      { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
+        {ja:'カーテン・暖簾',d:{ja:'カーテンは外さず、下の部分を洗剤入りの水でもみ洗い／暖簾は湿らせたダスターに洗剤をつけて汚れを取る／レールや金具も'}},
+        {ja:'エアコンの吹き出し口',d:{ja:'フィルターが外れれば外して洗浄、外れなければアルコールで拭く／埃が落ちるので清掃後はカウンターや床も掃除'}} ] } ] },
+    { d:5, g:[
+      { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
+        {ja:'冷蔵冷凍庫（パッキン）',d:{ja:'全部外してお湯＋ケミクールに漬ける／外した箇所をアルコールで拭く／漬けたパッキンをブラシで洗う／水気を取ってから戻す'}},
+        {ja:'ストッカー',d:{ja:'中身を全部出し結露を取ってアルコールで拭く／パッキンも同様に／取り出しやすく戻す／フィルターとその周り／コンセントの埃も'}} ] },
+      { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
+        {ja:'ラック（バッシング用）',d:{ja:'湿らせたダスター＋アルコールで内側・外側を細かく拭く／汚れを放置すると落ちにくくなる'}},
+        {ja:'照明',d:{ja:'切れているところがないか確認／カバーや埋め込み部分の埃を拭く（熱いと割れるので電気を消してから）'}},
+        {ja:'床・階段',d:{ja:'ほうきで埃とゴミを除去／モップか床用洗剤で拭く／階段は上から下へ（手すりも）／水分を残さない（破損やぐらつきは責任者へ報告）'}} ] } ] },
+    { d:6, g:[
+      { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
+        {ja:'ポットの洗浄',d:{ja:'専用の洗浄剤を使用方法に従って／本体もアルコールで拭く（放置すると汚れが落ちなくなり故障の原因に）'}},
+        {ja:'シンク下・作業台下',d:{ja:'下の物を全部出す／アルコールで汚れを拭き取る／出した物が汚れていれば拭く／元に戻す（全部出さないときれいにならない）'}} ] },
+      { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
+        {ja:'外看板の清掃',d:{ja:'フィルムやフレームを拭き上げ／同時に外観の清掃も／コンセントの故障やポスターの色褪せも確認'}},
+        {ja:'椅子',d:{ja:'フレームや脚を拭き上げ／足を乗せる場所の黒ずみは必ず落とす／脚裏のアジャスターやクッションが取れていないか'}} ] } ] }
+  ];
   const CK_COMMON = { open: CHECK_GROUPS, idle: IDLE_GROUPS, close: CLOSE_GROUPS, sakura: SAKURA_GROUPS };
+  // 定期衛生は曜日で内容が変わる。表示中の曜日（既定＝今日）で切り替える
+  const getHygDay = () => { const v = Number(localStorage.getItem('yosakura_hygday')); return (v >= 0 && v <= 6) ? v : new Date().getDay(); };
+  const ckGroupsOf = (mode) => mode === 'hygiene'
+    ? ((HYGIENE_DAYS.find(x => x.d === getHygDay()) || {}).g || [])
+    : (CK_COMMON[mode] || []);
+  const WDAY_LABELS = [{ja:'日',en:'Sun',vi:'CN'},{ja:'月',en:'Mon',vi:'T2'},{ja:'火',en:'Tue',vi:'T3'},{ja:'水',en:'Wed',vi:'T4'},{ja:'木',en:'Thu',vi:'T5'},{ja:'金',en:'Fri',vi:'T6'},{ja:'土',en:'Sat',vi:'T7'}];
   const CK_MODES = [
     { v:'open',   t:{ ja:'オープン', en:'Opening', vi:'Mở cửa' } },
     { v:'idle',   t:{ ja:'アイドル', en:'Idle time', vi:'Giữa ca' } },
     { v:'close',  t:{ ja:'クローズ', en:'Closing', vi:'Đóng cửa' } },
-    { v:'sakura', t:{ ja:'桜（トイレ）', en:'Sakura (restroom)', vi:'Sakura (WC)' } }
+    { v:'sakura', t:{ ja:'桜（トイレ）', en:'Sakura (restroom)', vi:'Sakura (WC)' } },
+    { v:'hygiene',t:{ ja:'定期衛生', en:'Periodic hygiene', vi:'Vệ sinh định kỳ' } }
   ];
   // モードごとの注意書き（現場が迷いやすいところだけ）
   const CK_NOTES = {
     idle:   { ja:'※ アイドルタイムは「昼の営業を締めて、夜の営業を開ける」流れです。上から順に進めてください。', en:'Idle time closes lunch service and opens dinner service. Work top to bottom.', vi:'Giữa ca: đóng ca trưa và mở ca tối. Làm từ trên xuống.' },
-    sakura: { ja:'※ 便器用の清掃具と鏡用の布は、他と分けて使ってください。清掃後は厨房に戻る前に手を洗い、靴裏の汚れを持ち込まないようにしてください。', en:'Use separate tools for the toilet bowl and the mirror. Wash hands before returning to the kitchen.', vi:'Dùng dụng cụ riêng cho bồn cầu và gương. Rửa tay trước khi vào bếp.' }
+    sakura: { ja:'※ 便器用の清掃具と鏡用の布は、他と分けて使ってください。清掃後は厨房に戻る前に手を洗い、靴裏の汚れを持ち込まないようにしてください。', en:'Use separate tools for the toilet bowl and the mirror. Wash hands before returning to the kitchen.', vi:'Dùng dụng cụ riêng cho bồn cầu và gương. Rửa tay trước khi vào bếp.' },
+    hygiene:{ ja:'※ 曜日ごとに決められた箇所を清掃し、1週間でお店全体を1周します。掃除は上から下の順に（ホコリは上から落ちるため）。手が空いていれば、他の曜日を先に実施しても大丈夫です。', en:'Each weekday has its own spots; one week covers the whole store. Clean top-down. You may do another day’s items if you have time.', vi:'Mỗi thứ có khu vực riêng; một tuần phủ toàn bộ. Lau từ trên xuống.' }
   };
   const getCkMode = () => { const v = localStorage.getItem('yosakura_ckmode'); return CK_MODES.some(m => m.v === v) ? v : 'open'; };
   // 店舗独自項目（店長・オーナーが追加）＝店舗×モードごと・全端末同期
@@ -1277,7 +1346,7 @@
   const getCkMeta = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckmeta')) || {}; } catch { return {}; } };
   // その店舗×モードの項目数（本部共通＋店舗独自）
   const ckTotalOf = (store, mode) => {
-    let n = 0; (CK_COMMON[mode] || []).forEach(gr => n += gr.items.length);
+    let n = 0; ckGroupsOf(mode).forEach(gr => n += gr.items.length);
     return n + ckCustom(store, mode).length;
   };
   const ckDoneCountOf = (store, mode) => {
@@ -1314,19 +1383,21 @@
     if (vis.length > 1) return ckOverview(vis); // オーナー（所有店舗すべて）・本部（全店）
     const store = visibleStores()[0];
     const mode = getCkMode();
-    const groups = CK_COMMON[mode];
+    const groups = ckGroupsOf(mode);
     const custom = ckCustom(store, mode);
     const done = getCkDone()[ckDoneKey(store, mode)] || {};
     const editable = ckCanEdit();
+    // 定期衛生は曜日ごとに内容が違うため、チェックのIDにも曜日を入れる（別の曜日と混ざらないように）
+    const idBase = mode === 'hygiene' ? `${mode}-${getHygDay()}` : mode;
     const commonIds = [];
-    groups.forEach((gr, gi) => gr.items.forEach((_, ii) => commonIds.push(`${mode}-c-${gi}-${ii}`)));
+    groups.forEach((gr, gi) => gr.items.forEach((_, ii) => commonIds.push(`${idBase}-c-${gi}-${ii}`)));
     const allIds = commonIds.concat(custom.map(c => c.id));
     const total = allIds.length || 1;
     const n = allIds.filter(id => done[id]).length;
     const groupsHTML = groups.map((gr, gi) => `
       <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${esc(L(gr.g))}</h2></div>
       <div class="card" style="padding:4px 14px">
-        ${gr.items.map((it, ii) => { const id = `${mode}-c-${gi}-${ii}`; return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span></div>`; }).join('')}
+        ${gr.items.map((it, ii) => { const id = `${idBase}-c-${gi}-${ii}`; return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span></div>`; }).join('')}
       </div>`).join('');
     const customHTML = `
       <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'この店舗の追加項目', en:'Store-specific items', vi:'Mục riêng của cửa hàng' })}</h2></div>
@@ -1341,6 +1412,7 @@
         <div class="seg" data-seg="ckmode" style="margin-bottom:14px">${CK_MODES.map(m => `<button type="button" data-ckmode="${m.v}" class="${m.v===mode?'on':''}">${L(m.t)}</button>`).join('')}</div>
         <h3>${L({ ja:'本日の', en:'Today: ', vi:'Hôm nay: ' })}${esc(L((CK_MODES.find(m => m.v === mode) || {}).t || ''))}${L({ ja:'点検', en:' check', vi:'' })}</h3>
         <div class="muted" style="margin:2px 0 8px">${esc(store)}</div>
+        ${mode === 'hygiene' ? `<div class="seg" data-seg="hygday" style="margin:6px 0 10px">${WDAY_LABELS.map((w, i) => `<button type="button" data-hygday="${i}" class="${i===getHygDay()?'on':''}">${L(w)}</button>`).join('')}</div>` : ''}
         <div style="font-size:26px;font-weight:700;letter-spacing:.02em">${n}<span style="color:var(--gray);font-size:17px">/${total}</span></div>
         <div class="bar-track" style="margin:9px 0 2px"><div class="bar-fill" style="width:${Math.round(n/total*100)}%"></div></div>
       </div>
@@ -2538,7 +2610,7 @@
       { id:'firstphoto', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'},          oblig:'off',      freq:'daily', due:'23:59', target:'except_course', hqReview:'exception', detect:'fp', linkApp:'firstphoto' },
       { id:'ck_idle',    name:{ja:'アイドルタイムチェックリスト',en:'Idle-time checklist',vi:'Checklist giữa ca'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'idle',   linkApp:'checklist' },
       { id:'ck_sakura',  name:{ja:'桜チェックリスト（トイレ）',en:'Sakura checklist (restroom)',vi:'Checklist WC'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'sakura', linkApp:'checklist' },
-      { id:'hygiene_d',  name:{ja:'定期衛生管理表（清掃のビフォーアフター）',en:'Hygiene log (before/after photos)',vi:'Vệ sinh (ảnh trước/sau)'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'none', linkApp:'checklist' },
+      { id:'hygiene_d',  name:{ja:'定期衛生管理（本日の曜日の箇所）',en:'Periodic hygiene (today\'s spots)',vi:'Vệ sinh định kỳ (hôm nay)'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'hygiene', linkApp:'checklist' },
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
       { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
       // ── 毎週 ──
@@ -3998,6 +4070,8 @@
 
     // オープン・クローズチェック：モード切替
     document.querySelectorAll('[data-ckmode]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_ckmode', b.dataset.ckmode); render(); });
+    // 定期衛生：曜日の切替（手が空いていれば他の曜日を先に実施してもよい運用）
+    document.querySelectorAll('[data-hygday]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', b.dataset.hygday); render(); });
     // チェックのON/OFF（店舗×モード×当日で保存）
     document.querySelectorAll('[data-ck]').forEach(row => row.onclick = (e) => {
       if (e.target.closest('[data-ckdel]')) return; // 削除ボタンは別処理
