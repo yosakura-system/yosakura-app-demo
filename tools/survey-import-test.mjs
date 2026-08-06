@@ -22,6 +22,7 @@ const ROWS = [
   ['2026/07/27 21:26:45', 'Other（Argentina）', 5, 'Walk in', '【No particular issue】 We loved the place'],
   ['2026/07/29 12:32:56', 'Korea', 5, '예약 없이', '【특별한 문제는 없었어요】 모든 서비스가 너무 좋아서'],
   ['2026/08/03 19:22:46', 'Korea', 5, '구글', ''],
+  ['2026/08/05 15:47:18', 'Japan', 5, 'その他（テスト）', '【特に問題は無かった】'], // ← 感想は普通だが、きっかけがテスト
   ['', '', '', '', ''],                    // 空行（集計欄の前）
   ['アンケート総数', 5, '', '平均評価', 5], // 集計欄＝取り込まれてはいけない
 ];
@@ -88,23 +89,25 @@ ok(cols && cols.country === 1 && cols.route === 3 && cols.comment === 4, '国名
 
 console.log('== 1店舗ぶんの読み取り ==');
 const r = sandbox.readSurveySource_({ store: '牛カツ世桜 長堀橋店', id: 'OK_ID' });
-ok(r.rows.length === 10, `回答だけを読む（集計欄・空行を除く）／実際=${r.rows.length}`);
+ok(r.rows.length === 11, `回答だけを読む（集計欄・空行を除く）／実際=${r.rows.length}`);
 ok(r.rows[0].t === new Date('2026/07/09 11:40:59').getTime(),
    '元シートのタイムゾーンがずれていても、画面に表示されている時刻のまま取り込む');
 ok(r.rows[0].route === '구글', '来店きっかけは原文のまま保つ（寄せるのはアプリ側）');
 
 console.log('== テスト投稿の扱い ==');
 const test = r.rows.filter(x => x.isTest);
-ok(test.length === 1, `テスト投稿を1件だけ拾う／実際=${test.length}`);
-ok(test[0] && test[0].country === 'TEST_Japan', '国名に TEST_ が付く（アプリの集計から自動で外れる）');
+ok(test.length === 2, `テスト投稿を2件拾う／実際=${test.length}`);
+ok(test.every(x => x.country === 'TEST_Japan'), '国名に TEST_ が付く（アプリの集計から自動で外れる）');
+ok(test.some(x => x.route === 'その他（テスト）' && !/テスト/.test(x.comment)),
+   '感想が普通でも、来店きっかけが「その他（テスト）」ならテスト扱いにする');
 ok(r.rows.filter(x => !x.isTest).every(x => !/^TEST_/.test(x.country)), '通常の回答には TEST_ が付かない');
 
 console.log('== 取り込み（重複しないこと）==');
 const first = sandbox.importSurveys(false);
-ok(first.追加件数 === 10, `初回は10件追加／実際=${first.追加件数}`);
+ok(first.追加件数 === 11, `初回は11件追加／実際=${first.追加件数}`);
 const second = sandbox.importSurveys(false);
 ok(second.追加件数 === 0, `2回目は追加0件＝何度実行しても二重登録されない／実際=${second.追加件数}`);
-ok(appended.length === 10, 'シートに残るのは10行のまま');
+ok(appended.length === 11, 'シートに残るのは11行のまま');
 
 console.log('== 書き込む形がアプリの読み取り形式と合っている ==');
 const row = appended[0];

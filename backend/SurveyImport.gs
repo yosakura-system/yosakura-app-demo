@@ -142,9 +142,11 @@ function checkSurveyTimeZone() {
 }
 
 /* ---------- テスト投稿の判定 ----------
-   本番の回答に紛れたテストを、集計から外すため。行は消さずに国名へ TEST_ を付ける。 */
-function isTestSurveyRow_(comment) {
-  return /テスト|ﾃｽﾄ|\btest\b/i.test(String(comment || ''));
+   本番の回答に紛れたテストを、集計から外すため。行は消さずに国名へ TEST_ を付ける。
+   ★感想欄だけでなく「来店きっかけ」も見る。
+     実際に、感想は普通なのにきっかけが「その他（テスト）」という回答があったため。 */
+function isTestSurveyRow_(comment, route) {
+  return /テスト|ﾃｽﾄ|\btest\b/i.test(String(comment || '') + ' ' + String(route || ''));
 }
 
 /* ---------- 1店舗ぶんを読む ---------- */
@@ -179,7 +181,7 @@ function readSurveySource_(src) {
     var country = cols.country >= 0 ? String(row[cols.country] || '').trim() : '';
     var route   = cols.route   >= 0 ? String(row[cols.route]   || '').trim() : '';
     var comment = cols.comment >= 0 ? String(row[cols.comment] || '').trim() : '';
-    var isTest  = isTestSurveyRow_(comment);
+    var isTest  = isTestSurveyRow_(comment, route);
     out.rows.push({
       t: t, rating: rating, route: route, comment: comment,
       country: isTest ? ('TEST_' + (country || 'unknown')) : country,
@@ -401,6 +403,39 @@ function runDeleteSurveyRows() {
 function 掃除1_今日の取り込み分を消す()   { return deleteSurveyRows(334, 389); } // 時刻がずれて入ったぶん
 function 掃除2_8月5日の手動取り込みを消す() { return deleteSurveyRows(11, 64); }  // 二重になっていたぶん
 function 掃除3_接続テストの行を消す()     { return deleteSurveyRows(7, 7); }    // TEST_KOREA の1行
+
+/* ---------- テスト投稿の取りこぼしを直す ----------
+   感想欄は普通なのに「来店きっかけ」が“その他（テスト）”という回答が、
+   テスト扱いにならず集計へ混ざっていた。該当行を消してから importSurveys を
+   実行すると、正しく TEST_ 付きで入り直す（アプリの集計から自動で外れる）。
+   ※ この関数は「消すだけ」。続けて importSurveys を実行してください。 */
+function 掃除4_テスト投稿の取りこぼしを消す() {
+  var sh = getSheet();
+  var lastRow = sh.getLastRow();
+  if (lastRow < 2) return logSurvey_({ ok: true, 削除: 0 });
+  var values = sh.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+
+  var targets = [];
+  for (var i = 0; i < values.length; i++) {
+    if (values[i][2] !== SURVEY_KIND) continue;
+    var item = String(values[i][4] || '');
+    var note = String(values[i][6] || '');
+    var country = '';
+    try { country = String((JSON.parse(note) || {}).c || ''); } catch (e) {}
+    // すでに TEST_ が付いているものは対象外。きっかけ／本文にテストの語があるものだけ
+    if (/^TEST_/.test(country)) continue;
+    if (!/テスト|ﾃｽﾄ|\btest\b/i.test(item + ' ' + note)) continue;
+    targets.push({ 行: i + 2, 店舗: values[i][3], きっかけ: item });
+  }
+  if (!targets.length) return logSurvey_({ ok: true, 削除: 0, 備考: '取りこぼしはありませんでした' });
+
+  // 下の行から消す（行番号がずれないように）
+  targets.slice().reverse().forEach(function (t) { sh.deleteRows(t.行, 1); });
+  return logSurvey_({
+    ok: true, 削除: targets.length + '行', 対象: targets,
+    次の手順: '続けて importSurveys を実行してください。TEST_ 付きで入り直し、集計から外れます。'
+  });
+}
 
 /* 実行結果をログに出しつつ、そのまま返す（GASエディタの実行ログで読めるように） */
 function logSurvey_(o) {
