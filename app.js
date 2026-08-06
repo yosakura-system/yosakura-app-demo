@@ -1068,7 +1068,45 @@
   const saveCkDone = (o) => { try { localStorage.setItem('yosakura_demo_ckdone', JSON.stringify(o)); } catch (e) {} };
   const ckDoneKey = (store, mode) => `${store}||${mode}||${todayKey()}`;
   const ckCanEdit = () => ['manager','owner','hq'].includes(getRole());
+  // 誰がいつ実施したか（全端末共有）。チェックの中身とは別に持つ（IDと混ざらないように）
+  const getCkMeta = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckmeta')) || {}; } catch { return {}; } };
+  // その店舗×モードの項目数（本部共通＋店舗独自）
+  const ckTotalOf = (store, mode) => {
+    let n = 0; (CK_COMMON[mode] || []).forEach(gr => n += gr.items.length);
+    return n + ckCustom(store, mode).length;
+  };
+  const ckDoneCountOf = (store, mode) => {
+    const done = getCkDone()[ckDoneKey(store, mode)] || {};
+    return Object.keys(done).filter(k => done[k]).length;
+  };
+
+  /* オーナー・本部が複数店舗を見るとき＝各店の本日の実施状況を一覧する
+     （店舗の画面では従来どおりチェックを付ける画面を出す） */
+  function ckOverview(vis) {
+    const row = (store) => {
+      const cells = CK_MODES.map(m => {
+        const total = ckTotalOf(store, m.v) || 1;
+        const n = ckDoneCountOf(store, m.v);
+        const meta = getCkMeta()[ckDoneKey(store, m.v)] || {};
+        const pct = Math.round(n / total * 100);
+        const col = n === 0 ? '#a23b3b' : (n >= total ? '#2a7' : 'inherit');
+        return `<div class="dcell${n ? '' : ' off'}">
+          <span class="dk">${esc(L(m.t))}</span>
+          <b class="dv" style="color:${col}">${n}/${total}</b>
+          <span class="dk" style="display:block">${meta.by ? esc(meta.by) + ' ・ ' + timeAgo(meta.t) : L({ ja:'未実施', en:'Not started', vi:'Chưa làm' })}</span>
+        </div>`;
+      }).join('');
+      return `<div class="card"><h3 style="font-size:13px">${esc(storeLabel(store))}</h3><div class="dgrid">${cells}</div></div>`;
+    };
+    return `
+      ${NOTE({ ja:'◆ 各店の本日の点検状況です。どなたが実施したかも表示します（チェックは各店舗の画面で行います）', en:'◆ Today\'s check status by store, including who did it', vi:'◆ Tình trạng kiểm tra hôm nay theo cửa hàng' })}
+      ${vis.map(row).join('')}
+      <div class="hint">${L({ ja:'※ 実施状況は全端末で共有されます。「未実施」が続く店舗は、朝礼などでご確認ください。', en:'Status is shared across devices. Follow up with stores showing “Not started”.', vi:'Trạng thái được đồng bộ. Hãy nhắc các cửa hàng chưa làm.' })}</div>`;
+  }
+
   APP_VIEWS.checklist = () => {
+    const vis = visibleStores();
+    if (vis.length > 1) return ckOverview(vis); // オーナー（所有店舗すべて）・本部（全店）
     const store = visibleStores()[0];
     const mode = getCkMode();
     const groups = CK_COMMON[mode];
@@ -3586,7 +3624,13 @@
       const map = getCkDone(); const day = map[key] || {}; day[id] = !day[id]; map[key] = day;
       // 古い日付のチェックは肥大化防止のため間引く（直近14日分のみ保持）
       const keep = {}; const keys = Object.keys(map).sort().slice(-40); keys.forEach(k => keep[k] = map[k]);
-      saveCkDone(keep); render();
+      saveCkDone(keep);
+      // 実施状況をオーナー・本部からも見えるように共有する（店舗×モード×日付ごと最新が正）
+      const t = Date.now(); lastSync = t;
+      const meta = getCkMeta(); meta[key] = { by: submitterLabel(), t };
+      try { localStorage.setItem('yosakura_demo_ckmeta', JSON.stringify(meta)); } catch (e) {}
+      render();
+      postReport({ kind:'ckdone', store, item:`${mode}||${todayKey()}`, note: JSON.stringify({ done: day, by: submitterLabel() }), t });
     });
     // 店舗独自項目：追加
     if (byId('ckAdd')) byId('ckAdd').onclick = () => {
@@ -3693,7 +3737,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; let linkset=null, linksetT=null;
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; let linkset=null, linksetT=null;
     (rows || []).forEach(r => {
       const t = Number(r.t) || 0, id = r.id, store = r.store || '';
       switch (r.kind) {
@@ -3713,6 +3757,8 @@
         case 'whistle': { const p=pj(r.note); whistle.push({ store, cat:p.cat||'other', body:p.body||'', anon:!!p.anon, t, id }); } break;
         case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', video:p.video||'', photos:r.photos||[], t, id }); } break;
         case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モードごと最新版が正
+        // オープン/クローズの実施状況＝店舗×モード×日付ごと最新が正。誰が実施したかは別に持つ
+        case 'ckdone': { const p=pj(r.note); const k=`${store}||${r.item}`; if (ckdoneT[k]==null || t>=ckdoneT[k]) { ckdone[k]=p.done||{}; ckmeta[k]={ by:p.by||'', t }; ckdoneT[k]=t; } } break;
         case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, goal:p.goal, by:p.by||'', t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正
         case 'community': { const p=pj(r.note); comm.push({ store, cat:r.item, body:p.body||'', by:p.by||'', photos:r.photos||[], t, id }); } break;
         case 'commmod': { const p=pj(r.note); const k=r.item; if (commmodT[k]==null || t>=commmodT[k]) { commmod[k]={ state:p.state||'published', t }; commmodT[k]=t; } } break; // 投稿キーごと最新の公開状態が正
@@ -3725,6 +3771,7 @@
     set('yosakura_demo_open', open); set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
     set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_ckitem', ckitem); set('yosakura_demo_monthly', Object.values(monthly));
+    if (Object.keys(ckdone).length) { set('yosakura_demo_ckdone', ckdone); set('yosakura_demo_ckmeta', ckmeta); } // 実施状況が1件も無い同期では、この端末の記録を消さない
     set('yosakura_demo_community', comm); set('yosakura_demo_commmod', commmod); set('yosakura_demo_commlike', commlike);
     if (linkset !== null) set('yosakura_demo_links', linkset); // linksetが無い同期では既存の資料リンクを保持
   }

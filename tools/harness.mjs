@@ -665,5 +665,28 @@ console.log('== 8/7 増田さんご要望：入口の整理 ==');
   ok(/data-open="manual"/.test(talk), '接客スクリプトからマニュアルへ飛べる');
 }
 
+console.log('== オープン/クローズの実施状況を、オーナー・本部から見られる ==');
+{
+  const ymd = (d) => d.toLocaleDateString('en-CA');
+  const today = ymd(new Date());
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'ckdone', store:S_HIROSHIMA, item:`open||${today}`,
+      note: JSON.stringify({ done:{ 'open-c-0-0':true, 'open-c-0-1':true }, by:'店長（山田）' }), t: Date.now(), id:'c1' },
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ ckdone threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/checklist';
+  const html = registry.app.innerHTML;
+  ok(/各店の本日の点検状況/.test(html), '本部（全店）では店舗別の実施状況が出る');
+  ok(/店長（山田）/.test(html), 'どなたが実施したかが分かる');
+  ok(/2\//.test(html), '実施した項目数が出る');
+  ok(/未実施/.test(html), 'まだ実施していない店舗・モードは「未実施」と分かる');
+
+  // 単店（店長）では従来どおりチェックを付ける画面
+  const one = renderView('checklist','manager',S_HIROSHIMA,'ja');
+  ok(/data-ck=/.test(one) && !/各店の本日の点検状況/.test(one), '店舗の画面は従来どおりチェックを付ける画面');
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
