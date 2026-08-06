@@ -1294,10 +1294,26 @@
     const months = Object.keys(mc).sort().slice(-12); // 過去最大12か月まで表示
     const barRow = (label, c, total, cls) => `<div class="bar-row"><div class="bl"><span>${esc(label)}</span><b>${c}</b></div><div class="bar-track"><div class="bar-fill ${cls||''}" style="width:${total ? Math.round(c / total * 100) : 0}%"></div></div></div>`;
     const byStore = vis.length > 1 ? (() => {
-      const bs = {}; vis.forEach(s => bs[s] = { n: 0, sum: 0, low: 0 });
-      rows.forEach(r => { if (bs[r.store]) { bs[r.store].n++; bs[r.store].sum += Number(r.sat) || 0; if ((Number(r.sat) || 0) <= 2) bs[r.store].low++; } });
+      const bs = {}; vis.forEach(s => bs[s] = { n: 0, sum: 0, low: 0, iss: {} });
+      rows.forEach(r => {
+        const b = bs[r.store]; if (!b) return;
+        b.n++; b.sum += Number(r.sat) || 0; if ((Number(r.sat) || 0) <= 2) b.low++;
+        parseSurveyIssues(r.note).forEach(v => { if (v !== 'none') b.iss[v] = (b.iss[v] || 0) + 1; });
+      });
+      // 主なご指摘＝その店で多い順に2つまで。「どの店で何が起きているか」を1行で分かるようにする
+      const topIss = (b) => Object.entries(b.iss).sort((x, y) => y[1] - x[1]).slice(0, 2)
+        .map(([v, c]) => surveyIssueLabel(v) + ' ' + c).join(' ・ ');
+      const noAnswer = vis.filter(s => !bs[s].n).length;
       return `<div class="card"><h3>${L({ ja:'店舗別の評価', en:'By store', vi:'Theo cửa hàng' })}</h3>
-        ${vis.map(s => { const b = bs[s]; const a = b.n ? (b.sum / b.n) : 0; return `<div class="rep"><span class="amt" style="${b.low?'color:#a23b3b':''}">${b.n ? a.toFixed(1) : '—'}</span><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${L({ja:'回答',en:'Resp.',vi:'PH'})} ${b.n} ・ ${L({ja:'低評価',en:'Low',vi:'Thấp'})} ${b.low}</div></div></div>`; }).join('')}
+        ${vis.map(s => {
+          const b = bs[s]; const a = b.n ? (b.sum / b.n) : 0; const ti = topIss(b);
+          return `<div class="rep"><span class="amt" style="${b.low?'color:#a23b3b':''}">${b.n ? '★' + a.toFixed(1) : '—'}</span><div class="body"><div class="l1">${esc(s)}</div>${
+            b.n
+              ? `<div class="l2">${L({ja:'回答',en:'Resp.',vi:'PH'})} ${b.n} ・ ${L({ja:'低評価',en:'Low',vi:'Thấp'})} ${b.low}</div>${ti ? `<div class="l2">${L({ja:'主なご指摘',en:'Top issues',vi:'Góp ý chính'})}：${esc(ti)}</div>` : ''}`
+              : `<div class="l2" style="color:#a23b3b">${L({ ja:'まだ回答がありません', en:'No responses yet', vi:'Chưa có phản hồi' })}</div>`
+          }</div></div>`;
+        }).join('')}
+        ${noAnswer ? `<p class="hint" style="display:block">${L({ ja:'※ 回答がまだ無い店舗が' + noAnswer + '店あります。サーベイのご案内が現場で回っているか、あわせてご確認いただけますと助かります。', en:noAnswer + ' store(s) have no responses yet. Please check the survey is being offered on site.', vi:'Có ' + noAnswer + ' cửa hàng chưa có phản hồi.' })}</p>` : ''}
       </div>`;
     })() : '';
     return `

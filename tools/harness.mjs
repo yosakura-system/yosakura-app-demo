@@ -608,6 +608,28 @@ console.log('== 実データにあった回答で、分類の取りこぼしが�
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== 店舗別：どの店で何が起きているかが分かる／未回収の店舗が目立つ ==');
+{
+  const sv = (store, sat, note, id) => ({ kind:'survey', store, level:String(sat), item:'구글', note: JSON.stringify({ c:'Korea', f:note }), t: Date.now(), id });
+  FETCH_ROWS = { ok:true, reports:[
+    sv(S_HIROSHIMA, 2, '【料理提供が遅い】', 'p1'),
+    sv(S_HIROSHIMA, 3, '【提供が遅い】', 'p2'),
+    sv(S_HIROSHIMA, 5, '【特に問題は無かった】', 'p3'),
+    sv('寿司世桜 心斎橋店', 5, '【特に問題は無かった】', 'p4'),
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ by-store threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/survey';
+  const html = registry.app.innerHTML;
+  const cardOf = (name) => { const i = html.indexOf(name); return i < 0 ? '' : html.slice(i, i + 400); };
+  ok(/主なご指摘/.test(html), '店舗ごとに「主なご指摘」が出る');
+  ok(/主なご指摘：提供時間 2/.test(cardOf('和牛世桜 広島店')), 'その店で多い指摘が件数つきで分かる');
+  ok(/まだ回答がありません/.test(html), '回答が無い店舗はそれと分かる');
+  ok(/回答がまだ無い店舗が\d+店あります/.test(html), '未回収の店舗数をまとめて知らせる（現場で案内が回っていない可能性に気づける）');
+  ok(!/主なご指摘/.test(cardOf('寿司世桜 心斎橋店')), '指摘が無い店舗には「主なご指摘」を出さない');
+}
+FETCH_ROWS = { ok:false };
+
 console.log('== 来店経路（本部）の注記が実態と合っている ==');
 {
   // この画面は議事録12-1でメニューから外している（hide）ため、注記はソース上で検証する
