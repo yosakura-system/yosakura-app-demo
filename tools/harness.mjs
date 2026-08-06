@@ -663,6 +663,20 @@ console.log('== 8/7 増田さんご要望：入口の整理 ==');
   // 接客スクリプトからマニュアルへ飛べる
   const talk = renderView('talk','staff',S_HIROSHIMA,'ja');
   ok(/data-open="manual"/.test(talk), '接客スクリプトからマニュアルへ飛べる');
+
+  // 「学ぶ」タブの中身を固定する（お知らせはホームのカードへ統合済み）
+  for (const role of ['staff','manager','hq']) {
+    run(()=> setLS(role, role==='hq' ? 'all' : S_HIROSHIMA, 'ja'));
+    location.hash = '#/home?tab=learn';
+    const learn = registry.app.innerHTML;
+    ok(!/お知らせ/.test(learn), `[${role}] 学ぶタブに「お知らせ」が出ない`);
+    ok(/マニュアル/.test(learn) && /接客スクリプト/.test(learn), `[${role}] 学ぶタブにマニュアルと接客スクリプトは残っている`);
+  }
+  // お知らせ機能そのものは生きている（ホームのカードから開く）
+  const home = renderView('home','staff',S_HIROSHIMA,'ja');
+  ok(/data-open="news"/.test(home), 'ホームのお知らせカードからは開ける');
+  const newsView = renderView('news','staff',S_HIROSHIMA,'ja');
+  ok(newsView.length > 200, 'お知らせ画面そのものは開ける');
 }
 
 console.log('== オープン/クローズの実施状況を、オーナー・本部から見られる ==');
