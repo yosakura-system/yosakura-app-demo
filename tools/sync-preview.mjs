@@ -46,17 +46,27 @@ if (!app.includes(demoBadge)) throw new Error('demo バッジ行が見つかり�
 app = app.replace(demoBadge, pvBadge);
 const newStyles = rd(path.join(DEMO, 'styles.css'));
 
-// 実質変更（改行コード差は無視）が無ければ、SWキャッシュの無駄な+1を避けて終了
-const same = rd(path.join(WORK, 'app.js')) === app && rd(path.join(WORK, 'styles.css')) === newStyles;
-if (same) { console.log('変更なし（プレビューは最新）'); fs.rmSync(WORK, { recursive: true, force: true }); process.exit(0); }
-fs.writeFileSync(path.join(WORK, 'app.js'), app, 'utf8');
-fs.writeFileSync(path.join(WORK, 'styles.css'), newStyles, 'utf8');
-
-// 4) sw.js：デモ本体をコピーし、CACHE 名をプレビュー用に置換＋バージョン+1（更新配信のため必須）
+// 次の版番号（この番号を app.js にも焼き込み、画面下に「いま動いている版」として出す）
 const prevSw = rd(path.join(WORK, 'sw.js'));
 const pm = prevSw.match(/const CACHE = 'yosakura-hq-v(\d+)';/);
 if (!pm) throw new Error('プレビュー sw.js の CACHE 行が見つかりません');
 const next = Number(pm[1]) + 1;
+
+// 3) app.js：いま動いている版を焼き込む
+//    ※ これが無いと、端末が古い app.js のままでも画面には最新の番号が出てしまい、
+//      「更新が届いていない」ことに誰も気づけない（2026-08-07 実際に起きた）
+const demoBuildLine = `  const APP_BUILD = 'dev';`;
+if (!app.includes(demoBuildLine)) throw new Error('demo APP_BUILD 行が見つかりません（app.js の該当行を確認）');
+const stamp = (s, tag) => s.replace(/ {2}const APP_BUILD = '[^']*';/, `  const APP_BUILD = '${tag}';`);
+
+// 実質変更（改行コード差・版の焼き込みは無視）が無ければ、SWキャッシュの無駄な+1を避けて終了
+const bare = (s) => stamp(s, 'dev');
+const same = bare(rd(path.join(WORK, 'app.js'))) === bare(app) && rd(path.join(WORK, 'styles.css')) === newStyles;
+if (same) { console.log('変更なし（プレビューは最新）'); fs.rmSync(WORK, { recursive: true, force: true }); process.exit(0); }
+fs.writeFileSync(path.join(WORK, 'app.js'), stamp(app, `yosakura-hq-v${next}`), 'utf8');
+fs.writeFileSync(path.join(WORK, 'styles.css'), newStyles, 'utf8');
+
+// 4) sw.js：デモ本体をコピーし、CACHE 名をプレビュー用に置換＋バージョン+1（更新配信のため必須）
 let sw = rd(path.join(DEMO, 'sw.js'));
 const dm = sw.match(/const CACHE = '[^']+';/);
 if (!dm) throw new Error('デモ sw.js の CACHE 行が見つかりません');
