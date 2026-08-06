@@ -3114,34 +3114,59 @@
           ${docs.map(d => `<button class="homelink" data-openurl="${esc(d.url)}"><span class="hl-ic">${svg('book')}</span><span class="hl-t">${esc(d.title || L({ ja:'資料', en:'Material', vi:'Tài liệu' }))}</span><span class="hl-c">${svg('chev')}</span></button>`).join('')}
         </div>
         ${(!isHttp(s.video) && !docs.length) ? `<p class="muted">${L({ ja:'録画・資料はまだ登録されていません', en:'No recording or materials yet', vi:'Chưa có ghi hình/tài liệu' })}</p>` : ''}
-        ${isHq ? `<button class="mini" data-studydel="${esc(s.id)}" style="margin-top:8px">${L({ ja:'削除', en:'Delete', vi:'Xóa' })}</button>` : ''}
+        ${isHq ? `<div style="display:flex;gap:8px;margin-top:10px">
+          <button class="mini" data-studyedit="${esc(s.id)}">${L({ ja:'編集する', en:'Edit', vi:'Sửa' })}</button>
+          <button class="mini" data-studydel="${esc(s.id)}">${L({ ja:'削除する', en:'Delete', vi:'Xóa' })}</button>
+        </div>` : ''}
       </div>`;
   };
+  // 削除の前に必ず一度確認する（ボタンひとつで消えてしまわないように）
+  function confirmSheet(title, body, okLabel, onOk) {
+    const mask = el(`<div class="sheet-mask"><div class="sheet">
+      <div class="grip"></div>
+      <h3>${esc(title)}</h3>
+      <p class="hint" style="display:block;margin:2px 0 14px">${esc(body)}</p>
+      <button class="btn-primary" data-ok="1" style="background:#a23b3b">${esc(okLabel)}</button>
+      <button class="mini" data-cancel="1" style="margin-top:10px">${L({ ja:'キャンセル', en:'Cancel', vi:'Hủy' })}</button>
+    </div></div>`);
+    mask.addEventListener('click', (e) => {
+      if (e.target === mask || e.target.closest('[data-cancel]')) { mask.remove(); return; }
+      if (e.target.closest('[data-ok]')) { mask.remove(); onOk(); }
+    });
+    document.body.appendChild(mask);
+  }
+  const getStudyEdit = () => { try { return localStorage.getItem('yosakura_study_edit') || ''; } catch { return ''; } };
+  const setStudyEdit = (id) => { try { id ? localStorage.setItem('yosakura_study_edit', id) : localStorage.removeItem('yosakura_study_edit'); } catch (e) {} };
   APP_VIEWS.study = () => {
     const isHq = getRole() === 'hq';
     const list = getStudy().slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || b.t - a.t);
+    // 編集中はフォームに既存の内容を出す（同じIDで上書きする）
+    const editing = isHq ? list.find(s => s.id === getStudyEdit()) : null;
+    const dv = (i, k) => { const d = (editing && editing.docs && editing.docs[i - 1]) || {}; return esc(d[k] || ''); };
     const docFields = [1, 2, 3].map(i => `
       <div class="sk-grid">
         <label class="fld"><span>${L({ ja:'資料' + i + ' の名前', en:'Material ' + i + ' name', vi:'Tên tài liệu ' + i })}</span>
-          <input type="text" id="st_doc${i}_t" placeholder="${esc(L({ ja:'例）アジェンダスライド', en:'e.g. Agenda slides', vi:'vd: Slide chương trình' }))}"></label>
+          <input type="text" id="st_doc${i}_t" value="${dv(i, 'title')}" placeholder="${esc(L({ ja:'例）アジェンダスライド', en:'e.g. Agenda slides', vi:'vd: Slide chương trình' }))}"></label>
         <label class="fld"><span>${L({ ja:'資料' + i + ' のリンク', en:'Material ' + i + ' link', vi:'Link tài liệu ' + i })}</span>
-          <input type="url" id="st_doc${i}_u" placeholder="https://..."></label>
+          <input type="url" id="st_doc${i}_u" value="${dv(i, 'url')}" placeholder="https://..."></label>
       </div>`).join('');
     const form = isHq ? `
       <div class="card" id="studyForm">
-        <h3>${L({ ja:'勉強会を登録', en:'Add a study session', vi:'Thêm buổi học' })}</h3>
+        <h3>${editing ? L({ ja:'勉強会を編集', en:'Edit session', vi:'Sửa buổi học' }) : L({ ja:'勉強会を登録', en:'Add a study session', vi:'Thêm buổi học' })}</h3>
+        ${editing ? `<p class="hint" style="display:block;margin:-4px 0 10px;color:#a23b3b">${L({ ja:'「' + (editing.title || '') + '」を編集しています。保存すると上書きされます。', en:'Editing an existing session; saving overwrites it.', vi:'Đang sửa; lưu sẽ ghi đè.' })}</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'タイトル', en:'Title', vi:'Tiêu đề' })}</span>
-            <input type="text" id="st_title" placeholder="${esc(L({ ja:'例）2026年7月 勉強会', en:'e.g. July 2026 session', vi:'vd: Buổi học 7/2026' }))}"></label>
+            <input type="text" id="st_title" value="${esc((editing && editing.title) || '')}" placeholder="${esc(L({ ja:'例）2026年7月 勉強会', en:'e.g. July 2026 session', vi:'vd: Buổi học 7/2026' }))}"></label>
           <label class="fld"><span>${L({ ja:'開催日', en:'Date', vi:'Ngày' })}</span>
-            <input type="date" id="st_date"></label>
+            <input type="date" id="st_date" value="${esc((editing && editing.date) || '')}"></label>
         </div>
         <label class="fld"><span>${L({ ja:'録画のリンク', en:'Recording link', vi:'Link ghi hình' })}</span>
-          <input type="url" id="st_video" placeholder="https://..."></label>
+          <input type="url" id="st_video" value="${esc((editing && editing.video) || '')}" placeholder="https://..."></label>
         ${docFields}
         <label class="fld"><span>${L({ ja:'メモ（任意）', en:'Note (optional)', vi:'Ghi chú' })}</span>
-          <textarea id="st_note" placeholder="${esc(L({ ja:'テーマや、見てほしいところ', en:'Theme or highlights', vi:'Chủ đề / điểm chính' }))}"></textarea></label>
-        <button class="btn-primary" id="studyAdd" style="margin-top:12px">${L({ ja:'登録する', en:'Add', vi:'Thêm' })}</button>
+          <textarea id="st_note" placeholder="${esc(L({ ja:'テーマや、見てほしいところ', en:'Theme or highlights', vi:'Chủ đề / điểm chính' }))}">${esc((editing && editing.note) || '')}</textarea></label>
+        <button class="btn-primary" id="studyAdd" style="margin-top:12px">${editing ? L({ ja:'保存する', en:'Save', vi:'Lưu' }) : L({ ja:'登録する', en:'Add', vi:'Thêm' })}</button>
+        ${editing ? `<button class="mini" id="studyCancel" style="margin-top:10px">${L({ ja:'編集をやめる', en:'Cancel editing', vi:'Hủy sửa' })}</button>` : ''}
         <div class="hint">${L({ ja:'登録すると全店の「勉強会」に表示されます。リンクの共有設定（閲覧できる範囲）は、リンク元でご確認ください。', en:'Visible to all stores once added. Check sharing settings at the source.', vi:'Hiển thị cho mọi cửa hàng. Kiểm tra quyền chia sẻ ở nguồn.' })}</div>
       </div>` : '';
     return `
@@ -3480,20 +3505,36 @@
       const title = v('st_title');
       if (!title) { toast(L({ ja:'タイトルを入力してください', en:'Please enter a title', vi:'Vui lòng nhập tiêu đề' })); return; }
       const docs = [1, 2, 3].map(i => ({ title: v(`st_doc${i}_t`), url: v(`st_doc${i}_u`) })).filter(d => isHttp(d.url));
-      const rec = { id: 'st' + Date.now(), title, date: v('st_date'), video: v('st_video'), docs, note: v('st_note'), t: Date.now() };
-      const arr = getStudy(); arr.push(rec);
+      const editId = getStudyEdit(); // 編集中は同じIDで上書きする
+      const rec = { id: editId || ('st' + Date.now()), title, date: v('st_date'), video: v('st_video'), docs, note: v('st_note'), t: Date.now() };
+      const arr = getStudy().filter(s => s.id !== rec.id); arr.push(rec);
       try { saveStudy(arr.slice(-120)); } catch (e) { saveStudy(arr.slice(-40)); }
-      lastSync = rec.t;
-      toast(L({ ja:'登録しました', en:'Added', vi:'Đã thêm' })); render();
+      setStudyEdit(''); lastSync = rec.t;
+      toast(editId ? L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' }) : L({ ja:'登録しました', en:'Added', vi:'Đã thêm' })); render();
       postReport({ kind:'study', store:'', item: rec.id, note: JSON.stringify(rec), t: rec.t });
     };
+    // 編集：フォームへ読み込む（画面の上へ戻す）
+    document.querySelectorAll('[data-studyedit]').forEach(b => b.onclick = () => {
+      setStudyEdit(b.dataset.studyedit); render();
+      try { window.scrollTo(0, 0); } catch (e) {}
+    });
+    if (byId('studyCancel')) byId('studyCancel').onclick = () => { setStudyEdit(''); render(); };
+    // 削除：必ず確認してから（ボタンひとつで消えないように）
     document.querySelectorAll('[data-studydel]').forEach(b => b.onclick = () => {
       const id = b.dataset.studydel;
-      if (!confirm(L({ ja:'この勉強会の登録を削除します。よろしいですか？', en:'Delete this session?', vi:'Xóa buổi học này?' }))) return;
-      const arr = getStudy().filter(s => s.id !== id); saveStudy(arr);
-      const t = Date.now(); lastSync = t;
-      toast(L({ ja:'削除しました', en:'Deleted', vi:'Đã xóa' })); render();
-      postReport({ kind:'study', store:'', item: id, note: JSON.stringify({ id, deleted: true }), t });
+      const target = getStudy().find(s => s.id === id);
+      confirmSheet(
+        L({ ja:'この勉強会を削除しますか？', en:'Delete this session?', vi:'Xóa buổi học này?' }),
+        (target && target.title ? '「' + target.title + '」' : '') + L({ ja:'を削除します。録画・資料のリンクも一覧から消えます（元のファイルは消えません）。この操作は取り消せません。', en:'The links will be removed from the list. The source files are not deleted. This cannot be undone.', vi:'Liên kết sẽ bị xóa khỏi danh sách. Tệp gốc không bị xóa.' }),
+        L({ ja:'削除する', en:'Delete', vi:'Xóa' }),
+        () => {
+          const arr = getStudy().filter(s => s.id !== id); saveStudy(arr);
+          if (getStudyEdit() === id) setStudyEdit('');
+          const t = Date.now(); lastSync = t;
+          toast(L({ ja:'削除しました', en:'Deleted', vi:'Đã xóa' })); render();
+          postReport({ kind:'study', store:'', item: id, note: JSON.stringify({ id, deleted: true }), t });
+        }
+      );
     });
 
     // 公益通報：本部へ送信（匿名可）
