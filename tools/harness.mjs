@@ -862,8 +862,14 @@ console.log('== チェックリストが4種類（オープン・アイドル・
   ok(/便器/.test(sakura) && /ドアノブ/.test(sakura), '桜チェックは本部のシートどおりの項目が並ぶ');
   ok(/清掃具と鏡用の布は、他と分けて/.test(sakura), '取り違えやすい注意（清掃具を分ける）が出る');
   const idle = inMode('idle');
-  ok(/夜営業ぶんの仕込み/.test(idle), 'アイドルタイムの項目が並ぶ');
-  ok(/暫定です/.test(idle), 'アイドルは暫定であることを明示している');
+  ok(/バッシング/.test(idle) && /夜の開店準備/.test(idle), 'アイドルは「昼の締め→夜の開店準備」の順に並ぶ');
+  ok(idle.indexOf('昼の締め') < idle.indexOf('夜の開店準備'), '昼を締めてから夜を開ける順序になっている');
+  // 本部のシートの細目が、各項目の下に説明として出る
+  const open = inMode('open');
+  ok(/タイムカード打刻/.test(open) && /ガラスクリーナー/.test(open), 'シートの細目が説明として表示される');
+  ok(/【?ホール|ホール/.test(open) && /キッチン/.test(open), 'ホールとキッチンの2系統に分かれている');
+  const close = inMode('close');
+  ok(/日計レポート/.test(close) && /キーボックス/.test(close), 'クローズも本部のシートどおりの内容');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);

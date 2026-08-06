@@ -1033,65 +1033,199 @@
   };
 
   /* ③ 開店・清掃チェック（動く：和牛世桜 店舗管理チェックシート2026.05に準拠）*/
+  /* ★オープン／アイドル／クローズは、本部の「オープン・クローズ・アイドルタイム チェックリスト」
+     （ホール／キッチンの2系統）をそのまま実装したもの。
+     項目名をチェック単位とし、シートの細目は説明として下に出す。 */
   const CHECK_GROUPS = [
-    { g:{ja:'開店準備',en:'Pre-open',vi:'Chuẩn bị mở'}, items:[
-      {ja:'制服・身だしなみ',en:'Uniform & grooming',vi:'Đồng phục & tác phong'},
-      {ja:'手洗い・消毒',en:'Handwash & sanitize',vi:'Rửa tay & khử khuẩn'},
-      {ja:'当日の予約確認',en:'Today reservations',vi:'Đặt chỗ hôm nay'},
-      {ja:'冷蔵庫の温度確認',en:'Fridge temperature',vi:'Nhiệt độ tủ lạnh'} ] },
-    { g:{ja:'ホール・客席',en:'Hall & seats',vi:'Sảnh & bàn'}, items:[
-      {ja:'客席・テーブル清掃',en:'Seats & tables cleaning',vi:'Vệ sinh bàn ghế'},
-      {ja:'グラスの汚れ（水垢・くもり）',en:'Glass stains (water marks)',vi:'Vết bẩn ly'},
-      {ja:'照明・調光の確認',en:'Lighting & dimming',vi:'Ánh sáng & điều chỉnh'},
-      {ja:'ディスプレイ・装飾の清掃',en:'Display & decor cleaning',vi:'Vệ sinh trưng bày'} ] },
+    { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
+      {ja:'手洗い・身だしなみ',en:'Handwash & grooming',vi:'Rửa tay & tác phong',
+       d:{ja:'タイムカード打刻／手洗い（洗い場の手洗いPOP参照）／スタッフ全員の身だしなみ・手洗いを確認／開店準備中にお客様が見えたらお声がけ'}},
+      {ja:'外観準備',en:'Exterior',vi:'Bên ngoài',
+       d:{ja:'掃き掃除／看板準備（外観配置POP参照）／傘立て／窓ガラスをガラスクリーナーで拭き上げ'}},
+      {ja:'ドリンク場の準備',en:'Drink station',vi:'Quầy đồ uống',
+       d:{ja:'各種ドリンクの補充／アイスお茶／ポットのお湯／グラスの数量確認／使用する備品のセッティング'}},
+      {ja:'レジの準備',en:'Register',vi:'Quầy thu ngân',
+       d:{ja:'立ち上げ／お金の計算／釣り銭補充'}},
+      {ja:'おしぼり準備',en:'Towels',vi:'Khăn',
+       d:{ja:'おしぼりカゴに補充／予備の場所にも補充して残数確認（夏＝冷蔵庫／冬＝ウォーマー）'}},
+      {ja:'清掃',en:'Cleaning',vi:'Vệ sinh',
+       d:{ja:'床は掃除機・モップ／テーブルと椅子はアルコール＋ダスター／桜チェックはチェックシートに沿って'}},
+      {ja:'予約確認',en:'Reservations',vi:'Đặt chỗ',
+       d:{ja:'テーブルチェック（キッチンにも共有）／メッセージやアレルギーの確認'}},
+      {ja:'テーブルセッティング',en:'Table setting',vi:'Bày bàn',
+       d:{ja:'卓上調味料の補充と配置／メニューブック／おしぼりおき'}},
+      {ja:'レジ周りの準備',en:'Around the register',vi:'Quanh quầy',
+       d:{ja:'iPad 充電100%／決済端末 充電100%／販促物の補充／整理整頓'}},
+      {ja:'店内照明・BGM',en:'Lighting & BGM',vi:'Ánh sáng & nhạc',
+       d:{ja:'電気は必要な箇所すべてON／空調は室温を見て調整／アラームONを確認／BGM（選曲・音量）'}},
+      {ja:'空気の入れ替え',en:'Ventilation',vi:'Thông gió',
+       d:{ja:'窓や扉を開け、一度空気を入れ替える'}},
+      {ja:'店内最終チェック（責任者）',en:'Final check (manager)',vi:'Kiểm tra cuối',
+       d:{ja:'テーブル・椅子の配置／ホールから見たキッチンの整理整頓／デシャップ／レジ周り／私物や定位置にないものがないか'}},
+      {ja:'朝礼',en:'Morning briefing',vi:'Họp sáng',
+       d:{ja:'元気よく挨拶／共有事項／ポジション／予約確認（朝礼シートに沿って。ここで身だしなみの最終チェック）'}},
+      {ja:'外観最終チェック',en:'Final exterior check',vi:'Kiểm tra ngoài',
+       d:{ja:'電気がついているか／あるべき場所に設置されているか／暖簾がかかっているか'}},
+      {ja:'GLINEへ共有',en:'Share to GLINE',vi:'Chia sẻ GLINE',
+       d:{ja:'オープンチェックリスト（キッチン・ホール）／内観外観写真'}},
+      {ja:'オープン',en:'Open',vi:'Mở cửa',
+       d:{ja:'「いらっしゃいませ！」と元気にお出迎え。一度きりかもしれない日本旅行で世桜を選んでくださったお客様へ、最高の和食体験を'}} ] },
     { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
-      {ja:'ステンレスの汚れ（カット後にダスター）',en:'Stainless wipe-down after cutting',vi:'Lau inox sau khi cắt'},
-      {ja:'藁焼き場のステンレス（中性洗剤→乾拭き）',en:'Straw-grill stainless (detergent→dry)',vi:'Inox bếp nướng rơm'},
-      {ja:'まな板・包丁の管理',en:'Cutting board & knife care',vi:'Thớt & dao'},
-      {ja:'洗い場の清掃',en:'Wash area cleaning',vi:'Vệ sinh khu rửa'},
-      {ja:'食材の冷蔵保管（しぐれ・いくら・魚類は使用後すぐ戻す）',en:'Refrigerate ingredients right after use',vi:'Cất lạnh nguyên liệu ngay sau khi dùng'} ] },
-    { g:{ja:'トイレ・入口',en:'Restroom & entrance',vi:'WC & lối vào'}, items:[
-      {ja:'トイレ便器内の汚れ（サンボール）',en:'Toilet bowl stains (Sunbowl)',vi:'Vết bẩn bồn cầu'},
-      {ja:'トイレ清掃・備品補充',en:'Restroom clean & supplies',vi:'Vệ sinh WC & vật tư'},
-      {ja:'営業中看板／暖簾／A型看板',en:'Open sign / noren / A-frame',vi:'Bảng hiệu / rèm / bảng A'},
-      {ja:'食べ方POPの汚れ（早めに再発行）',en:'How-to-eat POP condition',vi:'Tình trạng POP cách ăn'} ] }
+      {ja:'手洗い・身だしなみ',en:'Handwash & grooming',vi:'Rửa tay & tác phong',
+       d:{ja:'タイムカード打刻／手洗い／スタッフ全員の身だしなみ・手洗いを確認'}},
+      {ja:'フライヤー',en:'Fryer',vi:'Bếp chiên',
+       d:{ja:'蓋を開ける／電源ON／必要な備品を定位置に（油きりバット・網・トング・運ぶ用木箱）'}},
+      {ja:'保温ジャー',en:'Rice warmer',vi:'Nồi giữ ấm',
+       d:{ja:'釜が入っているか確認／電源ONで温める／しゃもじは水を入れて定位置に'}},
+      {ja:'仕込み・在庫確認',en:'Prep & stock',vi:'Chuẩn bị & tồn kho',
+       d:{ja:'前日の引き継ぎ表を見ながら在庫確認／必要な仕込みを確認'}},
+      {ja:'解凍',en:'Thawing',vi:'Rã đông',
+       d:{ja:'いくら／牛肉（牛カツ用）／和牛（ごはん用）／大根おろし／わさび／ゆず など'}},
+      {ja:'米',en:'Rice',vi:'Cơm',
+       d:{ja:'お米を洗って仕込み表の手順で炊く／前日の冷やごはんは電子レンジで温めて保温ジャーへ'}},
+      {ja:'だし',en:'Dashi',vi:'Nước dùng',
+       d:{ja:'出汁を仕込んでポットで温める／電源ON'}},
+      {ja:'仕込み',en:'Prep',vi:'Sơ chế',
+       d:{ja:'牛カツ／和牛（ごはん用）／トマト'}},
+      {ja:'食材セッティング',en:'Ingredient setup',vi:'Bày nguyên liệu',
+       d:{ja:'3連皿／ガリ・わさび／サラダ／だし椀（定数に合わせて）'}},
+      {ja:'洗い物',en:'Dishes',vi:'Rửa bát',
+       d:{ja:'すべて終わらせて営業に集中できる状態にする'}},
+      {ja:'最終チェック（責任者）',en:'Final check (manager)',vi:'Kiểm tra cuối',
+       d:{ja:'電源／あるべき場所への設置／仕込みとストック／洗い場のリセット／カット台・包丁のセット'}},
+      {ja:'朝礼',en:'Morning briefing',vi:'Họp sáng',
+       d:{ja:'元気よく挨拶／共有事項／ポジション／予約確認（朝礼シートに沿って）'}},
+      {ja:'一食目の共有',en:'Share first plate',vi:'Chia sẻ món đầu',
+       d:{ja:'1食目の写真の共有を忘れずに（盛り付けPOPを参考に丁寧な配置を）'}} ] },
   ];
-  // クローズ（閉店）の本部共通項目＝業務順
+  // クローズ（閉店）＝本部のチェックリスト（ホール／キッチン）どおり
   const CLOSE_GROUPS = [
-    { g:{ja:'クローズ準備',en:'Closing prep',vi:'Chuẩn bị đóng'}, items:[
-      {ja:'ラストオーダーの確認',en:'Last order check',vi:'Kiểm tra last order'},
-      {ja:'当日の売上・レジ締め',en:'Daily sales & register close',vi:'Chốt doanh thu & quầy'},
-      {ja:'翌日の予約・仕込みの確認',en:'Tomorrow reservations & prep',vi:'Đặt chỗ & chuẩn bị ngày mai'} ] },
-    { g:{ja:'キッチン締め',en:'Kitchen closing',vi:'Đóng bếp'}, items:[
-      {ja:'食材の冷蔵・冷凍保管',en:'Store ingredients (fridge/freezer)',vi:'Bảo quản nguyên liệu'},
-      {ja:'器具・まな板・包丁の洗浄',en:'Clean tools / board / knife',vi:'Vệ sinh dụng cụ'},
-      {ja:'油・グリストラップの確認',en:'Oil & grease trap check',vi:'Kiểm tra dầu & bẫy mỡ'},
-      {ja:'ゴミの分別・搬出',en:'Sort & take out trash',vi:'Phân loại & đổ rác'} ] },
-    { g:{ja:'ホール締め',en:'Hall closing',vi:'Đóng sảnh'}, items:[
-      {ja:'客席・テーブルの清掃',en:'Clean seats & tables',vi:'Vệ sinh bàn ghế'},
-      {ja:'床清掃',en:'Floor cleaning',vi:'Lau sàn'},
-      {ja:'トイレの最終清掃',en:'Final restroom clean',vi:'Vệ sinh WC cuối'} ] },
-    { g:{ja:'火元・施錠・記録',en:'Fire / lock / record',vi:'Lửa / khóa / ghi'}, items:[
-      {ja:'火元・ガスの元栓の確認',en:'Fire & gas main check',vi:'Kiểm tra lửa & gas'},
-      {ja:'空調・照明・電源のオフ',en:'AC / lights / power off',vi:'Tắt điều hòa / đèn / nguồn'},
-      {ja:'クローズ写真の撮影',en:'Take closing photo',vi:'Chụp ảnh đóng cửa'},
-      {ja:'戸締り・施錠',en:'Lock up',vi:'Khóa cửa'} ] }
-  ];
-  /* アイドルタイム＝午後営業の準備・抜け漏れ防止（提出物一覧の5番）。
-     ★項目は暫定です。本部で確定したものに差し替えます。 */
-  const IDLE_GROUPS = [
-    { g:{ja:'客席・ホール',en:'Hall & seats',vi:'Sảnh & bàn'}, items:[
-      {ja:'客席・テーブルの清掃と拭き上げ',en:'Clean & wipe seats and tables',vi:'Lau bàn ghế'},
-      {ja:'卓上の調味料・POPの補充と汚れ確認',en:'Refill & check condiments and POP',vi:'Bổ sung gia vị & POP'},
-      {ja:'カトラリー・おしぼりの補充',en:'Refill cutlery & towels',vi:'Bổ sung dao dĩa & khăn'} ] },
+    { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
+      {ja:'外観',en:'Exterior',vi:'Bên ngoài',
+       d:{ja:'店舗周辺のゴミを清掃／A看板は畳んで店内へ（コードは引きずらないよう結ぶ）／シャッターを下ろす／看板の電気を消す'}},
+      {ja:'卓上調味料の補充',en:'Refill condiments',vi:'Bổ sung gia vị',
+       d:{ja:'各席の卓上調味料を補充／容器を拭き、薬味スプーンは洗浄して拭く／各席にセッティング'}},
+      {ja:'洗い物の回収',en:'Collect dishes',vi:'Thu dọn bát đĩa',
+       d:{ja:'すべての洗い物を洗い場へ（カット場のまな板・包丁・急須も）／カット場の周辺はよく拭き掃除'}},
+      {ja:'消耗品チェック',en:'Supplies check',vi:'Kiểm tra vật tư',
+       d:{ja:'定数表を元に、発注が必要なものを共有'}},
+      {ja:'発注管理（ドリンク）',en:'Drink ordering',vi:'Đặt đồ uống',
+       d:{ja:'在庫数を確認してチェックリストに記入／撮影して「店舗×本部GLINE」で共有'}},
+      {ja:'掃き掃除（ホール）',en:'Sweeping (hall)',vi:'Quét sàn',
+       d:{ja:'椅子を両手で持って移動／ホール専用の箒で床を掃く／ホール全体にゴミが無いか（傘立ての中の雨水・ごみも）'}},
+      {ja:'拭き掃除（テーブル・椅子）',en:'Wipe tables & chairs',vi:'Lau bàn ghế',
+       d:{ja:'テーブル／椅子／テーブルの脚／荷物かご／作業台／カット場／レジカウンター（アルコール＋白いダスター）'}},
+      {ja:'トイレ清掃',en:'Restroom cleaning',vi:'Vệ sinh WC',
+       d:{ja:'桜チェックリストに沿って実施'}},
+      {ja:'ゴミ出し',en:'Take out trash',vi:'Đổ rác',
+       d:{ja:'袋をしっかり閉じて店舗前へ／段ボールは畳んで出す'}},
+      {ja:'レジ締め',en:'Register close',vi:'Chốt quầy',
+       d:{ja:'売上レシートとレジの金額を必ず合わせてから総括表へ入力／日計レポート（取引別・分類別）を印刷／現金売上と日計レポートを封筒へ／TIPは別の封筒／写真を撮り金庫に保管'}},
+      {ja:'GLINEへ共有',en:'Share to GLINE',vi:'Chia sẻ GLINE',
+       d:{ja:'桜チェック表／定期衛生管理表／お手すきチェックリスト／レジクローズ画面／現金売上・日計レポート・TIP封筒／日報／気づき／クローズチェックリスト（ホール・キッチン）'}},
+      {ja:'整理整頓・補充',en:'Tidy & restock',vi:'Sắp xếp & bổ sung',
+       d:{ja:'レジ周りの整理整頓／販促物の補充（次の人が始めやすい環境をつくる）'}},
+      {ja:'各種充電',en:'Charging',vi:'Sạc thiết bị',
+       d:{ja:'iPad／スピーカー／決済端末／看板用バッテリー（電源はOFFに）'}},
+      {ja:'電源OFF',en:'Power off',vi:'Tắt nguồn',
+       d:{ja:'各種電気／エアコン／換気扇／ガス元栓（桜やバックヤードも確認）'}},
+      {ja:'退勤・戸締り',en:'Clock out & lock up',vi:'Chấm công & khóa cửa',
+       d:{ja:'退勤の打刻／シャッター・鍵を閉めてキーボックスへ（番号は必ずバラバラに）'}} ] },
     { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
-      {ja:'夜営業ぶんの仕込み確認',en:'Check prep for dinner',vi:'Kiểm tra chuẩn bị tối'},
-      {ja:'食材の残量と冷蔵保管の確認',en:'Check stock & refrigeration',vi:'Kiểm tra tồn & bảo quản lạnh'},
-      {ja:'まな板・包丁・器具の洗浄',en:'Clean board, knives, tools',vi:'Vệ sinh thớt, dao, dụng cụ'} ] },
-    { g:{ja:'補充・確認',en:'Restock & check',vi:'Bổ sung & kiểm tra'}, items:[
-      {ja:'ドリンク・氷の補充',en:'Refill drinks & ice',vi:'Bổ sung đồ uống & đá'},
-      {ja:'床・ゴミの確認',en:'Check floor & trash',vi:'Kiểm tra sàn & rác'},
-      {ja:'夜の予約状況の確認',en:'Check evening reservations',vi:'Kiểm tra đặt chỗ tối'} ] }
+      {ja:'フライヤー',en:'Fryer',vi:'Bếp chiên',
+       d:{ja:'電源を落として元栓を閉める／油のカスを網で取り除く／フライヤーと周りを拭き上げ／清掃対象日は油を抜いて清掃'}},
+      {ja:'ご飯・炊飯器',en:'Rice & cooker',vi:'Cơm & nồi',
+       d:{ja:'残ったご飯はラップに包み日付を記入（平らに・目安300g）／ジップロックで冷凍／羽釜コンロの元栓を閉める／炊飯器・保温器は毎日洗浄（内蓋や本体も）'}},
+      {ja:'ポットの洗浄',en:'Kettle',vi:'Bình nước',
+       d:{ja:'コンセントを抜きお湯をシンクへ／中をすすぎ、本体も拭く'}},
+      {ja:'はかりの掃除',en:'Scale',vi:'Cân',
+       d:{ja:'アルコールとダスターで拭き上げ／土台との隙間も必ず（分解できる場合は分解）／定位置に戻す'}},
+      {ja:'食器類の洗浄',en:'Dishes',vi:'Bát đĩa',
+       d:{ja:'シンク・作業台・作業台下に洗い残しがないか／食器・グラス・調理器具が定位置か（見える箇所は段数や向きも意識）'}},
+      {ja:'まな板の洗浄',en:'Cutting boards',vi:'Thớt',
+       d:{ja:'漂白剤（スプレー）をかけて30分放置／しっかり洗い流し、重ならないように立てかける'}},
+      {ja:'食洗機',en:'Dishwasher',vi:'Máy rửa bát',
+       d:{ja:'庫内に小さなものが残っていないか／洗浄（水抜き）／天板もアルコールとダスターで拭く（水気を残さない＝異臭の原因）'}},
+      {ja:'補充（食品以外）',en:'Restock (non-food)',vi:'Bổ sung (phi thực phẩm)',
+       d:{ja:'洗剤／アルコール（ホール・キッチンすべて）／ハンドソープ（各容器の外側はおしぼりで毎日拭く）'}},
+      {ja:'作業台の清掃',en:'Worktop',vi:'Bàn bếp',
+       d:{ja:'除菌スプレーと清潔なおしぼり／汚れや水分を残さない／食器やストックを退けて上から順に'}},
+      {ja:'作業台・ショーケースの清掃',en:'Worktop & showcase',vi:'Tủ trưng bày',
+       d:{ja:'スポンジと洗剤で扉・取手・溝を洗う／ホースで泡を流す／ダスターで水気を取る'}},
+      {ja:'キッチンの床',en:'Kitchen floor',vi:'Sàn bếp',
+       d:{ja:'掃き掃除／デッキブラシと洗剤で磨く／ホースで泡を流す（作業台の下も忘れずに）'}},
+      {ja:'シンクの清掃',en:'Sink',vi:'Bồn rửa',
+       d:{ja:'ゴミ受けを洗い漂白剤で除菌（5分放置）／シンク内を掃除用スポンジで磨く（食器用・グラス用はNG）／泡や汚れを残さない'}},
+      {ja:'ダスター類の洗浄',en:'Cloths',vi:'Khăn lau',
+       d:{ja:'中性洗剤で洗浄／水と漂白剤に5分放置／バケツでまとめて洗う／絞って指定の場所に干す'}},
+      {ja:'ゴミ出し',en:'Take out trash',vi:'Đổ rác',
+       d:{ja:'厨房のゴミ箱／トイレのゴミ箱／段ボール（畳む・鰻の箱はパッケージが見えないように）／空き瓶（厨房内に残っていないか）'}},
+      {ja:'在庫確認・整理整頓',en:'Stock & tidy',vi:'Tồn kho & sắp xếp',
+       d:{ja:'消耗品はカレンダーを確認／食材は仕込み・発注・買い出しを確認／当日残数は冷蔵庫の表に記入／ついでに定位置へ戻す'}},
+      {ja:'GLINEへ共有',en:'Share to GLINE',vi:'Chia sẻ GLINE',
+       d:{ja:'仕込み表（急ぎは「★」をつける）／発注／気づき／クローズチェックリスト'}},
+      {ja:'電源OFF',en:'Power off',vi:'Tắt nguồn',
+       d:{ja:'各種電気／エアコン／換気扇／ガス元栓／食洗機（桜やバックヤードも確認）'}},
+      {ja:'退勤・戸締り',en:'Clock out & lock up',vi:'Chấm công & khóa cửa',
+       d:{ja:'退勤の打刻／シャッター・鍵を閉めてキーボックスへ（番号は必ずバラバラに）'}} ] }
+  ];
+  /* アイドルタイム＝昼営業を締めて、夜営業を開ける。本部のシートどおり「クローズ→オープン」の2部構成。 */
+  const IDLE_GROUPS = [
+    { g:{ja:'昼の締め（ホール）',en:'Lunch close (hall)',vi:'Đóng trưa (sảnh)'}, items:[
+      {ja:'バッシング',en:'Bussing',vi:'Dọn bàn',
+       d:{ja:'お客様の食べ終わった食器／カット場のまな板や包丁／その他の洗い物をすべて洗い場へ'}},
+      {ja:'カスターセット',en:'Condiment set',vi:'Bộ gia vị',
+       d:{ja:'各席の卓上調味料を補充／容器を拭き上げる／定位置に戻す'}},
+      {ja:'カウンター・椅子',en:'Counter & chairs',vi:'Quầy & ghế',
+       d:{ja:'物を退けながらアルコールとダスターで拭き上げ／床の汚れやゴミも同時に確認'}},
+      {ja:'床掃除',en:'Floor',vi:'Sàn',
+       d:{ja:'物を退けながらホウキで清掃'}},
+      {ja:'桜チェック',en:'Sakura check',vi:'Kiểm tra WC',
+       d:{ja:'桜チェックリストに基づいて掃除する'}},
+      {ja:'ドリンク補充',en:'Refill drinks',vi:'Bổ sung đồ uống',
+       d:{ja:'定数に合わせて補充／グラスの在庫も確認'}},
+      {ja:'備品の補充',en:'Restock supplies',vi:'Bổ sung vật tư',
+       d:{ja:'食べ方POP／お箸／おしぼり など'}},
+      {ja:'作業台',en:'Worktop',vi:'Bàn làm việc',
+       d:{ja:'物を退けながらアルコールとダスターで拭き上げ、定位置に戻す（カット台の下も忘れずに）'}},
+      {ja:'洗い物',en:'Dishes',vi:'Rửa bát',
+       d:{ja:'洗い物を終わらせ、洗い終わったものを定位置へ'}},
+      {ja:'充電',en:'Charging',vi:'Sạc',
+       d:{ja:'iPad／スピーカー／決済端末／インカム／看板は夜用のバッテリーを充電'}},
+      {ja:'GLINEへ共有',en:'Share to GLINE',vi:'Chia sẻ GLINE',
+       d:{ja:'中間報告／引き継ぎ／仕込み'}} ] },
+    { g:{ja:'昼の締め（キッチン）',en:'Lunch close (kitchen)',vi:'Đóng trưa (bếp)'}, items:[
+      {ja:'洗い物',en:'Dishes',vi:'Rửa bát',
+       d:{ja:'すべての洗い物を終わらせる／しゃもじやトングも一度すべて洗う'}},
+      {ja:'鉄板（牛カツ）',en:'Griddle (gyukatsu)',vi:'Vỉ nướng',
+       d:{ja:'緑のスポンジで焦げを取る（水洗い）／定期清掃リストに沿って週1回は金たわしで洗う'}},
+      {ja:'作業台のリセット',en:'Reset worktop',vi:'Dọn bàn bếp',
+       d:{ja:'物を退けてアルコールとダスターで拭き上げ／洗ったものもすべて定位置へ'}},
+      {ja:'在庫確認・共有',en:'Stock & share',vi:'Tồn kho & chia sẻ',
+       d:{ja:'在庫と仕込みを確認／引き継ぎ事項があればGLINEで共有'}},
+      {ja:'夜営業の仕込み',en:'Prep for dinner',vi:'Chuẩn bị tối',
+       d:{ja:'牛カツ／和牛（ごはん用）／トマト／米／だし／三つ葉／キャベツ'}} ] },
+    { g:{ja:'夜の開店準備',en:'Dinner open',vi:'Mở ca tối'}, items:[
+      {ja:'手洗い・身だしなみ',en:'Handwash & grooming',vi:'Rửa tay & tác phong',
+       d:{ja:'タイムカード打刻／手洗い／全員の身だしなみを確認／準備中にお客様が見えたらお声がけ'}},
+      {ja:'外観準備',en:'Exterior',vi:'Bên ngoài',
+       d:{ja:'掃き掃除／看板準備（バッテリーも）／傘立て／窓ガラスの拭き上げ'}},
+      {ja:'テーブルセッティング',en:'Table setting',vi:'Bày bàn',
+       d:{ja:'卓上調味料の補充と配置／メニューブック／おしぼりおき'}},
+      {ja:'ドリンク場の準備',en:'Drink station',vi:'Quầy đồ uống',
+       d:{ja:'各種ドリンクの補充／アイスお茶／ポットのお湯／グラスの数量確認'}},
+      {ja:'レジの準備',en:'Register',vi:'Quầy thu ngân',
+       d:{ja:'立ち上げ／お金の計算／釣り銭補充／iPadと決済端末の充電100%／販促物の補充'}},
+      {ja:'店内照明・BGM',en:'Lighting & BGM',vi:'Ánh sáng & nhạc',
+       d:{ja:'電気／空調／BGM（選曲・音量）／アラームON／インカムの電源ON'}},
+      {ja:'店内最終チェック（責任者）',en:'Final check (manager)',vi:'Kiểm tra cuối',
+       d:{ja:'テーブル・椅子の配置／キッチンとデシャップの整理整頓／レジ周り／私物が出ていないか'}},
+      {ja:'キッチンの手伝い・定期清掃',en:'Help kitchen / periodic cleaning',vi:'Hỗ trợ bếp / vệ sinh định kỳ',
+       d:{ja:'キッチンの仕込みを手伝う／定期清掃リストの本日分の残りを実施／時間が余ればお手すきチェックリスト'}},
+      {ja:'朝礼',en:'Briefing',vi:'Họp ca',
+       d:{ja:'挨拶／共有事項／ポジション／予約確認（ここで身だしなみの最終チェック）'}},
+      {ja:'外観最終チェック',en:'Final exterior check',vi:'Kiểm tra ngoài',
+       d:{ja:'電気／設置場所／暖簾がかかっているか'}} ] }
   ];
   /* 桜チェック＝トイレの清掃（本部の「桜チェックシート」より）。
      お店の裏の顔。他が綺麗でも桜が汚いと全体の印象が落ちる、という位置づけ。
@@ -1126,7 +1260,7 @@
   ];
   // モードごとの注意書き（現場が迷いやすいところだけ）
   const CK_NOTES = {
-    idle:   { ja:'※ この項目は暫定です。本部で確定したものに差し替えます。', en:'Provisional items; to be replaced by the HQ version.', vi:'Mục tạm thời; sẽ thay bằng bản của HQ.' },
+    idle:   { ja:'※ アイドルタイムは「昼の営業を締めて、夜の営業を開ける」流れです。上から順に進めてください。', en:'Idle time closes lunch service and opens dinner service. Work top to bottom.', vi:'Giữa ca: đóng ca trưa và mở ca tối. Làm từ trên xuống.' },
     sakura: { ja:'※ 便器用の清掃具と鏡用の布は、他と分けて使ってください。清掃後は厨房に戻る前に手を洗い、靴裏の汚れを持ち込まないようにしてください。', en:'Use separate tools for the toilet bowl and the mirror. Wash hands before returning to the kitchen.', vi:'Dùng dụng cụ riêng cho bồn cầu và gương. Rửa tay trước khi vào bếp.' }
   };
   const getCkMode = () => { const v = localStorage.getItem('yosakura_ckmode'); return CK_MODES.some(m => m.v === v) ? v : 'open'; };
@@ -1192,7 +1326,7 @@
     const groupsHTML = groups.map((gr, gi) => `
       <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${esc(L(gr.g))}</h2></div>
       <div class="card" style="padding:4px 14px">
-        ${gr.items.map((it, ii) => { const id = `${mode}-c-${gi}-${ii}`; return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}</span></div>`; }).join('')}
+        ${gr.items.map((it, ii) => { const id = `${mode}-c-${gi}-${ii}`; return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span></div>`; }).join('')}
       </div>`).join('');
     const customHTML = `
       <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'この店舗の追加項目', en:'Store-specific items', vi:'Mục riêng của cửa hàng' })}</h2></div>
