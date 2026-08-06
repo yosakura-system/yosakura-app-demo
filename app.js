@@ -2562,7 +2562,12 @@
      - 外部送信・自動削除は初期OFF。未接続機能は「未接続／手動運用中」を明示
      ============================================================ */
   const SUBKEYS = {
-    master:  'yosakura_sub_master_v1',
+    /* 提出物マスタの保存先。ここに入るのは「本部が編集したもの」だけで、既定は保存しない。
+       ※ 以前は既定も端末へ保存していたため、一度アプリを開いた端末には古い既定が残り続け、
+         こちらで項目を増やしても届かなかった（v54で6→17項目にしたとき、
+         新しい端末は17項目・以前から使っている端末は旧項目のまま、という食い違いが起きた）。
+         キーを _v2 にして古い保存を無視し、以後は既定を焼き付けない。 */
+    master:  'yosakura_sub_master_v2',
     status:  'yosakura_sub_status_v1',
     holiday: 'yosakura_sub_holiday_v1',
     roster:  'yosakura_sub_roster_v1',
@@ -2640,7 +2645,10 @@
   function getMasters() {
     const rows = subRows(SUB_KINDS.master).sort((a, b) => (b.t || 0) - (a.t || 0));
     if (rows.length) { const m = parseNote(rows[0].note); if (Array.isArray(m) && m.length) return m; }
-    let m = jget(SUBKEYS.master, null); if (!m) { m = defaultMasters(); jset(SUBKEYS.master, m); } return m;
+    // 端末に保存があるのは「本部が編集したとき」だけ。無ければ毎回そのときの既定を使う
+    // （既定を保存しないので、こちらで項目を変えれば全端末にそのまま届く）
+    const m = jget(SUBKEYS.master, null);
+    return (Array.isArray(m) && m.length) ? m : defaultMasters();
   }
   function saveMasters(m) { jset(SUBKEYS.master, m); postSub(SUB_KINDS.master, '*', 'master', m); pushAudit('master', 'update'); }
 

@@ -245,7 +245,7 @@ console.log('== 提出物マスタ基盤：週次/四半期の頻度・業態の
   const renderWith = (appId, role, storeSel) => {
     let html = '';
     try {
-      run(() => { setLS(role, storeSel, 'ja'); localStorage.setItem('yosakura_sub_master_v1', JSON.stringify(M)); });
+      run(() => { setLS(role, storeSel, 'ja'); localStorage.setItem('yosakura_sub_master_v2', JSON.stringify(M)); });
       location.hash = '#/app/' + appId; html = registry.app.innerHTML;
     } catch (e) { FAIL++; console.log(`  ✗ ${appId}/${role} threw: ` + e.message); }
     return html;
@@ -833,6 +833,27 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
   // 月次・四半期
   ok(/PL/.test(mtUnagi) && /店舗内・外の動画/.test(mtUnagi), '月次にPL・店舗内外動画が入っている');
   ok(/コンプラチェック/.test(mtUnagi), '四半期のコンプラチェックが月次の画面に出る');
+
+  /* 以前から使っている端末に、古い既定マスタ（6項目・日次3件）が残っている場合。
+     かつては端末に保存した既定をそのまま使っていたため、こちらで17項目にしても
+     旧端末には届かず「日次業務が3項目しかない」状態になった（2026-08-07 渉さんの端末で発覚）。*/
+  const OLD_MASTER = [
+    { id:'firstphoto', name:{ja:'一食目写真',en:'First',vi:'F'},   oblig:'off',      freq:'daily',   due:'23:59', target:'all', hqReview:'exception', detect:'fp' },
+    { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily',vi:'D'}, oblig:'required', freq:'daily',   due:'12:00', target:'all', hqReview:'each',      detect:'sk' },
+    { id:'openphoto',  name:{ja:'オープン写真',en:'Open',vi:'O'},   oblig:'store',    freq:'daily',   due:'11:00', target:'all', hqReview:'none',      detect:'subrec' },
+    { id:'cleaning',   name:{ja:'清掃チェック',en:'Clean',vi:'C'},  oblig:'store',    freq:'daily',   due:'23:59', target:'all', hqReview:'none',      detect:'none' }
+  ];
+  let oldDev = '';
+  try {
+    run(() => {
+      setLS('manager', S_GYU, 'ja');
+      localStorage.setItem('yosakura_sub_master_v1', JSON.stringify(OLD_MASTER)); // 旧キーに残った古い既定
+    });
+    location.hash = '#/app/kyou'; oldDev = registry.app.innerHTML;
+  } catch (e) { FAIL++; console.log('  ✗ 旧端末マスタ threw: ' + e.message); }
+  ok(/定期衛生管理/.test(oldDev) && /桜チェックリスト/.test(oldDev),
+     '以前から使っている端末でも、増えた提出物（定期衛生・桜）がちゃんと出る');
+  ok(!/清掃チェック/.test(oldDev), '端末に残っていた古い項目（清掃チェック）はもう出ない');
 
   // チェックリストを実施すると「提出済み」になる
   const ymd = (d) => d.toLocaleDateString('en-CA');
