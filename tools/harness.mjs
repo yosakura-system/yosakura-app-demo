@@ -773,5 +773,42 @@ console.log('== 勉強会（8/7 増田さんご要望：日程・録画・資料
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== 店舗名を本部の正式名称に合わせる（過去のデータも同じ店舗として扱う）==');
+{
+  const ymd = (d) => d.toLocaleDateString('en-CA');
+  const today = ymd(new Date());
+  // 旧い表記で入っている総括表・サーベイが、正式名称の店舗として集計されること
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'soukatsu', store:'日本料理世桜 心斎橋（おまかせ）',
+      note: JSON.stringify({ date: today, sales: 250000, guests: 40 }), t: Date.now(), id:'o1' },
+    { kind:'survey', store:'日本料理世桜 心斎橋（おまかせ）', level:'5', item:'구글',
+      note: JSON.stringify({ c:'Korea', f:'【특별한 문제는 없었어요】' }), t: Date.now(), id:'o2' },
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ store alias threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/store?s=' + encodeURIComponent('日本料理世桜本店');
+  const st = registry.app.innerHTML;
+  ok(/250,000|25万/.test(st), '旧表記で入っている総括表が、正式名称の店舗として集計される');
+
+  location.hash = '#/app/survey';
+  const sv = registry.app.innerHTML;
+  ok(/日本料理世桜本店|本店/.test(sv), 'サーベイも正式名称の店舗に寄る');
+
+  // 一覧に正式名称が並ぶ
+  const home = renderView('home','hq','all','ja');
+  ok(!/心斎橋（おまかせ）/.test(home), '旧表記「心斎橋（おまかせ）」は画面に出ない');
+
+  // 画面では地名だけを出す
+  const sk = renderView('soukatsu','manager','日本料理世桜本店','ja');
+  ok(/本店/.test(sk), '「日本料理世桜本店」は画面上「本店」と表示される');
+  const naga = renderView('soukatsu','manager','牛カツ世桜 長堀橋店','ja');
+  ok(/長堀橋店/.test(naga), '「牛カツ世桜 長堀橋店」は画面上「長堀橋店」と表示される');
+
+  // ベトナムの2店も正式名称
+  const hq2 = renderView('home','hq','all','ja');
+  ok(!/ハノイ|ホーチミン1号/.test(hq2), '旧表記（ハノイ店・ホーチミン1号店）は使わない');
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
