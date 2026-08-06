@@ -3240,7 +3240,8 @@
       desc:{ ja:'今月の提出物と未提出をひと目で', en:'This month’s items & missing', vi:'Mục tháng & còn thiếu' } });
   }
   if (!appById('news')) {
-    APPS.push({ id:'news', group:'learn', icon:'bell', live:true, roles:['staff','manager','owner','hq'],
+    // 8/7 増田さん: 学ぶタブからは外す。ホームのお知らせカードから開く（そちらへ統合済み）
+    APPS.push({ id:'news', group:'learn', icon:'bell', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'お知らせ', en:'Announcements', vi:'Thông báo' },
       desc:{ ja:'本部からのお知らせ・世桜ニュース', en:'News & notices from HQ', vi:'Thông báo & tin tức từ HQ' } });
   }
