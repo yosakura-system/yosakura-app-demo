@@ -98,14 +98,32 @@
     hq:      { mark: '本', label: { ja:'本部', en:'HQ', vi:'Bộ phận chính' },            desc: { ja:'世桜 本部（経営・高原社長ら）', en:'YOSAKURA headquarters', vi:'Trụ sở YOSAKURA' } }
   };
 
-  /* ---------- 店舗マスター（実在店舗・固有名詞のまま）---------- */
+  /* ---------- 店舗マスター ----------
+     本部の「加盟店情報まとめ」の店舗名（日本語）に合わせる（2026-08-07 増田さんご指示）。
+     ★実質直営の3店舗＝日本料理世桜本店／牛カツ世桜 長堀橋店／手巻き寿司世桜 難波店。
+       新しい取り組みはこの3店舗で試してから加盟店へ広げる。 */
   const STORES = [
-    '日本料理世桜 心斎橋（おまかせ）', '寿司世桜 心斎橋店',
+    '日本料理世桜本店', '寿司世桜 心斎橋店',
     '牛カツ世桜 長堀橋店', '日本鰻世桜 長堀橋店', '手巻き寿司世桜 難波店',
     '牛カツ世桜 富士山店', '日本鰻世桜 富士山店',
     '日本鰻世桜 京都祇園店', '日本鰻世桜 浅草橋店', '和牛世桜 広島店',
-    '牛カツ世桜 ハノイ店', '日本鰻世桜 ホーチミン1号店'
+    '牛カツ世桜 ファンケビン店', '牛カツ世桜 タオディエン店', '日本鰻世桜 ホーチミン店'
   ];
+  /* 以前の表記で入っているデータ（総括表・サーベイなど）を、正式名称へ寄せる。
+     これが無いと、名称を変えた時点で過去の実績が「別の店舗」になってしまう。 */
+  const STORE_ALIASES = {
+    '日本料理世桜 心斎橋（おまかせ）': '日本料理世桜本店',
+    '日本料理世桜 心斎橋': '日本料理世桜本店',
+    '日本料理世桜本店サーベイ': '日本料理世桜本店',
+    '牛カツ世桜 ハノイ店': '牛カツ世桜 ファンケビン店',
+    '日本鰻世桜 ホーチミン1号店': '日本鰻世桜 ホーチミン店'
+  };
+  const normalizeStore = (s) => {
+    const k = String(s == null ? '' : s).trim().replace(/　/g, ' ').replace(/\s+/g, ' ');
+    if (!k || k === 'all' || k === 'owned' || k === '*') return k;
+    if (STORE_ALIASES[k]) return STORE_ALIASES[k];
+    return STORES.find(x => x === k) || k;
+  };
 
   /* ---------- グループ ---------- */
   const GROUPS = [
@@ -218,7 +236,8 @@
   const setUserName = (n) => { try { localStorage.setItem(LS.uname, String(n || '').trim().slice(0, 20)); } catch (e) {} };
   // 記録に残す表記＝「店長（山田）」。未登録でも提出は妨げない（役割だけが残る）
   const submitterLabel = () => { const r = ROLES[getRole()] ? L(ROLES[getRole()].label) : getRole(); const n = getUserName(); return n ? `${r}（${n}）` : r; };
-  const getStoreSel = () => localStorage.getItem(LS.store) || STORES[0];
+  // 端末に旧い表記が保存されていても、正式名称へ読み替える（保存済みの選択が外れないように）
+  const getStoreSel = () => normalizeStore(localStorage.getItem(LS.store) || STORES[0]);
   const setStoreSel = (s) => localStorage.setItem(LS.store, s);
   // 複数店舗オーナーの所有店舗（デモ用。実運用では本部の「権限設定表」で置き換える）
   // 例：富士山のオーナー（長田翔太さん）＝鰻・牛カツの2店を所有
@@ -230,9 +249,10 @@
     if (role === 'owner') return (sel === 'owned' || !OWNER_STORES.includes(sel)) ? OWNER_STORES.slice() : [sel];
     return [STORES.includes(sel) ? sel : STORES[0]];
   }
+  // 画面では「世桜」以降の地名だけを出す（例：日本料理世桜本店 → 本店／牛カツ世桜 長堀橋店 → 長堀橋店）
   const storeShort = (s) => s === 'all' ? L({ ja:'全店', en:'All', vi:'Tất cả' })
     : s === 'owned' ? L({ ja:'所有店舗', en:'My stores', vi:'CH của tôi' })
-    : (s.split(' ').slice(1).join(' ') || s);
+    : (String(s || '').replace(/^.*世桜[\s　]*/, '') || s);
   const getReports = () => { try { return JSON.parse(localStorage.getItem(LS.reports)) || []; } catch { return []; } };
   const saveReports = (a) => localStorage.setItem(LS.reports, JSON.stringify(a));
   const getFP = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_fp')) || []; } catch { return []; } };
@@ -3894,7 +3914,8 @@
   function distribute(rows) {
     const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; let linkset=null, linksetT=null;
     (rows || []).forEach(r => {
-      const t = Number(r.t) || 0, id = r.id, store = r.store || '';
+      // 店舗名は正式名称へ寄せる（過去のデータが旧い表記でも、同じ店舗として扱う）
+      const t = Number(r.t) || 0, id = r.id, store = normalizeStore(r.store || '');
       switch (r.kind) {
         case 'a': case 'b': food.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         // 提出物まわり（オープン写真の提出・提出物マスタ・判定/本部確認・定休日）＝subRows()が読む同じ置き場へ戻す。
