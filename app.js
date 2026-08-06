@@ -4259,11 +4259,45 @@
     return fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(rep) }).then(() => syncReports(true)).catch(() => {});
   }
 
+  /* 端末に保存済みのデータを、正式名称へ寄せ直す（起動時に毎回・何度実行しても同じ結果）。
+     ★同期は「バックエンドの中身が前回と同じなら作り直さない」ため、
+       店舗名の付け替えをしても、データが増えない限り古い表記が端末に残り続ける。
+       その状態だと、新しい店舗一覧と照合できず、過去の実績が画面から消えてしまう。 */
+  function migrateStoreNames() {
+    const listKeys = [LS.reports, 'yosakura_demo_soukatsu', 'yosakura_demo_survey', 'yosakura_demo_kizuki',
+      'yosakura_demo_route', 'yosakura_demo_open', 'yosakura_demo_svfb', 'yosakura_demo_storevideo',
+      'yosakura_demo_whistle', 'yosakura_demo_community', 'yosakura_demo_monthly', 'yosakura_demo_fp'];
+    listKeys.forEach(k => {
+      try {
+        const a = JSON.parse(localStorage.getItem(k) || 'null');
+        if (!Array.isArray(a)) return;
+        let changed = false;
+        a.forEach(r => { if (r && r.store) { const n = normalizeStore(r.store); if (n !== r.store) { r.store = n; changed = true; } } });
+        if (changed) localStorage.setItem(k, JSON.stringify(a));
+      } catch (e) {}
+    });
+    // 店舗名をキーに持つもの（緊急連絡先＝store／チェックリスト＝store||mode||date）
+    [['yosakura_demo_emg', s => normalizeStore(s)],
+     ['yosakura_demo_ckitem', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }],
+     ['yosakura_demo_ckdone', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }],
+     ['yosakura_demo_ckmeta', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }]
+    ].forEach(([k, fn]) => {
+      try {
+        const o = JSON.parse(localStorage.getItem(k) || 'null');
+        if (!o || typeof o !== 'object' || Array.isArray(o)) return;
+        const out = {}; let changed = false;
+        Object.keys(o).forEach(key => { const nk = fn(key); if (nk !== key) changed = true; out[nk] = o[key]; });
+        if (changed) localStorage.setItem(k, JSON.stringify(out));
+      } catch (e) {}
+    });
+  }
+
   /* ---------- 起動 ---------- */
   document.documentElement.lang = LANG;
   if (!useBackend()) seedIfEmpty();
   // バックエンド接続時は全端末同期を使うためシードしない（＝実データのみ）。オフライン検証時のみ初期データを用意。
   if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); seedMaterials(); }
+  migrateStoreNames(); // 端末に残っている旧い店舗表記を、正式名称へ寄せ直す
   render();
   syncReports(true);
   // 表示中の版を読み、画面下に出す（更新が端末へ届いているかの確認用）
