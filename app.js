@@ -291,6 +291,10 @@
   const levelLabel = (v) => { const f = [...LEVELS_A, ...LEVELS_B].find(x => x.v === v); return f ? L(f.t) : v; };
 
   /* ---------- ユーティリティ ---------- */
+  /* 画面の下に表示する版（例：yosakura-hq-v52）。
+     「直したはずなのに変わらない」ときに、更新が端末へ届いているかを一目で確かめるため。
+     版は sw.js のキャッシュ名から読む（同期のたびに上がる）。 */
+  let BUILD_TAG = '';
   const $app = document.getElementById('app');
   const el = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; };
   const esc = (s='') => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
@@ -572,7 +576,7 @@
         ${safety ? sec({ ja:'緊急・相談', en:'Emergency & Report', vi:'Khẩn cấp & Tố giác' }) + `<div class="grid">${safety}</div>` : ''}
         ${sec({ ja:'メニュー', en:'Menu', vi:'Menu' })}
         ${links}
-        <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}</div>
+        <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}${BUILD_TAG ? `　<span style="opacity:.55">${esc(BUILD_TAG)}</span>` : ''}</div>
       </main>`;
   }
   function viewHome(tab) {
@@ -599,7 +603,7 @@
       <main class="screen">
         ${heroBlock}
         ${sections}
-        <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}</div>
+        <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}${BUILD_TAG ? `　<span style="opacity:.55">${esc(BUILD_TAG)}</span>` : ''}</div>
       </main>`;
     return shell(inner, tab);
   }
@@ -3959,6 +3963,13 @@
   if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); seedMaterials(); }
   render();
   syncReports(true);
+  // 表示中の版を読み、画面下に出す（更新が端末へ届いているかの確認用）
+  try {
+    fetch('./sw.js', { cache: 'no-store' }).then(r => r.text()).then(t => {
+      const m = String(t || '').match(/const CACHE = '([^']+)'/);
+      if (m && m[1] !== BUILD_TAG) { BUILD_TAG = m[1]; render(true); }
+    }).catch(() => {});
+  } catch (e) {}
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
   if (!localStorage.getItem('yosakura_tour_done')) setTimeout(() => openTour(0), 1450); // 初回のみ使い方ガイド
   if ('serviceWorker' in navigator) {
