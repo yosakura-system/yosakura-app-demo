@@ -2520,7 +2520,11 @@
     <div class="bar-track"><div class="bar-fill" style="width:${pct}%;${hl?'background:#000':''}"></div></div></div>`;
 
   /* ---------- 役割＋店舗（表示）切替シート ---------- */
-  function openIdentitySheet() {
+  /* first=true＝初回起動時の「はじめの設定」。
+     いままでは右上のボタンを自分で見つけないと役割・店舗・お名前を設定できず、
+     現場が最初につまずく場所だった。初回だけ、開いた時点でこの画面から始める。 */
+  const SETUP_KEY = 'yosakura_setup_done';
+  function openIdentitySheet(first) {
     const buildHTML = () => {
       const role = getRole(), sel = getStoreSel();
       const storeOpts = role === 'hq' ? ['all', ...STORES] : role === 'owner' ? ['owned', ...OWNER_STORES] : STORES;
@@ -2528,8 +2532,10 @@
         : s === 'owned' ? L({ ja:'所有店舗すべて（比較）', en:'All my stores (compare)', vi:'Tất cả CH của tôi (so sánh)' }) : s;
       return `<div class="sheet">
         <div class="grip"></div>
-        <h3>${L({ ja:'表示を切り替える', en:'Switch view', vi:'Đổi hiển thị' })}<span class="demo-tag">${L({ja:'確認用',en:'For review',vi:'Để xem'})}</span></h3>
-        <div class="sub">${L({ ja:'本部は全店を閲覧できます。店舗iPad・店長・加盟店オーナーは自分の店舗のみ（数値なども自店だけ）。', en:'HQ sees all stores. Store iPad, managers and franchisees see only their own store, including numbers.', vi:'HQ xem mọi cửa hàng. iPad cửa hàng/quản lý/chủ chỉ xem cửa hàng của mình.' })}</div>
+        <h3>${first ? L({ ja:'はじめの設定', en:'First-time setup', vi:'Cài đặt ban đầu' }) : L({ ja:'表示を切り替える', en:'Switch view', vi:'Đổi hiển thị' })}${first ? `<span class="demo-tag">${L({ja:'1回だけ',en:'Once only',vi:'Chỉ một lần'})}</span>` : `<span class="demo-tag">${L({ja:'確認用',en:'For review',vi:'Để xem'})}</span>`}</h3>
+        <div class="sub">${first
+          ? L({ ja:'この端末をどなたが使うかを選んでください。あとから右上でいつでも変えられます。', en:'Tell us who uses this device. You can change it any time from the top right.', vi:'Chọn ai dùng thiết bị này. Có thể đổi bất cứ lúc nào ở góc trên bên phải.' })
+          : L({ ja:'本部は全店を閲覧できます。店舗iPad・店長・加盟店オーナーは自分の店舗のみ（数値なども自店だけ）。', en:'HQ sees all stores. Store iPad, managers and franchisees see only their own store, including numbers.', vi:'HQ xem mọi cửa hàng. iPad cửa hàng/quản lý/chủ chỉ xem cửa hàng của mình.' })}</div>
         <div class="idlabel">${L({ ja:'役割', en:'Role', vi:'Vai trò' })}</div>
         ${Object.entries(ROLES).map(([k,v])=>`
           <button class="role-opt ${k===role?'on':''}" data-role="${k}">
@@ -2546,7 +2552,7 @@
             <span class="ri"><b>${esc(storeLabel(s))}</b></span>
             ${s===sel?`<span class="rc">${svg('tick')}</span>`:''}
           </button>`).join('')}
-        <button class="btn-primary" data-done="1" style="margin-top:10px">${L({ ja:'完了', en:'Done', vi:'Xong' })}</button>
+        <button class="btn-primary" data-done="1" style="margin-top:10px">${first ? L({ ja:'この設定ではじめる', en:'Start with this', vi:'Bắt đầu' }) : L({ ja:'完了', en:'Done', vi:'Xong' })}</button>
       </div>`;
     };
     const mask = el(`<div class="sheet-mask">${buildHTML()}</div>`);
@@ -2563,7 +2569,12 @@
       const nameInput = mask.querySelector('#idName');
       if (nameInput) nameInput.oninput = () => setUserName(nameInput.value);
       const done = mask.querySelector('[data-done]');
-      if (done) done.onclick = () => { mask.remove(); render(); };
+      if (done) done.onclick = () => {
+        try { localStorage.setItem(SETUP_KEY, '1'); } catch (e) {}
+        mask.remove(); render();
+        // はじめの設定を終えたら、そのまま使い方の案内へ（初回だけ）
+        if (first && !localStorage.getItem('yosakura_tour_done')) setTimeout(() => openTour(0), 300);
+      };
     };
     const rebuild = () => { mask.querySelector('.sheet').outerHTML = buildHTML(); wire(); };
     mask.addEventListener('click', (e) => { if (e.target === mask) { mask.remove(); render(); } });
@@ -4356,7 +4367,9 @@
     }).catch(() => {});
   } catch (e) {}
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
-  if (!localStorage.getItem('yosakura_tour_done')) setTimeout(() => openTour(0), 1450); // 初回のみ使い方ガイド
+  // 初回だけ「はじめの設定」→ 続けて使い方ガイド。2回目以降はどちらも出さない
+  if (!localStorage.getItem(SETUP_KEY)) setTimeout(() => openIdentitySheet(true), 1350);
+  else if (!localStorage.getItem('yosakura_tour_done')) setTimeout(() => openTour(0), 1450);
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
