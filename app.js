@@ -1883,6 +1883,27 @@
           <label class="fld"><span>${L({ja:'キャンセル 累計',en:'Cancel total',vi:'Hủy tổng'})}</span><input type="text" inputmode="numeric" id="sk_cancel" placeholder="31700"></label>
           <label class="fld"><span>${L({ja:'レジ締め担当',en:'Cash-up by',vi:'Người chốt sổ'})}</span><input type="text" id="sk_closer" placeholder="${L({ja:'担当者名',en:'staff name',vi:'tên NV'})}"></label>
         </div>
+        <div class="sk-grid">
+          <label class="fld"><span>${L({ja:'現金売上',en:'Cash sales',vi:'DT tiền mặt'})}</span><input type="text" inputmode="numeric" id="sk_cash" placeholder="96800"></label>
+          <label class="fld"><span>${L({ja:'カード売上',en:'Card sales',vi:'DT thẻ'})}</span><input type="text" inputmode="numeric" id="sk_card" placeholder="251700"></label>
+          <label class="fld"><span>${L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'})}</span><input type="text" inputmode="numeric" id="sk_lunch" placeholder="186400"></label>
+          <label class="fld"><span>${L({ja:'仕入金額（当日）',en:'Purchases today',vi:'Nhập hàng'})}</span><input type="text" inputmode="numeric" id="sk_buy" placeholder="7049"></label>
+          <label class="fld"><span>${L({ja:'消耗品金額',en:'Supplies',vi:'Vật tư'})}</span><input type="text" inputmode="numeric" id="sk_supply" placeholder="0"></label>
+          ${storeGyotai(vis[0]) === 'unagi' ? `<label class="fld"><span>${L({ja:'鰻の使用尾数',en:'Eel used',vi:'Số lươn'})}</span><input type="text" inputmode="numeric" id="sk_unagi" placeholder="12"></label>` : ''}
+        </div>
+        <label class="fld"><span>${L({ ja:'過不足（現金）の理由', en:'Reason for cash difference', vi:'Lý do chênh lệch tiền mặt' })}</span><input type="text" id="sk_errnote" placeholder="${L({ja:'差がある場合のみ',en:'only if there is a difference',vi:'chỉ khi có chênh lệch'})}"></label>
+
+        <div class="idlabel" style="margin-top:14px">${L({ ja:'お客様の内訳（国別・組数／人数）', en:'Guests by country (groups / people)', vi:'Khách theo quốc gia (nhóm / người)' })}</div>
+        <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'総括表と同じ区分です。分かるものだけで大丈夫です（空欄は0として扱いません）。', en:'Same categories as the summary sheet. Fill only what you know.', vi:'Cùng phân loại với bảng tổng kết. Chỉ điền phần bạn biết.' })}</p>
+        <div class="sk-grid">
+          ${SK_COUNTRIES.concat(SK_VISITKIND).map(cn => `
+            <label class="fld"><span>${L(cn.t)}</span>
+              <span style="display:flex;gap:6px">
+                <input type="text" inputmode="numeric" id="sk_cty_${cn.k}_g" placeholder="${L({ja:'組',en:'grp',vi:'nhóm'})}" style="width:50%">
+                <input type="text" inputmode="numeric" id="sk_cty_${cn.k}_p" placeholder="${L({ja:'人',en:'ppl',vi:'người'})}" style="width:50%">
+              </span>
+            </label>`).join('')}
+        </div>
         <label class="fld"><span>${L({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' })}</span><textarea id="sk_note" placeholder="${L({ja:'本日の気づき・清掃箇所など',en:'Findings, cleaning done, etc.',vi:'Ghi chú, vệ sinh đã làm...'})}"></textarea></label>
         <label class="fld"><span>${L({ ja:'翌日の食材発注', en:'Tomorrow ingredient order', vi:'Đặt NL ngày mai' })}</span><textarea id="sk_order" placeholder="${L({ja:'例：豆乳6／寿司のエビ2／お米 …',en:'e.g. soy milk 6 / shrimp 2 / rice …',vi:'vd: sữa đậu 6 / tôm 2 / gạo …'})}"></textarea></label>
         <button class="btn-primary" id="submitSk">${L({ja:'提出する',en:'Submit',vi:'Nộp'})}</button>
@@ -2058,8 +2079,47 @@
     { k:'tipt',    t:{ ja:'チップ 当日', en:'Tips today', vi:'Tip nay' },        f:'yen' },
     { k:'tipa',    t:{ ja:'チップ 累計', en:'Tips total', vi:'Tip tổng' },       f:'yen' },
     { k:'cancel',  t:{ ja:'キャンセル 累計', en:'Cancel total', vi:'Hủy tổng' }, f:'yen' },
-    { k:'closer',  t:{ ja:'レジ締め担当', en:'Cash-up by', vi:'Người chốt sổ' }, f:'txt' }
+    { k:'closer',  t:{ ja:'レジ締め担当', en:'Cash-up by', vi:'Người chốt sổ' }, f:'txt' },
+    /* ここから下は、総括表 Ver.2.6（実物）に有ってアプリに無かった項目。
+       現場が「シートと違う」と感じる箇所を減らすために合わせた。 */
+    { k:'cash',    t:{ ja:'現金売上', en:'Cash sales', vi:'DT tiền mặt' },      f:'yen' },
+    { k:'card',    t:{ ja:'カード売上', en:'Card sales', vi:'DT thẻ' },         f:'yen' },
+    { k:'lunch',   t:{ ja:'昼のみ売上', en:'Lunch-only sales', vi:'DT buổi trưa' }, f:'yen' },
+    { k:'buy',     t:{ ja:'仕入金額（当日）', en:'Purchases today', vi:'Nhập hàng hôm nay' }, f:'yen' },
+    { k:'supply',  t:{ ja:'消耗品金額', en:'Supplies', vi:'Vật tư tiêu hao' },  f:'yen' },
+    { k:'unagi',   t:{ ja:'鰻の使用尾数', en:'Eel used', vi:'Số lươn đã dùng' }, f:'num' },
+    { k:'errnote', t:{ ja:'過不足の理由', en:'Cash difference reason', vi:'Lý do chênh lệch' }, f:'txt' }
   ];
+  /* 顧客情報＝国別の組数・人数（総括表 Ver.2.6 の「顧客情報」欄）。
+     サーベイの来店国と並べて見られるようにするため、シートと同じ区分にそろえている。 */
+  const SK_COUNTRIES = [
+    { k:'jp', t:{ ja:'日本', en:'Japan', vi:'Nhật' } },
+    { k:'kr', t:{ ja:'韓国', en:'Korea', vi:'Hàn' } },
+    { k:'cn', t:{ ja:'中国', en:'China', vi:'Trung' } },
+    { k:'hk', t:{ ja:'香港', en:'Hong Kong', vi:'Hồng Kông' } },
+    { k:'tw', t:{ ja:'台湾', en:'Taiwan', vi:'Đài Loan' } },
+    { k:'sea', t:{ ja:'東南アジア', en:'SE Asia', vi:'ĐNÁ' } },
+    { k:'eu', t:{ ja:'ヨーロッパ', en:'Europe', vi:'Châu Âu' } },
+    { k:'au', t:{ ja:'オーストラリア', en:'Australia', vi:'Úc' } },
+    { k:'us', t:{ ja:'アメリカ', en:'USA', vi:'Mỹ' } },
+    { k:'ca', t:{ ja:'カナダ', en:'Canada', vi:'Canada' } },
+    { k:'mx', t:{ ja:'メキシコ', en:'Mexico', vi:'Mexico' } },
+    { k:'br', t:{ ja:'ブラジル', en:'Brazil', vi:'Brazil' } },
+    { k:'latam', t:{ ja:'中南米', en:'Latin America', vi:'Mỹ Latinh' } },
+    { k:'sasia', t:{ ja:'南アジア', en:'South Asia', vi:'Nam Á' } },
+    { k:'casia', t:{ ja:'中央アジア', en:'Central Asia', vi:'Trung Á' } },
+    { k:'me', t:{ ja:'中東', en:'Middle East', vi:'Trung Đông' } },
+    { k:'af', t:{ ja:'アフリカ', en:'Africa', vi:'Châu Phi' } }
+  ];
+  const SK_VISITKIND = [
+    { k:'new', t:{ ja:'新規', en:'New', vi:'Mới' } },
+    { k:'rep', t:{ ja:'リピート', en:'Repeat', vi:'Quay lại' } }
+  ];
+  // r.cty = { jp:{g:組数,p:人数}, ... }。入力のあるものだけ持つ（空の国は保存しない）
+  const ctyOf = (r) => (r && typeof r.cty === 'object' && r.cty) ? r.cty : {};
+  // 合計は「国」だけを足す。新規・リピートは同じお客様を別の見方で数えたものなので、
+  // 一緒に足すと人数が二重になる
+  const ctySum = (r, f) => SK_COUNTRIES.reduce((a, cn) => a + numOr0((ctyOf(r)[cn.k] || {})[f]), 0);
   const skFmtVal = (f, v) => f === 'yen' ? yen(numOr0(v)) : f === 'pct' ? (numOr0(v).toFixed(1) + '%') : f === 'num' ? numOr0(v).toLocaleString('en-US') : esc(String(v));
   // 日報1件の全項目（未入力は「—」＝アップされたら自動で埋まる）
   function skFieldGrid(r) {
@@ -2078,6 +2138,15 @@
       <div class="dgrid">
         ${SK_FIELDS.map(f => `<div class="dcell${hasVal(r[f.k]) ? '' : ' off'}"><span class="dk">${esc(L(f.t))}</span><b class="dv">${hasVal(r[f.k]) ? skFmtVal(f.f, r[f.k]) : '—'}</b></div>`).join('')}
       </div>
+      ${Object.keys(ctyOf(r)).length ? `
+        <div class="idlabel" style="margin-top:14px">${L({ ja:'お客様の内訳（国別）', en:'Guests by country', vi:'Khách theo quốc gia' })}
+          <span class="muted">　${L({ ja:'合計', en:'total', vi:'tổng' })} ${ctySum(r, 'g')}${L({ ja:'組', en:' grp', vi:' nhóm' })} ・ ${ctySum(r, 'p')}${L({ ja:'名', en:' ppl', vi:' người' })}</span></div>
+        <div class="dgrid">
+          ${SK_COUNTRIES.concat(SK_VISITKIND).filter(cn => ctyOf(r)[cn.k]).map(cn => {
+            const c = ctyOf(r)[cn.k];
+            return `<div class="dcell"><span class="dk">${esc(L(cn.t))}</span><b class="dv">${numOr0(c.g)}${L({ ja:'組', en:'g', vi:'n' })} / ${numOr0(c.p)}${L({ ja:'名', en:'p', vi:'ng' })}</b></div>`;
+          }).join('')}
+        </div>` : ''}
       ${hasVal(r.note) ? `<div class="idlabel" style="margin-top:14px">${L({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' })}</div><p class="dtext">${esc(r.note)}</p>` : ''}
       ${hasVal(r.order) ? `<div class="idlabel">${L({ ja:'翌日の食材発注', en:'Tomorrow order', vi:'Đặt NL ngày mai' })}</div><p class="dtext">${esc(r.order)}</p>` : ''}
       ${hasVal(r.by) ? `<div class="idlabel" style="margin-top:14px">${L({ ja:'提出者', en:'Submitted by', vi:'Người nộp' })}</div><p class="dtext">${esc(r.by)}</p>` : ''}
@@ -4327,6 +4396,15 @@
         rvt: v('sk_rvt'), rva: v('sk_rva'), hear: v('sk_hear'), disc: v('sk_disc'),
         food: v('sk_food'), labor: v('sk_labor'), tipt: v('sk_tipt'), tipa: v('sk_tipa'),
         cancel: v('sk_cancel'), closer: v('sk_closer'), note: v('sk_note'), order: v('sk_order'),
+        // 総括表 Ver.2.6 に合わせて足した項目
+        cash: v('sk_cash'), card: v('sk_card'), lunch: v('sk_lunch'), buy: v('sk_buy'),
+        supply: v('sk_supply'), unagi: v('sk_unagi'), errnote: v('sk_errnote'),
+        // 国別の組数・人数（入力のあるものだけ残す＝空欄は保存しない）
+        cty: SK_COUNTRIES.concat(SK_VISITKIND).reduce((o, cn) => {
+          const g = v(`sk_cty_${cn.k}_g`), p = v(`sk_cty_${cn.k}_p`);
+          if (g || p) o[cn.k] = { g: Number(g) || 0, p: Number(p) || 0 };
+          return o;
+        }, {}),
         by: submitterLabel(), t: Date.now()
       };
       const arr = getSk(); arr.push(rec);
