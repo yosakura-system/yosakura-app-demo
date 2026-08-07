@@ -930,6 +930,25 @@ console.log('== チェックリストが4種類（オープン・アイドル・
      '前日以前に選んだ曜日は持ち越さず、今日へ戻る');
 }
 
+console.log('== 使い方が役割ごとに変わる（紙のガイドと同じ中身）==');
+{
+  const g = (role, store) => renderView('guide', role, store, 'ja');
+  const staff = g('staff', S_HIROSHIMA), mgr = g('manager', S_HIROSHIMA);
+  const own = g('owner', 'owned'), hq = g('hq', 'all');
+  ok(/この端末での使い方/.test(staff), '使い方の画面が出る');
+  ok(/お名前を登録/.test(staff) && /開いて提出/.test(staff), '店舗＝出すことだけが書いてある');
+  ok(!/本部ダッシュボード/.test(staff) && !/資料をマニュアルにひも付/.test(staff),
+     '店舗に、本部だけの話は出さない');
+  ok(/日報（総括表）を出す/.test(mgr) && /実施状況を確認/.test(mgr), '店長＝出す＋確かめるまで');
+  ok(/所有店舗すべて|見る店舗を切り替え/.test(own), 'オーナー＝複数店の見方が書いてある');
+  ok(/加盟店・提出物管理/.test(hq) && /お知らせを配る/.test(hq) && /勉強会を登録/.test(hq),
+     '本部＝全店の管理・配信・登録が書いてある');
+  ['staff', 'manager', 'owner', 'hq'].forEach(r => {
+    const h = g(r, r === 'hq' ? 'all' : r === 'owner' ? 'owned' : S_HIROSHIMA);
+    ok(/最新にする/.test(h), `${r}：画面が違って見えるときの直し方が必ず載っている`);
+  });
+}
+
 console.log('== 総点検：全画面 × 全ロール × 全言語 で例外が出ない ==');
 {
   const ids = [...new Set([...code.matchAll(/id:'([a-zA-Z_]+)',\s*group:'/g)].map(m => m[1]))];
