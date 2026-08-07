@@ -382,26 +382,75 @@
   const photoFull  = (p) => isDataUrl(p) ? p : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w1600';
 
   /* ---------- 使い方ガイド（アプリ内チュートリアル）---------- */
-  const TOUR = [
-    { icon:'play',
-      t:{ ja:'世桜アプリへようこそ', en:'Welcome to YOSAKURA App', vi:'Chào mừng đến YOSAKURA' },
-      b:{ ja:'店舗の報告から本部の管理まで、これ1つで。役割と言語で表示が変わります。', en:'From store reports to HQ management, all in one. The view changes by role and language.', vi:'Từ báo cáo cửa hàng đến quản lý HQ, tất cả trong một. Hiển thị đổi theo vai trò và ngôn ngữ.' } },
-    { icon:'hr',
-      t:{ ja:'役割・言語を切り替え', en:'Switch role & language', vi:'Đổi vai trò & ngôn ngữ' },
-      b:{ ja:'右上のチップで役割（店舗iPad／店長／加盟店オーナー／本部）を、🌐で言語（日・英・越）を切替。見える画面が変わります。', en:'Use the top-right chip to switch role, and 🌐 to switch language (JP/EN/VI). Visible screens change.', vi:'Dùng chip góc trên phải để đổi vai trò, và 🌐 để đổi ngôn ngữ (JP/EN/VI). Màn hình sẽ thay đổi.' } },
-    { icon:'food',
-      t:{ ja:'食べ残し・食材ロスを報告', en:'Report food waste & loss', vi:'Báo cáo thức ăn thừa & hao hụt' },
-      b:{ ja:'「報告」から入力。写真も複数枚OK。送信すると本部にすぐ届きます。', en:'Fill it from “Report”. Multiple photos OK. On submit it reaches HQ instantly.', vi:'Nhập từ “Báo cáo”. Nhiều ảnh OK. Gửi xong sẽ đến HQ ngay.' } },
-    { icon:'gauge',
-      t:{ ja:'本部で全店を確認', en:'HQ sees all stores', vi:'HQ xem mọi cửa hàng' },
-      b:{ ja:'本部ダッシュボードに全店の報告と写真が自動で集まります（店舗別に閲覧）。', en:'The HQ dashboard auto-collects every store’s reports and photos (viewable by store).', vi:'Bảng điều khiển HQ tự tổng hợp báo cáo và ảnh mọi cửa hàng (xem theo cửa hàng).' } },
+  /* 使い方＝役割ごとに分ける。
+     全員に同じ説明を出すと、店舗の方には関係のない本部の話まで並んでしまい、
+     結局どれが自分のことか分からなくなるため（紙の使い方ガイドと同じ内容にしてある）。
+     初回の案内（モーダル）と「使い方」の画面は、この同じ中身から作る。 */
+  const G_COMMON_END = [
     { icon:'home',
-      t:{ ja:'ホーム画面に追加', en:'Add to Home Screen', vi:'Thêm vào màn hình chính' },
-      b:{ ja:'「追加」ボタンでアプリのように起動。世桜のロゴが立ち上がります。', en:'Use the “Add” button to launch like an app, with the YOSAKURA logo.', vi:'Dùng nút “Thêm” để khởi động như ứng dụng với logo YOSAKURA.' } }
+      t:{ ja:'ホーム画面に追加しておく', en:'Add to Home Screen', vi:'Thêm vào màn hình chính' },
+      b:{ ja:'「追加」を押すと、アプリのように世桜のロゴから開けます。毎回リンクを探さずに済みます。', en:'Tap “Add” to launch it like an app from the YOSAKURA logo.', vi:'Chạm “Thêm” để mở như ứng dụng từ logo YOSAKURA.' } },
+    { icon:'check',
+      t:{ ja:'画面が違って見えるときは', en:'If the screen looks different', vi:'Nếu màn hình khác' },
+      b:{ ja:'いちばん下までスクロールして「最新にする」を押してください。お名前や店舗の設定は消えません。', en:'Scroll to the bottom and tap “Update”. Your name and store settings are kept.', vi:'Cuộn xuống dưới cùng và chạm “Cập nhật”. Tên và cửa hàng vẫn được giữ.' } }
   ];
+  const GUIDES = {
+    staff: [
+      { icon:'hr', t:{ ja:'はじめに、お名前を登録', en:'Register your name first', vi:'Đăng ký tên trước' },
+        b:{ ja:'右上の「店舗iPad ・ ○○店」を押して、お名前を入れてください。1回だけで、出したものに記録が残ります。', en:'Tap the chip at the top right and enter your name. Once only.', vi:'Chạm chip góc trên phải và nhập tên. Chỉ một lần.' } },
+      { icon:'check', t:{ ja:'ホームの「日次業務」を開く', en:'Open “Daily tasks”', vi:'Mở “Hàng ngày”' },
+        b:{ ja:'今日出すものが、出す順（開店前→営業中→閉店後）に並びます。赤い数字は、まだ出していない件数です。', en:'Today’s items are listed in the order you do them. The red number is what is left.', vi:'Các mục hôm nay xếp theo thứ tự. Số đỏ là còn lại.' } },
+      { icon:'camera', t:{ ja:'「開いて提出」で出す', en:'Submit from the list', vi:'Nộp từ danh sách' },
+        b:{ ja:'写真を撮って「提出する」を押すだけです。出した瞬間に本部へ届きます。（写真が無いと提出できません）', en:'Take a photo and tap Submit. It reaches HQ instantly.', vi:'Chụp ảnh và chạm Nộp. HQ nhận ngay.' } },
+      { icon:'check', t:{ ja:'チェックリストもアプリで', en:'Checklists in the app', vi:'Checklist trong ứng dụng' },
+        b:{ ja:'オープン／アイドル／クローズ／桜／定期衛生の5つ。手順も画面に出るので、紙やシートは開かなくて大丈夫です。', en:'Five checklists with the steps shown on screen. No paper needed.', vi:'Năm checklist kèm các bước. Không cần giấy.' } },
+      { icon:'chat', t:{ ja:'良かったことも共有できます', en:'Share good stories', vi:'Chia sẻ điều tốt' },
+        b:{ ja:'「みんなの投稿」に、お客様が喜ばれたことを書けます。本部が確認してから全店に届きます。', en:'Post good stories; HQ reviews them before they reach all stores.', vi:'Đăng chuyện hay; HQ duyệt trước khi đến các cửa hàng.' } }
+    ],
+    manager: [
+      { icon:'hr', t:{ ja:'はじめに、お名前を登録', en:'Register your name first', vi:'Đăng ký tên trước' },
+        b:{ ja:'右上の「店長 ・ ○○店」から。出したものに、どなたが出したかが残ります。', en:'From the chip at the top right. Submissions record who sent them.', vi:'Từ chip góc trên phải. Ghi lại ai đã nộp.' } },
+      { icon:'check', t:{ ja:'今日出すものを確認して出す', en:'Check and submit today’s items', vi:'Kiểm tra và nộp hôm nay' },
+        b:{ ja:'ホームの「日次業務」から。締切を過ぎたものがあると、ホームの上にお知らせが出ます。', en:'From “Daily tasks”. Overdue items appear at the top of Home.', vi:'Từ “Hàng ngày”. Quá hạn sẽ hiện ở đầu Trang chủ.' } },
+      { icon:'report', t:{ ja:'日報（総括表）を出す', en:'Send the daily report', vi:'Gửi báo cáo ngày' },
+        b:{ ja:'前日分を翌日のお昼までに。出すと、本部の数字にそのまま反映されます。二重に書く必要はありません。', en:'Yesterday’s figures by noon. They flow straight into HQ’s numbers.', vi:'Số liệu hôm trước trước trưa. Tự vào số liệu HQ.' } },
+      { icon:'gauge', t:{ ja:'自店の数字を見る', en:'See your store’s numbers', vi:'Xem số liệu cửa hàng' },
+        b:{ ja:'売上・客数・客単価・原価率と、月の目標に対する達成率が見られます。', en:'Sales, guests, spend per guest, cost rate and progress to target.', vi:'Doanh thu, khách, chi tiêu, tỷ lệ giá vốn và tiến độ.' } },
+      { icon:'star', t:{ ja:'お客様の声を読む', en:'Read customer feedback', vi:'Đọc phản hồi khách' },
+        b:{ ja:'サーベイの回答が1時間ごとに入ります。低い評価から順に、原文のまま読めます。', en:'Survey answers arrive hourly, lowest ratings first, in the original words.', vi:'Phản hồi vào mỗi giờ, điểm thấp trước, nguyên văn.' } },
+      { icon:'check', t:{ ja:'実施状況を確認する', en:'Check what was done', vi:'Kiểm tra đã làm gì' },
+        b:{ ja:'チェックリストを、どなたが何時に実施したかが分かります。声をかける前に確かめられます。', en:'See who completed each checklist and when.', vi:'Xem ai đã hoàn thành và khi nào.' } }
+    ],
+    owner: [
+      { icon:'hr', t:{ ja:'はじめに、お名前と店舗を確認', en:'Check your name and store', vi:'Kiểm tra tên và cửa hàng' },
+        b:{ ja:'右上から、見る店舗を切り替えられます。複数店をお持ちの場合は「所有店舗すべて（比較）」も選べます。', en:'Switch stores at the top right, or compare all your stores.', vi:'Đổi cửa hàng ở góc trên phải, hoặc so sánh tất cả.' } },
+      { icon:'gauge', t:{ ja:'店舗の数字を見る', en:'See store numbers', vi:'Xem số liệu' },
+        b:{ ja:'売上・客数・客単価・原価率。複数店をお持ちなら、店舗ごとに並べて比べられます。', en:'Sales, guests, spend and cost rate — compared across your stores.', vi:'Doanh thu, khách, chi tiêu, giá vốn — so sánh giữa các cửa hàng.' } },
+      { icon:'check', t:{ ja:'提出と実施の状況を見る', en:'See submissions and checks', vi:'Xem nộp và kiểm tra' },
+        b:{ ja:'その日に出ていないもの、チェックリストを誰が何時に実施したかが分かります。', en:'What is missing today, and who completed the checklists.', vi:'Còn thiếu gì hôm nay, ai đã hoàn thành checklist.' } },
+      { icon:'star', t:{ ja:'お客様の声を読む', en:'Read customer feedback', vi:'Đọc phản hồi khách' },
+        b:{ ja:'サーベイの評価と自由記述。ご指摘の多い順に、どこを直せばよいかが見えます。', en:'Ratings and comments, with the most common issues first.', vi:'Đánh giá và bình luận, vấn đề phổ biến trước.' } }
+    ],
+    hq: [
+      { icon:'inbox', t:{ ja:'加盟店・提出物管理', en:'Submissions', vi:'Quản lý nộp' },
+        b:{ ja:'誰が何を出していないかを自動で抽出します。「未提出の連絡文をコピー」で、そのままLINEへ貼れる文面ができます。', en:'Missing items are extracted automatically; copy a ready-made message for LINE.', vi:'Tự trích mục còn thiếu; sao chép tin nhắn cho LINE.' } },
+      { icon:'gauge', t:{ ja:'本部ダッシュボード', en:'HQ dashboard', vi:'Bảng điều khiển HQ' },
+        b:{ ja:'日報が出ると、そのまま全店の数字になります。転記は要りません。店舗名から個店カルテへ入れます。', en:'Daily reports become HQ numbers automatically. No re-entry.', vi:'Báo cáo ngày tự thành số liệu HQ. Không nhập lại.' } },
+      { icon:'bell', t:{ ja:'お知らせを配る', en:'Send announcements', vi:'Gửi thông báo' },
+        b:{ ja:'全店にも、特定の店舗にも配れます。画像と動画リンクを添えられ、重要にすると各店のホーム上部に出ます。', en:'Send to all or selected stores, with images and video links.', vi:'Gửi tất cả hoặc chọn cửa hàng, kèm ảnh và video.' } },
+      { icon:'link', t:{ ja:'資料をマニュアルにひも付ける', en:'Link materials to manuals', vi:'Gắn tài liệu vào cẩm nang' },
+        b:{ ja:'登録できるのは本部だけです。登録すると、店舗の皆様はマニュアルの該当項目から開けます。', en:'HQ only. Once added, stores open them from the manual.', vi:'Chỉ HQ. Sau khi thêm, cửa hàng mở từ cẩm nang.' } },
+      { icon:'star', t:{ ja:'お客様サーベイを見る', en:'Customer survey', vi:'Khảo sát khách' },
+        b:{ ja:'1時間ごとに自動で集まります。ご指摘の内訳と、原文のままのお客様の声が読めます。', en:'Collected hourly, with issue breakdown and original comments.', vi:'Thu thập mỗi giờ, kèm phân tích và nguyên văn.' } },
+      { icon:'grad', t:{ ja:'勉強会を登録する', en:'Register study sessions', vi:'Đăng ký buổi học' },
+        b:{ ja:'日程・録画・資料を登録すると、参加できなかった方も後から見られます。修正・削除も本部でできます。', en:'Add dates, recordings and materials so anyone can catch up.', vi:'Thêm lịch, ghi hình, tài liệu để xem lại.' } }
+    ]
+  };
+  const guideFor = (role) => (GUIDES[role] || GUIDES.staff).concat(G_COMMON_END);
   function markTourDone() { localStorage.setItem('yosakura_tour_done', '1'); }
   function openTour(i) {
     i = i || 0;
+    const TOUR = guideFor(getRole());   // 役割ごとの内容で案内する
     const step = TOUR[i], last = i === TOUR.length - 1;
     const mask = el(`<div class="tour-mask"><div class="tour">
       <button class="tour__x" data-tour-close="1" aria-label="close">×</button>
@@ -701,7 +750,6 @@
 
   /* ---------- アプリ詳細 ---------- */
   function viewApp(id) {
-    if (id === 'guide') { setTimeout(() => openTour(0), 20); return viewHome('learn'); }
     const a = appById(id);
     if (!a || a.hide) return viewHome('home'); // 初期リリースで外した機能は開かない
     if (!canOpen(a, getRole())) { toast(L({ ja:'この機能を開く権限がありません', en:'You do not have permission for this', vi:'Bạn không có quyền mở mục này' })); return viewHome('home'); }
@@ -726,6 +774,31 @@
 
   /* =================== 各アプリ =================== */
   const APP_VIEWS = {};
+
+  /* 使い方＝いつでも読み返せる1枚（役割ごとに中身が変わる）。
+     案内（初回のモーダル）と同じ内容を、順番つきで並べているだけ。
+     ※ 紙の「つかいかた」と同じことを書く。紙とアプリで違うと現場が迷うため。 */
+  APP_VIEWS.guide = () => {
+    const role = getRole();
+    const steps = guideFor(role);
+    const rows = steps.map((s, i) => `
+      <div class="rep">
+        <span class="kind b" style="min-width:26px;text-align:center">${i + 1}</span>
+        <div class="body">
+          <div class="l1">${esc(L(s.t))}</div>
+          <div class="l2" style="white-space:normal">${esc(L(s.b))}</div>
+        </div>
+      </div>`).join('');
+    return `
+      <div class="card">
+        <h3>${L({ ja:'この端末での使い方', en:'How to use on this device', vi:'Cách dùng trên thiết bị này' })}
+          <small style="color:#8a8">${esc(L(ROLES[role].label))}</small></h3>
+        <p class="hint" style="display:block">${L({ ja:'いま選ばれている役割に合わせて表示しています。役割を変えると内容も変わります（右上から切替）。', en:'Shown for the current role. Switch roles at the top right to see other guides.', vi:'Hiển thị theo vai trò hiện tại. Đổi ở góc trên phải.' })}</p>
+        ${rows}
+        <button class="btn-primary" data-guide-tour="1" style="margin-top:10px">${L({ ja:'順番に見る（案内）', en:'Walk me through it', vi:'Xem lần lượt' })}</button>
+      </div>
+      <p class="hint" style="display:block">${L({ ja:'※ 同じ内容を紙（A4 1枚）でもお配りしています。', en:'The same content is also available on a one-page handout.', vi:'Nội dung tương tự cũng có bản in 1 trang.' })}</p>`;
+  };
 
   /* 食べ残し報告のメニュー選択（木村さん要望：自由入力→選択式）。店舗の業態でメニューを出し分け＋「その他（自由入力）」 */
   // ※メニューは実測（2026-07-03巡回）＋公式サイト/TableCheck/Instagramの公表名に基づく。要確認は本部と突合。
@@ -4152,6 +4225,8 @@
     // オープン・クローズチェック：モード切替
     // 画面下の「最新にする」（古い画面のまま動いていないか、誰でも自分で確かめられるように）
     const upd = document.getElementById('appUpdate'); if (upd) upd.onclick = forceUpdate;
+    // 使い方を順番に見る（役割ごとの案内をもう一度）
+    document.querySelectorAll('[data-guide-tour]').forEach(b => b.onclick = () => openTour(0));
     document.querySelectorAll('[data-ckmode]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_ckmode', b.dataset.ckmode); render(); });
     // 定期衛生：曜日の切替（手が空いていれば他の曜日を先に実施してもよい運用）
     document.querySelectorAll('[data-hygday]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', `${todayKey()}|${b.dataset.hygday}`); render(); });
