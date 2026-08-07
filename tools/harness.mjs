@@ -95,6 +95,7 @@ const setLS = (role, storeSel, lang) => {
   localStorage.setItem('yosakura_demo_store', storeSel);
   localStorage.setItem('yosakura_demo_lang', lang);
   localStorage.setItem('yosakura_tour_done', '1'); // suppress tour
+  localStorage.setItem('yosakura_setup_done', '1'); // 初回の「はじめの設定」は出さない
 };
 
 // Render a given app view by role/store/lang, return innerHTML
@@ -230,6 +231,8 @@ for (const role of ['staff','manager','hq']) {
   ok(/id="pinEdit"/.test(html), `home/${role} によく使う追加ボタンが出る`);
   // 古い画面のまま動いていないか、誰でも自分で確かめて直せるように
   ok(/id="appUpdate"/.test(html), `home/${role} の画面下に「最新にする」が出る`);
+  // 右上から、いつでも役割・店舗・お名前を変えられる
+  ok(/id="roleBtn"/.test(html), `home/${role} の右上に役割・店舗の切替が出る`);
 }
 {
   const wk = renderView('shukan','staff',S_HIROSHIMA,'ja');
