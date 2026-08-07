@@ -363,7 +363,7 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
   const sk = (store, day, sales, guests, extra) => ({ kind:'soukatsu', store, note: JSON.stringify(Object.assign({ date:d(day), sales, guests }, extra||{})), t: Date.now()-day*3600e3, id:'sk'+store+day });
   FETCH_ROWS = { ok:true, reports:[
     sk(S_HIROSHIMA, 1, 120000, 20), sk(S_HIROSHIMA, 2, 180000, 30), sk(S_HIROSHIMA, 3, 90000, 15),
-    sk(S_NAGA, 1, 60000, 12), sk(S_NAGA, 2, 75000, 15,
+    sk('牛カツ世桜 長堀橋店', 1, 60000, 12), sk('牛カツ世桜 長堀橋店', 2, 75000, 15,
       { net:50000, err:'0', mtd:135000, goal:3000000, foodct:'29', drinkct:'14', rvt:'2', rva:'70', hear:'9', disc:'0', food:'36.5', labor:'23.6', tipt:'21000', tipa:'84541', cancel:'31700', closer:'田中', note:'厨房の床を清掃', order:'豆乳6／お米' }),
   ]};
   try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ compare load threw: '+e.message); }
@@ -383,13 +383,13 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
   ok(/class="chip on"[^>]*>客数</.test(registry.app.innerHTML), '指標を客数に切り替えられる');
 
   console.log('== 個店カルテ（#/store）==');
-  location.hash = '#/store?s=' + encodeURIComponent(S_NAGA);
+  location.hash = '#/store?s=' + encodeURIComponent('牛カツ世桜 長堀橋店');
   const st = registry.app.innerHTML;
   ok(/長堀橋店/.test(st), '個店カルテが開く');
   ok(/曜日別の平均売上/.test(st), '曜日別の平均売上が出る');
   ok(/最新の日報（全項目）/.test(st) && /レジ締め担当/.test(st) && /田中/.test(st), '売上・客数以外の全項目（口コミ・原価率・締め担当等）が表示される');
   ok(/厨房の床を清掃/.test(st) && /豆乳6/.test(st), '特記事項・翌日発注も表示される');
-  ok(/入力済みの項目/.test(st) && /18<\/b>/.test(st), '入力済み項目数（アップされた分だけ表示）が分かる');
+  ok(/入力済みの項目/.test(st) && /<b>18 \/ \d+<\/b>/.test(st), '入力済み項目数（アップされた分だけ表示）が分かる');
   ok(/目標到達/.test(st), '月間目標への到達度が出る');
   ok(/この店舗の他のデータ/.test(st), 'サーベイ・原価率など他データも同じ画面に出る');
   ok(/dcell off/.test(st), '未入力の項目は「—」で分かる');
@@ -397,7 +397,7 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
   console.log('== 個店カルテ：権限（自店以外は開けない）==');
   try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ store detail role threw: '+e.message); }
   await new Promise(r=>setTimeout(r, 50));
-  location.hash = '#/store?s=' + encodeURIComponent(S_NAGA);
+  location.hash = '#/store?s=' + encodeURIComponent('牛カツ世桜 長堀橋店');
   const mg = registry.app.innerHTML;
   ok(/広島店/.test(mg) && !/長堀橋店/.test(mg), '店長が他店を指定しても自店にフォールバックする');
   location.hash = '#/app/soukatsu';
@@ -483,7 +483,8 @@ console.log('== 提出者名の記録（本部決定A-4：後から誰が出し�
   location.hash = '#/store?s=' + encodeURIComponent(S_HIROSHIMA);
   const st = registry.app.innerHTML;
   ok(/提出者/.test(st) && /店長（山田）/.test(st), '日報の全項目に提出者が表示される');
-  ok(/18<\/b>/.test(st), '提出者は日報の入力項目数（分母）に混ぜない');
+  // 入力したのは売上と客数の2つだけ。提出者はここに数えない（項目ではなく記録のため）
+  ok(/<b>2 \/ \d+<\/b>/.test(st), '提出者は日報の入力項目数に混ぜない');
 
   location.hash = '#/app/history';
   const hist = registry.app.innerHTML;
@@ -929,6 +930,37 @@ console.log('== チェックリストが4種類（オープン・アイドル・
   ok(new RegExp(`data-hygday="${new Date().getDay()}" class="on"`).test(registry.app.innerHTML),
      '前日以前に選んだ曜日は持ち越さず、今日へ戻る');
 }
+
+console.log('== 日報を総括表 Ver.2.6 に合わせる（現金/カード・国別の組数人数など）==');
+{
+  const S_UNAGI = '日本鰻世桜 浅草橋店';
+  const sk = renderView('soukatsu', 'manager', '牛カツ世桜 長堀橋店', 'ja');
+  ok(/現金売上/.test(sk) && /カード売上/.test(sk), '現金・カードの内訳が入力できる');
+  ok(/昼のみ売上/.test(sk) && /消耗品金額/.test(sk) && /仕入金額（当日）/.test(sk), '昼のみ売上・消耗品・当日仕入が入力できる');
+  ok(/過不足（現金）の理由/.test(sk), '過不足の理由が書ける（金額だけでは後から分からないため）');
+  ok(/お客様の内訳（国別・組数／人数）/.test(sk) && /sk_cty_jp_g/.test(sk) && /sk_cty_af_p/.test(sk),
+     '国別の組数・人数が総括表と同じ区分で並ぶ');
+  ok(/sk_cty_new_g/.test(sk) && /sk_cty_rep_g/.test(sk), '新規・リピートも入力できる');
+  ok(!/鰻の使用尾数/.test(sk), '鰻を扱わない店舗には、鰻の使用尾数を出さない');
+  ok(/鰻の使用尾数/.test(renderView('soukatsu', 'manager', S_UNAGI, 'ja')), '鰻の店舗にだけ、使用尾数が出る');
+
+  // 保存された国別の内訳が、日報の全項目に出る
+  const today = new Date().toLocaleDateString('en-CA');
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'soukatsu', store:'牛カツ世桜 長堀橋店', t:Date.now(), id:'c1',
+      note: JSON.stringify({ date: today, sales: 348500, guests: 66,
+        cash: 96800, card: 251700, errnote: '両替の戻し忘れ',
+        cty: { jp:{g:5,p:11}, kr:{g:2,p:4}, new:{g:6,p:13} } }) }
+  ]};
+  try { run(()=> setLS('manager', '牛カツ世桜 長堀橋店', 'ja')); } catch (e) { FAIL++; console.log('  ✗ cty threw: ' + e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/store?s=' + encodeURIComponent('牛カツ世桜 長堀橋店');
+  const det = registry.app.innerHTML;
+  ok(/お客様の内訳（国別）/.test(det), '日報の全項目に、国別の内訳が出る');
+  ok(/7組/.test(det) && /15名/.test(det), '国別の合計が正しい（新規・リピートは二重に数えない）');
+  ok(/両替の戻し忘れ/.test(det), '過不足の理由も残る');
+}
+FETCH_ROWS = { ok:false };
 
 console.log('== 使い方が役割ごとに変わる（紙のガイドと同じ中身）==');
 {
