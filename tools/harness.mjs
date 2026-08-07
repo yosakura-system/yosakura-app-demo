@@ -827,6 +827,14 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
   ok(/桜チェックリスト/.test(kyou), '桜チェックリスト（トイレ）が日次に入っている');
   ok(/定期衛生管理/.test(kyou), '定期衛生管理が日次に入っている');
 
+  /* アプリ内リマインド：ホームの「締切を過ぎている提出があります」は、
+     「今日出すもの」の締切超過と必ず一致する（時刻に関係なく、ズレないこと自体を見る）*/
+  let homeHtml = '';
+  try { run(()=> setLS('manager', S_GYU, 'ja')); location.hash = '#/home'; homeHtml = registry.app.innerHTML; }
+  catch (e) { FAIL++; console.log('  ✗ home overdue threw: ' + e.message); }
+  ok(/締切超過/.test(kyou) === /締切を過ぎている提出があります/.test(homeHtml),
+     'ホームの締切超過のお知らせが「今日出すもの」の状態と一致する');
+
   // 業態の出し分け：卓上POPは牛カツが週次、それ以外は月次
   const wkGyu = renderView('shukan','manager',S_GYU,'ja');
   ok(/卓上POP/.test(wkGyu), '牛カツでは卓上POPの交換が「今週出すもの」に出る');
