@@ -571,6 +571,27 @@
     const dutyRow = (open, label, n) => `<button class="homelink" data-open="${open}">
         <span class="hl-ic">${svg('check')}</span><span class="hl-t">${L(label)}</span>
         <span class="hl-c">${n > 0 ? `<b style="color:#b23">${n}</b><small style="color:#8a8"> ${L({ ja:'件', en:'', vi:'' })}</small>` : `<small style="color:#2a7">${L({ ja:'完了', en:'Done', vi:'Xong' })}</small>`} ${svg('chev')}</span></button>`;
+    /* 締切を過ぎた提出のお知らせ（アプリ内リマインド）。
+       決定（7/30）＝未提出はアプリで自動通知し、それでも出なければLINE。ここはその前半。
+       店舗側＝自店の超過件数／本部＝まだ出ていない店舗の数、と見せ方を変える。 */
+    const overdueN = ditems.filter(it => it.overdue).length;
+    const hqMissingStores = role === 'hq'
+      ? STORES.filter(s => todayItemsFor(s).some(it =>
+          it.m.freq === 'daily' && it.m.oblig === 'required' && it.overdue)).length
+      : 0;
+    const remind = (role !== 'hq' && overdueN > 0) ? `
+      <button class="card news-card news-card--imp news-card--btn" data-open="kyou">
+        <div class="news-h"><span class="news-ic">${svg('check')}</span><b>${L({ ja:'締切を過ぎている提出があります', en:'Overdue submissions', vi:'Có mục quá hạn' })}</b></div>
+        <div class="news-title">${overdueN} ${L({ ja:'件', en:'item(s)', vi:'mục' })}</div>
+        <p class="news-body">${L({ ja:'いま出せば、本部にはそのまま届きます。', en:'Submit now and it reaches HQ right away.', vi:'Nộp ngay, HQ sẽ nhận được.' })}</p>
+        <span class="news-more">${L({ ja:'今日出すものを開く', en:'Open today’s list', vi:'Mở danh sách hôm nay' })} ${svg('chev')}</span>
+      </button>` : (role === 'hq' && hqMissingStores > 0) ? `
+      <button class="card news-card news-card--imp news-card--btn" data-open="teishutsu">
+        <div class="news-h"><span class="news-ic">${svg('inbox')}</span><b>${L({ ja:'締切を過ぎている店舗があります', en:'Stores with overdue items', vi:'Cửa hàng quá hạn' })}</b></div>
+        <div class="news-title">${hqMissingStores} ${L({ ja:'店舗', en:'store(s)', vi:'cửa hàng' })}</div>
+        <p class="news-body">${L({ ja:'必須の提出物が、締切を過ぎても届いていません。', en:'Required submissions are past due.', vi:'Mục bắt buộc đã quá hạn.' })}</p>
+        <span class="news-more">${L({ ja:'提出物管理を開く', en:'Open submissions', vi:'Mở quản lý nộp' })} ${svg('chev')}</span>
+      </button>` : '';
     const dutyBlock = `<div class="homelinks">
         ${dutyRow('kyou', { ja:'日次業務', en:'Daily tasks', vi:'Hàng ngày' }, remainOf(['daily']))}
         ${dutyRow('shukan', { ja:'週次業務', en:'Weekly tasks', vi:'Hàng tuần' }, remainOf(['weekly']))}
@@ -619,6 +640,7 @@
       <main class="screen">
         <div class="brandhead"><img class="brandhead__logo" src="icons/logo-full.png" alt="日本料理 世桜 -yosakura-"></div>
         ${installCardHTML()}
+        ${remind}
         ${isStoreSide ? dutySection + newsSection : newsSection + dutySection}
         ${sec({ ja:'よく使う', en:'Quick access', vi:'Hay dùng' })}
         ${primary ? `<div class="grid">${primary}</div>` : ''}
