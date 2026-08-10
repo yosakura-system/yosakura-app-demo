@@ -1116,7 +1116,24 @@ console.log('== よくある質問（8/10 構築MTG A-04：ルールを後から
   const hq = registry.app.innerHTML;
   ok(/faqAdd/.test(hq), '本部には追加フォームが出る');
   ok(/data-faqdel="fq1"/.test(hq), '本部は追加した項目を削除できる');
-  ok((hq.match(/data-faqdel/g) || []).length === 1, '会議で決まったルールには削除ボタンを出さない（固定表示）');
+  ok(/data-faqedit="fq1"/.test(hq), '本部は追加した項目を編集できる');
+  ok(/data-faqedit="fx_promo"/.test(hq) && /data-faqdel="fx_promo"/.test(hq), '会議で決まったルールも本部が編集・削除できる');
+
+  // 会議で決まったルールを本部が書き換える → 上書きが表示に反映され、出典は残る
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'faqset', store:'', note: JSON.stringify([
+      { id:'fx_promo', cat:'promo', q:'販促物の依頼はいつまで？', a:'3週間前までにお願いします。' },
+      { id:'fx_drink', deleted:true }
+    ]), t: 3100, id:'f2' },
+  ]};
+  run(()=> setLS('staff', S_HIROSHIMA, 'ja'));
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/faq';
+  const ed = registry.app.innerHTML;
+  ok(/3週間前までにお願いします/.test(ed), '本部が書き換えた内容が全端末に反映される');
+  ok(!/2〜3週間/.test(ed), '元の文面は残らない（二重に出ない）');
+  ok(/構築MTGでの決定事項/.test(ed) && /本部が修正/.test(ed), '書き換えても出典は残り、修正済みと分かる');
+  ok(!/原則としてお断り/.test(ed), '本部が削除したルールは表示されない');
 
   // faqset が含まれない同期で、端末に入っている項目が消えないこと（linksetと同じ考え方）
   FETCH_ROWS = { ok:true, reports:[ { kind:'kizuki', store:S_HIROSHIMA, item:'その他', note:'x', t:4000, id:'k1' } ] };
