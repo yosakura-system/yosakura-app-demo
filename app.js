@@ -165,6 +165,10 @@
     { id:'links', group:'other', icon:'link', soon:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'リンク集', en:'Quick Links', vi:'Liên kết' },
       desc:{ ja:'初期設定・発注などの必要リンク', en:'Setup, ordering and key links', vi:'Cài đặt, đặt hàng, liên kết' } },
+    // 8/10 構築MTG D-03/D-10・A-04: 単発のお知らせではなく「ルールを後から確認できる場所」として新設
+    { id:'faq', group:'other', icon:'idea', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'よくある質問（ルール集）', en:'FAQ & Rules', vi:'Hỏi đáp & Quy định' },
+      desc:{ ja:'販促物の依頼・持ち込みなど、迷ったときに確認', en:'Check the rules when in doubt', vi:'Xem quy định khi phân vân' } },
     { id:'inventory', group:'storeops', icon:'box', soon:true, hide:true, roles:['manager','owner','hq'], // 8/4: 棚卸は月末提出物へ統合＝独立は外す
       name:{ ja:'棚卸・在庫入力', en:'Stocktake', vi:'Kiểm kho' },
       desc:{ ja:'品目ごとの在庫をスマホで入力', en:'Enter stock by item on your phone', vi:'Nhập tồn kho theo mặt hàng' } },
@@ -2515,6 +2519,63 @@
         ${sec.items.map(it=>`<div class="mrow" data-mock="1"><div class="mi">${svg('link')}</div><div class="mt"><b>${esc(L(it))}</b></div><span class="chev">${svg('chev')}</span></div>`).join('')}
       </div>`).join('')}`;
 
+  /* ---------- よくある質問（ルール集）----------
+     2026-08-10 構築MTG A-04。単発のお知らせ欄ではなく「あとから確認できる場所」として新設。
+     ・本部で決まったルール（FAQ_FIXED）＝会議の決定事項。アプリ側で編集しない
+     ・本部が追加した項目（faqset）＝配列を丸ごと保存し最新版が正（資料リンクと同じ方式・全端末同期） */
+  const FAQ_CATS = [
+    { v:'promo', t:{ ja:'販促物・制作物', en:'Promotional items', vi:'Vật phẩm quảng bá' } },
+    { v:'store', t:{ ja:'店舗運営のルール', en:'Store rules', vi:'Quy định cửa hàng' } },
+    { v:'other', t:{ ja:'その他', en:'Other', vi:'Khác' } }
+  ];
+  // 会議で決まったルール（2026-08-10 構築MTG）。出典を明記し、勝手に増やさない
+  const FAQ_FIXED = [
+    { cat:'promo', src:'2026-08-10 構築MTG',
+      q:{ ja:'販促物は、いつまでに依頼すればよいですか？', en:'How early should we request promotional items?', vi:'Cần đặt vật phẩm quảng bá trước bao lâu?' },
+      a:{ ja:'制作元への依頼・調整を含めて2〜3週間かかります。使用したい日から逆算して、余裕をもってご依頼ください。',
+          en:'It takes 2–3 weeks including the request to and coordination with the maker. Please order well before the date you need them.',
+          vi:'Mất 2–3 tuần bao gồm đặt hàng và điều chỉnh với nhà sản xuất. Vui lòng đặt sớm trước ngày cần dùng.' } },
+    { cat:'store', src:'2026-08-10 構築MTG',
+      q:{ ja:'お客様からお飲み物の持ち込みを希望されたら、どうすればよいですか？', en:'What if a guest asks to bring their own drinks?', vi:'Nếu khách muốn mang đồ uống vào thì sao?' },
+      a:{ ja:'原則としてお断りしています。例外的にお受けする場合は、事前に本部の承認が必要です。ご来店当日にお申し出をいただいた場合は、承認が間に合わないため原則お断りとなります。',
+          en:'As a rule we decline. Exceptions require prior HQ approval. If the request is made on the day of the visit, approval cannot be obtained in time, so we decline as a rule.',
+          vi:'Về nguyên tắc chúng tôi từ chối. Trường hợp ngoại lệ cần được HQ chấp thuận trước. Nếu khách đề nghị ngay hôm đến, không kịp xin duyệt nên về nguyên tắc từ chối.' } }
+  ];
+  const getFaq = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_faq')) || []; } catch { return []; } };
+  const saveFaq = (a) => { try { localStorage.setItem('yosakura_demo_faq', JSON.stringify(a)); } catch (e) {} };
+
+  APP_VIEWS.faq = () => {
+    const role = getRole(), isHQ = role === 'hq';
+    const added = getFaq();
+    const rows = FAQ_CATS.map(c => {
+      const fixed = FAQ_FIXED.filter(f => f.cat === c.v).map(f => ({ fixed:true, q:L(f.q), a:L(f.a), src:f.src }));
+      const mine = added.filter(f => (f.cat || 'other') === c.v).map(f => ({ id:f.id, q:f.q || '', a:f.a || '' }));
+      const items = fixed.concat(mine);
+      if (!items.length) return '';
+      return `<div class="card"><h3>${esc(L(c.t))}</h3>
+        ${items.map(it => `<details class="rep" style="display:block;padding:10px 2px">
+          <summary style="cursor:pointer;font-weight:600">${esc(it.q)}</summary>
+          <div class="l2" style="margin-top:6px;white-space:pre-wrap">${esc(it.a)}</div>
+          ${it.src ? `<div class="hint" style="margin-top:6px">${esc(it.src)}での決定事項</div>` : ''}
+          ${(isHQ && it.id) ? `<button class="btn sm" data-faqdel="${esc(it.id)}" style="margin-top:8px">${esc(L({ ja:'削除', en:'Delete', vi:'Xoá' }))}</button>` : ''}
+        </details>`).join('')}
+      </div>`;
+    }).join('');
+    return `
+      ${NOTE({ ja:'◆ 迷ったときに確認する場所です。お知らせと違い、あとから探せます', en:'◆ Check here when in doubt — unlike announcements, these stay searchable', vi:'◆ Xem tại đây khi phân vân — khác thông báo, nội dung luôn tìm lại được' })}
+      ${rows || `<div class="card"><div class="muted">${L({ ja:'まだ項目がありません。', en:'No entries yet.', vi:'Chưa có mục nào.' })}</div></div>`}
+      ${isHQ ? `<div class="card"><h3>${esc(L({ ja:'項目を追加（本部）', en:'Add an entry (HQ)', vi:'Thêm mục (HQ)' }))}</h3>
+        <label class="fl">${esc(L({ ja:'分類', en:'Category', vi:'Phân loại' }))}</label>
+        <select id="faq_cat">${FAQ_CATS.map(c => `<option value="${c.v}">${esc(L(c.t))}</option>`).join('')}</select>
+        <label class="fl">${esc(L({ ja:'質問', en:'Question', vi:'Câu hỏi' }))}</label>
+        <input id="faq_q" type="text" placeholder="${esc(L({ ja:'例）備品が足りないときは？', en:'e.g. What if supplies run out?', vi:'VD: Khi thiếu vật tư?' }))}">
+        <label class="fl">${esc(L({ ja:'答え', en:'Answer', vi:'Trả lời' }))}</label>
+        <textarea id="faq_a" rows="3"></textarea>
+        <button class="btn" id="faqAdd" style="margin-top:8px">${esc(L({ ja:'追加する', en:'Add', vi:'Thêm' }))}</button>
+        <p class="hint">${esc(L({ ja:'※ 会議で決まったルールは固定表示のため、ここでは編集できません。', en:'Rules decided in meetings are fixed and cannot be edited here.', vi:'Quy định đã quyết trong họp là cố định, không sửa tại đây.' }))}</p>
+      </div>` : ''}`;
+  };
+
   /* 棚卸・在庫入力 */
   const INV_ITEMS = [
     {ja:'うなぎ（真空パック）',en:'Unagi (vacuum)',vi:'Lươn (hút chân không)'},
@@ -3731,6 +3792,29 @@
     lastSync = Date.now(); pushAudit('comm_' + state, key); render();
     postReport({ kind:'commmod', store, item:key, note: JSON.stringify({ state }), t: Date.now() });
   }
+  /* ポジティブシャワー（横展開）＝2026-08-10 構築MTG A-05。
+     良かったことを共感するだけで終わらせず、他店が「うちでもやってみます」と拾えるようにする。
+     ・commroll＝本部が「広げたい」と指定（投稿キーごと最新が正）
+     ・commtry ＝店舗が実施を表明（追記式・店舗名を重複なく集める） */
+  const getCommRoll = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_commroll')) || {}; } catch { return {}; } };
+  const getCommTry  = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_commtry')) || {}; } catch { return {}; } };
+  const commRolled = (p) => !!(getCommRoll()[commKey(p)] || {}).on;
+  const commTryStores = (p) => (getCommTry()[commKey(p)] || []);
+  function setCommRoll(key, on) {
+    const map = getCommRoll(); map[key] = { on, t: Date.now() };
+    try { localStorage.setItem('yosakura_demo_commroll', JSON.stringify(map)); } catch (e) {}
+    lastSync = Date.now(); pushAudit('comm_roll_' + (on ? 'on' : 'off'), key); render(true);
+    postReport({ kind:'commroll', store: key.split('|')[1] || '', item:key, note: JSON.stringify({ on }), t: Date.now() });
+  }
+  function addCommTry(key, store) {
+    const map = getCommTry(); const arr = map[key] || [];
+    if (!arr.includes(store)) arr.push(store);
+    map[key] = arr;
+    try { localStorage.setItem('yosakura_demo_commtry', JSON.stringify(map)); } catch (e) {}
+    lastSync = Date.now(); render(true);
+    postReport({ kind:'commtry', store, item:key, t: Date.now() });
+  }
+
   const commBadge = (p) => {
     const st = commState(p);
     if (st === 'published') return `<span class="kind b">${esc(commCatLabel(p.cat))}</span>`;
@@ -3739,16 +3823,29 @@
   };
   const commRow = (p) => {
     const key = commKey(p), liked = getLiked().includes(key), n = commLikeN(p), isHq = getRole() === 'hq', st = commState(p);
+    const tryN = commTryStores(p).length, rolled = commRolled(p);
     const mod = isHq ? `<div class="l2" style="margin-top:6px">${st !== 'published'
         ? `<button class="mini" data-commpub="${esc(key)}">${L({ ja:'公開する', en:'Publish', vi:'Duyệt' })}</button>`
-        : `<button class="mini on" data-commhide="${esc(key)}">${L({ ja:'公開中（取り下げ）', en:'Published (hide)', vi:'Đang hiện (ẩn)' })}</button>`}</div>` : '';
+        : `<button class="mini on" data-commhide="${esc(key)}">${L({ ja:'公開中（取り下げ）', en:'Published (hide)', vi:'Đang hiện (ẩn)' })}</button>`}${
+        st === 'published' ? `<button class="mini ${rolled ? 'on' : ''}" data-commroll="${esc(key)}" data-on="${rolled ? '1' : '0'}" style="margin-left:6px">${rolled
+          ? L({ ja:'横展開中（解除）', en:'Rolling out (undo)', vi:'Đang nhân rộng (bỏ)' })
+          : L({ ja:'横展開する', en:'Roll out', vi:'Nhân rộng' })}</button>` : ''}</div>` : '';
     return `<div class="rep" style="align-items:flex-start">
       ${commBadge(p)}
+      ${rolled && st === 'published' ? `<span class="kind b">${L({ ja:'横展開', en:'Roll-out', vi:'Nhân rộng' })}</span>` : ''}
       <div class="body">
         <div class="l1">${esc(p.body || '—')}</div>
         ${(p.photos && p.photos.length) ? `<div class="rep-photos">${p.photos.map(x => `<img class="rep-photo" src="${photoThumb(x)}" data-full="${photoFull(x)}" alt="" loading="lazy">`).join('')}</div>` : ''}
         <div class="l2">${esc(storeShort(p.store))}${p.by ? ` ・${esc(p.by)}` : ''} ・ ${timeAgo(p.t)}</div>
-        <div class="l2" style="margin-top:6px"><button class="mini ${liked ? 'on' : ''}" data-commlike="${esc(key)}"${liked ? ' disabled' : ''}>${liked ? '♥' : '♡'} ${L({ ja:'いいね', en:'Like', vi:'Thích' })}${n ? ` ${n}` : ''}</button></div>
+        <div class="l2" style="margin-top:6px"><button class="mini ${liked ? 'on' : ''}" data-commlike="${esc(key)}"${liked ? ' disabled' : ''}>${liked ? '♥' : '♡'} ${L({ ja:'いいね', en:'Like', vi:'Thích' })}${n ? ` ${n}` : ''}</button>${
+          (st === 'published' && !isHq) ? (() => {
+            const my = visibleStores()[0] || '';
+            const done = commTryStores(p).includes(my);
+            return `<button class="mini ${done ? 'on' : ''}" data-commtry="${esc(key)}"${done ? ' disabled' : ''}>${done
+              ? L({ ja:'✓ うちでもやってみます', en:'✓ We will try this', vi:'✓ Chúng tôi sẽ thử' })
+              : L({ ja:'うちでもやってみます', en:'We will try this', vi:'Chúng tôi sẽ thử' })}</button>`;
+          })() : ''}</div>
+        ${tryN ? `<div class="l2" style="margin-top:4px">${L({ ja:'取り入れた店舗', en:'Stores adopting', vi:'Cửa hàng áp dụng' })}：${tryN}　<span class="hint">${esc(commTryStores(p).map(storeShort).join('・'))}</span></div>` : ''}
         ${mod}
       </div>
     </div>`;
@@ -3780,6 +3877,19 @@
     return `
       ${NOTE({ ja:'◆ 現場発のグッドストーリーを全店で共有（本部承認後に公開）', en:'◆ Good stories from the field, shared across stores', vi:'◆ Câu chuyện hay từ cửa hàng' })}
       ${isHq && pend ? `<div class="card" style="border-color:#caa"><b>${L({ ja:'公開待ちの投稿', en:'Pending posts', vi:'Chờ duyệt' })}：${pend}</b><p class="hint" style="display:block">${L({ ja:'下の一覧で「公開する」を押すと全店に表示されます。', en:'Press Publish below to show to all stores.', vi:'Bấm Duyệt để hiển thị.' })}</p></div>` : ''}
+      ${(() => {
+        // ポジティブシャワー＝本部が「広げたい」と指定した取り組みを先頭にまとめる（8/10 構築MTG A-05）
+        const roll = commForView(all).filter(p => commState(p) === 'published' && commRolled(p)).slice(0, 10);
+        if (!roll.length) return '';
+        return `<div class="card">
+          <h3>${L({ ja:'ポジティブシャワー（横展開）', en:'Positive Shower (roll-out)', vi:'Positive Shower (nhân rộng)' })}</h3>
+          <p class="hint" style="display:block">${L({
+            ja:'勉強会で出た「良かったこと」を、共感して終わりにせず他店へ広げるための場所です。取り入れられそうなものは「うちでもやってみます」を押してください。',
+            en:'Good practices worth spreading. Tap “We will try this” if your store can adopt it.',
+            vi:'Những việc tốt đáng nhân rộng. Hãy bấm “Chúng tôi sẽ thử” nếu cửa hàng bạn có thể áp dụng.' })}</p>
+          ${roll.map(commRow).join('')}
+        </div>`;
+      })()}
       ${form}
       <div class="card">
         <h3>${L({ ja:'みんなの投稿', en:'Community feed', vi:'Bảng tin' })}</h3>
@@ -4183,6 +4293,14 @@
       postReport({ kind:'community', store, item:cat, note: JSON.stringify({ body, by }), photos, t });
     };
     // いいね（拍手）＝この端末で一度だけ。カウントは全端末で合算。
+    // ポジティブシャワー：本部が横展開に指定／店舗が「うちでもやってみます」
+    document.querySelectorAll('[data-commroll]').forEach(b => b.onclick = () => setCommRoll(b.dataset.commroll, b.dataset.on !== '1'));
+    document.querySelectorAll('[data-commtry]').forEach(b => b.onclick = () => {
+      const my = visibleStores()[0] || '';
+      if (!my) { toast(L({ ja:'店舗が選ばれていません', en:'No store selected', vi:'Chưa chọn cửa hàng' })); return; }
+      addCommTry(b.dataset.commtry, my);
+      toast(L({ ja:'ありがとうございます！本部と各店に共有されます', en:'Thanks! Shared with HQ and all stores', vi:'Cảm ơn! Đã chia sẻ với HQ và các cửa hàng' }));
+    });
     document.querySelectorAll('[data-commlike]').forEach(b => b.onclick = () => {
       const key = b.dataset.commlike; const liked = getLiked();
       if (liked.includes(key)) return;
@@ -4221,6 +4339,24 @@
       saveLinks(links); const t = Date.now(); lastSync = t; render(true);
       postReport({ kind:'linkset', store:'', note: JSON.stringify(links), t });
     });
+    // よくある質問（ルール集）：本部が項目を追加・削除→全端末同期（faqset＝配列を丸ごと保存し最新版が正）
+    const faqAdd = document.getElementById('faqAdd');
+    if (faqAdd) faqAdd.onclick = () => {
+      const q = ((byId('faq_q') || {}).value || '').trim();
+      const a = ((byId('faq_a') || {}).value || '').trim();
+      const cat = (byId('faq_cat') || {}).value || 'other';
+      if (!q || !a) { toast(L({ ja:'質問と答えの両方を入力してください', en:'Enter both a question and an answer', vi:'Nhập cả câu hỏi và câu trả lời' })); return; }
+      const list = getFaq(); list.push({ id:'fq' + Date.now(), cat, q, a });
+      saveFaq(list); const t = Date.now(); lastSync = t;
+      toast(L({ ja:'追加しました', en:'Added', vi:'Đã thêm' })); render();
+      postReport({ kind:'faqset', store:'', note: JSON.stringify(list), t });
+    };
+    document.querySelectorAll('[data-faqdel]').forEach(b => b.onclick = () => {
+      const list = getFaq().filter(f => f.id !== b.dataset.faqdel);
+      saveFaq(list); const t = Date.now(); lastSync = t; render(true);
+      postReport({ kind:'faqset', store:'', note: JSON.stringify(list), t });
+    });
+
     document.querySelectorAll('[data-openurl]').forEach(b => b.onclick = () => window.open(b.dataset.openurl, '_blank', 'noopener'));
 
     // ③ 口コミQR：保存・開く・コピー
@@ -4428,7 +4564,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; let linkset=null, linksetT=null;
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null;
     (rows || []).forEach(r => {
       // 店舗名は正式名称へ寄せる（過去のデータが旧い表記でも、同じ店舗として扱う）
       const t = Number(r.t) || 0, id = r.id, store = normalizeStore(r.store || '');
@@ -4457,7 +4593,10 @@
         case 'community': { const p=pj(r.note); comm.push({ store, cat:r.item, body:p.body||'', by:p.by||'', photos:r.photos||[], t, id }); } break;
         case 'commmod': { const p=pj(r.note); const k=r.item; if (commmodT[k]==null || t>=commmodT[k]) { commmod[k]={ state:p.state||'published', t }; commmodT[k]=t; } } break; // 投稿キーごと最新の公開状態が正
         case 'commlike': { const k=r.item; commlike[k]=(commlike[k]||0)+1; } break; // 拍手は件数を合算
+        case 'commroll': { const p=pj(r.note); const k=r.item; if (commrollT[k]==null || t>=commrollT[k]) { commroll[k]={ on:!!(p&&p.on), t }; commrollT[k]=t; } } break; // 横展開の指定は投稿キーごと最新が正
+        case 'commtry': { const k=r.item; const s=store; if (!s) break; if (!commtry[k]) commtry[k]=[]; if (!commtry[k].includes(s)) commtry[k].push(s); } break; // 実施表明は店舗を重複なく集める
         case 'linkset': { const p=pj(r.note); if (Array.isArray(p) && (linksetT==null || t>=linksetT)) { linkset=p; linksetT=t; } } break; // 資料リンク一覧は最新版が正
+        case 'faqset': { const p=pj(r.note); if (Array.isArray(p) && (faqsetT==null || t>=faqsetT)) { faqset=p; faqsetT=t; } } break; // よくある質問（本部追加分）は最新版が正
       }
     });
     const set = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a)); } catch (_) {} };
@@ -4468,7 +4607,9 @@
     if (Object.keys(ckdone).length) { set('yosakura_demo_ckdone', ckdone); set('yosakura_demo_ckmeta', ckmeta); } // 実施状況が1件も無い同期では、この端末の記録を消さない
     if (Object.keys(study).length) set('yosakura_demo_study', Object.values(study).filter(s => s && !s.deleted));
     set('yosakura_demo_community', comm); set('yosakura_demo_commmod', commmod); set('yosakura_demo_commlike', commlike);
+    set('yosakura_demo_commroll', commroll); set('yosakura_demo_commtry', commtry);
     if (linkset !== null) set('yosakura_demo_links', linkset); // linksetが無い同期では既存の資料リンクを保持
+    if (faqset !== null) set('yosakura_demo_faq', faqset); // faqsetが無い同期では既存のよくある質問を保持
   }
   async function syncReports(force) {
     if (!useBackend()) return;

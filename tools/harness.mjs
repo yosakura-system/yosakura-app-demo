@@ -1092,5 +1092,76 @@ console.log('== 端末に旧表記が残っていても、起動時に正式名�
   ok(saved.filter(r => r.store === '日本料理世桜本店').length === 14, '書き換え後も件数が変わらない（14件のまま）');
 }
 
+console.log('== よくある質問（8/10 構築MTG A-04：ルールを後から確認できる場所）==');
+{
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'faqset', store:'', note: JSON.stringify([
+      { id:'fq1', cat:'store', q:'制服が破れたときは？', a:'店長へご連絡ください。' }
+    ]), t: 3000, id:'f1' },
+  ]};
+  try { run(()=> setLS('staff', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ faq threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/faq';
+  const html = registry.app.innerHTML;
+  ok(/2〜3週間/.test(html), '販促物の納期ルール（D-03）が出る');
+  ok(/原則としてお断り/.test(html), 'ワイン持ち込みのルール（D-10）が出る');
+  ok(/構築MTGでの決定事項/.test(html), '会議で決まったルールには出典が付く');
+  ok(/制服が破れたときは/.test(html), '本部が追加した項目が全端末へ同期される');
+  ok(!/faqAdd/.test(html), 'スタッフには追加フォームを出さない');
+  ok(!/data-faqdel/.test(html), 'スタッフには削除ボタンを出さない');
+
+  run(()=> setLS('hq','all','ja'));
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/faq';
+  const hq = registry.app.innerHTML;
+  ok(/faqAdd/.test(hq), '本部には追加フォームが出る');
+  ok(/data-faqdel="fq1"/.test(hq), '本部は追加した項目を削除できる');
+  ok((hq.match(/data-faqdel/g) || []).length === 1, '会議で決まったルールには削除ボタンを出さない（固定表示）');
+
+  // faqset が含まれない同期で、端末に入っている項目が消えないこと（linksetと同じ考え方）
+  FETCH_ROWS = { ok:true, reports:[ { kind:'kizuki', store:S_HIROSHIMA, item:'その他', note:'x', t:4000, id:'k1' } ] };
+  run(()=> { setLS('hq','all','ja'); localStorage.setItem('yosakura_demo_faq', JSON.stringify([{ id:'fq9', cat:'other', q:'残るか', a:'残る' }])); });
+  await new Promise(r=>setTimeout(r, 50));
+  ok(JSON.parse(localStorage.getItem('yosakura_demo_faq') || '[]').length === 1, 'faqsetが無い同期でも既存の項目を保持する');
+}
+
+console.log('== ポジティブシャワー（8/10 構築MTG A-05：良かったことを横展開する）==');
+{
+  const KEY = '5000|' + S_HIROSHIMA;
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'community', store:S_HIROSHIMA, item:'guest', note: JSON.stringify({ body:'お誕生日に一言添えたら喜ばれました', by:'倉谷' }), t:5000, id:'c1' },
+    { kind:'commmod', store:S_HIROSHIMA, item:KEY, note: JSON.stringify({ state:'published' }), t:5001, id:'c2' },
+    { kind:'commroll', store:S_HIROSHIMA, item:KEY, note: JSON.stringify({ on:true }), t:5002, id:'c3' },
+    { kind:'commtry', store:'手巻き寿司世桜 難波店', item:KEY, t:5003, id:'c4' },
+  ]};
+  try { run(()=> setLS('staff', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ shower threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/community';
+  const html = registry.app.innerHTML;
+  ok(/ポジティブシャワー（横展開）/.test(html), '横展開のまとめが専用のかたまりで出る');
+  ok(html.indexOf('ポジティブシャワー') < html.indexOf('<h3>みんなの投稿</h3>'), '横展開が通常のフィードより上に来る');
+  ok(/取り入れた店舗/.test(html), '取り入れた店舗が見える（共感で終わらせない）');
+  ok(/data-commtry/.test(html), '店舗は「うちでもやってみます」を押せる');
+  ok(!/data-commroll/.test(html), 'スタッフには横展開の指定ボタンを出さない');
+
+  run(()=> setLS('hq','all','ja'));
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/community';
+  const hq = registry.app.innerHTML;
+  ok(/data-commroll/.test(hq), '本部は横展開を指定できる');
+  ok(/横展開中（解除）/.test(hq), '指定済みは解除できる状態で出る');
+  ok(!/data-commtry/.test(hq), '本部には「うちでもやってみます」を出さない');
+
+  // 公開前の投稿は横展開に出さない
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'community', store:S_HIROSHIMA, item:'guest', note: JSON.stringify({ body:'未承認の投稿' }), t:6000, id:'d1' },
+    { kind:'commroll', store:S_HIROSHIMA, item:'6000|' + S_HIROSHIMA, note: JSON.stringify({ on:true }), t:6001, id:'d2' },
+  ]};
+  run(()=> setLS('staff', S_HIROSHIMA, 'ja'));
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/community';
+  ok(!/未承認の投稿/.test(registry.app.innerHTML), '本部承認前の投稿は横展開にも出ない');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
