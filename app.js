@@ -3556,14 +3556,26 @@
   function seedCommunity() {
     if (localStorage.getItem('yosakura_demo_community')) return;
     const now = Date.now();
+    // demo:true ＝ 見本のデータ。画面に「見本」の札を出して、実際の投稿と見分けられるようにする
     saveComm([
-      { store:'寿司世桜 心斎橋店', cat:'guest', body:'記念日でご来店のお客様に、メッセージ入りのデザートプレートをお出ししたら涙ぐんで喜んでくださいました。写真も撮らせていただきました！', by:'スタッフ', photos:[], t: now - 3600e3 * 6 },
-      { store:'和牛世桜 広島店', cat:'play', body:'お子様連れのお客様に待ち時間で折り紙をお渡ししたら大喜び。ご両親もゆっくりお食事できたと感謝されました。', by:'', photos:[], t: now - 3600e3 * 20 },
-      { store:'日本鰻世桜 富士山店', cat:'win', body:'今月のGoogle口コミが目標の30件を突破しました！スタッフ全員で「提供時の一言」を大切にした成果です。', by:'店長', photos:[], t: now - 3600e3 * 40 }
+      { store:'寿司世桜 心斎橋店', cat:'guest', demo:true, body:'記念日でご来店のお客様に、メッセージ入りのデザートプレートをお出ししたら涙ぐんで喜んでくださいました。写真も撮らせていただきました！', by:'スタッフ', photos:[], t: now - 3600e3 * 6 },
+      { store:'和牛世桜 広島店', cat:'play', demo:true, body:'お子様連れのお客様に待ち時間で折り紙をお渡ししたら大喜び。ご両親もゆっくりお食事できたと感謝されました。', by:'', photos:[], t: now - 3600e3 * 20 },
+      { store:'日本鰻世桜 富士山店', cat:'win', demo:true, body:'今月のGoogle口コミが目標の30件を突破しました！スタッフ全員で「提供時の一言」を大切にした成果です。', by:'店長', photos:[], t: now - 3600e3 * 40 }
     ]);
     const map = {};
     getComm().forEach(p => { map[`${p.t}|${p.store}`] = { state:'published', t: p.t }; }); // デモは公開済みで表示
     try { localStorage.setItem('yosakura_demo_commmod', JSON.stringify(map)); } catch (e) {}
+    // ポジティブシャワー（横展開）の見え方を示すための見本。
+    // 1件目を「横展開」に指定し、2店舗が「うちでもやってみます」を押した状態にしておく。
+    // ⚠️ これは見本データのみ。試験運用を始める際はこの3行を消す（本番のバックエンドには入らない）。
+    const first = getComm()[0];
+    if (first) {
+      const key = `${first.t}|${first.store}`;
+      try {
+        localStorage.setItem('yosakura_demo_commroll', JSON.stringify({ [key]: { on:true, t: first.t } }));
+        localStorage.setItem('yosakura_demo_commtry', JSON.stringify({ [key]: ['牛カツ世桜 長堀橋店', '日本鰻世桜 浅草橋店'] }));
+      } catch (e) {}
+    }
   }
   function seedEmg() {
     if (localStorage.getItem('yosakura_demo_emg')) return;
@@ -3878,6 +3890,7 @@
     return `<div class="rep" style="align-items:flex-start">
       ${commBadge(p)}
       ${rolled && st === 'published' ? `<span class="kind b">${L({ ja:'横展開', en:'Roll-out', vi:'Nhân rộng' })}</span>` : ''}
+      ${p.demo ? `<span class="kind a">${L({ ja:'見本', en:'Sample', vi:'Mẫu' })}</span>` : ''}
       <div class="body">
         <div class="l1">${esc(p.body || '—')}</div>
         ${(p.photos && p.photos.length) ? `<div class="rep-photos">${p.photos.map(x => `<img class="rep-photo" src="${photoThumb(x)}" data-full="${photoFull(x)}" alt="" loading="lazy">`).join('')}</div>` : ''}
