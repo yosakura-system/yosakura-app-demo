@@ -1163,5 +1163,33 @@ console.log('== ポジティブシャワー（8/10 構築MTG A-05：良かった
   ok(!/未承認の投稿/.test(registry.app.innerHTML), '本部承認前の投稿は横展開にも出ない');
 }
 
+console.log('== 公開待ちの投稿を、本部の受信箱でも拾える ==');
+{
+  const PK = '7000|' + S_HIROSHIMA;
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'community', store:S_HIROSHIMA, item:'guest', note: JSON.stringify({ body:'承認前のエピソードです', by:'倉谷' }), t:7000, id:'p1' },
+    { kind:'community', store:S_HIROSHIMA, item:'play',  note: JSON.stringify({ body:'こちらは公開済み' }), t:7100, id:'p2' },
+    { kind:'commmod', store:S_HIROSHIMA, item:'7100|' + S_HIROSHIMA, note: JSON.stringify({ state:'published' }), t:7101, id:'p3' },
+  ]};
+  run(()=> setLS('hq','all','ja'));
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/inbox';
+  const hq = registry.app.innerHTML;
+  ok(/公開待ちの投稿/.test(hq), '受信箱に「公開待ちの投稿」が出る');
+  ok(/承認前のエピソードです/.test(hq), '未公開の投稿の中身が受信箱で読める');
+  ok(!/こちらは公開済み/.test(hq), '公開済みの投稿は受信箱に出ない（対応が要らないため）');
+  ok(new RegExp('data-commpub="' + PK.replace('|','\\|') + '"').test(hq), '受信箱からそのまま公開できる');
+  ok(/data-commhide/.test(hq), '受信箱から「公開しない」も選べる');
+  ok(!new RegExp('data-ackdone="[^"]*commpend').test(hq), '「対応済み」では消せない（未公開のまま埋もれないように）');
+
+  // 店長は受信箱に入れない（画面ごと開けない）
+  run(()=> setLS('manager', S_HIROSHIMA, 'ja'));
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/inbox';
+  const mg = registry.app.innerHTML;
+  ok(!/承認前のエピソードです/.test(mg), '店長には未公開の投稿が見えない');
+  ok(!/data-commpub/.test(mg), '店長には公開ボタンが出ない');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

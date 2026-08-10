@@ -3256,6 +3256,15 @@
       getReports().filter(r => r.kind === 'svfb' && vis.includes(r.store)).forEach(r => add('svfb', { ja:'巡回FB', en:'Visit FB', vi:'Phản hồi' }, r.t, r.store, r.item || '', String(r.note || '').slice(0, 60), r.photos));
       subRows(SUB_KINDS.open).filter(r => vis.includes(r.store)).forEach(r => add('openphoto', { ja:'オープン写真', en:'Opening photo', vi:'Ảnh mở cửa' }, r.t, r.store, '', '', r.photos));
     } catch (e) {}
+    // 公開待ちの投稿＝本部が「みんなの投稿」を開かないと気づけなかったため、受信箱にも出す。
+    // 公開すると pending でなくなり、この一覧から自然に消える（「対応済み」では消さない）。
+    try {
+      getComm().filter(p => commState(p) === 'pending' && vis.includes(p.store)).forEach(p => {
+        add('commpend', { ja:'公開待ちの投稿', en:'Pending post', vi:'Bài chờ duyệt' }, p.t, p.store, commCatLabel(p.cat), String(p.body || '').slice(0, 60), p.photos);
+        const last = items[items.length - 1];
+        last.ckey = commKey(p); last.state = '';
+      });
+    } catch (e) {}
     return items.sort((a, b) => b.t - a.t);
   }
 
@@ -3267,7 +3276,10 @@
     const list = (showDone ? all : open).slice(0, 40);
     const row = (i) => {
       const ph = i.photos && i.photos.length ? `<img class="rep-photo" src="${photoThumb(i.photos[0])}" data-full="${photoFull(i.photos[0])}" alt="">` : `<span class="kind ${i.state==='done'?'b':'a'}">${esc(L(i.label))}</span>`;
-      const st = i.state === 'done'
+      // 公開待ちの投稿だけは「公開する」で完了する（対応済みでは消さない＝未公開のまま埋もれないように）
+      const st = i.kind === 'commpend'
+        ? `<div class="l2"><button class="mini" data-commpub="${esc(i.ckey)}">${L({ja:'公開する',en:'Publish',vi:'Duyệt'})}</button> <button class="mini" data-commhide="${esc(i.ckey)}">${L({ja:'公開しない',en:'Do not publish',vi:'Không duyệt'})}</button></div>`
+        : i.state === 'done'
         ? `<div class="l2" style="color:#2a7">${L({ja:'対応済み',en:'Done',vi:'Đã xử lý'})}${i.by?` ・${esc(i.by)}`:''}${i.memo?` ・${esc(i.memo)}`:''}</div>`
         : `<div class="l2"><button class="mini" data-ackdone="${esc(i.key)}">${L({ja:'対応済みにする',en:'Mark done',vi:'Đã xử lý'})}</button> <button class="mini" data-ackmemo="${esc(i.key)}">${L({ja:'メモを付けて完了',en:'Done with note',vi:'Xong kèm ghi chú'})}</button></div>`;
       return `<div class="rep" style="align-items:flex-start">${ph}<div class="body">
