@@ -2528,14 +2528,15 @@
     { v:'store', t:{ ja:'店舗運営のルール', en:'Store rules', vi:'Quy định cửa hàng' } },
     { v:'other', t:{ ja:'その他', en:'Other', vi:'Khác' } }
   ];
-  // 会議で決まったルール（2026-08-10 構築MTG）。出典を明記し、勝手に増やさない
+  // 会議で決まったルール（2026-08-10 構築MTG）。出典を明記し、勝手に増やさない。
+  // 本部が直したいときは faqset 側に同じ id の「上書き」を持たせる（deleted:true で非表示にもできる）。
   const FAQ_FIXED = [
-    { cat:'promo', src:'2026-08-10 構築MTG',
+    { id:'fx_promo', cat:'promo', src:'2026-08-10 構築MTG',
       q:{ ja:'販促物は、いつまでに依頼すればよいですか？', en:'How early should we request promotional items?', vi:'Cần đặt vật phẩm quảng bá trước bao lâu?' },
       a:{ ja:'制作元への依頼・調整を含めて2〜3週間かかります。使用したい日から逆算して、余裕をもってご依頼ください。',
           en:'It takes 2–3 weeks including the request to and coordination with the maker. Please order well before the date you need them.',
           vi:'Mất 2–3 tuần bao gồm đặt hàng và điều chỉnh với nhà sản xuất. Vui lòng đặt sớm trước ngày cần dùng.' } },
-    { cat:'store', src:'2026-08-10 構築MTG',
+    { id:'fx_drink', cat:'store', src:'2026-08-10 構築MTG',
       q:{ ja:'お客様からお飲み物の持ち込みを希望されたら、どうすればよいですか？', en:'What if a guest asks to bring their own drinks?', vi:'Nếu khách muốn mang đồ uống vào thì sao?' },
       a:{ ja:'原則としてお断りしています。例外的にお受けする場合は、事前に本部の承認が必要です。ご来店当日にお申し出をいただいた場合は、承認が間に合わないため原則お断りとなります。',
           en:'As a rule we decline. Exceptions require prior HQ approval. If the request is made on the day of the visit, approval cannot be obtained in time, so we decline as a rule.',
@@ -2544,20 +2545,49 @@
   const getFaq = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_faq')) || []; } catch { return []; } };
   const saveFaq = (a) => { try { localStorage.setItem('yosakura_demo_faq', JSON.stringify(a)); } catch (e) {} };
 
+  // 表示に使う一覧＝固定ルール（上書き・非表示を反映）＋本部が追加したもの
+  function faqList() {
+    const saved = getFaq();
+    const ovr = {}; saved.forEach(f => { if (f && /^fx_/.test(f.id)) ovr[f.id] = f; });
+    const fixed = FAQ_FIXED.map(f => {
+      const o = ovr[f.id];
+      if (o && o.deleted) return null;
+      return { id:f.id, fixed:true, cat:(o && o.cat) || f.cat, q:(o && o.q) || L(f.q), a:(o && o.a) || L(f.a), src:f.src, edited:!!(o && (o.q || o.a)) };
+    }).filter(Boolean);
+    const mine = saved.filter(f => f && !/^fx_/.test(f.id)).map(f => ({ id:f.id, cat:f.cat || 'other', q:f.q || '', a:f.a || '' }));
+    return fixed.concat(mine);
+  }
+  let faqEditId = null; // 編集中の項目（本部のみ）
+
   APP_VIEWS.faq = () => {
     const role = getRole(), isHQ = role === 'hq';
-    const added = getFaq();
+    const all = faqList();
+    const catOpts = (sel) => FAQ_CATS.map(c => `<option value="${c.v}"${c.v === sel ? ' selected' : ''}>${esc(L(c.t))}</option>`).join('');
     const rows = FAQ_CATS.map(c => {
-      const fixed = FAQ_FIXED.filter(f => f.cat === c.v).map(f => ({ fixed:true, q:L(f.q), a:L(f.a), src:f.src }));
-      const mine = added.filter(f => (f.cat || 'other') === c.v).map(f => ({ id:f.id, q:f.q || '', a:f.a || '' }));
-      const items = fixed.concat(mine);
+      const items = all.filter(f => f.cat === c.v);
       if (!items.length) return '';
       return `<div class="card"><h3>${esc(L(c.t))}</h3>
-        ${items.map(it => `<details class="rep" style="display:block;padding:10px 2px">
+        ${items.map(it => (isHQ && faqEditId === it.id) ? `
+        <div class="rep" style="display:block;padding:10px 2px">
+          <label class="fl">${esc(L({ ja:'分類', en:'Category', vi:'Phân loại' }))}</label>
+          <select id="faqe_cat">${catOpts(it.cat)}</select>
+          <label class="fl">${esc(L({ ja:'質問', en:'Question', vi:'Câu hỏi' }))}</label>
+          <input id="faqe_q" type="text" value="${esc(it.q)}">
+          <label class="fl">${esc(L({ ja:'答え', en:'Answer', vi:'Trả lời' }))}</label>
+          <textarea id="faqe_a" rows="4">${esc(it.a)}</textarea>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn" data-faqsave="${esc(it.id)}">${esc(L({ ja:'保存する', en:'Save', vi:'Lưu' }))}</button>
+            <button class="btn sm" data-faqcancel="1">${esc(L({ ja:'やめる', en:'Cancel', vi:'Huỷ' }))}</button>
+          </div>
+        </div>` : `
+        <details class="rep" style="display:block;padding:10px 2px">
           <summary style="cursor:pointer;font-weight:600">${esc(it.q)}</summary>
           <div class="l2" style="margin-top:6px;white-space:pre-wrap">${esc(it.a)}</div>
-          ${it.src ? `<div class="hint" style="margin-top:6px">${esc(it.src)}での決定事項</div>` : ''}
-          ${(isHQ && it.id) ? `<button class="btn sm" data-faqdel="${esc(it.id)}" style="margin-top:8px">${esc(L({ ja:'削除', en:'Delete', vi:'Xoá' }))}</button>` : ''}
+          ${it.src ? `<div class="hint" style="margin-top:6px">${esc(it.src)}での決定事項${it.edited ? `（${esc(L({ ja:'本部が修正', en:'edited by HQ', vi:'HQ đã sửa' }))}）` : ''}</div>` : ''}
+          ${isHQ ? `<div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn sm" data-faqedit="${esc(it.id)}">${esc(L({ ja:'編集', en:'Edit', vi:'Sửa' }))}</button>
+            <button class="btn sm" data-faqdel="${esc(it.id)}">${esc(L({ ja:'削除', en:'Delete', vi:'Xoá' }))}</button>
+          </div>` : ''}
         </details>`).join('')}
       </div>`;
     }).join('');
@@ -2572,7 +2602,7 @@
         <label class="fl">${esc(L({ ja:'答え', en:'Answer', vi:'Trả lời' }))}</label>
         <textarea id="faq_a" rows="3"></textarea>
         <button class="btn" id="faqAdd" style="margin-top:8px">${esc(L({ ja:'追加する', en:'Add', vi:'Thêm' }))}</button>
-        <p class="hint">${esc(L({ ja:'※ 会議で決まったルールは固定表示のため、ここでは編集できません。', en:'Rules decided in meetings are fixed and cannot be edited here.', vi:'Quy định đã quyết trong họp là cố định, không sửa tại đây.' }))}</p>
+        <p class="hint">${esc(L({ ja:'※ 追加・編集・削除は全店の端末に反映されます。会議で決まったルールも修正できます（元の出典は残ります）。', en:'Adds, edits and deletes sync to all devices. Rules decided in meetings can also be edited (the source note remains).', vi:'Thêm, sửa, xoá sẽ đồng bộ mọi máy. Quy định từ cuộc họp cũng có thể sửa (vẫn giữ ghi chú nguồn).' }))}</p>
       </div>` : ''}`;
   };
 
@@ -4359,14 +4389,35 @@
       const cat = (byId('faq_cat') || {}).value || 'other';
       if (!q || !a) { toast(L({ ja:'質問と答えの両方を入力してください', en:'Enter both a question and an answer', vi:'Nhập cả câu hỏi và câu trả lời' })); return; }
       const list = getFaq(); list.push({ id:'fq' + Date.now(), cat, q, a });
-      saveFaq(list); const t = Date.now(); lastSync = t;
+      saveFaq(list); const t = Date.now(); lastSync = t; faqEditId = null;
       toast(L({ ja:'追加しました', en:'Added', vi:'Đã thêm' })); render();
       postReport({ kind:'faqset', store:'', note: JSON.stringify(list), t });
     };
-    document.querySelectorAll('[data-faqdel]').forEach(b => b.onclick = () => {
-      const list = getFaq().filter(f => f.id !== b.dataset.faqdel);
+    const faqPush = (list) => {
       saveFaq(list); const t = Date.now(); lastSync = t; render(true);
       postReport({ kind:'faqset', store:'', note: JSON.stringify(list), t });
+    };
+    document.querySelectorAll('[data-faqedit]').forEach(b => b.onclick = () => { faqEditId = b.dataset.faqedit; render(true); });
+    document.querySelectorAll('[data-faqcancel]').forEach(b => b.onclick = () => { faqEditId = null; render(true); });
+    document.querySelectorAll('[data-faqsave]').forEach(b => b.onclick = () => {
+      const id = b.dataset.faqsave;
+      const q = ((byId('faqe_q') || {}).value || '').trim();
+      const a = ((byId('faqe_a') || {}).value || '').trim();
+      const cat = (byId('faqe_cat') || {}).value || 'other';
+      if (!q || !a) { toast(L({ ja:'質問と答えの両方を入力してください', en:'Enter both a question and an answer', vi:'Nhập cả câu hỏi và câu trả lời' })); return; }
+      const list = getFaq(); const i = list.findIndex(f => f && f.id === id);
+      if (i >= 0) list[i] = Object.assign({}, list[i], { cat, q, a, deleted:false });
+      else list.push({ id, cat, q, a });   // 会議で決まったルールを直した場合は「上書き」として持つ
+      faqEditId = null; toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' })); faqPush(list);
+    });
+    document.querySelectorAll('[data-faqdel]').forEach(b => b.onclick = () => {
+      const id = b.dataset.faqdel; const list = getFaq();
+      if (/^fx_/.test(id)) {   // 会議で決まったルールはコードに残るため「非表示」として保存する
+        const i = list.findIndex(f => f && f.id === id);
+        if (i >= 0) list[i] = Object.assign({}, list[i], { deleted:true }); else list.push({ id, deleted:true });
+        faqEditId = null; faqPush(list); return;
+      }
+      faqEditId = null; faqPush(list.filter(f => f.id !== id));
     });
 
     document.querySelectorAll('[data-openurl]').forEach(b => b.onclick = () => window.open(b.dataset.openurl, '_blank', 'noopener'));
