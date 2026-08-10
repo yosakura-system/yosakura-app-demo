@@ -1208,5 +1208,26 @@ console.log('== 公開待ちの投稿を、本部の受信箱でも拾える =='
   ok(!/data-commpub/.test(mg), '店長には公開ボタンが出ない');
 }
 
+console.log('== どの画面にも左上に「ホームへ戻る」がある ==');
+{
+  FETCH_ROWS = { ok:true, reports:[] };
+  for (const [role, store] of [['staff', S_HIROSHIMA], ['manager', S_HIROSHIMA], ['owner', S_HIROSHIMA], ['hq', 'all']]) {
+    run(()=> setLS(role, store, 'ja'));
+    await new Promise(r=>setTimeout(r, 30));
+    // タブ一覧の画面（報告・学ぶ・その他・本部）
+    const tabs = role === 'hq' ? ['genba','learn','other','hq'] : ['genba','learn','other'];
+    for (const t of tabs) {
+      location.hash = '#/home?tab=' + t;
+      ok(/id="backBtn"/.test(registry.app.innerHTML), `${role}：${t}タブに「ホーム」がある`);
+    }
+    // ホームだけは出さない（そこがホームのため）
+    location.hash = '#/home';
+    ok(!/id="backBtn"/.test(registry.app.innerHTML), `${role}：ホームには出さない`);
+    // 機能の画面（従来から出ている）
+    location.hash = '#/app/faq';
+    ok(/id="backBtn"/.test(registry.app.innerHTML), `${role}：機能の画面にも引き続きある`);
+  }
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
