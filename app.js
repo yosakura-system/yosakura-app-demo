@@ -315,13 +315,108 @@
   }
 
   // 総括表の履歴を用意（バックエンド非管理のローカル機能・空のときだけ）
+  /* 過去の日報（総括表）の見本（2026-08-12 渉さんのご要望）。
+     ★狙い＝「過去のデータがどう表示されるのか」を見えるようにする。
+       以前は2件しか無く、履歴も個店カルテも月次の推移も、ほぼ空のまま説明できなかった。
+     作り方の約束：
+       ・店舗ごとに売上の規模と原価率の傾向を変える（店舗別の比較が意味を持つように）
+       ・曜日で売上が動く（金土は上がる）＝実際の見え方に近づける
+       ・毎回同じ数字にする（開くたびに変わると画面を見ながら説明できない）
+     ※ 見本なので、実際の売上ではありません。 */
   function seedSk() {
-    if (localStorage.getItem('yosakura_demo_soukatsu')) return;
-    const now = Date.now(), d = (n) => new Date(now - n*864e5).toISOString().slice(0,10);
-    saveSk([
-      { store:'日本料理世桜 心斎橋（おまかせ）', date:d(1), sales:186817, guests:16, rvt:'2', rva:'70', hear:'9', disc:'0', food:'36.5', labor:'23.6', tipt:'21000', tipa:'84541', cancel:'31700', closer:'', note:'', order:'豆乳6／寿司のエビ2／ガリ1／お米', t:now-864e5 },
-      { store:'寿司世桜 心斎橋店', date:d(2), sales:80850, guests:12, rvt:'1', rva:'', hear:'', disc:'0', food:'', labor:'', tipt:'0', tipa:'0', cancel:'', closer:'', note:'', order:'', t:now-2*864e5 }
-    ]);
+    if (localStorage.getItem('yosakura_demo_soukatsu') && seedFresh('soukatsu')) return;
+    const now = Date.now(), DAY = 864e5;
+    // 店舗ごとの目安：1日の売上・客数・原価率・人件費率
+    const PLAN = [
+      { store:'日本料理世桜本店',     sales:186000, guests:16, food:36.5, labor:23.6, tip:true },
+      { store:'寿司世桜 心斎橋店',     sales:132000, guests:14, food:38.2, labor:24.8, tip:true },
+      { store:'牛カツ世桜 長堀橋店',   sales: 96000, guests:38, food:31.4, labor:21.2 },
+      { store:'日本鰻世桜 長堀橋店',   sales:118000, guests:22, food:34.8, labor:22.4 },
+      { store:'手巻き寿司世桜 難波店', sales: 74000, guests:26, food:33.1, labor:22.0 },
+      { store:'日本鰻世桜 富士山店',   sales:104000, guests:19, food:35.2, labor:20.8 },
+      { store:'牛カツ世桜 富士山店',   sales: 82000, guests:31, food:32.6, labor:21.9 },
+      { store:'日本鰻世桜 浅草橋店',   sales: 98000, guests:20, food:34.1, labor:23.1 },
+      { store:'和牛世桜 広島店',       sales:126000, guests:15, food:37.4, labor:22.7 }
+    ];
+    // 見本は毎回同じ並びにする
+    let seed = 20260812;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const rows = [];
+    for (let n = 1; n <= 45; n++) {                 // 直近45日ぶん
+      const dt = new Date(now - n * DAY);
+      const date = dt.toLocaleDateString('en-CA');
+      const dow = dt.getDay();                      // 0=日
+      const wk = (dow === 5 || dow === 6) ? 1.28 : (dow === 0 ? 1.12 : 0.94); // 金土は上がる
+      PLAN.forEach((p, pi) => {
+        // 日ごとのばらつき（±12%）。店舗と日付で決まるので毎回同じ
+        const f = 0.88 + rnd() * 0.24;
+        const sales = Math.round(p.sales * wk * f / 100) * 100;
+        const guests = Math.max(1, Math.round(p.guests * wk * (0.9 + rnd() * 0.2)));
+        const food = (p.food + (rnd() * 3 - 1.5)).toFixed(1);
+        const labor = (p.labor + (rnd() * 2.4 - 1.2)).toFixed(1);
+        rows.push({
+          store: p.store, date,
+          sales, guests,
+          rvt: String(Math.round(rnd() * 3)),         // 口コミ（当日）
+          rva: String(60 + Math.round(rnd() * 90)),   // 口コミ（累計）
+          hear: String(Math.round(rnd() * 8)),
+          disc: '0',
+          food, labor,
+          tipt: p.tip ? String(Math.round(rnd() * 24) * 1000) : '0',
+          tipa: p.tip ? String(60000 + Math.round(rnd() * 40) * 1000) : '0',
+          cancel: rnd() < 0.15 ? String(Math.round(rnd() * 30) * 1000) : '',
+          closer: '', note: '',
+          order: rnd() < 0.3 ? '豆乳6／お米／ガリ1' : '',
+          t: now - n * DAY + pi * 6e5
+        });
+      });
+    }
+    saveSk(rows);
+    seedMark('soukatsu');
+  }
+  /* 過去の月次（数値・原価率）の見本。日報とは別に、月ごとの締めの数字を持つ。
+     ★これが無いと「数値・原価率」の画面と個店カルテの月次推移が空になる。 */
+  function seedMonthly() {
+    if (localStorage.getItem('yosakura_demo_monthly') && seedFresh('monthly')) return;
+    const now = new Date();
+    let seed = 76543210;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const PLAN = [
+      { store:'日本料理世桜本店',     sales:5200000, food:36.5 },
+      { store:'寿司世桜 心斎橋店',     sales:3900000, food:38.2 },
+      { store:'牛カツ世桜 長堀橋店',   sales:2900000, food:31.4 },
+      { store:'日本鰻世桜 長堀橋店',   sales:3500000, food:34.8 },
+      { store:'手巻き寿司世桜 難波店', sales:2200000, food:33.1 },
+      { store:'日本鰻世桜 富士山店',   sales:3100000, food:35.2 },
+      { store:'牛カツ世桜 富士山店',   sales:2450000, food:32.6 },
+      { store:'日本鰻世桜 浅草橋店',   sales:2900000, food:34.1 },
+      { store:'和牛世桜 広島店',       sales:3700000, food:37.4 }
+    ];
+    const rows = [];
+    for (let back = 5; back >= 0; back--) {          // 直近6か月（今月を含む）
+      const d = new Date(now.getFullYear(), now.getMonth() - back, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      PLAN.forEach(p => {
+        const f = 0.92 + rnd() * 0.16;
+        const sales = Math.round(p.sales * f / 1000) * 1000;
+        // 原価率が目安どおりになるように、仕入と在庫の差し引きから逆算する
+        const cost = Math.round(sales * (p.food + (rnd() * 2 - 1)) / 100);
+        const openStock = Math.round(sales * 0.04 / 1000) * 1000;
+        const closeStock = Math.round(openStock * (0.85 + rnd() * 0.3) / 1000) * 1000;
+        rows.push({
+          store: p.store, ym,
+          sales: String(sales),
+          purchase: String(cost - openStock + closeStock),
+          open: String(openStock),
+          close: String(closeStock),
+          goal: String(Math.round(p.sales * 1.05 / 10000) * 10000),
+          by: '店長',
+          t: d.getTime() + 5 * 864e5
+        });
+      });
+    }
+    saveMonthly(rows);
+    seedMark('monthly');
   }
   // 気づきの初期データ（ローカル機能・空のときだけ）
   function seedKz() {
@@ -1700,14 +1795,18 @@
        ・改善点は実際のご回答と同じく、本文の先頭に【…】で入る形にする
        ・店舗ごとに評価の傾向を変える（良い店・課題のある店が見分けられるように）
      ※ 見本なので、実在のお客様の声ではありません。 */
-  // 見本データの版。中身を作り直したらここを上げる＝以前開いた端末にも新しい見本が届く
+  /* 見本データの版。中身を作り直したらここを上げる＝以前開いた端末にも新しい見本が届く。
+     ★印は見本ごとに分ける。1つの印を全部で共有すると、最初に走った見本が印を付けた時点で
+       後続の見本が「もう新しい版だ」と判断して作られない（2026-08-13 実際に起きた）。 */
   const SEED_VER_KEY = 'yosakura_demo_seed_ver';
-  const SEED_VER = '2026-08-12e';
+  const seedFresh = (name) => localStorage.getItem(SEED_VER_KEY + ':' + name) === SEED_VER;
+  const seedMark = (name) => { try { localStorage.setItem(SEED_VER_KEY + ':' + name, SEED_VER); } catch (e) {} };
+  const SEED_VER = '2026-08-13a';
   function seedSurvey() {
     /* ★以前この端末で開いた方には、古い見本が残ったままだった（2026-08-12 渉さんのご指摘で判明）。
        「すでに何か入っていたら作らない」という作りだったため、見本を作り直しても届かなかった。
        見本に版を付けて、版が変わったら作り直す。※見本はバックエンド非接続のときだけ入る。 */
-    if (localStorage.getItem('yosakura_demo_survey') && localStorage.getItem(SEED_VER_KEY) === SEED_VER) return;
+    if (localStorage.getItem('yosakura_demo_survey') && seedFresh('survey')) return;
     const now = Date.now(), H = 3600e3;
     // 店舗ごとの傾向：良い評価の割合と、出やすいご指摘
     const PLAN = [
@@ -1759,7 +1858,7 @@
     });
     rows.sort((a, b) => b.t - a.t);
     saveSurvey(rows);
-    try { localStorage.setItem(SEED_VER_KEY, SEED_VER); } catch (e) {}
+    seedMark('survey');
   }
   // iPadサーベイ運用マニュアル準拠：顔文字の満足度／改善点（複数選択）／高満足時のみ口コミ案内
   const SAT_FACES = [
@@ -3785,7 +3884,7 @@
      （こちらで匿名で確かめたところ、いずれもログインを求められ本文は返らなかった）。
      公開してはいけない資料は登録されていない、という前提のうえでのご判断。 */
   function seedMaterials() {
-    if (localStorage.getItem('yosakura_demo_links') && localStorage.getItem(SEED_VER_KEY) === SEED_VER) return;
+    if (localStorage.getItem('yosakura_demo_links') && seedFresh('links')) return;
     saveLinks([
       { id:'lk_p1', title:'世桜10訓', url:'https://docs.google.com/presentation/d/1mKwnYeS24TL8lPhL12S4EkBJFsroQF2_GtVEU6ithfA/edit?usp=sharing', mcat:'philosophy', desc:'スライド' },
       { id:'lk_p2', title:'世桜とは', url:'https://docs.google.com/presentation/d/1xg80AHrnU3CCbkFXz63tePwRufEV9n1AxZ8m75eyCHM/edit?usp=sharing', mcat:'philosophy', desc:'スライド' },
@@ -3812,7 +3911,7 @@
       { id:'lk_p23', title:'7DAYS 7日目', url:'https://docs.google.com/presentation/d/1TdzBd1-hku_s8jnl2BDg4pdaHRcatw7Wi2Ctbo9FISY/edit?usp=sharing', mcat:'sevendays', desc:'スライド' },
       { id:'lk_p24', title:'7DAYS 活用方法', url:'https://docs.google.com/presentation/d/1IiZYlGnq-uxzapxFsxfwcEVFAKK7fIfPCzWmLK-Idbg/edit?usp=sharing', mcat:'sevendays', desc:'スライド' }
     ]);
-    try { localStorage.setItem(SEED_VER_KEY, SEED_VER); } catch (e) {}
+    seedMark('links');
   }
   /* 勉強会の見本（2026-08-12 渉さんのご要望）。
      毎月第2水曜に実施しており、6月・7月はすでに開催済み。
@@ -3821,7 +3920,7 @@
      ★録画を入れる判断は渉さん（2026-08-12）＝「隠す必要はない。数値もスタッフが見て
        改善につなげられるよう育成している。各店舗の利益が見えない限り問題ない」。 */
   function seedStudy() {
-    if (localStorage.getItem('yosakura_demo_study') && localStorage.getItem(SEED_VER_KEY) === SEED_VER) return;
+    if (localStorage.getItem('yosakura_demo_study') && seedFresh('study')) return;
     const now = Date.now();
     saveStudy([
       { id:'st1786011551522', date:'2026-06', title:'2026年6月勉強会', t: now - 63 * 864e5, video:'https://drive.google.com/file/d/1jIm7Ks1XnVC6tlBSwvoq3rlfbQLagEDu/', body:'',
@@ -3831,7 +3930,7 @@
       { id:'st_2608', date:'2026-08', title:'2026年8月勉強会', t: now, video:'', body:'',
         docs:[{ title:'アジェンダスライド', url:'' }] }
     ]);
-    try { localStorage.setItem(SEED_VER_KEY, SEED_VER); } catch (e) {}
+    seedMark('study');
   }
   function seedCommunity() {
     if (localStorage.getItem('yosakura_demo_community')) return;
@@ -5090,7 +5189,7 @@
   document.documentElement.lang = LANG;
   if (!useBackend()) seedIfEmpty();
   // バックエンド接続時は全端末同期を使うためシードしない（＝実データのみ）。オフライン検証時のみ初期データを用意。
-  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); seedMaterials(); seedStudy(); }
+  if (!useBackend()) { seedSk(); seedMonthly(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); seedMaterials(); seedStudy(); }
   migrateStoreNames(); // 端末に残っている旧い店舗表記を、正式名称へ寄せ直す
   render();
   syncReports(true);

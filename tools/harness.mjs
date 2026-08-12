@@ -1636,6 +1636,40 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   ok(asakusa.length > 0 && !asakusa.some(v => v <= 3), '浅草橋店に低い評価を入れていない');
   ok(refreshed.some(r => r.sat <= 3), '低い評価そのものは残す（低い順に出る機能を説明できるように）');
 
+  /* ★過去の日次・月次のデータが見えること（2026-08-12 渉さんのご要望）。
+     「過去のデータがどう表示されるのか」を見せるため。以前は日報が2件しか無く、
+     履歴も個店カルテも月次の推移も、ほぼ空のままだった。 */
+  runTaiken(() => setLS('manager', '日本鰻世桜 浅草橋店', 'ja'));
+  const skAll = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]');
+  const moAll = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]');
+  ok(skAll.length >= 300, `過去の日報が十分にある（${skAll.length}件）`);
+  ok(moAll.length >= 40, `過去の月次が十分にある（${moAll.length}件）`);
+  const myDays = skAll.filter(r => r.store === '日本鰻世桜 浅草橋店');
+  ok(myDays.length >= 30, `自店の日報が何日ぶんもある（${myDays.length}日）`);
+  ok(myDays.every(r => Number(r.sales) > 0 && Number(r.guests) > 0), '売上と客数がすべて入っている');
+  ok(myDays.every(r => /^\d+\.\d$/.test(String(r.food))), '原価率も入っている');
+  const myMonths = [...new Set(moAll.filter(r => r.store === '日本鰻世桜 浅草橋店').map(r => r.ym))];
+  ok(myMonths.length >= 5, `月次が複数の月にまたがる（${myMonths.join(',')}）`);
+
+  // 画面に過去の日付が並ぶ（履歴・日報の画面）
+  location.hash = '#/app/soukatsu';
+  ok(/20\d\d-\d\d-\d\d/.test(registry.app.innerHTML), '日報の画面に過去の日付が出る');
+  location.hash = '#/store?s=' + encodeURIComponent('日本鰻世桜 浅草橋店');
+  ok(registry.app.innerHTML.length > 5000, '個店カルテに中身が出る');
+
+  /* ★見本の版は「見本ごと」に持つこと。
+     1つの印を共有すると、最初に走った見本が印を付けた時点で後続が作られない
+     （2026-08-13 実際に起きた。サーベイの見本が入らなくなった）。 */
+  ok(/const seedFresh = \(name\)/.test(code), '見本の版を見本ごとに見分けている');
+  runTaiken(() => {
+    setLS('manager', '日本鰻世桜 浅草橋店', 'ja');
+    // 全部の見本が古い状態を作る
+    ['survey', 'links', 'study', 'soukatsu', 'monthly'].forEach(k => localStorage.setItem('yosakura_demo_' + (k === 'links' ? 'links' : k), '[]'));
+  });
+  const after = ['yosakura_demo_survey', 'yosakura_demo_links', 'yosakura_demo_study', 'yosakura_demo_soukatsu', 'yosakura_demo_monthly']
+    .map(k => (JSON.parse(localStorage.getItem(k) || '[]') || []).length);
+  ok(after.every(n => n > 0), `古い見本が残っていても、5種すべてが作り直される（${after.join(',')}）`);
+
   /* ★マニュアルと勉強会が、体験版でも中身のある状態で見えること（2026-08-12 渉さんのご要望）。
      ただし配る版なので、①本部の資料URLは載せない ②加盟店の側では直せない。 */
   runTaiken(() => setLS('manager', '日本鰻世桜 浅草橋店', 'ja'));
