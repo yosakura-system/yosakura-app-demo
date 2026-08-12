@@ -159,7 +159,8 @@
     { id:'route', group:'genba', icon:'pin', hide:true, roles:['staff','manager','owner','hq'], // 議事録12-1: 来店経路はサーベイで回収（アプリに重複入力を作らない）。結果は「サーベイ集計」で表示
       name:{ ja:'来店経路の記録', en:'Arrival Route', vi:'Nguồn khách' },
       desc:{ ja:'来店きっかけをワンタップで', en:'One-tap arrival source', vi:'Nguồn khách 1 chạm' } },
-    { id:'community', group:'genba', icon:'chat', live:true, roles:['staff','manager','owner','hq'],
+    // ホームの「みんなの投稿」カードから開く（ホームには常に出ている）。タブに重ねない
+    { id:'community', group:'genba', icon:'chat', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'みんなの投稿', en:'Community', vi:'Cộng đồng' },
       desc:{ ja:'現場のグッドストーリーを全店で共有', en:'Share good stories across stores', vi:'Chia sẻ câu chuyện hay' } },
     { id:'review', group:'other', icon:'qr', hide:true, roles:['staff','manager','owner','hq'], // 議事録12-4/23: 口コミQRはアプリ掲載を一旦外す（紙運用が基本）
@@ -4227,12 +4228,12 @@
       desc:{ ja:'日程・録画・資料をまとめて確認（過去の回も見られます）', en:'Dates, recordings and materials', vi:'Lịch, ghi hình và tài liệu' } });
   }
   if (!appById('emergency')) {
-    APPS.push({ id:'emergency', group:'genba', icon:'phone', live:true, roles:['staff','manager','owner','hq'],
+    APPS.push({ id:'emergency', group:'genba', icon:'phone', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'緊急連絡先', en:'Emergency contacts', vi:'Liên hệ khẩn cấp' },
       desc:{ ja:'警察・消防・設備業者など、店舗別にすぐ確認', en:'Police, fire, vendors — by store', vi:'Cảnh sát, cứu hỏa, đơn vị — theo cửa hàng' } });
   }
   if (!appById('whistle')) {
-    APPS.push({ id:'whistle', group:'genba', icon:'shield', live:true, roles:['staff','manager','owner','hq'],
+    APPS.push({ id:'whistle', group:'genba', icon:'shield', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'公益通報・コンプラ窓口', en:'Whistleblowing', vi:'Tố giác / Tuân thủ' },
       desc:{ ja:'相談しにくい問題を本部へ直接（固定）', en:'Report directly to HQ (fixed item)', vi:'Báo cáo trực tiếp tới HQ (cố định)' } });
   }
