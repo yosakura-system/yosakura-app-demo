@@ -1065,7 +1065,9 @@ console.log('== 総点検：設定の整合（IDの重複・リンク先の存�
   ok(/data-tsubphoto="hygiene_m"/.test(mt), '月次の定期衛生を、アプリから写真で提出できる');
   ok(/data-tsubphoto="menubook"/.test(mt), 'メニューブックの確認を、アプリから写真で提出できる');
   ok(!/GLINEへ/.test(mt), '月次の提出物に「GLINEへ送る」案内が残っていない');
-  ok(/本部がシートを用意し/.test(mt), 'コンプラチェックに実施方法が書いてある');
+  /* コンプラチェック＝案②（2026-08-12 渉さんのご判断）。
+     四半期に1回のためにアプリ内へ回答画面を作らず、本部が用意されたシートへの入口だけを置く。 */
+  ok(/本部が用意したシートに記入してください/.test(mt), 'コンプラチェックに、どうすればよいかが書いてある');
   // 誤ったリンク先が残っていないこと（コンプラ→公益通報など、意味の違う画面へ飛ばさない）
   ok(!/linkApp:'whistle'/.test(code), 'コンプラチェックを公益通報の画面へ飛ばしていない');
 
@@ -1346,6 +1348,21 @@ console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12
   const gyu = renderView('shukan', 'manager', '牛カツ世桜 長堀橋店', 'ja'); // 週次は「今週出すもの」
   ok(/data-tdid="pop_week"/.test(gyu), '卓上POPの交換に「実施しました」が出る（牛カツは週1）');
   ok(/実施しました/.test(gyu), 'ボタンの文言が出ている');
+
+  /* コンプラチェック＝案②：本部が設定したシートへの入口を出すだけ。
+     ★何をチェックするのかは本部が配るもの。アプリの中に回答画面は作らない。 */
+  {
+    const S2 = '日本鰻世桜 浅草橋店';
+    // URLが未設定のうちは、ボタンを出さない（押しても何も無い状態を作らない）
+    const before = renderView('shihanki', 'manager', S2, 'ja') || renderView('getsuji', 'manager', S2, 'ja');
+    ok(!/シートを開く/.test(before), 'シートが未設定のうちは「シートを開く」を出さない');
+
+    // 本部が設定すると、店舗の画面に入口が出る（設定は全端末で共有される）
+    FETCH_ROWS = { ok:true, reports:[] };
+    run(() => setLS('hq', 'all', 'ja'));
+    location.hash = '#/app/teishutsu';
+    ok(/data-msturl="compliance"/.test(registry.app.innerHTML), '本部の画面に、シートの場所を入れる欄がある');
+  }
 
   // 押した記録が残れば提出済みになる（記録の置き場は写真提出と同じ）
   const today2 = new Date().toLocaleDateString('en-CA');
