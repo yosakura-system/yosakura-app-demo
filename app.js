@@ -2506,6 +2506,146 @@
   const plMonthsOf = (store) => getMonthly().filter(r => r.store === store).sort((a, b) => a.ym < b.ym ? 1 : -1);
   const plPrevClose = (store, ym) => { const r = getMonthly().find(x => x.store === store && x.ym === prevYm(ym)); return r ? r.close : ''; };
   const pct = (v) => (Number(v) || 0).toFixed(1) + '%';
+  /* ── 月別の推移グラフ（2026-08-13 渉さんのご要望）──────────────────
+     売上（棒）と原価率（折れ線）を、別々のグラフとして描く。
+     ★1つのグラフに2本の軸を作らない。尺度が違うものを重ねると、
+       上がったのか下がったのかが読めなくなる。 */
+  const CHART_INK = '#8E354A';            // 蘇芳。地色とのコントラスト・彩度は検証済み
+  const CHART_GRID = '#E7E1D8';           // 目盛りは地色から一段だけずらす
+  const chartNo = () => ++chartSeq;       // 同じ画面に2つ描くのでIDが重ならないように
+  let chartSeq = 0;
+
+  /* 棒グラフ（月別の売上）。値は右端（直近の月）だけに出す */
+  function barChart(items, opts) {
+    const o = opts || {};
+    const W = 320, H = 128, PADL = 4, PADB = 18, PADT = 14;
+    if (!items.length) return '';
+    const max = Math.max(...items.map(d => d.v)) || 1;
+    const n = items.length;
+    const band = (W - PADL * 2) / n;
+    const bw = Math.min(24, band - 2);     // 24px上限・棒どうしは2pxの隙間
+    const plotH = H - PADB - PADT;
+    const bars = items.map((d, i) => {
+      const h = Math.max(2, Math.round(d.v / max * plotH));
+      const x = PADL + band * i + (band - bw) / 2;
+      const y = H - PADB - h;
+      const r = Math.min(4, bw / 2);       // 上端だけ丸める（下端は基線に接する）
+      /* タップで中身を出す。指で押しやすいように、棒の幅より広い透明な当たり判定を重ねる
+         （棒が細いと押せない。2026-08-13 渉さんのご要望「タップしたら簡単な情報が出る」） */
+      const hit = `<rect x="${PADL + band * i}" y="${PADT}" width="${band}" height="${H - PADB - PADT}" fill="transparent" data-cvtip="${esc(d.tip || '')}" style="cursor:pointer"/>`;
+      return `<path d="M${x} ${y + h} L${x} ${y + r} Q${x} ${y} ${x + r} ${y} L${x + bw - r} ${y} Q${x + bw} ${y} ${x + bw} ${y + r} L${x + bw} ${y + h} Z" fill="${CHART_INK}" pointer-events="none"/>${hit}`;
+    }).join('');
+    const labels = items.map((d, i) =>
+      `<text x="${PADL + band * i + band / 2}" y="${H - 5}" text-anchor="middle" font-size="8.5" fill="#8a8f98">${esc(d.k)}</text>`).join('');
+    const last = items[n - 1];
+    const lastX = PADL + band * (n - 1) + band / 2;
+    const lastY = H - PADB - Math.max(2, Math.round(last.v / max * plotH));
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="${esc(o.alt || '')}" style="display:block">
+      <line x1="${PADL}" y1="${H - PADB}" x2="${W - PADL}" y2="${H - PADB}" stroke="${CHART_GRID}" stroke-width="1"/>
+      ${bars}${labels}
+      <text x="${Math.min(lastX, W - 30)}" y="${Math.max(10, lastY - 5)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1A1A1A">${esc(o.fmt ? o.fmt(last.v) : last.v)}</text>
+    </svg>`;
+  }
+
+  /* 折れ線グラフ（月別の原価率）。目安の線を1本だけ添える */
+  function lineChart(items, opts) {
+    const o = opts || {};
+    const W = 320, H = 118, PADL = 6, PADB = 18, PADT = 16;
+    if (!items.length) return '';
+    const vs = items.map(d => d.v);
+    // 上下に少し余白を持たせる（線が枠に張り付かないように）
+    const lo = Math.min(...vs, o.ref != null ? o.ref : Infinity) - 2;
+    const hi = Math.max(...vs, o.ref != null ? o.ref : -Infinity) + 2;
+    const plotH = H - PADB - PADT;
+    const yOf = (v) => PADT + plotH - (v - lo) / Math.max(0.1, hi - lo) * plotH;
+    const n = items.length;
+    const band = (W - PADL * 2) / Math.max(1, n - 1);
+    const xOf = (i) => n === 1 ? W / 2 : PADL + band * i;
+    const pts = items.map((d, i) => `${xOf(i)},${yOf(d.v).toFixed(1)}`).join(' ');
+    const dots = items.map((d, i) =>
+      // 点は小さいので、押せる範囲を広めに重ねる
+      `<circle cx="${xOf(i)}" cy="${yOf(d.v).toFixed(1)}" r="4" fill="${CHART_INK}" stroke="#fff" stroke-width="2" pointer-events="none"/>
+       <circle cx="${xOf(i)}" cy="${yOf(d.v).toFixed(1)}" r="14" fill="transparent" data-cvtip="${esc(d.tip || '')}" style="cursor:pointer"/>`).join('');
+    const labels = items.map((d, i) =>
+      `<text x="${xOf(i)}" y="${H - 5}" text-anchor="middle" font-size="8.5" fill="#8a8f98">${esc(d.k)}</text>`).join('');
+    // 目盛りの代わりに、いちばん高い月と低い月の値だけを左端に小さく出す（全部の点には出さない）
+    const hiV = Math.max(...vs), loV = Math.min(...vs);
+    const scale = o.axis ? `
+      <text x="${PADL}" y="${(yOf(hiV) - 6).toFixed(1)}" font-size="8" fill="#8a8f98">${esc(o.fmt ? o.fmt(hiV) : hiV)}</text>
+      <text x="${PADL}" y="${(yOf(loV) + 12).toFixed(1)}" font-size="8" fill="#8a8f98">${esc(o.fmt ? o.fmt(loV) : loV)}</text>` : '';
+    const ref = o.ref != null
+      ? `<line x1="${PADL}" y1="${yOf(o.ref).toFixed(1)}" x2="${W - PADL}" y2="${yOf(o.ref).toFixed(1)}" stroke="${CHART_GRID}" stroke-width="1"/>
+         <text x="${W - PADL}" y="${(yOf(o.ref) - 4).toFixed(1)}" text-anchor="end" font-size="8" fill="#8a8f98">${esc(o.refLabel || '')}</text>` : '';
+    const last = items[n - 1];
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="${esc(o.alt || '')}" style="display:block">
+      ${ref}${scale}
+      <polyline points="${pts}" fill="none" stroke="${CHART_INK}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}${labels}
+      <text x="${Math.min(xOf(n - 1), W - 26)}" y="${Math.max(11, yOf(last.v) - 9).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1A1A1A">${esc(o.fmt ? o.fmt(last.v) : last.v)}</text>
+    </svg>`;
+  }
+
+  /* 曜日別の傾向（直近4週間の日報から）。2026-08-13 渉さんのご要望。
+     日ごとの棒を30本並べても傾向は読めない。曜日ごとの平均にすると
+     「金土が強い」「火曜が落ちる」が一目で分かり、シフトや仕込みの判断に使える。 */
+  const DOW_LABELS = [{ja:'日',en:'Sun',vi:'CN'},{ja:'月',en:'Mon',vi:'T2'},{ja:'火',en:'Tue',vi:'T3'},{ja:'水',en:'Wed',vi:'T4'},{ja:'木',en:'Thu',vi:'T5'},{ja:'金',en:'Fri',vi:'T6'},{ja:'土',en:'Sat',vi:'T7'}];
+  function dowTrend(store) {
+    const from = new Date(Date.now() - 28 * 864e5).toLocaleDateString('en-CA');
+    const rows = getSk().filter(r => r.store === store && r.date && r.date >= from);
+    if (rows.length < 7) return '';
+    const bucket = DOW_LABELS.map(() => ({ s: 0, g: 0, n: 0 }));
+    rows.forEach(r => {
+      const d = new Date(r.date + 'T00:00:00');
+      const b = bucket[d.getDay()];
+      if (!b) return;
+      b.s += Number(r.sales) || 0; b.g += Number(r.guests) || 0; b.n++;
+    });
+    const items = bucket.map((b, i) => {
+      const avg = b.n ? Math.round(b.s / b.n) : 0;
+      const gavg = b.n ? Math.round(b.g / b.n) : 0;
+      return {
+        k: L(DOW_LABELS[i]), v: avg,
+        tip: `${L(DOW_LABELS[i])}${L({ ja:'曜日', en:'', vi:'' })}　${L({ ja:'平均売上', en:'Avg sales', vi:'DT TB' })} ${yen(avg)}　${L({ ja:'平均客数', en:'Avg guests', vi:'Khách TB' })} ${gavg}${L({ ja:'名', en:'', vi:'' })}（${b.n}${L({ ja:'日ぶん', en:' days', vi:' ngày' })}）`
+      };
+    });
+    // いちばん強い曜日・弱い曜日を言葉でも出す（グラフを読めない方にも伝わるように）
+    const have = items.filter(x => x.v > 0);
+    const best = have.slice().sort((a, b) => b.v - a.v)[0];
+    const worst = have.slice().sort((a, b) => a.v - b.v)[0];
+    const man = (v) => Math.round(v / 10000) + L({ ja:'万', en:'万', vi:'万' });
+    return `
+      <div class="card">
+        <h3>${L({ ja:'曜日別の傾向（直近4週間）', en:'By weekday (last 4 weeks)', vi:'Theo ngày trong tuần (4 tuần)' })}</h3>
+        ${barChart(items, { fmt: man, alt: L({ ja:'曜日ごとの平均売上の棒グラフ', en:'Average sales by weekday', vi:'Doanh thu TB theo ngày' }) })}
+        ${(best && worst && best !== worst) ? `<p class="hint" style="display:block">${L({ ja:'いちばん多いのは', en:'Highest: ', vi:'Cao nhất: ' })}<b>${esc(best.k)}${L({ ja:'曜日', en:'', vi:'' })}</b>${L({ ja:'（平均', en:' (avg ', vi:' (TB ' })}${yen(best.v)}${L({ ja:'）、少ないのは', en:'), lowest: ', vi:'), thấp nhất: ' })}<b>${esc(worst.k)}${L({ ja:'曜日', en:'', vi:'' })}</b>${L({ ja:'（平均', en:' (avg ', vi:' (TB ' })}${yen(worst.v)}${L({ ja:'）です。', en:').', vi:').' })}</p>` : ''}
+        <p class="hint" style="display:block">${L({ ja:'※ 棒をタップすると、その曜日の平均が出ます。', en:'Tap a bar for that weekday’s average.', vi:'Chạm vào cột để xem trung bình.' })}</p>
+      </div>`;
+  }
+
+  /* 月別の推移（売上・原価率）。数字そのものは下の一覧で読める＝グラフは形を見るためのもの */
+  function plTrend(store) {
+    const ms = plMonthsOf(store).slice(0, 12).slice().reverse();   // 古い→新しい
+    if (ms.length < 2) return '';
+    const mlabel = (ym) => String(ym || '').slice(5) + L({ ja:'月', en:'', vi:'' });
+    const tipOf = (m) => { const c = plCalc(m); return `${m.ym}　${L({ ja:'売上', en:'Sales', vi:'DT' })} ${yen(c.sales)}　${L({ ja:'原価率', en:'Cost', vi:'Giá vốn' })} ${pct(c.costRate)}`; };
+    const sales = ms.map(m => ({ k: mlabel(m.ym), v: plCalc(m).sales, tip: tipOf(m) }));
+    const cost  = ms.map(m => ({ k: mlabel(m.ym), v: Number(plCalc(m).costRate.toFixed(1)), tip: tipOf(m) }));
+    const man = (v) => Math.round(v / 10000) + L({ ja:'万', en:'万', vi:'万' });
+    return `
+      <div class="card">
+        <h3>${L({ ja:'月別の推移（売上）', en:'Monthly sales trend', vi:'Doanh thu theo tháng' })}</h3>
+        ${/* 時系列の変化なので折れ線。棒（0を基準にする）だと月ごとの差が1割ほどのとき
+             全部同じ高さに見えて、上がったか下がったかが読めない（2026-08-13 描いて確認した） */''}
+        ${lineChart(sales, { fmt: man, axis: true, alt: L({ ja:'月ごとの売上の折れ線グラフ', en:'Monthly sales line chart', vi:'Biểu đồ doanh thu' }) })}
+        <p class="hint" style="display:block">${L({ ja:'※ 数字は下の一覧でご確認いただけます。', en:'Figures are listed below.', vi:'Số liệu ở danh sách bên dưới.' })}</p>
+      </div>
+      ${dowTrend(store)}
+      <div class="card">
+        <h3>${L({ ja:'月別の推移（原価率）', en:'Monthly cost ratio', vi:'Giá vốn theo tháng' })}</h3>
+        ${lineChart(cost, { fmt: (v) => v.toFixed(1) + '%', ref: 35, refLabel: L({ ja:'目安 35%', en:'target 35%', vi:'mục tiêu 35%' }), alt: L({ ja:'月ごとの原価率の折れ線グラフ', en:'Monthly cost ratio line chart', vi:'Biểu đồ giá vốn' }) })}
+      </div>`;
+  }
+
   const plRow = (m) => { const c = plCalc(m); return `<div class="rep"><span class="kind ${c.costRate>0&&c.costRate<=35?'b':'a'}">${esc(m.ym)}</span><div class="body"><div class="l1">${L({ja:'売上',en:'Sales',vi:'DT'})} ${yen(c.sales)} ・ ${L({ja:'原価率',en:'Cost',vi:'Giá vốn'})} <b>${pct(c.costRate)}</b></div><div class="l2">${L({ja:'原価',en:'Cost',vi:'Giá vốn'})} ${yen(c.cost)} ・ ${L({ja:'粗利',en:'Gross',vi:'Lãi gộp'})} ${yen(c.gross)}（${pct(c.grossRate)}）</div></div></div>`; };
   APP_VIEWS.pl = () => {
     const vis = visibleStores();
@@ -2544,6 +2684,7 @@
         <button class="btn-primary" id="plSave">${L({ ja:'保存する', en:'Save', vi:'Lưu' })}</button>
         <div class="hint">${L({ ja:'原価率＝（月初在庫＋当月仕入－月末在庫）÷売上', en:'Cost ratio = (open + purchases − close) ÷ sales', vi:'Giá vốn = (đầu + nhập − cuối) ÷ doanh thu' })}</div>
       </div>
+      ${plTrend(store)}
       <div class="card"><h3>${L({ ja:'月別の推移', en:'Monthly history', vi:'Lịch sử theo tháng' })}</h3>
         ${rows.length ? rows.map(plRow).join('') : `<div class="muted">${L({ ja:'まだ入力がありません', en:'No data yet', vi:'Chưa có' })}</div>`}
       </div>`;
@@ -4935,6 +5076,11 @@
       saveMasters(list);
       toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' }));
       render(true);
+    });
+    // グラフをタップしたら、その月・その曜日の中身を出す（2026-08-13 渉さんのご要望）
+    document.querySelectorAll('[data-cvtip]').forEach(b => b.onclick = () => {
+      const t = b.dataset.cvtip;
+      if (t) toast(t);
     });
     // 写真の提出物の切り替え（オープン写真／月次の衛生写真／メニューブック）
     document.querySelectorAll('[data-phtarget]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_photo_target', b.dataset.phtarget); render(); });
