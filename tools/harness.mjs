@@ -1503,14 +1503,37 @@ console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12
   {
     const S2 = '日本鰻世桜 浅草橋店';
     // URLが未設定のうちは、ボタンを出さない（押しても何も無い状態を作らない）
-    const before = renderView('shihanki', 'manager', S2, 'ja') || renderView('getsuji', 'manager', S2, 'ja');
+    const before = renderView('getsuji', 'manager', S2, 'ja'); // 四半期の提出物は月次業務に並ぶ
     ok(!/シートを開く/.test(before), 'シートが未設定のうちは「シートを開く」を出さない');
+
+    /* ★説明とボタンが食い違わないこと（2026-08-12 渉さんのご指摘）。
+       「下のボタンから開けます」と書いてあるのにボタンが無い、という状態を作らない。 */
+    const q = renderView('getsuji', 'manager', S2, 'ja');
+    ok(!/ボタンから開けます|button below/.test(q), 'まだ無いボタンを、説明文で案内しない');
+    ok(/本部がシートを用意すると/.test(q), '用意待ちであることが画面に出ている');
 
     // 本部が設定すると、店舗の画面に入口が出る（設定は全端末で共有される）
     FETCH_ROWS = { ok:true, reports:[] };
     run(() => setLS('hq', 'all', 'ja'));
     location.hash = '#/app/teishutsu';
     ok(/data-msturl="compliance"/.test(registry.app.innerHTML), '本部の画面に、シートの場所を入れる欄がある');
+
+    // 場所が設定されたら、説明の代わりに「シートを開く」が出る
+    // 本部が設定した状態を作る（提出物マスタは丸ごと最新版が正なので、確認したい1件だけで足りる）
+    const withUrl = [{ id:'compliance', name:{ja:'コンプラチェック（4・7・10・1月）',en:'Compliance',vi:'Tuân thủ'},
+      oblig:'required', freq:'quarterly', due:'23:59', target:'all', hqReview:'each', detect:'none',
+      url:'https://docs.google.com/spreadsheets/d/demo',
+      how:{ja:'本部が用意したシートに記入してください',en:'Fill in the sheet prepared by HQ',vi:'Điền vào bảng do HQ chuẩn bị'} }];
+    FETCH_ROWS = { ok:true, reports:[
+      { kind:'submaster', store:'*', item:'master', note: JSON.stringify(withUrl), t: Date.now(), id:'m1' },
+    ]};
+    try { run(() => setLS('manager', S2, 'ja')); } catch (e) { FAIL++; console.log('  ✗ sheet url threw: ' + e.message); }
+    await new Promise(r => setTimeout(r, 50));
+    location.hash = '#/app/getsuji'; // 四半期のものは月次業務に並ぶ
+    const set2 = registry.app.innerHTML;
+    ok(/シートを開く/.test(set2), '設定されたら「シートを開く」が出る');
+    ok(!/本部がシートを用意すると/.test(set2), '用意待ちの案内は消える');
+    FETCH_ROWS = { ok:false };
   }
 
   // 押した記録が残れば提出済みになる（記録の置き場は写真提出と同じ）
