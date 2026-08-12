@@ -207,7 +207,9 @@
     { id:'soukatsu', group:'storeops', icon:'table', tabHide:true, roles:['staff','manager','owner','hq'], // 日報は店舗iPad（現場）でも入力可（上原さんご要望）
       name:{ ja:'総括表の入力（日報）', en:'Daily Summary', vi:'Tổng kết ngày' },
       desc:{ ja:'日次の売上・客数・分析（店舗iPadでも入力可）', en:'Daily sales, guests, review', vi:'Doanh thu, khách, phân tích' } },
-    { id:'mtg', group:'storeops', icon:'mtg', roles:['manager','owner','hq'],
+    /* 2026-08-12 渉さんのご要望：実施は一部の店舗でも、今後実施する店舗もあるため、
+       自店のスタッフさんが過去の回をアーカイブとして確認できるようにする。 */
+    { id:'mtg', group:'storeops', icon:'mtg', roles:['staff','manager','owner','hq'],
       name:{ ja:'月例MTG', en:'Monthly Meeting', vi:'Họp hàng tháng' },
       desc:{ ja:'各店の定例MTGと議題を一元管理', en:'All stores meetings & agendas', vi:'Lịch họp & nội dung mọi cửa hàng' } },
     { id:'hr', group:'storeops', icon:'hr', soon:true, roles:['manager','owner','hq'],
@@ -344,7 +346,7 @@
      2つが違えば「新しい版があります」と出して、その場で最新にできるようにする。
      ※ 以前は最新版の番号だけを表示していたため、端末が古い版のまま動いていても
        画面には最新の番号が出てしまい、更新が届いていないことに気づけなかった。 */
-  const APP_BUILD = 'yosakura-taiken-v17';
+  const APP_BUILD = 'yosakura-taiken-v18';
   let LATEST_BUILD = '';
   const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
@@ -1700,7 +1702,7 @@
      ※ 見本なので、実在のお客様の声ではありません。 */
   // 見本データの版。中身を作り直したらここを上げる＝以前開いた端末にも新しい見本が届く
   const SEED_VER_KEY = 'yosakura_demo_seed_ver';
-  const SEED_VER = '2026-08-12c';
+  const SEED_VER = '2026-08-12d';
   function seedSurvey() {
     /* ★以前この端末で開いた方には、古い見本が残ったままだった（2026-08-12 渉さんのご指摘で判明）。
        「すでに何か入っていたら作らない」という作りだったため、見本を作り直しても届かなかった。
@@ -3778,51 +3780,57 @@
      体験版では中身のURLを持たない＝「どの大項目に、どんな資料が並ぶか」が分かる状態にする。
      ★実際のURLは入れない。本部のGoogleドキュメントを配る版に載せない、という判断。
        押しても開かず「本部が資料を登録すると開けます」と出る。 */
+  /* マニュアルの見本＝プレビュー（本部が使っている環境）に実際に登録されている資料と同じ構成。
+     2026-08-12 渉さんのご要望「プレビューと同じように見れるようにしてほしい」。
+     ★リンク先のURLは入れていない。体験版は公開の場所に置くため、
+       本部の資料のURLをそのまま載せる判断はこちらではできない（要ご判断）。
+       押すと「本部が資料を登録すると開けます」と出る。 */
   function seedMaterials() {
     if (localStorage.getItem('yosakura_demo_links') && localStorage.getItem(SEED_VER_KEY) === SEED_VER) return;
-    const mk = (n, title, mcat, desc) => ({ id:'lk_s' + n, title, url:'', mcat, desc });
-    let n = 0; const L2 = (t, c, d) => mk(++n, t, c, d);
     saveLinks([
-      L2('世桜の理念・ブランドコア', 'philosophy', '私たちが大切にしていること'),
-      L2('ブランドブック（抜粋）', 'philosophy', '産地・指定パートナー・世界観'),
-      L2('おもてなしの基本', 'service', 'お出迎えからお見送りまで'),
-      L2('営業中の優先順位', 'service', '迷ったときの判断のしかた'),
-      L2('多言語の接客フレーズ集', 'service', '英語・韓国語・中国語'),
-      L2('盛り付けの基準（写真つき）', 'serving', 'メニューごとの完成形'),
-      L2('グラム規定一覧', 'serving', '各メニューの分量'),
-      L2('提供時の確認ポイント', 'serving', 'ホールが最後の確認役'),
-      L2('清掃基準（場所別）', 'cleaning', '毎日・週次・月次'),
-      L2('清掃の好事例', 'cleaning', '他店で効果のあったやり方'),
-      L2('身だしなみ基準', 'hygiene', '出勤前のチェック'),
-      L2('正しい手洗い・アルコール消毒', 'hygiene', '食中毒を出さないために'),
-      L2('まな板の衛生管理', 'hygiene', '二次汚染を防ぐ'),
-      L2('7DAYS 新人教育プログラム', 'sevendays', '1日目から7日目まで'),
-      L2('ハウスルール', 'sevendays', '働くうえでの約束ごと'),
-      L2('朝礼の進め方', 'sevendays', '毎日の始め方'),
-      L2('iPadサーベイ運用マニュアル', 'survey', 'お客様へのご案内のしかた'),
-      L2('タイムカード・シフト管理', 'storeops', '勤怠の締めまで'),
-      L2('鍵の管理', 'storeops', '受け渡しと保管'),
-      L2('キャリアアップ実践ガイド', 'owner', 'スタッフの成長を支える'),
-      L2('原価計算の考え方', 'owner', '仕入率と原価率の違い')
+      { id:'lk_p1', title:'世桜10訓', url:'', mcat:'philosophy', desc:'スライド' },
+      { id:'lk_p2', title:'世桜とは', url:'', mcat:'philosophy', desc:'スライド' },
+      { id:'lk_p3', title:'創業ストーリー', url:'', mcat:'philosophy', desc:'スライド' },
+      { id:'lk_p4', title:'チームカルチャー', url:'', mcat:'philosophy', desc:'スライド' },
+      { id:'lk_p5', title:'5つの価値（詳細）', url:'', mcat:'philosophy', desc:'スライド' },
+      { id:'lk_p6', title:'5つの価値（指標）と責任者・管理者の役割', url:'', mcat:'philosophy', desc:'スプレッドシート' },
+      { id:'lk_p7', title:'身だしなみ', url:'', mcat:'hygiene', desc:'スライド' },
+      { id:'lk_p8', title:'身だしなみ（POP用）', url:'', mcat:'hygiene', desc:'スライド' },
+      { id:'lk_p9', title:'営業中の優先順位表', url:'', mcat:'service', desc:'スプレッドシート' },
+      { id:'lk_p10', title:'世桜BOOKプレゼントマニュアル（コース店舗）', url:'', mcat:'service', desc:'スライド' },
+      { id:'lk_p11', title:'タイムカード・シフト・鍵管理', url:'', mcat:'storeops', desc:'スライド' },
+      { id:'lk_p12', title:'キャリアアップ実践ガイド', url:'', mcat:'owner', desc:'スライド' },
+      { id:'lk_p13', title:'研修トレーナー育成マニュアル', url:'', mcat:'hq', desc:'スライド' },
+      { id:'lk_p14', title:'7DAYS 研修プログラム（研修対応者用）', url:'', mcat:'hq', desc:'スプレッドシート' },
+      { id:'lk_p15', title:'ハウスルール', url:'', mcat:'sevendays', desc:'スプレッドシート' },
+      { id:'lk_p16', title:'朝礼シート', url:'', mcat:'sevendays', desc:'ドキュメント' },
+      { id:'lk_p17', title:'7DAYS 1日目', url:'', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p18', title:'7DAYS 2日目', url:'', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p19', title:'7DAYS 3日目', url:'', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p20', title:'7DAYS 4日目', url:'', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p21', title:'7DAYS 5日目', url:'', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p22', title:'7DAYS 6日目', url:'', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p23', title:'7DAYS 7日目', url:'', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p24', title:'7DAYS 活用方法', url:'', mcat:'sevendays', desc:'スライド' }
     ]);
     try { localStorage.setItem(SEED_VER_KEY, SEED_VER); } catch (e) {}
   }
   /* 勉強会の見本（2026-08-12 渉さんのご要望）。
      毎月第2水曜に実施しており、6月・7月はすでに開催済み。
      ★録画と資料のURLは入れない（配る版に本部の記録を載せない）。日程と内容が分かる状態にする。 */
+  /* 勉強会の見本＝プレビューに実際に登録されている回に合わせた（6月・7月）。
+     8月は今月の予定として置いている。
+     ★録画と資料のURLは入れていない（上と同じ理由）。 */
   function seedStudy() {
     if (localStorage.getItem('yosakura_demo_study') && localStorage.getItem(SEED_VER_KEY) === SEED_VER) return;
     const now = Date.now();
     saveStudy([
-      { id:'st_2606', date:'2026-06-10', title:'加盟店勉強会（6月）', t: now - 63 * 864e5, video:'',
-        body:'トピックス／口コミランキング／商品品質の研修／質疑応答',
-        docs:[{ title:'当日のアジェンダ（見本）', url:'' }, { title:'商品品質の資料（見本）', url:'' }] },
-      { id:'st_2607', date:'2026-07-08', title:'加盟店勉強会（7月）', t: now - 35 * 864e5, video:'',
-        body:'トピックス／口コミランキング／衛生管理／質疑応答',
-        docs:[{ title:'当日のアジェンダ（見本）', url:'' }, { title:'衛生管理の資料（見本）', url:'' }] },
-      { id:'st_2608', date:'2026-08-19', title:'加盟店勉強会（8月）', t: now, video:'',
-        body:'トピックス／口コミランキング／商品開発・品質研修／世桜アプリのご紹介／質疑応答',
-        docs:[{ title:'当日のアジェンダ（見本）', url:'' }] }
+      { id:'st1786011551522', date:'2026-06', title:'2026年6月勉強会', t: now - 63 * 864e5, video:'', body:'',
+        docs:[{ title:'アジェンダスライド', url:'' }, { title:'テーマスライド', url:'' }] },
+      { id:'st1786011745177', date:'2026-07', title:'2026年7月勉強会', t: now - 35 * 864e5, video:'', body:'',
+        docs:[{ title:'アジェンダスライド', url:'' }] },
+      { id:'st_2608', date:'2026-08', title:'2026年8月勉強会', t: now, video:'', body:'',
+        docs:[{ title:'アジェンダスライド', url:'' }] }
     ]);
     try { localStorage.setItem(SEED_VER_KEY, SEED_VER); } catch (e) {}
   }
@@ -4020,14 +4028,15 @@
     return m[3] ? `${m[1]}年${Number(m[2])}月${Number(m[3])}日` : `${m[1]}年${Number(m[2])}月`;
   };
   const studyRow = (s, isHq) => {
-    const docs = (s.docs || []).filter(d => d && isHttp(d.url));
+    // 資料はURLが未登録でも名前を出す（何が配られる回なのかが分かるように・2026-08-12）
+    const docs = (s.docs || []).filter(d => d && (d.title || isHttp(d.url)));
     return `
       <div class="card">
         <h3 style="font-size:14px">${esc(s.title || '—')}${s.date ? `　<span class="muted" style="font-size:12px">${esc(studyDateLabel(s.date))}</span>` : ''}</h3>
         ${s.note ? `<p class="dtext">${esc(s.note)}</p>` : ''}
         <div class="homelinks">
           ${isHttp(s.video) ? `<button class="homelink" data-openurl="${esc(s.video)}"><span class="hl-ic">${svg('video')}</span><span class="hl-t">${L({ ja:'録画を見る', en:'Watch recording', vi:'Xem ghi hình' })}</span><span class="hl-c">${svg('chev')}</span></button>` : ''}
-          ${docs.map(d => `<button class="homelink" data-openurl="${esc(d.url)}"><span class="hl-ic">${svg('book')}</span><span class="hl-t">${esc(d.title || L({ ja:'資料', en:'Material', vi:'Tài liệu' }))}</span><span class="hl-c">${svg('chev')}</span></button>`).join('')}
+          ${docs.map(d => { const has = isHttp(d.url); return `<button class="homelink"${has ? ` data-openurl="${esc(d.url)}"` : ' data-mock="1"'}><span class="hl-ic">${svg('book')}</span><span class="hl-t">${esc(d.title || L({ ja:'資料', en:'Material', vi:'Tài liệu' }))}${has ? '' : `　<small style="color:#8a8">${L({ ja:'（見本）', en:'(sample)', vi:'(mẫu)' })}</small>`}</span><span class="hl-c">${svg('chev')}</span></button>`; }).join('')}
         </div>
         ${(!isHttp(s.video) && !docs.length) ? `<p class="muted">${L({ ja:'録画・資料はまだ登録されていません', en:'No recording or materials yet', vi:'Chưa có ghi hình/tài liệu' })}</p>` : ''}
         ${isHq ? `<div style="display:flex;gap:8px;margin-top:10px">
