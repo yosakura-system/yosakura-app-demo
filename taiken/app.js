@@ -344,7 +344,7 @@
      2つが違えば「新しい版があります」と出して、その場で最新にできるようにする。
      ※ 以前は最新版の番号だけを表示していたため、端末が古い版のまま動いていても
        画面には最新の番号が出てしまい、更新が届いていないことに気づけなかった。 */
-  const APP_BUILD = 'yosakura-taiken-v15';
+  const APP_BUILD = 'yosakura-taiken-v16';
   let LATEST_BUILD = '';
   const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
@@ -1689,20 +1689,29 @@
        ・改善点は実際のご回答と同じく、本文の先頭に【…】で入る形にする
        ・店舗ごとに評価の傾向を変える（良い店・課題のある店が見分けられるように）
      ※ 見本なので、実在のお客様の声ではありません。 */
+  // 見本データの版。中身を作り直したらここを上げる＝以前開いた端末にも新しい見本が届く
+  const SEED_VER_KEY = 'yosakura_demo_seed_ver';
+  const SEED_VER = '2026-08-12c';
   function seedSurvey() {
-    if (localStorage.getItem('yosakura_demo_survey')) return;
+    /* ★以前この端末で開いた方には、古い見本が残ったままだった（2026-08-12 渉さんのご指摘で判明）。
+       「すでに何か入っていたら作らない」という作りだったため、見本を作り直しても届かなかった。
+       見本に版を付けて、版が変わったら作り直す。※見本はバックエンド非接続のときだけ入る。 */
+    if (localStorage.getItem('yosakura_demo_survey') && localStorage.getItem(SEED_VER_KEY) === SEED_VER) return;
     const now = Date.now(), H = 3600e3;
     // 店舗ごとの傾向：良い評価の割合と、出やすいご指摘
     const PLAN = [
-      { store:'日本料理世桜本店',      n:22, hi:0.86, issues:['提供時間が長かった', '接客'] },
-      { store:'寿司世桜 心斎橋店',      n:26, hi:0.81, issues:['提供時間が長かった', '盛り付け、接客'] },
-      { store:'牛カツ世桜 長堀橋店',    n:24, hi:0.79, issues:['料理の味', '提供時間が長かった'] },
-      { store:'日本鰻世桜 長堀橋店',    n:16, hi:0.88, issues:['店内の清潔さ'] },
-      { store:'手巻き寿司世桜 難波店',  n:14, hi:0.72, issues:['接客', '料理の味'] },
-      { store:'日本鰻世桜 富士山店',    n:19, hi:0.95, issues:['特に問題はありません'] },
-      { store:'牛カツ世桜 富士山店',    n:15, hi:0.74, issues:['提供時間が長かった', '店内の清潔さ'] },
-      { store:'日本鰻世桜 浅草橋店',    n:18, hi:0.69, issues:['接客', '提供時間が長かった'] },
-      { store:'和牛世桜 広島店',        n:12, hi:0.83, issues:['料理の味'] }
+      /* ★どの店舗も高い評価にしてある（2026-08-12 渉さんのご指摘）。
+         見本とはいえ、実在の店舗が「評価の低い例」として加盟店の皆さまの目に触れる形にしない。
+         低い評価はどの店舗にも少しだけ入る＝「低い評価が上に出る」ことは説明できる。 */
+      { store:'日本料理世桜本店',      n:22, hi:0.90, issues:['提供時間が長かった'] },
+      { store:'寿司世桜 心斎橋店',      n:26, hi:0.88, issues:['提供時間が長かった', '盛り付け、接客'] },
+      { store:'牛カツ世桜 長堀橋店',    n:24, hi:0.88, issues:['料理の味'] },
+      { store:'日本鰻世桜 長堀橋店',    n:16, hi:0.91, issues:['店内の清潔さ'] },
+      { store:'手巻き寿司世桜 難波店',  n:14, hi:0.87, issues:['接客'] },
+      { store:'日本鰻世桜 富士山店',    n:19, hi:0.96, issues:['特に問題はありません'] },
+      { store:'牛カツ世桜 富士山店',    n:15, hi:0.89, issues:['提供時間が長かった'] },
+      { store:'日本鰻世桜 浅草橋店',    n:18, hi:0.95, issues:['特に問題はありません'] },
+      { store:'和牛世桜 広島店',        n:12, hi:0.90, issues:['料理の味'] }
     ];
     // 来店きっかけ＝お客様が答えられた言語のまま（寄せる処理を通す）
     const ROUTE_RAW = ['google', 'グーグル', '구글', 'Google Maps', 'instagram', '인스타그램', 'tiktok', 'Walk in', '現場候位', '예약 없이', 'đi thẳng vào', '友人の紹介'];
@@ -1739,6 +1748,7 @@
     });
     rows.sort((a, b) => b.t - a.t);
     saveSurvey(rows);
+    try { localStorage.setItem(SEED_VER_KEY, SEED_VER); } catch (e) {}
   }
   // iPadサーベイ運用マニュアル準拠：顔文字の満足度／改善点（複数選択）／高満足時のみ口コミ案内
   const SAT_FACES = [
