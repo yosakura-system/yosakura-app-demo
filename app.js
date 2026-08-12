@@ -4188,18 +4188,21 @@
       name:{ ja:'バックエンド設定', en:'Backend settings', vi:'Cài đặt backend' },
       desc:{ ja:'データの保存先（専用／共用）を切り替え', en:'Switch data backend (dedicated/shared)', vi:'Đổi nơi lưu dữ liệu' } });
   }
+  /* 日次・週次・月次は、ホームの「提出・業務」に常に出ている（全役割）。
+     タブにも並べると同じものが2か所になるため、タブの一覧には出さない（2026-08-12 渉さんのご指摘）。
+     これで「報告する」＝気づいたときに出すもの、ホーム＝今日やること、と役割が分かれる。 */
   if (!appById('kyou')) {
-    APPS.unshift({ id:'kyou', group:'genba', icon:'check', live:true, roles:['staff','manager','owner','hq'],
+    APPS.unshift({ id:'kyou', group:'genba', icon:'check', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'今日出すもの', en:'Today to submit', vi:'Cần nộp hôm nay' },
       desc:{ ja:'当日の提出物と未提出をひと目で', en:'Today’s items & missing at a glance', vi:'Mục cần nộp & còn thiếu' } });
   }
   if (!appById('shukan')) {
-    APPS.unshift({ id:'shukan', group:'genba', icon:'calendar', live:true, roles:['staff','manager','owner','hq'],
+    APPS.unshift({ id:'shukan', group:'genba', icon:'calendar', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'今週出すもの', en:'This week to submit', vi:'Cần nộp tuần này' },
       desc:{ ja:'今週の提出物と未提出をひと目で', en:'This week’s items & missing', vi:'Mục tuần & còn thiếu' } });
   }
   if (!appById('getsuji')) {
-    APPS.unshift({ id:'getsuji', group:'genba', icon:'calendar', live:true, roles:['staff','manager','owner','hq'],
+    APPS.unshift({ id:'getsuji', group:'genba', icon:'calendar', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'月末・月次で出すもの', en:'Monthly to submit', vi:'Cần nộp hàng tháng' },
       desc:{ ja:'今月の提出物と未提出をひと目で', en:'This month’s items & missing', vi:'Mục tháng & còn thiếu' } });
   }
