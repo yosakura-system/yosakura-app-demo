@@ -1593,6 +1593,29 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   location.hash = '#/app/backend';
   ok(called() === 0, '接続先の画面を直接開こうとしても、外への通信は起きない：' + sent.join(','));
 
+  /* ★お客様アンケートの見本が、どの店舗で開いても出ること（2026-08-12 渉さんのご要望）。
+     以前は1店舗ぶんしか無く、他の店舗の店長で開くと集計が空っぽだった。 */
+  runTaiken(() => setLS('manager', '日本鰻世桜 浅草橋店', 'ja'));
+  const sv = JSON.parse(localStorage.getItem('yosakura_demo_survey') || '[]');
+  ok(sv.length >= 100, `見本のご回答が十分にある（${sv.length}件）`);
+  const svStores = [...new Set(sv.map(r => r.store))];
+  ok(svStores.length >= 8, `複数の店舗にまたがっている（${svStores.length}店舗）`);
+  for (const st of ['日本鰻世桜 浅草橋店', '日本鰻世桜 富士山店', '和牛世桜 広島店']) {
+    runTaiken(() => setLS('manager', st, 'ja'));
+    location.hash = '#/app/survey';
+    const h = registry.app.innerHTML;
+    ok(/[0-9]\.[0-9]/.test(h), `${st}：平均満足度が出る`);
+    ok(/いただいたご指摘/.test(h), `${st}：いただいたご指摘が出る`);
+    ok(/お客様の声/.test(h), `${st}：お客様の声が出る`);
+  }
+  /* 見本の中身は毎回同じにする（開くたびに評価や件数が変わると、画面を説明できない）。
+     日時だけは「いま」を基準に置くので、そこは比べない。 */
+  const shape = (a) => JSON.stringify(a.slice(0, 5).map(r => ({ s:r.store, v:r.sat, n:r.note, c:r.country })));
+  const first = shape(sv);
+  runTaiken(() => setLS('manager', '日本鰻世桜 浅草橋店', 'ja'));
+  const again = shape(JSON.parse(localStorage.getItem('yosakura_demo_survey') || '[]'));
+  ok(first === again, '開き直しても見本の中身（評価・ご意見）が変わらない');
+
   /* ★体験版は「加盟店の皆さまが使う3つの役割」だけ（2026-08-12 渉さんのご判断）。
      本部の画面は加盟店の方には関係がなく、見えると話が逸れる。 */
   runTaiken(() => setLS('hq', 'all', 'ja')); // 端末に本部が残っている状態で開く
