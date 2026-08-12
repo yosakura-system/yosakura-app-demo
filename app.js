@@ -1746,6 +1746,12 @@
   const mgroupLabel = (v) => { const g = MANUAL_GROUPS.find(x => x.v === v); return g ? L(g.t) : L({ ja:'未分類', en:'Unsorted', vi:'Chưa phân loại' }); };
   // Google文書を読み取り専用ビューアで開くURLへ変換（/edit... → /preview）。非本部は編集画面に入れない。
   const roViewUrl = (u) => String(u || '').replace(/\/edit\b[^#]*(#.*)?$/, '/preview');
+  /* ★本部以外が開くリンクは、必ず閲覧専用にする（2026-08-14 渉さんのご指摘）。
+     勉強会のアジェンダが編集できる状態になっていた。マニュアルだけ変換しており、
+     勉強会・サーベイの資料・提出物のシートは編集画面のまま開いていた。
+     権限のある方が開くと、その場で本部の資料を書き換えられてしまう。
+     本部（hq）だけは、これまでどおり編集できる状態で開く。 */
+  const openUrlFor = (u) => (getRole() === 'hq' ? u : roViewUrl(u));
   const manualRow = (m) => {
     const mats = m.gid ? getLinks().filter(l => l.mcat === m.gid).sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))) : [];
     const roForRole = getRole() !== 'hq'; // 本部以外は読み取り専用で開く
@@ -1754,7 +1760,7 @@
        体験版では中身のURLを持たないので、ここが「見本」として並ぶ（2026-08-12）。 */
     const subs = mats.map(l => {
       const has = isHttp(l.url);
-      const ou = has ? (roForRole ? roViewUrl(l.url) : l.url) : '';
+      const ou = has ? openUrlFor(l.url) : '';
       const note = has
         ? L({ ja: roForRole ? '閲覧専用で開く' : 'タップで開く', en: roForRole ? 'Open (read-only)' : 'Tap to open', vi: roForRole ? 'Mở (chỉ đọc)' : 'Chạm để mở' })
         : L({ ja:'（見本）本部が資料を登録すると開けます', en:'(sample) opens once HQ registers the document', vi:'(mẫu) mở được khi HQ đăng ký tài liệu' });
@@ -1947,7 +1953,7 @@
       <div class="card">
         <h3>${L({ ja:'回答の集約シート', en:'Response sheets', vi:'Bảng tổng hợp' })}</h3>
         <div class="homelinks">
-          ${mats.map(l => `<button class="homelink" data-openurl="${esc(l.url)}"><span class="hl-ic">${svg('table')}</span><span class="hl-t">${esc(l.title)}</span><span class="hl-c">${svg('chev')}</span></button>`).join('')}
+          ${mats.map(l => `<button class="homelink" data-openurl="${esc(openUrlFor(l.url))}"><span class="hl-ic">${svg('table')}</span><span class="hl-t">${esc(l.title)}</span><span class="hl-c">${svg('chev')}</span></button>`).join('')}
         </div>
         <div class="hint">${L({ ja:'※ 集計はアプリが自動で行いますが、回答そのものを確認したいときはこちらから開けます。', en:'The app aggregates automatically; open these to see raw responses.', vi:'Ứng dụng tự tổng hợp; mở đây để xem phản hồi gốc.' })}</div>
       </div>`;
@@ -3466,7 +3472,7 @@
     /* 本部が用意したシートへの入口（コンプラチェックなど）。
        アプリの中に回答画面を作らず、本部のシートをそのまま開く（2026-08-12 案②）。 */
     const sheetBtn = isHttp(it.m.url)
-      ? `<button class="mini" data-openurl="${esc(it.m.url)}">${L({ja:'シートを開く',en:'Open sheet',vi:'Mở bảng'})}${svg('chev')}</button>` : '';
+      ? `<button class="mini" data-openurl="${esc(openUrlFor(it.m.url))}">${L({ja:'シートを開く',en:'Open sheet',vi:'Mở bảng'})}${svg('chev')}</button>` : '';
     /* ★提出が済んだあとも開けるようにする（2026-08-12）。
        以前は提出済みになるとボタンが消えていた。見返したり、チェックを直したりできなくなるうえ、
        この一覧を唯一の入口にすると（報告タブから重複を外すと）どこからも開けなくなる。 */
@@ -4274,8 +4280,8 @@
         <h3 style="font-size:14px">${esc(s.title || '—')}${s.date ? `　<span class="muted" style="font-size:12px">${esc(studyDateLabel(s.date))}</span>` : ''}</h3>
         ${s.note ? `<p class="dtext">${esc(s.note)}</p>` : ''}
         <div class="homelinks">
-          ${isHttp(s.video) ? `<button class="homelink" data-openurl="${esc(s.video)}"><span class="hl-ic">${svg('video')}</span><span class="hl-t">${L({ ja:'録画を見る', en:'Watch recording', vi:'Xem ghi hình' })}</span><span class="hl-c">${svg('chev')}</span></button>` : ''}
-          ${docs.map(d => { const has = isHttp(d.url); return `<button class="homelink"${has ? ` data-openurl="${esc(d.url)}"` : ' data-mock="1"'}><span class="hl-ic">${svg('book')}</span><span class="hl-t">${esc(d.title || L({ ja:'資料', en:'Material', vi:'Tài liệu' }))}${has ? '' : `　<small style="color:#8a8">${L({ ja:'（見本）', en:'(sample)', vi:'(mẫu)' })}</small>`}</span><span class="hl-c">${svg('chev')}</span></button>`; }).join('')}
+          ${isHttp(s.video) ? `<button class="homelink" data-openurl="${esc(openUrlFor(s.video))}"><span class="hl-ic">${svg('video')}</span><span class="hl-t">${L({ ja:'録画を見る', en:'Watch recording', vi:'Xem ghi hình' })}</span><span class="hl-c">${svg('chev')}</span></button>` : ''}
+          ${docs.map(d => { const has = isHttp(d.url); return `<button class="homelink"${has ? ` data-openurl="${esc(openUrlFor(d.url))}"` : ' data-mock="1"'}><span class="hl-ic">${svg('book')}</span><span class="hl-t">${esc(d.title || L({ ja:'資料', en:'Material', vi:'Tài liệu' }))}${has ? '' : `　<small style="color:#8a8">${L({ ja:'（見本）', en:'(sample)', vi:'(mẫu)' })}</small>`}</span><span class="hl-c">${svg('chev')}</span></button>`; }).join('')}
         </div>
         ${(!isHttp(s.video) && !docs.length) ? `<p class="muted">${L({ ja:'録画・資料はまだ登録されていません', en:'No recording or materials yet', vi:'Chưa có ghi hình/tài liệu' })}</p>` : ''}
         ${isHq ? `<div style="display:flex;gap:8px;margin-top:10px">
