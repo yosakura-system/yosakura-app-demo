@@ -1648,10 +1648,21 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
 
   location.hash = '#/app/study';
   const stu = registry.app.innerHTML;
-  ['2026年6月', '2026年7月', '2026年8月'].forEach(m => {
-    ok(stu.includes(m), `勉強会の${m}分が出る`);
+  // プレビューに実際に登録されている回と同じ（2026年6月・7月）＋今月
+  ['2026年6月勉強会', '2026年7月勉強会', '2026年8月勉強会'].forEach(m => {
+    ok(stu.includes(m), `勉強会の「${m}」が出る`);
   });
+  ok(/アジェンダスライド/.test(stu), '登録されている資料の名前も出る');
   ok(!/data-studyedit/.test(stu) && !/studyForm/.test(stu), '加盟店の側では、勉強会を直せない');
+  ok(/7DAYS 1日目/.test(man), 'マニュアルも、実際に登録されている資料と同じ並びになっている');
+
+  /* ★月例MTGを、自店のスタッフさんもアーカイブとして見られる（2026-08-12 渉さんのご要望）。
+     実施は一部の店舗でも、これから始める店舗が過去の回を見られるようにしておく。 */
+  runTaiken(() => setLS('staff', '日本鰻世桜 浅草橋店', 'ja'));
+  location.hash = '#/app/mtg';
+  const mtgS = registry.app.innerHTML;
+  ok(mtgS.length > 1000, 'スタッフでも月例MTGの中身が見える');
+  ok(!/<input|<textarea/.test(mtgS), 'スタッフの画面には入力欄を出さない（見るだけ）');
 
   /* ★体験版は「加盟店の皆さまが使う3つの役割」だけ（2026-08-12 渉さんのご判断）。
      本部の画面は加盟店の方には関係がなく、見えると話が逸れる。 */
