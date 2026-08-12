@@ -21,6 +21,10 @@
        （ここを localStorage 任せにすると、以前この端末で本番URLを入れていた方の操作が
          本物の履歴に混ざる。配る版なので、ビルドの時点で断ち切る） */
   const TAIKEN = !API_URL_DEFAULT;
+  /* 体験版のご意見の受け皿（Googleフォーム）。★URLが決まったらここに入れる。
+     2026-08-14 渉さんのご判断＝アプリの中で受けると「送れたのに届かない」ため、窓口を1つにする。
+     空のままなら、フォームの代わりにLINEでお知らせいただくようご案内する。 */
+  const TAIKEN_FORM_URL = '';
   const getApiUrl = () => (TAIKEN ? '' : (localStorage.getItem(LS_API) || API_URL_DEFAULT));
   const isCustomApi = () => !!localStorage.getItem(LS_API);
   /* システム管理者モード：接続先の変更は「本部ロール かつ 管理者モード」のみ可能。
@@ -3693,6 +3697,31 @@
   ];
   const fbCatLabel = (v) => { const f = FB_CATS.find(x => x.v === v); return f ? L(f.t) : v; };
   APP_VIEWS.appfb = () => {
+    /* ★体験版：アプリの中に入力欄を置かない（保存先が無く、届かないため）。
+       Googleフォームへの入口だけを出す。窓口を2つ作らない。 */
+    if (TAIKEN) {
+      return `
+        <div class="card">
+          <h3>${L({ ja:'このアプリへのご意見', en:'Feedback on this app', vi:'Góp ý về ứng dụng' })}</h3>
+          <p class="hint" style="display:block">${L({
+            ja:'使ってみて気づいたことを、そのままお聞かせください。いただいたご意見が、次に作るものの順番になります。',
+            en:'Tell us what you noticed. Your feedback sets what we build next.',
+            vi:'Hãy cho biết điều bạn nhận thấy. Góp ý của bạn quyết định thứ tự phát triển.' })}</p>
+          ${isHttp(TAIKEN_FORM_URL)
+            ? `<button class="btn-primary" data-openurl="${esc(TAIKEN_FORM_URL)}">${L({ ja:'ご意見フォームを開く', en:'Open the feedback form', vi:'Mở biểu mẫu góp ý' })}</button>
+               <div class="hint">${L({ ja:'※ 3分ほどで終わります。お名前の記入は任意です。', en:'About 3 minutes. Your name is optional.', vi:'Khoảng 3 phút. Tên là tùy chọn.' })}</div>`
+            : `<p class="hint" style="display:block;color:#a23b3b">${L({
+                ja:'※ ご意見フォームは準備中です。お手数ですが、LINEでお知らせください。',
+                en:'The feedback form is being prepared. Please tell us on LINE for now.',
+                vi:'Biểu mẫu đang được chuẩn bị. Vui lòng cho chúng tôi biết qua LINE.' })}</p>`}
+        </div>
+        <div class="card">
+          <p class="hint" style="display:block">${L({
+            ja:'※ この体験版は、触っていただくためのものです。入力した内容はお手元の端末の中だけに残り、お店の記録には送られません。',
+            en:'This trial version is for trying things out. Entries stay on your device and are never sent to store records.',
+            vi:'Bản dùng thử để trải nghiệm. Dữ liệu chỉ ở trên máy này, không gửi tới hồ sơ cửa hàng.' })}</p>
+        </div>`;
+    }
     const rows = subRows(FB_KIND).sort((a, b) => b.t - a.t).slice(0, 30);
     const mine = getRole();
     return `
