@@ -344,7 +344,7 @@
      2つが違えば「新しい版があります」と出して、その場で最新にできるようにする。
      ※ 以前は最新版の番号だけを表示していたため、端末が古い版のまま動いていても
        画面には最新の番号が出てしまい、更新が届いていないことに気づけなかった。 */
-  const APP_BUILD = 'yosakura-taiken-v16';
+  const APP_BUILD = 'yosakura-taiken-v17';
   let LATEST_BUILD = '';
   const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
@@ -1653,7 +1653,16 @@
     const mats = m.gid ? getLinks().filter(l => l.mcat === m.gid).sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))) : [];
     const roForRole = getRole() !== 'hq'; // 本部以外は読み取り専用で開く
     const head = `<div class="mrow"${mats.length ? '' : ' data-mock="1"'}><div class="mi">${svg(m.ic)}</div><div class="mt"><b>${esc(L(m.t))}</b><span>${esc(L(m.s))}</span></div><span class="chev">${mats.length ? `<small style="color:#8a8">${L({ ja:'資料', en:'Docs', vi:'TL' })}${mats.length}</small>` : svg('chev')}</span></div>`;
-    const subs = mats.map(l => { const ou = roForRole ? roViewUrl(l.url) : l.url; return `<div class="mrow mrow--sub" data-openurl="${esc(ou)}" style="padding-left:22px"><div class="mi">${svg('link')}</div><div class="mt"><b>${esc(l.title)}</b><span>${l.desc ? esc(l.desc) + ' ・ ' : ''}${L({ ja: roForRole ? '閲覧専用で開く' : 'タップで開く', en: roForRole ? 'Open (read-only)' : 'Tap to open', vi: roForRole ? 'Mở (chỉ đọc)' : 'Chạm để mở' })}</span></div><span class="chev">${svg('chev')}</span></div>`; }).join('');
+    /* リンクがまだ登録されていない資料は、押しても開かない（空のタブが開いてしまうため）。
+       体験版では中身のURLを持たないので、ここが「見本」として並ぶ（2026-08-12）。 */
+    const subs = mats.map(l => {
+      const has = isHttp(l.url);
+      const ou = has ? (roForRole ? roViewUrl(l.url) : l.url) : '';
+      const note = has
+        ? L({ ja: roForRole ? '閲覧専用で開く' : 'タップで開く', en: roForRole ? 'Open (read-only)' : 'Tap to open', vi: roForRole ? 'Mở (chỉ đọc)' : 'Chạm để mở' })
+        : L({ ja:'（見本）本部が資料を登録すると開けます', en:'(sample) opens once HQ registers the document', vi:'(mẫu) mở được khi HQ đăng ký tài liệu' });
+      return `<div class="mrow mrow--sub"${has ? ` data-openurl="${esc(ou)}"` : ' data-mock="1"'} style="padding-left:22px"><div class="mi">${svg('link')}</div><div class="mt"><b>${esc(l.title)}</b><span>${l.desc ? esc(l.desc) + ' ・ ' : ''}${note}</span></div><span class="chev">${svg('chev')}</span></div>`;
+    }).join('');
     return head + subs;
   };
   APP_VIEWS.manual = () => {
@@ -3765,12 +3774,57 @@
       { title:'清掃の好事例を共有しました', body:'藁焼き装置のステンレス汚れはウタマロで改善できます。定期清掃箇所に追加しました。', level:'normal', target:'all', t: now - 3600e3 * 30 }
     ]);
   }
+  /* マニュアルの見本（2026-08-12 渉さんのご要望）。
+     体験版では中身のURLを持たない＝「どの大項目に、どんな資料が並ぶか」が分かる状態にする。
+     ★実際のURLは入れない。本部のGoogleドキュメントを配る版に載せない、という判断。
+       押しても開かず「本部が資料を登録すると開けます」と出る。 */
   function seedMaterials() {
-    if (localStorage.getItem('yosakura_demo_links')) return;
+    if (localStorage.getItem('yosakura_demo_links') && localStorage.getItem(SEED_VER_KEY) === SEED_VER) return;
+    const mk = (n, title, mcat, desc) => ({ id:'lk_s' + n, title, url:'', mcat, desc });
+    let n = 0; const L2 = (t, c, d) => mk(++n, t, c, d);
     saveLinks([
-      { id:'lk_demo1', title:'世桜の理念・ブランドコア（例）', url:'', mcat:'philosophy', desc:'本部が実際のSlides/DocsのURLを登録します' },
-      { id:'lk_demo2', title:'スタッフの基本・接客の心得（例）', url:'', mcat:'sevendays', desc:'登録するとタップで資料が開きます' }
+      L2('世桜の理念・ブランドコア', 'philosophy', '私たちが大切にしていること'),
+      L2('ブランドブック（抜粋）', 'philosophy', '産地・指定パートナー・世界観'),
+      L2('おもてなしの基本', 'service', 'お出迎えからお見送りまで'),
+      L2('営業中の優先順位', 'service', '迷ったときの判断のしかた'),
+      L2('多言語の接客フレーズ集', 'service', '英語・韓国語・中国語'),
+      L2('盛り付けの基準（写真つき）', 'serving', 'メニューごとの完成形'),
+      L2('グラム規定一覧', 'serving', '各メニューの分量'),
+      L2('提供時の確認ポイント', 'serving', 'ホールが最後の確認役'),
+      L2('清掃基準（場所別）', 'cleaning', '毎日・週次・月次'),
+      L2('清掃の好事例', 'cleaning', '他店で効果のあったやり方'),
+      L2('身だしなみ基準', 'hygiene', '出勤前のチェック'),
+      L2('正しい手洗い・アルコール消毒', 'hygiene', '食中毒を出さないために'),
+      L2('まな板の衛生管理', 'hygiene', '二次汚染を防ぐ'),
+      L2('7DAYS 新人教育プログラム', 'sevendays', '1日目から7日目まで'),
+      L2('ハウスルール', 'sevendays', '働くうえでの約束ごと'),
+      L2('朝礼の進め方', 'sevendays', '毎日の始め方'),
+      L2('iPadサーベイ運用マニュアル', 'survey', 'お客様へのご案内のしかた'),
+      L2('タイムカード・シフト管理', 'storeops', '勤怠の締めまで'),
+      L2('鍵の管理', 'storeops', '受け渡しと保管'),
+      L2('キャリアアップ実践ガイド', 'owner', 'スタッフの成長を支える'),
+      L2('原価計算の考え方', 'owner', '仕入率と原価率の違い')
     ]);
+    try { localStorage.setItem(SEED_VER_KEY, SEED_VER); } catch (e) {}
+  }
+  /* 勉強会の見本（2026-08-12 渉さんのご要望）。
+     毎月第2水曜に実施しており、6月・7月はすでに開催済み。
+     ★録画と資料のURLは入れない（配る版に本部の記録を載せない）。日程と内容が分かる状態にする。 */
+  function seedStudy() {
+    if (localStorage.getItem('yosakura_demo_study') && localStorage.getItem(SEED_VER_KEY) === SEED_VER) return;
+    const now = Date.now();
+    saveStudy([
+      { id:'st_2606', date:'2026-06-10', title:'加盟店勉強会（6月）', t: now - 63 * 864e5, video:'',
+        body:'トピックス／口コミランキング／商品品質の研修／質疑応答',
+        docs:[{ title:'当日のアジェンダ（見本）', url:'' }, { title:'商品品質の資料（見本）', url:'' }] },
+      { id:'st_2607', date:'2026-07-08', title:'加盟店勉強会（7月）', t: now - 35 * 864e5, video:'',
+        body:'トピックス／口コミランキング／衛生管理／質疑応答',
+        docs:[{ title:'当日のアジェンダ（見本）', url:'' }, { title:'衛生管理の資料（見本）', url:'' }] },
+      { id:'st_2608', date:'2026-08-19', title:'加盟店勉強会（8月）', t: now, video:'',
+        body:'トピックス／口コミランキング／商品開発・品質研修／世桜アプリのご紹介／質疑応答',
+        docs:[{ title:'当日のアジェンダ（見本）', url:'' }] }
+    ]);
+    try { localStorage.setItem(SEED_VER_KEY, SEED_VER); } catch (e) {}
   }
   function seedCommunity() {
     if (localStorage.getItem('yosakura_demo_community')) return;
@@ -4684,7 +4738,11 @@
       faqEditId = null; faqPush(list.filter(f => f.id !== id));
     });
 
-    document.querySelectorAll('[data-openurl]').forEach(b => b.onclick = () => window.open(b.dataset.openurl, '_blank', 'noopener'));
+    document.querySelectorAll('[data-openurl]').forEach(b => b.onclick = () => {
+      const u = b.dataset.openurl;
+      if (!isHttp(u)) { toast(L({ ja:'この資料はまだ登録されていません', en:'This document is not registered yet', vi:'Tài liệu này chưa được đăng ký' })); return; }
+      window.open(u, '_blank', 'noopener');
+    });
 
     // ③ 口コミQR：保存・開く・コピー
     if (byId('reviewSave')) byId('reviewSave').onclick = () => {
@@ -5024,7 +5082,7 @@
   document.documentElement.lang = LANG;
   if (!useBackend()) seedIfEmpty();
   // バックエンド接続時は全端末同期を使うためシードしない（＝実データのみ）。オフライン検証時のみ初期データを用意。
-  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); seedMaterials(); }
+  if (!useBackend()) { seedSk(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); seedMaterials(); seedStudy(); }
   migrateStoreNames(); // 端末に残っている旧い店舗表記を、正式名称へ寄せ直す
   render();
   syncReports(true);
