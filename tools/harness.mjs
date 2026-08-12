@@ -1325,6 +1325,49 @@ console.log('== チェックリスト：最後まで終えたときだけ提出�
   }
 }
 
+console.log('== いいね／うちでもやってみます は、押し間違えても取り消せる（2026-08-12）==');
+{
+  /* バックエンドは追記だけで行を消せないため、取り消しは「取り消した」という記録を足して表す。
+     いいね＝-1として合算／やってみます＝投稿×店舗ごとに最新が正。 */
+  const S3 = '牛カツ世桜 長堀橋店';
+  const t0 = Date.now() - 3600e3;
+  const key = `${t0}|${S3}`;
+
+  // 押した記録のあとに、取り消しの記録が来たら消える
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'comm', store:S3, item:'guest', note:'お客様が喜ばれました', photos:[], t:t0, id:'c1' },
+    { kind:'commmod', store:S3, item:key, note: JSON.stringify({ state:'published' }), t:t0+1, id:'c2' },
+    { kind:'commlike', store:S3, item:key, t:t0+2, id:'c3' },
+    { kind:'commlike', store:S3, item:key, t:t0+3, id:'c4' },
+    { kind:'commlike', store:S3, item:key, note: JSON.stringify({ off:true }), t:t0+4, id:'c5' },
+    { kind:'commtry', store:'日本鰻世桜 浅草橋店', item:key, t:t0+5, id:'c6' },
+    { kind:'commtry', store:'日本鰻世桜 浅草橋店', item:key, note: JSON.stringify({ on:false }), t:t0+6, id:'c7' },
+    { kind:'commtry', store:'寿司世桜 心斎橋店', item:key, t:t0+7, id:'c8' },
+  ]};
+  try { run(() => setLS('manager', S3, 'ja')); } catch (e) { FAIL++; console.log('  ✗ comm undo threw: ' + e.message); }
+  await new Promise(r => setTimeout(r, 60));
+  const likes = JSON.parse(localStorage.getItem('yosakura_demo_commlike') || '{}');
+  ok(likes[key] === 1, `いいね2件のうち1件を取り消すと1件になる（いま ${likes[key]}）`);
+  const tries = JSON.parse(localStorage.getItem('yosakura_demo_commtry') || '{}');
+  ok(!(tries[key] || []).includes('日本鰻世桜 浅草橋店'), '取り消した店舗は「取り入れた店舗」から外れる');
+  ok((tries[key] || []).includes('寿司世桜 心斎橋店'), '取り消していない店舗はそのまま残る');
+
+  // 取り消しが多くても、件数が負にならない
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'commlike', store:S3, item:key, note: JSON.stringify({ off:true }), t:t0+8, id:'c9' },
+    { kind:'commlike', store:S3, item:key, note: JSON.stringify({ off:true }), t:t0+9, id:'c10' },
+  ]};
+  try { run(() => setLS('manager', S3, 'ja')); } catch (e) { FAIL++; console.log('  ✗ comm minus threw: ' + e.message); }
+  await new Promise(r => setTimeout(r, 60));
+  const likes2 = JSON.parse(localStorage.getItem('yosakura_demo_commlike') || '{}');
+  ok((likes2[key] || 0) >= 0, `取り消しが多くても件数が負にならない（いま ${likes2[key]}）`);
+
+  // 画面：押したあとのボタンが押せないままにならない（取り消せる）
+  ok(!/data-commlike="[^"]*"\s+disabled/.test(code), 'いいねのボタンを押せないままにしない');
+  ok(!/data-commtry="[^"]*"\$\{done \? ' disabled' : ''\}/.test(code), 'やってみますのボタンも押せないままにしない');
+  FETCH_ROWS = { ok:false };
+}
+
 console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12 渉さんのご指摘）==');
 {
   /* 以前は「アプリで受けていないので、グループLINEへ送ってください」という項目が残っていた。

@@ -554,6 +554,9 @@
   }
   const go = (hash) => { location.hash = hash; };
   window.addEventListener('hashchange', render);
+  /* 画面の位置はアプリ側で決める。ブラウザに任せると、別の画面へ移ったのに
+     前の画面の位置が復元され、途中から始まってしまう（2026-08-12 渉さんのご指摘）。 */
+  try { if (window.history && 'scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'; } catch (e) {}
 
   /* ---------- シェル ---------- */
   function shell(inner, activeTab) {
@@ -3995,13 +3998,29 @@
     lastSync = Date.now(); pushAudit('comm_roll_' + (on ? 'on' : 'off'), key); render(true);
     postReport({ kind:'commroll', store: key.split('|')[1] || '', item:key, note: JSON.stringify({ on }), t: Date.now() });
   }
-  function addCommTry(key, store) {
-    const map = getCommTry(); const arr = map[key] || [];
-    if (!arr.includes(store)) arr.push(store);
+  /* 「うちでもやってみます」の表明と取り消し（2026-08-12 押し間違いに備えて取り消せるようにした）。
+     ★バックエンドは追記だけで消せないため、取り消しは「取り消した」という記録を足して表す。
+       同じ投稿×同じ店舗については、いちばん新しい記録が正（commroll と同じ考え方）。 */
+  function setCommTry(key, store, on) {
+    const map = getCommTry();
+    const arr = (map[key] || []).filter(s => s !== store);
+    if (on) arr.push(store);
     map[key] = arr;
     try { localStorage.setItem('yosakura_demo_commtry', JSON.stringify(map)); } catch (e) {}
     lastSync = Date.now(); render(true);
-    postReport({ kind:'commtry', store, item:key, t: Date.now() });
+    postReport({ kind:'commtry', store, item:key, note: on ? '' : JSON.stringify({ on:false }), t: Date.now() });
+  }
+  /* いいねの取り消し。件数は合算方式なので、取り消しは -1 の記録を足して表す。
+     数が負にならないように、足し合わせたあとで0で止める。 */
+  function toggleCommLike(key) {
+    const liked = getLiked(); const on = !liked.includes(key);
+    const next = on ? liked.concat(key) : liked.filter(x => x !== key);
+    try { localStorage.setItem('yosakura_comm_liked', JSON.stringify(next)); } catch (e) {}
+    const map = getCommLike();
+    map[key] = Math.max(0, Number(map[key] || 0) + (on ? 1 : -1));
+    try { localStorage.setItem('yosakura_demo_commlike', JSON.stringify(map)); } catch (e) {}
+    lastSync = Date.now(); render(true);
+    postReport({ kind:'commlike', store: key.split('|')[1] || '', item:key, note: on ? '' : JSON.stringify({ off:true }), t: Date.now() });
   }
 
   const commBadge = (p) => {
@@ -4027,11 +4046,13 @@
         <div class="l1">${esc(p.body || '—')}</div>
         ${(p.photos && p.photos.length) ? `<div class="rep-photos">${p.photos.map(x => `<img class="rep-photo" src="${photoThumb(x)}" data-full="${photoFull(x)}" alt="" loading="lazy">`).join('')}</div>` : ''}
         <div class="l2">${esc(storeShort(p.store))}${p.by ? ` ・${esc(p.by)}` : ''} ・ ${timeAgo(p.t)}</div>
-        <div class="l2" style="margin-top:6px"><button class="mini ${liked ? 'on' : ''}" data-commlike="${esc(key)}"${liked ? ' disabled' : ''}>${liked ? '♥' : '♡'} ${L({ ja:'いいね', en:'Like', vi:'Thích' })}${n ? ` ${n}` : ''}</button>${
+        ${/* 押し間違えたときのために、いいね／やってみます は、もう一度押すと取り消せる（2026-08-12 渉さんのご要望）。
+              押した後に固定してしまうと、取り消す手段がどこにも無くなる。 */''}
+        <div class="l2" style="margin-top:6px"><button class="mini ${liked ? 'on' : ''}" data-commlike="${esc(key)}" title="${liked ? esc(L({ ja:'もう一度押すと取り消せます', en:'Tap again to undo', vi:'Chạm lại để hoàn tác' })) : ''}">${liked ? '♥' : '♡'} ${L({ ja:'いいね', en:'Like', vi:'Thích' })}${n ? ` ${n}` : ''}</button>${
           (st === 'published' && !isHq) ? (() => {
             const my = visibleStores()[0] || '';
             const done = commTryStores(p).includes(my);
-            return `<button class="mini ${done ? 'on' : ''}" data-commtry="${esc(key)}"${done ? ' disabled' : ''}>${done
+            return `<button class="mini ${done ? 'on' : ''}" data-commtry="${esc(key)}" title="${done ? esc(L({ ja:'もう一度押すと取り消せます', en:'Tap again to undo', vi:'Chạm lại để hoàn tác' })) : ''}">${done
               ? L({ ja:'✓ うちでもやってみます', en:'✓ We will try this', vi:'✓ Chúng tôi sẽ thử' })
               : L({ ja:'うちでもやってみます', en:'We will try this', vi:'Chúng tôi sẽ thử' })}</button>`;
           })() : ''}</div>
@@ -4203,6 +4224,10 @@
     else html = viewHome('home');
     $app.innerHTML = html;
     window.scrollTo(0, y);
+    /* ★別の画面へ移ったのに、前の画面で読んでいた位置のまま始まることがあった（2026-08-12 渉さんのご指摘）。
+       中身を入れ替えた直後は高さがまだ決まっておらず、一度の scrollTo では戻りきらないため、
+       描き直しが終わったあとにもう一度いちばん上へ送る。位置を保つとき（keepScroll）はそのまま。 */
+    if (!keepScroll && typeof requestAnimationFrame === 'function') requestAnimationFrame(() => window.scrollTo(0, 0));
     bind();
   }
 
@@ -4486,20 +4511,22 @@
     // いいね（拍手）＝この端末で一度だけ。カウントは全端末で合算。
     // ポジティブシャワー：本部が横展開に指定／店舗が「うちでもやってみます」
     document.querySelectorAll('[data-commroll]').forEach(b => b.onclick = () => setCommRoll(b.dataset.commroll, b.dataset.on !== '1'));
+    // 押し間違えたときのために、もう一度押すと取り消せる（2026-08-12 渉さんのご要望）
     document.querySelectorAll('[data-commtry]').forEach(b => b.onclick = () => {
       const my = visibleStores()[0] || '';
       if (!my) { toast(L({ ja:'店舗が選ばれていません', en:'No store selected', vi:'Chưa chọn cửa hàng' })); return; }
-      addCommTry(b.dataset.commtry, my);
-      toast(L({ ja:'ありがとうございます！本部と各店に共有されます', en:'Thanks! Shared with HQ and all stores', vi:'Cảm ơn! Đã chia sẻ với HQ và các cửa hàng' }));
+      const key = b.dataset.commtry;
+      const on = !commTryStores({ t: Number(key.split('|')[0]), store: key.split('|')[1] || '' }).includes(my);
+      setCommTry(key, my, on);
+      toast(on
+        ? L({ ja:'ありがとうございます！本部と各店に共有されます', en:'Thanks! Shared with HQ and all stores', vi:'Cảm ơn! Đã chia sẻ với HQ và các cửa hàng' })
+        : L({ ja:'取り消しました', en:'Undone', vi:'Đã hoàn tác' }));
     });
     document.querySelectorAll('[data-commlike]').forEach(b => b.onclick = () => {
-      const key = b.dataset.commlike; const liked = getLiked();
-      if (liked.includes(key)) return;
-      liked.push(key); try { localStorage.setItem('yosakura_comm_liked', JSON.stringify(liked)); } catch (e) {}
-      const map = getCommLike(); map[key] = Number(map[key] || 0) + 1;
-      try { localStorage.setItem('yosakura_demo_commlike', JSON.stringify(map)); } catch (e) {}
-      lastSync = Date.now(); render(true); // 一覧の途中で押すので、読んでいた位置を保つ
-      postReport({ kind:'commlike', store: key.split('|')[1] || '', item:key, t: Date.now() });
+      const key = b.dataset.commlike;
+      const was = getLiked().includes(key);
+      toggleCommLike(key);
+      if (was) toast(L({ ja:'いいねを取り消しました', en:'Like removed', vi:'Đã bỏ thích' }));
     });
     // 本部：公開／非公開
     document.querySelectorAll('[data-commpub]').forEach(b => b.onclick = () => setCommState(b.dataset.commpub, 'published'));
@@ -4791,7 +4818,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null;
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null;
     (rows || []).forEach(r => {
       // 店舗名は正式名称へ寄せる（過去のデータが旧い表記でも、同じ店舗として扱う）
       const t = Number(r.t) || 0, id = r.id, store = normalizeStore(r.store || '');
@@ -4819,9 +4846,12 @@
         case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, goal:p.goal, by:p.by||'', t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正
         case 'community': { const p=pj(r.note); comm.push({ store, cat:r.item, body:p.body||'', by:p.by||'', photos:r.photos||[], t, id }); } break;
         case 'commmod': { const p=pj(r.note); const k=r.item; if (commmodT[k]==null || t>=commmodT[k]) { commmod[k]={ state:p.state||'published', t }; commmodT[k]=t; } } break; // 投稿キーごと最新の公開状態が正
-        case 'commlike': { const k=r.item; commlike[k]=(commlike[k]||0)+1; } break; // 拍手は件数を合算
+        // 拍手は件数を合算。取り消し（off）は -1 として数える（追記式なので行は消せない）
+        case 'commlike': { const k=r.item; const p2=pj(r.note); commlike[k]=(commlike[k]||0)+((p2 && p2.off) ? -1 : 1); } break;
         case 'commroll': { const p=pj(r.note); const k=r.item; if (commrollT[k]==null || t>=commrollT[k]) { commroll[k]={ on:!!(p&&p.on), t }; commrollT[k]=t; } } break; // 横展開の指定は投稿キーごと最新が正
-        case 'commtry': { const k=r.item; const s=store; if (!s) break; if (!commtry[k]) commtry[k]=[]; if (!commtry[k].includes(s)) commtry[k].push(s); } break; // 実施表明は店舗を重複なく集める
+        // 実施表明は「投稿×店舗」ごとに最新が正（取り消しの記録が後から来たら外す）
+        case 'commtry': { const k=r.item, s=store; if (!s) break; const p2=pj(r.note); const kk=k+'||'+s;
+          if (commtryT[kk] == null || t >= commtryT[kk]) { commtryT[kk]=t; commtryOn[kk]=!(p2 && p2.on === false); } } break;
         case 'linkset': { const p=pj(r.note); if (Array.isArray(p) && (linksetT==null || t>=linksetT)) { linkset=p; linksetT=t; } } break; // 資料リンク一覧は最新版が正
         case 'faqset': { const p=pj(r.note); if (Array.isArray(p) && (faqsetT==null || t>=faqsetT)) { faqset=p; faqsetT=t; } } break; // よくある質問（本部追加分）は最新版が正
       }
@@ -4833,7 +4863,15 @@
     set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_ckitem', ckitem); set('yosakura_demo_monthly', Object.values(monthly));
     if (Object.keys(ckdone).length) { set('yosakura_demo_ckdone', ckdone); set('yosakura_demo_ckmeta', ckmeta); } // 実施状況が1件も無い同期では、この端末の記録を消さない
     if (Object.keys(study).length) set('yosakura_demo_study', Object.values(study).filter(s => s && !s.deleted));
+    Object.keys(commlike).forEach(k => { if (commlike[k] < 0) commlike[k] = 0; }); // 取り消しが多くても負にしない（保存の前に直す）
     set('yosakura_demo_community', comm); set('yosakura_demo_commmod', commmod); set('yosakura_demo_commlike', commlike);
+    // 取り消しを反映して組み立て直す（最新が on の店舗だけを残す）
+    Object.keys(commtryOn).forEach(kk => {
+      if (!commtryOn[kk]) return;
+      const i = kk.lastIndexOf('||'); const k = kk.slice(0, i), st2 = kk.slice(i + 2);
+      if (!commtry[k]) commtry[k] = [];
+      if (!commtry[k].includes(st2)) commtry[k].push(st2);
+    });
     set('yosakura_demo_commroll', commroll); set('yosakura_demo_commtry', commtry);
     if (linkset !== null) set('yosakura_demo_links', linkset); // linksetが無い同期では既存の資料リンクを保持
     if (faqset !== null) set('yosakura_demo_faq', faqset); // faqsetが無い同期では既存のよくある質問を保持
