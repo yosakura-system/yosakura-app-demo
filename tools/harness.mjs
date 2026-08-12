@@ -1351,6 +1351,18 @@ console.log('== 「報告する」タブに、日次・週次・月次と同じ�
   const tabIds = [...registry.app.innerHTML.matchAll(/data-open="([a-zA-Z_]+)"/g)].map(m => m[1]);
   const dup = tabIds.filter(id => opened.has(id));
   ok(dup.length === 0, `タブに、日次・週次・月次と同じものが残っていない${dup.length ? '（重複: ' + dup.join(',') + '）' : ''}`);
+
+  /* 日次・週次・月次そのものも、ホームに常に出ているのでタブには並べない（2026-08-12）。
+     ホーム＝今日やること／報告する＝気づいたときに出すもの、と役割を分ける。 */
+  ['kyou', 'shukan', 'getsuji'].forEach(id => {
+    ok(!tabIds.includes(id), `${id} は報告タブに並べない（ホームから開く）`);
+  });
+  run(() => setLS('manager', S4, 'ja'));
+  location.hash = '#/home';
+  const homeIds = [...registry.app.innerHTML.matchAll(/data-open="([a-zA-Z_]+)"/g)].map(m => m[1]);
+  ['kyou', 'shukan', 'getsuji'].forEach(id => {
+    ok(homeIds.includes(id), `${id} はホームから必ず開ける（唯一の入口になるため）`);
+  });
   // 随時使うものは残す（提出物ではないため、ここが唯一の入口）
   ok(/data-open="tabemono"/.test(tab), '食べ残しの報告は残す（随時のため）');
   ok(/data-open="kizuki"/.test(tab), '気づきの報告は残す（随時のため）');
