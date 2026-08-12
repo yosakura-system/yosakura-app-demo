@@ -460,3 +460,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .delta.dn::before { content: '▼'; margin-right: 1px; }
 .rep.tapable { cursor: pointer; }
 .rep.tapable:active { background: #FAF8F5; }
+
+/* 体験版の帯（2026-08-12）。勉強会のあとに加盟店の皆さまへお配りする版でだけ出る。
+   ヘッダーの直下に固定で置き、どの画面へ移っても「触っても大丈夫」が視界に残るようにする。 */
+.taiken-band {
+  position: sticky; top: 0; z-index: 8;
+  background: #8E354A; color: #fff;
+  font-size: 12px; line-height: 1.5; font-weight: 700;
+  padding: 7px 14px; text-align: center;
+  letter-spacing: .01em;
+}

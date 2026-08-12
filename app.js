@@ -14,7 +14,14 @@
      設定は本部メニュー →「バックエンド設定」から。設定するとこの端末以降その接続先を使う。 */
   const API_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzS-tvfTQwJjgYn2ASHWidU-qBWZzF85bqt25T4mAXcM-P6-75zFqzUSlgiPFDTe7KQRQ/exec';
   const LS_API = 'yosakura_api_url';
-  const getApiUrl = () => (localStorage.getItem(LS_API) || API_URL_DEFAULT);
+  /* ====== 体験版（2026-08-12 勉強会デモMTGの決定） ======
+     勉強会のあと、加盟店の皆さまへお配りして自由に触っていただくための版。
+     API_URL_DEFAULT を空にしてビルドしたものが体験版になる。
+     ★端末に保存された接続先(LS_API)も無視する＝どう操作しても本物の記録には送られない。
+       （ここを localStorage 任せにすると、以前この端末で本番URLを入れていた方の操作が
+         本物の履歴に混ざる。配る版なので、ビルドの時点で断ち切る） */
+  const TAIKEN = !API_URL_DEFAULT;
+  const getApiUrl = () => (TAIKEN ? '' : (localStorage.getItem(LS_API) || API_URL_DEFAULT));
   const isCustomApi = () => !!localStorage.getItem(LS_API);
   /* システム管理者モード：接続先の変更は「本部ロール かつ 管理者モード」のみ可能。
      通常の本部利用者は接続状態の閲覧のみ（誤操作で共用へ戻すのを防ぐ）。
@@ -561,6 +568,10 @@
           <span class="dot"></span><span class="rc-role">${L(role.label)}</span><span class="sep">・</span><span class="rc-store">${esc(storeShort(getStoreSel()))}</span>
         </button>
       </header>
+      ${TAIKEN ? `<div class="taiken-band">${L({
+        ja:'体験版｜どこを押しても大丈夫です。入力はこの端末の中だけに残り、お店の記録には送られません。',
+        en:'Trial version — tap anything. Entries stay on this device and are never sent to store records.',
+        vi:'Bản dùng thử — cứ chạm thoải mái. Dữ liệu chỉ lưu trên máy này, không gửi tới hồ sơ cửa hàng.' })}</div>` : ''}
       ${inner}
       <nav class="tabbar">
         ${tabs.map(([k, lbl, ic]) => `<button data-tab="${k}" class="${activeTab===k?'on':''}">${svg(ic)}${L(lbl)}</button>`).join('')}
@@ -1632,10 +1643,16 @@
   function seedSurvey() {
     if (localStorage.getItem('yosakura_demo_survey')) return;
     const now = Date.now(), st = '寿司世桜 心斎橋店';
+    // 高評価だけだと「いただいたご指摘」「お客様の声」が1件も出ず、画面の説明ができない。
+    // 実際のご回答と同じく、改善点は【…】で本文の先頭に入る形にしてある。
     saveSurvey([
       { store:st, sat:5, route:'tiktok', note:'', country:'Korea', t:now-3600e3*5 },
       { store:st, sat:4, route:'google', note:'Great dashi!', country:'USA', t:now-3600e3*9 },
-      { store:st, sat:5, route:'instagram', note:'', country:'Japan', t:now-3600e3*28 }
+      { store:st, sat:5, route:'instagram', note:'', country:'Japan', t:now-3600e3*28 },
+      { store:st, sat:2, route:'google', note:'【提供時間が長かった】料理は美味しかったのですが、最初の一品まで待ちました。', country:'Japan', t:now-3600e3*32 },
+      { store:st, sat:3, route:'walkin', note:'【盛り付け、接客】写真と少し違って見えました。声かけがもう少しあると嬉しいです。', country:'Taiwan', t:now-3600e3*46 },
+      { store:st, sat:2, route:'google', note:'【提供時間が長かった】混んでいたので仕方ないとは思います。', country:'USA', t:now-3600e3*52 },
+      { store:st, sat:4, route:'instagram', note:'【特に問題はありません】器がきれいでした。', country:'Korea', t:now-3600e3*70 }
     ]);
   }
   // iPadサーベイ運用マニュアル準拠：顔文字の満足度／改善点（複数選択）／高満足時のみ口コミ案内
@@ -4018,7 +4035,8 @@
       name:{ ja:'アプリへのご意見', en:'App feedback', vi:'Góp ý ứng dụng' },
       desc:{ ja:'使ってみて気づいたことをお送りください', en:'Tell us what you noticed', vi:'Cho biết điều bạn nhận thấy' } });
   }
-  if (!appById('backend')) {
+  // 体験版では接続先の切り替えそのものを出さない（配る版なので、触れる余地を残さない）
+  if (!appById('backend') && !TAIKEN) {
     APPS.push({ id:'backend', group:'hq', icon:'lock', roles:['hq'],
       name:{ ja:'バックエンド設定', en:'Backend settings', vi:'Cài đặt backend' },
       desc:{ ja:'データの保存先（専用／共用）を切り替え', en:'Switch data backend (dedicated/shared)', vi:'Đổi nơi lưu dữ liệu' } });

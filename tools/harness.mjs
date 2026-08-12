@@ -1234,5 +1234,54 @@ console.log('== どの画面にも左上に「ホームへ戻る」がある =='
   }
 }
 
+console.log('== 体験版（配る版）は、どう操作しても本物の記録に送らない ==');
+{
+  /* 2026-08-12 勉強会デモMTGの決定＝勉強会のあと加盟店の皆さまへお配りする版を用意する。
+     いちばん大事なのは「触っても本物のデータに影響しない」こと。
+     ここが壊れると、体験の入力が本物の履歴に混ざる（取り返しがつかない）ので、テストで固定する。 */
+  const urlLine = code.match(/ {2}const API_URL_DEFAULT = '[^']*';/);
+  ok(!!urlLine, 'app.js に API_URL_DEFAULT の行がある（体験版はこの行を空にして作る）');
+  const taikenCode = code.replace(urlLine[0], "  const API_URL_DEFAULT = '';");
+
+  // 体験版を、通信を見張った状態で動かす
+  // ※ アプリは起動時に sw.js を読んで「最新の版かどうか」を確かめる。これは同じ場所の file なので数えない。
+  //   見張るのは「外（http/https）へ出ていく通信」だけ。
+  let sent = [];
+  const spyFetch = (u) => { if (/^https?:/i.test(String(u))) sent.push(String(u)); return Promise.resolve({ json: () => Promise.resolve({ ok:false }), text: () => Promise.resolve('') }); };
+  const called = () => sent.length;
+  const runTaiken = (setup) => {
+    store.clear(); registry.app = makeEl('div');
+    Object.keys(registry).forEach(k => { if (k !== 'app') delete registry[k]; });
+    Object.keys(winHandlers).forEach(k => delete winHandlers[k]);
+    hashVal = ''; setup();
+    const box = Object.assign({}, sandbox, { fetch: spyFetch });
+    box.window = Object.assign({}, windowObj, { fetch: spyFetch });
+    box.globalThis = box; box.self = box;
+    vm.runInContext(code === taikenCode ? code : taikenCode, vm.createContext(box), { filename:'app-taiken.js' });
+    return registry.app;
+  };
+
+  // 以前この端末で本番の接続先を入れていた人が開いても、そこへは送らない
+  runTaiken(() => { setLS('manager', S_HIROSHIMA, 'ja'); localStorage.setItem('yosakura_api_url', 'https://example.com/exec'); });
+  await new Promise(r => setTimeout(r, 40));
+  ok(called() === 0, '端末に接続先が残っていても、外へは一度も送らない：' + sent.join(','));
+
+  // 触っても大丈夫だと分かる帯が、どの画面にも出る
+  ok(/taiken-band/.test(registry.app.innerHTML), 'ホームに体験版の帯が出る');
+  location.hash = '#/app/checklist';
+  ok(/taiken-band/.test(registry.app.innerHTML), '別の画面へ移っても帯が残る');
+
+  // 配る版に、接続先を切り替える入口を残さない
+  runTaiken(() => setLS('hq', 'all', 'ja'));
+  location.hash = '#/home?tab=hq';
+  ok(!/data-open="backend"/.test(registry.app.innerHTML), '本部で開いても「バックエンド設定」は出さない');
+  location.hash = '#/app/backend';
+  ok(called() === 0, '接続先の画面を直接開こうとしても、外への通信は起きない：' + sent.join(','));
+
+  // 通常版（いまのビルド）は、これまでどおり接続する
+  FETCH_ROWS = { ok:true, reports:[] };
+  ok(/const API_URL_DEFAULT = 'https:/.test(code), '通常版のビルドは接続先を持ったまま（体験版はビルド時にだけ空にする）');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
