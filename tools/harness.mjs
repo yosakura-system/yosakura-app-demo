@@ -869,9 +869,14 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
      '以前から使っている端末でも、増えた提出物（定期衛生・桜）がちゃんと出る');
   ok(!/清掃チェック/.test(oldDev), '端末に残っていた古い項目（清掃チェック）はもう出ない');
 
-  // チェックリストを実施すると「提出済み」になる
+  /* チェックリストを「最後まで」実施すると「提出済み」になる。
+     ★2026-08-12 修正：以前は1つでもチェックすれば提出済みになっていた（渉さんのご指摘）。
+       途中で「今日出すもの」から消えると、やり残しに気づけないため、全部終わるまで残す。 */
   const ymd = (d) => d.toLocaleDateString('en-CA');
   const today = ymd(new Date());
+  const rowOf = (h, name) => { const i = h.indexOf(name); return i < 0 ? '' : h.slice(Math.max(0, i - 240), i + 240); };
+
+  // 途中まで（1項目だけ）＝まだ提出済みにしない
   FETCH_ROWS = { ok:true, reports:[
     { kind:'ckdone', store:S_GYU, item:`sakura||${today}`,
       note: JSON.stringify({ done:{ 'sakura-c-0-0':true }, by:'店長（山田）' }), t: Date.now(), id:'k1' },
@@ -879,10 +884,29 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
   try { run(()=> setLS('manager', S_GYU, 'ja')); } catch(e){ FAIL++; console.log('  ✗ ckdone detect threw: '+e.message); }
   await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/kyou';
-  const html = registry.app.innerHTML;
-  const rowOf = (h, name) => { const i = h.indexOf(name); return i < 0 ? '' : h.slice(Math.max(0, i - 240), i + 240); };
-  ok(/提出済/.test(rowOf(html, '桜チェックリスト')), 'アプリでチェックすると、その項目が「提出済」になる');
-  ok(/未提出/.test(rowOf(html, 'クローズチェックリスト')), 'まだ実施していないチェックリストは「未提出」のまま');
+  ok(!/提出済/.test(rowOf(registry.app.innerHTML, '桜チェックリスト')),
+     '1項目だけ終えた段階では、まだ「提出済」にしない');
+
+  // 全項目を終えた＝提出済みになる（項目のIDは画面と同じ作り方で並べる）
+  {
+    const app = run(()=> setLS('manager', S_GYU, 'ja'));
+    location.hash = '#/app/checklist';
+    localStorage.setItem('yosakura_ckmode', 'sakura');
+    location.hash = '#/home'; location.hash = '#/app/checklist';
+    const ids = [...registry.app.innerHTML.matchAll(/data-ck="([^"]+)"/g)].map(m => m[1]);
+    ok(ids.length > 1, `桜チェックリストの項目が読み取れる（${ids.length}件）`);
+    const allDone = {}; ids.forEach(id => allDone[id] = true);
+    FETCH_ROWS = { ok:true, reports:[
+      { kind:'ckdone', store:S_GYU, item:`sakura||${today}`,
+        note: JSON.stringify({ done: allDone, by:'店長（山田）' }), t: Date.now(), id:'k2' },
+    ]};
+    try { run(()=> setLS('manager', S_GYU, 'ja')); } catch(e){ FAIL++; console.log('  ✗ ckdone all threw: '+e.message); }
+    await new Promise(r=>setTimeout(r, 50));
+    location.hash = '#/app/kyou';
+    ok(/提出済/.test(rowOf(registry.app.innerHTML, '桜チェックリスト')),
+       '最後まで終えると「提出済」になる');
+  }
+  ok(/未提出/.test(rowOf(registry.app.innerHTML, 'クローズチェックリスト')), 'まだ実施していないチェックリストは「未提出」のまま');
 }
 FETCH_ROWS = { ok:false };
 
@@ -1231,6 +1255,68 @@ console.log('== どの画面にも左上に「ホームへ戻る」がある =='
     // 機能の画面（従来から出ている）
     location.hash = '#/app/faq';
     ok(/id="backBtn"/.test(registry.app.innerHTML), `${role}：機能の画面にも引き続きある`);
+  }
+}
+
+console.log('== チェックリスト：最後まで終えたときだけ提出済みになる（2026-08-12 の3件）==');
+{
+  /* 渉さんのご指摘3件
+     ①「開いて提出」を押すと、前に見ていた種類（アイドル）が開いてしまう
+     ② 1項目チェックするたびに画面の先頭へ戻る
+     ③ 途中までしか終わっていないのに提出済みになる  */
+  const S = S_HIROSHIMA;
+
+  // ① 5種類それぞれに「どれを開くか」が付いている
+  run(() => setLS('manager', S, 'ja'));
+  location.hash = '#/app/kyou';
+  const html = registry.app.innerHTML;
+  for (const [name, mode] of [['オープン','open'], ['アイドル','idle'], ['クローズ','close'], ['桜','sakura'], ['定期衛生','hygiene']]) {
+    ok(new RegExp(`data-tsubmode="${mode}"`).test(html), `${name}の提出ボタンが、開く種類（${mode}）を持っている`);
+  }
+  ok(/localStorage\.setItem\('yosakura_ckmode', t\.dataset\.tsubmode\)/.test(code),
+     '押したときに、その種類へ切り替えてから画面を開く');
+
+  // ② チェックしても画面の先頭へ戻らない（読んでいた位置を保つ）
+  ok(/render\(true\);\s*\n\s*postReport\(\{ kind:'ckdone'/.test(code),
+     'チェックのたびに先頭へ戻らない（位置を保って描き直す）');
+
+  // ③ 全部終わるまで提出済みにしない
+  const app3 = run(() => {
+    setLS('manager', S, 'ja');
+    // オープンの1項目だけチェックした状態を作る
+    const today = new Date().toLocaleDateString('en-CA');
+    localStorage.setItem('yosakura_demo_ckdone', JSON.stringify({ [`${S}||open||${today}`]: { 'open-c-0-0': true } }));
+  });
+  location.hash = '#/app/kyou';
+  ok(/オープンチェックリスト/.test(registry.app.innerHTML), '途中までのオープンチェックリストは「今日出すもの」に残る');
+  ok(/data-tsubmode="open"/.test(registry.app.innerHTML), '残っているので、続きを開くボタンも出ている');
+
+  // 数え方が画面と判定で同じであること（消した独自項目や別の曜日が混ざらない）
+  ok(/const ckTotalOf = \(store, mode\) => ckIdsOf\(store, mode\)\.length;/.test(code),
+     '件数の数え方が1か所（ckIdsOf）に集約されている');
+  ok(/if \(m\.detect === 'ckdone'\) return ckAllDoneOf\(/.test(code),
+     '提出済みの判定は「全部終わったか」を見ている');
+
+  // ④ 定期衛生：画面で別の曜日を見ていても、提出済みの判定は「今日の曜日」で行う
+  {
+    const today = new Date().toLocaleDateString('en-CA');
+    const other = (new Date().getDay() + 3) % 7;           // 今日とは違う曜日
+    const app = run(() => {
+      setLS('manager', S, 'ja');
+      localStorage.setItem('yosakura_ckmode', 'hygiene');
+      localStorage.setItem('yosakura_hygday', `${today}|${other}`); // 別の曜日を選んだ状態
+    });
+    location.hash = '#/app/checklist';
+    // 表示中（＝別の曜日）の項目を全部チェックした状態を作る
+    const shown = [...registry.app.innerHTML.matchAll(/data-ck="([^"]+)"/g)].map(m => m[1]);
+    ok(shown.length > 0 && shown.every(id => id.startsWith(`hygiene-${other}`)),
+       `画面には選んだ曜日（${other}）の項目が出る`);
+    const done = {}; shown.forEach(id => done[id] = true);
+    localStorage.setItem('yosakura_demo_ckdone', JSON.stringify({ [`${S}||hygiene||${today}`]: done }));
+    location.hash = '#/home'; location.hash = '#/app/kyou';
+    const row = (h, name) => { const i = h.indexOf(name); return i < 0 ? '' : h.slice(Math.max(0, i - 240), i + 240); };
+    ok(!/提出済/.test(row(registry.app.innerHTML, '定期衛生管理')),
+       '別の曜日を終えても、今日の分は提出済みにならない');
   }
 }
 
