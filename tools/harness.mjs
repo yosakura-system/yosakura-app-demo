@@ -1325,6 +1325,37 @@ console.log('== チェックリスト：最後まで終えたときだけ提出�
   }
 }
 
+console.log('== 「報告する」タブに、日次・週次・月次と同じものを並べない（2026-08-12）==');
+{
+  /* 渉さんのご指摘：報告するタブに、日次業務で出てくる項目がそのまま並んでいて二重に見えた。
+     ★消すだけだと、提出が済んだあとに開けなくなる。先に「提出済みでも開ける」ようにしてから外す。 */
+  const S4 = '日本鰻世桜 浅草橋店';
+  run(() => setLS('manager', S4, 'ja'));
+  location.hash = '#/home?tab=genba';
+  const tab = registry.app.innerHTML;
+  ok(!/data-open="checklist"/.test(tab), 'チェックリストは報告タブに並べない（日次業務から開く）');
+  ok(!/data-open="openphoto"/.test(tab), '写真の提出も報告タブに並べない（日次・月次業務から開く）');
+  // 随時使うものは残す（提出物ではないため、ここが唯一の入口）
+  ok(/data-open="tabemono"/.test(tab), '食べ残しの報告は残す（随時のため）');
+  ok(/data-open="kizuki"/.test(tab), '気づきの報告は残す（随時のため）');
+  ok(/data-open="kyou"/.test(tab) || /data-open="community"/.test(tab), '入口そのものは残っている');
+
+  // 外した先（日次業務）から、提出が済んだあとでも開ける
+  const today3 = new Date().toLocaleDateString('en-CA');
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'subrec', store:S4, item:`openphoto|${today3}`, note: JSON.stringify({ by:'店長（山田）' }), photos:['x'], t: Date.now(), id:'o1' },
+  ]};
+  try { run(() => setLS('manager', S4, 'ja')); } catch (e) { FAIL++; console.log('  ✗ reopen threw: ' + e.message); }
+  await new Promise(r => setTimeout(r, 50));
+  location.hash = '#/app/kyou';
+  const kh = registry.app.innerHTML;
+  const i = kh.indexOf('オープン写真');
+  const around = i < 0 ? '' : kh.slice(Math.max(0, i - 300), i + 300);
+  ok(/提出済/.test(around), 'オープン写真が提出済みになっている');
+  ok(/data-tsubphoto="openphoto"/.test(around), '提出が済んだあとも、そこから開き直せる');
+  FETCH_ROWS = { ok:false };
+}
+
 console.log('== いいね／うちでもやってみます は、押し間違えても取り消せる（2026-08-12）==');
 {
   /* バックエンドは追記だけで行を消せないため、取り消しは「取り消した」という記録を足して表す。
