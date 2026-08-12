@@ -1398,11 +1398,22 @@ console.log('== 「報告する」タブに、日次・週次・月次と同じ�
   ['kyou', 'shukan', 'getsuji'].forEach(id => {
     ok(homeIds.includes(id), `${id} はホームから必ず開ける（唯一の入口になるため）`);
   });
+
+  /* ★ホームに常に出ているものも、タブに重ねない（2026-08-12 渉さんのご指摘）。
+     みんなの投稿・緊急連絡・公益通報が、ホームとタブの両方に並んでいた。
+     ここも機械的に検査して、これから増えても気づけるようにする。 */
+  const dupHome = [...new Set(tabIds.filter(id => homeIds.includes(id)))];
+  ok(dupHome.length === 0, `ホームに出ているものが、タブに重ねて並んでいない${dupHome.length ? '（重複: ' + dupHome.join(',') + '）' : ''}`);
+  ['community', 'emergency', 'whistle'].forEach(id => {
+    ok(homeIds.includes(id), `${id} はホームから必ず開ける（タブから外したため）`);
+  });
   // 随時使うものは残す（提出物ではないため、ここが唯一の入口）
   ok(/data-open="tabemono"/.test(tab), '食べ残しの報告は残す（随時のため）');
   // 気づきの報告は 2026-08-12 に日次業務の最後へ移した（日報の「清掃・特記事項」と重複していたため）
   ok(!/data-open="kizuki"/.test(tab), '気づきの報告はタブに並べない（日次業務の最後から開く）');
-  ok(/data-open="kyou"/.test(tab) || /data-open="community"/.test(tab), '入口そのものは残っている');
+  // 随時使うもののうち、ホームに出ていないものだけがタブに残る
+  ok(/data-open="tabemono"/.test(tab) && /data-open="history"/.test(tab),
+     'タブに残るのは、ホームにも日次業務にも出ていないものだけ');
 
   // 外した先（日次業務）から、提出が済んだあとでも開ける
   const today3 = new Date().toLocaleDateString('en-CA');
