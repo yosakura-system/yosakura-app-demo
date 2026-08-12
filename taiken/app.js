@@ -166,7 +166,9 @@
     { id:'talk', group:'learn', icon:'chat', roles:['staff','manager','owner','hq'],
       name:{ ja:'接客スクリプト・食べ方ガイド', en:'Service Scripts', vi:'Kịch bản phục vụ' },
       desc:{ ja:'多言語の接客フレーズと食べ方案内', en:'Multilingual phrases & how-to-enjoy', vi:'Câu phục vụ đa ngữ' } },
-    { id:'checklist', group:'genba', icon:'check', live:true, roles:['staff','manager','owner','hq'],
+    // 2026-08-12 渉さんのご指摘：日次業務と同じものが「報告する」にも並び、二重に見えていた。
+    // 機能は生きているが、タブの一覧には出さない（日次業務の各チェックリストから開く）。
+    { id:'checklist', group:'genba', icon:'check', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'オープン・クローズチェック', en:'Open & Close Check', vi:'Kiểm tra Mở & Đóng' },
       desc:{ ja:'開店・閉店の点検（店舗独自項目も追加可）', en:'Opening & closing checks', vi:'Kiểm tra mở & đóng cửa' } },
     { id:'links', group:'other', icon:'link', soon:true, roles:['staff','manager','owner','hq'],
@@ -336,7 +338,7 @@
      2つが違えば「新しい版があります」と出して、その場で最新にできるようにする。
      ※ 以前は最新版の番号だけを表示していたため、端末が古い版のまま動いていても
        画面には最新の番号が出てしまい、更新が届いていないことに気づけなかった。 */
-  const APP_BUILD = 'yosakura-taiken-v8';
+  const APP_BUILD = 'yosakura-taiken-v9';
   let LATEST_BUILD = '';
   const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
@@ -3146,8 +3148,13 @@
        アプリの中に回答画面を作らず、本部のシートをそのまま開く（2026-08-12 案②）。 */
     const sheetBtn = isHttp(it.m.url)
       ? `<button class="mini" data-openurl="${esc(it.m.url)}">${L({ja:'シートを開く',en:'Open sheet',vi:'Mở bảng'})}${svg('chev')}</button>` : '';
-    const openBtn = didBtn || sheetBtn || (((it.manual || !it.submitted) && it.m.linkApp)
-      ? `<button class="mini" data-tsub="${it.m.linkApp}"${openArg}>${L({ja:'開いて提出',en:'Open',vi:'Mở'})}${svg('chev')}</button>` : '');
+    /* ★提出が済んだあとも開けるようにする（2026-08-12）。
+       以前は提出済みになるとボタンが消えていた。見返したり、チェックを直したりできなくなるうえ、
+       この一覧を唯一の入口にすると（報告タブから重複を外すと）どこからも開けなくなる。 */
+    const openBtn = didBtn || sheetBtn || (it.m.linkApp
+      ? `<button class="mini" data-tsub="${it.m.linkApp}"${openArg}>${
+          it.submitted && !it.manual ? L({ja:'開く',en:'Open',vi:'Mở'}) : L({ja:'開いて提出',en:'Open',vi:'Mở'})
+        }${svg('chev')}</button>` : '');
     const oflag = it.overdue ? ` <span style="color:#b23">${L({ja:'締切超過',en:'Overdue',vi:'Quá hạn'})}</span>` : '';
     const noentry = it.manual ? ` <span class="hint" style="display:inline">※${L({ja:'自動判定なし（店舗運用・手動）',en:'no auto-check (store-run/manual)',vi:'không tự KT (thủ công)'})}</span>` : '';
     // アプリで出せないもの＝どこへどう出すかを書いておく（現場が迷わないように）
@@ -4152,9 +4159,10 @@
 
   // 提出管理モジュールをアプリ一覧へ追加（店舗ロール中心・本部も閲覧可）
   if (!appById('openphoto')) {
-    APPS.unshift({ id:'openphoto', group:'genba', icon:'camera', live:true, roles:['staff','manager','owner','hq'],
-      name:{ ja:'オープン写真の提出', en:'Opening photo', vi:'Ảnh mở cửa' },
-      desc:{ ja:'開店時の店内・外観を提出', en:'Submit store photo at opening', vi:'Nộp ảnh khi mở cửa' } });
+    // 2026-08-12：日次業務・月次業務から開くため、タブの一覧には出さない（同じものが二重に並んでいた）
+    APPS.unshift({ id:'openphoto', group:'genba', icon:'camera', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'写真の提出', en:'Photo submission', vi:'Nộp ảnh' },
+      desc:{ ja:'オープン写真・月次の衛生写真・メニューブックの確認', en:'Opening photo, monthly hygiene, menu book', vi:'Ảnh mở cửa, vệ sinh tháng, menu' } });
   }
   if (!appById('history')) {
     APPS.unshift({ id:'history', group:'genba', icon:'report', roles:['staff','manager','owner','hq'],
