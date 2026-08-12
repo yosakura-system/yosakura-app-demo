@@ -1680,20 +1680,65 @@
   /* ⑥ サーベイ（動く：お客様が満足度・来店経路・ご感想を回答→自店で集計）*/
   const getSurvey = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_survey')) || []; } catch { return []; } };
   const saveSurvey = (a) => localStorage.setItem('yosakura_demo_survey', JSON.stringify(a));
+  /* お客様アンケートの見本データ（2026-08-12 渉さんのご要望で全店ぶんに広げた）。
+     ★狙い：どの店舗で開いても集計が「空っぽ」にならないこと。
+       以前は1店舗ぶんしか無く、他の店舗の店長で開くと満足度も来店経路も0件だった。
+     作り方の約束：
+       ・お客様は回答された言語のまま答えるため、来店きっかけは各国語の生の値で入れる
+         （google／グーグル／구글／인스타그램／Walk in／現場候位 など＝寄せる処理の確認にもなる）
+       ・改善点は実際のご回答と同じく、本文の先頭に【…】で入る形にする
+       ・店舗ごとに評価の傾向を変える（良い店・課題のある店が見分けられるように）
+     ※ 見本なので、実在のお客様の声ではありません。 */
   function seedSurvey() {
     if (localStorage.getItem('yosakura_demo_survey')) return;
-    const now = Date.now(), st = '寿司世桜 心斎橋店';
-    // 高評価だけだと「いただいたご指摘」「お客様の声」が1件も出ず、画面の説明ができない。
-    // 実際のご回答と同じく、改善点は【…】で本文の先頭に入る形にしてある。
-    saveSurvey([
-      { store:st, sat:5, route:'tiktok', note:'', country:'Korea', t:now-3600e3*5 },
-      { store:st, sat:4, route:'google', note:'Great dashi!', country:'USA', t:now-3600e3*9 },
-      { store:st, sat:5, route:'instagram', note:'', country:'Japan', t:now-3600e3*28 },
-      { store:st, sat:2, route:'google', note:'【提供時間が長かった】料理は美味しかったのですが、最初の一品まで待ちました。', country:'Japan', t:now-3600e3*32 },
-      { store:st, sat:3, route:'walkin', note:'【盛り付け、接客】写真と少し違って見えました。声かけがもう少しあると嬉しいです。', country:'Taiwan', t:now-3600e3*46 },
-      { store:st, sat:2, route:'google', note:'【提供時間が長かった】混んでいたので仕方ないとは思います。', country:'USA', t:now-3600e3*52 },
-      { store:st, sat:4, route:'instagram', note:'【特に問題はありません】器がきれいでした。', country:'Korea', t:now-3600e3*70 }
-    ]);
+    const now = Date.now(), H = 3600e3;
+    // 店舗ごとの傾向：良い評価の割合と、出やすいご指摘
+    const PLAN = [
+      { store:'日本料理世桜本店',      n:22, hi:0.86, issues:['提供時間が長かった', '接客'] },
+      { store:'寿司世桜 心斎橋店',      n:26, hi:0.81, issues:['提供時間が長かった', '盛り付け、接客'] },
+      { store:'牛カツ世桜 長堀橋店',    n:24, hi:0.79, issues:['料理の味', '提供時間が長かった'] },
+      { store:'日本鰻世桜 長堀橋店',    n:16, hi:0.88, issues:['店内の清潔さ'] },
+      { store:'手巻き寿司世桜 難波店',  n:14, hi:0.72, issues:['接客', '料理の味'] },
+      { store:'日本鰻世桜 富士山店',    n:19, hi:0.95, issues:['特に問題はありません'] },
+      { store:'牛カツ世桜 富士山店',    n:15, hi:0.74, issues:['提供時間が長かった', '店内の清潔さ'] },
+      { store:'日本鰻世桜 浅草橋店',    n:18, hi:0.69, issues:['接客', '提供時間が長かった'] },
+      { store:'和牛世桜 広島店',        n:12, hi:0.83, issues:['料理の味'] }
+    ];
+    // 来店きっかけ＝お客様が答えられた言語のまま（寄せる処理を通す）
+    const ROUTE_RAW = ['google', 'グーグル', '구글', 'Google Maps', 'instagram', '인스타그램', 'tiktok', 'Walk in', '現場候位', '예약 없이', 'đi thẳng vào', '友人の紹介'];
+    const COUNTRY = ['Korea', 'Taiwan', 'USA', 'Japan', 'China', 'Vietnam', 'Australia', 'France', 'Singapore'];
+    const GOOD = [
+      '', '', '', 'とても美味しかったです。また来ます。', 'Great dashi!', '스태프가 매우 친절했어요',
+      '目の前で切り分けてくれる演出が最高でした', 'The eel was amazing', '雰囲気が落ち着いていて良かったです', ''
+    ];
+    const BAD = {
+      '提供時間が長かった': ['料理は美味しかったのですが、最初の一品まで待ちました。', '混んでいたので仕方ないとは思います。', 'A bit long wait for the first dish.'],
+      '接客': ['声かけがもう少しあると嬉しいです。', '入口でしばらく気づいてもらえませんでした。'],
+      '盛り付け、接客': ['写真と少し違って見えました。声かけがもう少しあると嬉しいです。'],
+      '料理の味': ['少し味が濃く感じました。', 'ご飯がかたく感じました。'],
+      '店内の清潔さ': ['お手洗いが少し気になりました。'],
+      '特に問題はありません': ['器がきれいでした。', '大満足です。']
+    };
+    // 見本は毎回同じ並びにする（開くたびに数字が変わると説明できないため）
+    let seed = 20260812;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const pick = (a) => a[Math.floor(rnd() * a.length) % a.length];
+
+    const rows = [];
+    PLAN.forEach((p, pi) => {
+      for (let k = 0; k < p.n; k++) {
+        const high = rnd() < p.hi;
+        const sat = high ? (rnd() < 0.62 ? 5 : 4) : (rnd() < 0.45 ? 2 : 3);
+        const issue = high ? (rnd() < 0.18 ? '特に問題はありません' : '') : pick(p.issues);
+        const body = issue ? pick(BAD[issue] || ['']) : pick(GOOD);
+        const note = issue ? `【${issue}】${body}` : body;
+        // 直近60日にばらす（月別の推移が出るように）
+        const t = now - Math.floor(rnd() * 60 * 24) * H - pi * H;
+        rows.push({ store: p.store, sat, route: pick(ROUTE_RAW), note, country: pick(COUNTRY), t });
+      }
+    });
+    rows.sort((a, b) => b.t - a.t);
+    saveSurvey(rows);
   }
   // iPadサーベイ運用マニュアル準拠：顔文字の満足度／改善点（複数選択）／高満足時のみ口コミ案内
   const SAT_FACES = [
