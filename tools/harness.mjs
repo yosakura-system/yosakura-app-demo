@@ -1636,6 +1636,23 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   ok(asakusa.length > 0 && !asakusa.some(v => v <= 3), '浅草橋店に低い評価を入れていない');
   ok(refreshed.some(r => r.sat <= 3), '低い評価そのものは残す（低い順に出る機能を説明できるように）');
 
+  /* ★マニュアルと勉強会が、体験版でも中身のある状態で見えること（2026-08-12 渉さんのご要望）。
+     ただし配る版なので、①本部の資料URLは載せない ②加盟店の側では直せない。 */
+  runTaiken(() => setLS('manager', '日本鰻世桜 浅草橋店', 'ja'));
+  location.hash = '#/app/manual';
+  const man = registry.app.innerHTML;
+  ok((man.match(/mrow--sub/g) || []).length >= 15, `マニュアルに資料が並んでいる（${(man.match(/mrow--sub/g) || []).length}件）`);
+  ok(!/data-openurl=""/.test(man), '押しても空のタブが開く行を作っていない');
+  ok(/本部が資料を登録すると開けます/.test(man), 'まだ開けないことが分かるように書いてある');
+  ok(!/資料リンクの管理/.test(man), '加盟店の側に、資料を直す入口を出さない');
+
+  location.hash = '#/app/study';
+  const stu = registry.app.innerHTML;
+  ['2026年6月', '2026年7月', '2026年8月'].forEach(m => {
+    ok(stu.includes(m), `勉強会の${m}分が出る`);
+  });
+  ok(!/data-studyedit/.test(stu) && !/studyForm/.test(stu), '加盟店の側では、勉強会を直せない');
+
   /* ★体験版は「加盟店の皆さまが使う3つの役割」だけ（2026-08-12 渉さんのご判断）。
      本部の画面は加盟店の方には関係がなく、見えると話が逸れる。 */
   runTaiken(() => setLS('hq', 'all', 'ja')); // 端末に本部が残っている状態で開く
