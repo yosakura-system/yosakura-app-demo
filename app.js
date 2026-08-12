@@ -2983,7 +2983,11 @@
       { id:'facade',     name:{ja:'店舗内・外の動画',en:'Store interior/exterior video',vi:'Video trong/ngoài quán'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'video', linkApp:'storevideo' },
       { id:'pop_month',  name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'monthly', due:'23:59', target:'gyotai_ex', gyotai:['gyukatsu'], hqReview:'none', detect:'didit', how:{ja:'新しいものと交換したら「実施しました」を押してください',en:'Replace with new ones, then tap “Done”',vi:'Thay mới rồi bấm “Đã làm”'} },
       // ── 四半期 ──
-      { id:'compliance', name:{ja:'コンプラチェック（4・7・10・1月）',en:'Compliance check (Apr/Jul/Oct/Jan)',vi:'Kiểm tra tuân thủ'}, oblig:'required', freq:'quarterly', due:'23:59', target:'all', hqReview:'each', detect:'none', how:{ja:'対象月に本部がシートを用意し、LINEで実施をご連絡します',en:'HQ prepares the sheet and announces it on LINE in the target month',vi:'HQ chuẩn bị bảng và thông báo qua LINE'} }
+      /* ★コンプラチェックは「案②」で運用する（2026-08-12 渉さんのご判断）。
+         四半期に1回のためにアプリ内へ回答画面を作るより、本部が用意されたシートへの入口を置くだけにする。
+         url は本部が「加盟店・提出物管理」から設定する（対象月ごとに差し替えられる）。
+         ★何をチェックするのかは本部が配るもの。神田が中身を作らない。 */
+      { id:'compliance', name:{ja:'コンプラチェック（4・7・10・1月）',en:'Compliance check (Apr/Jul/Oct/Jan)',vi:'Kiểm tra tuân thủ'}, oblig:'required', freq:'quarterly', due:'23:59', target:'all', hqReview:'each', detect:'none', url:'', how:{ja:'本部が用意したシートに記入してください（下のボタンから開けます）',en:'Fill in the sheet prepared by HQ (open it from the button below)',vi:'Điền vào bảng do HQ chuẩn bị (mở từ nút bên dưới)'} }
     ];
   }
   /* 提出管理データの全端末共有：既存バックエンド(reports)に専用kindで保存し本部全員で共有（追加kindのみ・既存挙動は不変） */
@@ -3125,7 +3129,11 @@
        押した記録は写真の提出と同じ置き場に残るので、本部からも実施状況が見える。 */
     const didBtn = (it.m.detect === 'didit' && !it.submitted)
       ? `<button class="mini" data-tdid="${esc(it.m.id)}">${L({ja:'実施しました',en:'Done',vi:'Đã làm'})}</button>` : '';
-    const openBtn = didBtn || (((it.manual || !it.submitted) && it.m.linkApp)
+    /* 本部が用意したシートへの入口（コンプラチェックなど）。
+       アプリの中に回答画面を作らず、本部のシートをそのまま開く（2026-08-12 案②）。 */
+    const sheetBtn = isHttp(it.m.url)
+      ? `<button class="mini" data-openurl="${esc(it.m.url)}">${L({ja:'シートを開く',en:'Open sheet',vi:'Mở bảng'})}${svg('chev')}</button>` : '';
+    const openBtn = didBtn || sheetBtn || (((it.manual || !it.submitted) && it.m.linkApp)
       ? `<button class="mini" data-tsub="${it.m.linkApp}"${openArg}>${L({ja:'開いて提出',en:'Open',vi:'Mở'})}${svg('chev')}</button>` : '');
     const oflag = it.overdue ? ` <span style="color:#b23">${L({ja:'締切超過',en:'Overdue',vi:'Quá hạn'})}</span>` : '';
     const noentry = it.manual ? ` <span class="hint" style="display:inline">※${L({ja:'自動判定なし（店舗運用・手動）',en:'no auto-check (store-run/manual)',vi:'không tự KT (thủ công)'})}</span>` : '';
@@ -3228,6 +3236,17 @@
         ${masters.map(m => `<div class="rep"><span class="kind b">${L(OBLIG_LABEL[m.oblig])}</span><div class="body"><div class="l1">${esc(L(m.name))}</div><div class="l2">${L({daily:{ja:'毎日',en:'Daily',vi:'Hàng ngày'},weekly:{ja:'週1',en:'Weekly',vi:'Hàng tuần'},monthly:{ja:'月1',en:'Monthly',vi:'Hàng tháng'},quarterly:{ja:'四半期',en:'Quarterly',vi:'Hàng quý'}}[m.freq]||{ja:'毎日',en:'Daily',vi:'Hàng ngày'})} ・ ${L({ja:'締切',en:'Due',vi:'Hạn'})} ${m.due} ・ ${m.hqReview==='each'?L({ja:'本部確認あり',en:'HQ review',vi:'HQ duyệt'}):m.hqReview==='exception'?L({ja:'例外のみ本部',en:'Exceptions to HQ',vi:'Ngoại lệ HQ'}):L({ja:'本部確認なし',en:'No HQ review',vi:'Không HQ'})}</div></div></div>`).join('')}
         <p class="hint" style="display:block">${L({ja:'※ この設定はこの端末に保存されています。全店で共有するにはバックエンド接続（次段階）が必要です。',en:'Saved on this device. Cross-store sharing needs backend (next step).',vi:'Lưu trên máy này. Cần backend để chia sẻ (bước sau).'})}</p>
       </div>
+      ${/* 本部が用意されたシートへの入口を設定する（コンプラチェックなど）。
+            対象月ごとにシートが変わるため、本部の方がここで差し替えられるようにしている。 */''}
+      ${masters.filter(m => 'url' in m).map(m => `
+      <div class="card">
+        <h3>${L({ja:'シートの場所',en:'Sheet link',vi:'Liên kết bảng'})} — ${esc(L(m.name))}</h3>
+        <p class="hint" style="display:block">${L({ja:'ここに入れたシートが、店舗の「シートを開く」から開きます。対象月ごとに差し替えられます。',en:'Stores open this sheet from “Open sheet”. Replace it each period.',vi:'Cửa hàng mở bảng này từ “Mở bảng”. Có thể thay mỗi kỳ.'})}</p>
+        <label class="fld"><span>${L({ja:'シートのURL',en:'Sheet URL',vi:'URL bảng'})}</span>
+          <input type="url" id="msturl_${esc(m.id)}" value="${esc(m.url || '')}" placeholder="https://docs.google.com/..."></label>
+        <button class="btn" data-msturl="${esc(m.id)}">${L({ja:'保存する',en:'Save',vi:'Lưu'})}</button>
+        ${isHttp(m.url) ? `<button class="mini" data-openurl="${esc(m.url)}" style="margin-left:8px">${L({ja:'開いて確認',en:'Open',vi:'Mở'})}</button>` : ''}
+      </div>`).join('')}
       <p class="hint" style="display:block">${L({ja:'※ 提出状況は実際の提出データ（同期済み）から自動集約しています。LINE通知・AI判定は未接続（手動運用中）。',en:'Auto-aggregated from real synced data. LINE & AI not connected (manual).',vi:'Tự tổng hợp từ dữ liệu thật (đã đồng bộ). LINE & AI chưa kết nối (thủ công).'})}</p>`;
   };
 
@@ -4616,6 +4635,17 @@
     // 使い方を順番に見る（役割ごとの案内をもう一度）
     document.querySelectorAll('[data-guide-tour]').forEach(b => b.onclick = () => openTour(0));
     document.querySelectorAll('[data-ckmode]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_ckmode', b.dataset.ckmode); render(); });
+    // 本部：シートの場所を保存する（コンプラチェックなど・全端末へ共有）
+    document.querySelectorAll('[data-msturl]').forEach(b => b.onclick = () => {
+      const id = b.dataset.msturl;
+      const el = document.getElementById(`msturl_${id}`);
+      const url = ((el && el.value) || '').trim();
+      if (url && !isHttp(url)) { toast(L({ ja:'https で始まるURLを入れてください', en:'Enter a URL starting with https', vi:'Nhập URL bắt đầu bằng https' })); return; }
+      const list = getMasters().map(m => m.id === id ? Object.assign({}, m, { url }) : m);
+      saveMasters(list);
+      toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' }));
+      render(true);
+    });
     // 写真の提出物の切り替え（オープン写真／月次の衛生写真／メニューブック）
     document.querySelectorAll('[data-phtarget]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_photo_target', b.dataset.phtarget); render(); });
     // 定期衛生：曜日の切替（手が空いていれば他の曜日を先に実施してもよい運用）
