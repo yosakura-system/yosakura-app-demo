@@ -344,7 +344,7 @@
      2つが違えば「新しい版があります」と出して、その場で最新にできるようにする。
      ※ 以前は最新版の番号だけを表示していたため、端末が古い版のまま動いていても
        画面には最新の番号が出てしまい、更新が届いていないことに気づけなかった。 */
-  const APP_BUILD = 'yosakura-taiken-v13';
+  const APP_BUILD = 'yosakura-taiken-v14';
   let LATEST_BUILD = '';
   const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
@@ -3013,7 +3013,7 @@
          四半期に1回のためにアプリ内へ回答画面を作るより、本部が用意されたシートへの入口を置くだけにする。
          url は本部が「加盟店・提出物管理」から設定する（対象月ごとに差し替えられる）。
          ★何をチェックするのかは本部が配るもの。神田が中身を作らない。 */
-      { id:'compliance', name:{ja:'コンプラチェック（4・7・10・1月）',en:'Compliance check (Apr/Jul/Oct/Jan)',vi:'Kiểm tra tuân thủ'}, oblig:'required', freq:'quarterly', due:'23:59', target:'all', hqReview:'each', detect:'none', url:'', how:{ja:'本部が用意したシートに記入してください（下のボタンから開けます）',en:'Fill in the sheet prepared by HQ (open it from the button below)',vi:'Điền vào bảng do HQ chuẩn bị (mở từ nút bên dưới)'} }
+      { id:'compliance', name:{ja:'コンプラチェック（4・7・10・1月）',en:'Compliance check (Apr/Jul/Oct/Jan)',vi:'Kiểm tra tuân thủ'}, oblig:'required', freq:'quarterly', due:'23:59', target:'all', hqReview:'each', detect:'none', url:'', how:{ja:'本部が用意したシートに記入してください',en:'Fill in the sheet prepared by HQ',vi:'Điền vào bảng do HQ chuẩn bị'} }
     ];
   }
   /* 提出管理データの全端末共有：既存バックエンド(reports)に専用kindで保存し本部全員で共有（追加kindのみ・既存挙動は不変） */
@@ -3171,7 +3171,16 @@
     const oflag = it.overdue ? ` <span style="color:#b23">${L({ja:'締切超過',en:'Overdue',vi:'Quá hạn'})}</span>` : '';
     const noentry = it.manual ? ` <span class="hint" style="display:inline">※${L({ja:'自動判定なし（店舗運用・手動）',en:'no auto-check (store-run/manual)',vi:'không tự KT (thủ công)'})}</span>` : '';
     // アプリで出せないもの＝どこへどう出すかを書いておく（現場が迷わないように）
-    const howTxt = (!it.m.linkApp && it.m.how) ? `<div class="l2" style="color:var(--gray)">${esc(L(it.m.how))}</div>` : '';
+    let howTxt = (!it.m.linkApp && it.m.how) ? `<div class="l2" style="color:var(--gray)">${esc(L(it.m.how))}</div>` : '';
+    /* シートで出すもの（コンプラチェックなど）は、本部が場所を設定するまで開くボタンが出ない。
+       説明だけがあってボタンが無いと「どこから開くのか」と迷うので、待ちの状態だと分かるように書く。
+       （2026-08-12 渉さんのご指摘：説明に「下のボタンから」とあるのにボタンが無かった） */
+    if ('url' in it.m && !isHttp(it.m.url)) {
+      howTxt += `<div class="l2" style="color:var(--gray)">${L({
+        ja:'※ 本部がシートを用意すると、ここから開けるようになります',
+        en:'The sheet will open from here once HQ has set it up',
+        vi:'Bảng sẽ mở được ở đây sau khi HQ thiết lập' })}</div>`;
+    }
     return `<div class="rep"><span class="kind ${badgeCls}">${badgeTxt}</span>
       <div class="body"><div class="l1">${esc(L(it.m.name))} <small style="color:#8a8">(${L(OBLIG_LABEL[it.m.oblig])})</small></div>${howTxt}
       <div class="l2">${due}${oflag}${noentry}</div></div>${openBtn}</div>`;
