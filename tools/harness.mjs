@@ -1335,6 +1335,22 @@ console.log('== 「報告する」タブに、日次・週次・月次と同じ�
   const tab = registry.app.innerHTML;
   ok(!/data-open="checklist"/.test(tab), 'チェックリストは報告タブに並べない（日次業務から開く）');
   ok(!/data-open="openphoto"/.test(tab), '写真の提出も報告タブに並べない（日次・月次業務から開く）');
+
+  /* ★重複を機械的に検査する（2026-08-12）。
+     これから提出物が増えても、タブに同じものを並べてしまったら自動で気づけるようにする。
+     一つずつ目で確かめると、今回のように見落とす。 */
+  const opened = new Set();
+  for (const v of ['kyou', 'shukan', 'getsuji']) {
+    run(() => setLS('manager', S4, 'ja'));
+    location.hash = '#/app/' + v;
+    [...registry.app.innerHTML.matchAll(/data-tsub="([a-zA-Z_]+)"/g)].forEach(m => opened.add(m[1]));
+  }
+  ok(opened.size >= 3, `日次・週次・月次から開く画面を拾えている（${[...opened].join(',')}）`);
+  run(() => setLS('manager', S4, 'ja'));
+  location.hash = '#/home?tab=genba';
+  const tabIds = [...registry.app.innerHTML.matchAll(/data-open="([a-zA-Z_]+)"/g)].map(m => m[1]);
+  const dup = tabIds.filter(id => opened.has(id));
+  ok(dup.length === 0, `タブに、日次・週次・月次と同じものが残っていない${dup.length ? '（重複: ' + dup.join(',') + '）' : ''}`);
   // 随時使うものは残す（提出物ではないため、ここが唯一の入口）
   ok(/data-open="tabemono"/.test(tab), '食べ残しの報告は残す（随時のため）');
   ok(/data-open="kizuki"/.test(tab), '気づきの報告は残す（随時のため）');
