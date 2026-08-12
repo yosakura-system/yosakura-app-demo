@@ -21,6 +21,10 @@
        （ここを localStorage 任せにすると、以前この端末で本番URLを入れていた方の操作が
          本物の履歴に混ざる。配る版なので、ビルドの時点で断ち切る） */
   const TAIKEN = !API_URL_DEFAULT;
+  /* 体験版のご意見の受け皿（Googleフォーム）。★URLが決まったらここに入れる。
+     2026-08-14 渉さんのご判断＝アプリの中で受けると「送れたのに届かない」ため、窓口を1つにする。
+     空のままなら、フォームの代わりにLINEでお知らせいただくようご案内する。 */
+  const TAIKEN_FORM_URL = '';
   const getApiUrl = () => (TAIKEN ? '' : (localStorage.getItem(LS_API) || API_URL_DEFAULT));
   const isCustomApi = () => !!localStorage.getItem(LS_API);
   /* システム管理者モード：接続先の変更は「本部ロール かつ 管理者モード」のみ可能。
@@ -441,7 +445,7 @@
      2つが違えば「新しい版があります」と出して、その場で最新にできるようにする。
      ※ 以前は最新版の番号だけを表示していたため、端末が古い版のまま動いていても
        画面には最新の番号が出てしまい、更新が届いていないことに気づけなかった。 */
-  const APP_BUILD = 'yosakura-taiken-v22';
+  const APP_BUILD = 'yosakura-taiken-v24';
   let LATEST_BUILD = '';
   const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
@@ -3693,6 +3697,31 @@
   ];
   const fbCatLabel = (v) => { const f = FB_CATS.find(x => x.v === v); return f ? L(f.t) : v; };
   APP_VIEWS.appfb = () => {
+    /* ★体験版：アプリの中に入力欄を置かない（保存先が無く、届かないため）。
+       Googleフォームへの入口だけを出す。窓口を2つ作らない。 */
+    if (TAIKEN) {
+      return `
+        <div class="card">
+          <h3>${L({ ja:'このアプリへのご意見', en:'Feedback on this app', vi:'Góp ý về ứng dụng' })}</h3>
+          <p class="hint" style="display:block">${L({
+            ja:'使ってみて気づいたことを、そのままお聞かせください。いただいたご意見が、次に作るものの順番になります。',
+            en:'Tell us what you noticed. Your feedback sets what we build next.',
+            vi:'Hãy cho biết điều bạn nhận thấy. Góp ý của bạn quyết định thứ tự phát triển.' })}</p>
+          ${isHttp(TAIKEN_FORM_URL)
+            ? `<button class="btn-primary" data-openurl="${esc(TAIKEN_FORM_URL)}">${L({ ja:'ご意見フォームを開く', en:'Open the feedback form', vi:'Mở biểu mẫu góp ý' })}</button>
+               <div class="hint">${L({ ja:'※ 3分ほどで終わります。お名前の記入は任意です。', en:'About 3 minutes. Your name is optional.', vi:'Khoảng 3 phút. Tên là tùy chọn.' })}</div>`
+            : `<p class="hint" style="display:block;color:#a23b3b">${L({
+                ja:'※ ご意見フォームは準備中です。お手数ですが、LINEでお知らせください。',
+                en:'The feedback form is being prepared. Please tell us on LINE for now.',
+                vi:'Biểu mẫu đang được chuẩn bị. Vui lòng cho chúng tôi biết qua LINE.' })}</p>`}
+        </div>
+        <div class="card">
+          <p class="hint" style="display:block">${L({
+            ja:'※ この体験版は、触っていただくためのものです。入力した内容はお手元の端末の中だけに残り、お店の記録には送られません。',
+            en:'This trial version is for trying things out. Entries stay on your device and are never sent to store records.',
+            vi:'Bản dùng thử để trải nghiệm. Dữ liệu chỉ ở trên máy này, không gửi tới hồ sơ cửa hàng.' })}</p>
+        </div>`;
+    }
     const rows = subRows(FB_KIND).sort((a, b) => b.t - a.t).slice(0, 30);
     const mine = getRole();
     return `
@@ -3704,12 +3733,20 @@
         <label class="fld"><span>${L({ja:'どの画面ですか（任意）',en:'Which screen (optional)',vi:'Màn hình nào (tùy chọn)'})}</span>
           <select id="fb_screen"><option value="">${L({ja:'選ばない',en:'None',vi:'Không chọn'})}</option>${APPS.filter(a=>canOpen(a,mine)).map(a=>`<option value="${esc(a.id)}">${esc(L(a.name))}</option>`).join('')}</select></label>
         <label class="fld"><span>${L({ja:'内容',en:'Details',vi:'Nội dung'})}</span><textarea id="fb_note" placeholder="${L({ja:'例：今日出すものが分かりやすい／提出ボタンが小さい など',en:'e.g. Today list is clear / submit button is small',vi:'vd: Danh sách rõ / nút gửi nhỏ'})}"></textarea></label>
-        <button class="btn-primary" data-fbsend="1">${L({ja:'送信する',en:'Send',vi:'Gửi'})}</button>
+        <button class="btn-primary" data-fbsend="1">${TAIKEN
+          ? L({ ja:'この端末に控える', en:'Save on this device', vi:'Lưu trên máy này' })
+          : L({ ja:'送信する', en:'Send', vi:'Gửi' })}</button>
+        ${TAIKEN ? `<p class="hint" style="display:block;color:#a23b3b">${L({
+          ja:'※ 体験版のため、ここから本部へは届きません。お気づきの点は、お手数ですがLINEでお知らせください。',
+          en:'This is a trial version — feedback here does not reach HQ. Please tell us on LINE.',
+          vi:'Đây là bản dùng thử — góp ý ở đây không tới HQ. Vui lòng cho chúng tôi biết qua LINE.' })}</p>` : ''}
       </div>
       <div class="card">
         <h3>${L({ja:'みんなのご意見',en:'All feedback',vi:'Tất cả góp ý'})} <small style="color:#8a8">${rows.length}</small></h3>
         ${rows.length ? rows.map(r => { const p = parseNote(r.note); return `<div class="rep"><span class="kind ${p.cat==='bug'?'a':'b'}">${esc(fbCatLabel(p.cat))}</span><div class="body"><div class="l1">${esc(p.note||'')}</div><div class="l2">${p.screen?esc(p.screen)+' ・ ':''}${esc(p.by||'')} ・ ${timeAgo(r.t)}</div></div></div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
-        <p class="hint" style="display:block">${L({ja:'※ ご意見は全端末で共有されます（本部メンバー全員が見られます）。',en:'Feedback is shared across devices (all HQ members can see).',vi:'Góp ý được chia sẻ giữa các máy.'})}</p>
+        <p class="hint" style="display:block">${TAIKEN
+          ? L({ ja:'※ 体験版では、この端末に控えたものだけが並びます。', en:'In the trial version, only entries saved on this device are listed.', vi:'Ở bản dùng thử, chỉ hiển thị nội dung lưu trên máy này.' })
+          : L({ ja:'※ ご意見は全端末で共有されます（本部メンバー全員が見られます）。', en:'Feedback is shared across devices (all HQ members can see).', vi:'Góp ý được chia sẻ giữa các máy.' })}</p>
       </div>`;
   };
 
@@ -3901,7 +3938,11 @@
         postSub(FB_KIND, getStoreSel() || '*', cat, { cat, note, screen: scApp ? L(scApp.name) : '', by: roleLabel });
         pushAudit('feedback', cat);
         if (noteEl) noteEl.value = '';
-        toast(L({ja:'ありがとうございます。ご意見を送信しました。',en:'Thank you. Your feedback was sent.',vi:'Cảm ơn. Đã gửi góp ý.'}));
+        /* ★体験版は保存先を持たないため、ここから送っても本部には届かない（2026-08-14 渉さんのご指摘）。
+           「送信しました」と出すと、届いたと思ったまま待たれてしまう。 */
+        toast(TAIKEN
+          ? L({ ja:'この端末に控えました（体験版のため本部には届きません）', en:'Saved on this device (trial version — not sent to HQ)', vi:'Đã lưu trên máy này (bản dùng thử — không gửi tới HQ)' })
+          : L({ ja:'ありがとうございます。ご意見を送信しました。', en:'Thank you. Your feedback was sent.', vi:'Cảm ơn. Đã gửi góp ý.' }));
         render(); return;
       }
       if (t.dataset.adminunlock) {
