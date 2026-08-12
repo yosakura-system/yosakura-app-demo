@@ -1616,6 +1616,26 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   const again = shape(JSON.parse(localStorage.getItem('yosakura_demo_survey') || '[]'));
   ok(first === again, '開き直しても見本の中身（評価・ご意見）が変わらない');
 
+  /* ★以前この端末で開いた方にも、作り直した見本が届くこと（2026-08-12 渉さんのご指摘）。
+     「すでに何か入っていたら作らない」ままだと、古い見本が残って集計が出ないままになる。 */
+  runTaiken(() => {
+    setLS('manager', '日本鰻世桜 浅草橋店', 'ja');
+    localStorage.setItem('yosakura_demo_survey', JSON.stringify([{ store:'寿司世桜 心斎橋店', sat:5, route:'google', note:'', country:'Japan', t: Date.now() }]));
+  });
+  const refreshed = JSON.parse(localStorage.getItem('yosakura_demo_survey') || '[]');
+  ok(refreshed.length >= 100, `古い見本が残っていても、新しい見本に入れ替わる（${refreshed.length}件）`);
+
+  /* ★実在の店舗が「評価の低い例」として見えないこと（2026-08-12 渉さんのご指摘）。
+     見本とはいえ、加盟店の皆さまが自店を見たときに落ち込む形にしない。 */
+  const avgBy = {};
+  refreshed.forEach(r => { (avgBy[r.store] = avgBy[r.store] || []).push(r.sat); });
+  const avgs = Object.entries(avgBy).map(([st, v]) => [st, v.reduce((a, b) => a + b, 0) / v.length]);
+  const worst = avgs.sort((a, b) => a[1] - b[1])[0];
+  ok(worst[1] >= 4.0, `いちばん低い店舗でも平均4.0以上（${worst[0]} ${worst[1].toFixed(2)}）`);
+  const asakusa = avgBy['日本鰻世桜 浅草橋店'] || [];
+  ok(asakusa.length > 0 && !asakusa.some(v => v <= 3), '浅草橋店に低い評価を入れていない');
+  ok(refreshed.some(r => r.sat <= 3), '低い評価そのものは残す（低い順に出る機能を説明できるように）');
+
   /* ★体験版は「加盟店の皆さまが使う3つの役割」だけ（2026-08-12 渉さんのご判断）。
      本部の画面は加盟店の方には関係がなく、見えると話が逸れる。 */
   runTaiken(() => setLS('hq', 'all', 'ja')); // 端末に本部が残っている状態で開く
