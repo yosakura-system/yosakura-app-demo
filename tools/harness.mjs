@@ -1421,6 +1421,23 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   location.hash = '#/app/backend';
   ok(called() === 0, '接続先の画面を直接開こうとしても、外への通信は起きない：' + sent.join(','));
 
+  /* ★体験版は「加盟店の皆さまが使う3つの役割」だけ（2026-08-12 渉さんのご判断）。
+     本部の画面は加盟店の方には関係がなく、見えると話が逸れる。 */
+  runTaiken(() => setLS('hq', 'all', 'ja')); // 端末に本部が残っている状態で開く
+  location.hash = '#/home';
+  const th = registry.app.innerHTML;
+  ok(!/data-tab="hq"/.test(th), '端末に本部が残っていても、本部タブは出さない');
+  ok(/店長|オーナー|店舗iPad/.test(th), '店舗側の役割として開いている');
+  location.hash = '#/app/teishutsu';
+  ok(!/加盟店・提出物管理|提出物マスタ/.test(registry.app.innerHTML), '本部の画面を直接開いても中身を出さない');
+  location.hash = '#/app/dashboard';
+  ok(!/本部ダッシュボード/.test(registry.app.innerHTML), '本部ダッシュボードも出さない');
+
+  // 役割を選ぶ画面に本部が並ばない
+  runTaiken(() => setLS('manager', S_HIROSHIMA, 'ja'));
+  ok(/const roleKeys = \(\) => TAIKEN \? \['staff', 'manager', 'owner'\]/.test(code),
+     '選べる役割が、体験版では店舗側の3つに限られている');
+
   // 通常版（いまのビルド）は、これまでどおり接続する
   FETCH_ROWS = { ok:true, reports:[] };
   ok(/const API_URL_DEFAULT = 'https:/.test(code), '通常版のビルドは接続先を持ったまま（体験版はビルド時にだけ空にする）');
