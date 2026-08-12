@@ -1058,10 +1058,13 @@ console.log('== 総点検：設定の整合（IDの重複・リンク先の存�
   const missing = links.filter(x => !appIds.has(x));
   ok(missing.length === 0, `提出物のリンク先がすべて存在する${missing.length ? '（無い: ' + missing.join(',') + '）' : ''}`);
 
-  // アプリで出せない提出物には、どこへどう出すかが書いてある（現場が迷わないように）
+  /* 月次の提出物は、アプリで出せるものは出せる形に、出せないものは出し方が書いてある。
+     ★2026-08-12：月次の衛生写真とメニューブックの確認は、以前はグループLINEへ送る運用のままだった。
+       写真を出すという中身はオープン写真と同じなので、アプリで受けるようにした（渉さんのご指摘）。 */
   const mt = renderView('getsuji','manager','日本鰻世桜 浅草橋店','ja');
-  ok(/写真共有の箇所は毎月本部より指定/.test(mt), '月次の定期衛生に提出方法が書いてある');
-  ok(/並べて写真を撮って店舗×本部GLINEへ/.test(mt), 'メニューブックの確認に提出方法が書いてある');
+  ok(/data-tsubphoto="hygiene_m"/.test(mt), '月次の定期衛生を、アプリから写真で提出できる');
+  ok(/data-tsubphoto="menubook"/.test(mt), 'メニューブックの確認を、アプリから写真で提出できる');
+  ok(!/GLINEへ/.test(mt), '月次の提出物に「GLINEへ送る」案内が残っていない');
   ok(/本部がシートを用意し/.test(mt), 'コンプラチェックに実施方法が書いてある');
   // 誤ったリンク先が残っていないこと（コンプラ→公益通報など、意味の違う画面へ飛ばさない）
   ok(!/linkApp:'whistle'/.test(code), 'コンプラチェックを公益通報の画面へ飛ばしていない');
@@ -1318,6 +1321,43 @@ console.log('== チェックリスト：最後まで終えたときだけ提出�
     ok(!/提出済/.test(row(registry.app.innerHTML, '定期衛生管理')),
        '別の曜日を終えても、今日の分は提出済みにならない');
   }
+}
+
+console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12 渉さんのご指摘）==');
+{
+  /* 以前は「アプリで受けていないので、グループLINEへ送ってください」という項目が残っていた。
+     写真を出す・実施したと伝える、という中身はすでにある仕組みと同じなので、アプリで受けるようにした。 */
+  const S = '日本鰻世桜 浅草橋店';
+
+  // 写真で出すもの＝同じ画面で、どれを出すかを渡して開く
+  const mt = renderView('getsuji', 'manager', S, 'ja');
+  ok(/data-tsubphoto="hygiene_m"/.test(mt), '月次の定期衛生を、写真の提出画面へ正しく渡して開く');
+  ok(/data-tsubphoto="menubook"/.test(mt), 'メニューブックの確認も、同じ画面へ正しく渡して開く');
+
+  // 開いた画面が、その提出物のものになっている（オープン写真のままにならない）
+  const app = run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_photo_target', 'menubook'); });
+  location.hash = '#/app/openphoto';
+  const ph = registry.app.innerHTML;
+  ok(/メニューブック/.test(ph), '写真の画面の見出しが、選んだ提出物になっている');
+  ok(/並べて/.test(ph), 'その提出物に合った撮り方の案内が出る');
+  ok(/data-phtarget="openphoto"/.test(ph), '画面の中でも提出物を切り替えられる');
+
+  // 実施するだけのもの＝その場で「実施しました」を押せる
+  const gyu = renderView('shukan', 'manager', '牛カツ世桜 長堀橋店', 'ja'); // 週次は「今週出すもの」
+  ok(/data-tdid="pop_week"/.test(gyu), '卓上POPの交換に「実施しました」が出る（牛カツは週1）');
+  ok(/実施しました/.test(gyu), 'ボタンの文言が出ている');
+
+  // 押した記録が残れば提出済みになる（記録の置き場は写真提出と同じ）
+  const today2 = new Date().toLocaleDateString('en-CA');
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'subrec', store:'牛カツ世桜 長堀橋店', item:`pop_week|${today2}`, note: JSON.stringify({ by:'店長（山田）' }), photos:[], t: Date.now(), id:'d1' },
+  ]};
+  try { run(() => setLS('manager', '牛カツ世桜 長堀橋店', 'ja')); } catch (e) { FAIL++; console.log('  ✗ didit threw: ' + e.message); }
+  await new Promise(r => setTimeout(r, 50));
+  location.hash = '#/app/shukan';
+  const row2 = (h, name) => { const i = h.indexOf(name); return i < 0 ? '' : h.slice(Math.max(0, i - 260), i + 260); };
+  ok(/提出済/.test(row2(registry.app.innerHTML, '卓上POP')), '「実施しました」を押すと提出済みになる');
+  FETCH_ROWS = { ok:false };
 }
 
 console.log('== 体験版（配る版）は、どう操作しても本物の記録に送らない ==');
