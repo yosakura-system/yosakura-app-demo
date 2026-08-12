@@ -1693,6 +1693,25 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   });
   ok(/アジェンダスライド/.test(stu), '登録されている資料の名前も出る');
   ok(!/data-studyedit/.test(stu) && !/studyForm/.test(stu), '加盟店の側では、勉強会を直せない');
+
+  /* ★本部以外が開くリンクは、必ず閲覧専用にする（2026-08-14 渉さんのご指摘）。
+     勉強会のアジェンダが編集できる状態になっていた。マニュアルだけ変換しており、
+     勉強会・サーベイの資料・提出物のシートは編集画面のまま開いていた。
+     「画面から直せない」だけでは足りない。開いた先で直せてしまう。 */
+  for (const role of ['staff', 'manager', 'owner']) {
+    runTaiken(() => setLS(role, '日本鰻世桜 浅草橋店', 'ja'));
+    let edit = 0, ro = 0;
+    for (const v of ['study', 'manual', 'survey', 'getsuji']) {
+      location.hash = '#/app/' + v;
+      const h = registry.app.innerHTML;
+      edit += (h.match(/data-openurl="[^"]*\/edit/g) || []).length;
+      ro += (h.match(/data-openurl="[^"]*\/preview/g) || []).length;
+    }
+    ok(edit === 0, `${role}：編集画面で開くリンクが1つも無い（${edit}件）`);
+    ok(ro > 0, `${role}：閲覧専用で開くリンクがある（${ro}件）`);
+  }
+  ok(/const openUrlFor = \(u\) => \(getRole\(\) === 'hq'/.test(code),
+     '閲覧専用にするかどうかの判断が1か所にまとまっている');
   ok(/7DAYS 1日目/.test(man), 'マニュアルも、実際に登録されている資料と同じ並びになっている');
 
   /* ★月例MTGを、自店のスタッフさんもアーカイブとして見られる（2026-08-12 渉さんのご要望）。
