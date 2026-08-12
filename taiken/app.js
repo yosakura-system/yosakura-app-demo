@@ -184,7 +184,8 @@
     { id:'openreg', group:'storeops', icon:'coins', hide:true, roles:['manager','owner','hq'], // 8/7 増田さん: 開局（レジ開設）は不要
       name:{ ja:'開局（レジ準備金）', en:'Register Open', vi:'Mở quầy' },
       desc:{ ja:'金種を入力→合計を自動計算', en:'Enter float by denomination', vi:'Nhập tiền quỹ đầu ca' } },
-    { id:'storevideo', group:'storeops', icon:'video', roles:['staff','manager','owner','hq'],
+    // 月次業務の「店舗内・外の動画」から開く。タブに同じものを並べない
+    { id:'storevideo', group:'storeops', icon:'video', tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'店内動画の共有', en:'In-store Video', vi:'Video trong quán' },
       desc:{ ja:'店内一周の動画リンクを共有', en:'Share store walkthrough videos', vi:'Chia sẻ video trong quán' } },
     { id:'manual', group:'learn', icon:'book', live:true, roles:['staff','manager','owner','hq'],
@@ -215,7 +216,9 @@
     { id:'schedule', group:'biz', icon:'calendar', soon:true, hide:true, roles:['owner','hq'], // 8/4: 開業関係は初期で外す（D-90は未確定）
       name:{ ja:'開業スケジュール D-90', en:'Opening Schedule D-90', vi:'Lịch khai trương D-90' },
       desc:{ ja:'契約〜開業のマスター工程', en:'Contract to opening master plan', vi:'Từ hợp đồng đến khai trương' } },
-    { id:'pl', group:'storeops', icon:'yen', live:true, roles:['manager','owner','hq'],
+    // 月次業務の「総括表の締め」「PL・損益」から開く。タブに同じものを並べない
+    // （本部・オーナーも月次業務から開けることを確認済み）
+    { id:'pl', group:'storeops', icon:'yen', live:true, tabHide:true, roles:['manager','owner','hq'],
       name:{ ja:'数値・原価率', en:'Numbers & Cost', vi:'Số liệu & Giá vốn' },
       desc:{ ja:'月次の売上・仕入・在庫から原価率を自動計算', en:'Monthly cost ratio from sales/stock', vi:'Tự tính giá vốn theo tháng' } },
     { id:'dashboard', group:'hq', icon:'gauge', roles:['hq'],
@@ -338,7 +341,7 @@
      2つが違えば「新しい版があります」と出して、その場で最新にできるようにする。
      ※ 以前は最新版の番号だけを表示していたため、端末が古い版のまま動いていても
        画面には最新の番号が出てしまい、更新が届いていないことに気づけなかった。 */
-  const APP_BUILD = 'yosakura-taiken-v9';
+  const APP_BUILD = 'yosakura-taiken-v10';
   let LATEST_BUILD = '';
   const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
