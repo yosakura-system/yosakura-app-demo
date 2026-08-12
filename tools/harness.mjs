@@ -1643,7 +1643,12 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   const man = registry.app.innerHTML;
   ok((man.match(/mrow--sub/g) || []).length >= 15, `マニュアルに資料が並んでいる（${(man.match(/mrow--sub/g) || []).length}件）`);
   ok(!/data-openurl=""/.test(man), '押しても空のタブが開く行を作っていない');
-  ok(/本部が資料を登録すると開けます/.test(man), 'まだ開けないことが分かるように書いてある');
+  /* 2026-08-12：本部が実際に登録されている資料（リンク先つき）を入れた。
+     公式ドライブの権限で守られているため、権限のない方には開けない、という前提。 */
+  ok(/閲覧専用で開く/.test(man), '資料がその場で開ける状態になっている');
+  ok((man.match(/data-openurl="https/g) || []).length >= 20,
+     `リンク先が入っている（${(man.match(/data-openurl="https/g) || []).length}件）`);
+  ok(/\/preview/.test(man), '加盟店の側では閲覧専用で開く（編集画面に入らない）');
   ok(!/資料リンクの管理/.test(man), '加盟店の側に、資料を直す入口を出さない');
 
   location.hash = '#/app/study';
