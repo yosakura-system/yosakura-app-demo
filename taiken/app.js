@@ -240,7 +240,15 @@
 
   /* ---------- 状態 ---------- */
   const LS = { role:'yosakura_demo_role', store:'yosakura_demo_store', reports:'yosakura_demo_reports', checks:'yosakura_demo_checks', uname:'yosakura_demo_uname' };
-  const getRole = () => localStorage.getItem(LS.role) || 'staff';
+  /* 体験版で選べる役割は、加盟店の皆さまが実際にお使いになる3つだけ（2026-08-12 渉さんのご判断）。
+     本部の画面は加盟店の方には関係がなく、見えると「本部はここまで見るのか」という話に逸れる。
+     ★端末に本部が保存されていても、体験版では店長として開く（配る版なので入口を残さない）。 */
+  const ROLE_KEYS_ALL = ['staff', 'manager', 'owner', 'hq'];
+  const roleKeys = () => TAIKEN ? ['staff', 'manager', 'owner'] : ROLE_KEYS_ALL;
+  const getRole = () => {
+    const r = localStorage.getItem(LS.role) || 'staff';
+    return roleKeys().includes(r) ? r : (TAIKEN ? 'manager' : 'staff');
+  };
   const setRole = (r) => localStorage.setItem(LS.role, r);
   // 提出者名＝この端末を使う方のお名前。一度登録すれば以後の提出に自動で残る（本部決定：提出物は後から誰が出したか分かるようにする）
   const getUserName = () => (localStorage.getItem(LS.uname) || '').trim();
@@ -328,7 +336,7 @@
      2つが違えば「新しい版があります」と出して、その場で最新にできるようにする。
      ※ 以前は最新版の番号だけを表示していたため、端末が古い版のまま動いていても
        画面には最新の番号が出てしまい、更新が届いていないことに気づけなかった。 */
-  const APP_BUILD = 'yosakura-taiken-v6';
+  const APP_BUILD = 'yosakura-taiken-v7';
   let LATEST_BUILD = '';
   const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
@@ -2831,14 +2839,16 @@
         <h3>${first ? L({ ja:'はじめの設定', en:'First-time setup', vi:'Cài đặt ban đầu' }) : L({ ja:'表示を切り替える', en:'Switch view', vi:'Đổi hiển thị' })}${first ? `<span class="demo-tag">${L({ja:'1回だけ',en:'Once only',vi:'Chỉ một lần'})}</span>` : `<span class="demo-tag">${L({ja:'確認用',en:'For review',vi:'Để xem'})}</span>`}</h3>
         <div class="sub">${first
           ? L({ ja:'この端末をどなたが使うかを選んでください。あとから右上でいつでも変えられます。', en:'Tell us who uses this device. You can change it any time from the top right.', vi:'Chọn ai dùng thiết bị này. Có thể đổi bất cứ lúc nào ở góc trên bên phải.' })
-          : L({ ja:'本部は全店を閲覧できます。店舗iPad・店長・加盟店オーナーは自分の店舗のみ（数値なども自店だけ）。', en:'HQ sees all stores. Store iPad, managers and franchisees see only their own store, including numbers.', vi:'HQ xem mọi cửa hàng. iPad cửa hàng/quản lý/chủ chỉ xem cửa hàng của mình.' })}</div>
+          : TAIKEN
+            ? L({ ja:'店舗iPad・店長・加盟店オーナーで、見えるものが変わります。切り替えてお試しください。', en:'What you see changes by role. Feel free to switch and try.', vi:'Nội dung thay đổi theo vai trò. Hãy thử chuyển đổi.' })
+            : L({ ja:'本部は全店を閲覧できます。店舗iPad・店長・加盟店オーナーは自分の店舗のみ（数値なども自店だけ）。', en:'HQ sees all stores. Store iPad, managers and franchisees see only their own store, including numbers.', vi:'HQ xem mọi cửa hàng. iPad cửa hàng/quản lý/chủ chỉ xem cửa hàng của mình.' })}</div>
         <div class="idlabel">${L({ ja:'役割', en:'Role', vi:'Vai trò' })}</div>
-        ${Object.entries(ROLES).map(([k,v])=>`
+        ${roleKeys().map(k => { const v = ROLES[k]; return `
           <button class="role-opt ${k===role?'on':''}" data-role="${k}">
             <span class="rr">${v.mark}</span>
             <span class="ri"><b>${L(v.label)}</b><span>${L(v.desc)}</span></span>
             ${k===role?`<span class="rc">${svg('tick')}</span>`:''}
-          </button>`).join('')}
+          </button>`; }).join('')}
         <div class="idlabel">${L({ ja:'お名前（提出の記録に残ります）', en:'Your name (recorded on submissions)', vi:'Tên của bạn (ghi vào mục đã nộp)' })}</div>
         <label class="fld"><input type="text" id="idName" maxlength="20" value="${esc(getUserName())}" placeholder="${L({ ja:'例：山田', en:'e.g. Yamada', vi:'VD: Yamada' })}"></label>
         <p class="hint" style="display:block;margin:-2px 0 12px">${L({ ja:'一度ご登録いただくと、以後の提出に自動で記録されます。未登録でも提出はできます（1食目写真は店舗名だけで大丈夫です）。', en:'Register once and it is recorded automatically on later submissions. You can still submit without it.', vi:'Đăng ký một lần, các lần nộp sau sẽ tự ghi. Không có tên vẫn nộp được.' })}</p>
