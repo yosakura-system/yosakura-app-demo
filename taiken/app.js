@@ -328,7 +328,7 @@
      2つが違えば「新しい版があります」と出して、その場で最新にできるようにする。
      ※ 以前は最新版の番号だけを表示していたため、端末が古い版のまま動いていても
        画面には最新の番号が出てしまい、更新が届いていないことに気づけなかった。 */
-  const APP_BUILD = 'yosakura-taiken-v4';
+  const APP_BUILD = 'yosakura-taiken-v5';
   let LATEST_BUILD = '';
   const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
@@ -2964,14 +2964,24 @@
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
       { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
       // ── 毎週 ──
-      { id:'pop_week',   name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'weekly', due:'23:59', target:'gyotai_in', gyotai:['gyukatsu'], hqReview:'none', detect:'none', how:{ja:'新しいものと交換する（店内での実施項目）',en:'Replace with new ones (in-store task)',vi:'Thay mới (việc tại quán)'} }, // 牛カツは油汚れ対策で週1
+      { id:'pop_week',   name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'weekly', due:'23:59', target:'gyotai_in', gyotai:['gyukatsu'], hqReview:'none', detect:'didit', how:{ja:'新しいものと交換したら「実施しました」を押してください',en:'Replace with new ones, then tap “Done”',vi:'Thay mới rồi bấm “Đã làm”'} }, // 牛カツは油汚れ対策で週1
       // ── 毎月 ──
-      { id:'monthlynum', name:{ja:'総括表（毎月5日まで）',en:'Monthly summary (by the 5th)',vi:'Tổng kết tháng (đến ngày 5)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'monthly', linkApp:'pl' },
-      { id:'pl',         name:{ja:'PL（前月分を月末まで）',en:'P&L (previous month, by month end)',vi:'Lãi lỗ (tháng trước)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', linkApp:'pl' },
-      { id:'hygiene_m',  name:{ja:'定期衛生管理（月次の指定箇所）',en:'Monthly hygiene (assigned spots)',vi:'Vệ sinh tháng (khu chỉ định)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', how:{ja:'写真共有の箇所は毎月本部より指定。ビフォーアフターを撮影して店舗×本部GLINEへ',en:'HQ assigns the spots each month; send before/after photos to the store-HQ LINE group',vi:'HQ chỉ định khu vực hàng tháng; gửi ảnh trước/sau'} },
-      { id:'menubook',   name:{ja:'メニューブック・販促物の確認',en:'Menu book & POP check',vi:'Kiểm tra menu & POP'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none', how:{ja:'汚れや破れがないか確認し、並べて写真を撮って店舗×本部GLINEへ',en:'Check for stains/tears, lay them out, photograph and send to the store-HQ LINE group',vi:'Kiểm tra bẩn/rách, chụp ảnh gửi nhóm LINE'} },
+      /* ★総括表とPLは別のもの（2026-08-12 渉さんのご指摘で整理）。
+           総括表＝日々の数値管理。毎月5日までに締める（売上・仕入・在庫→原価率）。アプリの「数値・原価率」で受ける。
+           PL   ＝店舗の利益管理。前月分を月末まで。人件費・家賃・水光熱などを含むため、アプリはまだ受けていない。
+         以前は両方とも同じ「数値・原価率」の画面へ飛んでおり、同じものが2つ並んでいるように見えていた。
+         PLからはリンクを外し、何をするものかを画面に出す。**項目の統廃合は本部の一覧が正なので、こちらでは行わない。** */
+      { id:'monthlynum', name:{ja:'総括表の締め（毎月5日まで）',en:'Monthly summary close (by the 5th)',vi:'Chốt tổng kết tháng (đến ngày 5)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'monthly', linkApp:'pl',
+        how:{ja:'前月の売上・仕入・在庫を入力すると原価率まで出ます',en:'Enter last month’s sales, purchases and stock to get the cost ratio',vi:'Nhập doanh thu, nhập hàng, tồn kho tháng trước để ra giá vốn'} },
+      { id:'pl',         name:{ja:'PL・損益（前月分を月末まで）',en:'P&L (previous month, by month end)',vi:'Lãi lỗ (tháng trước)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none',
+        how:{ja:'人件費・家賃なども含む損益の集計です。現在はアプリでは受けておらず、本部のPLシートへご入力ください',en:'P&L including labour and rent. Not yet handled in the app — please use the HQ P&L sheet',vi:'Lãi lỗ gồm nhân sự, thuê mặt bằng. Chưa có trong ứng dụng — vui lòng dùng bảng P&L của HQ'} },
+      /* ★2026-08-12：この2件はアプリで受けていなかった（グループLINEへ送る運用のまま残っていた）。
+         写真を出すという中身はオープン写真とまったく同じなので、同じ画面で受けるようにした。
+         これで「送り先を選ばずに、アプリに出せば届く」が月次の提出物でも成り立つ。 */
+      { id:'hygiene_m',  name:{ja:'定期衛生管理（月次の指定箇所）',en:'Monthly hygiene (assigned spots)',vi:'Vệ sinh tháng (khu chỉ định)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'subrec', linkApp:'openphoto', how:{ja:'清掃する箇所は毎月本部より指定。清掃前と清掃後を撮って提出してください',en:'HQ assigns the spots each month; submit before/after photos',vi:'HQ chỉ định khu vực hàng tháng; nộp ảnh trước/sau'} },
+      { id:'menubook',   name:{ja:'メニューブック・販促物の確認',en:'Menu book & POP check',vi:'Kiểm tra menu & POP'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'subrec', linkApp:'openphoto', how:{ja:'汚れや破れがないか確認し、並べて写真を撮って提出してください',en:'Check for stains/tears, lay them out and submit a photo',vi:'Kiểm tra bẩn/rách, bày ra và nộp ảnh'} },
       { id:'facade',     name:{ja:'店舗内・外の動画',en:'Store interior/exterior video',vi:'Video trong/ngoài quán'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'video', linkApp:'storevideo' },
-      { id:'pop_month',  name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'monthly', due:'23:59', target:'gyotai_ex', gyotai:['gyukatsu'], hqReview:'none', detect:'none', how:{ja:'新しいものと交換する（店内での実施項目）',en:'Replace with new ones (in-store task)',vi:'Thay mới (việc tại quán)'} },
+      { id:'pop_month',  name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'monthly', due:'23:59', target:'gyotai_ex', gyotai:['gyukatsu'], hqReview:'none', detect:'didit', how:{ja:'新しいものと交換したら「実施しました」を押してください',en:'Replace with new ones, then tap “Done”',vi:'Thay mới rồi bấm “Đã làm”'} },
       // ── 四半期 ──
       { id:'compliance', name:{ja:'コンプラチェック（4・7・10・1月）',en:'Compliance check (Apr/Jul/Oct/Jan)',vi:'Kiểm tra tuân thủ'}, oblig:'required', freq:'quarterly', due:'23:59', target:'all', hqReview:'each', detect:'none', how:{ja:'対象月に本部がシートを用意し、LINEで実施をご連絡します',en:'HQ prepares the sheet and announces it on LINE in the target month',vi:'HQ chuẩn bị bảng và thông báo qua LINE'} }
     ];
@@ -3071,7 +3081,7 @@
       if (m.detect === 'ckdone') return ckAllDoneOf(store, m.ckMode || 'open', dk);
       if (m.detect === 'video')  return getReports().some(r => r.kind === 'video' && r.store === store && inScope(r.t));
       if (m.detect === 'monthly') return getMonthly().some(r => r.store === store && r.ym === new Date().toISOString().slice(0, 7));
-      if (m.detect === 'subrec') return subRows(SUB_KINDS.open).some(r => r.store === store && String(r.item || '').split('|')[0] === m.id && inScope(r.t));
+      if (m.detect === 'subrec' || m.detect === 'didit') return subRows(SUB_KINDS.open).some(r => r.store === store && String(r.item || '').split('|')[0] === m.id && inScope(r.t));
     } catch (e) {}
     return false;
   }
@@ -3108,8 +3118,15 @@
     /* ★チェックリストは5種類（オープン／アイドル／クローズ／桜／定期衛生）が同じ画面を使う。
        ここで「どれを開くか」を渡さないと、前回見ていた種類が開いてしまう。
        （2026-08-12 渉さんのご指摘。オープンを押したのにアイドルが開く状態だった） */
-    const openBtn = ((it.manual || !it.submitted) && it.m.linkApp)
-      ? `<button class="mini" data-tsub="${it.m.linkApp}"${it.m.ckMode ? ` data-tsubmode="${it.m.ckMode}"` : ''}>${L({ja:'開いて提出',en:'Open',vi:'Mở'})}${svg('chev')}</button>` : '';
+    const openArg = it.m.ckMode ? ` data-tsubmode="${it.m.ckMode}"`
+      : (it.m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(it.m.id)}"` : '');
+    /* 「実施するだけ」の項目（卓上POPの交換など）は、開く画面が無い。
+       写真も要らないので、その場で押せる「実施しました」を出す。
+       押した記録は写真の提出と同じ置き場に残るので、本部からも実施状況が見える。 */
+    const didBtn = (it.m.detect === 'didit' && !it.submitted)
+      ? `<button class="mini" data-tdid="${esc(it.m.id)}">${L({ja:'実施しました',en:'Done',vi:'Đã làm'})}</button>` : '';
+    const openBtn = didBtn || (((it.manual || !it.submitted) && it.m.linkApp)
+      ? `<button class="mini" data-tsub="${it.m.linkApp}"${openArg}>${L({ja:'開いて提出',en:'Open',vi:'Mở'})}${svg('chev')}</button>` : '');
     const oflag = it.overdue ? ` <span style="color:#b23">${L({ja:'締切超過',en:'Overdue',vi:'Quá hạn'})}</span>` : '';
     const noentry = it.manual ? ` <span class="hint" style="display:inline">※${L({ja:'自動判定なし（店舗運用・手動）',en:'no auto-check (store-run/manual)',vi:'không tự KT (thủ công)'})}</span>` : '';
     // アプリで出せないもの＝どこへどう出すかを書いておく（現場が迷わないように）
@@ -3243,25 +3260,52 @@
   }
 
   /* ---------- 店舗向け：オープン写真の提出（実データ・全端末共有） ---------- */
+  /* 写真で出す提出物は、すべてこの1画面で受ける（2026-08-12 渉さんのご指摘で拡張）。
+     以前はオープン写真だけをアプリで受け、月次の衛生写真とメニューブックの確認は
+     グループLINEへ送っていただく設計だった。仕組みは同じなのに受けていなかっただけなので、
+     同じ画面で受けるようにした（送り先を選ばずに済む＝アプリでまとまる、が本当になる）。
+     どれを出すかは「今日出すもの」から渡す（チェックリストと同じ考え方）。 */
+  const photoSubIds = () => getMasters().filter(m => m.detect === 'subrec' && m.linkApp === 'openphoto').map(m => m.id);
+  const getPhotoTarget = () => {
+    const v = localStorage.getItem('yosakura_photo_target');
+    return photoSubIds().includes(v) ? v : 'openphoto';
+  };
+  // 何をどう撮るか（画面に出す案内）。項目が増えたらここに足す
+  const PHOTO_HINTS = {
+    openphoto: { ja:'開店時の店内・外観を1枚。', en:'One photo of the store at opening.', vi:'Một ảnh cửa hàng khi mở cửa.' },
+    hygiene_m: { ja:'本部から今月指定された箇所の、清掃前と清掃後を撮ってください。', en:'Before and after photos of the spot assigned by HQ this month.', vi:'Ảnh trước và sau khi vệ sinh khu vực HQ chỉ định tháng này.' },
+    menubook:  { ja:'メニューブックと販促物を並べて、汚れや破れが分かるように撮ってください。', en:'Lay out the menu books and POP so stains or tears are visible.', vi:'Bày menu và vật phẩm quảng bá để thấy rõ vết bẩn hoặc rách.' }
+  };
   APP_VIEWS.openphoto = () => {
     const store = visibleStores()[0];
     const dk = dateKeyFor(store, Date.now());
-    const m = getMasters().find(x => x.id === 'openphoto') || { id:'openphoto', detect:'subrec', freq:'daily' };
+    const target = getPhotoTarget();
+    const m = getMasters().find(x => x.id === target) || { id:'openphoto', detect:'subrec', freq:'daily' };
     const done = detectSubmitted(store, m, dk);
-    const recent = subRows(SUB_KINDS.open).filter(r => visibleStores().includes(r.store)).sort((a, b) => b.t - a.t).slice(0, 6);
+    const title = L(m.name || { ja:'オープン写真', en:'Opening photo', vi:'Ảnh mở cửa' });
+    const hint = L(PHOTO_HINTS[target] || PHOTO_HINTS.openphoto);
+    const period = m.freq === 'monthly'
+      ? L({ ja:'今月は提出済みです（追加提出も可）。', en:'Submitted this month (you can add more).', vi:'Đã nộp tháng này (có thể thêm).' })
+      : L({ ja:'本日は提出済みです（追加提出も可）。', en:'Submitted today (you can add more).', vi:'Đã nộp hôm nay (có thể thêm).' });
+    // 同じ提出物の履歴だけを出す（オープン写真の中に月次の写真が混ざらないように）
+    const recent = subRows(SUB_KINDS.open)
+      .filter(r => visibleStores().includes(r.store) && String(r.item || '').split('|')[0] === target)
+      .sort((a, b) => b.t - a.t).slice(0, 6);
     return `
       <div class="card">
-        <h3>${L({ja:'オープン写真の提出',en:'Submit opening photo',vi:'Nộp ảnh mở cửa'})} — ${esc(storeShort(store))}</h3>
-        ${done ? `<p class="hint" style="display:block;color:#2a7">${L({ja:'本日は提出済みです（追加提出も可）。',en:'Submitted today (you can add more).',vi:'Đã nộp hôm nay (có thể thêm).'})}</p>` : `<p class="hint" style="display:block">${L({ja:'開店時の店内・外観を1枚。',en:'One photo of the store at opening.',vi:'Một ảnh cửa hàng khi mở cửa.'})}</p>`}
+        <h3>${esc(title)} — ${esc(storeShort(store))}</h3>
+        ${done ? `<p class="hint" style="display:block;color:#2a7">${period}</p>` : `<p class="hint" style="display:block">${esc(hint)}</p>`}
+        ${photoSubIds().length > 1 ? `<div class="seg" data-seg="phtarget" style="margin:2px 0 12px">${
+          photoSubIds().map(id => { const mm = getMasters().find(x => x.id === id) || {}; return `<button type="button" data-phtarget="${esc(id)}" class="${id===target?'on':''}">${esc(L(mm.name || id))}</button>`; }).join('')}</div>` : ''}
         <label class="fld"><span>${L({ja:'店舗',en:'Store',vi:'Cửa hàng'})}</span><select id="op_store">${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
         <label class="fld"><span>${L({ja:'写真',en:'Photos',vi:'Ảnh'})}</span>
-          <div class="photo-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ja:'撮影して追加',en:'Take photos',vi:'Chụp ảnh'})}</b><br><small>${L({ja:'開店時の店内・外観',en:'Store interior/exterior at open',vi:'Nội/ngoại thất khi mở cửa'})}</small></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
+          <div class="photo-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ja:'撮影して追加',en:'Take photos',vi:'Chụp ảnh'})}</b><br><small>${esc(hint)}</small></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
           <div class="photo-thumbs" id="photoThumbs"></div>
         </label>
         <button class="btn-primary" data-topensubmit="1">${L({ja:'提出する',en:'Submit',vi:'Gửi'})}</button>
         <div class="hint">${L({ja:'※ 写真が無いと提出できません（提出漏れ防止）。',en:'A photo is required to submit.',vi:'Cần có ảnh mới gửi được.'})}</div>
       </div>
-      <div class="card"><h3>${L({ja:'最近のオープン写真',en:'Recent opening photos',vi:'Ảnh mở cửa gần đây'})}</h3>
+      <div class="card"><h3>${L({ja:'最近の提出',en:'Recent submissions',vi:'Đã nộp gần đây'})}</h3>
         ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?`<img class="rep-photo" src="${photoThumb(r.photos[0])}" data-full="${photoFull(r.photos[0])}" alt="">`:`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div></div></div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
       </div>`;
   };
@@ -3461,7 +3505,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-inboxdone]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-inboxdone]');
       if (!t) return;
       if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(); return; }
       if (t.dataset.ackdone) { setAck(t.dataset.ackdone, 'done', ''); toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(true); return; }
@@ -3533,15 +3577,29 @@
         const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0, 6) : [];
         if (!photos.length) { toast(L({ja:'写真を撮影・選択してください（提出漏れ防止）',en:'Please add a photo before submitting',vi:'Vui lòng thêm ảnh trước khi gửi'})); return; }
         const dk = dateKeyFor(store, Date.now());
-        postSub(SUB_KINDS.open, store, `openphoto|${dk}`, { by: submitterLabel(), role: getRole() }, photos);
+        // どの提出物として出すか（オープン写真／月次の衛生写真／メニューブック）
+        const target = getPhotoTarget();
+        const tm = getMasters().find(x => x.id === target);
+        postSub(SUB_KINDS.open, store, `${target}|${dk}`, { by: submitterLabel(), role: getRole() }, photos);
         pushAudit('open_submit', store);
-        toast(L({ja:'オープン写真を提出しました。ありがとうございます！',en:'Opening photo submitted. Thank you!',vi:'Đã gửi ảnh mở cửa. Cảm ơn!'}));
+        toast(`${L(tm && tm.name || {ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'})}${L({ja:'を提出しました。ありがとうございます！',en:' submitted. Thank you!',vi:' đã gửi. Cảm ơn!'})}`);
         go('/app/kyou');
         return;
       }
-      // チェックリストは5種類が同じ画面を使うため、どれを開くかを先に決めてから移動する
+      // 「実施しました」＝画面を開かずにその場で記録する（卓上POPの交換など）
+      if (t.dataset.tdid) {
+        const store = visibleStores()[0];
+        const mid = t.dataset.tdid;
+        const mm = getMasters().find(x => x.id === mid);
+        postSub(SUB_KINDS.open, store, `${mid}|${dateKeyFor(store, Date.now())}`, { by: submitterLabel(), role: getRole() }, []);
+        pushAudit('did_submit', `${store}|${mid}`);
+        toast(`${L(mm && mm.name || { ja:'実施', en:'Task', vi:'Việc' })}${L({ ja:'を記録しました。ありがとうございます！', en:' recorded. Thank you!', vi:' đã ghi nhận. Cảm ơn!' })}`);
+        render(true); return;
+      }
+      // 同じ画面を複数の提出物が使うもの（チェックリスト5種／写真3種）は、どれを開くかを先に決めてから移動する
       if (t.dataset.tsub) {
         if (t.dataset.tsubmode) localStorage.setItem('yosakura_ckmode', t.dataset.tsubmode);
+        if (t.dataset.tsubphoto) localStorage.setItem('yosakura_photo_target', t.dataset.tsubphoto);
         go(`/app/${t.dataset.tsub}`); return;
       }
       if (t.dataset.tmissing) { const cur = localStorage.getItem('yosakura_sub_missingonly') === '1'; localStorage.setItem('yosakura_sub_missingonly', cur ? '0' : '1'); render(); return; }
@@ -4558,6 +4616,8 @@
     // 使い方を順番に見る（役割ごとの案内をもう一度）
     document.querySelectorAll('[data-guide-tour]').forEach(b => b.onclick = () => openTour(0));
     document.querySelectorAll('[data-ckmode]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_ckmode', b.dataset.ckmode); render(); });
+    // 写真の提出物の切り替え（オープン写真／月次の衛生写真／メニューブック）
+    document.querySelectorAll('[data-phtarget]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_photo_target', b.dataset.phtarget); render(); });
     // 定期衛生：曜日の切替（手が空いていれば他の曜日を先に実施してもよい運用）
     document.querySelectorAll('[data-hygday]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', `${todayKey()}|${b.dataset.hygday}`); render(); });
     // チェックのON/OFF（店舗×モード×当日で保存）
