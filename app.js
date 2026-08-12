@@ -1702,7 +1702,7 @@
      ※ 見本なので、実在のお客様の声ではありません。 */
   // 見本データの版。中身を作り直したらここを上げる＝以前開いた端末にも新しい見本が届く
   const SEED_VER_KEY = 'yosakura_demo_seed_ver';
-  const SEED_VER = '2026-08-12d';
+  const SEED_VER = '2026-08-12e';
   function seedSurvey() {
     /* ★以前この端末で開いた方には、古い見本が残ったままだった（2026-08-12 渉さんのご指摘で判明）。
        「すでに何か入っていたら作らない」という作りだったため、見本を作り直しても届かなかった。
@@ -3780,55 +3780,54 @@
      体験版では中身のURLを持たない＝「どの大項目に、どんな資料が並ぶか」が分かる状態にする。
      ★実際のURLは入れない。本部のGoogleドキュメントを配る版に載せない、という判断。
        押しても開かず「本部が資料を登録すると開けます」と出る。 */
-  /* マニュアルの見本＝プレビュー（本部が使っている環境）に実際に登録されている資料と同じ構成。
-     2026-08-12 渉さんのご要望「プレビューと同じように見れるようにしてほしい」。
-     ★リンク先のURLは入れていない。体験版は公開の場所に置くため、
-       本部の資料のURLをそのまま載せる判断はこちらではできない（要ご判断）。
-       押すと「本部が資料を登録すると開けます」と出る。 */
+  /* マニュアルの見本＝本部が実際に登録されている資料そのもの（2026-08-12 渉さんのご判断）。
+     リンク先も入れている。公式ドライブの権限で守られており、権限のない方には開けない
+     （こちらで匿名で確かめたところ、いずれもログインを求められ本文は返らなかった）。
+     公開してはいけない資料は登録されていない、という前提のうえでのご判断。 */
   function seedMaterials() {
     if (localStorage.getItem('yosakura_demo_links') && localStorage.getItem(SEED_VER_KEY) === SEED_VER) return;
     saveLinks([
-      { id:'lk_p1', title:'世桜10訓', url:'', mcat:'philosophy', desc:'スライド' },
-      { id:'lk_p2', title:'世桜とは', url:'', mcat:'philosophy', desc:'スライド' },
-      { id:'lk_p3', title:'創業ストーリー', url:'', mcat:'philosophy', desc:'スライド' },
-      { id:'lk_p4', title:'チームカルチャー', url:'', mcat:'philosophy', desc:'スライド' },
-      { id:'lk_p5', title:'5つの価値（詳細）', url:'', mcat:'philosophy', desc:'スライド' },
-      { id:'lk_p6', title:'5つの価値（指標）と責任者・管理者の役割', url:'', mcat:'philosophy', desc:'スプレッドシート' },
-      { id:'lk_p7', title:'身だしなみ', url:'', mcat:'hygiene', desc:'スライド' },
-      { id:'lk_p8', title:'身だしなみ（POP用）', url:'', mcat:'hygiene', desc:'スライド' },
-      { id:'lk_p9', title:'営業中の優先順位表', url:'', mcat:'service', desc:'スプレッドシート' },
-      { id:'lk_p10', title:'世桜BOOKプレゼントマニュアル（コース店舗）', url:'', mcat:'service', desc:'スライド' },
-      { id:'lk_p11', title:'タイムカード・シフト・鍵管理', url:'', mcat:'storeops', desc:'スライド' },
-      { id:'lk_p12', title:'キャリアアップ実践ガイド', url:'', mcat:'owner', desc:'スライド' },
-      { id:'lk_p13', title:'研修トレーナー育成マニュアル', url:'', mcat:'hq', desc:'スライド' },
-      { id:'lk_p14', title:'7DAYS 研修プログラム（研修対応者用）', url:'', mcat:'hq', desc:'スプレッドシート' },
-      { id:'lk_p15', title:'ハウスルール', url:'', mcat:'sevendays', desc:'スプレッドシート' },
-      { id:'lk_p16', title:'朝礼シート', url:'', mcat:'sevendays', desc:'ドキュメント' },
-      { id:'lk_p17', title:'7DAYS 1日目', url:'', mcat:'sevendays', desc:'スライド' },
-      { id:'lk_p18', title:'7DAYS 2日目', url:'', mcat:'sevendays', desc:'スライド' },
-      { id:'lk_p19', title:'7DAYS 3日目', url:'', mcat:'sevendays', desc:'スライド' },
-      { id:'lk_p20', title:'7DAYS 4日目', url:'', mcat:'sevendays', desc:'スライド' },
-      { id:'lk_p21', title:'7DAYS 5日目', url:'', mcat:'sevendays', desc:'スライド' },
-      { id:'lk_p22', title:'7DAYS 6日目', url:'', mcat:'sevendays', desc:'スライド' },
-      { id:'lk_p23', title:'7DAYS 7日目', url:'', mcat:'sevendays', desc:'スライド' },
-      { id:'lk_p24', title:'7DAYS 活用方法', url:'', mcat:'sevendays', desc:'スライド' }
+      { id:'lk_p1', title:'世桜10訓', url:'https://docs.google.com/presentation/d/1mKwnYeS24TL8lPhL12S4EkBJFsroQF2_GtVEU6ithfA/edit?usp=sharing', mcat:'philosophy', desc:'スライド' },
+      { id:'lk_p2', title:'世桜とは', url:'https://docs.google.com/presentation/d/1xg80AHrnU3CCbkFXz63tePwRufEV9n1AxZ8m75eyCHM/edit?usp=sharing', mcat:'philosophy', desc:'スライド' },
+      { id:'lk_p3', title:'創業ストーリー', url:'https://docs.google.com/presentation/d/16V3oyVOBn6SEh7WHcnPQ4LMET-LKEiIhcJmwsFPgsWA/edit?usp=sharing', mcat:'philosophy', desc:'スライド' },
+      { id:'lk_p4', title:'チームカルチャー', url:'https://docs.google.com/presentation/d/1ZlIFQmKY9yZ-hZOCVZ1zdeMGDlh5iMafQjXHVVJBCzQ/edit?usp=sharing', mcat:'philosophy', desc:'スライド' },
+      { id:'lk_p5', title:'5つの価値（詳細）', url:'https://docs.google.com/presentation/d/1g583EJHPIO_1kRefDD1IJHBGOtsGTetQwpywDoMyZLE/edit?usp=sharing', mcat:'philosophy', desc:'スライド' },
+      { id:'lk_p6', title:'5つの価値（指標）と責任者・管理者の役割', url:'https://docs.google.com/spreadsheets/d/10OgJ-1sgJliq-3rt53dvdh_-CC3tfePCM3LK8QWx3lY/edit?usp=sharing', mcat:'philosophy', desc:'スプレッドシート' },
+      { id:'lk_p7', title:'身だしなみ', url:'https://docs.google.com/presentation/d/1gnSYsL4_E5CENKgiSs_7uiUbsX3NZX8Flr9CXDlWtXA/edit?usp=sharing', mcat:'hygiene', desc:'スライド' },
+      { id:'lk_p8', title:'身だしなみ（POP用）', url:'https://docs.google.com/presentation/d/1Rt5qDAgjxWSxmFNyJIy7h7w-HQzrzqZjCrqMFUH_3sg/edit?usp=sharing', mcat:'hygiene', desc:'スライド' },
+      { id:'lk_p9', title:'営業中の優先順位表', url:'https://docs.google.com/spreadsheets/d/1QET2pWIUjUE_pz57fKcqWOaLQggK2q9efvaPV-cCKxE/edit?usp=sharing', mcat:'service', desc:'スプレッドシート' },
+      { id:'lk_p10', title:'世桜BOOKプレゼントマニュアル（コース店舗）', url:'https://docs.google.com/presentation/d/1w78P979lMMyW-88pfvtH_G0BPn1xBFXfcbjEgsomEEc/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_p11', title:'タイムカード・シフト・鍵管理', url:'https://docs.google.com/presentation/d/1tbnv8e3ud3tzrizZIlU3Hu3ls1zrQ_fRB9OD5UEJX44/edit?usp=sharing', mcat:'storeops', desc:'スライド' },
+      { id:'lk_p12', title:'キャリアアップ実践ガイド', url:'https://docs.google.com/presentation/d/1Lubd8UthmxSGvCcwEXrlDy6YRWquY9Mw2SFDj5urY-Q/edit?usp=sharing', mcat:'owner', desc:'スライド' },
+      { id:'lk_p13', title:'研修トレーナー育成マニュアル', url:'https://docs.google.com/presentation/d/1p7kVnYQ7qRablUztJbKN3e2YFcjkM4oW9VwKEbS4inI/edit?usp=sharing', mcat:'hq', desc:'スライド' },
+      { id:'lk_p14', title:'7DAYS 研修プログラム（研修対応者用）', url:'https://docs.google.com/spreadsheets/d/1-fXZCcDhd5XDrR8RfK1-Gha94H-NdrQHm7StYZgrHrs/edit?usp=sharing', mcat:'hq', desc:'スプレッドシート' },
+      { id:'lk_p15', title:'ハウスルール', url:'https://docs.google.com/spreadsheets/d/18nlZZxfd2TL-2C5-VKuOr8y6Fz9WXYLGPIu1FYmR4ck/edit?usp=sharing', mcat:'sevendays', desc:'スプレッドシート' },
+      { id:'lk_p16', title:'朝礼シート', url:'https://docs.google.com/document/d/10u9hKGI-w4KKce4pnrud20G2d7DEw5hhIorEkls43ho/edit?usp=sharing', mcat:'sevendays', desc:'ドキュメント' },
+      { id:'lk_p17', title:'7DAYS 1日目', url:'https://docs.google.com/presentation/d/13VT3yM1LK4TZNLUWMQ7FyG5Cj-8L288ZX1-BdBLmayI/edit?usp=sharing', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p18', title:'7DAYS 2日目', url:'https://docs.google.com/presentation/d/1rePk6q-dO8H6weNK9buOlIDIwgSxvd4fx5iIL9NoJ0w/edit?usp=sharing', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p19', title:'7DAYS 3日目', url:'https://docs.google.com/presentation/d/1sfm4zKK7rBz-ZjoYGt3wJp6MJdJE6UuIVp6LgPhQddU/edit?usp=sharing', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p20', title:'7DAYS 4日目', url:'https://docs.google.com/presentation/d/1WdUksrNQ-cwF0AhL1eVrk5z-nHeCFdG3lVF2-je13wo/edit?usp=sharing', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p21', title:'7DAYS 5日目', url:'https://docs.google.com/presentation/d/1N2yQO6aI_ns-WajFn6sHCBVDtAjUrq10kBh16rQAZdM/edit?usp=sharing', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p22', title:'7DAYS 6日目', url:'https://docs.google.com/presentation/d/18G700OOBWKSHEXRlvIixMiKoW7DXjq9h4jUwwlgONSE/edit?usp=sharing', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p23', title:'7DAYS 7日目', url:'https://docs.google.com/presentation/d/1TdzBd1-hku_s8jnl2BDg4pdaHRcatw7Wi2Ctbo9FISY/edit?usp=sharing', mcat:'sevendays', desc:'スライド' },
+      { id:'lk_p24', title:'7DAYS 活用方法', url:'https://docs.google.com/presentation/d/1IiZYlGnq-uxzapxFsxfwcEVFAKK7fIfPCzWmLK-Idbg/edit?usp=sharing', mcat:'sevendays', desc:'スライド' }
     ]);
     try { localStorage.setItem(SEED_VER_KEY, SEED_VER); } catch (e) {}
   }
   /* 勉強会の見本（2026-08-12 渉さんのご要望）。
      毎月第2水曜に実施しており、6月・7月はすでに開催済み。
      ★録画と資料のURLは入れない（配る版に本部の記録を載せない）。日程と内容が分かる状態にする。 */
-  /* 勉強会の見本＝プレビューに実際に登録されている回に合わせた（6月・7月）。
-     8月は今月の予定として置いている。
-     ★録画と資料のURLは入れていない（上と同じ理由）。 */
+  /* 勉強会の見本＝実際に登録されている回（2026年6月・7月）＋今月の8月。録画も入れている。
+     ★録画を入れる判断は渉さん（2026-08-12）＝「隠す必要はない。数値もスタッフが見て
+       改善につなげられるよう育成している。各店舗の利益が見えない限り問題ない」。 */
   function seedStudy() {
     if (localStorage.getItem('yosakura_demo_study') && localStorage.getItem(SEED_VER_KEY) === SEED_VER) return;
     const now = Date.now();
     saveStudy([
-      { id:'st1786011551522', date:'2026-06', title:'2026年6月勉強会', t: now - 63 * 864e5, video:'', body:'',
-        docs:[{ title:'アジェンダスライド', url:'' }, { title:'テーマスライド', url:'' }] },
-      { id:'st1786011745177', date:'2026-07', title:'2026年7月勉強会', t: now - 35 * 864e5, video:'', body:'',
-        docs:[{ title:'アジェンダスライド', url:'' }] },
+      { id:'st1786011551522', date:'2026-06', title:'2026年6月勉強会', t: now - 63 * 864e5, video:'https://drive.google.com/file/d/1jIm7Ks1XnVC6tlBSwvoq3rlfbQLagEDu/', body:'',
+        docs:[{ title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/14P3hyKBbXp1Qn0DVx64W24EcygYtbJO2dbrCbnxyZgU/edit?slide=id.g3e76fcf952b_0_0#slide=id.g3e76fcf952b_0_0' }, { title:'テーマスライド', url:'https://docs.google.com/presentation/d/14riX3QM07yufNlZ5jYgcVcdm0vZum9lP-k7CuW2W_wk/edit?slide=id.p1#slide=id.p1' }] },
+      { id:'st1786011745177', date:'2026-07', title:'2026年7月勉強会', t: now - 35 * 864e5, video:'https://drive.google.com/file/d/1C1UMnxFZkbbKm8Mz2nZjfG0mWdLfauYH/view', body:'',
+        docs:[{ title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/1gy9IXkoDfvG28sK_IWXvzpfgTAV_Fbx8q65LoUKD55c/edit?slide=id.g3e76fcf952b_0_0#slide=id.g3e76fcf952b_0_0' }] },
       { id:'st_2608', date:'2026-08', title:'2026年8月勉強会', t: now, video:'', body:'',
         docs:[{ title:'アジェンダスライド', url:'' }] }
     ]);
