@@ -23,6 +23,7 @@
 =================================================================== */
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -75,7 +76,34 @@ fs.writeFileSync(path.join(OUT, 'sw.js'), sw);
 for (const f of ['index.html', 'styles.css', 'manifest.webmanifest']) {
   fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
 }
-fs.cpSync(path.join(ROOT, 'icons'), path.join(OUT, 'icons'), { recursive: true });
+
+/* アイコンは「gitが持っているもの」を正とする。
+   ★2026-08-12：作業ツリーの icons/ に skip-worktree が立っていて実体が無く、
+     そのままコピーしたため、公開した体験版のロゴが表示されなかった（画像が壊れて出た）。
+     ファイルの有無を作業ツリーに頼ると同じことが起きるので、gitから直接取り出す。 */
+const gitFiles = execSync('git ls-files icons', { cwd: ROOT, encoding: 'utf8' })
+  .split('\n').map(s => s.trim()).filter(Boolean);
+if (!gitFiles.length) throw new Error('git が icons/ を持っていません（リポジトリの状態を確認してください）');
+fs.mkdirSync(path.join(OUT, 'icons'), { recursive: true });
+for (const f of gitFiles) {
+  const buf = execSync(`git show HEAD:${f}`, { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 });
+  if (!buf.length) throw new Error(`${f} の中身が空です`);
+  fs.writeFileSync(path.join(OUT, f), buf);
+}
+
+/* 出来上がりの点検：画面が読み込むファイルが、すべて実体として存在し、中身が空でないこと。
+   これが無いと「壊れたまま公開して、開いて初めて気づく」ことになる。 */
+const must = [
+  ...(rd(path.join(OUT, 'sw.js')).match(/'\.\/[^']+'/g) || []).map(s => s.slice(3, -1)).filter(s => s && s !== '/'),
+  ...(rd(path.join(OUT, 'index.html')).match(/(?:src|href)="([^"]+)"/g) || [])
+      .map(s => s.replace(/.*="([^"]+)"/, '$1').split('?')[0])
+      .filter(s => !/^https?:|^#|^data:/.test(s)),
+];
+const missing = [...new Set(must)].filter(f => {
+  const p = path.join(OUT, f);
+  return !fs.existsSync(p) || fs.statSync(p).size === 0;
+});
+if (missing.length) throw new Error('体験版に足りないファイルがあります：\n' + missing.join('\n'));
 
 // 配る相手が最初に読むもの（開いた人が不安にならないように）
 fs.writeFileSync(path.join(OUT, 'README.md'), `# 世桜アプリ　体験版
