@@ -151,7 +151,9 @@
     { id:'firstphoto', group:'genba', icon:'camera', soon:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'一食目写真の報告', en:'First-plate Photo', vi:'Ảnh món đầu tiên' },
       desc:{ ja:'提供直後の一枚を本部へ', en:'Send the first serving photo', vi:'Gửi ảnh ngay khi phục vụ' } },
-    { id:'kizuki', group:'genba', icon:'idea', roles:['staff','manager','owner','hq'],
+    // 日次業務の最後に並ぶようになったため、タブには重ねない（2026-08-12）。
+    // 途中で気づいたときも、日次業務から開ける（提出後も開ける形にしてある）。
+    { id:'kizuki', group:'genba', icon:'idea', tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'気づきの報告', en:'Daily Insights', vi:'Ghi nhận cuối ca' },
       desc:{ ja:'クローズ後の気づきを本部へ共有', en:'Share end-of-shift insights', vi:'Chia sẻ ghi nhận sau ca' } },
     { id:'route', group:'genba', icon:'pin', hide:true, roles:['staff','manager','owner','hq'], // 議事録12-1: 来店経路はサーベイで回収（アプリに重複入力を作らない）。結果は「サーベイ集計」で表示
@@ -1965,7 +1967,6 @@
               </span>
             </label>`).join('')}
         </div>
-        <label class="fld"><span>${L({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' })}</span><textarea id="sk_note" placeholder="${L({ja:'本日の気づき・清掃箇所など',en:'Findings, cleaning done, etc.',vi:'Ghi chú, vệ sinh đã làm...'})}"></textarea></label>
         <label class="fld"><span>${L({ ja:'翌日の食材発注', en:'Tomorrow ingredient order', vi:'Đặt NL ngày mai' })}</span><textarea id="sk_order" placeholder="${L({ja:'例：豆乳6／寿司のエビ2／お米 …',en:'e.g. soy milk 6 / shrimp 2 / rice …',vi:'vd: sữa đậu 6 / tôm 2 / gạo …'})}"></textarea></label>
         <button class="btn-primary" id="submitSk">${L({ja:'提出する',en:'Submit',vi:'Nộp'})}</button>
         <div class="hint">${L({ja:'保存すると、下の履歴と「本部ダッシュボード」に反映されます',en:'Saved and shown below and in the HQ Dashboard',vi:'Được lưu và hiển thị bên dưới và ở Bảng điều khiển'})}</div>
@@ -2981,6 +2982,12 @@
       { id:'hygiene_d',  name:{ja:'定期衛生管理（本日の曜日の箇所）',en:'Periodic hygiene (today\'s spots)',vi:'Vệ sinh định kỳ (hôm nay)'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'hygiene', linkApp:'checklist' },
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
       { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
+      /* ★気づきの報告を、1日の最後に置く（2026-08-12 渉さんのご指摘）。
+         これまで日報の中に「清掃・特記事項」という自由入力があり、
+         「気づきの報告」と同じことを2か所で書く形になっていた。日報側を外し、こちらに一本化する。
+         クローズ後に落ち着いて書くものなので、日次業務のいちばん最後に並ぶよう最後尾に置く。 */
+      { id:'kizuki',     name:{ja:'気づきの報告',en:'Daily insights',vi:'Ghi nhận cuối ca'},           oblig:'store',    freq:'daily', due:'23:59', target:'all', hqReview:'none',  detect:'kizuki', linkApp:'kizuki',
+        how:{ja:'クローズ後に、その日の気づきを共有してください（無い日は出さなくて大丈夫です）',en:'Share what you noticed after closing (skip if nothing)',vi:'Sau khi đóng cửa, chia sẻ điều bạn nhận thấy (không có thì bỏ qua)'} },
       // ── 毎週 ──
       { id:'pop_week',   name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'weekly', due:'23:59', target:'gyotai_in', gyotai:['gyukatsu'], hqReview:'none', detect:'didit', how:{ja:'新しいものと交換したら「実施しました」を押してください',en:'Replace with new ones, then tap “Done”',vi:'Thay mới rồi bấm “Đã làm”'} }, // 牛カツは油汚れ対策で週1
       // ── 毎月 ──
@@ -3094,7 +3101,9 @@
       : d === dk;
     try {
       if (m.detect === 'fp')     return getFP().some(r => r.store === store && inScope(r.t));
-      if (m.detect === 'sk')     return getSk().some(r => r.store === store && (r.date ? inScopeD(r.date) : inScope(r.t))); // 対象日で判定（翌朝提出でも前日分として数える）
+      if (m.detect === 'sk')     return getSk().some(r => r.store === store && (r.date ? inScopeD(r.date) : inScope(r.t)));
+      // 気づきは「その日に1件でも出ていれば実施」（何件出してもよいもののため）
+      if (m.detect === 'kizuki') return getKz().some(r => r.store === store && inScope(r.t)); // 対象日で判定（翌朝提出でも前日分として数える）
       if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
       /* アプリのチェックリスト＝★その日の項目が「全部」終わったときだけ提出済みとする。
          2026-08-12 渉さんのご指摘で修正。以前は1つでもチェックすれば実施とみなしていたため、
@@ -4799,7 +4808,7 @@
         foodct: v('sk_foodct'), drinkct: v('sk_drinkct'),
         rvt: v('sk_rvt'), rva: v('sk_rva'), hear: v('sk_hear'), disc: v('sk_disc'),
         food: v('sk_food'), labor: v('sk_labor'), tipt: v('sk_tipt'), tipa: v('sk_tipa'),
-        cancel: v('sk_cancel'), closer: v('sk_closer'), note: v('sk_note'), order: v('sk_order'),
+        cancel: v('sk_cancel'), closer: v('sk_closer'), order: v('sk_order'),
         // 総括表 Ver.2.6 に合わせて足した項目
         cash: v('sk_cash'), card: v('sk_card'), lunch: v('sk_lunch'), buy: v('sk_buy'),
         supply: v('sk_supply'), unagi: v('sk_unagi'), errnote: v('sk_errnote'),
