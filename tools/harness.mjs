@@ -1325,6 +1325,41 @@ console.log('== チェックリスト：最後まで終えたときだけ提出�
   }
 }
 
+console.log('== 気づきの報告を、日報から切り離して1日の最後に置く（2026-08-12）==');
+{
+  /* 渉さんのご指摘：日報の中に「清掃・特記事項」があり、気づきの報告と同じことを
+     2か所へ書く形になっていた。日報側を外し、気づきの報告へ一本化する。 */
+  const S5 = '日本鰻世桜 浅草橋店';
+
+  // 日報から自由入力の欄が消えている
+  const sk = renderView('soukatsu', 'manager', S5, 'ja');
+  ok(!/清掃・特記事項/.test(sk), '日報から「清掃・特記事項」の欄を外した');
+  ok(!/id="sk_note"/.test(sk), '入力欄そのものが無い');
+  ok(/翌日の食材発注/.test(sk), '他の欄（翌日の食材発注など）はそのまま残っている');
+  ok(!/v\('sk_note'\)/.test(code), '保存するときも、無くなった欄を読みにいかない');
+
+  // 気づきの報告が、日次業務のいちばん最後に並ぶ
+  run(() => setLS('manager', S5, 'ja'));
+  location.hash = '#/app/kyou';
+  const kyouHtml = registry.app.innerHTML;
+  ok(/気づきの報告/.test(kyouHtml), '日次業務に「気づきの報告」が出る');
+  const iNippou = kyouHtml.indexOf('日報');
+  const iKizuki = kyouHtml.indexOf('気づきの報告');
+  ok(iKizuki > iNippou && iNippou >= 0, '日報より後ろ＝1日の最後に並んでいる');
+
+  // 出したら提出済みになる
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'kizuki', store:S5, item:'other', note:'閉店後の気づきです', photos:[], t: Date.now(), id:'kz1' },
+  ]};
+  try { run(() => setLS('manager', S5, 'ja')); } catch (e) { FAIL++; console.log('  ✗ kizuki detect threw: ' + e.message); }
+  await new Promise(r => setTimeout(r, 50));
+  location.hash = '#/app/kyou';
+  const h5 = registry.app.innerHTML;
+  const j = h5.indexOf('気づきの報告');
+  ok(/提出済/.test(h5.slice(Math.max(0, j - 260), j + 260)), 'その日に1件出せば提出済みになる');
+  FETCH_ROWS = { ok:false };
+}
+
 console.log('== 「報告する」タブに、日次・週次・月次と同じものを並べない（2026-08-12）==');
 {
   /* 渉さんのご指摘：報告するタブに、日次業務で出てくる項目がそのまま並んでいて二重に見えた。
@@ -1365,7 +1400,8 @@ console.log('== 「報告する」タブに、日次・週次・月次と同じ�
   });
   // 随時使うものは残す（提出物ではないため、ここが唯一の入口）
   ok(/data-open="tabemono"/.test(tab), '食べ残しの報告は残す（随時のため）');
-  ok(/data-open="kizuki"/.test(tab), '気づきの報告は残す（随時のため）');
+  // 気づきの報告は 2026-08-12 に日次業務の最後へ移した（日報の「清掃・特記事項」と重複していたため）
+  ok(!/data-open="kizuki"/.test(tab), '気づきの報告はタブに並べない（日次業務の最後から開く）');
   ok(/data-open="kyou"/.test(tab) || /data-open="community"/.test(tab), '入口そのものは残っている');
 
   // 外した先（日次業務）から、提出が済んだあとでも開ける
