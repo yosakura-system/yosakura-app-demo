@@ -1653,6 +1653,34 @@ console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12
     const hqAfter = registry.app.innerHTML;
     ok(/data-msturl="compliance"/.test(hqAfter) && /メニューブック|卓上POP/.test(hqAfter),
        'URLを入れても、提出物の一覧は既定のまま（あとから足した項目も出る）');
+
+    /* ★店舗ごとに別のシートを持てる（2026-08-14）。
+       コンプラチェックは全店1枚ではなく、各店フォルダの中に店舗ごとのシートがある。
+       フォルダを開いて自店を探すのではなく、自店のシートが直接開くようにする。 */
+    const S_A = '日本鰻世桜 浅草橋店', S_B = '牛カツ世桜 長堀橋店';
+    FETCH_ROWS = { ok:true, reports:[
+      { kind:'submaster', store:'*', item:'masterurl', t: Date.now(), id:'m3',
+        note: JSON.stringify({
+          urls: { compliance: 'https://drive.google.com/drive/folders/kyotsu' },
+          storeUrls: { compliance: { [S_A]: 'https://docs.google.com/spreadsheets/d/asakusabashi' } } }) }
+    ]};
+    try { run(() => setLS('manager', S_A, 'ja')); } catch (e) { FAIL++; console.log('  ✗ storeUrls threw: ' + e.message); }
+    await new Promise(r => setTimeout(r, 50));
+    location.hash = '#/app/getsuji';
+    const asaku = registry.app.innerHTML;
+    ok(/asakusabashi/.test(asaku), '自店のシートが設定されていれば、そちらが開く');
+    ok(!/kyotsu/.test(asaku), '自店の設定があるときは、共通のURLは使わない');
+    // 設定していない店舗は、これまでどおり共通のURLを使う
+    run(() => setLS('manager', S_B, 'ja'));
+    await new Promise(r => setTimeout(r, 50));
+    location.hash = '#/app/getsuji';
+    const gyuk = registry.app.innerHTML;
+    ok(/kyotsu/.test(gyuk) && !/asakusabashi/.test(gyuk), '設定していない店舗には、共通のURLが出る（他店のシートは出ない）');
+    // 本部の画面に、店舗ごとの入力欄がある
+    run(() => setLS('hq', 'all', 'ja'));
+    location.hash = '#/app/teishutsu';
+    const hqStore = registry.app.innerHTML;
+    ok(/data-mstsurl="compliance__/.test(hqStore), '本部の画面に、店舗ごとのシートを入れる欄がある');
     FETCH_ROWS = { ok:false };
   }
 
