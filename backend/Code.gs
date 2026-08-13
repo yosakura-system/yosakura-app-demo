@@ -24,7 +24,7 @@ var RETURN_MAX = 800;        // 返す最新レコード数の上限
 function ttlDays_()        { return Number(getSetting_('PHOTO_TTL_DAYS', 90)) || 90; }  // 保持日数
 function autoPurgeOn_()    { return getSetting_('ENABLE_AUTO_PURGE', true) === true; }  // 自動削除の有効/無効
 /* 削除しないkind（アプリの設定情報。消すと提出物マスタや定休日が失われる）
-   ★2026-08-14 追加＝ckitem（店舗が足したチェック項目）・ckhide（店舗が外した共通項目）。
+   ★2026-08-13 追加＝ckitem（店舗が足したチェック項目）・ckhide（店舗が外した共通項目）。
      店舗ごとに作り替えた点検表そのものなので、保存期間で消えると各店の設定が失われる。 */
 var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide'];
 
