@@ -22,9 +22,9 @@
          本物の履歴に混ざる。配る版なので、ビルドの時点で断ち切る） */
   const TAIKEN = !API_URL_DEFAULT;
   /* 体験版のご意見の受け皿（Googleフォーム）。★URLが決まったらここに入れる。
-     2026-08-14 渉さんのご判断＝アプリの中で受けると「送れたのに届かない」ため、窓口を1つにする。
+     2026-08-14 神田さんのご判断＝アプリの中で受けると「送れたのに届かない」ため、窓口を1つにする。
      空のままなら、フォームの代わりにLINEでお知らせいただくようご案内する。 */
-  const TAIKEN_FORM_URL = '';
+  const TAIKEN_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSe4pXAMcGsPHV6JA8WzDtpZ1svbtZWFGep-CP876BJEmaurWg/viewform';
   const getApiUrl = () => (TAIKEN ? '' : (localStorage.getItem(LS_API) || API_URL_DEFAULT));
   const isCustomApi = () => !!localStorage.getItem(LS_API);
   /* システム管理者モード：接続先の変更は「本部ロール かつ 管理者モード」のみ可能。
@@ -173,7 +173,7 @@
     { id:'talk', group:'learn', icon:'chat', roles:['staff','manager','owner','hq'],
       name:{ ja:'接客スクリプト・食べ方ガイド', en:'Service Scripts', vi:'Kịch bản phục vụ' },
       desc:{ ja:'多言語の接客フレーズと食べ方案内', en:'Multilingual phrases & how-to-enjoy', vi:'Câu phục vụ đa ngữ' } },
-    // 2026-08-12 渉さんのご指摘：日次業務と同じものが「報告する」にも並び、二重に見えていた。
+    // 2026-08-12 神田さんのご指摘：日次業務と同じものが「報告する」にも並び、二重に見えていた。
     // 機能は生きているが、タブの一覧には出さない（日次業務の各チェックリストから開く）。
     { id:'checklist', group:'genba', icon:'check', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'オープン・クローズチェック', en:'Open & Close Check', vi:'Kiểm tra Mở & Đóng' },
@@ -211,7 +211,7 @@
     { id:'soukatsu', group:'storeops', icon:'table', tabHide:true, roles:['staff','manager','owner','hq'], // 日報は店舗iPad（現場）でも入力可（上原さんご要望）
       name:{ ja:'総括表の入力（日報）', en:'Daily Summary', vi:'Tổng kết ngày' },
       desc:{ ja:'日次の売上・客数・分析（店舗iPadでも入力可）', en:'Daily sales, guests, review', vi:'Doanh thu, khách, phân tích' } },
-    /* 2026-08-12 渉さんのご要望：実施は一部の店舗でも、今後実施する店舗もあるため、
+    /* 2026-08-12 神田さんのご要望：実施は一部の店舗でも、今後実施する店舗もあるため、
        自店のスタッフさんが過去の回をアーカイブとして確認できるようにする。 */
     { id:'mtg', group:'storeops', icon:'mtg', roles:['staff','manager','owner','hq'],
       name:{ ja:'月例MTG', en:'Monthly Meeting', vi:'Họp hàng tháng' },
@@ -254,7 +254,7 @@
 
   /* ---------- 状態 ---------- */
   const LS = { role:'yosakura_demo_role', store:'yosakura_demo_store', reports:'yosakura_demo_reports', checks:'yosakura_demo_checks', uname:'yosakura_demo_uname' };
-  /* 体験版で選べる役割は、加盟店の皆さまが実際にお使いになる3つだけ（2026-08-12 渉さんのご判断）。
+  /* 体験版で選べる役割は、加盟店の皆さまが実際にお使いになる3つだけ（2026-08-12 神田さんのご判断）。
      本部の画面は加盟店の方には関係がなく、見えると「本部はここまで見るのか」という話に逸れる。
      ★端末に本部が保存されていても、体験版では店長として開く（配る版なので入口を残さない）。 */
   const ROLE_KEYS_ALL = ['staff', 'manager', 'owner', 'hq'];
@@ -319,7 +319,7 @@
   }
 
   // 総括表の履歴を用意（バックエンド非管理のローカル機能・空のときだけ）
-  /* 過去の日報（総括表）の見本（2026-08-12 渉さんのご要望）。
+  /* 過去の日報（総括表）の見本（2026-08-12 神田さんのご要望）。
      ★狙い＝「過去のデータがどう表示されるのか」を見えるようにする。
        以前は2件しか無く、履歴も個店カルテも月次の推移も、ほぼ空のまま説明できなかった。
      作り方の約束：
@@ -445,7 +445,7 @@
      2つが違えば「新しい版があります」と出して、その場で最新にできるようにする。
      ※ 以前は最新版の番号だけを表示していたため、端末が古い版のまま動いていても
        画面には最新の番号が出てしまい、更新が届いていないことに気づけなかった。 */
-  const APP_BUILD = 'yosakura-taiken-v24';
+  const APP_BUILD = 'yosakura-taiken-v26';
   let LATEST_BUILD = '';
   const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
@@ -664,7 +664,7 @@
   const go = (hash) => { location.hash = hash; };
   window.addEventListener('hashchange', render);
   /* 画面の位置はアプリ側で決める。ブラウザに任せると、別の画面へ移ったのに
-     前の画面の位置が復元され、途中から始まってしまう（2026-08-12 渉さんのご指摘）。 */
+     前の画面の位置が復元され、途中から始まってしまう（2026-08-12 神田さんのご指摘）。 */
   try { if (window.history && 'scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'; } catch (e) {}
 
   /* ---------- シェル ---------- */
@@ -1382,7 +1382,7 @@
        d:{ja:'袋をしっかり閉じて店舗前へ／段ボールは畳んで出す'}},
       {ja:'レジ締め',en:'Register close',vi:'Chốt quầy',
        d:{ja:'売上レシートとレジの金額を必ず合わせてから総括表へ入力／日計レポート（取引別・分類別）を印刷／現金売上と日計レポートを封筒へ／TIPは別の封筒／写真を撮り金庫に保管'}},
-      // 2026-08-12 渉さんのご指摘：チェックリスト・日報・気づき・写真はアプリで提出すると本部へ届くため、
+      // 2026-08-12 神田さんのご指摘：チェックリスト・日報・気づき・写真はアプリで提出すると本部へ届くため、
       // GLINEへ送り直す作業は不要になった。店舗内で確認が要るレジ関係だけを残す。
       {ja:'レジ締めの確認を店舗内で共有',en:'Share register close in store',vi:'Chia sẻ chốt quầy trong quán',
        d:{ja:'レジクローズ画面／現金売上・日計レポート・TIP封筒の写真（店舗内での確認用。本部への提出はアプリから）'}},
@@ -1609,10 +1609,30 @@
     hygiene:{ ja:'※ 曜日ごとに決められた箇所を清掃し、1週間でお店全体を1周します。掃除は上から下の順に（ホコリは上から落ちるため）。手が空いていれば、他の曜日を先に実施しても大丈夫です。', en:'Each weekday has its own spots; one week covers the whole store. Clean top-down. You may do another day’s items if you have time.', vi:'Mỗi thứ có khu vực riêng; một tuần phủ toàn bộ. Lau từ trên xuống.' }
   };
   const getCkMode = () => { const v = localStorage.getItem('yosakura_ckmode'); return CK_MODES.some(m => m.v === v) ? v : 'open'; };
-  // 店舗独自項目（店長・オーナーが追加）＝店舗×モードごと・全端末同期
+  /* 店舗ごとのカスタマイズ（店長・オーナーが操作）＝全端末同期。
+     ★2026-08-14 上原さんのご要望＝定期衛生管理は業態ごとの参考表があるだけで、
+       実際は店舗ごとに作り替えて使っている（設備・レイアウトが違うため）。
+       そこで「全店共通を既定として置いておき、各店で外す・足す」形にした。
+       定期衛生は曜日ごとに中身が違うので、追加も非表示も曜日ごとに持つ。 */
+  const CK_HIDABLE = ['hygiene']; // 共通項目を店舗側で外せるモード（他は本部共通のまま）
+  const ckKey = (store, mode, day) => mode === 'hygiene'
+    ? `${store}||hygiene-${day == null ? new Date().getDay() : day}`
+    : `${store}||${mode}`;
+  // 店舗独自項目（店長・オーナーが追加）＝店舗×モード（定期衛生は×曜日）ごと・全端末同期
   const getCkItems = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckitem')) || {}; } catch { return {}; } };
   const saveCkItems = (o) => { try { localStorage.setItem('yosakura_demo_ckitem', JSON.stringify(o)); } catch (e) {} };
-  const ckCustom = (store, mode) => getCkItems()[`${store}||${mode}`] || [];
+  /* 曜日で分ける前（〜v24）に定期衛生へ追加された項目は `店舗||hygiene` に入っている。
+     これはどの曜日でも出し続ける＝以前に足した項目が画面から消えないようにする。 */
+  const ckCustom = (store, mode, day) => {
+    const all = getCkItems();
+    const list = all[ckKey(store, mode, day)] || [];
+    return mode === 'hygiene' ? (all[`${store}||hygiene`] || []).concat(list) : list;
+  };
+  // 店舗ごとに外した共通項目（IDの配列）＝定期衛生のみ。元に戻せる
+  const getCkHide = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckhide')) || {}; } catch { return {}; } };
+  const saveCkHide = (o) => { try { localStorage.setItem('yosakura_demo_ckhide', JSON.stringify(o)); } catch (e) {} };
+  const ckHidden = (store, mode, day) =>
+    CK_HIDABLE.includes(mode) ? (getCkHide()[ckKey(store, mode, day)] || []) : [];
   // チェック状態＝店舗×モード×日付（日付が変わると自動で新しい一日になる）
   const getCkDone = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckdone')) || {}; } catch { return {}; } };
   const saveCkDone = (o) => { try { localStorage.setItem('yosakura_demo_ckdone', JSON.stringify(o)); } catch (e) {} };
@@ -1628,9 +1648,13 @@
   const ckIdsOf = (store, mode, hygDay) => {
     const d = hygDay == null ? new Date().getDay() : hygDay; // 省いたら今日の曜日
     const idBase = mode === 'hygiene' ? `${mode}-${d}` : mode;
+    const hid = ckHidden(store, mode, d); // 店舗で外した共通項目は数に入れない
     const ids = [];
-    ckGroupsOf(mode, d).forEach((gr, gi) => gr.items.forEach((_, ii) => ids.push(`${idBase}-c-${gi}-${ii}`)));
-    return ids.concat(ckCustom(store, mode).map(c => c.id));
+    ckGroupsOf(mode, d).forEach((gr, gi) => gr.items.forEach((_, ii) => {
+      const id = `${idBase}-c-${gi}-${ii}`;
+      if (!hid.includes(id)) ids.push(id);
+    }));
+    return ids.concat(ckCustom(store, mode, d).map(c => c.id));
   };
   // その店舗×モードの項目数（本部共通＋店舗独自）
   const ckTotalOf = (store, mode) => ckIdsOf(store, mode).length;
@@ -1677,29 +1701,57 @@
     const mode = getCkMode();
     const hygDay = getHygDay(); // 画面は「選んだ曜日」を出す（判定は今日の曜日を使う＝ckIdsOfの既定）
     const groups = ckGroupsOf(mode, hygDay);
-    const custom = ckCustom(store, mode);
+    const custom = ckCustom(store, mode, hygDay);
+    const hidden = ckHidden(store, mode, hygDay);   // この店舗で外した共通項目
     const done = getCkDone()[ckDoneKey(store, mode)] || {};
     const editable = ckCanEdit();
+    const canHide = editable && CK_HIDABLE.includes(mode); // 共通項目を外せるのは定期衛生のみ
     // 定期衛生は曜日ごとに内容が違うため、チェックのIDにも曜日を入れる（別の曜日と混ざらないように）
     const idBase = mode === 'hygiene' ? `${mode}-${hygDay}` : mode;
     // 数えるものは ckIdsOf に集約（「今日出すもの」の判定と必ず同じ数え方になるように）
     const allIds = ckIdsOf(store, mode, hygDay);
     const total = allIds.length || 1;
     const n = allIds.filter(id => done[id]).length;
-    const groupsHTML = groups.map((gr, gi) => `
+    /* 店舗で外した共通項目は画面から消す。空になったグループは見出しごと出さない
+       （見出しだけが残ると「中身が消えた」ように見えるため）。 */
+    const groupsHTML = groups.map((gr, gi) => {
+      const rows = gr.items.map((it, ii) => {
+        const id = `${idBase}-c-${gi}-${ii}`;
+        if (hidden.includes(id)) return '';
+        // ×は右端に重ねて出るので、文章がその下へ潜らないように右側を空ける
+        return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl"${canHide ? ' style="padding-right:26px"' : ''}>${esc(L(it))}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span>${canHide ? `<button class="ck-del" data-ckhide="${id}" aria-label="${esc(L({ ja:'この店舗では使わない', en:'Not used at this store', vi:'Không dùng ở cửa hàng này' }))}">×</button>` : ''}</div>`;
+      }).join('');
+      if (!rows) return '';
+      return `
       <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${esc(L(gr.g))}</h2></div>
+      <div class="card" style="padding:4px 14px">${rows}</div>`;
+    }).join('');
+    /* 外した項目は消さずに畳んでおく＝間違えて外しても、その場で戻せるようにする */
+    const hiddenHTML = (canHide && hidden.length) ? `
+      <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'この店舗では使わない項目', en:'Items not used at this store', vi:'Mục không dùng ở cửa hàng này' })}（${hidden.length}）</h2></div>
       <div class="card" style="padding:4px 14px">
-        ${gr.items.map((it, ii) => { const id = `${idBase}-c-${gi}-${ii}`; return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span></div>`; }).join('')}
-      </div>`).join('');
+        ${groups.map((gr, gi) => gr.items.map((it, ii) => {
+          const id = `${idBase}-c-${gi}-${ii}`;
+          if (!hidden.includes(id)) return '';
+          return `<div class="check" style="opacity:.65;cursor:default"><span class="lbl">${esc(L(it))}</span><button class="mini" style="margin-left:auto" data-ckshow="${id}">${L({ ja:'戻す', en:'Restore', vi:'Khôi phục' })}</button></div>`;
+        }).join('')).join('')}
+        <div class="hint" style="display:block;padding:2px 4px 8px">${L({ ja:'※ 外した項目は点検の件数から除かれます。設備が変わったら「戻す」で元に戻せます。', en:'Removed items are excluded from the count. Use Restore if your equipment changes.', vi:'Mục đã bỏ không tính vào số lượng. Nhấn Khôi phục khi cần.' })}</div>
+      </div>` : '';
+    // 定期衛生は曜日ごとに持つので、どの曜日への追加かを見出しに出す（別の曜日に足す事故を防ぐ）
+    const customTitle = mode === 'hygiene'
+      ? `${L({ ja:'この店舗の追加項目', en:'Store-specific items', vi:'Mục riêng của cửa hàng' })}（${L(WDAY_LABELS[hygDay])}${L({ ja:'曜日', en:'', vi:'' })}）`
+      : L({ ja:'この店舗の追加項目', en:'Store-specific items', vi:'Mục riêng của cửa hàng' });
     const customHTML = `
-      <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'この店舗の追加項目', en:'Store-specific items', vi:'Mục riêng của cửa hàng' })}</h2></div>
+      <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${customTitle}</h2></div>
       <div class="card" style="padding:4px 14px">
         ${custom.length ? custom.map(c => `<div class="check ${done[c.id]?'done':''}" data-ck="${c.id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(c.label)}</span>${editable ? `<button class="ck-del" data-ckdel="${c.id}" aria-label="delete">×</button>` : ''}</div>`).join('')
           : `<div class="muted" style="padding:10px 4px">${L({ ja:'追加項目はありません', en:'No custom items', vi:'Chưa có mục thêm' })}</div>`}
         ${editable ? `<div class="ck-add"><input type="text" id="ck_new" placeholder="${esc(L({ ja:'例）季節の掲示物を差し替え', en:'e.g. Swap seasonal signage', vi:'vd: Thay bảng theo mùa' }))}"><button class="mini" id="ckAdd">${L({ ja:'追加', en:'Add', vi:'Thêm' })}</button></div>` : ''}
       </div>`;
     return `
-      ${NOTE({ ja:'◆ オープン／クローズの点検。本部共通項目は削除できません。店舗独自の項目は店長・オーナーが追加できます', en:'◆ Opening/closing checks. HQ common items are fixed; managers/owners can add store-specific items.', vi:'◆ Kiểm tra mở/đóng. Mục chung của HQ cố định; quản lý/chủ có thể thêm mục riêng.' })}
+      ${NOTE(canHide
+        ? { ja:'◆ 定期衛生管理は、この一覧を出発点として店舗ごとに作り替えられます。使わない項目は「×」で外し、必要な項目は下から追加してください（店長・オーナーのみ／曜日ごとに保存されます）', en:'◆ Periodic hygiene: this list is a starting point. Managers/owners can remove items with “×” and add their own. Saved per weekday.', vi:'◆ Vệ sinh định kỳ: danh sách này là điểm khởi đầu. Quản lý/chủ có thể bỏ mục bằng “×” và thêm mục riêng. Lưu theo từng thứ.' }
+        : { ja:'◆ オープン／クローズの点検。本部共通項目は削除できません。店舗独自の項目は店長・オーナーが追加できます', en:'◆ Opening/closing checks. HQ common items are fixed; managers/owners can add store-specific items.', vi:'◆ Kiểm tra mở/đóng. Mục chung của HQ cố định; quản lý/chủ có thể thêm mục riêng.' })}
       <div class="card" style="text-align:center">
         <div class="seg" data-seg="ckmode" style="margin-bottom:14px">${CK_MODES.map(m => `<button type="button" data-ckmode="${m.v}" class="${m.v===mode?'on':''}">${L(m.t)}</button>`).join('')}</div>
         <h3>${L({ ja:'本日の', en:'Today: ', vi:'Hôm nay: ' })}${esc(L((CK_MODES.find(m => m.v === mode) || {}).t || ''))}${L({ ja:'点検', en:' check', vi:'' })}</h3>
@@ -1710,6 +1762,7 @@
       </div>
       ${groupsHTML}
       ${customHTML}
+      ${hiddenHTML}
       ${CK_NOTES[mode] ? `<div class="hint" style="display:block">${L(CK_NOTES[mode])}</div>` : ''}
       <div class="hint">${L({ ja:'上から順に実施すれば完了です。チェックは店舗ごと・当日分として保存されます（翌日は自動でリセット）。実施状況は本部・オーナーからも確認できます。', en:'Work top to bottom. Checks are saved per store for today (auto-resets next day) and visible to HQ/owners.', vi:'Làm từ trên xuống. Lưu theo cửa hàng cho hôm nay; HQ/chủ có thể xem.' })}</div>`;
   };
@@ -1750,7 +1803,7 @@
   const mgroupLabel = (v) => { const g = MANUAL_GROUPS.find(x => x.v === v); return g ? L(g.t) : L({ ja:'未分類', en:'Unsorted', vi:'Chưa phân loại' }); };
   // Google文書を読み取り専用ビューアで開くURLへ変換（/edit... → /preview）。非本部は編集画面に入れない。
   const roViewUrl = (u) => String(u || '').replace(/\/edit\b[^#]*(#.*)?$/, '/preview');
-  /* ★本部以外が開くリンクは、必ず閲覧専用にする（2026-08-14 渉さんのご指摘）。
+  /* ★本部以外が開くリンクは、必ず閲覧専用にする（2026-08-14 神田さんのご指摘）。
      勉強会のアジェンダが編集できる状態になっていた。マニュアルだけ変換しており、
      勉強会・サーベイの資料・提出物のシートは編集画面のまま開いていた。
      権限のある方が開くと、その場で本部の資料を書き換えられてしまう。
@@ -1796,7 +1849,7 @@
   /* ⑥ サーベイ（動く：お客様が満足度・来店経路・ご感想を回答→自店で集計）*/
   const getSurvey = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_survey')) || []; } catch { return []; } };
   const saveSurvey = (a) => localStorage.setItem('yosakura_demo_survey', JSON.stringify(a));
-  /* お客様アンケートの見本データ（2026-08-12 渉さんのご要望で全店ぶんに広げた）。
+  /* お客様アンケートの見本データ（2026-08-12 神田さんのご要望で全店ぶんに広げた）。
      ★狙い：どの店舗で開いても集計が「空っぽ」にならないこと。
        以前は1店舗ぶんしか無く、他の店舗の店長で開くと満足度も来店経路も0件だった。
      作り方の約束：
@@ -1813,14 +1866,14 @@
   const seedMark = (name) => { try { localStorage.setItem(SEED_VER_KEY + ':' + name, SEED_VER); } catch (e) {} };
   const SEED_VER = '2026-08-13a';
   function seedSurvey() {
-    /* ★以前この端末で開いた方には、古い見本が残ったままだった（2026-08-12 渉さんのご指摘で判明）。
+    /* ★以前この端末で開いた方には、古い見本が残ったままだった（2026-08-12 神田さんのご指摘で判明）。
        「すでに何か入っていたら作らない」という作りだったため、見本を作り直しても届かなかった。
        見本に版を付けて、版が変わったら作り直す。※見本はバックエンド非接続のときだけ入る。 */
     if (localStorage.getItem('yosakura_demo_survey') && seedFresh('survey')) return;
     const now = Date.now(), H = 3600e3;
     // 店舗ごとの傾向：良い評価の割合と、出やすいご指摘
     const PLAN = [
-      /* ★どの店舗も高い評価にしてある（2026-08-12 渉さんのご指摘）。
+      /* ★どの店舗も高い評価にしてある（2026-08-12 神田さんのご指摘）。
          見本とはいえ、実在の店舗が「評価の低い例」として加盟店の皆さまの目に触れる形にしない。
          低い評価はどの店舗にも少しだけ入る＝「低い評価が上に出る」ことは説明できる。 */
       { store:'日本料理世桜本店',      n:22, hi:0.90, issues:['提供時間が長かった'] },
@@ -2516,7 +2569,7 @@
   const plMonthsOf = (store) => getMonthly().filter(r => r.store === store).sort((a, b) => a.ym < b.ym ? 1 : -1);
   const plPrevClose = (store, ym) => { const r = getMonthly().find(x => x.store === store && x.ym === prevYm(ym)); return r ? r.close : ''; };
   const pct = (v) => (Number(v) || 0).toFixed(1) + '%';
-  /* ── 月別の推移グラフ（2026-08-13 渉さんのご要望）──────────────────
+  /* ── 月別の推移グラフ（2026-08-13 神田さんのご要望）──────────────────
      売上（棒）と原価率（折れ線）を、別々のグラフとして描く。
      ★1つのグラフに2本の軸を作らない。尺度が違うものを重ねると、
        上がったのか下がったのかが読めなくなる。 */
@@ -2541,7 +2594,7 @@
       const y = H - PADB - h;
       const r = Math.min(4, bw / 2);       // 上端だけ丸める（下端は基線に接する）
       /* タップで中身を出す。指で押しやすいように、棒の幅より広い透明な当たり判定を重ねる
-         （棒が細いと押せない。2026-08-13 渉さんのご要望「タップしたら簡単な情報が出る」） */
+         （棒が細いと押せない。2026-08-13 神田さんのご要望「タップしたら簡単な情報が出る」） */
       const hit = `<rect x="${PADL + band * i}" y="${PADT}" width="${band}" height="${H - PADB - PADT}" fill="transparent" data-cvtip="${esc(d.tip || '')}" style="cursor:pointer"/>`;
       return `<path d="M${x} ${y + h} L${x} ${y + r} Q${x} ${y} ${x + r} ${y} L${x + bw - r} ${y} Q${x + bw} ${y} ${x + bw} ${y + r} L${x + bw} ${y + h} Z" fill="${CHART_INK}" pointer-events="none"/>${hit}`;
     }).join('');
@@ -2595,7 +2648,7 @@
     </svg>`;
   }
 
-  /* 曜日別の傾向（直近4週間の日報から）。2026-08-13 渉さんのご要望。
+  /* 曜日別の傾向（直近4週間の日報から）。2026-08-13 神田さんのご要望。
      日ごとの棒を30本並べても傾向は読めない。曜日ごとの平均にすると
      「金土が強い」「火曜が落ちる」が一目で分かり、シフトや仕込みの判断に使える。 */
   const DOW_LABELS = [{ja:'日',en:'Sun',vi:'CN'},{ja:'月',en:'Mon',vi:'T2'},{ja:'火',en:'Tue',vi:'T3'},{ja:'水',en:'Wed',vi:'T4'},{ja:'木',en:'Thu',vi:'T5'},{ja:'金',en:'Fri',vi:'T6'},{ja:'土',en:'Sat',vi:'T7'}];
@@ -3299,7 +3352,7 @@
       { id:'hygiene_d',  name:{ja:'定期衛生管理（本日の曜日の箇所）',en:'Periodic hygiene (today\'s spots)',vi:'Vệ sinh định kỳ (hôm nay)'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'hygiene', linkApp:'checklist' },
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
       { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
-      /* ★気づきの報告を、1日の最後に置く（2026-08-12 渉さんのご指摘）。
+      /* ★気づきの報告を、1日の最後に置く（2026-08-12 神田さんのご指摘）。
          これまで日報の中に「清掃・特記事項」という自由入力があり、
          「気づきの報告」と同じことを2か所で書く形になっていた。日報側を外し、こちらに一本化する。
          クローズ後に落ち着いて書くものなので、日次業務のいちばん最後に並ぶよう最後尾に置く。 */
@@ -3308,7 +3361,7 @@
       // ── 毎週 ──
       { id:'pop_week',   name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'weekly', due:'23:59', target:'gyotai_in', gyotai:['gyukatsu'], hqReview:'none', detect:'didit', how:{ja:'新しいものと交換したら「実施しました」を押してください',en:'Replace with new ones, then tap “Done”',vi:'Thay mới rồi bấm “Đã làm”'} }, // 牛カツは油汚れ対策で週1
       // ── 毎月 ──
-      /* ★総括表とPLは別のもの（2026-08-12 渉さんのご指摘で整理）。
+      /* ★総括表とPLは別のもの（2026-08-12 神田さんのご指摘で整理）。
            総括表＝日々の数値管理。毎月5日までに締める（売上・仕入・在庫→原価率）。アプリの「数値・原価率」で受ける。
            PL   ＝店舗の利益管理。前月分を月末まで。人件費・家賃・水光熱などを含むため、アプリはまだ受けていない。
          以前は両方とも同じ「数値・原価率」の画面へ飛んでおり、同じものが2つ並んでいるように見えていた。
@@ -3325,7 +3378,7 @@
       { id:'facade',     name:{ja:'店舗内・外の動画',en:'Store interior/exterior video',vi:'Video trong/ngoài quán'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'video', linkApp:'storevideo' },
       { id:'pop_month',  name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'monthly', due:'23:59', target:'gyotai_ex', gyotai:['gyukatsu'], hqReview:'none', detect:'didit', how:{ja:'新しいものと交換したら「実施しました」を押してください',en:'Replace with new ones, then tap “Done”',vi:'Thay mới rồi bấm “Đã làm”'} },
       // ── 四半期 ──
-      /* ★コンプラチェックは「案②」で運用する（2026-08-12 渉さんのご判断）。
+      /* ★コンプラチェックは「案②」で運用する（2026-08-12 神田さんのご判断）。
          四半期に1回のためにアプリ内へ回答画面を作るより、本部が用意されたシートへの入口を置くだけにする。
          url は本部が「加盟店・提出物管理」から設定する（対象月ごとに差し替えられる）。
          ★何をチェックするのかは本部が配るもの。神田が中身を作らない。 */
@@ -3423,7 +3476,7 @@
       if (m.detect === 'kizuki') return getKz().some(r => r.store === store && inScope(r.t)); // 対象日で判定（翌朝提出でも前日分として数える）
       if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
       /* アプリのチェックリスト＝★その日の項目が「全部」終わったときだけ提出済みとする。
-         2026-08-12 渉さんのご指摘で修正。以前は1つでもチェックすれば実施とみなしていたため、
+         2026-08-12 神田さんのご指摘で修正。以前は1つでもチェックすれば実施とみなしていたため、
          途中までしか終わっていないのに「今日出すもの」から消えてしまっていた。
          点検は最後まで通してこそ意味があるので、途中は未提出のまま残す。 */
       if (m.detect === 'ckdone') return ckAllDoneOf(store, m.ckMode || 'open', dk);
@@ -3465,7 +3518,7 @@
       : `${L({ja:'締切',en:'Due',vi:'Hạn'})} ${it.m.due}`;
     /* ★チェックリストは5種類（オープン／アイドル／クローズ／桜／定期衛生）が同じ画面を使う。
        ここで「どれを開くか」を渡さないと、前回見ていた種類が開いてしまう。
-       （2026-08-12 渉さんのご指摘。オープンを押したのにアイドルが開く状態だった） */
+       （2026-08-12 神田さんのご指摘。オープンを押したのにアイドルが開く状態だった） */
     const openArg = it.m.ckMode ? ` data-tsubmode="${it.m.ckMode}"`
       : (it.m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(it.m.id)}"` : '');
     /* 「実施するだけ」の項目（卓上POPの交換など）は、開く画面が無い。
@@ -3490,7 +3543,7 @@
     let howTxt = (!it.m.linkApp && it.m.how) ? `<div class="l2" style="color:var(--gray)">${esc(L(it.m.how))}</div>` : '';
     /* シートで出すもの（コンプラチェックなど）は、本部が場所を設定するまで開くボタンが出ない。
        説明だけがあってボタンが無いと「どこから開くのか」と迷うので、待ちの状態だと分かるように書く。
-       （2026-08-12 渉さんのご指摘：説明に「下のボタンから」とあるのにボタンが無かった） */
+       （2026-08-12 神田さんのご指摘：説明に「下のボタンから」とあるのにボタンが無かった） */
     if ('url' in it.m && !isHttp(it.m.url)) {
       howTxt += `<div class="l2" style="color:var(--gray)">${L({
         ja:'※ 本部がシートを用意すると、ここから開けるようになります',
@@ -3637,7 +3690,7 @@
   }
 
   /* ---------- 店舗向け：オープン写真の提出（実データ・全端末共有） ---------- */
-  /* 写真で出す提出物は、すべてこの1画面で受ける（2026-08-12 渉さんのご指摘で拡張）。
+  /* 写真で出す提出物は、すべてこの1画面で受ける（2026-08-12 神田さんのご指摘で拡張）。
      以前はオープン写真だけをアプリで受け、月次の衛生写真とメニューブックの確認は
      グループLINEへ送っていただく設計だった。仕組みは同じなのに受けていなかっただけなので、
      同じ画面で受けるようにした（送り先を選ばずに済む＝アプリでまとまる、が本当になる）。
@@ -3938,7 +3991,7 @@
         postSub(FB_KIND, getStoreSel() || '*', cat, { cat, note, screen: scApp ? L(scApp.name) : '', by: roleLabel });
         pushAudit('feedback', cat);
         if (noteEl) noteEl.value = '';
-        /* ★体験版は保存先を持たないため、ここから送っても本部には届かない（2026-08-14 渉さんのご指摘）。
+        /* ★体験版は保存先を持たないため、ここから送っても本部には届かない（2026-08-14 神田さんのご指摘）。
            「送信しました」と出すと、届いたと思ったまま待たれてしまう。 */
         toast(TAIKEN
           ? L({ ja:'この端末に控えました（体験版のため本部には届きません）', en:'Saved on this device (trial version — not sent to HQ)', vi:'Đã lưu trên máy này (bản dùng thử — không gửi tới HQ)' })
@@ -4063,11 +4116,11 @@
       { title:'清掃の好事例を共有しました', body:'藁焼き装置のステンレス汚れはウタマロで改善できます。定期清掃箇所に追加しました。', level:'normal', target:'all', t: now - 3600e3 * 30 }
     ]);
   }
-  /* マニュアルの見本（2026-08-12 渉さんのご要望）。
+  /* マニュアルの見本（2026-08-12 神田さんのご要望）。
      体験版では中身のURLを持たない＝「どの大項目に、どんな資料が並ぶか」が分かる状態にする。
      ★実際のURLは入れない。本部のGoogleドキュメントを配る版に載せない、という判断。
        押しても開かず「本部が資料を登録すると開けます」と出る。 */
-  /* マニュアルの見本＝本部が実際に登録されている資料そのもの（2026-08-12 渉さんのご判断）。
+  /* マニュアルの見本＝本部が実際に登録されている資料そのもの（2026-08-12 神田さんのご判断）。
      リンク先も入れている。公式ドライブの権限で守られており、権限のない方には開けない
      （こちらで匿名で確かめたところ、いずれもログインを求められ本文は返らなかった）。
      公開してはいけない資料は登録されていない、という前提のうえでのご判断。 */
@@ -4101,11 +4154,11 @@
     ]);
     seedMark('links');
   }
-  /* 勉強会の見本（2026-08-12 渉さんのご要望）。
+  /* 勉強会の見本（2026-08-12 神田さんのご要望）。
      毎月第2水曜に実施しており、6月・7月はすでに開催済み。
      ★録画と資料のURLは入れない（配る版に本部の記録を載せない）。日程と内容が分かる状態にする。 */
   /* 勉強会の見本＝実際に登録されている回（2026年6月・7月）＋今月の8月。録画も入れている。
-     ★録画を入れる判断は渉さん（2026-08-12）＝「隠す必要はない。数値もスタッフが見て
+     ★録画を入れる判断は神田さん（2026-08-12）＝「隠す必要はない。数値もスタッフが見て
        改善につなげられるよう育成している。各店舗の利益が見えない限り問題ない」。 */
   function seedStudy() {
     if (localStorage.getItem('yosakura_demo_study') && seedFresh('study')) return;
@@ -4479,7 +4532,7 @@
         <div class="l1">${esc(p.body || '—')}</div>
         ${(p.photos && p.photos.length) ? `<div class="rep-photos">${p.photos.map(x => `<img class="rep-photo" src="${photoThumb(x)}" data-full="${photoFull(x)}" alt="" loading="lazy">`).join('')}</div>` : ''}
         <div class="l2">${esc(storeShort(p.store))}${p.by ? ` ・${esc(p.by)}` : ''} ・ ${timeAgo(p.t)}</div>
-        ${/* 押し間違えたときのために、いいね／やってみます は、もう一度押すと取り消せる（2026-08-12 渉さんのご要望）。
+        ${/* 押し間違えたときのために、いいね／やってみます は、もう一度押すと取り消せる（2026-08-12 神田さんのご要望）。
               押した後に固定してしまうと、取り消す手段がどこにも無くなる。 */''}
         <div class="l2" style="margin-top:6px"><button class="mini ${liked ? 'on' : ''}" data-commlike="${esc(key)}" title="${liked ? esc(L({ ja:'もう一度押すと取り消せます', en:'Tap again to undo', vi:'Chạm lại để hoàn tác' })) : ''}">${liked ? '♥' : '♡'} ${L({ ja:'いいね', en:'Like', vi:'Thích' })}${n ? ` ${n}` : ''}</button>${
           (st === 'published' && !isHq) ? (() => {
@@ -4612,7 +4665,7 @@
       desc:{ ja:'データの保存先（専用／共用）を切り替え', en:'Switch data backend (dedicated/shared)', vi:'Đổi nơi lưu dữ liệu' } });
   }
   /* 日次・週次・月次は、ホームの「提出・業務」に常に出ている（全役割）。
-     タブにも並べると同じものが2か所になるため、タブの一覧には出さない（2026-08-12 渉さんのご指摘）。
+     タブにも並べると同じものが2か所になるため、タブの一覧には出さない（2026-08-12 神田さんのご指摘）。
      これで「報告する」＝気づいたときに出すもの、ホーム＝今日やること、と役割が分かれる。 */
   if (!appById('kyou')) {
     APPS.unshift({ id:'kyou', group:'genba', icon:'check', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
@@ -4661,7 +4714,7 @@
     else html = viewHome('home');
     $app.innerHTML = html;
     window.scrollTo(0, y);
-    /* ★別の画面へ移ったのに、前の画面で読んでいた位置のまま始まることがあった（2026-08-12 渉さんのご指摘）。
+    /* ★別の画面へ移ったのに、前の画面で読んでいた位置のまま始まることがあった（2026-08-12 神田さんのご指摘）。
        中身を入れ替えた直後は高さがまだ決まっておらず、一度の scrollTo では戻りきらないため、
        描き直しが終わったあとにもう一度いちばん上へ送る。位置を保つとき（keepScroll）はそのまま。 */
     if (!keepScroll && typeof requestAnimationFrame === 'function') requestAnimationFrame(() => window.scrollTo(0, 0));
@@ -4948,7 +5001,7 @@
     // いいね（拍手）＝この端末で一度だけ。カウントは全端末で合算。
     // ポジティブシャワー：本部が横展開に指定／店舗が「うちでもやってみます」
     document.querySelectorAll('[data-commroll]').forEach(b => b.onclick = () => setCommRoll(b.dataset.commroll, b.dataset.on !== '1'));
-    // 押し間違えたときのために、もう一度押すと取り消せる（2026-08-12 渉さんのご要望）
+    // 押し間違えたときのために、もう一度押すと取り消せる（2026-08-12 神田さんのご要望）
     document.querySelectorAll('[data-commtry]').forEach(b => b.onclick = () => {
       const my = visibleStores()[0] || '';
       if (!my) { toast(L({ ja:'店舗が選ばれていません', en:'No store selected', vi:'Chưa chọn cửa hàng' })); return; }
@@ -5124,7 +5177,7 @@
       toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' }));
       render(true);
     });
-    // グラフをタップしたら、その月・その曜日の中身を出す（2026-08-13 渉さんのご要望）
+    // グラフをタップしたら、その月・その曜日の中身を出す（2026-08-13 神田さんのご要望）
     document.querySelectorAll('[data-cvtip]').forEach(b => b.onclick = () => {
       const t = b.dataset.cvtip;
       if (t) toast(t);
@@ -5135,7 +5188,7 @@
     document.querySelectorAll('[data-hygday]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', `${todayKey()}|${b.dataset.hygday}`); render(); });
     // チェックのON/OFF（店舗×モード×当日で保存）
     document.querySelectorAll('[data-ck]').forEach(row => row.onclick = (e) => {
-      if (e.target.closest('[data-ckdel]')) return; // 削除ボタンは別処理
+      if (e.target.closest('[data-ckdel]') || e.target.closest('[data-ckhide]')) return; // 削除・非表示ボタンは別処理
       const store = visibleStores()[0], mode = getCkMode(), key = ckDoneKey(store, mode), id = row.dataset.ck;
       const map = getCkDone(); const day = map[key] || {}; day[id] = !day[id]; map[key] = day;
       // 古い日付のチェックは肥大化防止のため間引く（直近14日分のみ保持）
@@ -5145,32 +5198,69 @@
       const t = Date.now(); lastSync = t;
       const meta = getCkMeta(); meta[key] = { by: submitterLabel(), t };
       try { localStorage.setItem('yosakura_demo_ckmeta', JSON.stringify(meta)); } catch (e) {}
-      // ★1項目チェックするたびに画面の先頭へ戻っていた（2026-08-12 渉さんのご指摘）。
+      // ★1項目チェックするたびに画面の先頭へ戻っていた（2026-08-12 神田さんのご指摘）。
       //   上から順に押していく画面なので、押すたびに戻ると実質使えない。読んでいた位置を保つ。
       render(true);
       postReport({ kind:'ckdone', store, item:`${mode}||${todayKey()}`, note: JSON.stringify({ done: day, by: submitterLabel() }), t });
     });
+    /* 店舗ごとのカスタマイズ（追加・削除・共通項目の非表示）。
+       ★保存のキーは ckKey に合わせる＝定期衛生は曜日ごとに別々に持つ（2026-08-14）。
+         バックエンドへ送る mode も同じ文字列（例 'hygiene-3'）にして、
+         同期で戻ってきたときに同じ曜日へ入るようにする。 */
+    const ckEditCtx = () => {
+      const store = visibleStores()[0], mode = getCkMode();
+      const day = mode === 'hygiene' ? getHygDay() : null;
+      const key = ckKey(store, mode, day);
+      return { store, mode, day, key, mk: key.slice(store.length + 2) }; // mk＝キーの後半（mode または mode-曜日）
+    };
     // 店舗独自項目：追加
     if (byId('ckAdd')) byId('ckAdd').onclick = () => {
       const inp = byId('ck_new'); const label = inp ? inp.value.trim() : '';
       if (!label) { toast(L({ ja:'項目名を入力してください', en:'Enter an item name', vi:'Nhập tên mục' })); return; }
-      const store = visibleStores()[0], mode = getCkMode(), mk2 = `${store}||${mode}`;
-      const all = getCkItems(); const list = (all[mk2] || []).slice();
-      list.push({ id: `${mode}-x-${Date.now().toString(36)}`, label });
-      all[mk2] = list; saveCkItems(all);
+      const { store, key, mk } = ckEditCtx();
+      const all = getCkItems(); const list = (all[key] || []).slice();
+      list.push({ id: `${mk}-x-${Date.now().toString(36)}`, label });
+      all[key] = list; saveCkItems(all);
       const t = Date.now(); lastSync = t;
       toast(L({ ja:'追加しました', en:'Added', vi:'Đã thêm' })); render(true); // 画面の下のほうにあるので位置を保つ
-      postReport({ kind:'ckitem', store, note: JSON.stringify({ mode, items: list }), t });
+      postReport({ kind:'ckitem', store, note: JSON.stringify({ mode: mk, items: list }), t });
     };
     // 店舗独自項目：削除
     document.querySelectorAll('[data-ckdel]').forEach(b => b.onclick = (e) => {
       e.stopPropagation();
-      const store = visibleStores()[0], mode = getCkMode(), mk2 = `${store}||${mode}`, id = b.dataset.ckdel;
-      const all = getCkItems(); const list = (all[mk2] || []).filter(c => c.id !== id);
-      all[mk2] = list; saveCkItems(all);
+      const { store, key, mk } = ckEditCtx();
+      const id = b.dataset.ckdel;
+      /* 曜日で分ける前に追加された項目（IDが `hygiene-x-…`）は、旧いキーに入っている。
+         そちらから消さないと、画面から消えたように見えて次の同期で戻ってくる。 */
+      const legacy = `${store}||hygiene`;
+      const tgt = (getCkItems()[key] || []).some(c => c.id === id) ? key : (id.indexOf('hygiene-x-') === 0 ? legacy : key);
+      const all = getCkItems(); const list = (all[tgt] || []).filter(c => c.id !== id);
+      all[tgt] = list; saveCkItems(all);
       const t = Date.now(); lastSync = t;
       toast(L({ ja:'削除しました', en:'Removed', vi:'Đã xóa' })); render(true); // 画面の下のほうにあるので位置を保つ
-      postReport({ kind:'ckitem', store, note: JSON.stringify({ mode, items: list }), t });
+      postReport({ kind:'ckitem', store, note: JSON.stringify({ mode: tgt === legacy ? 'hygiene' : mk, items: list }), t });
+    });
+    /* 共通項目を「この店舗では使わない」にする／戻す（定期衛生のみ）。
+       ★消さずに残す＝設備が変わったときに戻せるようにするため（2026-08-14 上原さんのご要望への対応）。 */
+    const ckSetHidden = (fn) => {
+      const { store, key, mk } = ckEditCtx();
+      const all = getCkHide(); const list = fn((all[key] || []).slice());
+      all[key] = list; saveCkHide(all);
+      const t = Date.now(); lastSync = t;
+      render(true);
+      postReport({ kind:'ckhide', store, note: JSON.stringify({ mode: mk, ids: list }), t });
+    };
+    document.querySelectorAll('[data-ckhide]').forEach(b => b.onclick = (e) => {
+      e.stopPropagation();
+      const id = b.dataset.ckhide;
+      toast(L({ ja:'この店舗では使わない項目にしました（下の一覧から戻せます）', en:'Marked as not used at this store (restore below)', vi:'Đã bỏ khỏi cửa hàng này (có thể khôi phục bên dưới)' }));
+      ckSetHidden(list => list.includes(id) ? list : list.concat([id]));
+    });
+    document.querySelectorAll('[data-ckshow]').forEach(b => b.onclick = (e) => {
+      e.stopPropagation();
+      const id = b.dataset.ckshow;
+      toast(L({ ja:'戻しました', en:'Restored', vi:'Đã khôi phục' }));
+      ckSetHidden(list => list.filter(x => x !== id));
     });
 
     // 来店経路：ワンタップ記録（全端末で本部に集約）
@@ -5264,7 +5354,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null;
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null;
     (rows || []).forEach(r => {
       // 店舗名は正式名称へ寄せる（過去のデータが旧い表記でも、同じ店舗として扱う）
       const t = Number(r.t) || 0, id = r.id, store = normalizeStore(r.store || '');
@@ -5284,7 +5374,9 @@
         case 'emg': { const p=pj(r.note); if (!emg[store] || t >= emg[store].t) emg[store] = { slots: p.slots || {}, t }; } break; // 店舗ごとに最新版が正
         case 'whistle': { const p=pj(r.note); whistle.push({ store, cat:p.cat||'other', body:p.body||'', anon:!!p.anon, t, id }); } break;
         case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', video:p.video||'', photos:r.photos||[], t, id }); } break;
-        case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モードごと最新版が正
+        case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モード（定期衛生は×曜日）ごと最新版が正
+        // 店舗で外した共通項目（定期衛生）＝同じく最新版が正
+        case 'ckhide': { const p=pj(r.note); const k=`${store}||${p.mode||''}`; if (ckhideT[k]==null || t>=ckhideT[k]) { ckhide[k]=Array.isArray(p.ids)?p.ids:[]; ckhideT[k]=t; } } break;
         // オープン/クローズの実施状況＝店舗×モード×日付ごと最新が正。誰が実施したかは別に持つ
         case 'ckdone': { const p=pj(r.note); const k=`${store}||${r.item}`; if (ckdoneT[k]==null || t>=ckdoneT[k]) { ckdone[k]=p.done||{}; ckmeta[k]={ by:p.by||'', t }; ckdoneT[k]=t; } } break;
         // 勉強会＝IDごと最新が正。削除は deleted:true の行で表す（追記式のため）
@@ -5306,7 +5398,16 @@
     set(LS.reports, food.concat(subs)); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
     set('yosakura_demo_open', open); set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
-    set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_ckitem', ckitem); set('yosakura_demo_monthly', Object.values(monthly));
+    set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_monthly', Object.values(monthly));
+    /* ★店舗ごとのカスタマイズは「届いたキーだけ」差し替える（2026-08-14）。
+       以前は同期のたびに丸ごと入れ替えていたため、バックエンドに1件も無い同期
+       （＝古い行が保存期間で消えた／通信が届く前）で、店舗が足した項目が端末から消えていた。 */
+    const mergeMap = (lsKey, next) => {
+      let cur = {}; try { cur = JSON.parse(localStorage.getItem(lsKey)) || {}; } catch (_) {}
+      Object.keys(next).forEach(k => { cur[k] = next[k]; });
+      set(lsKey, cur);
+    };
+    mergeMap('yosakura_demo_ckitem', ckitem); mergeMap('yosakura_demo_ckhide', ckhide);
     if (Object.keys(ckdone).length) { set('yosakura_demo_ckdone', ckdone); set('yosakura_demo_ckmeta', ckmeta); } // 実施状況が1件も無い同期では、この端末の記録を消さない
     if (Object.keys(study).length) set('yosakura_demo_study', Object.values(study).filter(s => s && !s.deleted));
     Object.keys(commlike).forEach(k => { if (commlike[k] < 0) commlike[k] = 0; }); // 取り消しが多くても負にしない（保存の前に直す）
@@ -5365,6 +5466,7 @@
     // 店舗名をキーに持つもの（緊急連絡先＝store／チェックリスト＝store||mode||date）
     [['yosakura_demo_emg', s => normalizeStore(s)],
      ['yosakura_demo_ckitem', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }],
+     ['yosakura_demo_ckhide', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }],
      ['yosakura_demo_ckdone', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }],
      ['yosakura_demo_ckmeta', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }]
     ].forEach(([k, fn]) => {
