@@ -850,7 +850,7 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
 
   /* 以前から使っている端末に、古い既定マスタ（6項目・日次3件）が残っている場合。
      かつては端末に保存した既定をそのまま使っていたため、こちらで17項目にしても
-     旧端末には届かず「日次業務が3項目しかない」状態になった（2026-08-07 渉さんの端末で発覚）。*/
+     旧端末には届かず「日次業務が3項目しかない」状態になった（2026-08-07 神田さんの端末で発覚）。*/
   const OLD_MASTER = [
     { id:'firstphoto', name:{ja:'一食目写真',en:'First',vi:'F'},   oblig:'off',      freq:'daily',   due:'23:59', target:'all', hqReview:'exception', detect:'fp' },
     { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily',vi:'D'}, oblig:'required', freq:'daily',   due:'12:00', target:'all', hqReview:'each',      detect:'sk' },
@@ -870,7 +870,7 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
   ok(!/清掃チェック/.test(oldDev), '端末に残っていた古い項目（清掃チェック）はもう出ない');
 
   /* チェックリストを「最後まで」実施すると「提出済み」になる。
-     ★2026-08-12 修正：以前は1つでもチェックすれば提出済みになっていた（渉さんのご指摘）。
+     ★2026-08-12 修正：以前は1つでもチェックすれば提出済みになっていた（神田さんのご指摘）。
        途中で「今日出すもの」から消えると、やり残しに気づけないため、全部終わるまで残す。 */
   const ymd = (d) => d.toLocaleDateString('en-CA');
   const today = ymd(new Date());
@@ -953,6 +953,85 @@ console.log('== チェックリストが4種類（オープン・アイドル・
   location.hash = '#/app/checklist';
   ok(new RegExp(`data-hygday="${new Date().getDay()}" class="on"`).test(registry.app.innerHTML),
      '前日以前に選んだ曜日は持ち越さず、今日へ戻る');
+}
+
+console.log('== 定期衛生管理を、店舗ごと・曜日ごとに作り替えられる（2026-08-14 上原さんのご要望）==');
+{
+  /* 上原さん：業態ごとの参考シートはあるが、実際は各店でカスタマイズして使っている。
+     → 全店共通を出発点として置き、各店の店長・オーナーが外す／足せるようにする。 */
+  const S = '牛カツ世桜 長堀橋店';
+  const td = new Date().toLocaleDateString('en-CA');
+  const openHyg = (day, seed) => {
+    run(() => {
+      setLS('manager', S, 'ja');
+      localStorage.setItem('yosakura_ckmode', 'hygiene');
+      localStorage.setItem('yosakura_hygday', `${td}|${day}`);
+      if (seed) seed();
+    });
+    location.hash = '#/app/checklist';
+    return registry.app.innerHTML;
+  };
+  const totalOf = (h) => Number((/\/(\d+)<\/span>/.exec(h) || [])[1] || 0);
+  const hideSeed = (key, ids) => () => localStorage.setItem('yosakura_demo_ckhide', JSON.stringify({ [key]: ids }));
+
+  // ① 使わない共通項目を、その店舗だけ外せる
+  const before = openHyg(1);
+  ok(/data-ckhide="hygiene-1-c-0-0"/.test(before), '共通項目に「この店舗では使わない」ボタンが出る');
+  const after = openHyg(1, hideSeed(`${S}||hygiene-1`, ['hygiene-1-c-0-0']));
+  ok(!/data-ck="hygiene-1-c-0-0"/.test(after), '外した項目はチェック欄から消える');
+  ok(totalOf(before) > 0 && totalOf(after) === totalOf(before) - 1, '外した項目は件数（分母）からも除かれる');
+  ok(/この店舗では使わない項目/.test(after) && /data-ckshow="hygiene-1-c-0-0"/.test(after),
+     '外した項目は残しておき、その場で戻せる（設備が変わっても元に戻せる）');
+
+  // ② 外す設定は曜日ごとに別々（月曜で外しても木曜には効かない）
+  ok(!/この店舗では使わない項目/.test(openHyg(4, hideSeed(`${S}||hygiene-1`, ['hygiene-1-c-0-0']))),
+     '月曜で外しても、別の曜日はそのまま');
+
+  // ③ 追加項目も曜日ごとに分かれる。以前に足した項目は消えない
+  const seedItems = () => localStorage.setItem('yosakura_demo_ckitem', JSON.stringify({
+    [`${S}||hygiene-1`]: [{ id:'hygiene-1-x-a1', label:'月曜だけの追加項目' }],
+    [`${S}||hygiene`]:   [{ id:'hygiene-x-old',  label:'曜日を分ける前の追加項目' }]
+  }));
+  const mon2 = openHyg(1, seedItems), thu2 = openHyg(4, seedItems);
+  ok(/月曜だけの追加項目/.test(mon2) && !/月曜だけの追加項目/.test(thu2), '足した項目は、その曜日にだけ出る');
+  ok(/曜日を分ける前の追加項目/.test(mon2) && /曜日を分ける前の追加項目/.test(thu2),
+     '曜日で分ける前に足した項目は、どの曜日でも出続ける（画面から消えない）');
+  ok(/この店舗の追加項目（月/.test(mon2), 'どの曜日へ足すのかが見出しに出る');
+
+  // ④ 外せるのは定期衛生だけ（オープン等は本部共通のまま）
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); });
+  location.hash = '#/app/checklist';
+  ok(!/data-ckhide=/.test(registry.app.innerHTML), 'オープンの共通項目は、店舗側から外せない');
+
+  // ⑤ スタッフは見るだけ（外す・足すは店長／オーナーのみ）
+  const staff = openHyg(1, () => localStorage.setItem('yosakura_demo_role', 'staff'));
+  ok(!/data-ckhide=/.test(staff) && !/id="ckAdd"/.test(staff), 'スタッフには外す・足すの操作が出ない');
+
+  // ⑥ 外した項目を除いて全部終えれば、提出済みになる（分母が画面と一致している）
+  {
+    const day = new Date().getDay();
+    run(() => {
+      setLS('manager', S, 'ja');
+      localStorage.setItem('yosakura_ckmode', 'hygiene');
+      localStorage.setItem('yosakura_demo_ckhide', JSON.stringify({ [`${S}||hygiene-${day}`]: [`hygiene-${day}-c-0-0`] }));
+    });
+    location.hash = '#/app/checklist';
+    const shown = [...registry.app.innerHTML.matchAll(/data-ck="([^"]+)"/g)].map(m => m[1]);
+    const done = {}; shown.forEach(id => done[id] = true);
+    localStorage.setItem('yosakura_demo_ckdone', JSON.stringify({ [`${S}||hygiene||${td}`]: done }));
+    location.hash = '#/home'; location.hash = '#/app/kyou';
+    const h = registry.app.innerHTML, i = h.indexOf('定期衛生管理');
+    ok(shown.length > 0 && /提出済/.test(i < 0 ? '' : h.slice(Math.max(0, i - 240), i + 240)),
+       '外した項目を除いて全部終えれば、提出済みになる');
+  }
+
+  // ⑦ 店舗ごとの設定は全端末で共有され、同期でも保存期間でも消えない
+  ok(/case 'ckhide'/.test(code), '外した項目も全端末へ共有される（同期の受け皿がある）');
+  ok(/mergeMap\('yosakura_demo_ckitem', ckitem\); mergeMap\('yosakura_demo_ckhide', ckhide\);/.test(code),
+     '同期は「届いたぶんだけ」差し替える＝店舗が足した項目が同期で消えない');
+  const gs = fs.readFileSync(APP.replace(/app\.js$/, 'backend/Code.gs'), 'utf8');
+  ok(/PURGE_KEEP_KINDS[^\n]*'ckitem'[^\n]*'ckhide'/.test(gs),
+     '保存期間の掃除で、店舗ごとに作り替えた点検表を消さない');
 }
 
 console.log('== 日報を総括表 Ver.2.6 に合わせる（現金/カード・国別の組数人数など）==');
@@ -1060,12 +1139,12 @@ console.log('== 総点検：設定の整合（IDの重複・リンク先の存�
 
   /* 月次の提出物は、アプリで出せるものは出せる形に、出せないものは出し方が書いてある。
      ★2026-08-12：月次の衛生写真とメニューブックの確認は、以前はグループLINEへ送る運用のままだった。
-       写真を出すという中身はオープン写真と同じなので、アプリで受けるようにした（渉さんのご指摘）。 */
+       写真を出すという中身はオープン写真と同じなので、アプリで受けるようにした（神田さんのご指摘）。 */
   const mt = renderView('getsuji','manager','日本鰻世桜 浅草橋店','ja');
   ok(/data-tsubphoto="hygiene_m"/.test(mt), '月次の定期衛生を、アプリから写真で提出できる');
   ok(/data-tsubphoto="menubook"/.test(mt), 'メニューブックの確認を、アプリから写真で提出できる');
   ok(!/GLINEへ/.test(mt), '月次の提出物に「GLINEへ送る」案内が残っていない');
-  /* コンプラチェック＝案②（2026-08-12 渉さんのご判断）。
+  /* コンプラチェック＝案②（2026-08-12 神田さんのご判断）。
      四半期に1回のためにアプリ内へ回答画面を作らず、本部が用意されたシートへの入口だけを置く。 */
   ok(/本部が用意したシートに記入してください/.test(mt), 'コンプラチェックに、どうすればよいかが書いてある');
   // 誤ったリンク先が残っていないこと（コンプラ→公益通報など、意味の違う画面へ飛ばさない）
@@ -1265,7 +1344,7 @@ console.log('== どの画面にも左上に「ホームへ戻る」がある =='
 
 console.log('== チェックリスト：最後まで終えたときだけ提出済みになる（2026-08-12 の3件）==');
 {
-  /* 渉さんのご指摘3件
+  /* 神田さんのご指摘3件
      ①「開いて提出」を押すと、前に見ていた種類（アイドル）が開いてしまう
      ② 1項目チェックするたびに画面の先頭へ戻る
      ③ 途中までしか終わっていないのに提出済みになる  */
@@ -1327,7 +1406,7 @@ console.log('== チェックリスト：最後まで終えたときだけ提出�
 
 console.log('== 気づきの報告を、日報から切り離して1日の最後に置く（2026-08-12）==');
 {
-  /* 渉さんのご指摘：日報の中に「清掃・特記事項」があり、気づきの報告と同じことを
+  /* 神田さんのご指摘：日報の中に「清掃・特記事項」があり、気づきの報告と同じことを
      2か所へ書く形になっていた。日報側を外し、気づきの報告へ一本化する。 */
   const S5 = '日本鰻世桜 浅草橋店';
 
@@ -1362,7 +1441,7 @@ console.log('== 気づきの報告を、日報から切り離して1日の最後
 
 console.log('== 「報告する」タブに、日次・週次・月次と同じものを並べない（2026-08-12）==');
 {
-  /* 渉さんのご指摘：報告するタブに、日次業務で出てくる項目がそのまま並んでいて二重に見えた。
+  /* 神田さんのご指摘：報告するタブに、日次業務で出てくる項目がそのまま並んでいて二重に見えた。
      ★消すだけだと、提出が済んだあとに開けなくなる。先に「提出済みでも開ける」ようにしてから外す。 */
   const S4 = '日本鰻世桜 浅草橋店';
   run(() => setLS('manager', S4, 'ja'));
@@ -1399,7 +1478,7 @@ console.log('== 「報告する」タブに、日次・週次・月次と同じ�
     ok(homeIds.includes(id), `${id} はホームから必ず開ける（唯一の入口になるため）`);
   });
 
-  /* ★ホームに常に出ているものも、タブに重ねない（2026-08-12 渉さんのご指摘）。
+  /* ★ホームに常に出ているものも、タブに重ねない（2026-08-12 神田さんのご指摘）。
      みんなの投稿・緊急連絡・公益通報が、ホームとタブの両方に並んでいた。
      ここも機械的に検査して、これから増えても気づけるようにする。 */
   const dupHome = [...new Set(tabIds.filter(id => homeIds.includes(id)))];
@@ -1474,7 +1553,7 @@ console.log('== いいね／うちでもやってみます は、押し間違え
   FETCH_ROWS = { ok:false };
 }
 
-console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12 渉さんのご指摘）==');
+console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12 神田さんのご指摘）==');
 {
   /* 以前は「アプリで受けていないので、グループLINEへ送ってください」という項目が残っていた。
      写真を出す・実施したと伝える、という中身はすでにある仕組みと同じなので、アプリで受けるようにした。 */
@@ -1506,7 +1585,7 @@ console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12
     const before = renderView('getsuji', 'manager', S2, 'ja'); // 四半期の提出物は月次業務に並ぶ
     ok(!/シートを開く/.test(before), 'シートが未設定のうちは「シートを開く」を出さない');
 
-    /* ★説明とボタンが食い違わないこと（2026-08-12 渉さんのご指摘）。
+    /* ★説明とボタンが食い違わないこと（2026-08-12 神田さんのご指摘）。
        「下のボタンから開けます」と書いてあるのにボタンが無い、という状態を作らない。 */
     const q = renderView('getsuji', 'manager', S2, 'ja');
     ok(!/ボタンから開けます|button below/.test(q), 'まだ無いボタンを、説明文で案内しない');
@@ -1593,7 +1672,7 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   location.hash = '#/app/backend';
   ok(called() === 0, '接続先の画面を直接開こうとしても、外への通信は起きない：' + sent.join(','));
 
-  /* ★お客様アンケートの見本が、どの店舗で開いても出ること（2026-08-12 渉さんのご要望）。
+  /* ★お客様アンケートの見本が、どの店舗で開いても出ること（2026-08-12 神田さんのご要望）。
      以前は1店舗ぶんしか無く、他の店舗の店長で開くと集計が空っぽだった。 */
   runTaiken(() => setLS('manager', '日本鰻世桜 浅草橋店', 'ja'));
   const sv = JSON.parse(localStorage.getItem('yosakura_demo_survey') || '[]');
@@ -1616,7 +1695,7 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   const again = shape(JSON.parse(localStorage.getItem('yosakura_demo_survey') || '[]'));
   ok(first === again, '開き直しても見本の中身（評価・ご意見）が変わらない');
 
-  /* ★以前この端末で開いた方にも、作り直した見本が届くこと（2026-08-12 渉さんのご指摘）。
+  /* ★以前この端末で開いた方にも、作り直した見本が届くこと（2026-08-12 神田さんのご指摘）。
      「すでに何か入っていたら作らない」ままだと、古い見本が残って集計が出ないままになる。 */
   runTaiken(() => {
     setLS('manager', '日本鰻世桜 浅草橋店', 'ja');
@@ -1625,7 +1704,7 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   const refreshed = JSON.parse(localStorage.getItem('yosakura_demo_survey') || '[]');
   ok(refreshed.length >= 100, `古い見本が残っていても、新しい見本に入れ替わる（${refreshed.length}件）`);
 
-  /* ★実在の店舗が「評価の低い例」として見えないこと（2026-08-12 渉さんのご指摘）。
+  /* ★実在の店舗が「評価の低い例」として見えないこと（2026-08-12 神田さんのご指摘）。
      見本とはいえ、加盟店の皆さまが自店を見たときに落ち込む形にしない。 */
   const avgBy = {};
   refreshed.forEach(r => { (avgBy[r.store] = avgBy[r.store] || []).push(r.sat); });
@@ -1636,7 +1715,7 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   ok(asakusa.length > 0 && !asakusa.some(v => v <= 3), '浅草橋店に低い評価を入れていない');
   ok(refreshed.some(r => r.sat <= 3), '低い評価そのものは残す（低い順に出る機能を説明できるように）');
 
-  /* ★過去の日次・月次のデータが見えること（2026-08-12 渉さんのご要望）。
+  /* ★過去の日次・月次のデータが見えること（2026-08-12 神田さんのご要望）。
      「過去のデータがどう表示されるのか」を見せるため。以前は日報が2件しか無く、
      履歴も個店カルテも月次の推移も、ほぼ空のままだった。 */
   runTaiken(() => setLS('manager', '日本鰻世桜 浅草橋店', 'ja'));
@@ -1670,7 +1749,7 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
     .map(k => (JSON.parse(localStorage.getItem(k) || '[]') || []).length);
   ok(after.every(n => n > 0), `古い見本が残っていても、5種すべてが作り直される（${after.join(',')}）`);
 
-  /* ★マニュアルと勉強会が、体験版でも中身のある状態で見えること（2026-08-12 渉さんのご要望）。
+  /* ★マニュアルと勉強会が、体験版でも中身のある状態で見えること（2026-08-12 神田さんのご要望）。
      ただし配る版なので、①本部の資料URLは載せない ②加盟店の側では直せない。 */
   runTaiken(() => setLS('manager', '日本鰻世桜 浅草橋店', 'ja'));
   location.hash = '#/app/manual';
@@ -1694,7 +1773,7 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   ok(/アジェンダスライド/.test(stu), '登録されている資料の名前も出る');
   ok(!/data-studyedit/.test(stu) && !/studyForm/.test(stu), '加盟店の側では、勉強会を直せない');
 
-  /* ★本部以外が開くリンクは、必ず閲覧専用にする（2026-08-14 渉さんのご指摘）。
+  /* ★本部以外が開くリンクは、必ず閲覧専用にする（2026-08-14 神田さんのご指摘）。
      勉強会のアジェンダが編集できる状態になっていた。マニュアルだけ変換しており、
      勉強会・サーベイの資料・提出物のシートは編集画面のまま開いていた。
      「画面から直せない」だけでは足りない。開いた先で直せてしまう。 */
@@ -1714,12 +1793,12 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
      '閲覧専用にするかどうかの判断が1か所にまとまっている');
 
   /* ★体験版は保存先を持たないので、アプリからご意見を送っても本部へは届かない。
-     それなのに「送信しました」と出していた（2026-08-14 渉さんのご指摘）。
+     それなのに「送信しました」と出していた（2026-08-14 神田さんのご指摘）。
      届いたと思ったまま待たれるのがいちばん困る。届かないことを、送る前に伝える。 */
   runTaiken(() => setLS('manager', '日本鰻世桜 浅草橋店', 'ja'));
   location.hash = '#/app/appfb';
   const fb = registry.app.innerHTML;
-  /* ★2026-08-14 渉さんのご判断：受け皿を1つにする。
+  /* ★2026-08-14 神田さんのご判断：受け皿を1つにする。
      体験版はアプリの中で受けず、Googleフォームへの入口だけを出す。
      （アプリの中に入力欄があると「送れたのに届かない」状態になる） */
   ok(!/送信する/.test(fb), '体験版では「送信する」ボタンを出さない');
@@ -1730,7 +1809,7 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   ok(/const TAIKEN_FORM_URL/.test(code), 'フォームのURLを入れる場所が1か所にある');
   ok(/7DAYS 1日目/.test(man), 'マニュアルも、実際に登録されている資料と同じ並びになっている');
 
-  /* ★月例MTGを、自店のスタッフさんもアーカイブとして見られる（2026-08-12 渉さんのご要望）。
+  /* ★月例MTGを、自店のスタッフさんもアーカイブとして見られる（2026-08-12 神田さんのご要望）。
      実施は一部の店舗でも、これから始める店舗が過去の回を見られるようにしておく。 */
   runTaiken(() => setLS('staff', '日本鰻世桜 浅草橋店', 'ja'));
   location.hash = '#/app/mtg';
@@ -1738,7 +1817,7 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   ok(mtgS.length > 1000, 'スタッフでも月例MTGの中身が見える');
   ok(!/<input|<textarea/.test(mtgS), 'スタッフの画面には入力欄を出さない（見るだけ）');
 
-  /* ★体験版は「加盟店の皆さまが使う3つの役割」だけ（2026-08-12 渉さんのご判断）。
+  /* ★体験版は「加盟店の皆さまが使う3つの役割」だけ（2026-08-12 神田さんのご判断）。
      本部の画面は加盟店の方には関係がなく、見えると話が逸れる。 */
   runTaiken(() => setLS('hq', 'all', 'ja')); // 端末に本部が残っている状態で開く
   location.hash = '#/home';
