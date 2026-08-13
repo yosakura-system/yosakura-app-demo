@@ -3314,6 +3314,8 @@
          こちらで項目を足しても本部の画面へ届かなくなる（上と同じ事故）。
          URLは本部が決めるもの・項目はこちらが足すもの、と分けて持つ。 */
     masterUrl: 'yosakura_sub_masterurl_v1',
+    // 店舗ごとのシートの場所（コンプラチェックは各店に別々のシートがあるため・2026-08-14）
+    masterStoreUrl: 'yosakura_sub_masterstoreurl_v1',
     status:  'yosakura_sub_status_v1',
     holiday: 'yosakura_sub_holiday_v1',
     roster:  'yosakura_sub_roster_v1',
@@ -3418,8 +3420,20 @@
     }
     return jget(SUBKEYS.masterUrl, {}) || {};
   }
+  /* 店舗ごとのシートの場所（2026-08-14）。提出物id → { 店舗名: URL }。
+     ★コンプラチェックは全店1枚ではなく、各店フォルダの中に店舗ごとのシートがある
+       （2026-08-14 中身を確認）。フォルダを開いて自店を探すのではなく、自店のシートが直接開くようにする。 */
+  function getMasterStoreUrls() {
+    const rows = subRows(SUB_KINDS.master).sort((a, b) => (b.t || 0) - (a.t || 0));
+    for (const r of rows) {
+      const p = parseNote(r.note);
+      if (p && !Array.isArray(p) && p.storeUrls && typeof p.storeUrls === 'object') return p.storeUrls;
+    }
+    return jget(SUBKEYS.masterStoreUrl, {}) || {};
+  }
   // 提出物マスタ（本部設定・全端末共有）：一覧＝旧形式の保存かローカルか既定／URL＝本部の設定を重ねる
-  function getMasters() {
+  // store を渡すと、その店舗のシートの場所（あれば）を優先する
+  function getMasters(store) {
     let base = null;
     const rows = subRows(SUB_KINDS.master).sort((a, b) => (b.t || 0) - (a.t || 0));
     for (const r of rows) { const m = parseNote(r.note); if (Array.isArray(m) && m.length) { base = m; break; } } // 旧形式（一覧ごと保存）
@@ -3430,16 +3444,30 @@
       base = (Array.isArray(m) && m.length) ? m : defaultMasters();
     }
     const urls = getMasterUrls();
-    return Object.keys(urls).length
-      ? base.map(m => (urls[m.id] != null ? Object.assign({}, m, { url: urls[m.id] }) : m))
-      : base;
+    const sUrls = store ? getMasterStoreUrls() : {};
+    const key = store ? normalizeStore(store) : '';
+    return base.map(m => {
+      const per = (key && sUrls[m.id]) ? sUrls[m.id][key] : null; // 店舗ごとが優先
+      const u = (per != null && per !== '') ? per : urls[m.id];
+      return (u != null) ? Object.assign({}, m, { url: u }) : m;
+    });
   }
-  // 本部が「シートの場所」を保存する（URLだけを共有する。一覧は固定しない）
-  function saveMasterUrl(id, url) {
+  /* 本部が「シートの場所」を保存する（URLだけを共有する。一覧は固定しない）。
+     store を渡すとその店舗だけの場所になる（省略すると全店共通）。 */
+  function saveMasterUrl(id, url, store) {
     const urls = Object.assign({}, getMasterUrls());
-    if (url) urls[id] = url; else delete urls[id];
+    const sUrls = JSON.parse(JSON.stringify(getMasterStoreUrls() || {}));
+    if (store) {
+      const key = normalizeStore(store);
+      sUrls[id] = Object.assign({}, sUrls[id]);
+      if (url) sUrls[id][key] = url; else delete sUrls[id][key];
+      if (!Object.keys(sUrls[id]).length) delete sUrls[id];
+    } else {
+      if (url) urls[id] = url; else delete urls[id];
+    }
     jset(SUBKEYS.masterUrl, urls);
-    postSub(SUB_KINDS.master, '*', 'masterurl', { urls });
+    jset(SUBKEYS.masterStoreUrl, sUrls);
+    postSub(SUB_KINDS.master, '*', 'masterurl', { urls, storeUrls: sUrls });
     pushAudit('master', 'url');
   }
 
@@ -3528,7 +3556,7 @@
   function todayItemsFor(store) {
     const today = dateKeyFor(store, Date.now());
     const yday = dateKeyFor(store, Date.now() - 864e5);
-    return getMasters().filter(m => appliesToStore(m, store)).map(m => {
+    return getMasters(store).filter(m => appliesToStore(m, store)).map(m => {
       // dueNextDay＝「前日分を翌日◯時までに出す」提出物（日報）。対象日は前日になる
       const prev = !!m.dueNextDay && m.freq === 'daily';
       const dk = prev ? yday : today;
@@ -3690,10 +3718,20 @@
       <div class="card">
         <h3>${L({ja:'シートの場所',en:'Sheet link',vi:'Liên kết bảng'})} — ${esc(L(m.name))}</h3>
         <p class="hint" style="display:block">${L({ja:'ここに入れたシートが、店舗の「シートを開く」から開きます。対象月ごとに差し替えられます。',en:'Stores open this sheet from “Open sheet”. Replace it each period.',vi:'Cửa hàng mở bảng này từ “Mở bảng”. Có thể thay mỗi kỳ.'})}</p>
-        <label class="fld"><span>${L({ja:'シートのURL',en:'Sheet URL',vi:'URL bảng'})}</span>
-          <input type="url" id="msturl_${esc(m.id)}" value="${esc(m.url || '')}" placeholder="https://docs.google.com/..."></label>
+        <label class="fld"><span>${L({ja:'全店共通のURL',en:'Common URL (all stores)',vi:'URL chung'})}</span>
+          <input type="url" id="msturl_${esc(m.id)}" value="${esc(getMasterUrls()[m.id] || '')}" placeholder="https://docs.google.com/..."></label>
         <button class="btn" data-msturl="${esc(m.id)}">${L({ja:'保存する',en:'Save',vi:'Lưu'})}</button>
-        ${isHttp(m.url) ? `<button class="mini" data-openurl="${esc(m.url)}" style="margin-left:8px">${L({ja:'開いて確認',en:'Open',vi:'Mở'})}</button>` : ''}
+        ${isHttp(getMasterUrls()[m.id]) ? `<button class="mini" data-openurl="${esc(getMasterUrls()[m.id])}" style="margin-left:8px">${L({ja:'開いて確認',en:'Open',vi:'Mở'})}</button>` : ''}
+        ${/* ★店舗ごとに別のシートがある場合（コンプラチェックは各店に別シート・2026-08-14 確認）。
+              入れた店舗はそちらが優先され、入れていない店舗は上の共通URLが使われる。 */''}
+        <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ja:'店舗ごとのシート（入れた店舗はこちらが優先）',en:'Per-store sheets (override the common URL)',vi:'Bảng theo cửa hàng (ưu tiên hơn URL chung)'})}</h2></div>
+        ${STORES.map(st => {
+          const cur = (getMasterStoreUrls()[m.id] || {})[st] || '';
+          return `<label class="fld"><span>${esc(storeLabel(st))}</span>
+            <input type="url" id="mstsurl_${esc(m.id)}__${esc(st)}" value="${esc(cur)}" placeholder="${esc(L({ja:'空なら共通URLを使います', en:'Empty = use the common URL', vi:'Trống = dùng URL chung'}))}"></label>
+          <div style="margin:-4px 0 12px"><button class="mini" data-mstsurl="${esc(m.id)}__${esc(st)}">${L({ja:'この店舗を保存',en:'Save this store',vi:'Lưu cửa hàng này'})}</button>${
+            isHttp(cur) ? `<button class="mini" data-openurl="${esc(cur)}" style="margin-left:6px">${L({ja:'開いて確認',en:'Open',vi:'Mở'})}</button>` : ''}</div>`;
+        }).join('')}
       </div>`).join('')}
       <p class="hint" style="display:block">${L({ja:'※ 提出状況は実際の提出データ（同期済み）から自動集約しています。LINE通知・AI判定は未接続（手動運用中）。',en:'Auto-aggregated from real synced data. LINE & AI not connected (manual).',vi:'Tự tổng hợp từ dữ liệu thật (đã đồng bộ). LINE & AI chưa kết nối (thủ công).'})}</p>`;
   };
@@ -3702,7 +3740,7 @@
   function openTeishutsuDrill(store) {
     document.querySelectorAll('.sheet-mask').forEach(m => m.remove()); // 再判定時は前回シートを閉じる
     const dk = dateKeyFor(store, Date.now());
-    const masters = getMasters().filter(m => appliesToStore(m, store) && m.oblig !== 'off');
+    const masters = getMasters(store).filter(m => appliesToStore(m, store) && m.oblig !== 'off');
     const rows = masters.map(m => {
       const submitted = detectSubmitted(store, m, dk);
       const st = getStatus(store, m.id, dk);
@@ -5211,6 +5249,17 @@
       if (url && !isHttp(url)) { toast(L({ ja:'https で始まるURLを入れてください', en:'Enter a URL starting with https', vi:'Nhập URL bắt đầu bằng https' })); return; }
       saveMasterUrl(id, url); // URLだけを共有する（提出物の一覧はこちらの既定を使い続ける）
       toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' }));
+      render(true);
+    });
+    // 本部：店舗ごとのシートの場所を保存する（入れた店舗はこちらが優先される）
+    document.querySelectorAll('[data-mstsurl]').forEach(b => b.onclick = () => {
+      const [id, store] = String(b.dataset.mstsurl).split('__');
+      const el = document.getElementById(`mstsurl_${id}__${store}`);
+      const url = ((el && el.value) || '').trim();
+      if (url && !isHttp(url)) { toast(L({ ja:'https で始まるURLを入れてください', en:'Enter a URL starting with https', vi:'Nhập URL bắt đầu bằng https' })); return; }
+      saveMasterUrl(id, url, store);
+      toast(url ? `${storeLabel(store)}：${L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' })}`
+                : `${storeLabel(store)}：${L({ ja:'共通のURLに戻しました', en:'Reverted to the common URL', vi:'Đã trở lại URL chung' })}`);
       render(true);
     });
     // グラフをタップしたら、その月・その曜日の中身を出す（2026-08-13 神田さんのご要望）
