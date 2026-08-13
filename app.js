@@ -3309,6 +3309,11 @@
          新しい端末は17項目・以前から使っている端末は旧項目のまま、という食い違いが起きた）。
          キーを _v2 にして古い保存を無視し、以後は既定を焼き付けない。 */
     master:  'yosakura_sub_master_v2',
+    /* 本部が入れた「シートの場所」だけを別に持つ（2026-08-13）。
+       ★提出物マスタを丸ごと保存すると、その時点の一覧が固定され、
+         こちらで項目を足しても本部の画面へ届かなくなる（上と同じ事故）。
+         URLは本部が決めるもの・項目はこちらが足すもの、と分けて持つ。 */
+    masterUrl: 'yosakura_sub_masterurl_v1',
     status:  'yosakura_sub_status_v1',
     holiday: 'yosakura_sub_holiday_v1',
     roster:  'yosakura_sub_roster_v1',
@@ -3402,16 +3407,41 @@
     if (useBackend()) postReport(rep);
     return rep;
   }
-  // 提出物マスタ（本部設定・全端末共有）：最新のsubmaster行→無ければローカル→既定
-  function getMasters() {
+  /* 本部が入れた「シートの場所」（コンプラチェックなど）。提出物の id → URL。
+     ★一覧そのものとは別に持つ（2026-08-13）。丸ごと保存すると一覧が固定され、
+       こちらで項目を足しても本部へ届かなくなるため。 */
+  function getMasterUrls() {
     const rows = subRows(SUB_KINDS.master).sort((a, b) => (b.t || 0) - (a.t || 0));
-    if (rows.length) { const m = parseNote(rows[0].note); if (Array.isArray(m) && m.length) return m; }
-    // 端末に保存があるのは「本部が編集したとき」だけ。無ければ毎回そのときの既定を使う
-    // （既定を保存しないので、こちらで項目を変えれば全端末にそのまま届く）
-    const m = jget(SUBKEYS.master, null);
-    return (Array.isArray(m) && m.length) ? m : defaultMasters();
+    for (const r of rows) {
+      const p = parseNote(r.note);
+      if (p && !Array.isArray(p) && p.urls && typeof p.urls === 'object') return p.urls; // 最新のURL設定が正
+    }
+    return jget(SUBKEYS.masterUrl, {}) || {};
   }
-  function saveMasters(m) { jset(SUBKEYS.master, m); postSub(SUB_KINDS.master, '*', 'master', m); pushAudit('master', 'update'); }
+  // 提出物マスタ（本部設定・全端末共有）：一覧＝旧形式の保存かローカルか既定／URL＝本部の設定を重ねる
+  function getMasters() {
+    let base = null;
+    const rows = subRows(SUB_KINDS.master).sort((a, b) => (b.t || 0) - (a.t || 0));
+    for (const r of rows) { const m = parseNote(r.note); if (Array.isArray(m) && m.length) { base = m; break; } } // 旧形式（一覧ごと保存）
+    if (!base) {
+      // 端末に保存があるのは「本部が編集したとき」だけ。無ければ毎回そのときの既定を使う
+      // （既定を保存しないので、こちらで項目を変えれば全端末にそのまま届く）
+      const m = jget(SUBKEYS.master, null);
+      base = (Array.isArray(m) && m.length) ? m : defaultMasters();
+    }
+    const urls = getMasterUrls();
+    return Object.keys(urls).length
+      ? base.map(m => (urls[m.id] != null ? Object.assign({}, m, { url: urls[m.id] }) : m))
+      : base;
+  }
+  // 本部が「シートの場所」を保存する（URLだけを共有する。一覧は固定しない）
+  function saveMasterUrl(id, url) {
+    const urls = Object.assign({}, getMasterUrls());
+    if (url) urls[id] = url; else delete urls[id];
+    jset(SUBKEYS.masterUrl, urls);
+    postSub(SUB_KINDS.master, '*', 'masterurl', { urls });
+    pushAudit('master', 'url');
+  }
 
   // 定休日（全端末共有）：店舗ごと最新のsubholiday行＋ローカル
   function getHolidays() {
@@ -5179,8 +5209,7 @@
       const el = document.getElementById(`msturl_${id}`);
       const url = ((el && el.value) || '').trim();
       if (url && !isHttp(url)) { toast(L({ ja:'https で始まるURLを入れてください', en:'Enter a URL starting with https', vi:'Nhập URL bắt đầu bằng https' })); return; }
-      const list = getMasters().map(m => m.id === id ? Object.assign({}, m, { url }) : m);
-      saveMasters(list);
+      saveMasterUrl(id, url); // URLだけを共有する（提出物の一覧はこちらの既定を使い続ける）
       toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' }));
       render(true);
     });

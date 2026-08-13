@@ -1632,6 +1632,27 @@ console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12
     const set2 = registry.app.innerHTML;
     ok(/シートを開く/.test(set2), '設定されたら「シートを開く」が出る');
     ok(!/本部がシートを用意すると/.test(set2), '用意待ちの案内は消える');
+
+    /* ★本部が入れるのは「シートの場所」だけ＝提出物の一覧は固定されない（2026-08-13）。
+       以前は一覧を丸ごと保存していたため、一度URLを入れると、その時点の一覧が正になり、
+       こちらで提出物を足しても本部の画面に出てこなくなる状態だった。 */
+    ok(/saveMasterUrl\(id, url\)/.test(code), 'シートの場所は、URLだけを保存している');
+    ok(!/function saveMasters\(/.test(code), '一覧を丸ごと保存する関数は残っていない');
+    FETCH_ROWS = { ok:true, reports:[
+      { kind:'submaster', store:'*', item:'masterurl',
+        note: JSON.stringify({ urls: { compliance: 'https://drive.google.com/drive/folders/demo' } }), t: Date.now(), id:'m2' }
+    ]};
+    try { run(() => setLS('manager', S2, 'ja')); } catch (e) { FAIL++; console.log('  ✗ masterurl threw: ' + e.message); }
+    await new Promise(r => setTimeout(r, 50));
+    location.hash = '#/app/getsuji';
+    const set3 = registry.app.innerHTML;
+    ok(/シートを開く/.test(set3), 'URLだけの設定でも「シートを開く」が出る');
+    // 一覧はこちらの既定のまま＝提出物を足せば、URL設定後でも本部の画面に出る
+    run(() => setLS('hq', 'all', 'ja'));
+    location.hash = '#/app/teishutsu';
+    const hqAfter = registry.app.innerHTML;
+    ok(/data-msturl="compliance"/.test(hqAfter) && /メニューブック|卓上POP/.test(hqAfter),
+       'URLを入れても、提出物の一覧は既定のまま（あとから足した項目も出る）');
     FETCH_ROWS = { ok:false };
   }
 
