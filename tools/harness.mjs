@@ -1070,7 +1070,31 @@ console.log('== 定期衛生管理を、店舗ごと・曜日ごとに作り替�
        '外した項目を除いて全部終えれば、提出済みになる');
   }
 
-  // ⑦ 店舗ごとの設定は全端末で共有され、同期でも保存期間でも消えない
+  /* ⑦ 点検は空にできない（2026-08-14 神田さんのご判断）。
+     「全部外す」は「何も点検しない」と同じで、あってはならない。 */
+  {
+    run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'sakura'); });
+    location.hash = '#/app/checklist';
+    const ids = [...registry.app.innerHTML.matchAll(/data-ck="([^"]+)"/g)].map(m => m[1]);
+    ok(ids.length > 1, '桜チェックに項目が複数ある（前提）');
+    // 最後の1件を残して、すべて外した状態を作る
+    run(() => {
+      setLS('manager', S, 'ja');
+      localStorage.setItem('yosakura_ckmode', 'sakura');
+      localStorage.setItem('yosakura_demo_ckhide', JSON.stringify({ [`${S}||sakura`]: ids.slice(1) }));
+    });
+    location.hash = '#/app/checklist';
+    const last = registry.app.innerHTML;
+    ok(new RegExp(`data-ck="${ids[0]}"`).test(last), '最後の1件は画面に残る');
+    ok(!/data-ckhide=/.test(last), '残り1件になったら「×」を出さない（空にできない）');
+    ok(!/data-ckdel=/.test(last), '追加項目の「×」も出さない（最後の1件を消せない）');
+    ok(/data-ckshow=/.test(last), '外した項目は「戻す」で戻せる');
+    // 押されても保存側で止める（古い画面が開いたままのときの保険）
+    ok(/ckRemainAfter\(st0, md0, dy0, \{ hide: id \}\) < 1/.test(code), '外すときに、残る件数を数えてから保存している');
+    ok(/ckRemainAfter\(store, md1, dy1, \{ del: id \}\) < 1/.test(code), '消すときにも、残る件数を数えてから保存している');
+  }
+
+  // ⑧ 店舗ごとの設定は全端末で共有され、同期でも保存期間でも消えない
   ok(/case 'ckhide'/.test(code), '外した項目も全端末へ共有される（同期の受け皿がある）');
   ok(/mergeMap\('yosakura_demo_ckitem', ckitem\); mergeMap\('yosakura_demo_ckhide', ckhide\);/.test(code),
      '同期は「届いたぶんだけ」差し替える＝店舗が足した項目が同期で消えない');
