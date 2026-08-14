@@ -1672,6 +1672,22 @@
     const done = getCkDone()[ckDoneKey(store, mode)] || {};
     return ckIdsOf(store, mode).filter(id => done[id]).length;
   };
+  /* ★外した／消したあとに何件残るか（2026-08-14 神田さんのご判断）。
+     点検を空にはできない＝「全部外す」は「何も点検しない」と同じで、あってはならない。
+     画面ではボタンを出さないようにしているが、保存する側でも必ず数える
+     （古い画面が開いたままのときや、続けて押されたときにすり抜けないように）。 */
+  const ckRemainAfter = (store, mode, day, opt) => {
+    const o = opt || {};
+    const d = day == null ? new Date().getDay() : day;
+    const idBase = mode === 'hygiene' ? `${mode}-${d}` : mode;
+    const hid = ckHidden(store, mode, d).concat(o.hide ? [o.hide] : []);
+    let n = 0;
+    ckGroupsOf(mode, d).forEach((gr, gi) => gr.items.forEach((_, ii) => {
+      if (!hid.includes(`${idBase}-c-${gi}-${ii}`)) n++;
+    }));
+    ckCustom(store, mode, d).forEach(c => { if (c.id !== o.del) n++; });
+    return n;
+  };
   // 全部終わっているか（提出済みの判定はこれを使う）
   const ckAllDoneOf = (store, mode, dayKey) => {
     const ids = ckIdsOf(store, mode);
@@ -1721,6 +1737,10 @@
     // 数えるものは ckIdsOf に集約（「今日出すもの」の判定と必ず同じ数え方になるように）
     const allIds = ckIdsOf(store, mode, hygDay);
     const total = allIds.length || 1;
+    /* ★点検を空にはできない（2026-08-14 神田さんのご判断）。
+       「全部外す」は「何も点検しない」と同じで、あってはならない。
+       残り1件になったら、外す・消すのボタンそのものを出さない（押してから断られるより分かりやすい）。 */
+    const canRemove = allIds.length > 1;
     const n = allIds.filter(id => done[id]).length;
     /* 店舗で外した共通項目は画面から消す。空になったグループは見出しごと出さない
        （見出しだけが残ると「中身が消えた」ように見えるため）。 */
@@ -1729,7 +1749,7 @@
         const id = `${idBase}-c-${gi}-${ii}`;
         if (hidden.includes(id)) return '';
         // ×は右端に重ねて出るので、文章がその下へ潜らないように右側を空ける
-        return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl"${canHide ? ' style="padding-right:26px"' : ''}>${esc(L(it))}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span>${canHide ? `<button class="ck-del" data-ckhide="${id}" aria-label="${esc(L({ ja:'この店舗では使わない', en:'Not used at this store', vi:'Không dùng ở cửa hàng này' }))}">×</button>` : ''}</div>`;
+        return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl"${canHide && canRemove ? ' style="padding-right:26px"' : ''}>${esc(L(it))}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span>${canHide && canRemove ? `<button class="ck-del" data-ckhide="${id}" aria-label="${esc(L({ ja:'この店舗では使わない', en:'Not used at this store', vi:'Không dùng ở cửa hàng này' }))}">×</button>` : ''}</div>`;
       }).join('');
       if (!rows) return '';
       return `
@@ -1754,7 +1774,7 @@
     const customHTML = `
       <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${customTitle}</h2></div>
       <div class="card" style="padding:4px 14px">
-        ${custom.length ? custom.map(c => `<div class="check ${done[c.id]?'done':''}" data-ck="${c.id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(c.label)}</span>${editable ? `<button class="ck-del" data-ckdel="${c.id}" aria-label="delete">×</button>` : ''}</div>`).join('')
+        ${custom.length ? custom.map(c => `<div class="check ${done[c.id]?'done':''}" data-ck="${c.id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(c.label)}</span>${editable && canRemove ? `<button class="ck-del" data-ckdel="${c.id}" aria-label="delete">×</button>` : ''}</div>`).join('')
           : `<div class="muted" style="padding:10px 4px">${L({ ja:'追加項目はありません', en:'No custom items', vi:'Chưa có mục thêm' })}</div>`}
         ${editable ? `<div class="ck-add"><input type="text" id="ck_new" placeholder="${esc(L({ ja:'例）季節の掲示物を差し替え', en:'e.g. Swap seasonal signage', vi:'vd: Thay bảng theo mùa' }))}"><button class="mini" id="ckAdd">${L({ ja:'追加', en:'Add', vi:'Thêm' })}</button></div>` : ''}
       </div>`;
@@ -5318,8 +5338,15 @@
     // 店舗独自項目：削除
     document.querySelectorAll('[data-ckdel]').forEach(b => b.onclick = (e) => {
       e.stopPropagation();
-      const { store, key, mk } = ckEditCtx();
+      const { store, key, mk, mode: md1, day: dy1 } = ckEditCtx();
       const id = b.dataset.ckdel;
+      // ★点検を空にはできない（共通項目を全部外したうえで、最後の追加項目を消す場合）
+      if (ckRemainAfter(store, md1, dy1, { del: id }) < 1) {
+        toast(L({ ja:'点検を空にはできません。最後の1件は消せません（先に外した項目を戻してください）',
+                  en:'A check cannot be emptied. Restore a removed item first.',
+                  vi:'Không thể để trống. Hãy khôi phục một mục trước.' }));
+        return;
+      }
       /* 曜日で分ける前に追加された項目（IDが `hygiene-x-…`）は、旧いキーに入っている。
          そちらから消さないと、画面から消えたように見えて次の同期で戻ってくる。 */
       const legacy = `${store}||hygiene`;
@@ -5343,6 +5370,14 @@
     document.querySelectorAll('[data-ckhide]').forEach(b => b.onclick = (e) => {
       e.stopPropagation();
       const id = b.dataset.ckhide;
+      // ★点検を空にはできない（何も点検しないのと同じになるため）
+      const { store: st0, mode: md0, day: dy0 } = ckEditCtx();
+      if (ckRemainAfter(st0, md0, dy0, { hide: id }) < 1) {
+        toast(L({ ja:'点検を空にはできません。最後の1件は外せません（先に自店の項目を追加してください）',
+                  en:'A check cannot be emptied. Add your own item first.',
+                  vi:'Không thể để trống. Hãy thêm mục của cửa hàng trước.' }));
+        return;
+      }
       toast(L({ ja:'この店舗では使わない項目にしました（下の一覧から戻せます）', en:'Marked as not used at this store (restore below)', vi:'Đã bỏ khỏi cửa hàng này (có thể khôi phục bên dưới)' }));
       ckSetHidden(list => list.includes(id) ? list : list.concat([id]));
     });
