@@ -177,7 +177,7 @@
     // 機能は生きているが、タブの一覧には出さない（日次業務の各チェックリストから開く）。
     { id:'checklist', group:'genba', icon:'check', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'オープン・クローズチェック', en:'Open & Close Check', vi:'Kiểm tra Mở & Đóng' },
-      desc:{ ja:'開店・閉店の点検（店舗独自項目も追加可）', en:'Opening & closing checks', vi:'Kiểm tra mở & đóng cửa' } },
+      desc:{ ja:'開店・閉店の点検（店舗ごとに作り替えられます）', en:'Opening & closing checks (customizable per store)', vi:'Kiểm tra mở & đóng cửa (tùy chỉnh theo cửa hàng)' } },
     { id:'links', group:'other', icon:'link', soon:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'リンク集', en:'Quick Links', vi:'Liên kết' },
       desc:{ ja:'初期設定・発注などの必要リンク', en:'Setup, ordering and key links', vi:'Cài đặt, đặt hàng, liên kết' } },
@@ -1621,7 +1621,10 @@
        実際は店舗ごとに作り替えて使っている（設備・レイアウトが違うため）。
        そこで「全店共通を既定として置いておき、各店で外す・足す」形にした。
        定期衛生は曜日ごとに中身が違うので、追加も非表示も曜日ごとに持つ。 */
-  const CK_HIDABLE = ['hygiene']; // 共通項目を店舗側で外せるモード（他は本部共通のまま）
+  /* 共通項目を店舗側で外せる点検（2026-08-14 神田さんのご要望で5種類すべてへ拡大）。
+     定期衛生だけでなく、オープン／アイドル／クローズ／桜も**設備・レイアウトが店舗で違う**ため、
+     一覧を出発点として各店で作り替えられるようにする。外した項目は消さずに残し、いつでも戻せる。 */
+  const CK_HIDABLE = ['open', 'idle', 'close', 'sakura', 'hygiene'];
   const ckKey = (store, mode, day) => mode === 'hygiene'
     ? `${store}||hygiene-${day == null ? new Date().getDay() : day}`
     : `${store}||${mode}`;
@@ -1712,7 +1715,7 @@
     const hidden = ckHidden(store, mode, hygDay);   // この店舗で外した共通項目
     const done = getCkDone()[ckDoneKey(store, mode)] || {};
     const editable = ckCanEdit();
-    const canHide = editable && CK_HIDABLE.includes(mode); // 共通項目を外せるのは定期衛生のみ
+    const canHide = editable && CK_HIDABLE.includes(mode); // 5種類とも、店長・オーナーが外せる
     // 定期衛生は曜日ごとに内容が違うため、チェックのIDにも曜日を入れる（別の曜日と混ざらないように）
     const idBase = mode === 'hygiene' ? `${mode}-${hygDay}` : mode;
     // 数えるものは ckIdsOf に集約（「今日出すもの」の判定と必ず同じ数え方になるように）
@@ -1757,8 +1760,10 @@
       </div>`;
     return `
       ${NOTE(canHide
-        ? { ja:'◆ 定期衛生管理は、この一覧を出発点として店舗ごとに作り替えられます。使わない項目は「×」で外し、必要な項目は下から追加してください（店長・オーナーのみ／曜日ごとに保存されます）', en:'◆ Periodic hygiene: this list is a starting point. Managers/owners can remove items with “×” and add their own. Saved per weekday.', vi:'◆ Vệ sinh định kỳ: danh sách này là điểm khởi đầu. Quản lý/chủ có thể bỏ mục bằng “×” và thêm mục riêng. Lưu theo từng thứ.' }
-        : { ja:'◆ オープン／クローズの点検。本部共通項目は削除できません。店舗独自の項目は店長・オーナーが追加できます', en:'◆ Opening/closing checks. HQ common items are fixed; managers/owners can add store-specific items.', vi:'◆ Kiểm tra mở/đóng. Mục chung của HQ cố định; quản lý/chủ có thể thêm mục riêng.' })}
+        ? { ja:`◆ この一覧を出発点として、店舗ごとに作り替えられます。使わない項目は「×」で外し、必要な項目は下から追加してください（店長・オーナーのみ${mode === 'hygiene' ? '／曜日ごとに保存されます' : ''}）`,
+            en:`◆ This list is a starting point for your store. Managers/owners can remove items with “×” and add their own.${mode === 'hygiene' ? ' Saved per weekday.' : ''}`,
+            vi:`◆ Danh sách này là điểm khởi đầu. Quản lý/chủ có thể bỏ mục bằng “×” và thêm mục riêng.${mode === 'hygiene' ? ' Lưu theo từng thứ.' : ''}` }
+        : { ja:'◆ 開店・閉店の点検です。項目の追加・削除は店長・オーナーが行えます', en:'◆ Opening/closing checks. Managers/owners can add or remove items.', vi:'◆ Kiểm tra mở/đóng. Quản lý/chủ có thể thêm hoặc bỏ mục.' })}
       <div class="card" style="text-align:center">
         <div class="seg" data-seg="ckmode" style="margin-bottom:14px">${CK_MODES.map(m => `<button type="button" data-ckmode="${m.v}" class="${m.v===mode?'on':''}">${L(m.t)}</button>`).join('')}</div>
         <h3>${L({ ja:'本日の', en:'Today: ', vi:'Hôm nay: ' })}${esc(L((CK_MODES.find(m => m.v === mode) || {}).t || ''))}${L({ ja:'点検', en:' check', vi:'' })}</h3>
