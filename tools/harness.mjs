@@ -1018,10 +1018,35 @@ console.log('== 定期衛生管理を、店舗ごと・曜日ごとに作り替�
      '曜日で分ける前に足した項目は、どの曜日でも出続ける（画面から消えない）');
   ok(/この店舗の追加項目（月/.test(mon2), 'どの曜日へ足すのかが見出しに出る');
 
-  // ④ 外せるのは定期衛生だけ（オープン等は本部共通のまま）
-  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); });
-  location.hash = '#/app/checklist';
-  ok(!/data-ckhide=/.test(registry.app.innerHTML), 'オープンの共通項目は、店舗側から外せない');
+  /* ④ 5種類とも店舗ごとに作り替えられる（2026-08-14 神田さんのご要望で拡大）。
+     オープン／アイドル／クローズ／桜も、設備・レイアウトが店舗で違うため。 */
+  for (const m of ['open', 'idle', 'close', 'sakura']) {
+    run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', m); });
+    location.hash = '#/app/checklist';
+    const h = registry.app.innerHTML;
+    ok(/data-ckhide=/.test(h), `${m}：使わない項目を外せる`);
+    ok(/id="ckAdd"/.test(h), `${m}：自店の項目を足せる`);
+  }
+  // 外した項目は、その点検・その店舗にだけ効く（別の点検には影響しない）
+  {
+    const openFirst = 'open-c-0-0';
+    run(() => {
+      setLS('manager', S, 'ja');
+      localStorage.setItem('yosakura_ckmode', 'open');
+      localStorage.setItem('yosakura_demo_ckhide', JSON.stringify({ [`${S}||open`]: [openFirst] }));
+    });
+    location.hash = '#/app/checklist';
+    const openH = registry.app.innerHTML;
+    ok(!new RegExp(`data-ck="${openFirst}"`).test(openH), 'オープンで外した項目は、オープンの一覧から消える');
+    ok(new RegExp(`data-ckshow="${openFirst}"`).test(openH), '外した項目は「戻す」で元に戻せる');
+    run(() => {
+      setLS('manager', S, 'ja');
+      localStorage.setItem('yosakura_ckmode', 'close');
+      localStorage.setItem('yosakura_demo_ckhide', JSON.stringify({ [`${S}||open`]: [openFirst] }));
+    });
+    location.hash = '#/app/checklist';
+    ok(!/この店舗では使わない項目/.test(registry.app.innerHTML), 'オープンで外しても、クローズの項目はそのまま');
+  }
 
   // ⑤ スタッフは見るだけ（外す・足すは店長／オーナーのみ）
   const staff = openHyg(1, () => localStorage.setItem('yosakura_demo_role', 'staff'));
