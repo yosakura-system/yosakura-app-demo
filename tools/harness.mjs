@@ -1314,6 +1314,17 @@ console.log('== よくある質問（8/10 構築MTG A-04：ルールを後から
     ok(!/licence/.test(src), '英語のつづりが米国式で揃っている（licence が混ざっていない）');
     ok(/General Liquor Retail Business License \(一般酒類小売業免許\)/.test(src)
       && /Liquor Wholesale Business License \(酒類卸売業免許\)/.test(src), '免許名は正式名称＋日本語併記で書かれている');
+    /* ベトナム語（2026-08-17 神田さんのご指摘を反映）。
+       ・rượu（一般的な「酒」）ではなく đồ uống có cồn（アルコール飲料）＝「酒類」全体を指す
+       ・免許区分には kinh doanh を入れる
+       ・nhập từ は「海外から輸入する」と読まれうる → mua từ（仕入れる）
+       ・対象の免許が曖昧にならないよう Nếu có giấy phép này */
+    const viSake = (src.match(/vi:'[^']*đồ uống có cồn[^']*'/g) || []).join('\n');
+    ok(viSake.split('\n').length === 5, '酒類FAQのベトナム語3問（Q3件＋A2件）が揃っている');
+    ok(!/nhập từ/.test(viSake), 'ベトナム語で「仕入れる」に mua từ を使っている（nhập từ＝輸入 と読まれない）');
+    ok(/giấy phép kinh doanh bán lẻ đồ uống có cồn thông thường \(一般酒類小売業免許\)/.test(viSake)
+      && /giấy phép kinh doanh bán buôn đồ uống có cồn \(酒類卸売業免許\)/.test(viSake)
+      && /giấy phép kinh doanh dịch vụ ăn uống \(飲食店営業許可\)/.test(viSake), 'ベトナム語も免許名＋日本語併記で揃っている');
   }
   ok(!/faqAdd/.test(html), 'スタッフには追加フォームを出さない');
   ok(!/data-faqdel/.test(html), 'スタッフには削除ボタンを出さない');

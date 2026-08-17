@@ -3005,17 +3005,17 @@
        ★日本語は受領した文面のまま。要約・言い換え・補足をしない（免許に関する法令の説明のため）。
        ★英語・ベトナム語はこちらで訳したもの。免許名は誤解を避けるため日本語の正式名称を併記している。 */
     { id:'fx_sake_takeout', cat:'store', src:'2026-08-17 本部',
-      q:{ ja:'店内で提供しているお酒を、そのままテイクアウト販売できますか？', en:'Can we sell alcohol served in the restaurant as takeaway, as is?', vi:'Chúng tôi có thể bán mang về loại rượu đang phục vụ trong quán không?' },
+      q:{ ja:'店内で提供しているお酒を、そのままテイクアウト販売できますか？', en:'Can we sell alcohol served in the restaurant as takeaway, as is?', vi:'Chúng tôi có thể bán mang về các loại đồ uống có cồn đang được phục vụ tại nhà hàng không?' },
       a:{ ja:'できません。店外で飲む目的のお酒を販売する場合は、飲食店営業許可とは別に、原則として「一般酒類小売業免許」が必要です。',
-          en:'No. To sell alcohol intended to be consumed off the premises, you need in principle a General Liquor Retail Business License (一般酒類小売業免許), which is separate from the restaurant business permit.',
-          vi:'Không được. Để bán rượu với mục đích uống bên ngoài quán, về nguyên tắc cần có giấy phép bán lẻ rượu thông thường (一般酒類小売業免許), tách biệt với giấy phép kinh doanh nhà hàng.' } },
+          en:'No. To sell alcohol intended to be consumed off the premises, you need in principle a General Liquor Retail Business License (一般酒類小売業免許), which is separate from the restaurant business permit (飲食店営業許可).',
+          vi:'Không được. Để bán đồ uống có cồn cho khách mang ra ngoài nhà hàng để sử dụng, về nguyên tắc, cần có giấy phép kinh doanh bán lẻ đồ uống có cồn thông thường (一般酒類小売業免許), ngoài giấy phép kinh doanh dịch vụ ăn uống (飲食店営業許可).' } },
     { id:'fx_sake_supplier', cat:'store', src:'2026-08-17 本部',
-      q:{ ja:'免許を取得すれば、現在の仕入先のお酒をそのまま販売できますか？', en:'If we obtain the license, can we sell alcohol from our current suppliers as is?', vi:'Nếu có giấy phép, chúng tôi có thể bán rượu từ nhà cung cấp hiện tại không?' },
+      q:{ ja:'免許を取得すれば、現在の仕入先のお酒をそのまま販売できますか？', en:'If we obtain the license, can we sell alcohol from our current suppliers as is?', vi:'Nếu có giấy phép này, chúng tôi có thể bán các loại đồ uống có cồn được mua từ nhà cung cấp hiện tại không?' },
       a:{ ja:'必ずしも販売できません。一般酒類小売業免許で販売するお酒は、原則として酒類卸売業免許を持つ事業者、または酒類製造者から仕入れる必要があります。',
           en:'Not necessarily. Alcohol sold under a General Liquor Retail Business License (一般酒類小売業免許) must in principle be purchased from a business holding a Liquor Wholesale Business License (酒類卸売業免許), or from a liquor producer.',
-          vi:'Không hẳn. Rượu bán theo giấy phép bán lẻ rượu thông thường (一般酒類小売業免許) về nguyên tắc phải được nhập từ đơn vị có giấy phép bán buôn rượu (酒類卸売業免許), hoặc từ nhà sản xuất rượu.' } },
+          vi:'Không hẳn. Đồ uống có cồn được bán theo giấy phép kinh doanh bán lẻ đồ uống có cồn thông thường (一般酒類小売業免許), về nguyên tắc, phải được mua từ doanh nghiệp có giấy phép kinh doanh bán buôn đồ uống có cồn (酒類卸売業免許) hoặc từ nhà sản xuất đồ uống có cồn.' } },
     { id:'fx_sake_contact', cat:'store', src:'2026-08-17 本部',
-      q:{ ja:'酒類のテイクアウト販売を実施したいのですが、どうすればよいですか？', en:'We would like to start takeaway sales of alcohol. What should we do?', vi:'Chúng tôi muốn triển khai bán rượu mang về thì phải làm thế nào?' },
+      q:{ ja:'酒類のテイクアウト販売を実施したいのですが、どうすればよいですか？', en:'We would like to start takeaway sales of alcohol. What should we do?', vi:'Chúng tôi muốn triển khai bán đồ uống có cồn mang về thì phải làm thế nào?' },
       a:{ ja:'本部へお問い合わせください。',
           en:'Please contact HQ.',
           vi:'Vui lòng liên hệ HQ.' } }
