@@ -1361,6 +1361,23 @@ console.log('== よくある質問（8/10 構築MTG A-04：ルールを後から
   ok(JSON.parse(localStorage.getItem('yosakura_demo_faq') || '[]').length === 1, 'faqsetが無い同期でも既存の項目を保持する');
 }
 
+console.log('== 世桜10訓（2026-08-17 上原さんのご依頼）==');
+{
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  // 10項目が欠けたり増えたりしていないか（理念そのものなので、勝手に足さない・減らさない）
+  const list = (src.match(/const JUKKUN = \[([\s\S]*?)\];/) || [])[1] || '';
+  ok((list.match(/'/g) || []).length / 2 === 10, '世桜10訓がちょうど10項目ある');
+  for (const role of ['staff','manager','owner','hq']) {
+    const html = renderView('jukkun', role, role === 'hq' ? 'all' : S_HIROSHIMA, 'ja');
+    ok(/チーム世桜/.test(html) && /上下左右の吸収/.test(html), '[' + role + '] 世桜10訓が最初から最後まで出る');
+  }
+  for (const lang of ['en','vi']) {
+    const html = renderView('jukkun', 'staff', S_HIROSHIMA, lang);
+    // 10訓そのものは日本語が正。訳を勝手に作らない＝多言語でも日本語のまま出ること自体を固定する
+    ok(/チーム世桜/.test(html), '[' + lang + '] 10訓の文言は日本語の公式表記のまま出る');
+  }
+}
+
 console.log('== ポジティブシャワー（8/10 構築MTG A-05：良かったことを横展開する）==');
 {
   const KEY = '5000|' + S_HIROSHIMA;
