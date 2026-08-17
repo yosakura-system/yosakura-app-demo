@@ -170,7 +170,10 @@
     { id:'review', group:'other', icon:'qr', hide:true, roles:['staff','manager','owner','hq'], // 議事録12-4/23: 口コミQRはアプリ掲載を一旦外す（紙運用が基本）
       name:{ ja:'口コミQR', en:'Review QR', vi:'QR đánh giá' },
       desc:{ ja:'紙での提示が基本。必要時のみ使用', en:'Paper first; use only when needed', vi:'Ưu tiên giấy; chỉ dùng khi cần' } },
-    { id:'talk', group:'learn', icon:'chat', roles:['staff','manager','owner','hq'],
+    /* 2026-08-17 神田さんのご判断：学ぶタブに個別のカードを前へ出さず、マニュアルの分類の中へ集約する。
+       「読むもの」を探す場所をマニュアル1か所に決める（学ぶ＝マニュアルと勉強会だけになる）。
+       機能は生きており、マニュアル→接客・ホール から開く。ホームの「よく使う」にも並べられる。 */
+    { id:'talk', group:'learn', icon:'chat', tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'接客スクリプト・食べ方ガイド', en:'Service Scripts', vi:'Kịch bản phục vụ' },
       desc:{ ja:'多言語の接客フレーズと食べ方案内', en:'Multilingual phrases & how-to-enjoy', vi:'Câu phục vụ đa ngữ' } },
     // 2026-08-12 神田さんのご指摘：日次業務と同じものが「報告する」にも並び、二重に見えていた。
@@ -178,7 +181,10 @@
     { id:'checklist', group:'genba', icon:'check', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'オープン・クローズチェック', en:'Open & Close Check', vi:'Kiểm tra Mở & Đóng' },
       desc:{ ja:'開店・閉店の点検（店舗ごとに作り替えられます）', en:'Opening & closing checks (customizable per store)', vi:'Kiểm tra mở & đóng cửa (tùy chỉnh theo cửa hàng)' } },
-    { id:'links', group:'other', icon:'link', soon:true, roles:['staff','manager','owner','hq'],
+    /* 2026-08-17 神田さんのご判断で画面から外した＝「いまは使い方が定まっていない」ため。
+       ⚠️ 2026-08-12 構築MTG（アクション14）では「本部共有スプレッドシートへの入口として設ける」方向だった。
+       消さずに hide で伏せてあるので、必要になれば hide を外すだけで戻せる。 */
+    { id:'links', group:'other', icon:'link', soon:true, hide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'リンク集', en:'Quick Links', vi:'Liên kết' },
       desc:{ ja:'初期設定・発注などの必要リンク', en:'Setup, ordering and key links', vi:'Cài đặt, đặt hàng, liên kết' } },
     // 8/10 構築MTG D-03/D-10・A-04: 単発のお知らせではなく「ルールを後から確認できる場所」として新設
@@ -196,8 +202,10 @@
       name:{ ja:'店内動画の共有', en:'In-store Video', vi:'Video trong quán' },
       desc:{ ja:'店内一周の動画リンクを共有', en:'Share store walkthrough videos', vi:'Chia sẻ video trong quán' } },
     // 2026-08-17 上原さんのご依頼「アプリに世桜10訓の追加お願いします」。
-    // 理念のスライドへのリンクは既にあるが、ドライブの権限が要る。アプリの中で読める形にする。
-    { id:'jukkun', group:'learn', icon:'star', live:true, roles:['staff','manager','owner','hq'],
+    // 理念のスライドへのリンクは以前からあるが、ドライブを開きに行くことになる。アプリの中で読める形にする。
+    // ※以前ここに「開くのにドライブの権限が要る」と書いていたが、実際には権限なしで開ける共有設定だった（2026-08-17 訂正）。
+    // 2026-08-17 神田さんのご判断で、学ぶタブには出さずマニュアル→世桜とは・理念 の中へ入れた（talk と同じ考え）。
+    { id:'jukkun', group:'learn', icon:'star', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'世桜10訓', en:'YOSAKURA 10 Precepts', vi:'10 điều răn YOSAKURA' },
       desc:{ ja:'世桜で働くうえでの10の心得', en:'The ten principles we work by', vi:'Mười điều tâm niệm khi làm việc' } },
     { id:'manual', group:'learn', icon:'book', live:true, roles:['staff','manager','owner','hq'],
@@ -1835,6 +1843,14 @@
     { ic:'food',  gyotai:'washoku',  roles:['all'], t:{ja:'日本料理コース',en:'Japanese course',vi:'Set Nhật'}, s:{ja:'おまかせの流れ／季節の献立',en:'Omakase flow / seasonal menu',vi:'Quy trình omakase'} }
   ];
   const manualVisibleRole = (m, role) => role === 'hq' || m.roles.includes('all') || m.roles.includes(role);
+  /* マニュアルの分類の中に置く「アプリの中で読めるもの」（2026-08-17 神田さんのご判断）。
+     ★ドライブの資料へのリンクと違い、権限も通信も要らず、その場で開く。
+     ★見出し・説明は APPS の定義をそのまま使う＝2か所に同じ文言を持たない
+       （名前を直したときにマニュアル側だけ古いまま、が起きない）。 */
+  const MANUAL_BUILTIN = [
+    { gid:'philosophy', app:'jukkun' }, // 世桜とは・理念 → 世桜10訓
+    { gid:'service',    app:'talk' }    // 接客・ホール → 接客スクリプト・食べ方ガイド
+  ];
   // マニュアルの大項目リスト（本部が資料をここへ振り分ける。順番＝◀▶で切り替わる順）
   const MANUAL_GROUPS = MANUAL_CATALOG.filter(m => m.gid).map(m => ({ v: m.gid, t: m.t }));
   const mgroupLabel = (v) => { const g = MANUAL_GROUPS.find(x => x.v === v); return g ? L(g.t) : L({ ja:'未分類', en:'Unsorted', vi:'Chưa phân loại' }); };
@@ -1849,7 +1865,15 @@
   const manualRow = (m) => {
     const mats = m.gid ? getLinks().filter(l => l.mcat === m.gid).sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))) : [];
     const roForRole = getRole() !== 'hq'; // 本部以外は読み取り専用で開く
-    const head = `<div class="mrow"${mats.length ? '' : ' data-mock="1"'}><div class="mi">${svg(m.ic)}</div><div class="mt"><b>${esc(L(m.t))}</b><span>${esc(L(m.s))}</span></div><span class="chev">${mats.length ? `<small style="color:#8a8">${L({ ja:'資料', en:'Docs', vi:'TL' })}${mats.length}</small>` : svg('chev')}</span></div>`;
+    /* アプリの中で読めるものを、資料リンクより先に並べる。
+       ★資料が1件も登録されていない分類でも、これがあれば「準備中」にはならない。 */
+    const builtins = m.gid
+      ? MANUAL_BUILTIN.filter(b => b.gid === m.gid).map(b => appById(b.app)).filter(a => a && !a.hide && canOpen(a, getRole()))
+      : [];
+    const total = builtins.length + mats.length;
+    const head = `<div class="mrow"${total ? '' : ' data-mock="1"'}><div class="mi">${svg(m.ic)}</div><div class="mt"><b>${esc(L(m.t))}</b><span>${esc(L(m.s))}</span></div><span class="chev">${total ? `<small style="color:#8a8">${L({ ja:'資料', en:'Docs', vi:'TL' })}${total}</small>` : svg('chev')}</span></div>`;
+    /* ★リンクと同じ見た目で並ぶので、押す前に「飛ぶのか・その場で読めるのか」が分かるようにする。 */
+    const bsubs = builtins.map(a => `<div class="mrow mrow--sub" data-go="/app/${esc(a.id)}" style="padding-left:22px"><div class="mi">${svg(a.icon)}</div><div class="mt"><b>${esc(L(a.name))}</b><span>${L({ ja:'アプリで読めます', en:'Read in the app', vi:'Đọc ngay trong ứng dụng' })}</span></div><span class="chev">${svg('chev')}</span></div>`).join('');
     /* リンクがまだ登録されていない資料は、押しても開かない（空のタブが開いてしまうため）。
        体験版では中身のURLを持たないので、ここが「見本」として並ぶ（2026-08-12）。 */
     const subs = mats.map(l => {
@@ -1860,7 +1884,7 @@
         : L({ ja:'（見本）本部が資料を登録すると開けます', en:'(sample) opens once HQ registers the document', vi:'(mẫu) mở được khi HQ đăng ký tài liệu' });
       return `<div class="mrow mrow--sub"${has ? ` data-openurl="${esc(ou)}"` : ' data-mock="1"'} style="padding-left:22px"><div class="mi">${svg('link')}</div><div class="mt"><b>${esc(l.title)}</b><span>${l.desc ? esc(l.desc) + ' ・ ' : ''}${note}</span></div><span class="chev">${svg('chev')}</span></div>`;
     }).join('');
-    return head + subs;
+    return head + bsubs + subs;
   };
   /* 世桜10訓（2026-08-17 上原さんのご依頼）。
      ★出典＝本部ドライブ `01-6【世桜】世桜10訓`。**文言は世桜の公式のもので、こちらで作らない・変えない。**

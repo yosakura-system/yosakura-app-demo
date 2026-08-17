@@ -694,7 +694,11 @@ console.log('== 8/7 増田さんご要望：入口の整理 ==');
     location.hash = '#/home?tab=learn';
     const learn = registry.app.innerHTML;
     ok(!/お知らせ/.test(learn), `[${role}] 学ぶタブに「お知らせ」が出ない`);
-    ok(/マニュアル/.test(learn) && /接客スクリプト/.test(learn), `[${role}] 学ぶタブにマニュアルと接客スクリプトは残っている`);
+    /* 2026-08-17 神田さんのご判断＝「読むもの」の入口をマニュアル1か所に決めた。
+       学ぶタブに個別のカードを前へ出さない（本部だけは資料を登録する画面が並ぶ）。 */
+    ok(/マニュアル/.test(learn) && /勉強会/.test(learn), `[${role}] 学ぶタブにマニュアルと勉強会が並ぶ`);
+    ok(!/接客スクリプト/.test(learn), `[${role}] 学ぶタブに接客スクリプトのカードを出さない（マニュアルの中へ移した）`);
+    ok(!/世桜10訓/.test(learn), `[${role}] 学ぶタブに世桜10訓のカードを出さない（マニュアルの中へ移した）`);
   }
   // お知らせ機能そのものは生きている（ホームのカードから開く）
   const home = renderView('home','staff',S_HIROSHIMA,'ja');
@@ -1375,6 +1379,49 @@ console.log('== 世桜10訓（2026-08-17 上原さんのご依頼）==');
     const html = renderView('jukkun', 'staff', S_HIROSHIMA, lang);
     // 10訓そのものは日本語が正。訳を勝手に作らない＝多言語でも日本語のまま出ること自体を固定する
     ok(/チーム世桜/.test(html), '[' + lang + '] 10訓の文言は日本語の公式表記のまま出る');
+  }
+}
+
+console.log('== 読むものはマニュアルの中に集める（2026-08-17 神田さんのご判断）==');
+{
+  /* ★狙い：学ぶタブから消したものが、行き止まりになっていないこと。
+     「タブから外したが、マニュアルにも無い」＝どこからも開けない状態を防ぐ。 */
+  for (const role of ['staff','manager','owner','hq']) {
+    const manual = renderView('manual', role, role === 'hq' ? 'all' : S_HIROSHIMA, 'ja');
+    ok(/世桜10訓/.test(manual) && /data-go="\/app\/jukkun"/.test(manual),
+       '[' + role + '] マニュアルの中から世桜10訓を開ける');
+    ok(/接客スクリプト/.test(manual) && /data-go="\/app\/talk"/.test(manual),
+       '[' + role + '] マニュアルの中から接客スクリプトを開ける');
+    // ドライブへ飛ぶのか、その場で読めるのかが押す前に分かること
+    ok(/アプリで読めます/.test(manual), '[' + role + '] アプリの中で読めるものだと分かる表示が出る');
+  }
+  // 分類の中に入っていること（世桜とは・理念／接客・ホール の直後に並ぶ）
+  const m = renderView('manual', 'staff', S_HIROSHIMA, 'ja');
+  ok(m.indexOf('世桜とは・理念') < m.indexOf('世桜10訓'), '世桜10訓は「世桜とは・理念」の中に入っている');
+  ok(m.indexOf('接客・ホール') < m.indexOf('接客スクリプト'), '接客スクリプトは「接客・ホール」の中に入っている');
+  /* 資料が1件も登録されていなくても「準備中」にならない（体験版はリンクを持たない）。
+     ★data-mock は見出しより前（行の開始タグ）に出る。行の先頭から切り出して確かめる。 */
+  const headSeg = m.slice(m.lastIndexOf('<div class="mrow"', m.indexOf('世桜とは・理念')), m.indexOf('世桜10訓'));
+  ok(headSeg.length > 0 && !/data-mock/.test(headSeg), '中身のある分類が「準備中」扱いにならない');
+  // 多言語でも行き止まりにしない
+  for (const lang of ['en','vi']) {
+    const html = renderView('manual', 'staff', S_HIROSHIMA, lang);
+    ok(/data-go="\/app\/jukkun"/.test(html) && /data-go="\/app\/talk"/.test(html),
+       '[' + lang + '] 言語を変えてもマニュアルの中から開ける');
+  }
+  // ホームの「よく使う」には引き続き並べられる（現場ですぐ出せる逃げ道を残す）
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  const pin = (src.match(/function openPinSheet\(\)[\s\S]*?\n  \}/) || [''])[0];
+  ok(/APPS\.filter\(a => !a\.hide && canOpen/.test(pin),
+     'よく使うの設定には、タブに出していない機能も並ぶ（接客スクリプトをホームへ置ける）');
+}
+
+console.log('== リンク集は画面に出さない（2026-08-17 神田さんのご判断）==');
+{
+  for (const role of ['staff','manager','owner','hq']) {
+    run(()=> setLS(role, role === 'hq' ? 'all' : S_HIROSHIMA, 'ja'));
+    location.hash = '#/home?tab=other';
+    ok(!/リンク集/.test(registry.app.innerHTML), '[' + role + '] その他・設定にリンク集を出さない');
   }
 }
 
