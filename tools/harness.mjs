@@ -359,8 +359,18 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
 {
   const S_NAGA = '牛カツ世桜 長堀橋店';
   const ym = new Date().toISOString().slice(0,7);
-  const d = (n) => ym + '-' + String(n).padStart(2,'0');
-  const sk = (store, day, sales, guests, extra) => ({ kind:'soukatsu', store, note: JSON.stringify(Object.assign({ date:d(day), sales, guests }, extra||{})), t: Date.now()-day*3600e3, id:'sk'+store+day });
+  /* ★日付は「今日」から遡って作る（2026-08-17 修正）。
+     以前は月の1〜3日で固定していたため、店舗比較のスパークラインが見る
+     「今日までの直近14日」（app.js の spDays）から外れる月の後半に必ず落ちていた。
+     8/13は通り 8/17で落ちた＝アプリ側ではなくテストデータが日付に依存していた。
+     月初は3日ぶん取れないので、取れる日数に合わせて詰める。 */
+  const DNOW = new Date().getDate();
+  const NDAYS = Math.min(3, DNOW);
+  const DAYS = Array.from({ length: NDAYS }, (_, i) => DNOW - (NDAYS - 1) + i);
+  const d = (n) => ym + '-' + String(DAYS[Math.min(n, NDAYS) - 1]).padStart(2, '0');
+  const CAN_SPARK = NDAYS >= 2; // 1日ぶんの履歴では推移線を引けない（月の1日のみ）
+  // day が大きいほど新しい＝日付が重なる月初でも「全項目入りの日報」が最新として残る
+  const sk = (store, day, sales, guests, extra) => ({ kind:'soukatsu', store, note: JSON.stringify(Object.assign({ date:d(day), sales, guests }, extra||{})), t: Date.now()+day*1000, id:'sk'+store+day });
   FETCH_ROWS = { ok:true, reports:[
     sk(S_HIROSHIMA, 1, 120000, 20), sk(S_HIROSHIMA, 2, 180000, 30), sk(S_HIROSHIMA, 3, 90000, 15),
     sk('牛カツ世桜 長堀橋店', 1, 60000, 12), sk('牛カツ世桜 長堀橋店', 2, 75000, 15,
@@ -372,7 +382,8 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
   const html = registry.app.innerHTML;
   ok(/店舗比較（総括表より）/.test(html), '本部の総括表に店舗比較カードが出る');
   ok(/class="colchart"/.test(html), '日別カラムチャートが描画される');
-  ok(/class="spark"/.test(html), '店舗行にスパークライン（推移）が出る');
+  if (CAN_SPARK) ok(/class="spark"/.test(html), '店舗行にスパークライン（推移）が出る');
+  else console.log('  － スパークラインは対象外（今日が月の1日＝履歴が1日ぶんのため推移線を引けない）');
   ok(/data-storelink="和牛世桜 広島店"/.test(html), '店舗行が個店カルテへのタップ導線を持つ');
   ok(/data-skday=/.test(html), '棒・日報行から「その日の日報」を開ける');
   ok(/data-go="\/app\/soukatsu\?p=prev/.test(html) && /m=guests/.test(html), '期間（今月/先月/直近30日）と指標（売上/客数/客単価）の切替がある');
@@ -417,10 +428,17 @@ FETCH_ROWS = { ok:false };
 console.log('== 総括表の正規化（未来日付・二重提出・取消）==');
 {
   const ymd = (d) => d.toLocaleDateString('en-CA');
-  const today = ymd(new Date());
+  /* ★日付は「表示している月」の中に収める（2026-08-17 修正）。
+     個店カルテは月ごとの表示なので、月の1〜2日に前日・前々日を使うと先月扱いになり、
+     画面に出ず「二重提出は最新が正」の検査が落ちていた。
+     3日以降は今月、1〜2日は先月末を起点にする。 */
+  const anchor = new Date();
+  if (anchor.getDate() < 3) anchor.setDate(0); // 先月の末日へ
+  const ANCHOR_YM = ymd(anchor).slice(0, 7);
+  const dayBack = (n) => { const x = new Date(anchor); x.setDate(anchor.getDate() - n); return ymd(x); };
   const future = ymd(new Date(Date.now() + 6 * 864e5));
-  const yest = ymd(new Date(Date.now() - 864e5));
-  const two = ymd(new Date(Date.now() - 2 * 864e5));
+  const yest = dayBack(1);
+  const two = dayBack(2);
   const sk = (day, sales, guests, t, id) => ({ kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date: day, sales, guests }), t, id });
   FETCH_ROWS = { ok:true, reports:[
     sk(future, 1, 0, Date.now() + 6 * 864e5, 'f1'),          // 未来日付＝無効
@@ -431,7 +449,7 @@ console.log('== 総括表の正規化（未来日付・二重提出・取消）=
   ]};
   try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ skClean load threw: '+e.message); }
   await new Promise(r=>setTimeout(r, 50));
-  location.hash = '#/store?s=' + encodeURIComponent(S_HIROSHIMA);
+  location.hash = '#/store?s=' + encodeURIComponent(S_HIROSHIMA) + '&ym=' + ANCHOR_YM;
   const html = registry.app.innerHTML;
   ok(!/¥1 ・/.test(html) && !html.includes('"' + future + '"'), '未来日付の日報は表示・集計に出ない');
   ok(/222,222/.test(html) && !/111,111/.test(html), '同じ店舗×日付は最新の提出が正（二重に並ばない）');

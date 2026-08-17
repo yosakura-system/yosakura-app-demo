@@ -2955,7 +2955,7 @@
       <label class="fld"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><select>${ORDER_ITEMS.map(it=>`<option>${esc(L(it.n))}</option>`).join('')}</select></label>
       <label class="fld"><span>${L({ ja:'数量', en:'Quantity', vi:'Số lượng' })}</span><input type="text" inputmode="numeric" placeholder="30"></label>
       <button class="btn-primary" id="demoOrder">${L({ja:'発注する（準備中）',en:'Order (in preparation)',vi:'Đặt (đang chuẩn bị)'})}</button>
-      <div class="hint">${L({ ja:'納期は通常 発注後 約1週間。お品代は注文先業者の請求書に準じ、POP等は納品後ロイヤリティに加算して請求。POP修正500円〜／新規2,000円〜（要素追加は本部承認）。', en:'Lead time ~1 week. Costs follow vendor invoices; POP etc. billed via royalty. POP edit from 500 yen / new from 2,000 yen (additions need HQ approval).', vi:'Giao ~1 tuần. Chi phí theo hóa đơn NCC; POP tính qua royalty. Sửa POP từ 500 yen / mới từ 2,000 yen (thêm mục cần HQ duyệt).' })}</div>
+      <div class="hint">${L({ ja:'販促物は、制作元への依頼・調整を含めて2〜3週間かかります（2026-08-10 構築MTG）。品目によって異なる場合がありますので、お急ぎのときは本部へご確認ください。お品代は注文先業者の請求書に準じ、POP等は納品後ロイヤリティに加算して請求。POP修正500円〜／新規2,000円〜（要素追加は本部承認）。', en:'Promotional items take 2–3 weeks including the request to and coordination with the maker (HQ meeting, 10 Aug 2026). Lead times vary by item — please check with HQ if you are in a hurry. Costs follow vendor invoices; POP etc. billed via royalty. POP edit from 500 yen / new from 2,000 yen (additions need HQ approval).', vi:'Vật phẩm quảng bá mất 2–3 tuần, gồm đặt hàng và điều chỉnh với nhà sản xuất (họp HQ 10/8/2026). Thời gian giao khác nhau theo mặt hàng — nếu gấp, vui lòng hỏi HQ. Chi phí theo hóa đơn NCC; POP tính qua royalty. Sửa POP từ 500 yen / mới từ 2,000 yen (thêm mục cần HQ duyệt).' })}</div>
     </div>`;
 
   /* リンク集（初期リンク・発注リンク集）*/
