@@ -201,13 +201,12 @@
     { id:'storevideo', group:'storeops', icon:'video', tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'店内動画の共有', en:'In-store Video', vi:'Video trong quán' },
       desc:{ ja:'店内一周の動画リンクを共有', en:'Share store walkthrough videos', vi:'Chia sẻ video trong quán' } },
-    // 2026-08-17 上原さんのご依頼「アプリに世桜10訓の追加お願いします」。
-    // 理念のスライドへのリンクは以前からあるが、ドライブを開きに行くことになる。アプリの中で読める形にする。
-    // ※以前ここに「開くのにドライブの権限が要る」と書いていたが、実際には権限なしで開ける共有設定だった（2026-08-17 訂正）。
-    // 2026-08-17 神田さんのご判断で、学ぶタブには出さずマニュアル→世桜とは・理念 の中へ入れた（talk と同じ考え）。
-    { id:'jukkun', group:'learn', icon:'star', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
-      name:{ ja:'世桜10訓', en:'YOSAKURA 10 Precepts', vi:'10 điều răn YOSAKURA' },
-      desc:{ ja:'世桜で働くうえでの10の心得', en:'The ten principles we work by', vi:'Mười điều tâm niệm khi làm việc' } },
+    /* 世桜10訓（2026-08-17 上原さんのご依頼）。
+       ★アプリの中に見出し10個を書き写す作りにしていたが、2026-08-17 神田さんのご判断で取りやめた。
+         本部のスライドには各項目の解説と具体例、5つの価値・7つの管理・ビジョンの図まで入っており、
+         見出しだけを写すと「言葉が10個並んでいるだけ」になって意味が伝わらないため。
+       ★入口＝マニュアル →「世桜とは・理念」→「世桜10訓（スライド）」。本部が登録した資料をそのまま開く。
+         ＝文言が本部で更新されたとき、アプリ側を直さなくても最新が出る。 */
     { id:'manual', group:'learn', icon:'book', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' },
       desc:{ ja:'権限・業態別に表示（理念・接客・衛生・商品）', en:'By role & store type', vi:'Theo vai trò & loại hình' } },
@@ -1848,8 +1847,7 @@
      ★見出し・説明は APPS の定義をそのまま使う＝2か所に同じ文言を持たない
        （名前を直したときにマニュアル側だけ古いまま、が起きない）。 */
   const MANUAL_BUILTIN = [
-    { gid:'philosophy', app:'jukkun' }, // 世桜とは・理念 → 世桜10訓
-    { gid:'service',    app:'talk' }    // 接客・ホール → 接客スクリプト・食べ方ガイド
+    { gid:'service', app:'talk' } // 接客・ホール → 接客スクリプト・食べ方ガイド
   ];
   // マニュアルの大項目リスト（本部が資料をここへ振り分ける。順番＝◀▶で切り替わる順）
   const MANUAL_GROUPS = MANUAL_CATALOG.filter(m => m.gid).map(m => ({ v: m.gid, t: m.t }));
@@ -1886,31 +1884,9 @@
     }).join('');
     return head + bsubs + subs;
   };
-  /* 世桜10訓（2026-08-17 上原さんのご依頼）。
-     ★出典＝本部ドライブ `01-6【世桜】世桜10訓`。**文言は世桜の公式のもので、こちらで作らない・変えない。**
-     ★英語・ベトナム語の訳は入れていない。10訓は世桜の理念そのもので、
-       訳し方を決めるのは本部。勝手な訳を載せると、それが正になってしまう。
-       多言語の要否は上原さんへ確認中（決まればここに足す）。 */
-  const JUKKUN = [
-    'チーム世桜（愛ある行動）',
-    '全てに感謝する',
-    'とにかく上へ（良い事も悪い事も0.2秒で報連相。悪いことほどすぐ）',
-    '笑顔の伝播',
-    '1way 2job',
-    '頼まれごとは試されごと',
-    '失敗は成長',
-    '出来る理由を探す',
-    'お客様目線',
-    '上下左右の吸収'
-  ];
-  APP_VIEWS.jukkun = () => `
-    ${NOTE({ ja:'◆ 世桜で働くうえでの10の心得です。困ったときの判断のよりどころにしてください', en:'◆ The ten principles we work by. Use them when you are unsure how to act', vi:'◆ Mười điều tâm niệm khi làm việc. Hãy dựa vào đó khi phân vân' })}
-    <div class="card">
-      ${JUKKUN.map((t, i) => `<div class="rep"><span class="stag st-new">${String(i + 1).padStart(2, '0')}</span><div class="body"><div class="l1">${esc(t)}</div></div></div>`).join('')}
-    </div>
-    <div class="hint">${L({ ja:'※ 文言は世桜の公式のものです。くわしくは「マニュアル」→「世桜とは・理念」から、本部の資料をご覧ください。',
-                            en:'The wording above is YOSAKURA’s official Japanese text. For details, open Manuals → Brand & Philosophy. Please ask HQ if you would like an explanation.',
-                            vi:'Nội dung trên là bản tiếng Nhật chính thức của YOSAKURA. Chi tiết xem tại Cẩm nang → Thương hiệu & Triết lý. Vui lòng hỏi HQ nếu cần giải thích.' })}</div>`;
+  /* ★世桜10訓をアプリの中に書き写す画面は置かない（2026-08-17 神田さんのご判断）。
+     見出しだけを写すと意味が伝わらず、解説・具体例のある本部のスライドを開いていただくほうが早い。
+     入口＝マニュアル →「世桜とは・理念」→「世桜10訓（スライド）」。 */
 
   APP_VIEWS.manual = () => {
     const role = getRole();
