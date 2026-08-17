@@ -1307,6 +1307,14 @@ console.log('== よくある質問（8/10 構築MTG A-04：ルールを後から
   ok(/一般酒類小売業免許/.test(html) && /飲食店営業許可とは別に/.test(html), '酒類のテイクアウト販売＝免許が必要（受領した文面のまま出る）');
   ok(/酒類卸売業免許を持つ事業者、または酒類製造者/.test(html), '酒類の仕入先の条件が、受領した文面のまま出る');
   ok(/酒類のテイクアウト販売を実施したいのですが、どうすればよいですか/.test(html) && /本部へお問い合わせください/.test(html), '酒類のテイクアウト販売の相談先が出る');
+  /* 英語は米国式で統一する（アプリ全体が color / center / catalog / en-US）。
+     2026-08-17：免許名に英国式の licence が混ざっていた（神田さんのご指摘で license へ統一）。 */
+  {
+    const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+    ok(!/licence/.test(src), '英語のつづりが米国式で揃っている（licence が混ざっていない）');
+    ok(/General Liquor Retail Business License \(一般酒類小売業免許\)/.test(src)
+      && /Liquor Wholesale Business License \(酒類卸売業免許\)/.test(src), '免許名は正式名称＋日本語併記で書かれている');
+  }
   ok(!/faqAdd/.test(html), 'スタッフには追加フォームを出さない');
   ok(!/data-faqdel/.test(html), 'スタッフには削除ボタンを出さない');
 
