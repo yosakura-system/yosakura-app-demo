@@ -3000,7 +3000,25 @@
       q:{ ja:'お客様からお飲み物の持ち込みを希望されたら、どうすればよいですか？', en:'What if a guest asks to bring their own drinks?', vi:'Nếu khách muốn mang đồ uống vào thì sao?' },
       a:{ ja:'原則としてお断りしています。例外的にお受けする場合は、事前に本部の承認が必要です。ご来店当日にお申し出をいただいた場合は、承認が間に合わないため原則お断りとなります。',
           en:'As a rule we decline. Exceptions require prior HQ approval. If the request is made on the day of the visit, approval cannot be obtained in time, so we decline as a rule.',
-          vi:'Về nguyên tắc chúng tôi từ chối. Trường hợp ngoại lệ cần được HQ chấp thuận trước. Nếu khách đề nghị ngay hôm đến, không kịp xin duyệt nên về nguyên tắc từ chối.' } }
+          vi:'Về nguyên tắc chúng tôi từ chối. Trường hợp ngoại lệ cần được HQ chấp thuận trước. Nếu khách đề nghị ngay hôm đến, không kịp xin duyệt nên về nguyên tắc từ chối.' } },
+    /* 酒類のテイクアウト販売（2026-08-17 本部より文面を受領）。
+       ★日本語は受領した文面のまま。要約・言い換え・補足をしない（免許に関する法令の説明のため）。
+       ★英語・ベトナム語はこちらで訳したもの。免許名は誤解を避けるため日本語の正式名称を併記している。 */
+    { id:'fx_sake_takeout', cat:'store', src:'2026-08-17 本部',
+      q:{ ja:'店内で提供しているお酒を、そのままテイクアウト販売できますか？', en:'Can we sell alcohol served in the restaurant as takeaway, as is?', vi:'Chúng tôi có thể bán mang về loại rượu đang phục vụ trong quán không?' },
+      a:{ ja:'できません。店外で飲む目的のお酒を販売する場合は、飲食店営業許可とは別に、原則として「一般酒類小売業免許」が必要です。',
+          en:'No. To sell alcohol intended to be consumed off the premises, you need in principle a general liquor retail licence (一般酒類小売業免許), which is separate from the restaurant business permit.',
+          vi:'Không được. Để bán rượu với mục đích uống bên ngoài quán, về nguyên tắc cần có giấy phép bán lẻ rượu thông thường (一般酒類小売業免許), tách biệt với giấy phép kinh doanh nhà hàng.' } },
+    { id:'fx_sake_supplier', cat:'store', src:'2026-08-17 本部',
+      q:{ ja:'免許を取得すれば、現在の仕入先のお酒をそのまま販売できますか？', en:'If we obtain the licence, can we sell alcohol from our current suppliers as is?', vi:'Nếu có giấy phép, chúng tôi có thể bán rượu từ nhà cung cấp hiện tại không?' },
+      a:{ ja:'必ずしも販売できません。一般酒類小売業免許で販売するお酒は、原則として酒類卸売業免許を持つ事業者、または酒類製造者から仕入れる必要があります。',
+          en:'Not necessarily. Alcohol sold under a general liquor retail licence (一般酒類小売業免許) must in principle be purchased from a business holding a liquor wholesale licence (酒類卸売業免許), or from a liquor producer.',
+          vi:'Không hẳn. Rượu bán theo giấy phép bán lẻ rượu thông thường (一般酒類小売業免許) về nguyên tắc phải được nhập từ đơn vị có giấy phép bán buôn rượu (酒類卸売業免許), hoặc từ nhà sản xuất rượu.' } },
+    { id:'fx_sake_contact', cat:'store', src:'2026-08-17 本部',
+      q:{ ja:'酒類のテイクアウト販売を実施したいのですが、どうすればよいですか？', en:'We would like to start takeaway sales of alcohol. What should we do?', vi:'Chúng tôi muốn triển khai bán rượu mang về thì phải làm thế nào?' },
+      a:{ ja:'本部へお問い合わせください。',
+          en:'Please contact HQ.',
+          vi:'Vui lòng liên hệ HQ.' } }
   ];
   const getFaq = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_faq')) || []; } catch { return []; } };
   const saveFaq = (a) => { try { localStorage.setItem('yosakura_demo_faq', JSON.stringify(a)); } catch (e) {} };
