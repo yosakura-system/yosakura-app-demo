@@ -679,10 +679,38 @@
     return { path, params: new URLSearchParams(qs || '') };
   }
   const go = (hash) => { location.hash = hash; };
-  window.addEventListener('hashchange', render);
+  /* 「1つ前の画面へ戻る」（2026-08-17 神田さんのご要望）。
+     ★ブラウザの戻る（history.back）は使わない。
+       アプリを直接開いた直後に押すと、アプリの外（前に見ていたサイト）へ出てしまうため。
+       代わりに、アプリの中でたどってきた道を自分で覚えておき、そこへ進み直す。
+       ＝どこで押しても必ずアプリの中に留まる。 */
+  const NAV = [];
+  const navPush = () => {
+    const h = location.hash.replace(/^#/, '') || '/home';
+    if (NAV[NAV.length - 1] !== h) NAV.push(h);
+    if (NAV.length > 30) NAV.shift();   // 長く使っても増え続けないように
+  };
+  const canGoBack = () => NAV.length > 1;
+  const goBack = () => {
+    NAV.pop();                       // いまの画面を捨てる
+    const prev = NAV.pop();          // 1つ前（進み直すと navPush で入り直す）
+    go(prev || '/home');
+  };
+  navPush();                          // 開いた最初の画面を覚える
+  window.addEventListener('hashchange', () => { navPush(); render(); });
   /* 画面の位置はアプリ側で決める。ブラウザに任せると、別の画面へ移ったのに
      前の画面の位置が復元され、途中から始まってしまう（2026-08-12 神田さんのご指摘）。 */
   try { if (window.history && 'scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'; } catch (e) {}
+
+  /* 画面の左上。ホームへ戻るのと、1つ前へ戻るのを並べる（2026-08-17 神田さんのご要望）。
+     ★「戻る」は、たどってきた道がある画面にだけ出す。
+       いつも出すと、押しても何も起きない画面ができて迷わせる。 */
+  function appbarHTML() {
+    const home = `<button class="back" id="backBtn">${svg('back')}${L({ ja:'ホーム', en:'Home', vi:'Trang chủ' })}</button>`;
+    if (!canGoBack()) return home;
+    const back = `<button class="back back--prev" id="prevBtn">${svg('back')}${L({ ja:'1つ前へ', en:'Back', vi:'Quay lại' })}</button>`;
+    return back + home;
+  }
 
   /* ---------- シェル ---------- */
   function shell(inner, activeTab) {
@@ -876,7 +904,7 @@
     // 画面によって有ったり無かったりすると迷うため、ホーム以外はすべて同じ位置に出す。
     const inner = `
       <main class="screen">
-        <div class="appbar"><button class="back" id="backBtn">${svg('back')}${L({ ja:'ホーム', en:'Home', vi:'Trang chủ' })}</button></div>
+        <div class="appbar">${appbarHTML()}</div>
         ${heroBlock}
         ${sections}
         <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}${buildNote()}</div>
@@ -911,7 +939,7 @@
     const body = APP_VIEWS[id] ? APP_VIEWS[id](a) : mockGeneric(a);
     const inner = `
       <main class="screen">
-        <div class="appbar"><button class="back" id="backBtn">${svg('back')}${L({ ja:'ホーム', en:'Home', vi:'Trang chủ' })}</button></div>
+        <div class="appbar">${appbarHTML()}</div>
         <div class="app-head">
           <div class="ico">${svg(a.icon)}</div>
           <div><h1>${esc(L(a.name))}</h1><p>${esc(L(a.desc))}</p></div>
@@ -4854,6 +4882,7 @@
     if (byId('installBtn')) byId('installBtn').onclick = triggerInstall;
     if (byId('installDismiss')) byId('installDismiss').onclick = () => { localStorage.setItem('yosakura_install_hide', '1'); render(); };
     if (byId('backBtn')) byId('backBtn').onclick = () => go('/home');
+    if (byId('prevBtn')) byId('prevBtn').onclick = () => goBack();
 
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab === 'home' ? '/home' : `/home?tab=${b.dataset.tab}`));
     // 総括表のビジュアル：期間/指標の切替・個店カルテ・その日の日報
