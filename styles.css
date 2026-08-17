@@ -348,3 +348,125 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .tour__row { display: flex; align-items: center; gap: 8px; }
 .tour__skip { flex: 0 0 auto; background: none; border: none; color: var(--gray); font-weight: 700; font-size: 13px; padding: 14px 10px; cursor: pointer; font-family: var(--sans); }
 .tour__next { flex: 1; }
+
+/* 公益通報：匿名チェックのインライン表示 */
+.check-inline { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--sumi); margin-top: 10px; cursor: pointer; }
+.check-inline input { width: 17px; height: 17px; accent-color: var(--suou); }
+
+/* ホーム：本部からのお知らせカード */
+.news-card { display: block; }
+.news-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.news-h .news-ic { width: 28px; height: 28px; border-radius: 8px; background: var(--suou-t); color: var(--suou); display: grid; place-items: center; flex: 0 0 auto; }
+.news-h .news-ic svg { width: 17px; height: 17px; }
+.news-h b { font-size: 14px; color: var(--sumi); }
+.news-body { font-size: 13px; color: var(--gray); line-height: 1.7; margin: 0; }
+
+/* ホーム：各メニューへの導線（ワンクリック） */
+.homelinks { display: flex; flex-direction: column; gap: 10px; }
+.homelink { display: flex; align-items: center; gap: 12px; width: 100%; padding: 15px 16px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-s);
+  cursor: pointer; font-family: var(--sans); text-align: left; transition: transform .12s ease, box-shadow .2s ease; }
+.homelink:active { transform: scale(.99); }
+.homelink .hl-ic { width: 38px; height: 38px; border-radius: 11px; background: var(--suou-t); color: var(--suou); display: grid; place-items: center; flex: 0 0 auto; }
+.homelink .hl-ic svg { width: 21px; height: 21px; }
+.homelink .hl-t { flex: 1; font-size: 15px; font-weight: 700; color: var(--sumi); }
+.homelink .hl-c { color: var(--gray); display: grid; place-items: center; }
+.homelink .hl-c svg { width: 18px; height: 18px; }
+
+/* ホーム：お知らせカード（タップで一覧へ） */
+.news-card--btn { display: block; width: 100%; text-align: left; cursor: pointer; font-family: var(--sans); transition: transform .12s ease, box-shadow .2s ease; }
+.news-card--btn:active { transform: scale(.995); }
+.news-card--imp { border-color: #d8b4b4; box-shadow: 0 3px 14px rgba(150,40,40,.12); }
+.news-card--imp .news-ic { background: #f4e2e2; color: #a23b3b; }
+.news-h .news-ago { margin-left: auto; font-size: 11px; color: var(--gray); font-weight: 600; }
+.news-title { font-size: 14px; font-weight: 700; color: var(--sumi); margin: 2px 0 4px; }
+.news-more { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 700; color: var(--suou); margin-top: 6px; }
+.news-more svg { width: 15px; height: 15px; }
+.news-item .news-text { font-size: 13px; color: var(--sumi); line-height: 1.7; margin: 3px 0; white-space: pre-wrap; }
+
+/* オープン・クローズチェック：店舗独自項目の追加・削除 */
+.check { position: relative; }
+.ck-del { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border-radius: 50%;
+  border: none; background: var(--suou-t); color: var(--sumi); font-size: 15px; line-height: 1; cursor: pointer; }
+.ck-add { display: flex; gap: 8px; padding: 8px 4px 6px; }
+.ck-add input { flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-family: var(--sans); font-size: 14px; }
+.ck-add .mini { flex: 0 0 auto; }
+
+/* お知らせ：画像・動画 */
+.news-thumb { display: block; width: 100%; max-height: 160px; object-fit: cover; border-radius: 12px; margin: 8px 0 2px; }
+.news-video { display: inline-block; margin: 6px 0 2px; font-size: 13px; font-weight: 700; color: var(--suou); text-decoration: none; }
+.news-item .rep-photos { margin: 4px 0; }
+
+/* サーベイ集計：低評価バー */
+.bar-fill.bar-low { background: #c96a6a; }
+
+/* ============ 総括表のビジュアル（墨1色：色は増やさず「長さ」で比較する） ============ */
+/* 期間・指標の切替チップ */
+.seg-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+.chip { border: 1px solid var(--line); background: #FCFBF9; color: var(--gray); font-size: 11.5px; font-weight: 700;
+  padding: 7px 12px; border-radius: 999px; cursor: pointer; font-family: var(--sans); line-height: 1.2; }
+.chip.on { background: var(--suou); border-color: var(--suou); color: #fff; }
+.chip.off { opacity: .35; cursor: default; }
+
+/* 日別カラムチャート */
+.chartbox { margin: 8px 0 2px; }
+.charthead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.charthead .ct { font-size: 11px; font-weight: 800; color: var(--gray); letter-spacing: .08em; }
+.charthead b { font-size: 11.5px; font-weight: 800; color: var(--suou); white-space: nowrap; }
+.colchart { position: relative; display: flex; align-items: flex-end; gap: 2px; height: 118px; padding-top: 8px; }
+.colchart .col { flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: flex-end;
+  background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.colchart .cb { width: 100%; height: var(--h, 0%); min-height: 3px; background: var(--suou);
+  border-radius: 4px 4px 2px 2px; transition: height .25s ease; }
+.colchart .col.none .cb { height: 3px; background: #EDE8E0; border-radius: 2px; }
+.colchart .col.top .cb { background: var(--gold); }
+.colchart .col:active .cb { opacity: .55; }
+.avgline { position: absolute; left: 0; right: 0; border-top: 1px dashed #CFC7BB; pointer-events: none; }
+.avgline span { position: absolute; right: 0; top: -13px; font-size: 9.5px; color: var(--gray); background: var(--paper); padding: 0 3px; }
+.colaxis { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--gray); margin-top: 6px; }
+
+/* 店舗比較の行（タップで個店カルテ） */
+.spark { color: var(--suou); opacity: .8; flex: none; }
+.cmp { display: block; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line);
+  padding: 12px 2px; cursor: pointer; font-family: var(--sans); -webkit-tap-highlight-color: transparent; }
+.cmp:last-of-type { border-bottom: 0; }
+.cmp:active { background: #FAF8F5; }
+.cmp-top { display: flex; align-items: baseline; gap: 8px; }
+.cmp-rank { flex: none; width: 15px; font-family: var(--serif); font-size: 13px; color: var(--gray); }
+.cmp-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--sumi);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-val { font-size: 13px; font-weight: 800; color: var(--suou); white-space: nowrap; }
+.cmp-bar { height: 8px; background: #EEE7DD; border-radius: 999px; overflow: hidden; margin: 7px 0 5px; }
+.cmp-fill { height: 100%; background: linear-gradient(90deg, var(--suou), var(--suou-d)); border-radius: 999px; transition: width .3s ease; }
+.cmp-sub { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--gray); }
+.cmp-sub > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 個店カルテ：月送り・入力率・全項目グリッド */
+.mnav { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 0 0 14px; }
+.mnav b { font-family: var(--serif); font-size: 17px; letter-spacing: .04em; }
+.fillhead { display: flex; justify-content: space-between; align-items: baseline; font-size: 11.5px; color: var(--gray); margin-top: 4px; }
+.fillhead b { font-size: 12px; font-weight: 800; color: var(--suou); }
+.fillbar { height: 6px; background: #EEE7DD; border-radius: 999px; overflow: hidden; margin-top: 6px; }
+.fillbar i { display: block; height: 100%; background: var(--suou); border-radius: 999px; }
+.dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.dcell { border: 1px solid var(--line); border-radius: 11px; padding: 9px 10px; background: #FCFBF9; }
+.dcell .dk { display: block; font-size: 10px; color: var(--gray); margin-bottom: 3px; }
+.dcell .dv { font-size: 13.5px; font-weight: 800; color: var(--sumi); }
+.dcell.off { background: #fff; border-style: dashed; }
+.dcell.off .dv { color: #C4BCB2; font-weight: 700; }
+.dtext { font-size: 12.5px; line-height: 1.7; white-space: pre-wrap; margin: 4px 2px 10px; }
+.delta { font-size: 10px; font-weight: 800; color: var(--suou); }
+.delta.up::before { content: '▲'; margin-right: 1px; }
+.delta.dn::before { content: '▼'; margin-right: 1px; }
+.rep.tapable { cursor: pointer; }
+.rep.tapable:active { background: #FAF8F5; }
+
+/* 体験版の帯（2026-08-12）。勉強会のあとに加盟店の皆さまへお配りする版でだけ出る。
+   ヘッダーの直下に固定で置き、どの画面へ移っても「触っても大丈夫」が視界に残るようにする。 */
+.taiken-band {
+  position: sticky; top: 0; z-index: 8;
+  background: #8E354A; color: #fff;
+  font-size: 12px; line-height: 1.5; font-weight: 700;
+  padding: 7px 14px; text-align: center;
+  letter-spacing: .01em;
+}
