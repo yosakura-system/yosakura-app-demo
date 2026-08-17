@@ -684,10 +684,6 @@ console.log('== 8/7 増田さんご要望：入口の整理 ==');
   ok(hqHome.indexOf('本部からのお知らせ') < hqHome.indexOf('提出・業務'),
      '本部は従来どおりお知らせが先');
 
-  // 接客スクリプトからマニュアルへ飛べる
-  const talk = renderView('talk','staff',S_HIROSHIMA,'ja');
-  ok(/data-open="manual"/.test(talk), '接客スクリプトからマニュアルへ飛べる');
-
   // 「学ぶ」タブの中身を固定する（お知らせはホームのカードへ統合済み）
   for (const role of ['staff','manager','hq']) {
     run(()=> setLS(role, role==='hq' ? 'all' : S_HIROSHIMA, 'ja'));
@@ -697,7 +693,7 @@ console.log('== 8/7 増田さんご要望：入口の整理 ==');
     /* 2026-08-17 神田さんのご判断＝「読むもの」の入口をマニュアル1か所に決めた。
        学ぶタブに個別のカードを前へ出さない（本部だけは資料を登録する画面が並ぶ）。 */
     ok(/マニュアル/.test(learn) && /勉強会/.test(learn), `[${role}] 学ぶタブにマニュアルと勉強会が並ぶ`);
-    ok(!/接客スクリプト/.test(learn), `[${role}] 学ぶタブに接客スクリプトのカードを出さない（マニュアルの中へ移した）`);
+    ok(!/接客スクリプト/.test(learn), `[${role}] 学ぶタブに接客スクリプトのカードを出さない（削除済み）`);
     ok(!/世桜10訓/.test(learn), `[${role}] 学ぶタブに世桜10訓のカードを出さない（マニュアルの中へ移した）`);
   }
   // お知らせ機能そのものは生きている（ホームのカードから開く）
@@ -1393,34 +1389,38 @@ console.log('== 世桜10訓は本部のスライドを開く（2026-08-17 上原
   }
 }
 
-console.log('== 読むものはマニュアルの中に集める（2026-08-17 神田さんのご判断）==');
+console.log('== 接客・ホールは本部の「03.接客ホール」を並べる（2026-08-17 神田さんのご判断）==');
 {
-  /* ★狙い：学ぶタブから消したものが、行き止まりになっていないこと。
-     「タブから外したが、マニュアルにも無い」＝どこからも開けない状態を防ぐ。 */
-  for (const role of ['staff','manager','owner','hq']) {
-    const manual = renderView('manual', role, role === 'hq' ? 'all' : S_HIROSHIMA, 'ja');
-    ok(/接客スクリプト/.test(manual) && /data-go="\/app\/talk"/.test(manual),
-       '[' + role + '] マニュアルの中から接客スクリプトを開ける');
-    // ドライブへ飛ぶのか、その場で読めるのかが押す前に分かること
-    ok(/アプリで読めます/.test(manual), '[' + role + '] アプリの中で読めるものだと分かる表示が出る');
-  }
-  // 分類の中に入っていること（接客・ホール の直後に並ぶ）
-  const m = renderView('manual', 'staff', S_HIROSHIMA, 'ja');
-  ok(m.indexOf('接客・ホール') < m.indexOf('接客スクリプト'), '接客スクリプトは「接客・ホール」の中に入っている');
-  /* 資料が1件も登録されていなくても「準備中」にならない（体験版はリンクを持たない）。
-     ★data-mock は見出しより前（行の開始タグ）に出る。行の先頭から切り出して確かめる。 */
-  const headSeg = m.slice(m.lastIndexOf('<div class="mrow"', m.indexOf('接客・ホール')), m.indexOf('接客スクリプト'));
-  ok(headSeg.length > 0 && !/data-mock/.test(headSeg), '中身のある分類が「準備中」扱いにならない');
-  // 多言語でも行き止まりにしない
-  for (const lang of ['en','vi']) {
-    const html = renderView('manual', 'staff', S_HIROSHIMA, lang);
-    ok(/data-go="\/app\/talk"/.test(html), '[' + lang + '] 言語を変えてもマニュアルの中から開ける');
-  }
-  // ホームの「よく使う」には引き続き並べられる（現場ですぐ出せる逃げ道を残す）
   const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  const pin = (src.match(/function openPinSheet\(\)[\s\S]*?\n  \}/) || [''])[0];
-  ok(/APPS\.filter\(a => !a\.hide && canOpen/.test(pin),
-     'よく使うの設定には、タブに出していない機能も並ぶ（接客スクリプトをホームへ置ける）');
+  /* ★こちらで用意した接客スクリプト・食べ方ガイドは削除した。
+     世桜の正式なマニュアルではなく、アプリ側が独自の文面を持つと本部の資料と食い違うため。 */
+  ok(!/const TALK = \[/.test(src), '自作の接客フレーズをアプリの中に持たない');
+  ok(!/APP_VIEWS\.talk/.test(src), '接客スクリプトの画面を持たない');
+  ok(!/id:'talk'/.test(src), '接客スクリプトを機能の一覧に置かない');
+
+  // 本部の目次どおりの番号で、正式な資料が入っていること
+  const seed = (src.match(/function seedMaterials\(\)[\s\S]*?\n  \}/) || [''])[0];
+  for (const t of ['03-1 世桜のおもてなし', '03-3 ホール一連の流れ', '03-5 接客用語／NG用語',
+                   '03-7 花を咲かせるトークスクリプト', '03-9 電話対応マニュアル', '03-16 iPadサーベイ運用マニュアル']) {
+    ok(seed.includes(t), '「' + t + '」が入っている');
+  }
+  const svc = (seed.match(/mcat:'service'/g) || []).length;
+  ok(svc >= 14, '接客・ホールに14件以上の資料が入っている（実際 ' + svc + ' 件）');
+
+  /* 並び順＝番号を数として見る。これが無いと 03-1／03-10／03-11／03-2 の順になり、
+     本部の目次と突き合わせられない。 */
+  const LINKS = JSON.stringify([
+    { id:'a', title:'03-10 合理的配慮の提供義務化について', url:'https://docs.google.com/presentation/d/AAA/edit', mcat:'service', desc:'スライド' },
+    { id:'b', title:'03-2 クレーム対応', url:'https://docs.google.com/presentation/d/BBB/edit', mcat:'service', desc:'スライド' },
+  ]);
+  run(()=> { setLS('staff', S_HIROSHIMA, 'ja'); localStorage.setItem('yosakura_demo_links', LINKS); });
+  location.hash = '#/app/manual';
+  const m = registry.app.innerHTML;
+  ok(m.indexOf('03-2 クレーム対応') < m.indexOf('03-10 合理的配慮'), '番号順に並ぶ（03-2 が 03-10 より先）');
+  ok(m.indexOf('接客・ホール') < m.indexOf('03-2 クレーム対応'), '「接客・ホール」の中に入っている');
+
+  // 見本データを配り直す印を上げてあること（既に開いた端末にも新しい一覧が届く）
+  ok(!/const SEED_VER = '2026-08-13a'/.test(src), '見本データの版を上げてある（古い一覧が端末に残らない）');
 }
 
 console.log('== リンク集は画面に出さない（2026-08-17 神田さんのご判断）==');
