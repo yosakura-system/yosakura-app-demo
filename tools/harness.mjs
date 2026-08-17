@@ -1524,6 +1524,48 @@ console.log('== どの画面にも左上に「ホームへ戻る」がある =='
   }
 }
 
+console.log('== 「1つ前へ」で1画面ずつ戻れる（2026-08-17 神田さんのご要望）==');
+{
+  FETCH_ROWS = { ok:true, reports:[] };
+  run(()=> setLS('manager', S_HIROSHIMA, 'ja'));
+  await new Promise(r=>setTimeout(r, 30));
+
+  /* ★開いた直後は「戻り先」が無い。ここで出すと、押しても何も起きない画面ができる */
+  location.hash = '#/home';
+  ok(!/id="prevBtn"/.test(registry.app.innerHTML), '開いた直後のホームには「1つ前へ」を出さない');
+
+  // ホーム → 学ぶ → マニュアル と進む
+  location.hash = '#/home?tab=learn';
+  location.hash = '#/app/manual';
+  const atManual = registry.app.innerHTML;
+  ok(/id="prevBtn"/.test(atManual), '進んだ先には「1つ前へ」が出る');
+  ok(/id="backBtn"/.test(atManual), '「ホーム」も並んで出る（置き換えていない）');
+  ok(atManual.indexOf('id="prevBtn"') < atManual.indexOf('id="backBtn"'), '「1つ前へ」が左、「ホーム」が右');
+
+  // 押すと1つ前（学ぶタブ）へ戻る
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/prevBtn'\)\.onclick = \(\) => goBack\(\)/.test(src), '「1つ前へ」は goBack につながっている');
+  /* ★ブラウザの戻る（history.back）を使うと、アプリを直接開いた直後に押したとき
+     アプリの外（前に見ていたサイト）へ出てしまう。自前でたどった道を持つ作りであること */
+  ok(/const NAV = \[\]/.test(src) && !/history\.back\(\)/.test(src),
+     'ブラウザの戻るではなく、アプリの中でたどった道で戻る（外へ出ない）');
+  ok(/if \(NAV\.length > 30\) NAV\.shift\(\)/.test(src), '長く使っても記録が増え続けない');
+
+  /* ★実際に押して、1つ前（学ぶタブ）へ戻ること。
+     ここを確かめないと「ボタンは出ているが動かない」を見逃す */
+  location.hash = '#/home';
+  location.hash = '#/home?tab=learn';
+  location.hash = '#/app/manual';
+  const press = () => { const b = doc.getElementById('prevBtn'); if (typeof b.onclick === 'function') { b.onclick(); return true; } return false; };
+  ok(press(), '「1つ前へ」が押せる状態で描かれている');
+  const at = () => location.hash.replace(/^#/, '');   // この試験環境では # が付かないことがある
+  ok(at() === '/home?tab=learn', '押すと1つ前（学ぶタブ）へ戻る（いま ' + at() + '）');
+  ok(press(), 'もう一度押せる');
+  ok(at() === '/home', 'その前のホームへ戻る（いま ' + at() + '）');
+  // ホームまで戻ったら、戻り先はもう無い
+  ok(!/id="prevBtn"/.test(registry.app.innerHTML), '戻りきったら「1つ前へ」は消える');
+}
+
 console.log('== チェックリスト：最後まで終えたときだけ提出済みになる（2026-08-12 の3件）==');
 {
   /* 神田さんのご指摘3件
