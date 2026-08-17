@@ -195,6 +195,11 @@
     { id:'storevideo', group:'storeops', icon:'video', tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'店内動画の共有', en:'In-store Video', vi:'Video trong quán' },
       desc:{ ja:'店内一周の動画リンクを共有', en:'Share store walkthrough videos', vi:'Chia sẻ video trong quán' } },
+    // 2026-08-17 上原さんのご依頼「アプリに世桜10訓の追加お願いします」。
+    // 理念のスライドへのリンクは既にあるが、ドライブの権限が要る。アプリの中で読める形にする。
+    { id:'jukkun', group:'learn', icon:'star', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'世桜10訓', en:'YOSAKURA 10 Precepts', vi:'10 điều răn YOSAKURA' },
+      desc:{ ja:'世桜で働くうえでの10の心得', en:'The ten principles we work by', vi:'Mười điều tâm niệm khi làm việc' } },
     { id:'manual', group:'learn', icon:'book', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' },
       desc:{ ja:'権限・業態別に表示（理念・接客・衛生・商品）', en:'By role & store type', vi:'Theo vai trò & loại hình' } },
@@ -1857,6 +1862,32 @@
     }).join('');
     return head + subs;
   };
+  /* 世桜10訓（2026-08-17 上原さんのご依頼）。
+     ★出典＝本部ドライブ `01-6【世桜】世桜10訓`。**文言は世桜の公式のもので、こちらで作らない・変えない。**
+     ★英語・ベトナム語の訳は入れていない。10訓は世桜の理念そのもので、
+       訳し方を決めるのは本部。勝手な訳を載せると、それが正になってしまう。
+       多言語の要否は上原さんへ確認中（決まればここに足す）。 */
+  const JUKKUN = [
+    'チーム世桜（愛ある行動）',
+    '全てに感謝する',
+    'とにかく上へ（良い事も悪い事も0.2秒で報連相。悪いことほどすぐ）',
+    '笑顔の伝播',
+    '1way 2job',
+    '頼まれごとは試されごと',
+    '失敗は成長',
+    '出来る理由を探す',
+    'お客様目線',
+    '上下左右の吸収'
+  ];
+  APP_VIEWS.jukkun = () => `
+    ${NOTE({ ja:'◆ 世桜で働くうえでの10の心得です。困ったときの判断のよりどころにしてください', en:'◆ The ten principles we work by. Use them when you are unsure how to act', vi:'◆ Mười điều tâm niệm khi làm việc. Hãy dựa vào đó khi phân vân' })}
+    <div class="card">
+      ${JUKKUN.map((t, i) => `<div class="rep"><span class="stag st-new">${String(i + 1).padStart(2, '0')}</span><div class="body"><div class="l1">${esc(t)}</div></div></div>`).join('')}
+    </div>
+    <div class="hint">${L({ ja:'※ 文言は世桜の公式のものです。くわしくは「マニュアル」→「世桜とは・理念」から、本部の資料をご覧ください。',
+                            en:'The wording above is YOSAKURA’s official Japanese text. For details, open Manuals → Brand & Philosophy. Please ask HQ if you would like an explanation.',
+                            vi:'Nội dung trên là bản tiếng Nhật chính thức của YOSAKURA. Chi tiết xem tại Cẩm nang → Thương hiệu & Triết lý. Vui lòng hỏi HQ nếu cần giải thích.' })}</div>`;
+
   APP_VIEWS.manual = () => {
     const role = getRole();
     const store = visibleStores()[0];
