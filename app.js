@@ -170,12 +170,10 @@
     { id:'review', group:'other', icon:'qr', hide:true, roles:['staff','manager','owner','hq'], // 議事録12-4/23: 口コミQRはアプリ掲載を一旦外す（紙運用が基本）
       name:{ ja:'口コミQR', en:'Review QR', vi:'QR đánh giá' },
       desc:{ ja:'紙での提示が基本。必要時のみ使用', en:'Paper first; use only when needed', vi:'Ưu tiên giấy; chỉ dùng khi cần' } },
-    /* 2026-08-17 神田さんのご判断：学ぶタブに個別のカードを前へ出さず、マニュアルの分類の中へ集約する。
-       「読むもの」を探す場所をマニュアル1か所に決める（学ぶ＝マニュアルと勉強会だけになる）。
-       機能は生きており、マニュアル→接客・ホール から開く。ホームの「よく使う」にも並べられる。 */
-    { id:'talk', group:'learn', icon:'chat', tabHide:true, roles:['staff','manager','owner','hq'],
-      name:{ ja:'接客スクリプト・食べ方ガイド', en:'Service Scripts', vi:'Kịch bản phục vụ' },
-      desc:{ ja:'多言語の接客フレーズと食べ方案内', en:'Multilingual phrases & how-to-enjoy', vi:'Câu phục vụ đa ngữ' } },
+    /* ★2026-08-17 神田さんのご判断：
+       ①「読むもの」を探す場所はマニュアル1か所に決める（学ぶ＝マニュアルと勉強会だけ）。
+       ②接客スクリプト・食べ方ガイドは削除した。こちらで用意した文面で、世桜の正式なマニュアルではないため。
+         正式なものは本部ドライブの「03.接客ホール」にあり、マニュアル →「接客・ホール」から開く。 */
     // 2026-08-12 神田さんのご指摘：日次業務と同じものが「報告する」にも並び、二重に見えていた。
     // 機能は生きているが、タブの一覧には出さない（日次業務の各チェックリストから開く）。
     { id:'checklist', group:'genba', icon:'check', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
@@ -1842,13 +1840,11 @@
     { ic:'food',  gyotai:'washoku',  roles:['all'], t:{ja:'日本料理コース',en:'Japanese course',vi:'Set Nhật'}, s:{ja:'おまかせの流れ／季節の献立',en:'Omakase flow / seasonal menu',vi:'Quy trình omakase'} }
   ];
   const manualVisibleRole = (m, role) => role === 'hq' || m.roles.includes('all') || m.roles.includes(role);
-  /* マニュアルの分類の中に置く「アプリの中で読めるもの」（2026-08-17 神田さんのご判断）。
-     ★ドライブの資料へのリンクと違い、権限も通信も要らず、その場で開く。
-     ★見出し・説明は APPS の定義をそのまま使う＝2か所に同じ文言を持たない
-       （名前を直したときにマニュアル側だけ古いまま、が起きない）。 */
-  const MANUAL_BUILTIN = [
-    { gid:'service', app:'talk' } // 接客・ホール → 接客スクリプト・食べ方ガイド
-  ];
+  /* マニュアルの分類の中に置く「アプリの中で読めるもの」。
+     ★いまは空＝マニュアルに並ぶのは本部が登録した資料だけ（2026-08-17 神田さんのご判断）。
+       アプリ側で文面を持つと、本部が資料を直したときにアプリだけ古いまま残るため。
+     ★仕組みは残してある＝{ gid:'分類', app:'機能のid' } を足せば、その分類の中から機能を開ける。 */
+  const MANUAL_BUILTIN = [];
   // マニュアルの大項目リスト（本部が資料をここへ振り分ける。順番＝◀▶で切り替わる順）
   const MANUAL_GROUPS = MANUAL_CATALOG.filter(m => m.gid).map(m => ({ v: m.gid, t: m.t }));
   const mgroupLabel = (v) => { const g = MANUAL_GROUPS.find(x => x.v === v); return g ? L(g.t) : L({ ja:'未分類', en:'Unsorted', vi:'Chưa phân loại' }); };
@@ -1861,7 +1857,9 @@
      本部（hq）だけは、これまでどおり編集できる状態で開く。 */
   const openUrlFor = (u) => (getRole() === 'hq' ? u : roViewUrl(u));
   const manualRow = (m) => {
-    const mats = m.gid ? getLinks().filter(l => l.mcat === m.gid).sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))) : [];
+    /* 並び順は番号を数として見る（numeric）。
+       ★これが無いと 03-1／03-10／03-11／03-2 の順に並ぶ＝本部の目次と突き合わせられない。 */
+    const mats = m.gid ? getLinks().filter(l => l.mcat === m.gid).sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'ja', { numeric: true })) : [];
     const roForRole = getRole() !== 'hq'; // 本部以外は読み取り専用で開く
     /* アプリの中で読めるものを、資料リンクより先に並べる。
        ★資料が1件も登録されていない分類でも、これがあれば「準備中」にはならない。 */
@@ -1927,7 +1925,7 @@
   const SEED_VER_KEY = 'yosakura_demo_seed_ver';
   const seedFresh = (name) => localStorage.getItem(SEED_VER_KEY + ':' + name) === SEED_VER;
   const seedMark = (name) => { try { localStorage.setItem(SEED_VER_KEY + ':' + name, SEED_VER); } catch (e) {} };
-  const SEED_VER = '2026-08-13a';
+  const SEED_VER = '2026-08-17a'; // 2026-08-17 接客・ホールを本部の「03.接客ホール」に差し替え＝既に開いた端末にも配り直す
   function seedSurvey() {
     /* ★以前この端末で開いた方には、古い見本が残ったままだった（2026-08-12 神田さんのご指摘で判明）。
        「すでに何か入っていたら作らない」という作りだったため、見本を作り直しても届かなかった。
@@ -3135,50 +3133,9 @@
       <div class="hint">${L({ ja:'本番では発注システムと連動し、基準を下回った品目を発注候補として自動抽出する構想。', en:'In production, links to ordering and auto-suggests items below threshold.', vi:'Bản chính: liên kết đặt hàng, tự gợi ý mặt hàng dưới ngưỡng.' })}</div>
     </div>`;
 
-  /* ① 接客スクリプト・食べ方ガイド（多言語・寿司世桜の来店FBの実フレーズ）*/
-  const TALK = [
-    { h:{ ja:'ご挨拶', en:'Greeting', vi:'Chào hỏi' }, items:[
-      { ja:'本日は世桜へようこそ。シェフのおまかせと日本伝統の出汁でお楽しみください。',
-        en:'Thank you for visiting YOSAKURA today. We serve the chef\'s omakase with a traditional Japanese dashi soup. Please enjoy the gentle and beautiful taste of Japan.',
-        vi:'Cảm ơn quý khách đã đến YOSAKURA. Mời quý khách thưởng thức omakase của đầu bếp cùng nước dùng dashi truyền thống.' }
-    ]},
-    { h:{ ja:'食べ方・ペアリング', en:'How to enjoy / Pairing', vi:'Cách thưởng thức' }, items:[
-      { ja:'まず出汁をひと口、次にお寿司を、そしてもうひと口出汁を。味のバランスが引き立ちます。',
-        en:'Try tasting the broth first, then enjoy the sushi, and take another sip after. It helps bring out the balance of flavors.',
-        vi:'Hãy nếm nước dùng trước, rồi ăn sushi, sau đó nhấp thêm một ngụm. Giúp cân bằng hương vị.' },
-      { ja:'この出汁は、次にお出しするカニと一緒にお楽しみください。浸すと風味が一層引き立ちます。',
-        en:'Please enjoy this broth with the crab served next. By dipping it in the broth, you can enjoy the flavor even more.',
-        vi:'Mời dùng nước dùng này với cua phục vụ tiếp theo. Chấm vào sẽ ngon hơn.' }
-    ]},
-    { h:{ ja:'料理のご説明', en:'Dish explanation', vi:'Giới thiệu món' }, items:[
-      { ja:'出汁は、干した魚と海藻からとった日本のスープです。',
-        en:'This is Japanese soup stock made from dried fish and seaweed.',
-        vi:'Đây là nước dùng Nhật nấu từ cá khô và rong biển.' },
-      { ja:'シェフの季節のおすすめをお楽しみください。',
-        en:'Please enjoy the chef\'s seasonal selection.',
-        vi:'Mời quý khách thưởng thức lựa chọn theo mùa của đầu bếp.' }
-    ]},
-    { h:{ ja:'注意のお声がけ', en:'Safety notes', vi:'Lưu ý an toàn' }, items:[
-      { ja:'熱いのでお気をつけください。',
-        en:'It\'s very hot. Please be careful.',
-        vi:'Món rất nóng, xin quý khách cẩn thận.' },
-      { ja:'こちらはカニの天ぷらです。中に柔らかい骨があるのでお気をつけてお召し上がりください。',
-        en:'This is crab tempura. Please enjoy it carefully — there are thin soft bones inside.',
-        vi:'Đây là tempura cua. Bên trong có xương mềm, xin dùng cẩn thận.' }
-    ]}
-  ];
-  APP_VIEWS.talk = () => `
-    ${NOTE({ ja:'◆ 提供時にそのまま使える多言語フレーズ（外国籍スタッフの方も安心）', en:'◆ Ready-to-use multilingual phrases for serving', vi:'◆ Câu đa ngữ dùng ngay khi phục vụ' })}
-    <div class="homelinks">
-      <button class="homelink" data-open="manual"><span class="hl-ic">${svg('book')}</span><span class="hl-t">${L({ ja:'トークスクリプト（マニュアル）を見る', en:'Open talk scripts (Manuals)', vi:'Xem kịch bản (Cẩm nang)' })}</span><span class="hl-c">${svg('chev')}</span></button>
-    </div>
-    <p class="hint" style="display:block;margin:-2px 0 10px">${L({ ja:'※ 詳しいトークスクリプトはマニュアルの「接客・ホール」にあります。', en:'Detailed scripts are in Manuals → Service & Hall.', vi:'Kịch bản chi tiết ở Cẩm nang → Phục vụ & Sảnh.' })}</p>
-    ${TALK.map(sec=>`<div class="card"><h3>${esc(L(sec.h))}</h3>${sec.items.map(it=>`
-      <div class="rep" style="display:block;padding:10px 2px">
-        <div class="l1" style="margin-bottom:5px">${esc(it.ja)}</div>
-        <div class="l2" style="color:var(--sumi)"><b>EN</b>　${esc(it.en)}</div>
-        <div class="l2"><b>VI</b>　${esc(it.vi)}</div>
-      </div>`).join('')}</div>`).join('')}`;
+  /* ★接客スクリプト・食べ方ガイドは削除した（2026-08-17 神田さんのご判断）。
+     こちらで用意した文面であり、世桜の正式なマニュアルではなかったため。
+     正式なものは本部ドライブの「03.接客ホール」にある（マニュアル →「接客・ホール」から開く）。 */
 
   /* ③ 口コミQR（Googleレビュー直リンク・谷口さん課題対応）*/
   const getReviewMap = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_review')) || {}; } catch { return {}; } };
@@ -4286,6 +4243,23 @@
       { id:'lk_p8', title:'身だしなみ（POP用）', url:'https://docs.google.com/presentation/d/1Rt5qDAgjxWSxmFNyJIy7h7w-HQzrzqZjCrqMFUH_3sg/edit?usp=sharing', mcat:'hygiene', desc:'スライド' },
       { id:'lk_p9', title:'営業中の優先順位表', url:'https://docs.google.com/spreadsheets/d/1QET2pWIUjUE_pz57fKcqWOaLQggK2q9efvaPV-cCKxE/edit?usp=sharing', mcat:'service', desc:'スプレッドシート' },
       { id:'lk_p10', title:'世桜BOOKプレゼントマニュアル（コース店舗）', url:'https://docs.google.com/presentation/d/1w78P979lMMyW-88pfvtH_G0BPn1xBFXfcbjEgsomEEc/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      /* ★本部ドライブの「03.接客ホール」（公式のマニュアル目次 `00.【世桜】マニュアル目次（本部用）` の分類）。
+         2026-08-17 神田さんのご判断で、こちらが自作した接客スクリプトを削除し、正式なものに差し替えた。
+         ★番号（03-1…）は本部の目次のとおり。並び順もそのまま＝本部の資料と突き合わせやすい。 */
+      { id:'lk_s1',  title:'03-1 世桜のおもてなし', url:'https://docs.google.com/presentation/d/1-n-4jTtngkyA5Q8GbG8vTSg0kLfFcozmR5bv0Stvpsw/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_s2',  title:'03-2 クレーム対応', url:'https://docs.google.com/presentation/d/1VP-0HRS_U2wfY1TBGXLDF8SAMiSNKm8fBPAP-eLvLY4/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_s3',  title:'03-3 ホール一連の流れ', url:'https://docs.google.com/presentation/d/10nMnX0cK45VW9Q71d3qsdLvi8YD4P9xbPx7QoDLTHxU/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_s4',  title:'03-4 卓番表（参考）', url:'https://docs.google.com/presentation/d/18iv0ilRlD0YIoKWzpvq6DgxtvUFW_MyfkT7fPh-M6HY/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_s5',  title:'03-5 接客用語／NG用語', url:'https://docs.google.com/presentation/d/1nmSh1PjtjvVVzfu2w1a2IzsOIjaMGM3m9o58XfysT6g/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_s6',  title:'03-6 接客用語（英語編）', url:'https://docs.google.com/presentation/d/1eVW7uHBSuTZGVo1eF9VGbgfUm3WxleEpbEWiBJ6qhQk/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_s7',  title:'03-7 花を咲かせるトークスクリプト', url:'https://docs.google.com/presentation/d/1byileJ57YFtKkjNAyL6pMnM8Oxnsmtloh4AdtlKP0Rk/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_s8',  title:'03-8 事前ケア', url:'https://docs.google.com/presentation/d/12_9n73yt3qh10cK7aDvCUjNpV2CLRc9VXB_DJKbw33Y/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_s9',  title:'03-9 電話対応マニュアル', url:'https://docs.google.com/presentation/d/1WRhdYJPkYmtxQ3vpfIGzYBrL37zw6tlKnZP_07gTKE0/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_s10', title:'03-10 合理的配慮の提供義務化について', url:'https://docs.google.com/presentation/d/1OEHrFdIcjbNN4POyX2WbEVU_2bpj20ilEPqz8JDVVqk/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_s11', title:'03-11 外国人観光客へのおもてなしとご意見対応', url:'https://docs.google.com/presentation/d/1wLOUVDYYU9hjfk25jNUPRf71VtvbjGGDHEZPko0nE4c/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      { id:'lk_s14', title:'03-14 BDプレート', url:'https://drive.google.com/file/d/1MFEOdL_Dx5zJef0TsGZCcXYyluQFtcky/view', mcat:'service', desc:'動画' },
+      { id:'lk_s15', title:'03-15 蛍マニュアル', url:'https://drive.google.com/file/d/13_PpSHaFLxJkHg_WDly9DfqtP9-ziCza/view', mcat:'service', desc:'動画' },
+      { id:'lk_s16', title:'03-16 iPadサーベイ運用マニュアル', url:'https://docs.google.com/presentation/d/1C-iag9SzUzMg7_qFIp6g5ifRh8pT5IOHM_lOR2L8Mk4/edit?usp=sharing', mcat:'service', desc:'スライド' },
       { id:'lk_p11', title:'タイムカード・シフト・鍵管理', url:'https://docs.google.com/presentation/d/1tbnv8e3ud3tzrizZIlU3Hu3ls1zrQ_fRB9OD5UEJX44/edit?usp=sharing', mcat:'storeops', desc:'スライド' },
       { id:'lk_p12', title:'キャリアアップ実践ガイド', url:'https://docs.google.com/presentation/d/1Lubd8UthmxSGvCcwEXrlDy6YRWquY9Mw2SFDj5urY-Q/edit?usp=sharing', mcat:'owner', desc:'スライド' },
       { id:'lk_p13', title:'研修トレーナー育成マニュアル', url:'https://docs.google.com/presentation/d/1p7kVnYQ7qRablUztJbKN3e2YFcjkM4oW9VwKEbS4inI/edit?usp=sharing', mcat:'hq', desc:'スライド' },
