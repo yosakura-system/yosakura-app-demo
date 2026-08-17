@@ -1365,20 +1365,31 @@ console.log('== よくある質問（8/10 構築MTG A-04：ルールを後から
   ok(JSON.parse(localStorage.getItem('yosakura_demo_faq') || '[]').length === 1, 'faqsetが無い同期でも既存の項目を保持する');
 }
 
-console.log('== 世桜10訓（2026-08-17 上原さんのご依頼）==');
+console.log('== 世桜10訓は本部のスライドを開く（2026-08-17 上原さんのご依頼／神田さんのご判断）==');
 {
   const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  // 10項目が欠けたり増えたりしていないか（理念そのものなので、勝手に足さない・減らさない）
-  const list = (src.match(/const JUKKUN = \[([\s\S]*?)\];/) || [])[1] || '';
-  ok((list.match(/'/g) || []).length / 2 === 10, '世桜10訓がちょうど10項目ある');
+  /* ★アプリの中に10訓を書き写さない。
+     見出しだけでは意味が伝わらず、本部が文言を直したときにアプリ側が古いまま残るため。 */
+  ok(!/const JUKKUN = \[/.test(src), '10訓の文言をアプリの中に持たない');
+  ok(!/APP_VIEWS\.jukkun/.test(src), '10訓をアプリの中で表示する画面を持たない');
+  // 入口＝マニュアル →「世桜とは・理念」→ スライド。ここが消えると10訓へたどり着けなくなる
+  const SLIDE = '1mKwnYeS24TL8lPhL12S4EkBJFsroQF2_GtVEU6ithfA';
+  // 見本データ（体験版で使う）に、10訓のスライドが「世桜とは・理念」として入っていること
+  const seed = (src.match(/function seedMaterials\(\)[\s\S]*?\n  \}/) || [''])[0];
+  ok(new RegExp("title:'世桜10訓'[^}]*" + SLIDE + "[^}]*mcat:'philosophy'").test(seed),
+     '見本データの「世桜とは・理念」に10訓のスライドが入っている');
+  /* ★ハーネスは接続先を持った通常版で動くため、見本データ（seedMaterials）は流し込まれない。
+     ここでは本部が資料を登録した状態を作って、マニュアルの行の出方を確かめる。 */
+  const LINKS = JSON.stringify([{ id:'lk_p1', title:'世桜10訓', url:'https://docs.google.com/presentation/d/' + SLIDE + '/edit?usp=sharing', mcat:'philosophy', desc:'スライド' }]);
   for (const role of ['staff','manager','owner','hq']) {
-    const html = renderView('jukkun', role, role === 'hq' ? 'all' : S_HIROSHIMA, 'ja');
-    ok(/チーム世桜/.test(html) && /上下左右の吸収/.test(html), '[' + role + '] 世桜10訓が最初から最後まで出る');
-  }
-  for (const lang of ['en','vi']) {
-    const html = renderView('jukkun', 'staff', S_HIROSHIMA, lang);
-    // 10訓そのものは日本語が正。訳を勝手に作らない＝多言語でも日本語のまま出ること自体を固定する
-    ok(/チーム世桜/.test(html), '[' + lang + '] 10訓の文言は日本語の公式表記のまま出る');
+    run(()=> { setLS(role, role === 'hq' ? 'all' : S_HIROSHIMA, 'ja'); localStorage.setItem('yosakura_demo_links', LINKS); });
+    location.hash = '#/app/manual';
+    const html = registry.app.innerHTML;
+    ok(/世桜10訓/.test(html), '[' + role + '] マニュアルに世桜10訓が並ぶ');
+    ok(html.includes(SLIDE), '[' + role + '] タップで本部のスライドが開く');
+    ok(html.indexOf('世桜とは・理念') < html.indexOf('世桜10訓'), '[' + role + '] 「世桜とは・理念」の中にある');
+    // 本部以外は閲覧専用で開く（編集画面に入れない）
+    if (role !== 'hq') ok(new RegExp(SLIDE + '/preview').test(html), '[' + role + '] 閲覧専用で開く');
   }
 }
 
@@ -1388,26 +1399,22 @@ console.log('== 読むものはマニュアルの中に集める（2026-08-17 �
      「タブから外したが、マニュアルにも無い」＝どこからも開けない状態を防ぐ。 */
   for (const role of ['staff','manager','owner','hq']) {
     const manual = renderView('manual', role, role === 'hq' ? 'all' : S_HIROSHIMA, 'ja');
-    ok(/世桜10訓/.test(manual) && /data-go="\/app\/jukkun"/.test(manual),
-       '[' + role + '] マニュアルの中から世桜10訓を開ける');
     ok(/接客スクリプト/.test(manual) && /data-go="\/app\/talk"/.test(manual),
        '[' + role + '] マニュアルの中から接客スクリプトを開ける');
     // ドライブへ飛ぶのか、その場で読めるのかが押す前に分かること
     ok(/アプリで読めます/.test(manual), '[' + role + '] アプリの中で読めるものだと分かる表示が出る');
   }
-  // 分類の中に入っていること（世桜とは・理念／接客・ホール の直後に並ぶ）
+  // 分類の中に入っていること（接客・ホール の直後に並ぶ）
   const m = renderView('manual', 'staff', S_HIROSHIMA, 'ja');
-  ok(m.indexOf('世桜とは・理念') < m.indexOf('世桜10訓'), '世桜10訓は「世桜とは・理念」の中に入っている');
   ok(m.indexOf('接客・ホール') < m.indexOf('接客スクリプト'), '接客スクリプトは「接客・ホール」の中に入っている');
   /* 資料が1件も登録されていなくても「準備中」にならない（体験版はリンクを持たない）。
      ★data-mock は見出しより前（行の開始タグ）に出る。行の先頭から切り出して確かめる。 */
-  const headSeg = m.slice(m.lastIndexOf('<div class="mrow"', m.indexOf('世桜とは・理念')), m.indexOf('世桜10訓'));
+  const headSeg = m.slice(m.lastIndexOf('<div class="mrow"', m.indexOf('接客・ホール')), m.indexOf('接客スクリプト'));
   ok(headSeg.length > 0 && !/data-mock/.test(headSeg), '中身のある分類が「準備中」扱いにならない');
   // 多言語でも行き止まりにしない
   for (const lang of ['en','vi']) {
     const html = renderView('manual', 'staff', S_HIROSHIMA, lang);
-    ok(/data-go="\/app\/jukkun"/.test(html) && /data-go="\/app\/talk"/.test(html),
-       '[' + lang + '] 言語を変えてもマニュアルの中から開ける');
+    ok(/data-go="\/app\/talk"/.test(html), '[' + lang + '] 言語を変えてもマニュアルの中から開ける');
   }
   // ホームの「よく使う」には引き続き並べられる（現場ですぐ出せる逃げ道を残す）
   const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
