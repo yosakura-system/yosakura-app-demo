@@ -162,6 +162,9 @@ body {
   display: inline-flex; align-items: center; gap: 4px; padding: 6px 4px; font-family: var(--sans);
   white-space: nowrap; flex-shrink: 0; }
 .back svg { width: 18px; height: 18px; flex-shrink: 0; }
+/* 「1つ前へ」は「ホーム」と並ぶ。同じ見た目だと、どちらを押したか分からなくなるため
+   枠で囲んで区別する（2026-08-17 神田さんのご要望で追加）。 */
+.back--prev { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px 5px 8px; }
 .app-head { display: flex; align-items: center; gap: 14px; margin: 6px 0 18px; }
 .app-head .ico { width: 54px; height: 54px; border-radius: 15px; background: var(--suou-t); color: var(--suou); display: grid; place-items: center; }
 .app-head .ico svg { width: 28px; height: 28px; }
