@@ -1237,6 +1237,32 @@ console.log('== 総点検：設定の整合（IDの重複・リンク先の存�
   // 誤ったリンク先が残っていないこと（コンプラ→公益通報など、意味の違う画面へ飛ばさない）
   ok(!/linkApp:'whistle'/.test(code), 'コンプラチェックを公益通報の画面へ飛ばしていない');
 
+  /* ★各店のコンプラシート（2026-08-18 増田さんが全店ぶんをコピーしてくださった）。
+     ここが切れると「本部がシートを用意すると開けます」の待ち表示に戻ってしまう。 */
+  ok(/const COMPLIANCE_SHEETS = \{/.test(code), '各店のコンプラシートをアプリが既定値として持っている');
+  const csBlock = (code.match(/const COMPLIANCE_SHEETS = \{[\s\S]*?\n  \};/) || [''])[0];
+  const csStores = [...csBlock.matchAll(/'((?:日本料理|寿司|牛カツ|日本鰻|手巻き寿司|和牛)世桜[^']*)':\s*'https/g)].map(m => m[1]);
+  ok(csStores.length === 10, '10店舗ぶん入っている（実際 ' + csStores.length + '）');
+  // 店舗名が STORES と1文字でも違うと、その店では開かない
+  const storeList = (code.match(/const STORES = \[([\s\S]*?)\];/) || ['', ''])[1];
+  const known = new Set([...storeList.matchAll(/'([^']+)'/g)].map(m => m[1]));
+  const bad = csStores.filter(s => !known.has(s));
+  ok(bad.length === 0, 'すべて実在する店舗名と一致している' + (bad.length ? '（不一致: ' + bad.join(',') + '）' : ''));
+  // 古いほう（2026-04-16 info@sharelive.jp 所有）のIDを掴んでいないこと
+  for (const old of ['1GKHy8CK_u-Z_uO5LdG5Ac_GhCOOfHog2do4s_RpUVNQ', '17D934vNqvWlGOEZEnxX9QNkm03JKNRXjsOuy6KcX1Vw',
+                     '11ETg1HRMFc5d0LWtzsapgf0b4RT-x2Nyv0lnc-ZjwIs', '1JprJ8KKzeOc917D_PzS-uMKeZUOZNY7WGo2RuFfDPE8']) {
+    ok(!code.includes(old), '古いコンプラシートを指していない（' + old.slice(0, 8) + '…）');
+  }
+  // 実際に「シートを開く」が出ること／未登録の店舗は待ち表示のままであること
+  const mtHiro = renderView('getsuji', 'manager', '和牛世桜 広島店', 'ja');
+  ok(/1LhiUeleEA841eb89Xi5KdcjdGUvRZ77oS2yaaJdcDvY/.test(mtHiro), '広島店で自店のシートが開く');
+  ok(/シートを開く/.test(mtHiro), '「シートを開く」ボタンが出る');
+  const mtHcm = renderView('getsuji', 'manager', '日本鰻世桜 ホーチミン店', 'ja');
+  ok(/本部がシートを用意すると/.test(mtHcm), 'シートが無い店舗は、待ちの状態だと分かる表示になる');
+  // 本部が画面から設定したものが優先され、ほかの店舗は消えないこと
+  const merged = (code.match(/const ids = new Set\(\[\.\.\.Object\.keys\(MASTER_STORE_DEFAULT\)/) || [])[0];
+  ok(!!merged, '本部の設定を既定値へ重ねる作りになっている（1店舗直しても他が消えない）');
+
   // 店舗マスタと別名表の整合（別名の行き先が実在する店舗か）
   const aliasTargets = [...code.matchAll(/'[^']+':\s*'((?:日本料理|寿司|牛カツ|日本鰻|手巻き寿司|和牛)世桜[^']*)'/g)].map(m => m[1]);
   const storeSet = new Set([...code.matchAll(/'((?:日本料理|寿司|牛カツ|日本鰻|手巻き寿司|和牛)世桜[^']*)'/g)].map(m => m[1]));
@@ -1804,7 +1830,9 @@ console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12
   /* コンプラチェック＝案②：本部が設定したシートへの入口を出すだけ。
      ★何をチェックするのかは本部が配るもの。アプリの中に回答画面は作らない。 */
   {
-    const S2 = '日本鰻世桜 浅草橋店';
+    /* ★2026-08-18：国内10店舗はシートが入ったので、ここは「まだ無い店舗」で確かめる。
+       海外3店舗はシートが見当たらず、本部へ確認中（app.js の COMPLIANCE_SHEETS を参照）。 */
+    const S2 = '日本鰻世桜 ホーチミン店';
     // URLが未設定のうちは、ボタンを出さない（押しても何も無い状態を作らない）
     const before = renderView('getsuji', 'manager', S2, 'ja'); // 四半期の提出物は月次業務に並ぶ
     ok(!/シートを開く/.test(before), 'シートが未設定のうちは「シートを開く」を出さない');
@@ -1861,7 +1889,9 @@ console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12
     /* ★店舗ごとに別のシートを持てる（2026-08-14）。
        コンプラチェックは全店1枚ではなく、各店フォルダの中に店舗ごとのシートがある。
        フォルダを開いて自店を探すのではなく、自店のシートが直接開くようにする。 */
-    const S_A = '日本鰻世桜 浅草橋店', S_B = '牛カツ世桜 長堀橋店';
+    /* S_B ＝ まだ自店のシートが無い店舗を選ぶ（2026-08-18 に国内10店舗へシートが入ったため）。
+       ここが国内店舗のままだと、既定値のシートが出て「共通URLへ落ちる」ことを確かめられない。 */
+    const S_A = '日本鰻世桜 浅草橋店', S_B = '牛カツ世桜 タオディエン店';
     FETCH_ROWS = { ok:true, reports:[
       { kind:'submaster', store:'*', item:'masterurl', t: Date.now(), id:'m3',
         note: JSON.stringify({

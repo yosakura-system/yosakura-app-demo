@@ -3482,13 +3482,43 @@
   /* 店舗ごとのシートの場所（2026-08-14）。提出物id → { 店舗名: URL }。
      ★コンプラチェックは全店1枚ではなく、各店フォルダの中に店舗ごとのシートがある
        （2026-08-14 中身を確認）。フォルダを開いて自店を探すのではなく、自店のシートが直接開くようにする。 */
+  /* ★各店のコンプラチェックシート（2026-08-18 増田さんが全店ぶんをコピーしてくださった）。
+     本部ドライブの各店フォルダ →「◾️コンプラチェックシート」の中にある1枚を、そのまま開く。
+     ★ここに持たせる理由＝本部が13店舗ぶんのURLを画面から手入力しなくても、開いた時点で使えるようにするため。
+       本部が画面から設定した場合は、そちらが優先される（getMasterStoreUrls の合成順）。
+     ⚠️ 2026-04-16 に作られた古い同名シート（info@sharelive.jp 所有）とは別物。
+        こちらは 2026-08-18 に yosakura.fc 配下へコピーされた新しいほうを指している。 */
+  const COMPLIANCE_SHEETS = {
+    '日本料理世桜本店':      'https://docs.google.com/spreadsheets/d/1O0aWmfHEXlIl_mBYXh3PDcqtJ9AuoQrppfq0PQGwRfQ/edit',
+    '寿司世桜 心斎橋店':     'https://docs.google.com/spreadsheets/d/152IO-z8EzR_J4f_TkskTGO_XoNN4GMbG7J5b6NXTHbE/edit',
+    '牛カツ世桜 長堀橋店':   'https://docs.google.com/spreadsheets/d/1Pzm2HOp4uet2Iw4_XVFcN3ya_oTx3r2eUc40a6IWtxM/edit',
+    '日本鰻世桜 長堀橋店':   'https://docs.google.com/spreadsheets/d/1Ry5qvZkkXhGY_aFEAr69inPUllF6BuKgXet2Pypuxf0/edit',
+    '手巻き寿司世桜 難波店': 'https://docs.google.com/spreadsheets/d/17p_efBUkKQ74n9Lcy0Y14ThPqW0NfY78hneQXFh3Qbs/edit',
+    '牛カツ世桜 富士山店':   'https://docs.google.com/spreadsheets/d/1Rj-_ujn5NXkPUOBu4F-PCeDU2BCR0jh0fg7Pxct-7OQ/edit',
+    '日本鰻世桜 富士山店':   'https://docs.google.com/spreadsheets/d/1RYwP1efhn9AOWqQWgfs9n6BdLHHT2f9tFfhU-A1VisM/edit',
+    '日本鰻世桜 京都祇園店': 'https://docs.google.com/spreadsheets/d/1HsR_ZYEsDIH82c0BsCMNSNv6HiPm77g1X3XEFYogXsU/edit',
+    '日本鰻世桜 浅草橋店':   'https://docs.google.com/spreadsheets/d/19DCbeGNI1SWM9S3VdAHcTvNuQG8ZUeHuOaEf9MQZtOM/edit',
+    '和牛世桜 広島店':       'https://docs.google.com/spreadsheets/d/1LhiUeleEA841eb89Xi5KdcjdGUvRZ77oS2yaaJdcDvY/edit'
+    /* ⚠️ 海外3店舗（牛カツ世桜 ファンケビン店／牛カツ世桜 タオディエン店／日本鰻世桜 ホーチミン店）は
+       2026-08-18 時点でシートが見当たらない。本部へ確認するまで空にしておく
+       ＝空なら「本部がシートを用意すると、ここから開けるようになります」と出る（作りは既存のまま）。 */
+  };
+  const MASTER_STORE_DEFAULT = { compliance: COMPLIANCE_SHEETS };
+
   function getMasterStoreUrls() {
     const rows = subRows(SUB_KINDS.master).sort((a, b) => (b.t || 0) - (a.t || 0));
+    let found = null;
     for (const r of rows) {
       const p = parseNote(r.note);
-      if (p && !Array.isArray(p) && p.storeUrls && typeof p.storeUrls === 'object') return p.storeUrls;
+      if (p && !Array.isArray(p) && p.storeUrls && typeof p.storeUrls === 'object') { found = p.storeUrls; break; }
     }
-    return jget(SUBKEYS.masterStoreUrl, {}) || {};
+    if (!found) found = jget(SUBKEYS.masterStoreUrl, {}) || {};
+    /* ★既定値の上に、本部が設定したものを重ねる（店舗ごとに上書き）。
+       本部が1店舗だけ直した場合に、ほかの12店舗が消えないようにする。 */
+    const out = {};
+    const ids = new Set([...Object.keys(MASTER_STORE_DEFAULT), ...Object.keys(found)]);
+    ids.forEach(id => { out[id] = Object.assign({}, MASTER_STORE_DEFAULT[id] || {}, found[id] || {}); });
+    return out;
   }
   // 提出物マスタ（本部設定・全端末共有）：一覧＝旧形式の保存かローカルか既定／URL＝本部の設定を重ねる
   // store を渡すと、その店舗のシートの場所（あれば）を優先する
