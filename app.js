@@ -792,7 +792,10 @@
   function homeInner(role) {
     const tiles = (ids) => ids.map(appById).filter(a => a && !a.hide && canOpen(a, role)).map(a => tileHTML(a, role)).join('');
     const primary = tiles(getPins());
-    const safety = tiles(['emergency', 'whistle']);
+    /* ★2026-08-18 神田さんのご判断：公益通報・コンプラ窓口はホームから外し、「その他」へ移した。
+       ホームの目立つ位置に置くと、加盟店・オーナー様には受け取り方が重くなるため
+       （8/18 会議＝コンプラの詳細説明は前面に出さない）。機能は消していない。 */
+    const safety = tiles(['emergency']);
     // 提出・業務（日次／週次／月次）の残り件数
     const dstore = visibleStores()[0];
     const ditems = todayItemsFor(dstore);
@@ -874,7 +877,7 @@
         ${sec({ ja:'よく使う', en:'Quick access', vi:'Hay dùng' })}
         ${primary ? `<div class="grid">${primary}</div>` : ''}
         <button class="homelink" id="pinEdit"><span class="hl-ic" style="font-size:20px;text-align:center">＋</span><span class="hl-t">${primary ? L({ ja:'よく使うを編集', en:'Edit quick access', vi:'Sửa lối tắt' }) : L({ ja:'よく使う機能を追加', en:'Add quick access', vi:'Thêm lối tắt' })}</span><span class="hl-c">${svg('chev')}</span></button>
-        ${safety ? sec({ ja:'緊急・相談', en:'Emergency & Report', vi:'Khẩn cấp & Tố giác' }) + `<div class="grid">${safety}</div>` : ''}
+        ${safety ? sec({ ja:'緊急', en:'Emergency', vi:'Khẩn cấp' }) + `<div class="grid">${safety}</div>` : ''}
         ${sec({ ja:'メニュー', en:'Menu', vi:'Menu' })}
         ${links}
         <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}${buildNote()}</div>
@@ -4880,7 +4883,8 @@
       desc:{ ja:'警察・消防・設備業者など、店舗別にすぐ確認', en:'Police, fire, vendors — by store', vi:'Cảnh sát, cứu hỏa, đơn vị — theo cửa hàng' } });
   }
   if (!appById('whistle')) {
-    APPS.push({ id:'whistle', group:'genba', icon:'shield', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
+    // 2026-08-18 神田さんのご判断：ホームから「その他」へ移した（tabHide を外して一覧に出す）
+    APPS.push({ id:'whistle', group:'other', icon:'shield', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'公益通報・コンプラ窓口', en:'Whistleblowing', vi:'Tố giác / Tuân thủ' },
       desc:{ ja:'相談しにくい問題を本部へ直接（固定）', en:'Report directly to HQ (fixed item)', vi:'Báo cáo trực tiếp tới HQ (cố định)' } });
   }
