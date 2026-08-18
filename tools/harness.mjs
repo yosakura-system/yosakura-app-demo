@@ -1733,9 +1733,19 @@ console.log('== 「報告する」タブに、日次・週次・月次と同じ�
      ここも機械的に検査して、これから増えても気づけるようにする。 */
   const dupHome = [...new Set(tabIds.filter(id => homeIds.includes(id)))];
   ok(dupHome.length === 0, `ホームに出ているものが、タブに重ねて並んでいない${dupHome.length ? '（重複: ' + dupHome.join(',') + '）' : ''}`);
-  ['community', 'emergency', 'whistle'].forEach(id => {
+  ['community', 'emergency'].forEach(id => {
     ok(homeIds.includes(id), `${id} はホームから必ず開ける（タブから外したため）`);
   });
+  /* ★2026-08-18 神田さんのご判断：公益通報・コンプラ窓口はホームから「その他」へ移した。
+     ホームの目立つ位置に置くと、加盟店・オーナー様には受け取り方が重くなるため。
+     ただし機能は消していない＝どこからも開けない状態にはしない。 */
+  ok(!homeIds.includes('whistle'), '公益通報はホームに出さない');
+  // ★tabIds は「報告」タブのぶん。公益通報は「その他」タブなので、そちらを見る
+  location.hash = '#/home?tab=other';
+  const otherIds = [...registry.app.innerHTML.matchAll(/data-open="([a-zA-Z_]+)"/g)].map(m => m[1]);
+  ok(otherIds.includes('whistle'), '公益通報は「その他」タブから開ける（どこからも開けない状態にしない）');
+  ok(!tabIds.includes('whistle'), '「報告」タブには出さない');
+  location.hash = '#/home?tab=genba';   // 以降の検査のために戻す
   // 随時使うものは残す（提出物ではないため、ここが唯一の入口）
   ok(/data-open="tabemono"/.test(tab), '食べ残しの報告は残す（随時のため）');
   // 気づきの報告は 2026-08-12 に日次業務の最後へ移した（日報の「清掃・特記事項」と重複していたため）
