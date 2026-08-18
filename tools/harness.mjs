@@ -1249,7 +1249,8 @@ console.log('== 総点検：設定の整合（IDの重複・リンク先の存�
   const bad = csStores.filter(s => !known.has(s));
   ok(bad.length === 0, 'すべて実在する店舗名と一致している' + (bad.length ? '（不一致: ' + bad.join(',') + '）' : ''));
   // 古いほう（2026-04-16 info@sharelive.jp 所有）のIDを掴んでいないこと
-  for (const old of ['1GKHy8CK_u-Z_uO5LdG5Ac_GhCOOfHog2do4s_RpUVNQ', '17D934vNqvWlGOEZEnxX9QNkm03JKNRXjsOuy6KcX1Vw',
+  for (const old of ['1mKwnYeS24TL8lPhL12S4EkBJFsroQF2_GtVEU6ithfA',
+                     '1GKHy8CK_u-Z_uO5LdG5Ac_GhCOOfHog2do4s_RpUVNQ', '17D934vNqvWlGOEZEnxX9QNkm03JKNRXjsOuy6KcX1Vw',
                      '11ETg1HRMFc5d0LWtzsapgf0b4RT-x2Nyv0lnc-ZjwIs', '1JprJ8KKzeOc917D_PzS-uMKeZUOZNY7WGo2RuFfDPE8']) {
     ok(!code.includes(old), '古いコンプラシートを指していない（' + old.slice(0, 8) + '…）');
   }
@@ -1395,10 +1396,10 @@ console.log('== 世桜10訓は本部のスライドを開く（2026-08-17 上原
   ok(!/const JUKKUN = \[/.test(src), '10訓の文言をアプリの中に持たない');
   ok(!/APP_VIEWS\.jukkun/.test(src), '10訓をアプリの中で表示する画面を持たない');
   // 入口＝マニュアル →「世桜とは・理念」→ スライド。ここが消えると10訓へたどり着けなくなる
-  const SLIDE = '1mKwnYeS24TL8lPhL12S4EkBJFsroQF2_GtVEU6ithfA';
+  const SLIDE = '10GPRuB_eUaa5JysAfyknaKAStafDkIPi7PkFzU2i_yA';   // 2026-08-19 公式フォルダの 01-6 へ差し替え
   // 見本データ（体験版で使う）に、10訓のスライドが「世桜とは・理念」として入っていること
   const seed = (src.match(/function seedMaterials\(\)[\s\S]*?\n  \}/) || [''])[0];
-  ok(new RegExp("title:'世桜10訓'[^}]*" + SLIDE + "[^}]*mcat:'philosophy'").test(seed),
+  ok(new RegExp("title:'01-6 世桜10訓'[^}]*" + SLIDE + "[^}]*mcat:'philosophy'").test(seed),
      '見本データの「世桜とは・理念」に10訓のスライドが入っている');
   /* ★ハーネスは接続先を持った通常版で動くため、見本データ（seedMaterials）は流し込まれない。
      ここでは本部が資料を登録した状態を作って、マニュアルの行の出方を確かめる。 */
@@ -1431,7 +1432,7 @@ console.log('== 接客・ホールは本部の「03.接客ホール」を並べ�
     ok(seed.includes(t), '「' + t + '」が入っている');
   }
   const svc = (seed.match(/mcat:'service'/g) || []).length;
-  ok(svc >= 14, '接客・ホールに14件以上の資料が入っている（実際 ' + svc + ' 件）');
+  ok(svc === 14, '接客・ホールに本部の14件が入っている（実際 ' + svc + ' 件）');
 
   /* 並び順＝番号を数として見る。これが無いと 03-1／03-10／03-11／03-2 の順になり、
      本部の目次と突き合わせられない。 */
@@ -2120,7 +2121,7 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   ok(/ご意見フォームを開く|フォームは準備中/.test(fb), 'フォームへの入口（または準備中の案内）が出ている');
   ok(/お店の記録には送られません/.test(fb), '体験版であることを、この画面でも伝えている');
   ok(/const TAIKEN_FORM_URL/.test(code), 'フォームのURLを入れる場所が1か所にある');
-  ok(/7DAYS 1日目/.test(man), 'マニュアルも、実際に登録されている資料と同じ並びになっている');
+  ok(/11-1 7DAYS（1日目）/.test(man), 'マニュアルも、実際に登録されている資料と同じ並びになっている');
 
   /* ★月例MTGを、自店のスタッフさんもアーカイブとして見られる（2026-08-12 神田さんのご要望）。
      実施は一部の店舗でも、これから始める店舗が過去の回を見られるようにしておく。 */
