@@ -1915,9 +1915,16 @@
     /* リンクがまだ登録されていない資料は、押しても開かない（空のタブが開いてしまうため）。
        体験版では中身のURLを持たないので、ここが「見本」として並ぶ（2026-08-12）。 */
     const subs = mats.map(l => {
-      const has = isHttp(l.url);
+      /* ★体験版では、本部の資料そのものは開かない（2026-08-19 神田さんのご判断）。
+         本部ドライブの資料は本部の方しか閲覧権限が無く、タップすると
+         Googleの「アクセス権が必要です」が出てしまう＝「使えないアプリ」に見える。
+         一覧（どこに何があるか）はそのまま見ていただき、中身は本番のご利用開始後に開く。
+         ⚠️ 権限の付け方は Workspace の設計と一緒に決める（2026-08-18 会議のアクション7・8）。 */
+      const has = isHttp(l.url) && !TAIKEN;
       const ou = has ? openUrlFor(l.url) : '';
-      const note = has
+      const note = TAIKEN && isHttp(l.url)
+        ? L({ ja:'本番のご利用開始後にご覧いただけます', en:'Available once you start using the live app', vi:'Xem được sau khi bắt đầu dùng bản chính' })
+        : has
         ? L({ ja: roForRole ? '閲覧専用で開く' : 'タップで開く', en: roForRole ? 'Open (read-only)' : 'Tap to open', vi: roForRole ? 'Mở (chỉ đọc)' : 'Chạm để mở' })
         : L({ ja:'（見本）本部が資料を登録すると開けます', en:'(sample) opens once HQ registers the document', vi:'(mẫu) mở được khi HQ đăng ký tài liệu' });
       return `<div class="mrow mrow--sub"${has ? ` data-openurl="${esc(ou)}"` : ' data-mock="1"'} style="padding-left:22px"><div class="mi">${svg('link')}</div><div class="mt"><b>${esc(l.title)}</b><span>${l.desc ? esc(l.desc) + ' ・ ' : ''}${note}</span></div><span class="chev">${svg('chev')}</span></div>`;
