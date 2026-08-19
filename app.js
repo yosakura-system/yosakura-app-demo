@@ -1915,16 +1915,15 @@
     /* リンクがまだ登録されていない資料は、押しても開かない（空のタブが開いてしまうため）。
        体験版では中身のURLを持たないので、ここが「見本」として並ぶ（2026-08-12）。 */
     const subs = mats.map(l => {
-      /* ★体験版では、本部の資料そのものは開かない（2026-08-19 神田さんのご判断）。
-         本部ドライブの資料は本部の方しか閲覧権限が無く、タップすると
-         Googleの「アクセス権が必要です」が出てしまう＝「使えないアプリ」に見える。
-         一覧（どこに何があるか）はそのまま見ていただき、中身は本番のご利用開始後に開く。
-         ⚠️ 権限の付け方は Workspace の設計と一緒に決める（2026-08-18 会議のアクション7・8）。 */
-      const has = isHttp(l.url) && !TAIKEN;
+      /* ★体験版でも資料は開ける（2026-08-19 本部よりご共有）。
+         いったん体験版では開かない作りにしたが、**加盟店のオーナー様・店長にも
+         閲覧権限が入っている**とのことだったため戻した。
+         こちらで塞ぐと、権限をお持ちの方まで開けなくなる。
+         ⚠️ 権限には漏れがあるかもしれない、とのこと。開かない場合の案内は
+            マニュアル画面の上に1行だけ置く（下の NOTE）。 */
+      const has = isHttp(l.url);
       const ou = has ? openUrlFor(l.url) : '';
-      const note = TAIKEN && isHttp(l.url)
-        ? L({ ja:'本番のご利用開始後にご覧いただけます', en:'Available once you start using the live app', vi:'Xem được sau khi bắt đầu dùng bản chính' })
-        : has
+      const note = has
         ? L({ ja: roForRole ? '閲覧専用で開く' : 'タップで開く', en: roForRole ? 'Open (read-only)' : 'Tap to open', vi: roForRole ? 'Mở (chỉ đọc)' : 'Chạm để mở' })
         : L({ ja:'（見本）本部が資料を登録すると開けます', en:'(sample) opens once HQ registers the document', vi:'(mẫu) mở được khi HQ đăng ký tài liệu' });
       return `<div class="mrow mrow--sub"${has ? ` data-openurl="${esc(ou)}"` : ' data-mock="1"'} style="padding-left:22px"><div class="mi">${svg('link')}</div><div class="mt"><b>${esc(l.title)}</b><span>${l.desc ? esc(l.desc) + ' ・ ' : ''}${note}</span></div><span class="chev">${svg('chev')}</span></div>`;
@@ -1948,6 +1947,10 @@
       <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${esc(gyotaiLabel(code))}${L({ ja:'のマニュアル', en:' manuals', vi:'' })}</h2></div>
       <div class="card" style="padding:2px 0">${byGyotai[code].map(manualRow).join('')}</div>`).join('');
     return `
+      ${TAIKEN ? `<p class="hint" style="display:block;margin:0 0 10px">${L({
+          ja:'※ 資料は本部のドライブにあります。閲覧権限をお持ちの方は、そのまま開きます。開かない場合は「アクセス権をリクエスト」は押さず、本部へお知らせください。',
+          en:'Documents live in HQ Drive. They open if you have view access. If not, please tell HQ instead of pressing “Request access”.',
+          vi:'Tài liệu nằm trên Drive của HQ. Sẽ mở được nếu bạn có quyền xem. Nếu không, hãy báo HQ thay vì bấm “Yêu cầu quyền truy cập”.' })}</p>` : ''}
       ${NOTE({ ja:`◆ ${role==='hq'&&!gy ? '全店・全業態のマニュアルを表示（本部）' : (gy ? gyotaiLabel(gy)+'業態のマニュアルを表示中' : 'マニュアル')}。権限に応じて表示が変わります（中身は順次追加）`, en:'◆ Manuals filtered by role and store type (content added progressively)', vi:'◆ Cẩm nang lọc theo vai trò & loại hình (nội dung bổ sung dần)' })}
       <div class="sec-h" style="margin:6px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'全業態共通', en:'All types', vi:'Chung' })}</h2></div>
       <div class="card" style="padding:2px 0">${common.map(manualRow).join('')}</div>
