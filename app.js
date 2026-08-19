@@ -29,7 +29,7 @@
      1つ目（勉強会のあとに配信済み・使いたいかどうかとその理由）とは目的が違うので分ける。
      ★URLが決まるまでは空にしておく＝空のあいだは入口そのものを出さない
        （「準備中」を出すと、押せないものを配ることになるため）。 */
-  const TAIKEN_FORM2_URL = '';
+  const TAIKEN_FORM2_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfnvpk9tR6QTKqFyb65dlnUScZjkvoZoDb2qAn9XdgeApIB1w/viewform';  // 2026-08-19 増田さんご作成
   const getApiUrl = () => (TAIKEN ? '' : (localStorage.getItem(LS_API) || API_URL_DEFAULT));
   const isCustomApi = () => !!localStorage.getItem(LS_API);
   /* システム管理者モード：接続先の変更は「本部ロール かつ 管理者モード」のみ可能。
