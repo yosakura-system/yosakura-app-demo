@@ -25,6 +25,11 @@
      2026-08-13 神田さんのご判断＝アプリの中で受けると「送れたのに届かない」ため、窓口を1つにする。
      空のままなら、フォームの代わりにLINEでお知らせいただくようご案内する。 */
   const TAIKEN_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSe4pXAMcGsPHV6JA8WzDtpZ1svbtZWFGep-CP876BJEmaurWg/viewform';
+  /* ★2つ目のアンケート＝「触ってみた後のご感想」（2026-08-19 高原社長のご依頼）。
+     1つ目（勉強会のあとに配信済み・使いたいかどうかとその理由）とは目的が違うので分ける。
+     ★URLが決まるまでは空にしておく＝空のあいだは入口そのものを出さない
+       （「準備中」を出すと、押せないものを配ることになるため）。 */
+  const TAIKEN_FORM2_URL = '';
   const getApiUrl = () => (TAIKEN ? '' : (localStorage.getItem(LS_API) || API_URL_DEFAULT));
   const isCustomApi = () => !!localStorage.getItem(LS_API);
   /* システム管理者モード：接続先の変更は「本部ロール かつ 管理者モード」のみ可能。
@@ -3948,8 +3953,10 @@
             ja:'使ってみて気づいたことを、そのままお聞かせください。いただいたご意見が、次に作るものの順番になります。',
             en:'Tell us what you noticed. Your feedback sets what we build next.',
             vi:'Hãy cho biết điều bạn nhận thấy. Góp ý của bạn quyết định thứ tự phát triển.' })}</p>
+          ${isHttp(TAIKEN_FORM2_URL) ? `<button class="btn-primary" data-openurl="${esc(TAIKEN_FORM2_URL)}">${L({ ja:'触ってみたご感想をお聞かせください', en:'Tell us how it felt to use', vi:'Cho biết cảm nhận sau khi dùng thử' })}</button>
+             <div class="hint" style="margin-bottom:12px">${L({ ja:'※ 実際に触っていただいたあとのご感想です（3分ほど）。', en:'About your impressions after trying it (about 3 minutes).', vi:'Cảm nhận sau khi dùng thử (khoảng 3 phút).' })}</div>` : ''}
           ${isHttp(TAIKEN_FORM_URL)
-            ? `<button class="btn-primary" data-openurl="${esc(TAIKEN_FORM_URL)}">${L({ ja:'ご意見フォームを開く', en:'Open the feedback form', vi:'Mở biểu mẫu góp ý' })}</button>
+            ? `<button class="${isHttp(TAIKEN_FORM2_URL) ? 'mini' : 'btn-primary'}" data-openurl="${esc(TAIKEN_FORM_URL)}">${L({ ja:'ご意見フォームを開く', en:'Open the feedback form', vi:'Mở biểu mẫu góp ý' })}</button>
                <div class="hint">${L({ ja:'※ 3分ほどで終わります。お名前の記入は任意です。', en:'About 3 minutes. Your name is optional.', vi:'Khoảng 3 phút. Tên là tùy chọn.' })}</div>`
             : `<p class="hint" style="display:block;color:#a23b3b">${L({
                 ja:'※ ご意見フォームは準備中です。お手数ですが、LINEでお知らせください。',
