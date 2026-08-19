@@ -3976,17 +3976,19 @@
             ja:'いただいたご意見が、次に作るものの順番になります。どちらもお答えいただけると助かります。',
             en:'Your feedback sets what we build next. We would appreciate answers to both.',
             vi:'Góp ý của bạn quyết định thứ tự phát triển. Rất mong bạn trả lời cả hai.' })}</p>
+          <p class="hint" style="display:block;margin-top:6px">${L({
+            ja:'※ ご回答は本部へ届きます（体験版でも、アンケートはきちんと届きます）。',
+            en:'Your answers do reach HQ — the surveys work even in the trial version.',
+            vi:'Câu trả lời sẽ tới HQ — khảo sát vẫn hoạt động ở bản dùng thử.' })}</p>
         </div>
         ${both || `<div class="card"><p class="hint" style="display:block;color:#a23b3b">${L({
             ja:'※ ご意見フォームは準備中です。お手数ですが、LINEでお知らせください。',
             en:'The feedback form is being prepared. Please tell us on LINE for now.',
             vi:'Biểu mẫu đang được chuẩn bị. Vui lòng cho chúng tôi biết qua LINE.' })}</p></div>`}
-        <div class="card">
-          <p class="hint" style="display:block">${L({
-            ja:'※ この体験版は、触っていただくためのものです。入力した内容はお手元の端末の中だけに残り、お店の記録には送られません。',
-            en:'This trial version is for trying things out. Entries stay on your device and are never sent to store records.',
-            vi:'Bản dùng thử để trải nghiệm. Dữ liệu chỉ ở trên máy này, không gửi tới hồ sơ cửa hàng.' })}</p>
-        </div>`;
+        `;
+      /* ★「入力した内容は端末の中だけに残ります」の枠は、この画面には出さない
+         （2026-08-19 神田さんのご指摘）。アンケートまで「出しても届かない」と読まれてしまうため。
+         体験版であることは画面上部の帯で伝わっている。 */
     }
     const rows = subRows(FB_KIND).sort((a, b) => b.t - a.t).slice(0, 30);
     const mine = getRole();
