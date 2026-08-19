@@ -1433,6 +1433,15 @@ console.log('== 接客・ホールは本部の「03.接客ホール」を並べ�
   }
   const svc = (seed.match(/mcat:'service'/g) || []).length;
   ok(svc === 14, '接客・ホールに本部の14件が入っている（実際 ' + svc + ' 件）');
+  /* ★2026-08-19 の勉強会で取り上げられた5件が、すべてアプリに入っていること。
+     加盟店へLINEで配られたものと、アプリの中身が食い違わないようにする。 */
+  for (const [name, id] of [['05-1 手洗い', '1b5m33nQ-ABvTZGAqxfAVka0mZqgqHyuBeAl7YrLo20Q'],
+                            ['05-3 食中毒・感染対策', '1zBBPAdE4V-1yF5W4khbHsbI_oB3ua74NxZ7WOa5LDnA'],
+                            ['05-6 まな板の衛生管理', '1xbbI5Bhe1EfzXzwEDXA5eJxBc5iByiQKM1iVpU84-7A'],
+                            ['05-7 木製まな板お手入れ', '1LtQCpDfh7kHmnClbZSi7veJco2SLV6cVlGhwuw4eAi0'],
+                            ['手袋運用の徹底（POP用）', '1JfLS8EjrUJMMrRueCJvnbyVvkoLeJddq10OGV8v0xdE']]) {
+    ok(seed.includes(id), '8/19の勉強会で配られた「' + name + '」がマニュアルに入っている');
+  }
 
   /* 並び順＝番号を数として見る。これが無いと 03-1／03-10／03-11／03-2 の順になり、
      本部の目次と突き合わせられない。 */
@@ -2088,6 +2097,10 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
     ok(stu.includes(m), `勉強会の「${m}」が出る`);
   });
   ok(/アジェンダスライド/.test(stu), '登録されている資料の名前も出る');
+  /* ★2026-08-19 の勉強会。アジェンダと当日のマニュアルを、この画面からも開ける */
+  ok(/12-TmHNp35oxYgag8khzXZJ1_HC4GWKROeNzxqJ2U1HI/.test(stu), '8/19のアジェンダスライドが開ける');
+  ok(/手袋運用の徹底/.test(stu), '当日取り上げたマニュアルも、この画面に並ぶ');
+  ok(!/録画を見る[\s\S]{0,200}2026年8月/.test(stu), '録画はまだ無いので「録画を見る」を出さない');
   ok(!/data-studyedit/.test(stu) && !/studyForm/.test(stu), '加盟店の側では、勉強会を直せない');
 
   /* ★本部以外が開くリンクは、必ず閲覧専用にする（2026-08-13 神田さんのご指摘）。

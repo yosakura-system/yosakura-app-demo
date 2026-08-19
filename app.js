@@ -4433,7 +4433,9 @@
       { id:'mn111', title:'13-5 定期清掃シート【手巻き寿司世桜】', url:'https://docs.google.com/spreadsheets/d/1Y2V7y1QPbuqe-nvP8Qq3Hz1Y-sAUUh4ov74m_eP9x7s/edit?usp=sharing', mcat:'checksheet', desc:'スプレッドシート' },
       { id:'mn112', title:'13-6 【日本料理】OPEN/CLOSEチェックリスト', url:'https://docs.google.com/spreadsheets/d/1iysswjS_mbLHZE01nxHDCHhlE0yYfxSVVLcXuJ_1o2M/edit?usp=sharing', mcat:'checksheet', desc:'スプレッドシート' },
       { id:'mn113', title:'13-7 鰻_OPEN/CLOSEチェックリスト', url:'https://docs.google.com/spreadsheets/d/1EzJsby3m5aJBCXVgahR4U_LmoGP0QqG-lZY2jY7BDhY/edit?usp=sharing', mcat:'checksheet', desc:'スプレッドシート' },
-      { id:'mn114', title:'13-8 牛カツ_OPEN/CLOSEチェックリスト', url:'https://docs.google.com/spreadsheets/d/11AZc4-_rARq4FBtj-gL29MLzuD3EVlM2CsneGchJZ3Y/edit?usp=sharing', mcat:'checksheet', desc:'スプレッドシート' }
+      { id:'mn114', title:'13-8 牛カツ_OPEN/CLOSEチェックリスト', url:'https://docs.google.com/spreadsheets/d/11AZc4-_rARq4FBtj-gL29MLzuD3EVlM2CsneGchJZ3Y/edit?usp=sharing', mcat:'checksheet', desc:'スプレッドシート' },
+      /* 2026-08-19 の勉強会で取り上げられ、同日 12.印刷物 へ追加されたもの（番号なし） */
+      { id:'mn115', title:'手袋運用の徹底（POP用）', url:'https://docs.google.com/presentation/d/1JfLS8EjrUJMMrRueCJvnbyVvkoLeJddq10OGV8v0xdE/edit?usp=sharing', mcat:'print', desc:'スライド' }
     ]);
     seedMark('links');
   }
@@ -4451,8 +4453,18 @@
         docs:[{ title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/14P3hyKBbXp1Qn0DVx64W24EcygYtbJO2dbrCbnxyZgU/edit?slide=id.g3e76fcf952b_0_0#slide=id.g3e76fcf952b_0_0' }, { title:'テーマスライド', url:'https://docs.google.com/presentation/d/14riX3QM07yufNlZ5jYgcVcdm0vZum9lP-k7CuW2W_wk/edit?slide=id.p1#slide=id.p1' }] },
       { id:'st1786011745177', date:'2026-07', title:'2026年7月勉強会', t: now - 35 * 864e5, video:'https://drive.google.com/file/d/1C1UMnxFZkbbKm8Mz2nZjfG0mWdLfauYH/view', body:'',
         docs:[{ title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/1gy9IXkoDfvG28sK_IWXvzpfgTAV_Fbx8q65LoUKD55c/edit?slide=id.g3e76fcf952b_0_0#slide=id.g3e76fcf952b_0_0' }] },
-      { id:'st_2608', date:'2026-08', title:'2026年8月勉強会', t: now, video:'', body:'',
-        docs:[{ title:'アジェンダスライド', url:'' }] }
+      /* 2026-08-19 の勉強会。★録画はまだ上がっていないので空のまま
+         （空のあいだは「録画を見る」のボタンが出ない。上がったら video にURLを入れる）。 */
+      { id:'st_2608', date:'2026-08', title:'2026年8月勉強会（8/19）', t: now, video:'',
+        body:'当日取り上げたマニュアルを、下にまとめています。',
+        docs:[
+          { title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/12-TmHNp35oxYgag8khzXZJ1_HC4GWKROeNzxqJ2U1HI/edit?usp=sharing' },
+          { title:'05-1 手洗いマニュアル', url:'https://docs.google.com/presentation/d/1b5m33nQ-ABvTZGAqxfAVka0mZqgqHyuBeAl7YrLo20Q/edit?usp=sharing' },
+          { title:'05-3 食中毒・感染対策', url:'https://docs.google.com/presentation/d/1zBBPAdE4V-1yF5W4khbHsbI_oB3ua74NxZ7WOa5LDnA/edit?usp=sharing' },
+          { title:'05-6 まな板の衛生管理', url:'https://docs.google.com/presentation/d/1xbbI5Bhe1EfzXzwEDXA5eJxBc5iByiQKM1iVpU84-7A/edit?usp=sharing' },
+          { title:'05-7 木製まな板お手入れマニュアル', url:'https://docs.google.com/presentation/d/1LtQCpDfh7kHmnClbZSi7veJco2SLV6cVlGhwuw4eAi0/edit?usp=sharing' },
+          { title:'手袋運用の徹底（POP用）', url:'https://docs.google.com/presentation/d/1JfLS8EjrUJMMrRueCJvnbyVvkoLeJddq10OGV8v0xdE/edit?usp=sharing' }
+        ] }
     ]);
     seedMark('study');
   }
