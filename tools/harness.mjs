@@ -828,6 +828,29 @@ console.log('== 店舗名を本部の正式名称に合わせる（過去のデ�
   const naga = renderView('soukatsu','manager','牛カツ世桜 長堀橋店','ja');
   ok(/長堀橋店/.test(naga), '「牛カツ世桜 長堀橋店」は画面上「長堀橋店」と表示される');
 
+  /* ★2026-08-20 高原社長のご回答を固定する。
+     ①タオディエンは出展検討中＝一覧に出さない（出展が決まったら、ここを直してから戻す）
+     ②本店と日本鰻 長堀橋は同じ場所だが二毛作で別の店舗＝1つにまとめない */
+  const list = (code.match(/const STORES = \[([\s\S]*?)\];/) || [,''])[1];
+  const names = (list.match(/'[^']+'/g) || []).map(s => s.slice(1, -1));
+  ok(names.length === 12, '店舗は12（タオディエンを外した）／実際=' + names.length);
+  ok(!names.includes('牛カツ世桜 タオディエン店'), '出展検討中のタオディエンは店舗一覧に出さない');
+  const homeAll = renderView('home','hq','all','ja');
+  ok(!/タオディエン/.test(homeAll), 'タオディエンは画面のどこにも出ない');
+  ok(names.includes('日本料理世桜本店') && names.includes('日本鰻世桜 長堀橋店'),
+     '本店と日本鰻 長堀橋は、同じ場所でも別の店舗として並ぶ（二毛作）');
+
+  // 会議の記録に出る「日本料理世桜 長堀橋店」は、14店舗目にせず本店へ寄せる
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'soukatsu', store:'日本料理世桜 長堀橋店',
+      note: JSON.stringify({ date: today, sales: 333000, guests: 21 }), t: Date.now(), id:'o3' }
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ nagahoribashi alias threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/store?s=' + encodeURIComponent('日本料理世桜本店');
+  ok(/333,000|33万/.test(registry.app.innerHTML), '「日本料理世桜 長堀橋店」で入った数字は本店に寄る');
+  FETCH_ROWS = { ok:false };
+
   // ベトナムの2店も正式名称
   const hq2 = renderView('home','hq','all','ja');
   ok(!/ハノイ|ホーチミン1号/.test(hq2), '旧表記（ハノイ店・ホーチミン1号店）は使わない');
@@ -1914,7 +1937,9 @@ console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12
        フォルダを開いて自店を探すのではなく、自店のシートが直接開くようにする。 */
     /* S_B ＝ まだ自店のシートが無い店舗を選ぶ（2026-08-18 に国内10店舗へシートが入ったため）。
        ここが国内店舗のままだと、既定値のシートが出て「共通URLへ落ちる」ことを確かめられない。 */
-    const S_A = '日本鰻世桜 浅草橋店', S_B = '牛カツ世桜 タオディエン店';
+    /* ★2026-08-20：タオディエンは出展検討中のため店舗一覧から外した（高原社長のご回答）。
+       ここは「シートがまだ無い店舗」であればよいので、海外のもう1店へ差し替える。 */
+    const S_A = '日本鰻世桜 浅草橋店', S_B = '牛カツ世桜 ファンケビン店';
     FETCH_ROWS = { ok:true, reports:[
       { kind:'submaster', store:'*', item:'masterurl', t: Date.now(), id:'m3',
         note: JSON.stringify({
