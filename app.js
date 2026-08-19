@@ -3944,25 +3944,43 @@
   const fbCatLabel = (v) => { const f = FB_CATS.find(x => x.v === v); return f ? L(f.t) : v; };
   APP_VIEWS.appfb = () => {
     /* ★体験版：アプリの中に入力欄を置かない（保存先が無く、届かないため）。
-       Googleフォームへの入口だけを出す。窓口を2つ作らない。 */
+       ★2026-08-19 神田さんのご要望＝**2つの窓口を、どちらもすぐ分かる形にする**。
+         以前は2つ目が小さなボタンで、何のフォームかも分からなかった。
+         ①触ってみたご感想 ②勉強会のアンケート（未回答の方はここからも出せる）
+         それぞれ見出し＋一行の説明＋全幅のボタン、という同じ形にそろえる。 */
     if (TAIKEN) {
+      const card = (no, title, lead, url, btn) => !isHttp(url) ? '' : `
+        <div class="card">
+          <h3><span class="kind b" style="margin-right:8px">${no}</span>${esc(L(title))}</h3>
+          <p class="hint" style="display:block;margin-bottom:12px">${esc(L(lead))}</p>
+          <button class="btn-primary" data-openurl="${esc(url)}">${esc(L(btn))}</button>
+        </div>`;
+      const both = card('①',
+        { ja:'アプリを触ってみたご感想', en:'How was the app to use?', vi:'Cảm nhận sau khi dùng thử' },
+        { ja:'実際に触っていただいたあとのご意見をお聞かせください。3分ほどで終わります。お名前の記入は任意です。',
+          en:'Tell us how it felt after actually using it. About 3 minutes. Your name is optional.',
+          vi:'Cho chúng tôi biết cảm nhận sau khi dùng thử. Khoảng 3 phút. Tên là tùy chọn.' },
+        TAIKEN_FORM2_URL,
+        { ja:'ご感想を送る', en:'Send your feedback', vi:'Gửi cảm nhận' })
+        + card('②',
+        { ja:'勉強会のアンケート', en:'Study session survey', vi:'Khảo sát buổi học' },
+        { ja:'勉強会についてのアンケートです。まだご回答でない方は、こちらからお願いします。3分ほどで終わります。',
+          en:'A survey about the study session. If you have not answered yet, please use this. About 3 minutes.',
+          vi:'Khảo sát về buổi học. Nếu bạn chưa trả lời, vui lòng dùng mục này. Khoảng 3 phút.' },
+        TAIKEN_FORM_URL,
+        { ja:'勉強会のアンケートに答える', en:'Answer the study session survey', vi:'Trả lời khảo sát buổi học' });
       return `
         <div class="card">
-          <h3>${L({ ja:'このアプリへのご意見', en:'Feedback on this app', vi:'Góp ý về ứng dụng' })}</h3>
+          <h3>${L({ ja:'2つの窓口があります', en:'Two ways to tell us', vi:'Hai cách để góp ý' })}</h3>
           <p class="hint" style="display:block">${L({
-            ja:'使ってみて気づいたことを、そのままお聞かせください。いただいたご意見が、次に作るものの順番になります。',
-            en:'Tell us what you noticed. Your feedback sets what we build next.',
-            vi:'Hãy cho biết điều bạn nhận thấy. Góp ý của bạn quyết định thứ tự phát triển.' })}</p>
-          ${isHttp(TAIKEN_FORM2_URL) ? `<button class="btn-primary" data-openurl="${esc(TAIKEN_FORM2_URL)}">${L({ ja:'触ってみたご感想をお聞かせください', en:'Tell us how it felt to use', vi:'Cho biết cảm nhận sau khi dùng thử' })}</button>
-             <div class="hint" style="margin-bottom:12px">${L({ ja:'※ 実際に触っていただいたあとのご感想です（3分ほど）。', en:'About your impressions after trying it (about 3 minutes).', vi:'Cảm nhận sau khi dùng thử (khoảng 3 phút).' })}</div>` : ''}
-          ${isHttp(TAIKEN_FORM_URL)
-            ? `<button class="${isHttp(TAIKEN_FORM2_URL) ? 'mini' : 'btn-primary'}" data-openurl="${esc(TAIKEN_FORM_URL)}">${L({ ja:'ご意見フォームを開く', en:'Open the feedback form', vi:'Mở biểu mẫu góp ý' })}</button>
-               <div class="hint">${L({ ja:'※ 3分ほどで終わります。お名前の記入は任意です。', en:'About 3 minutes. Your name is optional.', vi:'Khoảng 3 phút. Tên là tùy chọn.' })}</div>`
-            : `<p class="hint" style="display:block;color:#a23b3b">${L({
-                ja:'※ ご意見フォームは準備中です。お手数ですが、LINEでお知らせください。',
-                en:'The feedback form is being prepared. Please tell us on LINE for now.',
-                vi:'Biểu mẫu đang được chuẩn bị. Vui lòng cho chúng tôi biết qua LINE.' })}</p>`}
+            ja:'いただいたご意見が、次に作るものの順番になります。どちらもお答えいただけると助かります。',
+            en:'Your feedback sets what we build next. We would appreciate answers to both.',
+            vi:'Góp ý của bạn quyết định thứ tự phát triển. Rất mong bạn trả lời cả hai.' })}</p>
         </div>
+        ${both || `<div class="card"><p class="hint" style="display:block;color:#a23b3b">${L({
+            ja:'※ ご意見フォームは準備中です。お手数ですが、LINEでお知らせください。',
+            en:'The feedback form is being prepared. Please tell us on LINE for now.',
+            vi:'Biểu mẫu đang được chuẩn bị. Vui lòng cho chúng tôi biết qua LINE.' })}</p></div>`}
         <div class="card">
           <p class="hint" style="display:block">${L({
             ja:'※ この体験版は、触っていただくためのものです。入力した内容はお手元の端末の中だけに残り、お店の記録には送られません。',
