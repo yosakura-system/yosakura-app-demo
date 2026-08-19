@@ -1982,7 +1982,12 @@
   const SEED_VER_KEY = 'yosakura_demo_seed_ver';
   const seedFresh = (name) => localStorage.getItem(SEED_VER_KEY + ':' + name) === SEED_VER;
   const seedMark = (name) => { try { localStorage.setItem(SEED_VER_KEY + ':' + name, SEED_VER); } catch (e) {} };
-  const SEED_VER = '2026-08-17a'; // 2026-08-17 接客・ホールを本部の「03.接客ホール」に差し替え＝既に開いた端末にも配り直す
+  /* 見本データの版。★ここを上げ忘れると、以前アプリを開いた端末に古い見本が残り続ける。
+     2026-08-19、実際に起きた（マニュアル114件と8/19の勉強会を入れたのに、端末には古い38件が残っていた）。
+     ★そこで版を手で管理するのをやめ、アプリの版（APP_BUILD）に合わせる。
+       体験版は配信のたびに APP_BUILD が変わるので、**上げ忘れという事故が起きない**。
+     ※ プレビュー・公開デモはバックエンドに接続しており、そもそも見本データを作らない。 */
+  const SEED_VER = APP_BUILD;
   function seedSurvey() {
     /* ★以前この端末で開いた方には、古い見本が残ったままだった（2026-08-12 神田さんのご指摘で判明）。
        「すでに何か入っていたら作らない」という作りだったため、見本を作り直しても届かなかった。
