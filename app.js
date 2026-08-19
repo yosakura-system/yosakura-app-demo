@@ -1948,9 +1948,9 @@
       <div class="card" style="padding:2px 0">${byGyotai[code].map(manualRow).join('')}</div>`).join('');
     return `
       ${TAIKEN ? `<p class="hint" style="display:block;margin:0 0 10px">${L({
-          ja:'※ 資料は本部のドライブにあります。閲覧権限をお持ちの方は、そのまま開きます。開かない場合は「アクセス権をリクエスト」は押さず、本部へお知らせください。',
-          en:'Documents live in HQ Drive. They open if you have view access. If not, please tell HQ instead of pressing “Request access”.',
-          vi:'Tài liệu nằm trên Drive của HQ. Sẽ mở được nếu bạn có quyền xem. Nếu không, hãy báo HQ thay vì bấm “Yêu cầu quyền truy cập”.' })}</p>` : ''}
+          ja:'※ 資料は本部のドライブにあります。閲覧権限をお持ちの方は、そのまま開きます。開かない場合は「アクセス権をリクエスト」は押さず、本部の増田までご連絡ください。',
+          en:'Documents live in HQ Drive. They open if you have view access. If not, contact Masuda at HQ instead of pressing “Request access”.',
+          vi:'Tài liệu nằm trên Drive của HQ. Sẽ mở được nếu bạn có quyền xem. Nếu không, hãy liên hệ Masuda ở HQ thay vì bấm “Yêu cầu quyền truy cập”.' })}</p>` : ''}
       ${NOTE({ ja:`◆ ${role==='hq'&&!gy ? '全店・全業態のマニュアルを表示（本部）' : (gy ? gyotaiLabel(gy)+'業態のマニュアルを表示中' : 'マニュアル')}。権限に応じて表示が変わります（中身は順次追加）`, en:'◆ Manuals filtered by role and store type (content added progressively)', vi:'◆ Cẩm nang lọc theo vai trò & loại hình (nội dung bổ sung dần)' })}
       <div class="sec-h" style="margin:6px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'全業態共通', en:'All types', vi:'Chung' })}</h2></div>
       <div class="card" style="padding:2px 0">${common.map(manualRow).join('')}</div>
