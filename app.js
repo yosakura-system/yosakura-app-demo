@@ -3091,11 +3091,13 @@
   // 会議で決まったルール（2026-08-10 構築MTG）。出典を明記し、勝手に増やさない。
   // 本部が直したいときは faqset 側に同じ id の「上書き」を持たせる（deleted:true で非表示にもできる）。
   const FAQ_FIXED = [
-    { id:'fx_promo', cat:'promo', src:'2026-08-10 構築MTG',
+    /* ★2026-08-12 構築MTGで「3週間を目安」に決まった（それまでは2〜3週間と案内していた）。
+       ★「状況により超えることもある」も併せて出す＝目安どおりに届かなかったときの行き違いを避けるため。 */
+    { id:'fx_promo', cat:'promo', src:'2026-08-12 構築MTG',
       q:{ ja:'販促物は、いつまでに依頼すればよいですか？', en:'How early should we request promotional items?', vi:'Cần đặt vật phẩm quảng bá trước bao lâu?' },
-      a:{ ja:'制作元への依頼・調整を含めて2〜3週間かかります。使用したい日から逆算して、余裕をもってご依頼ください。',
-          en:'It takes 2–3 weeks including the request to and coordination with the maker. Please order well before the date you need them.',
-          vi:'Mất 2–3 tuần bao gồm đặt hàng và điều chỉnh với nhà sản xuất. Vui lòng đặt sớm trước ngày cần dùng.' } },
+      a:{ ja:'新しくデザインからお願いする場合は、3週間を目安にご依頼ください。制作元への依頼と調整を含めた期間です。混み具合によっては、これを超えることもあります。使用したい日から逆算して、余裕をもってお知らせください。',
+          en:'For items that need a new design, please allow about 3 weeks. This covers the request to the maker and the back-and-forth. Depending on how busy they are, it can take longer. Please let us know well before the date you need them.',
+          vi:'Với vật phẩm cần thiết kế mới, vui lòng đặt trước khoảng 3 tuần. Thời gian này bao gồm việc đặt hàng và trao đổi với nhà sản xuất. Tùy mức độ bận, có thể lâu hơn. Vui lòng báo sớm trước ngày cần dùng.' } },
     { id:'fx_drink', cat:'store', src:'2026-08-10 構築MTG',
       q:{ ja:'お客様からお飲み物の持ち込みを希望されたら、どうすればよいですか？', en:'What if a guest asks to bring their own drinks?', vi:'Nếu khách muốn mang đồ uống vào thì sao?' },
       a:{ ja:'原則としてお断りしています。例外的にお受けする場合は、事前に本部の承認が必要です。ご来店当日にお申し出をいただいた場合は、承認が間に合わないため原則お断りとなります。',

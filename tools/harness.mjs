@@ -1348,7 +1348,8 @@ console.log('== よくある質問（8/10 構築MTG A-04：ルールを後から
   await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/faq';
   const html = registry.app.innerHTML;
-  ok(/2〜3週間/.test(html), '販促物の納期ルール（D-03）が出る');
+  /* ★2026-08-12 構築MTGで「3週間を目安」に変わった（それまでは2〜3週間） */
+  ok(/3週間を目安/.test(html), '販促物の納期ルール（D-03）が出る');
   ok(/原則としてお断り/.test(html), 'ワイン持ち込みのルール（D-10）が出る');
   ok(/構築MTGでの決定事項/.test(html), '会議で決まったルールには出典が付く');
   ok(/制服が破れたときは/.test(html), '本部が追加した項目が全端末へ同期される');
@@ -1483,6 +1484,24 @@ console.log('== 接客・ホールは本部の「03.接客ホール」を並べ�
      上げ忘れると、以前開いた端末に古い見本が残り続ける（実際に起きた）。 */
   ok(/const SEED_VER = APP_BUILD;/.test(src), '見本データの版が、アプリの版に連動している（上げ忘れが起きない）');
   ok(!/const SEED_VER = '2026-/.test(src), '手で書いた固定の版が残っていない');
+}
+
+console.log('== 販促物の目安は「3週間」（2026-08-12 構築MTGで決定・それまでは2〜3週間）==');
+{
+  /* ★app.js は改行が CRLF。[\s\S]*?\n を使う正規表現は当たらないので、行で切り出す */
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  const all = src.split('\n');
+  const from = all.findIndex(l => l.includes("id:'fx_promo'"));
+  const promo = from < 0 ? '' : all.slice(from, from + 6).join('\n');
+  ok(promo.length > 0, '販促物のよくある質問がある');
+  ok(!/2〜3週間|2–3 weeks|2–3 tuần/.test(promo), '古い「2〜3週間」が残っていない');
+  ok(/3週間を目安/.test(promo), '日本語が「3週間を目安」になっている');
+  ok(/about 3 weeks/.test(promo), '英語も3週間になっている');
+  ok(/khoảng 3 tuần/.test(promo), 'ベトナム語も3週間になっている');
+  /* 目安どおりに届かなかったときの行き違いを避けるため、超えることもある旨を必ず添える */
+  ok(/超えることもあります/.test(promo) && /take longer/.test(promo) && /có thể lâu hơn/.test(promo),
+     '3言語とも「これを超えることもある」を添えている');
+  ok(/src:'2026-08-12 構築MTG'/.test(promo), '出典が決定した会議の日付になっている');
 }
 
 console.log('== 表示範囲を本部の決定に合わせる（2026-08-12 アプリ構築MTG アクション6・7・8）==');
