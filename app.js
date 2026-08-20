@@ -207,9 +207,9 @@
     { id:'inventory', group:'storeops', icon:'box', soon:true, hide:true, roles:['manager','owner','hq'], // 8/4: 棚卸は月末提出物へ統合＝独立は外す
       name:{ ja:'棚卸・在庫入力', en:'Stocktake', vi:'Kiểm kho' },
       desc:{ ja:'品目ごとの在庫をスマホで入力', en:'Enter stock by item on your phone', vi:'Nhập tồn kho theo mặt hàng' } },
-    { id:'openreg', group:'storeops', icon:'coins', hide:true, roles:['manager','owner','hq'], // 8/7 増田さん: 開局（レジ開設）は不要
-      name:{ ja:'開局（レジ準備金）', en:'Register Open', vi:'Mở quầy' },
-      desc:{ ja:'金種を入力→合計を自動計算', en:'Enter float by denomination', vi:'Nhập tiền quỹ đầu ca' } },
+    /* ★2026-08-12 アプリ構築MTG（アクション8-④）＝「開局（レジ準備金）」は完全に外すと決定。
+       理由＝レジ側で入力が必須のため、アプリでも入れると二重入力になる。
+       伏せる（hide）のではなく、機能ごと削除した。復活させる場合は本部の決定から。 */
     // 月次業務の「店舗内・外の動画」から開く。タブに同じものを並べない
     { id:'storevideo', group:'storeops', icon:'video', tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'店内動画の共有', en:'In-store Video', vi:'Video trong quán' },
@@ -244,7 +244,9 @@
     { id:'hr', group:'storeops', icon:'hr', soon:true, roles:['manager','owner','hq'],
       name:{ ja:'スタッフ評価・面談', en:'Staff Review', vi:'Đánh giá nhân viên' },
       desc:{ ja:'キャリアアップ制度と面談', en:'Career ranks & interviews', vi:'Xếp hạng & phỏng vấn' } },
-    { id:'order', group:'storeops', icon:'cart', soon:true, roles:['manager','owner','hq'],
+    /* ★2026-08-12 アプリ構築MTG（アクション6）＝発注は店舗iPad（staff）でも使える。
+       店舗によっては一般スタッフが発注しているため。 */
+    { id:'order', group:'storeops', icon:'cart', soon:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'備品・食材の発注', en:'Order Supplies', vi:'Đặt vật tư' },
       desc:{ ja:'カタログから本部へ発注', en:'Order from the HQ catalog', vi:'Đặt từ danh mục HQ' } },
     { id:'schedule', group:'biz', icon:'calendar', soon:true, hide:true, roles:['owner','hq'], // 8/4: 開業関係は初期で外す（D-90は未確定）
@@ -252,7 +254,11 @@
       desc:{ ja:'契約〜開業のマスター工程', en:'Contract to opening master plan', vi:'Từ hợp đồng đến khai trương' } },
     // 月次業務の「総括表の締め」「PL・損益」から開く。タブに同じものを並べない
     // （本部・オーナーも月次業務から開けることを確認済み）
-    { id:'pl', group:'storeops', icon:'yen', live:true, tabHide:true, roles:['manager','owner','hq'],
+    /* ★2026-08-12 アプリ構築MTG（アクション8-③）＝売上・原価率はスタッフも見てよい。
+       ただし利益（粗利）と詳細なPLはスタッフに出さない。
+       ★機能ごと開けるのではなく、画面の中で項目単位に出し分けている（canSeeProfit）。
+       スタッフは読むだけ＝月次の数値を入力する欄は出さない（店舗iPadは共用のため）。 */
+    { id:'pl', group:'storeops', icon:'yen', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'数値・原価率', en:'Numbers & Cost', vi:'Số liệu & Giá vốn' },
       desc:{ ja:'月次の売上・仕入・在庫から原価率を自動計算', en:'Monthly cost ratio from sales/stock', vi:'Tự tính giá vốn theo tháng' } },
     { id:'dashboard', group:'hq', icon:'gauge', roles:['hq'],
@@ -1321,42 +1327,9 @@
   };
 
   /* 開局（レジ準備金）＝金種入力→合計自動。総括表のレジ締めと対 */
-  const getOpen = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_open')) || []; } catch { return []; } };
-  const saveOpen = (a) => localStorage.setItem('yosakura_demo_open', JSON.stringify(a));
-  const DENOMS = [10000,5000,1000,500,100,50,10,5,1];
-  const OPEN_TARGET = 100000;
-  APP_VIEWS.openreg = () => {
-    const vis = visibleStores();
-    const recent = getOpen().filter(r=>vis.includes(r.store)).sort((a,b)=>b.t-a.t).slice(0,5);
-    const today = todayKey();
-    return `
-      ${NOTE({ ja:'◆ 開店時のレジ準備金を金種で入力→合計を自動計算（準備金 ¥100,000 目安）', en:'◆ Enter opening float by denomination; total auto-calculated', vi:'◆ Nhập tiền quỹ đầu ca theo mệnh giá; tự tính tổng' })}
-      <div class="card" id="orForm">
-        <h3>${L({ ja:'開局（レジ準備金）', en:'Register open (float)', vi:'Mở quầy (tiền quỹ)' })}</h3>
-        <div class="sk-grid">
-          <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="or_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
-          <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="or_date" value="${today}"></label>
-        </div>
-        ${DENOMS.map(d=>`<div class="rep"><div class="body"><div class="l1">¥${d.toLocaleString('en-US')}</div></div><input type="text" inputmode="numeric" class="or_denom" data-d="${d}" placeholder="0" style="width:84px;text-align:center;padding:9px"></div>`).join('')}
-        <div class="stat-row" style="margin-top:10px">
-          <div class="stat"><div class="n" id="or_total">¥0</div><div class="k">${L({ ja:'合計', en:'Total', vi:'Tổng' })}</div></div>
-          <div class="stat"><div class="n" id="or_diff">±0</div><div class="k">${L({ ja:'準備金との差', en:'vs float', vi:'So với quỹ' })}</div></div>
-        </div>
-        <button class="btn-primary" id="submitOr">${L({ ja:'開局する', en:'Open register', vi:'Mở quầy' })}</button>
-        <div class="hint">${L({ ja:'保存すると履歴に反映されます', en:'Saved and shown in history', vi:'Được lưu và hiển thị trong lịch sử' })}</div>
-      </div>
-      <div class="card"><h3>${L({ ja:'最近の開局', en:'Recent opens', vi:'Mở quầy gần đây' })}</h3>
-        <div>${recent.length ? recent.map(orRow).join('') : `<div class="muted">${L({ ja:'まだありません', en:'None yet', vi:'Chưa có' })}</div>`}</div>
-      </div>`;
-  };
-  const orRow = (r) => {
-    const df = (r.total||0) - OPEN_TARGET;
-    const dfTxt = df===0 ? L({ ja:'準備金ぴったり', en:'exact', vi:'khớp' }) : (df>0?'+':'−') + yen(Math.abs(df));
-    return `<div class="rep">
-      <span class="kind b">${esc((r.date||'').slice(5))}</span>
-      <div class="body"><div class="l1">${yen(r.total)}</div><div class="l2">${esc(r.store)} ・ ${esc(dfTxt)}</div></div>
-    </div>`;
-  };
+  /* ★2026-08-12 アプリ構築MTG（アクション8-④）で「開局（レジ準備金）」は完全に外すと決定。
+     レジ側で入力が必須のため、アプリにも置くと二重入力になる。
+     伏せる（hide）のではなく、画面・保存・同期まで含めて消してある。 */
 
   /* ③ 開店・清掃チェック（動く：和牛世桜 店舗管理チェックシート2026.05に準拠）*/
   /* ★オープン／アイドル／クローズは、本部の「オープン・クローズ・アイドルタイム チェックリスト」
@@ -1884,7 +1857,9 @@
     { ic:'shield',gyotai:'all', roles:['all'],               gid:'trouble', t:{ja:'08. トラブル・緊急対応',en:'08. Trouble & emergency',vi:'08. Sự cố & khẩn cấp'}, s:{ja:'防火／緊急通報／熱中症／自然災害／害虫',en:'Fire / emergency / heat / disaster / pests',vi:'Cháy / khẩn cấp / thiên tai'} },
     { ic:'hq',    gyotai:'all', roles:['manager','owner'],   gid:'saiyo', t:{ja:'09. 採用・面接・シフト',en:'09. Hiring & shifts',vi:'09. Tuyển dụng & ca'}, s:{ja:'面接／雇用契約／各種届出／シフト表',en:'Interview / contracts / forms / shifts',vi:'Phỏng vấn / hợp đồng / ca'} },
     { ic:'yen',   gyotai:'all', roles:['owner'],             gid:'owner', t:{ja:'10. キャリアアップ',en:'10. Career path',vi:'10. Thăng tiến'}, s:{ja:'キャリアアップ実践ガイド／経営の考え方',en:'Career path / management',vi:'Thăng tiến / quản lý'} },
-    { ic:'grad',  gyotai:'all', roles:['staff','manager'],   gid:'sevendays', t:{ja:'11. 育成・教育',en:'11. Training',vi:'11. Đào tạo'}, s:{ja:'7DAYS研修（1〜7日目・活用）／ハウスルール／朝礼',en:'7DAYS (day1-7) / house rules / morning brief',vi:'7DAYS / nội quy / họp sáng'} },
+    /* ★2026-08-12 アプリ構築MTG（アクション7）＝7DAYS新人教育はオーナー様も見られるようにする。
+       多くの店舗でオーナー様が店長を兼ねておられるため。 */
+    { ic:'grad',  gyotai:'all', roles:['staff','manager','owner'], gid:'sevendays', t:{ja:'11. 育成・教育',en:'11. Training',vi:'11. Đào tạo'}, s:{ja:'7DAYS研修（1〜7日目・活用）／ハウスルール／朝礼',en:'7DAYS (day1-7) / house rules / morning brief',vi:'7DAYS / nội quy / họp sáng'} },
     { ic:'box',   gyotai:'all', roles:['all'],               gid:'print', t:{ja:'12. 印刷物',en:'12. Printables',vi:'12. Ấn phẩm'}, s:{ja:'POP／朝礼シート／発注リスト／緊急連絡先一覧',en:'POP / forms / order list',vi:'POP / biểu mẫu / đặt hàng'} },
     { ic:'check', gyotai:'all', roles:['all'],               gid:'checksheet', t:{ja:'13. チェックシート',en:'13. Check sheets',vi:'13. Bảng kiểm'}, s:{ja:'お手すき／桜／定期清掃／OPEN・CLOSE',en:'Idle / sakura / cleaning / open-close',vi:'Rảnh / vệ sinh / mở-đóng'} },
     { ic:'camera',gyotai:'all', roles:['all'],               gid:'serving', t:{ja:'提供時のあるべき姿',en:'Serving standards',vi:'Chuẩn phục vụ'}, s:{ja:'盛り付け・グラム規定・提供基準（最重要）',en:'Plating, grams, serving rules (key)',vi:'Trình bày, định lượng (quan trọng)'} },
@@ -2842,7 +2817,10 @@
       </div>`;
   }
 
-  const plRow = (m) => { const c = plCalc(m); return `<div class="rep"><span class="kind ${c.costRate>0&&c.costRate<=35?'b':'a'}">${esc(m.ym)}</span><div class="body"><div class="l1">${L({ja:'売上',en:'Sales',vi:'DT'})} ${yen(c.sales)} ・ ${L({ja:'原価率',en:'Cost',vi:'Giá vốn'})} <b>${pct(c.costRate)}</b></div><div class="l2">${L({ja:'原価',en:'Cost',vi:'Giá vốn'})} ${yen(c.cost)} ・ ${L({ja:'粗利',en:'Gross',vi:'Lãi gộp'})} ${yen(c.gross)}（${pct(c.grossRate)}）</div></div></div>`; };
+  /* ★利益（粗利）を見せてよい相手か（2026-08-12 アプリ構築MTG アクション8-③）。
+     売上・原価率はスタッフも見てよいが、利益と詳細なPLは出さない。 */
+  const canSeeProfit = () => getRole() !== 'staff';
+  const plRow = (m) => { const c = plCalc(m); return `<div class="rep"><span class="kind ${c.costRate>0&&c.costRate<=35?'b':'a'}">${esc(m.ym)}</span><div class="body"><div class="l1">${L({ja:'売上',en:'Sales',vi:'DT'})} ${yen(c.sales)} ・ ${L({ja:'原価率',en:'Cost',vi:'Giá vốn'})} <b>${pct(c.costRate)}</b></div><div class="l2">${L({ja:'原価',en:'Cost',vi:'Giá vốn'})} ${yen(c.cost)}${canSeeProfit() ? ` ・ ${L({ja:'粗利',en:'Gross',vi:'Lãi gộp'})} ${yen(c.gross)}（${pct(c.grossRate)}）` : ''}</div></div></div>`; };
   APP_VIEWS.pl = () => {
     const vis = visibleStores();
     // 複数店舗（オーナー所有／本部全店）＝直近月の原価率を店舗比較
@@ -2850,7 +2828,7 @@
       return `
         ${NOTE({ ja:'◆ 各店の直近月の売上・原価率を比較（入力は店舗を選ぶと行えます）', en:'◆ Compare latest-month sales & cost ratio by store', vi:'◆ So sánh doanh thu & giá vốn tháng gần nhất theo cửa hàng' })}
         <div class="card"><h3>${L({ ja:'店舗別（直近月）', en:'By store (latest month)', vi:'Theo cửa hàng' })}</h3>
-          ${vis.map(s => { const m = plMonthsOf(s)[0]; if (!m) return `<div class="rep"><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${L({ja:'未入力',en:'No data',vi:'Chưa nhập'})}</div></div></div>`; const c = plCalc(m); return `<div class="rep"><span class="amt">${pct(c.costRate)}</span><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${esc(m.ym)} ・ ${L({ja:'売上',en:'Sales',vi:'DT'})} ${yen(c.sales)} ・ ${L({ja:'粗利',en:'Gross',vi:'Lãi'})} ${yen(c.gross)}</div></div></div>`; }).join('')}
+          ${vis.map(s => { const m = plMonthsOf(s)[0]; if (!m) return `<div class="rep"><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${L({ja:'未入力',en:'No data',vi:'Chưa nhập'})}</div></div></div>`; const c = plCalc(m); return `<div class="rep"><span class="amt">${pct(c.costRate)}</span><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${esc(m.ym)} ・ ${L({ja:'売上',en:'Sales',vi:'DT'})} ${yen(c.sales)}${canSeeProfit() ? ` ・ ${L({ja:'粗利',en:'Gross',vi:'Lãi'})} ${yen(c.gross)}` : ''}</div></div></div>`; }).join('')}
         </div>
         <p class="hint">${L({ ja:'※ 入力は右上で対象店舗を選んでから', en:'Pick a store (top-right) to enter data', vi:'Chọn cửa hàng (góc phải) để nhập' })}</p>`;
     }
@@ -2859,6 +2837,27 @@
     const nowYm = new Date().toISOString().slice(0, 7);
     const cur = rows.find(r => r.ym === nowYm) || {};
     const openDef = cur.open != null && cur.open !== '' ? cur.open : plPrevClose(store, nowYm);
+
+    /* ★スタッフ（店舗iPad）は読むだけ。入力欄は出さない（2026-08-12 アクション8-③）。
+       店舗iPadは共用のため、月次の数値を誰でも書き換えられる状態にしない。
+       売上と原価率は下の「月別の推移」で見られる。 */
+    if (!canSeeProfit()) {
+      const m0 = rows[0];
+      const c0 = m0 ? plCalc(m0) : null;
+      return `
+        ${NOTE({ ja:'◆ お店の売上と原価率を見られます（入力は店長・オーナー様・本部が行います）', en:'◆ View sales and cost ratio (entry is done by manager/owner/HQ)', vi:'◆ Xem doanh thu và tỷ lệ giá vốn (nhập liệu do quản lý/chủ/HQ)' })}
+        <div class="card"><h3>${L({ ja:'直近の月', en:'Latest month', vi:'Tháng gần nhất' })} — ${esc(storeShort(store))}</h3>
+          ${c0 ? `<div class="stat-row">
+            <div class="stat"><div class="n">${yen(c0.sales)}</div><div class="k">${L({ ja:'売上', en:'Sales', vi:'Doanh thu' })}</div></div>
+            <div class="stat"><div class="n">${pct(c0.costRate)}</div><div class="k">${L({ ja:'原価率', en:'Cost ratio', vi:'Tỷ lệ giá vốn' })}</div></div>
+          </div>` : `<div class="muted">${L({ ja:'まだ入力がありません', en:'No data yet', vi:'Chưa có' })}</div>`}
+        </div>
+        ${plTrend(store)}
+        <div class="card"><h3>${L({ ja:'月別の推移', en:'Monthly history', vi:'Lịch sử theo tháng' })}</h3>
+          ${rows.length ? rows.map(plRow).join('') : `<div class="muted">${L({ ja:'まだ入力がありません', en:'No data yet', vi:'Chưa có' })}</div>`}
+        </div>`;
+    }
+
     return `
       ${NOTE({ ja:'◆ 月次の売上・仕入・在庫を入力→原価率を自動計算。前月末在庫は今月の月初在庫へ自動で引き継ぎます', en:'◆ Enter monthly sales/purchases/stock → cost ratio auto-calculated', vi:'◆ Nhập doanh thu/nhập hàng/tồn kho → tự tính giá vốn' })}
       <div class="card" id="plForm">
@@ -5631,28 +5630,6 @@
       postReport({ kind:'route', store, item:route, t });
     });
 
-    // 開局（レジ準備金）：金種→合計/差の自動計算＋保存
-    const orDenoms = document.querySelectorAll('.or_denom');
-    if (orDenoms.length) {
-      const upd = () => {
-        let t = 0; orDenoms.forEach(i => { t += (Number(i.dataset.d)||0) * (Number(i.value)||0); });
-        const totEl = byId('or_total'); if (totEl) totEl.textContent = '¥' + t.toLocaleString('en-US');
-        const diffEl = byId('or_diff'); if (diffEl) { const df = t - OPEN_TARGET; diffEl.textContent = (df>=0?'+':'−') + '¥' + Math.abs(df).toLocaleString('en-US'); }
-      };
-      orDenoms.forEach(i => i.oninput = upd);
-    }
-    const subOr = byId('submitOr');
-    if (subOr) subOr.onclick = () => {
-      const denom = {}; let total = 0;
-      document.querySelectorAll('.or_denom').forEach(i => { const d = Number(i.dataset.d)||0, c = Number(i.value)||0; denom[d] = c; total += d*c; });
-      const t = Date.now(), store = byId('or_store').value, date = byId('or_date').value;
-      const rec = { store, date, denom, total, t };
-      const arr = getOpen(); arr.push(rec); try { saveOpen(arr.slice(-60)); } catch (e) { saveOpen(arr.slice(-20)); }
-      lastSync = t;
-      toast(L({ ja:'開局しました（合計 ', en:'Register opened (total ', vi:'Đã mở quầy (tổng ' }) + '¥' + total.toLocaleString('en-US') + '）');
-      render();
-      postReport({ kind:'open', store, note: JSON.stringify({ date, denom, total }), t });
-    };
 
     // 一食目写真：本部フィードバックを開く
     document.querySelectorAll('[data-fpfb]').forEach(b => b.onclick = () => openFPFeedback(b.dataset.fpfb));
@@ -5753,7 +5730,7 @@
     });
     const set = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a)); } catch (_) {} };
     set(LS.reports, food.concat(subs)); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
-    set('yosakura_demo_open', open); set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
+    set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
     set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_monthly', Object.values(monthly));
     /* ★店舗ごとのカスタマイズは「届いたキーだけ」差し替える（2026-08-13）。

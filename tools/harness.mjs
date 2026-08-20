@@ -1485,6 +1485,64 @@ console.log('== 接客・ホールは本部の「03.接客ホール」を並べ�
   ok(!/const SEED_VER = '2026-/.test(src), '手で書いた固定の版が残っていない');
 }
 
+console.log('== 表示範囲を本部の決定に合わせる（2026-08-12 アプリ構築MTG アクション6・7・8）==');
+{
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+
+  /* 機能の定義は1行に書かれているので、その行だけを取り出して確かめる */
+  const lineWith = (needle) => (src.split('\n').find(l => l.includes(needle)) || '');
+
+  /* ①発注は店舗iPad（staff）でも使える＝店舗によっては一般スタッフが発注するため */
+  ok(/roles:\['staff','manager','owner','hq'\]/.test(lineWith("id:'order'")),
+     '発注は店舗iPadでも使える');
+
+  /* ②7DAYS新人教育はオーナー様も見られる＝多くの店舗でオーナー＝店長のため */
+  ok(/roles:\['staff','manager','owner'\]/.test(lineWith("gid:'sevendays'")),
+     '7DAYS（育成・教育）はオーナー様も開ける');
+
+  /* ③売上・原価率はスタッフも見てよい。ただし利益と詳細PLは出さない */
+  ok(/roles:\['staff','manager','owner','hq'\]/.test(lineWith("id:'pl'")),
+     '数値・原価率はスタッフも開ける');
+  ok(/const canSeeProfit = \(\) => getRole\(\) !== 'staff';/.test(src),
+     '利益を見せてよい相手かを、1か所で決めている');
+
+  /* 数字が1件も無いと、どの役割でも「未入力」しか出ず、出し分けを確かめられない。
+     広島店の1か月ぶんだけ置いてから見る。 */
+  const S_OWNED = '牛カツ世桜 富士山店';   // オーナー様が見えるのはご自分の店舗だけ
+  const MONTHLY = JSON.stringify([
+    { store: S_HIROSHIMA, ym: '2026-07', sales: 3000000, purchase: 900000, open: 100000, close: 100000 },
+    { store: S_OWNED,     ym: '2026-07', sales: 2000000, purchase: 600000, open: 100000, close: 100000 }
+  ]);
+
+  for (const role of ['staff','manager','owner','hq']) {
+    run(()=> { setLS(role, role === 'hq' ? 'all' : (role === 'owner' ? S_OWNED : S_HIROSHIMA), 'ja');
+               localStorage.setItem('yosakura_demo_monthly', MONTHLY); });
+    location.hash = '#/app/pl';
+    const html = registry.app.innerHTML;
+    ok(/売上|Sales/.test(html), `[${role}] 数値の画面を開ける（売上が出る）`);
+    if (role === 'staff') {
+      ok(!/粗利/.test(html), '[staff] 利益（粗利）は出さない');
+      ok(!/pl_sales/.test(html), '[staff] 月次の数値を入力する欄は出さない（店舗iPadは共用のため）');
+      ok(!/plSave/.test(html), '[staff] 保存ボタンも出さない');
+      ok(/原価率/.test(html), '[staff] 原価率は見られる');
+    } else {
+      ok(/粗利|Gross/.test(html), `[${role}] 利益（粗利）は今までどおり見られる`);
+    }
+  }
+  /* 1店舗だけを見ている店長には、これまでどおり入力欄が出る
+     （オーナー様・本部は複数店舗が見えるため、まず店舗比較の画面になる） */
+  run(()=> setLS('manager', S_HIROSHIMA, 'ja'));
+  location.hash = '#/app/pl';
+  ok(/pl_sales/.test(registry.app.innerHTML), '[manager] 月次の数値を入力する欄は今までどおり出る');
+
+  /* ④開局（レジ準備金）は完全に外す＝レジ入力と二重になるため。伏せるのではなく削除 */
+  ok(!/id:'openreg'/.test(src), '開局（レジ準備金）を機能の一覧に置かない');
+  ok(!/APP_VIEWS\.openreg/.test(src), '開局の画面そのものを持たない（URLを直接打っても開けない）');
+  ok(!/OPEN_TARGET|or_denom|submitOr/.test(src), '開局の金種入力・保存の処理が残っていない');
+  ok(!/yosakura_demo_open'/.test(src.replace(/'yosakura_demo_open',\s*$/gm, '')) ||
+     !/set\('yosakura_demo_open'/.test(src), '開局のデータを同期でやりとりしない');
+}
+
 console.log('== 本部ドライブの公式マニュアル14分類が、そのまま入っている（2026-08-18 神田さんのご指示）==');
 {
   const src  = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
