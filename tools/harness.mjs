@@ -1485,6 +1485,69 @@ console.log('== 接客・ホールは本部の「03.接客ホール」を並べ�
   ok(!/const SEED_VER = '2026-/.test(src), '手で書いた固定の版が残っていない');
 }
 
+console.log('== 本部ドライブの公式マニュアル14分類が、そのまま入っている（2026-08-18 神田さんのご指示）==');
+{
+  const src  = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  const cat  = (src.match(/const MANUAL_CATALOG = \[[\s\S]*?\n  \];/) || [''])[0];
+  const seed = (src.match(/function seedMaterials\(\)[\s\S]*?\n  \}/) || [''])[0];
+
+  /* ★分類のIDは、本部が画面から登録した資料とのつなぎ目（mcat）。
+     付け替えると本部の登録が全部はぐれるため、名前だけ公式のものへ変えてIDは据え置いた。
+     ★件数は本部フォルダの実数で固定する。勝手に減らすと落ちる＝本部の目次と突き合わせられる。 */
+  const OFFICIAL = [
+    ['kaigyo',     '00. 開業前',              1],
+    ['philosophy', '01. 店舗の世界観・理念',   8],
+    ['staff',      '02. スタッフの基本',       6],
+    ['service',    '03. 接客ホール',          14],
+    ['marketing',  '04. 集客・マーケティング',  5],
+    ['hygiene',    '05. 衛生管理・厨房機材',   12],
+    ['cleaning',   '06. 店舗管理・清掃',       5],
+    ['storeops',   '07. レジ・業務管理',       7],
+    ['trouble',    '08. トラブル・緊急対応',    7],
+    ['saiyo',      '09. 採用・面接・シフト',   12],
+    ['owner',      '10. キャリアアップ',       3],
+    ['sevendays',  '11. 育成・教育',          10],
+    ['print',      '12. 印刷物',              17],
+    ['checksheet', '13. チェックシート',       8]
+  ];
+  for (const [gid, name, n] of OFFICIAL) {
+    ok(new RegExp("gid:'" + gid + "'").test(cat), '分類「' + name + '」のID（' + gid + '）が残っている');
+    ok(cat.includes(name), '分類名が本部の目次どおり「' + name + '」');
+    const c = (seed.match(new RegExp("mcat:'" + gid + "'", 'g')) || []).length;
+    ok(c === n, name + ' に本部の ' + n + ' 件が入っている（実際 ' + c + ' 件）');
+  }
+
+  const rows = seed.split('\n').map(l => {
+    const t = l.match(/title:'([^']*)'/), m = l.match(/mcat:'([a-z]+)'/);
+    const u = l.match(/url:'([^']*)'/),   i = l.match(/id:'(mn\d+)'/);
+    return (t && m && u && i) ? { title:t[1], mcat:m[1], url:u[1], id:i[1] } : null;
+  }).filter(Boolean);
+  ok(rows.length === 115, '公式マニュアルは全部で115件（実際 ' + rows.length + ' 件）');
+
+  // どこにも属さない資料が無い＝分類を消したのに資料だけ残った、が起きない
+  const gids  = [...cat.matchAll(/gid:'([a-z]+)'/g)].map(x => x[1]);
+  const stray = rows.filter(r => !gids.includes(r.mcat)).map(r => r.title);
+  ok(stray.length === 0, 'どの分類にも入らない資料が無い' + (stray.length ? '／' + stray.join('、') : ''));
+
+  // 同じ資料を2回登録していない（一覧に同じ行が並ぶと、どちらが正か分からなくなる）
+  ok(new Set(rows.map(r => r.id)).size === rows.length, '資料のIDが重複していない');
+  const dup = rows.map(r => r.url).filter((u, i, a) => a.indexOf(u) !== i);
+  ok(dup.length === 0, '同じ資料を2回登録していない' + (dup.length ? '／' + dup.length + '件' : ''));
+
+  /* 並び順＝番号を数として見る。03で直したのと同じ問題（03-1／03-10／03-11／03-2）が
+     他の分類で起きていないことを、全分類で確かめる。 */
+  for (const [gid, name] of OFFICIAL) {
+    const ns = rows.filter(r => r.mcat === gid)
+      .map(r => (r.title.match(/^\d+-(\d+) /) || [])[1]).filter(Boolean).map(Number);
+    ok(ns.every((v, i) => i === 0 || ns[i - 1] <= v), name + ' が番号順に並んでいる（' + ns.join(',') + '）');
+  }
+
+  /* ★移行フォルダの古いコピーを掴み直さないこと（2026-08-18 判明）。
+     世桜10訓は、公式（yosakura.fc 所有）と古いコピー（info@sharelive.jp 所有）で別物だった。 */
+  ok(!/1mKwnYeS24TL8lPhL12S4EkBJFsroQF2_GtVEU6ithfA/.test(src), '世桜10訓の古いコピーを掴んでいない');
+  ok(/10GPRuB_eUaa5JysAfyknaKAStafDkIPi7PkFzU2i_yA/.test(src), '世桜10訓は公式のほうを指している');
+}
+
 console.log('== リンク集は画面に出さない（2026-08-17 神田さんのご判断）==');
 {
   for (const role of ['staff','manager','owner','hq']) {
