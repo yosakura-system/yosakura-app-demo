@@ -4496,7 +4496,10 @@
         video:'https://drive.google.com/file/d/1Nqj57iVtfBl01Igbh_V5rutHAml6W8DC/view',
         body:'当日取り上げたマニュアルを、下にまとめています。',
         docs:[
-          { title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/12-TmHNp35oxYgag8khzXZJ1_HC4GWKROeNzxqJ2U1HI/edit?usp=sharing' },
+          /* ★2026-08-21 増田さんよりリンクを受領。それまでアジェンダとして商品開発チームのスライドを入れていた（誤り） */
+          { title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/1n_rQC6gVL_uznI5vU8VOOfZjW17Bqa3JKumqHyRMoHY/edit?usp=sharing' },
+          { title:'アプリ開発スライド', url:'https://drive.google.com/file/d/1gvwj8piw9NPXAuCSHilc-KyS7PE7mcHx/view' },
+          { title:'商品開発チームスライド', url:'https://docs.google.com/presentation/d/12-TmHNp35oxYgag8khzXZJ1_HC4GWKROeNzxqJ2U1HI/edit?usp=sharing' },
           { title:'05-1 手洗いマニュアル', url:'https://docs.google.com/presentation/d/1b5m33nQ-ABvTZGAqxfAVka0mZqgqHyuBeAl7YrLo20Q/edit?usp=sharing' },
           { title:'05-3 食中毒・感染対策', url:'https://docs.google.com/presentation/d/1zBBPAdE4V-1yF5W4khbHsbI_oB3ua74NxZ7WOa5LDnA/edit?usp=sharing' },
           { title:'05-6 まな板の衛生管理', url:'https://docs.google.com/presentation/d/1xbbI5Bhe1EfzXzwEDXA5eJxBc5iByiQKM1iVpU84-7A/edit?usp=sharing' },
