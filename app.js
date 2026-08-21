@@ -4485,13 +4485,15 @@
     if (localStorage.getItem('yosakura_demo_study') && seedFresh('study')) return;
     const now = Date.now();
     saveStudy([
-      { id:'st1786011551522', date:'2026-06', title:'2026年6月勉強会', t: now - 63 * 864e5, video:'https://drive.google.com/file/d/1jIm7Ks1XnVC6tlBSwvoq3rlfbQLagEDu/', body:'',
+      { id:'st1786011551522', date:'2026-06', title:'2026年6月勉強会', t: now - 63 * 864e5, video:'https://drive.google.com/file/d/1yFPYu-8hPN9RAAJuXU4AY55IrpJqHWdU/view', body:'',
         docs:[{ title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/14P3hyKBbXp1Qn0DVx64W24EcygYtbJO2dbrCbnxyZgU/edit?slide=id.g3e76fcf952b_0_0#slide=id.g3e76fcf952b_0_0' }, { title:'テーマスライド', url:'https://docs.google.com/presentation/d/14riX3QM07yufNlZ5jYgcVcdm0vZum9lP-k7CuW2W_wk/edit?slide=id.p1#slide=id.p1' }] },
-      { id:'st1786011745177', date:'2026-07', title:'2026年7月勉強会', t: now - 35 * 864e5, video:'https://drive.google.com/file/d/1C1UMnxFZkbbKm8Mz2nZjfG0mWdLfauYH/view', body:'',
+      { id:'st1786011745177', date:'2026-07', title:'2026年7月勉強会', t: now - 35 * 864e5, video:'https://drive.google.com/file/d/1f-b4t_7ED-YuWF9tYqO-Va2pUVtdyote/view', body:'',
         docs:[{ title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/1gy9IXkoDfvG28sK_IWXvzpfgTAV_Fbx8q65LoUKD55c/edit?slide=id.g3e76fcf952b_0_0#slide=id.g3e76fcf952b_0_0' }] },
-      /* 2026-08-19 の勉強会。★録画はまだ上がっていないので空のまま
-         （空のあいだは「録画を見る」のボタンが出ない。上がったら video にURLを入れる）。 */
-      { id:'st_2608', date:'2026-08', title:'2026年8月勉強会（8/19）', t: now, video:'',
+      /* ★2026-08-21：勉強会の録画は、本部が「勉強会／2026年共有」フォルダへ上げてくださっている。
+         6月・7月・8月の3本とも、そちらの正のものを指す。⚠️ 以前の6月・7月は別のコピーを指しており、
+         そちらは**サインインなしで誰でも見られる**状態だった（本部のものはログインした方だけ）。 */
+      { id:'st_2608', date:'2026-08', title:'2026年8月勉強会（8/19）', t: now,
+        video:'https://drive.google.com/file/d/1Nqj57iVtfBl01Igbh_V5rutHAml6W8DC/view',
         body:'当日取り上げたマニュアルを、下にまとめています。',
         docs:[
           { title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/12-TmHNp35oxYgag8khzXZJ1_HC4GWKROeNzxqJ2U1HI/edit?usp=sharing' },
