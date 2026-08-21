@@ -1486,6 +1486,30 @@ console.log('== 接客・ホールは本部の「03.接客ホール」を並べ�
   ok(!/const SEED_VER = '2026-/.test(src), '手で書いた固定の版が残っていない');
 }
 
+console.log('== 勉強会の録画は、本部が「2026年共有」へ上げたものを指す（2026-08-21）==');
+{
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  const all = src.split('\n');
+  const from = all.findIndex(l => l.includes('function seedStudy'));
+  const seed = all.slice(from, from + 30).join('\n');
+
+  /* ★2026-08-21：本部が「勉強会／2026年共有」フォルダを作り、6月・7月・8月の録画を上げてくださった。
+     それまでアプリが指していた6月・7月は別のコピーで、サインインなしで誰でも見られる状態だった。 */
+  for (const [ym, id] of [['2026年6月', '1yFPYu-8hPN9RAAJuXU4AY55IrpJqHWdU'],
+                          ['2026年7月', '1f-b4t_7ED-YuWF9tYqO-Va2pUVtdyote'],
+                          ['2026年8月', '1Nqj57iVtfBl01Igbh_V5rutHAml6W8DC']]) {
+    ok(seed.includes(id), `${ym}の録画が、本部の「2026年共有」のものを指している`);
+  }
+  for (const [ym, id] of [['6月', '1jIm7Ks1XnVC6tlBSwvoq3rlfbQLagEDu'],
+                          ['7月', '1C1UMnxFZkbbKm8Mz2nZjfG0mWdLfauYH']]) {
+    ok(!src.includes(id), `★${ym}の古いコピー（誰でも見られたもの）を指していない`);
+  }
+  ok(!/id:'st_2608'[\s\S]{0,120}video:''/.test(seed), '8月の録画が空のままになっていない');
+  ok((seed.match(/video:'https:\/\/drive\.google\.com\/file\/d\//g) || []).length === 3,
+     '録画は3本ぶん入っている（6月・7月・8月）',
+     (seed.match(/video:'https/g) || []).length);
+}
+
 console.log('== 販促物の目安は「3週間」（2026-08-12 構築MTGで決定・それまでは2〜3週間）==');
 {
   /* ★app.js は改行が CRLF。[\s\S]*?\n を使う正規表現は当たらないので、行で切り出す */
