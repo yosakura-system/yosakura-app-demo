@@ -2456,6 +2456,20 @@
         </div>
         <label class="fld"><span>${L({ ja:'過不足（現金）の理由', en:'Reason for cash difference', vi:'Lý do chênh lệch tiền mặt' })}</span><input type="text" id="sk_errnote" placeholder="${L({ja:'差がある場合のみ',en:'only if there is a difference',vi:'chỉ khi có chênh lệch'})}"></label>
 
+        <div class="idlabel" style="margin-top:14px">${L({ ja:'勤怠・ロス（総括表の項目）', en:'Staffing & loss (summary-sheet items)', vi:'Nhân sự & hao hụt (mục bảng tổng kết)' })}</div>
+        <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'入れるのは元の数字だけです。人時生産性・人件費率は自動で計算されます。', en:'Enter base numbers only; productivity and labor % are calculated automatically.', vi:'Chỉ nhập số gốc; năng suất và % nhân sự được tính tự động.' })}</p>
+        <div class="sk-grid">
+          <label class="fld"><span>${L({ja:'勤務人数',en:'Staff on duty',vi:'Số NV làm việc'})}</span><input type="text" inputmode="numeric" id="sk_staffct" placeholder="5"></label>
+          <label class="fld"><span>${L({ja:'総労働時間（h）',en:'Total work hours',vi:'Tổng giờ làm (h)'})}</span><input type="text" inputmode="decimal" id="sk_hours" placeholder="38.5"></label>
+          <label class="fld"><span>${L({ja:'人件費（当日・円）',en:'Labor cost (day)',vi:'Chi phí NS (ngày)'})}</span><input type="text" inputmode="numeric" id="sk_laborcost" placeholder="46200"></label>
+          <label class="fld"><span>${L({ja:'ロス金額（円）',en:'Loss amount',vi:'Tiền hao hụt'})}</span><input type="text" inputmode="numeric" id="sk_loss" placeholder="0"></label>
+        </div>
+        <div class="stat-row" style="margin:2px 0 10px">
+          <div class="stat"><div class="n" id="sk_prodh">—</div><div class="k">${L({ja:'人時生産性（自動）',en:'Sales per hour (auto)',vi:'DT/giờ (tự động)'})}</div></div>
+          <div class="stat"><div class="n" id="sk_laborauto">—</div><div class="k">${L({ja:'人件費率（自動）',en:'Labor % (auto)',vi:'% nhân sự (tự động)'})}</div></div>
+        </div>
+        <label class="fld"><span>${L({ ja:'所感（今日の感想）', en:'Notes on the day', vi:'Cảm nhận hôm nay' })}</span><textarea id="sk_memo" placeholder="${L({ja:'客足・ランチ／ディナー・運営面など',en:'traffic, lunch/dinner, operations …',vi:'khách, trưa/tối, vận hành …'})}"></textarea></label>
+
         <div class="idlabel" style="margin-top:14px">${L({ ja:'お客様の内訳（国別・組数／人数）', en:'Guests by country (groups / people)', vi:'Khách theo quốc gia (nhóm / người)' })}</div>
         <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'総括表と同じ区分です。分かるものだけで大丈夫です（空欄は0として扱いません）。', en:'Same categories as the summary sheet. Fill only what you know.', vi:'Cùng phân loại với bảng tổng kết. Chỉ điền phần bạn biết.' })}</p>
         <div class="sk-grid">
@@ -2650,7 +2664,14 @@
     { k:'buy',     t:{ ja:'仕入金額（当日）', en:'Purchases today', vi:'Nhập hàng hôm nay' }, f:'yen' },
     { k:'supply',  t:{ ja:'消耗品金額', en:'Supplies', vi:'Vật tư tiêu hao' },  f:'yen' },
     { k:'unagi',   t:{ ja:'鰻の使用尾数', en:'Eel used', vi:'Số lươn đã dùng' }, f:'num' },
-    { k:'errnote', t:{ ja:'過不足の理由', en:'Cash difference reason', vi:'Lý do chênh lệch' }, f:'txt' }
+    { k:'errnote', t:{ ja:'過不足の理由', en:'Cash difference reason', vi:'Lý do chênh lệch' }, f:'txt' },
+    /* 2026-08-26 構築MTGの決定「日報・総括表はアプリ入力を起点に一本化」で足した項目。
+       入れるのは元の数字だけ。人時生産性・人件費率は計算で出す＝入力させない。 */
+    { k:'staffct',   t:{ ja:'勤務人数', en:'Staff on duty', vi:'Số NV làm việc' },            f:'num' },
+    { k:'hours',     t:{ ja:'総労働時間（h）', en:'Total work hours', vi:'Tổng giờ làm (h)' }, f:'num' },
+    { k:'laborcost', t:{ ja:'人件費（当日）', en:'Labor cost (day)', vi:'Chi phí NS (ngày)' }, f:'yen' },
+    { k:'loss',      t:{ ja:'ロス金額', en:'Loss amount', vi:'Tiền hao hụt' },                f:'yen' },
+    { k:'memo',      t:{ ja:'所感（今日の感想）', en:'Notes on the day', vi:'Cảm nhận hôm nay' }, f:'txt' }
   ];
   /* 顧客情報＝国別の組数・人数（総括表 Ver.2.6 の「顧客情報」欄）。
      サーベイの来店国と並べて見られるようにするため、シートと同じ区分にそろえている。 */
@@ -2697,6 +2718,7 @@
         <div class="stat"><div class="n">${per ? esc(yenShort(per)) : '—'}</div><div class="k">${L({ ja:'客単価', en:'Per guest', vi:'BQ/khách' })}</div></div>
       </div>
       ${fl ? `<p class="hint" style="display:block">FL ${esc(fl)}（${L({ ja:'原価', en:'Food', vi:'Giá vốn' })} ${esc(numOr0(r.food).toFixed(1))}% ＋ ${L({ ja:'人件費', en:'Labor', vi:'Nhân sự' })} ${esc(numOr0(r.labor).toFixed(1))}%）</p>` : ''}
+      ${(numOr0(r.hours) && numOr0(r.sales)) ? `<p class="hint" style="display:block">${L({ ja:'人時生産性（自動）', en:'Sales per hour (auto)', vi:'DT/giờ (tự động)' })} ¥${Math.round(numOr0(r.sales)/numOr0(r.hours)).toLocaleString('en-US')}/h${(numOr0(r.laborcost)) ? `　/　${L({ ja:'人件費率（自動）', en:'Labor % (auto)', vi:'% NS (tự động)' })} ${(numOr0(r.laborcost)/numOr0(r.sales)*100).toFixed(1)}%` : ''}</p>` : ''}
       <div class="dgrid">
         ${SK_FIELDS.map(f => `<div class="dcell${hasVal(r[f.k]) ? '' : ' off'}"><span class="dk">${esc(L(f.t))}</span><b class="dv">${hasVal(r[f.k]) ? skFmtVal(f.f, r[f.k]) : '—'}</b></div>`).join('')}
       </div>
@@ -2787,6 +2809,7 @@
           ${pst.days ? `<p class="hint" style="display:block;margin:-4px 0 10px">${isCur ? L({ ja:'※ 前月比は「前月の同じ日（1〜' + cut + '日）まで」と比べています', en:'Month-over-month compares the same day range of last month', vi:'So sánh cùng khoảng ngày của tháng trước' }) : L({ ja:'※ 前月比は前月の実績と比べています', en:'Compared with last month', vi:'So với tháng trước' })}</p>` : ''}
           ${goal ? `<div class="fillhead"><span>${L({ ja:'月間目標', en:'Monthly goal', vi:'Mục tiêu tháng' })} ${esc(yen(goal))}</span><b>${esc(yen(mtd))}</b></div><div class="fillbar"><i style="width:${Math.min(100, Math.round(mtd / goal * 100))}%"></i></div>` : ''}
           ${colChart(days, (d) => byDate[d] ? numOr0(byDate[d].sales) : 0, { store, title:{ ja:'日別の売上', en:'Daily sales', vi:'Doanh thu theo ngày' } })}
+          <button class="btn-primary" data-go="/skprint?s=${encodeURIComponent(store)}&ym=${ym}" style="margin-top:12px">${L({ ja:'総括表の形で出力（印刷・CSV）', en:'Export as summary sheet (print / CSV)', vi:'Xuất dạng bảng tổng kết (in / CSV)' })}</button>
         </div>
         <div class="card">
           <h3>${L({ ja:'曜日別の平均売上', en:'Average sales by weekday', vi:'Doanh thu TB theo thứ' })}</h3>
@@ -2814,6 +2837,106 @@
         </div>
       </main>`;
     return shell(inner, 'genba');
+  }
+
+  /* --- 総括表の形での月次出力（#/skprint?s=店舗&ym=YYYY-MM）---
+     2026-08-26 構築MTGの決定「アプリ入力→蓄積→月次集約・必要に応じて出力」の出口。
+     ★新しい見た目を発明しない＝総括表と同じ数字の並びで、1か月を1枚に。
+     ★印刷して紙で保管できる（A4横）＋CSVでも出せる。 */
+  function skMonthData(store, ym) {
+    const byDate = {};
+    getSk().filter(r => r.store === store && ymOfDate(r.date) === ym)
+      .forEach(r => { if (!byDate[r.date] || (Number(r.t) || 0) >= (Number(byDate[r.date].t) || 0)) byDate[r.date] = r; });
+    const days = daysOfYm(ym).map(d => ({ date: d, r: byDate[d] || null }));
+    const tot = { sales:0, cash:0, card:0, guests:0, buy:0, laborcost:0, loss:0, hours:0, staffct:0, err:0, entered:0 };
+    days.forEach(x => { if (!x.r) return; tot.entered++;
+      ['sales','cash','card','guests','buy','laborcost','loss','hours','staffct','err'].forEach(k => { tot[k] += numOr0(x.r[k]); }); });
+    tot.per = tot.guests ? Math.round(tot.sales / tot.guests) : 0;
+    tot.foodRate = tot.sales ? tot.buy / tot.sales * 100 : 0;          // 原価率（自動）＝仕入計÷売上計
+    tot.laborRate = tot.sales ? tot.laborcost / tot.sales * 100 : 0;   // 人件費率（自動）＝人件費計÷売上計
+    tot.prodh = tot.hours ? Math.round(tot.sales / tot.hours) : 0;     // 人時生産性（自動）＝売上計÷労働時間計
+    return { days, tot };
+  }
+  const SKP_COLS = [
+    { k:'sales',     t:{ ja:'売上計', en:'Sales', vi:'DT' },            f:'yen' },
+    { k:'cash',      t:{ ja:'現金', en:'Cash', vi:'Tiền mặt' },         f:'yen' },
+    { k:'card',      t:{ ja:'カード', en:'Card', vi:'Thẻ' },            f:'yen' },
+    { k:'guests',    t:{ ja:'客数', en:'Guests', vi:'Khách' },          f:'num' },
+    { k:'per',       t:{ ja:'客単価', en:'Per guest', vi:'BQ/khách' },  f:'yen', auto:true },
+    { k:'buy',       t:{ ja:'仕入', en:'Purchases', vi:'Nhập hàng' },   f:'yen' },
+    { k:'laborcost', t:{ ja:'人件費', en:'Labor', vi:'Nhân sự' },       f:'yen' },
+    { k:'staffct',   t:{ ja:'人数', en:'Staff', vi:'Số NV' },           f:'num' },
+    { k:'hours',     t:{ ja:'時間(h)', en:'Hours', vi:'Giờ' },          f:'num' },
+    { k:'loss',      t:{ ja:'ロス', en:'Loss', vi:'Hao hụt' },          f:'yen' },
+    { k:'err',       t:{ ja:'レジ誤差', en:'Reg. err', vi:'Lệch quầy' }, f:'yen' },
+    { k:'memo',      t:{ ja:'所感', en:'Notes', vi:'Ghi chú' },         f:'txt' }
+  ];
+  function viewSkPrint(sParam, ymParam) {
+    const vis = visibleStores();
+    const store = vis.includes(sParam) ? sParam : (vis[0] || STORES[0]);
+    const ym = /^\d{4}-\d{2}$/.test(ymParam || '') ? ymParam : todayYm();
+    const { days, tot } = skMonthData(store, ym);
+    const cell = (r, c) => {
+      if (!r) return '<td class="off">—</td>';
+      if (c.k === 'per') { const p = numOr0(r.guests) ? Math.round(numOr0(r.sales) / numOr0(r.guests)) : 0; return `<td>${p ? p.toLocaleString('en-US') : '—'}</td>`; }
+      if (c.f === 'txt') return `<td class="tx">${esc(String(r[c.k] || ''))}</td>`;
+      const v = numOr0(r[c.k]);
+      return `<td>${hasVal(r[c.k]) ? v.toLocaleString('en-US') : '—'}</td>`;
+    };
+    return `
+      <main class="screen skp">
+        <div class="appbar no-print"><button class="back" data-go="/store?s=${encodeURIComponent(store)}&ym=${ym}">${svg('back')}${L({ ja:'個店カルテへ', en:'Back to store', vi:'Về cửa hàng' })}</button></div>
+        <div class="card no-print">
+          ${NOTE({ ja:'◆ アプリに入力された日報を、総括表と同じ並びで1か月分まとめました。印刷して紙で保管できます（A4横）。', en:'◆ One month of app-entered reports in the summary-sheet layout. Print on A4 landscape for paper filing.', vi:'◆ Một tháng báo cáo theo bố cục bảng tổng kết. In A4 ngang để lưu giấy.' })}
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn-primary" id="skpPrint" style="flex:1">${L({ ja:'印刷する', en:'Print', vi:'In' })}</button>
+            <button class="btn-primary" id="skpCsv" style="flex:1">${L({ ja:'CSVで保存', en:'Save CSV', vi:'Lưu CSV' })}</button>
+          </div>
+        </div>
+        <div class="skp-sheet">
+          <div class="skp-head">
+            <b>${L({ ja:'総括表（月次出力）', en:'Monthly summary sheet', vi:'Bảng tổng kết tháng' })}</b>
+            <span>${esc(storeLabel(store))}（${esc(store)}）　${esc(ymLabel(ym))}　${L({ ja:'出力日', en:'Printed', vi:'Ngày in' })}：${esc(todayKey())}</span>
+          </div>
+          <div class="skp-scroll"><table class="skp-table">
+            <thead><tr><th>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</th><th>${L({ ja:'曜', en:'Day', vi:'Thứ' })}</th>${SKP_COLS.map(c => `<th>${L(c.t)}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${days.map(x => `<tr><td class="c">${Number(x.date.slice(8, 10))}</td><td class="c">${esc(L(WDAYS[wdOf(x.date)]))}</td>${SKP_COLS.map(c => cell(x.r, c)).join('')}</tr>`).join('')}
+              <tr class="sum"><td class="c" colspan="2">${L({ ja:'合計', en:'Total', vi:'Tổng' })}</td>
+                ${SKP_COLS.map(c => c.k === 'per' ? `<td>${tot.per ? tot.per.toLocaleString('en-US') : '—'}</td>`
+                  : c.f === 'txt' ? `<td class="tx"></td>`
+                  : `<td>${tot[c.k] ? tot[c.k].toLocaleString('en-US') : '—'}</td>`).join('')}
+              </tr>
+            </tbody>
+          </table></div>
+          <div class="skp-foot">
+            <span>${L({ ja:'入力日数', en:'Days entered', vi:'Số ngày' })}：${tot.entered}${L({ ja:'日', en:'', vi:'' })}</span>
+            <span>${L({ ja:'原価率（自動）', en:'Food cost % (auto)', vi:'% giá vốn (auto)' })}：${tot.buy ? tot.foodRate.toFixed(1) + '%' : '—'}</span>
+            <span>${L({ ja:'人件費率（自動）', en:'Labor % (auto)', vi:'% nhân sự (auto)' })}：${tot.laborcost ? tot.laborRate.toFixed(1) + '%' : '—'}</span>
+            <span>${L({ ja:'人時生産性（自動）', en:'Sales/hour (auto)', vi:'DT/giờ (auto)' })}：${tot.prodh ? '¥' + tot.prodh.toLocaleString('en-US') + '/h' : '—'}</span>
+          </div>
+          <p class="hint skp-note">${L({ ja:'※ 率と人時生産性は入力された元の数字（仕入・人件費・労働時間）から自動計算しています。空欄の日は未入力です。', en:'Rates are auto-calculated from entered base numbers. Blank days have no entry.', vi:'Tỷ lệ tính tự động từ số gốc. Ngày trống là chưa nhập.' })}</p>
+        </div>
+      </main>`;
+  }
+  // CSV出力（Excelで開けるようBOM付き・UTF-8）。表と同じ数字＝画面とファイルで食い違いを作らない
+  function skMonthCsv(store, ym) {
+    const { days, tot } = skMonthData(store, ym);
+    const head = [L({ ja:'日付', en:'Date', vi:'Ngày' }), L({ ja:'曜', en:'Day', vi:'Thứ' })].concat(SKP_COLS.map(c => L(c.t)));
+    const q = (s) => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
+    const lines = [head.map(q).join(',')];
+    days.forEach(x => {
+      const r = x.r;
+      lines.push([x.date, L(WDAYS[wdOf(x.date)])].concat(SKP_COLS.map(c => {
+        if (!r) return '';
+        if (c.k === 'per') return numOr0(r.guests) ? Math.round(numOr0(r.sales) / numOr0(r.guests)) : '';
+        if (c.f === 'txt') return r[c.k] || '';
+        return hasVal(r[c.k]) ? numOr0(r[c.k]) : '';
+      })).map(q).join(','));
+    });
+    lines.push([L({ ja:'合計', en:'Total', vi:'Tổng' }), ''].concat(SKP_COLS.map(c => c.k === 'per' ? (tot.per || '') : c.f === 'txt' ? '' : (tot[c.k] || ''))).map(q).join(','));
+    // 先頭はBOM（Excelで開いたときに文字化けさせない）。見えない文字を直接書かない
+    return String.fromCharCode(0xFEFF) + lines.join('\r\n');
   }
 
   /* ⑦ 開業スケジュール D-90（モック）*/
@@ -5312,6 +5435,7 @@
     let html;
     if (path.startsWith('/app/')) html = viewApp(path.slice(5));
     else if (path === '/store') html = viewStore(params.get('s') || '', params.get('ym') || ''); // 個店カルテ
+    else if (path === '/skprint') html = viewSkPrint(params.get('s') || '', params.get('ym') || ''); // 総括表の形での月次出力
     else if (path === '/home') html = viewHome(params.get('tab') || 'home');
     else html = viewHome('home');
     $app.innerHTML = html;
@@ -5340,6 +5464,21 @@
     document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
     document.querySelectorAll('[data-storelink]').forEach(b => b.onclick = () => go(`/store?s=${encodeURIComponent(b.dataset.storelink)}`));
     document.querySelectorAll('[data-skday]').forEach(b => b.onclick = () => openSkDay(b.dataset.skday));
+    // 総括表の月次出力：印刷（そのままA4横で紙になる）とCSV保存
+    if (byId('skpPrint')) byId('skpPrint').onclick = () => window.print();
+    if (byId('skpCsv')) byId('skpCsv').onclick = () => {
+      const { params } = currentRoute();
+      const vis = visibleStores();
+      const s = vis.includes(params.get('s')) ? params.get('s') : (vis[0] || STORES[0]);
+      const ym = /^\d{4}-\d{2}$/.test(params.get('ym') || '') ? params.get('ym') : todayYm();
+      const blob = new Blob([skMonthCsv(s, ym)], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `総括表_${storeShort(s)}_${ym}.csv`;
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      toast(L({ ja:'CSVを保存しました', en:'CSV saved', vi:'Đã lưu CSV' }));
+    };
     document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { if (b.dataset.open === 'guide') openTour(0); else go(`/app/${b.dataset.open}`); });
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
     document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'この画面は準備中です（順次追加します）', en:'This screen is in preparation', vi:'Màn hình đang chuẩn bị' })));
@@ -6020,6 +6159,16 @@
       const upd2 = () => { const m = Number(skMtd.value)||0, g = Number(skGoal.value)||0; skRate.textContent = g ? ((m/g*100).toFixed(1) + '%') : '—'; };
       skMtd.oninput = upd2; skGoal.oninput = upd2;
     }
+    // 勤怠：人時生産性（売上÷総労働時間）と人件費率（人件費÷売上）は入力させず、その場で計算して見せる
+    const skHours = byId('sk_hours'), skLc = byId('sk_laborcost'), skProdh = byId('sk_prodh'), skLauto = byId('sk_laborauto');
+    if (skSales && skHours && skLc && skProdh && skLauto) {
+      const upd3 = () => {
+        const s = Number(skSales.value)||0, h = Number(skHours.value)||0, lc = Number(skLc.value)||0;
+        skProdh.textContent = (s && h) ? ('¥' + Math.round(s/h).toLocaleString('en-US') + '/h') : '—';
+        skLauto.textContent = (s && lc) ? ((lc/s*100).toFixed(1) + '%') : '—';
+      };
+      skSales.addEventListener('input', upd3); skHours.oninput = upd3; skLc.oninput = upd3;
+    }
     const subSk = byId('submitSk');
     if (subSk) subSk.onclick = () => {
       const v = (id) => { const e = byId(id); return e ? e.value.trim() : ''; };
@@ -6034,6 +6183,9 @@
         // 総括表 Ver.2.6 に合わせて足した項目
         cash: v('sk_cash'), card: v('sk_card'), lunch: v('sk_lunch'), buy: v('sk_buy'),
         supply: v('sk_supply'), unagi: v('sk_unagi'), errnote: v('sk_errnote'),
+        // 日報一本化（2026-08-26 決定）で足した項目＝元の数字だけ。率は計算で出す
+        staffct: v('sk_staffct'), hours: v('sk_hours'), laborcost: v('sk_laborcost'),
+        loss: v('sk_loss'), memo: v('sk_memo'),
         // 国別の組数・人数（入力のあるものだけ残す＝空欄は保存しない）
         cty: SK_COUNTRIES.concat(SK_VISITKIND).reduce((o, cn) => {
           const g = v(`sk_cty_${cn.k}_g`), p = v(`sk_cty_${cn.k}_p`);

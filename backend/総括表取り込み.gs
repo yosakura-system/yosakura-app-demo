@@ -28,6 +28,10 @@
  *   2. 総括表取り込み_下見() … 何件入るかだけ確認（書き込みなし）
  *   3. 総括表を取り込む()     … 取り込み実行
  *   4. ensureSoukatsuImportTrigger() … 1時間ごとの自動実行を設定
+ *
+ * ■ リリース前の過去分を入れる（一回きり・比較素材）
+ *   総括表取り込み_全期間_下見() → 件数を確認 → 総括表_全期間を取り込む()
+ *   フォルダにある（YYYYMM）のブックを全部読む。同値はスキップ＝2回実行しても二重には入らない。
  */
 
 var SK_SRC_TAG = 'drive';                 // 取り込んだ行に付ける印（note の src）
@@ -55,6 +59,22 @@ function sk_対象ブック_(folderId) {
     var name = f.getName();
     ym.forEach(function (m) { if (name.indexOf('（' + m + '）') !== -1 || name.indexOf('(' + m + ')') !== -1) out.push({ id: f.getId(), name: name, ym: m }); });
   }
+  return out;
+}
+
+/* 全期間版＝フォルダにある（YYYYMM）のブックを全部拾う。
+   リリース前の過去分をアプリへ入れて、前月比・前年比の比較素材にするための一回きりの遡り取り込み用。
+   毎時のトリガーはこれを使わない（今月＋前月だけ＝実行時間を短く保つ）。 */
+function sk_対象ブック_全期間_(folderId) {
+  var out = [];
+  var files = DriveApp.getFolderById(folderId).getFiles();
+  while (files.hasNext()) {
+    var f = files.next();
+    var name = f.getName();
+    var m = name.match(/[（(](\d{6})[）)]/);
+    if (m) out.push({ id: f.getId(), name: name, ym: m[1] });
+  }
+  out.sort(function (a, b) { return a.ym < b.ym ? -1 : 1; });   // 古い月から順に＝ログが読みやすい
   return out;
 }
 
@@ -123,7 +143,7 @@ function sk_既存の値_() {
   return map;
 }
 
-function sk_実行_(書き込む) {
+function sk_実行_(書き込む, 全期間) {
   var list = sk_設定_();
   var 既存 = sk_既存の値_();
   var sh = 書き込む ? getSheet() : null;
@@ -131,8 +151,8 @@ function sk_実行_(書き込む) {
   list.forEach(function (src) {
     var stat = { 新規: 0, 更新: 0, 変わらず: 0 };
     try {
-      var books = sk_対象ブック_(src.folder);
-      if (!books.length) throw new Error('今月・前月のブックが見つかりません（フォルダ内の命名＝（YYYYMM）を確認）');
+      var books = 全期間 ? sk_対象ブック_全期間_(src.folder) : sk_対象ブック_(src.folder);
+      if (!books.length) throw new Error((全期間 ? '（YYYYMM）の付いたブック' : '今月・前月のブック') + 'が見つかりません（フォルダ内の命名＝（YYYYMM）を確認）');
       books.forEach(function (b) {
         sk_台帳を読む_(b.id, b.ym).forEach(function (d) {
           var k = src.store + '|' + d.date;
@@ -159,6 +179,16 @@ function sk_実行_(書き込む) {
 
 /* ① 下見（書き込みなし）＝何件入るかを見るだけ */
 function 総括表取り込み_下見() { return sk_実行_(false); }
+
+/* ①-b 全期間の下見／実行＝リリース前の過去分を一度だけ遡って入れる（比較素材）。
+   同値スキップは通常と同じ＝2回実行しても二重には入らない。実行後は毎時トリガーに任せる */
+function 総括表取り込み_全期間_下見() { return sk_実行_(false, true); }
+function 総括表_全期間を取り込む() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) { Logger.log('別の取り込みが実行中のため見送り'); return { 見送り: true }; }
+  try { return sk_実行_(true, true); }
+  finally { lock.releaseLock(); }
+}
 
 /* ② 取り込み実行（トリガーもこれを呼ぶ）。多重実行はロックで防ぐ */
 function 総括表を取り込む() {
