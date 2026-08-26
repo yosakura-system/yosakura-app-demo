@@ -1559,6 +1559,18 @@ console.log('== 表示範囲を本部の決定に合わせる（2026-08-12 ア�
   ok(/const canSeeProfit = \(\) => getRole\(\) !== 'staff';/.test(src),
      '利益を見せてよい相手かを、1か所で決めている');
 
+  /* ④本部運用の資料はオーナー様も見られる（2026-08-20 本部ご回答＝表示範囲4点の最後の1つ）。
+     hq は manualVisibleRole の仕組みで常に全分類が見えるため、roles には 'owner' を入れる形。 */
+  ok(/roles:\['owner'\]/.test(lineWith("gid:'hq'")),
+     '★本部運用の資料はオーナー様も開ける（2026-08-20 ご回答④）');
+  {
+    const 開く役割 = (role, store) => renderView('manual', role, store, 'ja');
+    ok(/本部運用/.test(開く役割('owner', '牛カツ世桜 富士山店')), 'オーナー様のマニュアル一覧に「本部運用」が出る');
+    ok(/本部運用/.test(開く役割('hq', 'all')), '本部のマニュアル一覧にも従来どおり出る');
+    ok(!/本部運用/.test(開く役割('manager', S_HIROSHIMA)), '店長には出ない（開けるのはオーナー様までの決定）');
+    ok(!/本部運用/.test(開く役割('staff', S_HIROSHIMA)), 'スタッフにも出ない');
+  }
+
   /* 数字が1件も無いと、どの役割でも「未入力」しか出ず、出し分けを確かめられない。
      広島店の1か月ぶんだけ置いてから見る。 */
   const S_OWNED = '牛カツ世桜 富士山店';   // オーナー様が見えるのはご自分の店舗だけ
@@ -2385,6 +2397,301 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   // 通常版（いまのビルド）は、これまでどおり接続する
   FETCH_ROWS = { ok:true, reports:[] };
   ok(/const API_URL_DEFAULT = 'https:/.test(code), '通常版のビルドは接続先を持ったまま（体験版はビルド時にだけ空にする）');
+}
+
+
+console.log('== バックエンド移行：端末に保存された古い接続先を、自動で新しい方へ載せ替える ==');
+{
+  /* ★なぜ固定するか（2026-08-24）
+     本部メンバーの端末には、接続先が localStorage に保存されている（手順書⑪で各自設定した）。
+     保存値は既定より優先されるため、移行で API_URL_DEFAULT を新しくしても、
+     設定済みの端末は古いバックエンドを見続ける＝その日の提出が新しい方に入らない。
+     移行の当日には気づけないので、テストで固定する。 */
+  const 旧URL = 'https://script.google.com/macros/s/AKfycbTEST_OLD_DEPLOY_ID_0000/exec';
+  const 別URL = 'https://script.google.com/macros/s/AKfycbTEST_OTHER_ID_9999/exec';
+  const 空の行 = '  const API_URL_RETIRED = [];';
+  ok(code.includes(空の行), 'app.js に API_URL_RETIRED の行がある（デモ本体は空・プレビュー配信時に旧URLが入る）');
+  const 移行後 = code.replace(空の行, `  const API_URL_RETIRED = ['${旧URL}'];`);
+
+  const 起動 = (src, setup) => {
+    store.clear(); registry.app = makeEl('div');
+    Object.keys(registry).forEach(k => { if (k !== 'app') delete registry[k]; });
+    Object.keys(winHandlers).forEach(k => delete winHandlers[k]);
+    hashVal = ''; setup();
+    const box = Object.assign({}, sandbox);
+    box.window = Object.assign({}, windowObj);
+    box.globalThis = box; box.self = box;
+    try { vm.runInContext(src, vm.createContext(box), { filename:'app-migrate.js' }); }
+    catch (e) { FAIL++; console.log('  ✗ THREW: ' + e.message); }
+  };
+  const 保存された接続先 = () => localStorage.getItem('yosakura_api_url');
+  const 変更ログ = () => { try { return JSON.parse(localStorage.getItem('yosakura_api_log')) || []; } catch { return []; } };
+
+  // ① 古い接続先が保存された端末 → 消えて、既定（＝新しい接続先）に戻る
+  起動(移行後, () => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_api_url', 旧URL); localStorage.setItem('yosakura_demo_reports', '[{"id":"old"}]'); });
+  ok(保存された接続先() === null, '古い接続先が保存された端末は、起動時に既定へ戻る');
+  ok(localStorage.getItem('yosakura_demo_reports') === null, '古い方から取得済みのデータは破棄される（新旧が混ざらない）');
+  ok(変更ログ().some(e => e.action === '移行にともなう自動切替' && e.from === 旧URL), '切り替えたことが変更ログに残る');
+
+  // ② 前後に空白が入って保存されていても、同じデプロイなら載せ替える
+  起動(移行後, () => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_api_url', '  ' + 旧URL + '  '); });
+  ok(保存された接続先() === null, '前後に空白が入って保存されていても載せ替える');
+
+  // ③ 載せていない接続先は、勝手に触らない
+  起動(移行後, () => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_api_url', 別URL); });
+  ok(保存された接続先() === 別URL, '対象外の接続先は変えない（他の設定を巻き込まない）');
+
+  // ④ デモ本体（リストが空）は、これまでどおり何もしない
+  起動(code, () => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_api_url', 旧URL); });
+  ok(保存された接続先() === 旧URL, 'リストが空のビルドでは、保存された接続先はそのまま');
+
+  // ⑤ 体験版は接続先を持たないので、触らない
+  const 体験版の移行後 = 移行後.replace(/ {2}const API_URL_DEFAULT = '[^']*';/, "  const API_URL_DEFAULT = '';");
+  起動(体験版の移行後, () => { setLS('manager', S_HIROSHIMA, 'ja'); localStorage.setItem('yosakura_api_url', 旧URL); });
+  ok(保存された接続先() === 旧URL, '体験版は端末の保存値を無視するので、書き換えもしない');
+
+  // ⑥ わざと壊す：載せ替えの1行を外したら、この検査は落ちるか
+  const 壊した = 移行後.replace(/\r?\n\s*setApiUrl\(''\);[^\r\n]*/, '');
+  ok(壊した !== 移行後, 'わざと壊す対象の行が見つかっている');
+  起動(壊した, () => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_api_url', 旧URL); });
+  ok(保存された接続先() === 旧URL, '★載せ替えを外すと古い接続先が残る＝この検査は効いている');
+}
+
+console.log('== バックエンド設定：「専用／共用」は、実際の接続先で判定する ==');
+{
+  /* ★なぜ固定するか（2026-08-25 実機で起きた）
+     「専用か共用か」を isCustomApi（＝この端末に手動保存があるか）で判定していた。
+     移行の載せ替えは、その保存値を消して既定へ戻す動きなので、
+     中身は専用のまま「共用（検証用）の保存先に接続しています」＋赤字の警告が出た。
+     本部の方には「まだ切り替わっていない」と読める＝事実と違う表示。
+     判定は「実際にどこへ繋がっているか」で行う（isDedicatedApi）。 */
+  const 別URL = 'https://script.google.com/macros/s/AKfycbTEST_OTHER_ID_9999/exec';
+  const 専用フラグの行 = '  const API_DEFAULT_IS_DEDICATED = false;';
+  ok(code.includes(専用フラグの行), 'app.js に API_DEFAULT_IS_DEDICATED の行がある（デモ本体は false）');
+  ok(/const dedicated = isDedicatedApi\(\);/.test(code), '状態カードは isDedicatedApi で判定する（isCustomApi ではない）');
+  const sync = fs.readFileSync(new URL('./sync-preview.mjs', import.meta.url), 'utf8');
+  ok(/API_DEFAULT_IS_DEDICATED = true/.test(sync), 'プレビュー配信時に true へ差し替える処理がある');
+
+  const プレビュー版 = code.replace(専用フラグの行, '  const API_DEFAULT_IS_DEDICATED = true;');
+  const 開く = (src, setup) => {
+    store.clear(); registry.app = makeEl('div');
+    Object.keys(registry).forEach(k => { if (k !== 'app') delete registry[k]; });
+    Object.keys(winHandlers).forEach(k => delete winHandlers[k]);
+    hashVal = ''; setup();
+    const box = Object.assign({}, sandbox);
+    box.window = Object.assign({}, windowObj);
+    box.globalThis = box; box.self = box;
+    try { vm.runInContext(src, vm.createContext(box), { filename: 'app-backend-view.js' }); }
+    catch (e) { FAIL++; console.log('  ✗ THREW: ' + e.message); return ''; }
+    location.hash = '#/app/backend';
+    return registry.app.innerHTML;
+  };
+  const 専用と出る = (h) => /世桜専用の保存先に接続しています/.test(h);
+  const 共用と出る = (h) => /共用（検証用）の保存先に接続しています/.test(h);
+  const 赤字の警告 = (h) => /実データの運用を始める前に/.test(h);
+
+  // ① 移行直後（既定が専用・端末に保存値なし）＝2026-08-25 に実際に起きた状態
+  const 移行直後 = 開く(プレビュー版, () => { setLS('hq', 'all', 'ja'); });
+  ok(移行直後.length > 200, '移行直後：バックエンド設定の画面が描ける');
+  ok(専用と出る(移行直後), '★移行直後（端末に保存値なし）でも「専用」と出る');
+  ok(!共用と出る(移行直後), '★「共用（検証用）」と誤って出さない');
+  ok(!赤字の警告(移行直後), '★「まだ切り替わっていない」と読める赤字の警告を出さない');
+
+  // ② デモ本体（既定は共用）＝これまでどおりの表示を壊していない
+  const デモ = 開く(code, () => { setLS('hq', 'all', 'ja'); });
+  ok(共用と出る(デモ), 'デモ本体は これまでどおり「共用」と出る');
+  ok(赤字の警告(デモ), 'デモ本体では 切り替え前の注意書きが出る（必要な警告は消していない）');
+
+  // ③ 端末で手動設定した場合は、これまでどおり「専用」
+  const 手動設定 = 開く(code, () => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_api_url', 別URL); });
+  ok(専用と出る(手動設定), '手動で設定した端末は これまでどおり「専用」と出る');
+
+  // ④ わざと元の判定へ戻す：この検査は落ちるか
+  const 壊した表示 = プレビュー版.replace('const dedicated = isDedicatedApi();', 'const dedicated = isCustomApi();');
+  ok(壊した表示 !== プレビュー版, 'わざと壊す対象の行が見つかっている');
+  const 壊れた = 開く(壊した表示, () => { setLS('hq', 'all', 'ja'); });
+  ok(共用と出る(壊れた), '★元の判定に戻すと「共用」と誤表示される＝この検査は効いている');
+}
+
+console.log('== 写真の添付：貼れないときに黙って捨てない（2026-08-25 スマホで発生）==');
+{
+  /* ★なぜ固定するか
+     以前は、写真を選んだ瞬間にサムネイルの枠だけ出し、中身（dataURL）は img.onload の後に入れていた。
+     入らなかった場合、提出時の filter(Boolean) が黙って捨てるため、
+     「写真は選べたのに提出できない」となり、画面には理由が何も出なかった。
+     PCでは起きず、スマホでだけ起きた＝現場でいちばん困る形。
+     ⚠️ 根本原因（HEIC／canvasのメモリ／onload前に提出）は端末側で切り分ける。
+        ここで固定するのは「黙って捨てない・理由を出す」という作りのほう。 */
+
+  // ① 元の作り（黙って捨てる形）へ戻っていないか＝いちばん大事な回帰防止
+  ok(!/img\.onload = \(\) => \{ wrap\.dataset\.thumb = downscale/.test(code),
+     '★「サムネイルを先に出して、あとから中身を入れる」形に戻っていない');
+
+  // ② データが取れてからサムネイルを出す（出ている＝必ず貼れている）
+  ok(/wrap\.dataset\.thumb = data;[\s\S]{0,800}thumbs\.appendChild\(wrap\)/.test(code),
+     'サムネイルを追加する前に、貼るデータを入れている');
+
+  // ③ 読み込めなかったときに、画面へ理由を出す
+  ok(/if \(失敗\) \{[\s\S]{0,400}toast\(/.test(code), '読み込めなかった枚数を画面に出す（黙って捨てない）');
+  ok(/この写真は読み込めませんでした/.test(code), '日本語の案内文がある');
+  ok(/Could not load/.test(code) && /Không tải được/.test(code), '英語・ベトナム語の案内文もある（3言語）');
+
+  // ④ 端末が読めない形式・canvasが失敗する場合の逃げ道
+  ok(/img\.onerror = \(\) => \{/.test(code) && /写真を読む生データ_/.test(code),
+     '読み込みに失敗したら、縮小せず元のまま貼る道がある（HEICなど）');
+  ok(/\[1500, 1000, 640\]/.test(code), 'スマホ向けに、段階的に小さくして粘る');
+  ok(/PHOTO_RAW_MAX_BYTES/.test(code), '元のまま貼るときは大きさの上限を持つ（際限なく送らない）');
+
+  // ⑤ 提出側は これまでどおり空を弾く（二重の網は残す）
+  ok(/\.map\(w => w\.dataset\.thumb\)\.filter\(Boolean\)/.test(code),
+     '提出時の filter(Boolean) は残す（万一のときの最後の網）');
+
+  /* ⑥ ★本命＝写真の作業中に、自動同期が画面を作り直さない
+     スマホは写真を選ぶあいだアプリが背面へ回る。その数秒で同期の通信が終わると render() が走り、
+     貼り付け先も選択中の <input type=file> も別物に差し替わって、選んだ写真がどこにも入らない。
+     PCではファイル選択がすぐ終わるので起きない＝現場のスマホでだけ起きる形。 */
+  ok(/if \(画面を作り直してよい_\(\)\) render\(\);/.test(code),
+     '★自動同期は、作り直してよいときだけ画面を描き直す');
+  ok(!/distribute\(d\.reports\);\s*render\(\);/.test(code),
+     '★無条件に render() する形へ戻っていない（これが元の不具合）');
+  ok(/fi\.addEventListener\('click', \(\) => \{[\s\S]{0,400}写真の操作を始める_\(\);/.test(code),
+     '写真を選び始めた時点で、描き直しを止める');
+  ok(/写真の操作を終える_\(\);/.test(code) && /setTimeout\(\(\) => \{ 写真の操作中 = false; \}, 120000\)/.test(code),
+     '選択を取り消して戻った場合も、止めっぱなしにしない（時間で解除する）');
+  ok(/t\.querySelector\('\.pt'\)\) return false/.test(code),
+     '貼り付け済みの写真があるあいだも、自動同期で消さない');
+  ok(/distribute\(d\.reports\);/.test(code),
+     '描き直しを止めても、データの取り込み自体は行う（次の描画で反映される）');
+
+  /* ⑦ iPhoneホーム画面版：写真選択中の再読み込みを、推測でなく検知して画面に出す */
+  ok(/sessionStorage\.setItem\(SS_PICKING/.test(code), '写真の選択を始めた印を sessionStorage に置く');
+  ok(/sessionStorage\.removeItem\(SS_PICKING\)/.test(code), '写真が戻ってきたら印を消す（正常時は何も出ない）');
+  ok(/写真の選択中にアプリが再読み込みされました/.test(code), '再読み込みが起きたら、その旨を画面に出す（3言語の日本語）');
+  ok(/The app reloaded while picking a photo/.test(code) && /đã tải lại khi chọn ảnh/.test(code), '英語・ベトナム語もある');
+  ok(/写真選択中の再読み込みを報告_\(\); \/\/ ★前回/.test(code), '起動時に必ず確認する');
+  ok(/写真選択中の再読み込みを報告_\(\);[\s\S]{0,200}render\(\);/.test(code),
+     '★再読み込みの確認は render より先（bind が印を読むため）');
+
+  /* ⑧ 消えない状態表示（photoStat）＝トーストは2.4秒で消えるため、切り分けはこちらで行う */
+  ok(/stat\.id = 'photoStat';/.test(code), '写真ボタンの下に、消えない状態表示を差し込む');
+  ok(/写真の選択画面を開きました/.test(code), '選択を始めた時点の表示がある（変わらなければ「渡っていない」と分かる）');
+  ok(/枚を貼り付けました/.test(code), '貼り付け成功の枚数を出す');
+  ok(/if \(写真選択中に再読み込みがあった\)/.test(code), '再読み込みが起きたときは、消えない形でも表示する');
+
+  /* ⑨ ★iOSのライブラリ選択で change が届かない不具合への対策（2026-08-25 実機で確定）
+     症状＝カメラ撮影は貼れるのに、ライブラリから選ぶと「選択画面を開きました…」のまま変わらない。
+     再読み込みでもない（検知に掛からなかった）＝選んだ写真がアプリに一切渡っていない。 */
+  ok(/if \(IOS\) fi\.removeAttribute\('multiple'\);/.test(code),
+     '対策①＝iPhone・iPadでは複数選択をやめる（単数選択の画面は確実に届く）');
+  ok(/iPad\|iPhone\|iPod/.test(code) && /maxTouchPoints > 1/.test(code),
+     'iPadOS（Macを名乗る）も判定に入れている');
+  ok(/const 受け取りを見に行く = \(\) => \{/.test(code) && /\[400, 1000, 2000, 4000, 8000\]/.test(code),
+     '対策②＝届かなかった change を、時間を空けて数回拾い直す');
+  ok(/受け取りを見に行く\(\);\s*\}\);/.test(code),
+     '選択画面が開かれたら、必ず拾い直しを予約する');
+  ok(/if \(!写真の操作中 \|\| 取り込み中\) return;/.test(code),
+     '取り込み済み・取り込みの最中・取り消し済みなら拾い直しをやめる（勝手に動き続けない）');
+  /* ⑩ ★対策③＝JSからは選択画面を開かない（2026-08-25・①②でも届かないことが実機で確定）
+     iOSのホーム画面版は、JS経由の fi.click() だとライブラリの写真を入力欄に置かないことがある。
+     入力欄を透明にしてボタン全体に重ね、指のタップが直接入力欄へ当たる形にする。 */
+  ok(!/fi\.click\(\);/.test(code), '★JSから fi.click() で開く形へ戻っていない（これが届かない原因）');
+  ok(/fi\.removeAttribute\('hidden'\);/.test(code) && /position:absolute;inset:0;width:100%;height:100%;opacity:0/.test(code),
+     '入力欄を透明にしてボタン全体へ重ねる（タップが直接届く）');
+  ok(/drop\.onclick = null;/.test(code), 'ボタン側の onclick は外す（二重に開かない）');
+  ok(/let 取り込み中 = false;/.test(code) && /if \(!取り込む\(\) && !取り込み中\)/.test(code),
+     '★changeと拾い直しが衝突しても、取り込みの最中に状態を消さない（v128でカメラが効かなくなった形）');
+  ok(/写真を受け取れませんでした/.test(code), '8秒待っても来なければ、その旨を画面に出す（黙って開きっぱなしにしない）');
+
+  /* ⑪ 最近の提出＝貼った写真を全部出す（2026-08-25・2枚出したのに1枚しか出なかった）
+     保存は2枚とも成功していた（バックエンドの実データで確認）。表示が r.photos[0] だけを描いていた。 */
+  ok(/recent\.map\(r=>\{[\s\S]{0,200}r\.photos\.map\(p=>/.test(code),
+     '★「最近の提出」は写真を全部描く（photos[0] だけに戻さない）');
+}
+
+console.log('== 電波が無いときの提出を、黙って失わない（2026-08-25 リリース前点検）==');
+{
+  /* ★なぜ固定するか
+     以前は postReport の失敗を .catch(() => {}) で握りつぶしていた。
+     オフラインで提出 →「提出しました」と表示 → 実際は未達 → 電波が戻って同期すると、
+     同期はバックエンドの内容でローカルを書き直すため、未達の提出が端末からも消えていた。
+     店舗のWi-Fiが一瞬切れるだけで「出したのに出ていない」が黙って起きる形。 */
+  ok(!/\.catch\(\(\) => \{\}\);/.test(code.slice(code.indexOf('function postReport'), code.indexOf('function postReport') + 800)),
+     '★postReport の失敗を空の catch で握りつぶす形へ戻っていない');
+  ok(/const q = getPending_\(\); q\.push\(rep\); savePending_\(q\);/.test(code),
+     '送れなかった提出は保留箱に入れる');
+  ok(/この提出はいったん端末に保留しました/.test(code) && /Saved on this device/.test(code) && /sẽ tự gửi lại/.test(code),
+     '保留したことを、その場で3言語で伝える（「提出しました」のまま黙らない）');
+  ok(/await flushPending_\(\);[\s\S]{0,300}const res = await fetch\(getApiUrl\(\) \+ \(authToken\(\)/.test(code),
+     '★同期は「読む前に、保留分を必ず送る」＝送る前に読むと未達の提出が消える（トークン付き）');
+  ok(/for \(let i = 0; i < q\.length; i\+\+\) \{[\s\S]{0,300}await fetch\(getApiUrl\(\), \{ method: 'POST', body: JSON\.stringify\(Object\.assign\(\{ token: authToken\(\) \}, q\[i\]\)\)/.test(code),
+     '保留分は1件ずつ・送る時点のトークンを付けて送る（ログインし直し後の再送でも通る）');
+  ok(/件）を送信しました/.test(code), '再送できたことも伝える（何が起きたか追える）');
+
+  // 「報告する」の提出＝端末への控えが失敗しても送信は止めない（postSub と同じ形）
+  ok(/try \{ const reps = getReports\(\); reps\.push\(rep\); saveReports\(reps\); \} catch \(e\) \{\}\s*postReport\(rep\);/.test(code),
+     '★控えの保存に失敗しても postReport は実行される（保存領域が一杯でも提出は届く）');
+}
+
+console.log('== ログイン：役割と店舗を、サーバーの返答で固定する（2026-08-25）==');
+{
+  /* ★なぜ固定するか
+     これまで役割は右上から誰でも自由に切替できた＝スタッフ端末でも「本部」を選べば全店の数値が見えた。
+     ログイン済みのあいだは、役割・店舗を「ログインAPIが返したもの」で固定し、切替の余地を無くす。
+     体験版（TAIKEN）はバックエンドを持たないため、この仕組みごと無関係＝従来どおり自由に切替できる。 */
+  const AUTH_MGR = JSON.stringify({ token:'tk1', uid:'hara', name:'原さん', role:'manager', stores:['寿司世桜 心斎橋店'], mustChange:false });
+  const AUTH_MUST = JSON.stringify({ token:'tk2', uid:'hara', name:'原さん', role:'manager', stores:['寿司世桜 心斎橋店'], mustChange:true });
+
+  const 起動して描く = (src, setup) => {
+    store.clear(); registry.app = makeEl('div');
+    Object.keys(registry).forEach(k => { if (k !== 'app') delete registry[k]; });
+    Object.keys(winHandlers).forEach(k => delete winHandlers[k]);
+    hashVal = ''; setup();
+    const box = Object.assign({}, sandbox);
+    box.window = Object.assign({}, windowObj);
+    box.globalThis = box; box.self = box;
+    try { vm.runInContext(src, vm.createContext(box), { filename: 'app-auth.js' }); }
+    catch (e) { FAIL++; console.log('  ✗ THREW: ' + e.message); }
+    return registry.app.innerHTML;
+  };
+
+  // ① ログインが要る配信先で、未ログイン＝ログイン画面だけが出る
+  let html = 起動して描く(code, () => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth_required', '1'); });
+  ok(/ログイン/.test(html) && /au_pw/.test(html), '★未ログイン＝ログイン画面が出る');
+  ok(!/本部ダッシュボード|加盟店・提出物管理/.test(html), '★ログインするまでアプリの中身は一切出ない（役割を hq にしていても）');
+  ok(/本部からお渡ししたIDとパスワード/.test(html), '案内文がある（どこでIDをもらうか分かる）');
+
+  // ② 仮パスワードのまま＝変更画面が出て、アプリに入れない
+  html = 起動して描く(code, () => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth_required', '1'); localStorage.setItem('yosakura_auth', AUTH_MUST); });
+  ok(/au_new2/.test(html) && /6文字以上/.test(html), '★仮パスワードのまま＝変更画面（2回入力・6文字以上）');
+  ok(!/本部ダッシュボード/.test(html), '変更するまでアプリに入れない');
+
+  // ③ ログイン済み＝役割は固定（端末に hq と保存されていても、サーバーの返答が勝つ）
+  html = 起動して描く(code, () => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth_required', '1'); localStorage.setItem('yosakura_auth', AUTH_MGR); });
+  ok(/店長|Manager/.test(html), '★端末の保存が「本部」でも、ログインした店長として描かれる');
+  ok(!/data-tab="hq"/.test(html), '★本部タブは出ない（役割のなりすましができない）');
+  ok(/心斎橋/.test(html), '店舗もサーバーが返した自店に固定される');
+
+  // ④ 体験版＝ログインの仕組みごと無関係（従来どおり）
+  const 体験版 = code.replace(/ {2}const API_URL_DEFAULT = '[^']*';/, "  const API_URL_DEFAULT = '';");
+  html = 起動して描く(体験版, () => { setLS('manager', S_HIROSHIMA, 'ja'); localStorage.setItem('yosakura_auth_required', '1'); localStorage.setItem('yosakura_auth', AUTH_MGR); });
+  ok(!/au_pw/.test(html), '★体験版にはログイン画面が出ない（保存先が無いため）');
+
+  // ⑤ ログイン不要の配信先（いまのプレビュー）＝これまでどおり（フラグOFFのあいだ何も変わらない）
+  html = 起動して描く(code, () => { setLS('hq', 'all', 'ja'); });
+  ok(!/au_pw/.test(html), '★needLogin を受けるまでは、ログイン画面は出ない＝今日の配信物の挙動は不変');
+
+  // ⑥ 静的な守り＝通信と切替
+  ok(/data-role\]'\)\.forEach\(b => b\.onclick = \(\) => \{\s*if \(getAuth\(\)\) return;/.test(code.replace(/\r\n/g, '\n')),
+     'ログイン済みは役割ボタンを押しても変わらない（二重の守り）');
+  ok(/const getRole = \(\) => \{\s*const a = getAuth\(\);\s*if \(a && a\.role\) return a\.role;/.test(code.replace(/\r\n/g, '\n')),
+     '★getRole はログイン情報を最優先で見る');
+  ok(/data-logout="1"/.test(code), 'ログアウトの入口がある');
+  ok(/if \(d && d\.needLogin\) \{ onNeedLogin_\(\); return; \}/.test(code),
+     '同期が needLogin を受けたらログイン画面へ');
+  ok(/const q = getPending_\(\); q\.push\(rep\); savePending_\(q\);\s*onNeedLogin_\(\);/.test(code.replace(/\r\n/g, '\n')),
+     '★needLogin で弾かれた提出は保留箱に残る＝ログイン後に自動で再送される');
+  ok(/const files = Array\.from\(fi\.files \|\| \[\]\);\s*if \(!files\.length\) return false;\s*取り込み中 = true;\s*fi\.value = '';/.test(code),
+     '取り込み時に fi.value を消す＝changeと拾い直しが両方来ても二重にならない');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
