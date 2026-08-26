@@ -32,6 +32,9 @@
  * ■ リリース前の過去分を入れる（一回きり・比較素材）
  *   総括表取り込み_全期間_下見() → 件数を確認 → 総括表_全期間を取り込む()
  *   フォルダにある（YYYYMM）のブックを全部読む。同値はスキップ＝2回実行しても二重には入らない。
+ *   ★全店ぶんは1回で終わらないことがある（GASの上限6分）。上限の前に自分から止まって
+ *     「未処理の店舗」を報告するので、**「時間切れ」が出なくなるまで同じ関数を繰り返し実行する**。
+ *     入った分は二重にならない。途中で DEADLINE_EXCEEDED が出ても壊れない（再実行で続きから）。
  */
 
 var SK_SRC_TAG = 'drive';                 // 取り込んだ行に付ける印（note の src）
@@ -143,13 +146,38 @@ function sk_既存の値_() {
   return map;
 }
 
-function sk_実行_(書き込む, 全期間) {
+/* ★実行時間の予算（既定4分半）。GASは1回の実行が6分で強制終了（DEADLINE_EXCEEDED）になるため、
+   その前に自分から止まり「どこまで入れたか・残りはどの店か」を報告する。
+   ★書き込んだ分は同値スキップされるので、もう一度実行すれば続きから入る（＝何度実行しても二重にならない）。
+   2026-08-27 全期間の取り込みで実際に6分超になった（1行ずつのappendRowも遅かった＝一括書きに変更）。 */
+var SK_TIME_BUDGET_MS = 4.5 * 60 * 1000;
+
+/* 全期間の書き込みで「済んだ店」を覚えておく置き場（Script Properties）。
+   ★なぜ要るか＝再実行のたびに済んだ店の台帳を全部読み直すと、読むだけで数分かかり、
+   時間予算をまた使い切って残りの店へ届かないことがある。済んだ店は次の実行で飛ばす。
+   全店が済んだら自動で消す（＝次回また最初から確かめられる）。 */
+var SK_DONE_KEY = 'SK_ZENKIKAN_DONE';
+function sk_済み_() { try { return JSON.parse(getSetting_(SK_DONE_KEY, '[]')) || []; } catch (e) { return []; } }
+
+function sk_実行_(書き込む, 全期間, 予算ms) {
+  var 開始 = Date.now();
+  var 予算 = 予算ms || SK_TIME_BUDGET_MS;
   var list = sk_設定_();
   var 既存 = sk_既存の値_();
   var sh = 書き込む ? getSheet() : null;
   var 結果 = { 新規: 0, 更新: 0, 変わらず: 0, 店舗: {}, エラー: [] };
-  list.forEach(function (src) {
+  var 済み = (全期間 && 書き込む) ? sk_済み_() : [];
+  var props = PropertiesService.getScriptProperties();
+  for (var li = 0; li < list.length; li++) {
+    var src = list[li];
+    if (済み.indexOf(src.store) !== -1) { 結果.店舗[src.store] = '前回までに完了（飛ばした）'; continue; }
+    if (Date.now() - 開始 > 予算) {
+      結果.時間切れ = '実行時間の上限が近いため、ここで止めました。もう一度実行すると続きから入ります（入った分は二重になりません）';
+      結果.未処理の店舗 = list.slice(li).map(function (s) { return s.store; }).filter(function (s) { return 済み.indexOf(s) === -1; });
+      break;
+    }
     var stat = { 新規: 0, 更新: 0, 変わらず: 0 };
+    var 追記 = [];
     try {
       var books = 全期間 ? sk_対象ブック_全期間_(src.folder) : sk_対象ブック_(src.folder);
       if (!books.length) throw new Error((全期間 ? '（YYYYMM）の付いたブック' : '今月・前月のブック') + 'が見つかりません（フォルダ内の命名＝（YYYYMM）を確認）');
@@ -160,19 +188,35 @@ function sk_実行_(書き込む, 全期間) {
           if (cur && cur.sales === d.sales && cur.guests === d.guests) { stat.変わらず++; return; }
           if (cur) stat.更新++; else stat.新規++;
           if (書き込む) {
-            sh.appendRow([Utilities.getUuid(), Date.now(), 'soukatsu', src.store, '', '',
+            追記.push([Utilities.getUuid(), Date.now(), 'soukatsu', src.store, '', '',
               JSON.stringify({ date: d.date, sales: d.sales, guests: d.guests, src: SK_SRC_TAG }), '[]']);
             既存[k] = { t: Date.now(), sales: d.sales, guests: d.guests };   // 同じ実行内での二重追記を防ぐ
           }
         });
       });
+      /* ★店舗ごとに一括で書く（1行ずつのappendRowは1回ごとに保存が走り、数百行で分単位かかる）。
+         店舗単位で書き切るので、途中で時間切れになっても「書きかけの店」は残らない。 */
+      if (書き込む && 追記.length) {
+        var 次行 = sh.getLastRow() + 1;
+        sh.getRange(次行, 1, 追記.length, 追記[0].length).setValues(追記);
+      }
+      // 全期間の書き込み＝この店は書き切った。次の実行では飛ばす
+      if (全期間 && 書き込む) { 済み.push(src.store); props.setProperty(SK_DONE_KEY, JSON.stringify(済み)); }
     } catch (e) {
       結果.エラー.push({ 店舗: src.store, 理由: String(e.message || e) });
     }
     結果.新規 += stat.新規; 結果.更新 += stat.更新; 結果.変わらず += stat.変わらず;
-    結果.店舗[src.store] = stat;
-  });
+    if (結果.店舗[src.store] === undefined) 結果.店舗[src.store] = stat;
+  }
+  // 全店が済んだら覚え書きを消す＝次に全期間を実行すると、また最初から全店を確かめられる
+  if (全期間 && 書き込む && !結果.時間切れ) {
+    var 全部済み = list.every(function (s) { return 済み.indexOf(s.store) !== -1; });
+    var エラー店 = 結果.エラー.length;
+    if (全部済み && !エラー店) { props.deleteProperty(SK_DONE_KEY); 結果.完了 = '★全店ぶん入りました（覚え書きは消しました）'; }
+    else if (エラー店) 結果.完了 = 'エラーの店だけ残っています。直してからもう一度実行してください';
+  }
   結果.書き込み = 書き込む ? '実行した' : '★下見のみ（書き込みなし）';
+  結果.所要秒 = Math.round((Date.now() - 開始) / 1000);
   Logger.log(JSON.stringify(結果, null, 2));
   return 結果;
 }
