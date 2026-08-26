@@ -2694,5 +2694,66 @@ console.log('== ログイン：役割と店舗を、サーバーの返答で固�
      '取り込み時に fi.value を消す＝changeと拾い直しが両方来ても二重にならない');
 }
 
+console.log('== 日報一本化（2026-08-26 構築MTG決定：アプリ入力→蓄積→月次集約・出力）==');
+{
+  // ① 入力欄＝元の数字だけを足した（勤務人数・総労働時間・人件費・ロス・所感）。率は入力させない
+  for (const lang of ['ja','en','vi']) {
+    const f = renderView('soukatsu','manager',S_HIROSHIMA,lang);
+    ok(/sk_staffct/.test(f) && /sk_hours/.test(f) && /sk_laborcost/.test(f) && /sk_loss/.test(f) && /sk_memo/.test(f),
+       `[${lang}] 勤怠・ロス・所感の入力欄がある`);
+    ok(/sk_prodh/.test(f) && /sk_laborauto/.test(f), `[${lang}] 人時生産性・人件費率は自動計算の表示だけ（入力欄ではない）`);
+  }
+  const flat = code.replace(/\r\n/g, '\n');
+  ok(/staffct: v\('sk_staffct'\), hours: v\('sk_hours'\), laborcost: v\('sk_laborcost'\),\s*loss: v\('sk_loss'\), memo: v\('sk_memo'\)/.test(flat),
+     '提出時に新項目が保存される');
+
+  // ② 提出済みの日報で、自動計算（人時生産性・人件費率）が元の数字から出る
+  // 全項目入りの日報を「月内の新しい日」に置く（個店カルテの「最新の日報」は日付の新しい方が出るため）
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date:'2026-07-06', sales:100000, guests:20,
+        cash:60000, card:40000, buy:30000, laborcost:25000, staffct:'5', hours:'40', loss:1000, err:'0', memo:'雨でランチ弱め' }), t: 2000, id:'u1' },
+    { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date:'2026-07-05', sales:50000, guests:10 }), t: 1000, id:'u2' },
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ 日報一本化 load threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/store?s=' + encodeURIComponent(S_HIROSHIMA) + '&ym=2026-07';
+  const st = registry.app.innerHTML;
+  ok(/勤務人数/.test(st) && /所感/.test(st), '個店カルテの全項目に勤怠・所感が出る');
+  ok(/人時生産性（自動）/.test(st) && /2,500\/h/.test(st), '人時生産性＝売上10万÷40h＝¥2,500/h が自動で出る');
+  ok(/人件費率（自動）/.test(st) && /25\.0%/.test(st), '人件費率＝2.5万÷10万＝25.0% が自動で出る');
+  ok(/総括表の形で出力/.test(st), '個店カルテから月次出力へ入れる');
+
+  // ③ 総括表の形での月次出力（#/skprint）＝1か月が総括表と同じ並びで出る
+  location.hash = '#/skprint?s=' + encodeURIComponent(S_HIROSHIMA) + '&ym=2026-07';
+  const pr = registry.app.innerHTML;
+  ok(/総括表（月次出力）/.test(pr) && /skp-table/.test(pr), '月次出力の画面が開く');
+  ok(/印刷する/.test(pr) && /CSVで保存/.test(pr), '印刷とCSVの入口がある');
+  ok(/100,000/.test(pr) && /50,000/.test(pr), '日ごとの売上が表に出る');
+  ok(/合計/.test(pr) && /150,000/.test(pr), '合計行が出る（売上15万）');
+  ok(/5,000/.test(pr), '客単価は計算で出る（10万÷20名＝5,000）');
+  ok(/20\.0%/.test(pr), '原価率（自動）＝仕入3万÷売上15万＝20.0%');
+  ok(/16\.7%/.test(pr), '人件費率（自動）＝2.5万÷15万＝16.7%');
+  ok(/3,750/.test(pr), '人時生産性（自動）＝15万÷40h＝¥3,750/h');
+  ok(/雨でランチ弱め/.test(pr), '所感も表に出る（紙で残る）');
+  ok((pr.match(/class="off">—</g) || []).length > 20, '未入力の日は「—」＝空欄がごまかされない');
+
+  // ④ CSV＝画面と同じ数字（Excelで開けるBOM付き）
+  ok(/skMonthCsv/.test(flat) && flat.includes('String.fromCharCode(0xFEFF) + lines.join'), 'CSV出力がありBOM付き（Excelで文字化けしない）');
+
+  // ⑤ 権限＝店長が他店の月次出力を指定しても自店に戻る
+  try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ skprint 権限 threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/skprint?s=' + encodeURIComponent('牛カツ世桜 長堀橋店') + '&ym=2026-07';
+  ok(/広島店/.test(registry.app.innerHTML) && !/長堀橋店/.test(registry.app.innerHTML),
+     '店長が他店を指定しても自店にフォールバックする');
+
+  // ⑥ 印刷スタイル＝A4横・画面の飾りは刷らない
+  const css = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/styles.css', 'utf8');
+  ok(/@media print/.test(css) && /A4 landscape/.test(css), '印刷はA4横');
+  ok(/\.no-print, \.hdr, \.tabbar, \.taiken-band \{ display: none !important; \}/.test(css),
+     '印刷時にヘッダー・タブ・ボタンは消える');
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
