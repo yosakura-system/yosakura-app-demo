@@ -14,6 +14,19 @@
      設定は本部メニュー →「バックエンド設定」から。設定するとこの端末以降その接続先を使う。 */
   const API_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzS-tvfTQwJjgYn2ASHWidU-qBWZzF85bqt25T4mAXcM-P6-75zFqzUSlgiPFDTe7KQRQ/exec';
   const LS_API = 'yosakura_api_url';
+  /* ★接続先の載せ替え（バックエンドの移行のとき）
+     ここに載せたURLが端末に保存されていたら、起動時にその保存を消して既定へ戻す。
+     ＝本部の各端末に保存済みの「古い接続先」を、こちらから切り替えられるようにする。
+     ⚠️ 保存値は既定より優先されるため、これが無いと API_URL_DEFAULT を新しくしても
+        設定済みの端末は古いバックエンドを見続ける（＝送った提出が新しい方に入らない）。
+     ※ デモ本体は空。プレビュー配信時に sync-preview.mjs が旧URLを差し込む。 */
+  const API_URL_RETIRED = [];
+  /* ★この配信物の既定が「世桜専用の保存先」かどうか。
+     デモ本体は false（既定＝検証用の共用）。プレビュー配信時に sync-preview.mjs が true にする。
+     ⚠️ なぜ要るか（2026-08-25 実機で発生）＝「専用か共用か」を端末の保存値の有無だけで判定していたため、
+        移行で保存値を消して既定へ戻した直後、中身は専用なのに「共用（検証用）の保存先に接続しています」と
+        赤字の警告つきで表示された。本部の方には「まだ切り替わっていない」と読めてしまう。 */
+  const API_DEFAULT_IS_DEDICATED = false;
   /* ====== 体験版（2026-08-12 勉強会デモMTGの決定） ======
      勉強会のあと、加盟店の皆さまへお配りして自由に触っていただくための版。
      API_URL_DEFAULT を空にしてビルドしたものが体験版になる。
@@ -32,6 +45,9 @@
   const TAIKEN_FORM2_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfnvpk9tR6QTKqFyb65dlnUScZjkvoZoDb2qAn9XdgeApIB1w/viewform';  // 2026-08-19 増田さんご作成
   const getApiUrl = () => (TAIKEN ? '' : (localStorage.getItem(LS_API) || API_URL_DEFAULT));
   const isCustomApi = () => !!localStorage.getItem(LS_API);
+  /* 画面に出す「専用／共用」の判定。★端末に手動保存があるか、または既定そのものが専用なら「専用」。
+     isCustomApi（＝この端末で手動設定したか）とは別物なので混ぜない。 */
+  const isDedicatedApi = () => !!getApiUrl() && (isCustomApi() || API_DEFAULT_IS_DEDICATED);
   /* システム管理者モード：接続先の変更は「本部ロール かつ 管理者モード」のみ可能。
      通常の本部利用者は接続状態の閲覧のみ（誤操作で共用へ戻すのを防ぐ）。
      ※ これは誤操作防止のための鍵であり、機密を守る認証ではありません（フロントのため）。 */
@@ -54,7 +70,68 @@
     try { localStorage.removeItem(LS.reports); } catch (e) {} // 接続先が変わるため取得済みデータを破棄
   }
   const useBackend = () => !!getApiUrl();
+  /* 端末に保存された「役目を終えた接続先」を既定へ戻す（移行の当日、各端末で自動的に効く）。
+     戻したことは変更ログに残す＝あとから「いつ切り替わったか」を追える。 */
+  function retireOldApiUrl() {
+    if (TAIKEN) return null;                       // 体験版は接続先を持たない
+    if (!API_URL_RETIRED.length) return null;
+    const cur = (localStorage.getItem(LS_API) || '').trim();
+    if (!cur) return null;
+    const depId = (u) => { const m = /\/macros\/s\/([^/]+)\//.exec(u || ''); return m ? m[1] : ''; };
+    const hit = API_URL_RETIRED.some((u) => { const a = (u || '').trim(); return a && (a === cur || (depId(a) && depId(a) === depId(cur))); });
+    if (!hit) return null;
+    setApiUrl('');                                 // 既定（＝新しい接続先）に戻す＋取得済みデータを破棄
+    pushApiLog({ action: '移行にともなう自動切替', from: cur, to: API_URL_DEFAULT, result: 'ok' });
+    return cur;
+  }
   let lastSync = 0;
+  /* ★自動同期による「画面の作り直し」を、写真の作業中だけ止める（2026-08-25 実機で発生）
+     スマホは写真を選ぶあいだアプリが背面へ回る。その数秒で同期の通信が終わると render() が走り、
+     貼り付け先（photoThumbs）も選択中の <input type=file> も別物に差し替わる。
+     戻ってきた写真は「もう画面に無い古い要素」へ渡されるため、貼り付かず、提出もできない。
+     ⚠️ PCではファイル選択がすぐ終わるのでこの隙間が生まれない＝スマホでだけ起きる。
+     ★止めるのは自動同期の描き直しだけ。データの取り込み（distribute）は行うので、次の描画で反映される。 */
+  let 写真の操作中 = false;
+  let 写真の操作タイマー = null;
+  /* ★再読み込みの検知（2026-08-25・iPhoneのホーム画面版で「黒い帯すら出ない」の切り分け）
+     ホーム画面に追加した版（PWA）は、写真選択でライブラリに切り替わったとき、
+     iOSがメモリ確保のためページを丸ごと再読み込みすることがある。
+     再読み込みされると、選んだ写真も onchange も全部消える＝アプリ側では受け取りようがない。
+     起きたかどうかを推測で語らないために、選択を始めた印を sessionStorage に置き、
+     次の起動時にその印が残っていたら「再読み込みが起きた」と画面に出す。 */
+  const SS_PICKING = 'yosakura_photo_picking';
+  function 写真の操作を始める_() {
+    写真の操作中 = true;
+    try { sessionStorage.setItem(SS_PICKING, String(Date.now())); } catch (e) {}
+    clearTimeout(写真の操作タイマー);
+    // 選択を取り消してアプリへ戻った場合に、止めっぱなしにしない
+    写真の操作タイマー = setTimeout(() => { 写真の操作中 = false; }, 120000);
+  }
+  function 写真の操作を終える_() {
+    写真の操作中 = false; clearTimeout(写真の操作タイマー);
+    try { sessionStorage.removeItem(SS_PICKING); } catch (e) {}
+  }
+  // 起動時に呼ぶ。前回、写真の選択中にページが再読み込みされていたら、その旨を画面に出す
+  let 写真選択中に再読み込みがあった = false;   // ★消えない表示（photoStat）にも出すための印
+  function 写真選択中の再読み込みを報告_() {
+    let t = '';
+    try { t = sessionStorage.getItem(SS_PICKING) || ''; sessionStorage.removeItem(SS_PICKING); } catch (e) {}
+    if (!t) return;
+    写真選択中に再読み込みがあった = true;
+    setTimeout(() => toast(L({
+      ja: '写真の選択中にアプリが再読み込みされました（端末のメモリ確保のため）。お手数ですが、もう一度写真をお選びください',
+      en: 'The app reloaded while picking a photo (device memory). Please select the photo again.',
+      vi: 'Ứng dụng đã tải lại khi chọn ảnh (bộ nhớ máy). Vui lòng chọn lại ảnh.'
+    })), 600);
+  }
+  function 画面を作り直してよい_() {
+    if (写真の操作中) return false;
+    try {
+      const t = document.getElementById('photoThumbs');
+      if (t && t.querySelector && t.querySelector('.pt')) return false; // 貼った写真がある＝消さない
+    } catch (e) {}
+    return true;
+  }
 
   /* ---------- SVGアイコン ---------- */
   const I = {
@@ -291,6 +368,8 @@
   const ROLE_KEYS_ALL = ['staff', 'manager', 'owner', 'hq'];
   const roleKeys = () => TAIKEN ? ['staff', 'manager', 'owner'] : ROLE_KEYS_ALL;
   const getRole = () => {
+    const a = getAuth();
+    if (a && a.role) return a.role;   // ★ログイン済み＝役割はサーバーが返したもので固定（端末の保存値は見ない）
     const r = localStorage.getItem(LS.role) || 'staff';
     return roleKeys().includes(r) ? r : (TAIKEN ? 'manager' : 'staff');
   };
@@ -301,16 +380,52 @@
   // 記録に残す表記＝「店長（山田）」。未登録でも提出は妨げない（役割だけが残る）
   const submitterLabel = () => { const r = ROLES[getRole()] ? L(ROLES[getRole()].label) : getRole(); const n = getUserName(); return n ? `${r}（${n}）` : r; };
   // 端末に旧い表記が保存されていても、正式名称へ読み替える（保存済みの選択が外れないように）
-  const getStoreSel = () => normalizeStore(localStorage.getItem(LS.store) || STORES[0]);
+  const getStoreSel = () => {
+    const a = getAuth();
+    // ★ログイン済みのスタッフ・店長＝自店に固定（他店を選ぶ余地を残さない）
+    if (a && (a.role === 'staff' || a.role === 'manager')) return normalizeStore((a.stores || [])[0] || STORES[0]);
+    return normalizeStore(localStorage.getItem(LS.store) || STORES[0]);
+  };
   const setStoreSel = (s) => localStorage.setItem(LS.store, s);
   // 複数店舗オーナーの所有店舗（デモ用。実運用では本部の「権限設定表」で置き換える）
   // 例：富士山のオーナー（長田翔太さん）＝鰻・牛カツの2店を所有
   const OWNER_STORES = ['日本鰻世桜 富士山店', '牛カツ世桜 富士山店'];
+
+  /* ====== ログイン（認証）の状態 ======（2026-08-25 追加）
+     バックエンドの ENABLE_AUTH がONのとき、通信が needLogin を返す。
+     それを合図に「この配信先はログインが要る」と端末に覚え（LS_AUTH_REQ）、以後はログイン画面で受ける。
+     ★ログイン済みのあいだ、役割と店舗は「サーバーが返したもの」で固定＝右上の自由切替は封鎖される。
+     ★体験版（TAIKEN）は保存先を持たないため、ログインの仕組みごと無関係。 */
+  const LS_AUTH = 'yosakura_auth';
+  const LS_AUTH_REQ = 'yosakura_auth_required';
+  const getAuth = () => { if (TAIKEN) return null; try { return JSON.parse(localStorage.getItem(LS_AUTH)) || null; } catch (e) { return null; } };
+  const setAuth = (a) => { try { if (a) localStorage.setItem(LS_AUTH, JSON.stringify(a)); else localStorage.removeItem(LS_AUTH); } catch (e) {} };
+  const authToken = () => { const a = getAuth(); return a && a.token ? a.token : ''; };
+  const authRequired = () => !TAIKEN && localStorage.getItem(LS_AUTH_REQ) === '1';
+  const markAuthRequired = (on) => { try { if (on) localStorage.setItem(LS_AUTH_REQ, '1'); else localStorage.removeItem(LS_AUTH_REQ); } catch (e) {} };
+  // ログイン成功時：役割・店舗をサーバーの返答どおりに合わせる（以後この端末の表示が確定する）
+  function applyAuth_(a) {
+    setAuth(a); markAuthRequired(true);
+    setRole(a.role);
+    if (a.role === 'hq') setStoreSel('all');
+    else if (a.role === 'owner') setStoreSel((a.stores || []).length > 1 ? 'owned' : ((a.stores || [])[0] || STORES[0]));
+    else setStoreSel((a.stores || [])[0] || STORES[0]);
+    if (a.name && !getUserName() && a.role !== 'staff') setUserName(a.name); // 店舗iPad（共用）は各自が名前を入れる
+    try { localStorage.setItem(SETUP_KEY, '1'); } catch (e) {} // はじめの設定（役割選び）はもう不要
+  }
+  function logoutAuth_() { setAuth(null); render(); }
+  // 通信が「ログインしてください」と言ってきたときの受け（トークン切れ・再発行後も含む）
+  function onNeedLogin_() { markAuthRequired(true); setAuth(null); render(); }
+  // ★オーナー様の所有店舗＝ログイン済みならサーバーが返したもの／未ログイン（デモ・プレビュー）は従来の見本
+  const ownerStores_ = () => {
+    const a = getAuth();
+    return (a && a.role === 'owner' && (a.stores || []).length) ? a.stores.slice() : OWNER_STORES.slice();
+  };
   // 店舗スコープ：本部＝全店（または任意1店）、オーナー＝所有店舗（横断 or 1店）、他＝自店のみ
   function visibleStores() {
     const role = getRole(), sel = getStoreSel();
     if (role === 'hq') return sel === 'all' ? STORES.slice() : [sel];
-    if (role === 'owner') return (sel === 'owned' || !OWNER_STORES.includes(sel)) ? OWNER_STORES.slice() : [sel];
+    if (role === 'owner') { const os = ownerStores_(); return (sel === 'owned' || !os.includes(sel)) ? os : [sel]; }
     return [STORES.includes(sel) ? sel : STORES[0]];
   }
   // 画面では「世桜」以降の地名だけを出す（例：日本料理世桜本店 → 本店／牛カツ世桜 長堀橋店 → 長堀橋店）
@@ -528,6 +643,51 @@
     if (h < 24) return h + L({ ja:'時間前', en:'h ago', vi:' giờ trước' });
     return Math.floor(h / 24) + L({ ja:'日前', en:'d ago', vi:' ngày trước' });
   };
+  /* ★写真を「貼れる形（dataURL）」にしてから返す（2026-08-25 追加）
+     ⚠️ なぜ要るか＝以前は、選んだ瞬間にサムネイルの枠だけ出し、中身は img.onload の後に入れていた。
+        入らなかった場合は提出時の filter(Boolean) が黙って捨てるため、
+        「写真は選べたのに提出できない」という状態になり、画面には理由が何も出なかった
+        （2026-08-25 スマホで発生。PCでは起きない）。
+     ★直したこと＝①データが取れてからサムネイルを出す（出ていれば必ず貼れている）
+                  ②失敗したら理由を画面に出す（黙って捨てない）
+                  ③スマホは大きい写真ほどcanvasが失敗しやすいので、段階的に小さくして粘る
+                  ④それでもだめなら、縮小せず元のまま貼る（確実さを優先） */
+  const PHOTO_RAW_MAX_BYTES = 8 * 1024 * 1024;   // これより大きい元データはそのまま貼らない
+  function 写真を読む生データ_(file) {
+    return new Promise((resolve) => {
+      if (!file || file.size > PHOTO_RAW_MAX_BYTES) return resolve('');
+      try {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result || ''));
+        r.onerror = () => resolve('');
+        r.readAsDataURL(file);
+      } catch (e) { resolve(''); }
+    });
+  }
+  function 写真をデータにする_(file) {
+    return new Promise((resolve) => {
+      let url = '';
+      try { url = URL.createObjectURL(file); } catch (e) { return 写真を読む生データ_(file).then(resolve); }
+      const img = new Image();
+      img.onload = () => {
+        try { URL.revokeObjectURL(url); } catch (e) {}
+        // 端末のcanvasが小さいと大きい写真で失敗する。だめなら段階的に小さくして粘る
+        const sizes = [1500, 1000, 640];
+        for (let i = 0; i < sizes.length; i++) {
+          const d = downscale(img, sizes[i], 0.82);
+          if (d && d.length > 100) return resolve(d);
+        }
+        // 縮小がすべて失敗＝元のまま貼る（大きいが、貼れないよりよい）
+        写真を読む生データ_(file).then(resolve);
+      };
+      img.onerror = () => {
+        // この端末が読めない形式（iPhoneのHEICなど）。元のまま貼れば、Drive側では表示できる
+        try { URL.revokeObjectURL(url); } catch (e) {}
+        写真を読む生データ_(file).then(resolve);
+      };
+      img.src = url;
+    });
+  }
   // 写真を縮小してdataURL化（localStorage節約のためJPEG・最大240px）
   function downscale(img, max, q) {
     let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
@@ -1864,7 +2024,10 @@
     { ic:'check', gyotai:'all', roles:['all'],               gid:'checksheet', t:{ja:'13. チェックシート',en:'13. Check sheets',vi:'13. Bảng kiểm'}, s:{ja:'お手すき／桜／定期清掃／OPEN・CLOSE',en:'Idle / sakura / cleaning / open-close',vi:'Rảnh / vệ sinh / mở-đóng'} },
     { ic:'camera',gyotai:'all', roles:['all'],               gid:'serving', t:{ja:'提供時のあるべき姿',en:'Serving standards',vi:'Chuẩn phục vụ'}, s:{ja:'盛り付け・グラム規定・提供基準（最重要）',en:'Plating, grams, serving rules (key)',vi:'Trình bày, định lượng (quan trọng)'} },
     { ic:'star',  gyotai:'all', roles:['all'],               gid:'survey', t:{ja:'サーベイ運用',en:'Survey operation',vi:'Vận hành khảo sát'}, s:{ja:'iPad案内／回答の取り方',en:'iPad guidance / collecting answers',vi:'Hướng dẫn iPad'} },
-    { ic:'hq',    gyotai:'all', roles:['hq'],                gid:'hq', t:{ja:'本部運用',en:'HQ operations',vi:'Vận hành HQ'}, s:{ja:'研修トレーナー育成／7DAYS研修プログラム／権限',en:'Trainer dev / 7DAYS program / perms',vi:'Đào tạo trainer / 7DAYS / quyền'} },
+    /* ★2026-08-20 本部ご回答④＝本部運用の資料はオーナー様にも見せる（表示範囲4点の最後の1つ）。
+       roles に 'owner' を入れると、manualVisibleRole の仕組みでオーナー様＋本部が見える形になる。
+       ⚠️ アプリで出すのは入口だけ＝資料そのものが開けるかはドライブ側の共有設定による（シートの「大事な点」）。 */
+    { ic:'hq',    gyotai:'all', roles:['owner'],             gid:'hq', t:{ja:'本部運用',en:'HQ operations',vi:'Vận hành HQ'}, s:{ja:'研修トレーナー育成／7DAYS研修プログラム／権限',en:'Trainer dev / 7DAYS program / perms',vi:'Đào tạo trainer / 7DAYS / quyền'} },
     { ic:'food',  gyotai:'unagi',    roles:['all'], t:{ja:'鰻の焼成・タレ',en:'Eel grilling & sauce',vi:'Nướng lươn & sốt'}, s:{ja:'あぶり直し／タレ／提供の説明',en:'Re-grilling / sauce / explanation',vi:'Nướng lại / sốt / giải thích'} },
     { ic:'food',  gyotai:'sushi',    roles:['all'], t:{ja:'寿司オペレーション',en:'Sushi operation',vi:'Vận hành sushi'}, s:{ja:'シャリ／握り／衛生',en:'Rice / nigiri / hygiene',vi:'Cơm / nắm / vệ sinh'} },
     { ic:'food',  gyotai:'gyukatsu', roles:['all'], t:{ja:'牛カツの提供基準',en:'Gyukatsu serving',vi:'Phục vụ gyukatsu'}, s:{ja:'揚げ／断面／盛り付け（和牛のみ使用）',en:'Frying / cut / plating',vi:'Chiên / lát cắt / trình bày'} },
@@ -3321,7 +3484,10 @@
   function openIdentitySheet(first) {
     const buildHTML = () => {
       const role = getRole(), sel = getStoreSel();
-      const storeOpts = role === 'hq' ? ['all', ...STORES] : role === 'owner' ? ['owned', ...OWNER_STORES] : STORES;
+      const auth = getAuth();   // ★ログイン済み＝役割は固定・店舗は許された範囲だけ
+      const storeOpts = role === 'hq' ? ['all', ...STORES]
+        : role === 'owner' ? ['owned', ...ownerStores_()]
+        : (auth ? (auth.stores || []).slice(0, 1) : STORES);
       const storeLabel = (s) => s === 'all' ? L({ ja:'全店（本部）', en:'All stores (HQ)', vi:'Tất cả (HQ)' })
         : s === 'owned' ? L({ ja:'所有店舗すべて（比較）', en:'All my stores (compare)', vi:'Tất cả CH của tôi (so sánh)' }) : s;
       return `<div class="sheet">
@@ -3333,7 +3499,12 @@
             ? L({ ja:'店舗iPad・店長・加盟店オーナーで、見えるものが変わります。切り替えてお試しください。', en:'What you see changes by role. Feel free to switch and try.', vi:'Nội dung thay đổi theo vai trò. Hãy thử chuyển đổi.' })
             : L({ ja:'本部は全店を閲覧できます。店舗iPad・店長・加盟店オーナーは自分の店舗のみ（数値なども自店だけ）。', en:'HQ sees all stores. Store iPad, managers and franchisees see only their own store, including numbers.', vi:'HQ xem mọi cửa hàng. iPad cửa hàng/quản lý/chủ chỉ xem cửa hàng của mình.' })}</div>
         <div class="idlabel">${L({ ja:'役割', en:'Role', vi:'Vai trò' })}</div>
-        ${roleKeys().map(k => { const v = ROLES[k]; return `
+        ${auth ? `
+          <div class="role-opt on" style="cursor:default">
+            <span class="rr">${(ROLES[role]||{}).mark||''}</span>
+            <span class="ri"><b>${L((ROLES[role]||{}).label||{ja:role})}</b><span>${esc(auth.uid||'')}${L({ ja:' でログイン中（役割は固定です）', en:' — signed in (role is fixed)', vi:' — đã đăng nhập (vai trò cố định)' })}</span></span>
+            <span class="rc">${svg('tick')}</span>
+          </div>` : roleKeys().map(k => { const v = ROLES[k]; return `
           <button class="role-opt ${k===role?'on':''}" data-role="${k}">
             <span class="rr">${v.mark}</span>
             <span class="ri"><b>${L(v.label)}</b><span>${L(v.desc)}</span></span>
@@ -3349,17 +3520,21 @@
             ${s===sel?`<span class="rc">${svg('tick')}</span>`:''}
           </button>`).join('')}
         <button class="btn-primary" data-done="1" style="margin-top:10px">${first ? L({ ja:'この設定ではじめる', en:'Start with this', vi:'Bắt đầu' }) : L({ ja:'完了', en:'Done', vi:'Xong' })}</button>
+        ${auth ? `<button class="mini" data-logout="1" style="margin-top:10px">${L({ ja:'ログアウト', en:'Sign out', vi:'Đăng xuất' })}</button>` : ''}
       </div>`;
     };
     const mask = el(`<div class="sheet-mask">${buildHTML()}</div>`);
     const wire = () => {
       mask.querySelectorAll('[data-role]').forEach(b => b.onclick = () => {
+        if (getAuth()) return;   // ★ログイン済み＝役割は変えられない（表示上ボタンも出ていない）
         const r = b.dataset.role; setRole(r);
         const sel = getStoreSel();
-        if (r === 'owner') { if (sel !== 'owned' && !OWNER_STORES.includes(sel)) setStoreSel('owned'); }
+        if (r === 'owner') { if (sel !== 'owned' && !ownerStores_().includes(sel)) setStoreSel('owned'); }
         else if (r !== 'hq' && (sel === 'all' || sel === 'owned')) setStoreSel(STORES[0]);
         rebuild();
       });
+      const lo = mask.querySelector('[data-logout]');
+      if (lo) lo.onclick = () => { mask.remove(); logoutAuth_(); };
       mask.querySelectorAll('[data-store]').forEach(b => b.onclick = () => { setStoreSel(b.dataset.store); rebuild(); });
       // お名前＝入力のたびに保存（役割・店舗を切り替えてシートを作り直しても消えない）
       const nameInput = mask.querySelector('#idName');
@@ -3945,7 +4120,7 @@
         <div class="hint">${L({ja:'※ 写真が無いと提出できません（提出漏れ防止）。',en:'A photo is required to submit.',vi:'Cần có ảnh mới gửi được.'})}</div>
       </div>
       <div class="card"><h3>${L({ja:'最近の提出',en:'Recent submissions',vi:'Đã nộp gần đây'})}</h3>
-        ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?`<img class="rep-photo" src="${photoThumb(r.photos[0])}" data-full="${photoFull(r.photos[0])}" alt="">`:`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div></div></div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
+        ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join(''):`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div></div></div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
       </div>`;
   };
 
@@ -4122,14 +4297,17 @@
   APP_VIEWS.backend = () => {
     if (getRole() !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
     const cur = getApiUrl(); const custom = isCustomApi(); const admin = isSysAdmin();
+    /* ★表示は isDedicatedApi（実際の接続先）で判定する。isCustomApi（この端末で手動設定したか）ではない。
+       移行で保存値を消して既定へ戻したあと、中身は専用なのに「共用」と出てしまうため（2026-08-25）。 */
+    const dedicated = isDedicatedApi();
     // 接続状態（本部の方は「今どこにつながっているか」だけ確認できます）
     const statusCard = `
       <div class="card">
         <h3>${L({ja:'データの保存先（接続状態）',en:'Data backend (status)',vi:'Nơi lưu dữ liệu (trạng thái)'})}</h3>
-        <div class="rep"><span class="kind ${custom?'b':'a'}">${custom?L({ja:'専用',en:'Dedicated',vi:'Riêng'}):L({ja:'共用',en:'Shared',vi:'Chung'})}</span>
-          <div class="body"><div class="l1">${custom?L({ja:'世桜専用の保存先に接続しています',en:'Connected to the dedicated backend',vi:'Đang dùng backend riêng'}):L({ja:'共用（検証用）の保存先に接続しています',en:'Using the shared (test) backend',vi:'Đang dùng backend chung (thử nghiệm)'})}</div>
+        <div class="rep"><span class="kind ${dedicated?'b':'a'}">${dedicated?L({ja:'専用',en:'Dedicated',vi:'Riêng'}):L({ja:'共用',en:'Shared',vi:'Chung'})}</span>
+          <div class="body"><div class="l1">${dedicated?L({ja:'世桜専用の保存先に接続しています',en:'Connected to the dedicated backend',vi:'Đang dùng backend riêng'}):L({ja:'共用（検証用）の保存先に接続しています',en:'Using the shared (test) backend',vi:'Đang dùng backend chung (thử nghiệm)'})}</div>
           <div class="l2">${esc(maskUrl(cur))}</div></div></div>
-        ${custom ? '' : `<p class="hint" style="display:block;color:#b23">${L({ja:'※ 実データの運用を始める前に、システム担当（神田）が専用の保存先へ切り替えます。',en:'Before real operation, the system admin will switch to the dedicated backend.',vi:'Trước khi vận hành thật, quản trị hệ thống sẽ chuyển sang backend riêng.'})}</p>`}
+        ${dedicated ? '' : `<p class="hint" style="display:block;color:#b23">${L({ja:'※ 実データの運用を始める前に、システム担当（神田）が専用の保存先へ切り替えます。',en:'Before real operation, the system admin will switch to the dedicated backend.',vi:'Trước khi vận hành thật, quản trị hệ thống sẽ chuyển sang backend riêng.'})}</p>`}
       </div>`;
     if (!admin) {
       return statusCard + `
@@ -5041,7 +5219,94 @@
       desc:{ ja:'相談しにくい問題を本部へ直接（固定）', en:'Report directly to HQ (fixed item)', vi:'Báo cáo trực tiếp tới HQ (cố định)' } });
   }
 
+  /* ====== ログイン画面（2026-08-25 追加） ======
+     出す条件＝体験版でない・バックエンド接続・この配信先はログインが要ると分かっている、のすべて。
+     未ログイン→ログイン画面／仮パスワードのまま→変更画面（変更するまでアプリに入れない）。 */
+  const 認証画面が要る_ = () => {
+    if (TAIKEN || !useBackend() || !authRequired()) return false;
+    const a = getAuth();
+    return !a || !!a.mustChange;
+  };
+  function authScreenHTML_() {
+    const a = getAuth();
+    const head = `
+      <div style="text-align:center;margin:48px 0 20px">
+        <img src="${IMG_ICON}" alt="" style="width:56px;height:56px;border-radius:14px">
+        <div style="font-size:20px;font-weight:700;margin-top:8px">世桜 <small style="font-weight:400;color:#888">YOSAKURA APP</small></div>
+      </div>`;
+    if (a && a.mustChange) {
+      return `${head}
+      <div class="card" style="max-width:430px;margin:0 auto">
+        <h3>${L({ ja:'パスワードの変更（はじめに1回だけ）', en:'Change your password (first time only)', vi:'Đổi mật khẩu (chỉ lần đầu)' })}</h3>
+        <p class="hint" style="display:block">${L({
+          ja:'お渡しした仮パスワードを、ご自分のパスワードに変更してください（6文字以上）。以後はそのパスワードでログインします。',
+          en:'Replace the temporary password with your own (6+ characters).',
+          vi:'Đổi mật khẩu tạm thành mật khẩu riêng (từ 6 ký tự).' })}</p>
+        <label class="fld"><span>${L({ ja:'仮パスワード（お渡ししたもの）', en:'Temporary password', vi:'Mật khẩu tạm' })}</span><input type="password" id="au_old" autocomplete="current-password"></label>
+        <label class="fld"><span>${L({ ja:'新しいパスワード（6文字以上）', en:'New password (6+)', vi:'Mật khẩu mới (6+)' })}</span><input type="password" id="au_new" autocomplete="new-password"></label>
+        <label class="fld"><span>${L({ ja:'新しいパスワード（もう一度）', en:'New password (again)', vi:'Nhập lại mật khẩu mới' })}</span><input type="password" id="au_new2" autocomplete="new-password"></label>
+        <p class="hint" id="au_err" style="display:none;color:#b23"></p>
+        <button class="btn-primary" id="au_chpw">${L({ ja:'変更してはじめる', en:'Change & start', vi:'Đổi và bắt đầu' })}</button>
+        <button class="mini" id="au_back" style="margin-top:10px">${L({ ja:'別のIDでログインし直す', en:'Sign in as another ID', vi:'Đăng nhập ID khác' })}</button>
+      </div>`;
+    }
+    return `${head}
+      <div class="card" style="max-width:430px;margin:0 auto">
+        <h3>${L({ ja:'ログイン', en:'Sign in', vi:'Đăng nhập' })}</h3>
+        <p class="hint" style="display:block">${L({
+          ja:'本部からお渡ししたIDとパスワードを入力してください。分からない場合は本部までご連絡ください。',
+          en:'Enter the ID and password provided by HQ.',
+          vi:'Nhập ID và mật khẩu do HQ cung cấp.' })}</p>
+        <label class="fld"><span>ID</span><input type="text" id="au_id" autocapitalize="none" autocomplete="username"></label>
+        <label class="fld"><span>${L({ ja:'パスワード', en:'Password', vi:'Mật khẩu' })}</span><input type="password" id="au_pw" autocomplete="current-password"></label>
+        <p class="hint" id="au_err" style="display:none;color:#b23"></p>
+        <button class="btn-primary" id="au_login">${L({ ja:'ログイン', en:'Sign in', vi:'Đăng nhập' })}</button>
+      </div>`;
+  }
+  function bindAuthScreen_() {
+    const byId = (id) => document.getElementById(id);
+    const showErr = (msg) => { const e2 = byId('au_err'); if (e2) { e2.textContent = msg; e2.style.display = 'block'; } };
+    const post = (body) => fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(body) }).then(r => r.json());
+    if (byId('au_login')) byId('au_login').onclick = () => {
+      const uid = (byId('au_id').value || '').trim(), pw = byId('au_pw').value || '';
+      if (!uid || !pw) { showErr(L({ ja:'IDとパスワードを入力してください', en:'Enter ID and password.', vi:'Nhập ID và mật khẩu.' })); return; }
+      byId('au_login').disabled = true;
+      post({ action: 'login', uid: uid, pw: pw }).then(d => {
+        if (d && d.ok && d.auth) { applyAuth_(d.auth); render(); return; }
+        byId('au_login').disabled = false;
+        showErr(L({ ja:'IDまたはパスワードが違います', en:'Wrong ID or password.', vi:'Sai ID hoặc mật khẩu.' }));
+      }).catch(() => {
+        byId('au_login').disabled = false;
+        showErr(L({ ja:'通信できませんでした。電波のあるところでもう一度お試しください', en:'Network error. Please try again.', vi:'Lỗi mạng. Vui lòng thử lại.' }));
+      });
+    };
+    if (byId('au_chpw')) byId('au_chpw').onclick = () => {
+      const oldPw = byId('au_old').value || '', n1 = byId('au_new').value || '', n2 = byId('au_new2').value || '';
+      if (n1.length < 6) { showErr(L({ ja:'新しいパスワードは6文字以上にしてください', en:'New password must be 6+ characters.', vi:'Mật khẩu mới từ 6 ký tự.' })); return; }
+      if (n1 !== n2) { showErr(L({ ja:'新しいパスワードが2回で一致していません', en:'New passwords do not match.', vi:'Mật khẩu mới không khớp.' })); return; }
+      byId('au_chpw').disabled = true;
+      post({ action: 'chpw', token: authToken(), oldPw: oldPw, newPw: n1 }).then(d => {
+        if (d && d.ok) {
+          const a = getAuth(); if (a) { a.mustChange = false; setAuth(a); }
+          toast(L({ ja:'パスワードを変更しました。ようこそ！', en:'Password changed. Welcome!', vi:'Đã đổi mật khẩu. Chào mừng!' }));
+          render(); return;
+        }
+        byId('au_chpw').disabled = false;
+        if (d && d.needLogin) { onNeedLogin_(); return; }
+        showErr(d && d.error === 'OLDPW_WRONG'
+          ? L({ ja:'仮パスワードが違います', en:'Temporary password is wrong.', vi:'Mật khẩu tạm không đúng.' })
+          : L({ ja:'変更できませんでした。もう一度お試しください', en:'Could not change. Please retry.', vi:'Không đổi được. Thử lại.' }));
+      }).catch(() => {
+        byId('au_chpw').disabled = false;
+        showErr(L({ ja:'通信できませんでした。電波のあるところでもう一度お試しください', en:'Network error. Please try again.', vi:'Lỗi mạng. Vui lòng thử lại.' }));
+      });
+    };
+    if (byId('au_back')) byId('au_back').onclick = () => { setAuth(null); render(); };
+  }
+
   function render(keepScroll) {
+    // ★ログインの門（体験版・未接続・ログイン不要の配信先では一切出ない）
+    if (認証画面が要る_()) { $app.innerHTML = authScreenHTML_(); window.scrollTo(0, 0); bindAuthScreen_(); return; }
     const y = keepScroll ? (window.scrollY || window.pageYOffset || 0) : 0;
     const { path, params } = currentRoute();
     let html;
@@ -5261,19 +5526,123 @@
     if (drop) {
       const fi = document.getElementById('f_photo');
       const thumbs = document.getElementById('photoThumbs');
-      drop.onclick = () => fi.click();
-      fi.onchange = () => {
-        Array.from(fi.files).forEach(f => {
-          const url = URL.createObjectURL(f);
-          const wrap = document.createElement('div'); wrap.className = 'pt';
-          const img = new Image(); img.alt = '';
-          img.onload = () => { wrap.dataset.thumb = downscale(img, 1500, 0.82); };
-          img.src = url;
-          const x = document.createElement('button'); x.type = 'button'; x.className = 'pt-x'; x.textContent = '×';
-          x.onclick = (e) => { e.stopPropagation(); URL.revokeObjectURL(url); wrap.remove(); };
-          wrap.appendChild(img); wrap.appendChild(x); thumbs.appendChild(wrap);
-        });
+      /* ★消えない状態表示（2026-08-25・iPhoneで「黒い帯すら出ない」の切り分け用）。
+         トーストは2.4秒で消えるため、見逃すと何が起きたか分からない。
+         写真ボタンの下に、いまどの段階かを出しっぱなしにする。 */
+      let stat = document.getElementById('photoStat');
+      if (!stat) {
+        stat = document.createElement('div');
+        stat.id = 'photoStat';
+        stat.style.cssText = 'font-size:12px;color:#8a6d3b;margin-top:6px;display:none';
+        drop.parentNode.insertBefore(stat, drop.nextSibling);
+      }
+      const setStat = (msg) => { stat.textContent = msg || ''; stat.style.display = msg ? 'block' : 'none'; };
+      // 前回、写真の選択中に再読み込みが起きていたら、消えない形でここに出す
+      if (写真選択中に再読み込みがあった) {
+        setStat(L({
+          ja: '★前回、写真の選択中にアプリが再読み込みされました（端末のメモリ確保のため）。もう一度お選びください',
+          en: '★The app reloaded while picking a photo. Please select it again.',
+          vi: '★Ứng dụng đã tải lại khi chọn ảnh. Vui lòng chọn lại.'
+        }));
+      }
+      /* ★iPhone・iPadでは複数選択をやめる（2026-08-25 実機で確定した不具合への対策①）
+         ホーム画面版＋ライブラリの複数選択画面だと、選んで確定しても change が届かないことがある
+         （カメラ撮影は届く＝実機で確認）。単数選択は別の選択画面が開き、確実に届く。
+         1枚ずつなら追加できるので、複数枚は「もう一度押して足す」で対応できる。 */
+      try {
+        const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
+                    ((navigator.platform === 'MacIntel') && navigator.maxTouchPoints > 1);
+        if (IOS) fi.removeAttribute('multiple');
+      } catch (e) {}
+      /* ★取り込みを1つの関数に（対策②の「拾い直し」からも呼ぶため）。写真が無ければ false。
+         取り込み中フラグ＝change と拾い直しタイマーが同時に来ても、後から来た方が
+         「写真が無い＝取り消し」と誤解して状態を消さないようにする（★カメラで撮っている間に
+         タイマーが溜まり、戻った瞬間に衝突する形が v128 で起きた）。 */
+      let 取り込み中 = false;
+      const 取り込む = () => {
+        const files = Array.from(fi.files || []);
+        if (!files.length) return false;
+        取り込み中 = true;
         fi.value = ''; // 同じ写真の再選択や追加ができるようにクリア
+        drop.classList.add('busy');
+        setStat(L({ ja:'写真を読み込んでいます…', en:'Loading photo…', vi:'Đang tải ảnh…' }));
+        toast(L({ ja:'写真を読み込んでいます…', en:'Loading photo…', vi:'Đang tải ảnh…' }));
+        Promise.all(files.map(写真をデータにする_)).then(結果 => {
+          drop.classList.remove('busy');
+          写真の操作を終える_();
+          取り込み中 = false;
+          let 失敗 = 0, 成功 = 0;
+          結果.forEach(data => {
+            if (!data) { 失敗++; return; }
+            成功++;
+            const wrap = document.createElement('div'); wrap.className = 'pt';
+            wrap.dataset.thumb = data;              // ★先に入れる＝表示できたら必ず貼れている
+            const img = new Image(); img.alt = ''; img.src = data;
+            const x = document.createElement('button'); x.type = 'button'; x.className = 'pt-x'; x.textContent = '×';
+            x.onclick = (e) => { e.stopPropagation(); wrap.remove(); };
+            wrap.appendChild(img); wrap.appendChild(x); thumbs.appendChild(wrap);
+          });
+          if (失敗) {
+            setStat(L({
+              ja: 'この写真は読み込めませんでした（' + 失敗 + '枚）。カメラで撮り直すか、別の写真をお試しください',
+              en: 'Could not load ' + 失敗 + ' photo(s). Please retake or choose another.',
+              vi: 'Không tải được ' + 失敗 + ' ảnh. Vui lòng chụp lại hoặc chọn ảnh khác.'
+            }));
+            toast(L({
+              ja: 'この写真は読み込めませんでした（' + 失敗 + '枚）。カメラで撮り直すか、別の写真をお試しください',
+              en: 'Could not load ' + 失敗 + ' photo(s). Please retake or choose another.',
+              vi: 'Không tải được ' + 失敗 + ' ảnh. Vui lòng chụp lại hoặc chọn ảnh khác.'
+            }));
+          } else {
+            setStat(成功 ? L({ ja: 成功 + '枚を貼り付けました', en: 成功 + ' photo(s) attached', vi: 'Đã đính kèm ' + 成功 + ' ảnh' }) : '');
+          }
+        });
+        return true;
+      };
+      /* ★対策②＝届かなかった change を拾い直す（2026-08-25 実機で確定）
+         iOSのライブラリ選択は、写真の変換に時間がかかると change だけが失われることがある。
+         選択画面を開いたあと、時間を空けて数回「写真が置かれていないか」を自分で見に行く。
+         （iOSは変換が終わると fi.files に写真を置く。通知が来なくても中身は見える）
+         写真が来たら通常と同じ取り込みへ。二重取り込みは、取り込み時に fi.value を消すことで防ぐ。 */
+      const 受け取りを見に行く = () => {
+        const 待ち = [400, 1000, 2000, 4000, 8000];
+        let i = 0;
+        const tick = () => {
+          if (!写真の操作中 || 取り込み中) return;   // 取り込み済み・取り込みの最中・取り消し済みなら何もしない
+          if (取り込む()) return;           // 写真が置かれていた＝拾い直せた
+          if (i < 待ち.length) setTimeout(tick, 待ち[i++]);
+          else setStat(L({                  // ★8秒待っても来ない＝届かなかったと画面に出す（黙って開きっぱなしにしない）
+            ja: '写真を受け取れませんでした。お手数ですが「写真を撮る」でカメラから撮影いただくか、Safariで開いてお試しください',
+            en: 'The photo did not arrive. Please use the camera, or open this page in Safari.',
+            vi: 'Không nhận được ảnh. Vui lòng dùng máy ảnh hoặc mở bằng Safari.'
+          }));
+        };
+        setTimeout(tick, 待ち[i++]);
+      };
+      /* ★対策③（2026-08-25・実機で①②でも届かないことが確定したため）
+         これまでは「ボタンを押す → JSが fi.click() で選択画面を開く」だった。
+         iOSのホーム画面版は、このJS経由の開き方だとライブラリの写真を入力欄へ置かないことがある
+         （カメラ撮影は届く／拾い直しでも fi.files が空のまま＝置かれていない）。
+         入力欄を透明にしてボタン全体へ重ね、**指のタップが直接入力欄に当たる**ようにする。
+         JSは開くのに関与しない＝iOSから見て「ユーザーが自分で選択画面を開いた」形になる。 */
+      try {
+        drop.style.position = 'relative';
+        fi.removeAttribute('hidden');
+        fi.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;font-size:0';
+      } catch (e) {}
+      // ★写真を選んでいるあいだは、自動同期で画面を作り直させない（スマホは背面に回るため）。
+      //   click は指のタップでそのまま入力欄に入る＝JSからは開かない（fi.click() は使わない）
+      drop.onclick = null;
+      fi.addEventListener('click', () => {
+        写真の操作を始める_();
+        setStat(L({ ja:'写真の選択画面を開きました…（選んだあと、この表示が変わらない場合はお知らせください）',
+                    en:'Opened the photo picker…', vi:'Đã mở chọn ảnh…' }));
+        受け取りを見に行く();
+      });
+      /* ★サムネイルは「貼れるデータが取れてから」出す（2026-08-25）。
+         出ている＝必ず提出に乗る、という状態にする。失敗したら理由を画面に出す（黙って捨てない）。 */
+      fi.onchange = () => {
+        if (!取り込む() && !取り込み中) { 写真の操作を終える_(); setStat(''); }  // 空＝選択の取り消し（★取り込みの最中なら消さない）
       };
     }
 
@@ -5291,9 +5660,8 @@
       const thumbsEl = document.getElementById('photoThumbs');
       const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0,6) : [];
       const rep = { kind, store, item, level, note, photos, t: Date.now() };
-      const reps = getReports();
-      reps.push(rep);         // 楽観的に即表示
-      saveReports(reps);
+      // ★端末への控えが失敗しても送信は止めない（postSub と同じ形。保存領域が一杯でも提出は届く）
+      try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
       postReport(rep);        // バックエンド設定時は全端末へ同期
       toast(L({ ja:'報告しました。ありがとうございます！', en:'Reported. Thank you!', vi:'Đã gửi. Cảm ơn!' }));
       render();
@@ -5769,22 +6137,70 @@
     if (!force && Date.now() - lastSync < 3000) return;
     lastSync = Date.now();
     try {
-      const res = await fetch(getApiUrl());
+      await flushPending_();   // ★保留中の提出を、読む前に必ず送る（送る前に読むと、未達の提出が消える）
+      const res = await fetch(getApiUrl() + (authToken() ? ('?token=' + encodeURIComponent(authToken())) : ''));
       const d = await res.json();
+      if (d && d.needLogin) { onNeedLogin_(); return; }   // ★ログインが要る配信先＝ログイン画面へ（トークン切れも含む）
       if (d && d.ok && Array.isArray(d.reports)) {
         const nextRaw = JSON.stringify(d.reports);
         if (nextRaw !== (localStorage.getItem('yosakura_demo_raw') || '')) {
           localStorage.setItem('yosakura_demo_raw', nextRaw);
           distribute(d.reports);
-          render();
+          // ★写真の作業中は描き直さない（貼った写真と選択中の入力欄が消えるため）。取り込み自体は済んでいる
+          if (画面を作り直してよい_()) render();
         }
       }
     } catch (_) { /* オフライン時はローカル（既存データ）を使用 */ }
   }
+  /* ★送れなかった提出の保留箱（2026-08-25 リリース前点検で発見・修正）
+     ⚠️ 以前は postReport の失敗を .catch(() => {}) で黙って握りつぶしていた。
+        オフラインで提出 →「提出しました」と表示 → 実際は未達 → 電波が戻って同期すると、
+        同期はバックエンドの内容でローカルを書き直すため、未達の提出が端末からも消えていた
+        ＝「出したのに出ていない」が黙って起きる。店舗のWi-Fiが一瞬切れるだけで踏む。
+     → 失敗したらこの保留箱に入れ、次の同期の前に必ず再送する。利用者にもその場で伝える。 */
+  const LS_PENDING = 'yosakura_pending_posts';
+  const getPending_ = () => { try { return JSON.parse(localStorage.getItem(LS_PENDING)) || []; } catch (e) { return []; } };
+  const savePending_ = (a) => { try { localStorage.setItem(LS_PENDING, JSON.stringify(a)); } catch (e) {} };
+  async function flushPending_() {
+    const q = getPending_();
+    if (!q.length) return;
+    const 残り = [];
+    for (let i = 0; i < q.length; i++) {
+      try {
+        // ★トークンは「送る時点のもの」を付ける＝ログインし直したあとの再送でも通る
+        const res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(Object.assign({ token: authToken() }, q[i])) });
+        const d = await res.json();
+        if (d && d.needLogin) { for (let j = i; j < q.length; j++) 残り.push(q[j]); break; }  // ログイン後に続きを送る
+      }
+      catch (e) { 残り.push(q[i]); }
+    }
+    savePending_(残り);
+    if (残り.length < q.length) {
+      toast(L({ ja:'電波が無いあいだの提出（' + (q.length - 残り.length) + '件）を送信しました',
+                en:'Sent ' + (q.length - 残り.length) + ' pending submission(s).',
+                vi:'Đã gửi ' + (q.length - 残り.length) + ' mục chờ.' }));
+    }
+  }
   // rep = { kind, store, item, level, note, photos, t }
   function postReport(rep) {
     if (!useBackend()) return Promise.resolve();
-    return fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(rep) }).then(() => syncReports(true)).catch(() => {});
+    return fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(Object.assign({ token: authToken() }, rep)) })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && d.needLogin) {
+          // ★提出は保留箱へ残してからログインへ（ログイン後の同期で自動再送される＝提出は失われない）
+          const q = getPending_(); q.push(rep); savePending_(q);
+          onNeedLogin_(); return;
+        }
+        return syncReports(true);
+      })
+      .catch(() => {
+      // ★黙って捨てない＝保留箱に入れて、その場で伝える（元の t を保つので、後から送っても時系列は崩れない）
+      const q = getPending_(); q.push(rep); savePending_(q);
+      toast(L({ ja:'電波が無いため、この提出はいったん端末に保留しました。つながったら自動で送信します',
+                en:'No connection. Saved on this device and will send automatically.',
+                vi:'Mất kết nối. Đã lưu trên máy và sẽ tự gửi lại.' }));
+    });
   }
 
   /* 端末に保存済みのデータを、正式名称へ寄せ直す（起動時に毎回・何度実行しても同じ結果）。
@@ -5823,10 +6239,12 @@
 
   /* ---------- 起動 ---------- */
   document.documentElement.lang = LANG;
+  retireOldApiUrl(); // 端末に残った古い接続先を、移行後の既定へ戻す（seedの判定より前に行う）
   if (!useBackend()) seedIfEmpty();
   // バックエンド接続時は全端末同期を使うためシードしない（＝実データのみ）。オフライン検証時のみ初期データを用意。
   if (!useBackend()) { seedSk(); seedMonthly(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); seedMaterials(); seedStudy(); }
   migrateStoreNames(); // 端末に残っている旧い店舗表記を、正式名称へ寄せ直す
+  写真選択中の再読み込みを報告_(); // ★前回、写真の選択中に再読み込みが起きていたら画面に出す（★render より先＝bindが印を読むため）
   render();
   syncReports(true);
   // 表示中の版を読み、画面下に出す（更新が端末へ届いているかの確認用）
@@ -5838,7 +6256,7 @@
   } catch (e) {}
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
   // 初回だけ「はじめの設定」→ 続けて使い方ガイド。2回目以降はどちらも出さない
-  if (!localStorage.getItem(SETUP_KEY)) setTimeout(() => openIdentitySheet(true), 1350);
+  if (!localStorage.getItem(SETUP_KEY) && !認証画面が要る_()) setTimeout(() => openIdentitySheet(true), 1350); // ★ログイン画面の上に「はじめの設定」を被せない
   else if (!localStorage.getItem('yosakura_tour_done')) setTimeout(() => openTour(0), 1450);
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

@@ -3,10 +3,11 @@
    -------------------------------------------------------------------
    本部が見るのは「プレビュー環境」= https://yosakura-system.github.io/yosakura-app-preview/
    （別リポジトリ yosakura-app-preview・専用バックエンド接続）。
-   デモ(yosakura-app-demo)を"源泉"として、プレビューはデモに【3点だけ】差し替えたコピー：
+   デモ(yosakura-app-demo)を"源泉"として、プレビューはデモに【4点だけ】差し替えたコピー：
      1) app.js の API_URL_DEFAULT = 専用バックエンドURL（yosakura.system）
-     2) app.js のアプリカードのバッジ = 非live/非soonに「運用中/In use」を表示
-     3) sw.js の CACHE 名 = 'yosakura-hq-vN'（デモは 'yosakura-demo-vN'）。実行のたび N を+1
+     2) app.js の API_URL_RETIRED = 役目を終えた接続先（移行のとき・端末の保存値を載せ替える）
+     3) app.js のアプリカードのバッジ = 非live/非soonに「運用中/In use」を表示
+     4) sw.js の CACHE 名 = 'yosakura-hq-vN'（デモは 'yosakura-demo-vN'）。実行のたび N を+1
    styles.css / index.html はデモとプレビューで同一。
 
    使い方（demoのfeatureブランチで実装・commit・push した後に）：
@@ -23,7 +24,15 @@ import { fileURLToPath } from 'node:url';
 const DEMO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'); // = リポジトリ直下
 const WORK = path.join(os.tmpdir(), 'yosakura-app-preview-sync');
 const PREVIEW_REPO = 'https://github.com/yosakura-system/yosakura-app-preview.git';
-const PV_BACKEND_URL = 'https://script.google.com/macros/s/AKfycbxfBr3H4toq5AdeQ5zb-5DcmcYpjaRybGC5EAyfHIVYzVE3-bCBGq2bgIbgpls3Kq7_/exec'; // 世桜専用（yosakura.system）
+const PV_BACKEND_URL = 'https://script.google.com/macros/s/AKfycbwoa_jSOhTpBYZY29tv_OrUU5AvXpA6vDHIQAecoDfguQ9zzuN0PxnP5_-Bls4k_zYP/exec'; // 世桜専用（yosakura.fc・2026-08-25 移行）
+/* ★役目を終えた接続先（バックエンドの移行のとき、ここに旧URLを足す）
+   端末に保存された接続先は既定より優先されるため、ここに載せないと
+   本部メンバーの端末は移行後も古いバックエンドを見続ける（＝その日の提出が新しい方に入らない）。
+   移行が全端末に行き渡ったら空に戻してよい。 */
+const PV_RETIRED_URLS = [
+  'https://script.google.com/macros/s/AKfycbxfBr3H4toq5AdeQ5zb-5DcmcYpjaRybGC5EAyfHIVYzVE3-bCBGq2bgIbgpls3Kq7_/exec' // 旧・yosakura.system（2026-08-25 まで）
+];
+if (PV_RETIRED_URLS.includes(PV_BACKEND_URL)) throw new Error('いま使う接続先が PV_RETIRED_URLS に入っています（設定した直後に消えてしまいます）');
 
 const LF = (s) => s.replace(/\r\n/g, '\n');
 const rd = (p) => LF(fs.readFileSync(p, 'utf8'));
@@ -36,9 +45,19 @@ sh(`git clone --depth 1 ${PREVIEW_REPO} "${WORK}"`);
 // 2) app.js：デモ本体に「専用URL」「運用中バッジ」の2点だけ差し替え
 let app = rd(path.join(DEMO, 'app.js'));
 const demoUrlLine = `  const API_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzS-tvfTQwJjgYn2ASHWidU-qBWZzF85bqt25T4mAXcM-P6-75zFqzUSlgiPFDTe7KQRQ/exec';`;
-const pvUrlLine = `  const API_URL_DEFAULT = '${PV_BACKEND_URL}'; // 世桜専用（yosakura.system）`;
+const pvUrlLine = `  const API_URL_DEFAULT = '${PV_BACKEND_URL}'; // 世桜専用（yosakura.fc）`;
 if (!app.includes(demoUrlLine)) throw new Error('demo API_URL_DEFAULT 行が見つかりません（app.js の該当行を確認）');
 app = app.replace(demoUrlLine, pvUrlLine);
+
+const demoRetiredLine = `  const API_URL_RETIRED = [];`;
+if (!app.includes(demoRetiredLine)) throw new Error('demo API_URL_RETIRED 行が見つかりません（app.js の該当行を確認）');
+app = app.replace(demoRetiredLine, `  const API_URL_RETIRED = [${PV_RETIRED_URLS.map(u => `'${u}'`).join(', ')}];`);
+
+/* ★プレビューの既定は「世桜専用の保存先」＝画面に「専用」と出す。
+   これを入れないと、移行で端末の保存値を消した直後に「共用（検証用）」と誤って表示される（2026-08-25）。 */
+const demoDedicatedLine = `  const API_DEFAULT_IS_DEDICATED = false;`;
+if (!app.includes(demoDedicatedLine)) throw new Error('demo API_DEFAULT_IS_DEDICATED 行が見つかりません（app.js の該当行を確認）');
+app = app.replace(demoDedicatedLine, `  const API_DEFAULT_IS_DEDICATED = true;`);
 
 const demoBadge = `: (a.live ? '<span class="live">● LIVE</span>' : '')}`;
 const pvBadge = ": (a.live ? '<span class=\"live\">● LIVE</span>' : `<span class=\"live\" style=\"background:#4e7d5a\">${L({ja:'運用中',en:'In use',vi:'Đang dùng'})}</span>`)}";

@@ -25,8 +25,14 @@ function ttlDays_()        { return Number(getSetting_('PHOTO_TTL_DAYS', 90)) ||
 function autoPurgeOn_()    { return getSetting_('ENABLE_AUTO_PURGE', true) === true; }  // 自動削除の有効/無効
 /* 削除しないkind（アプリの設定情報。消すと提出物マスタや定休日が失われる）
    ★2026-08-13 追加＝ckitem（店舗が足したチェック項目）・ckhide（店舗が外した共通項目）。
-     店舗ごとに作り替えた点検表そのものなので、保存期間で消えると各店の設定が失われる。 */
-var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide'];
+     店舗ごとに作り替えた点検表そのものなので、保存期間で消えると各店の設定が失われる。
+   ★2026-08-25 追加＝emg（店舗の緊急連絡先）・linkset（本部が登録した資料リンク一覧）・
+     faqset（よくある質問）・study（勉強会の録画）・news（本部のお知らせ）。
+     ⚠️ 自動削除は「このリスト以外を全部消す」作りのため、設定系のkindを足したら必ずここにも足す。
+        仕様（2026-07-31確定）で消してよいのは「写真・動画・提出データ」だけ。設定・登録情報は対象外。
+        例＝linkset は最新1行が全リンク一覧なので、本部が90日リンクを触らないだけで全部消えるところだった。 */
+var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide',
+                         'emg', 'linkset', 'faqset', 'study', 'news'];
 
 // スクリプトプロパティから設定を読む（無ければ既定値）。管理画面や手動で変更できる。
 function getSetting_(key, def) {
@@ -180,7 +186,17 @@ function initScriptProperties_() {
 function ensurePhotoFolder_() {
   var folder = getPhotoFolder();
   PropertiesService.getScriptProperties().setProperty('PHOTO_FOLDER_ID', folder.getId());
-  return { name: folder.getName(), id: folder.getId(), url: folder.getUrl() };
+  // ★所有者が自分でないフォルダを掴んでいたら止める。
+  //   移行時、旧アカウントから共有された同名フォルダを掴むと写真を保存できない（閲覧者のため）。
+  var owner = '', me = '';
+  try { owner = folder.getOwner() ? folder.getOwner().getEmail() : ''; } catch (e) {}
+  try { me = Session.getEffectiveUser().getEmail(); } catch (e) {}
+  if (owner && me && owner !== me) {
+    throw new Error('★写真フォルダの所有者が違います（所有者: ' + owner + ' ／ 実行者: ' + me + '）。'
+      + '旧アカウントから共有された同名フォルダを掴んでいる可能性があります。'
+      + '新しい写真フォルダを作り、そのIDを Script Properties の PHOTO_FOLDER_ID に設定してください。');
+  }
+  return { name: folder.getName(), id: folder.getId(), url: folder.getUrl(), owner: owner };
 }
 
 /* 構成が正しいかを点検する（実行して結果をログで確認）。データは変更しません。 */
@@ -228,8 +244,32 @@ function selfTestReadWrite() {
 }
 
 function getPhotoFolder() {
+  var sp = PropertiesService.getScriptProperties();
+  var id = sp.getProperty('PHOTO_FOLDER_ID');
+  // ★IDが入っていれば必ずそれを使う（名前で探し直さない）。
+  //   置き場所を「01.本番」の中など任意の場所に決められる＝ルート直下に作られない。
+  if (id) {
+    try {
+      return DriveApp.getFolderById(id);
+    } catch (e) {
+      throw new Error('★PHOTO_FOLDER_ID のフォルダを開けません（' + id + '）。'
+        + 'IDが正しいか、このアカウントに権限があるかを確認してください。');
+    }
+  }
+  // IDが未設定のときだけ名前で探す。
+  // ⚠️ getFoldersByName は「共有されたフォルダ」も含めて横断検索する。
+  //    旧アカウントから同名フォルダを共有されていると取り違えるため、複数見つかったら選ばずに止める。
   var it = DriveApp.getFoldersByName(PHOTO_FOLDER);
-  return it.hasNext() ? it.next() : DriveApp.createFolder(PHOTO_FOLDER);
+  var found = [];
+  while (it.hasNext()) found.push(it.next());
+  if (found.length > 1) {
+    throw new Error('★「' + PHOTO_FOLDER + '」が' + found.length + '個見つかりました（'
+      + found.map(function (f) { return f.getId(); }).join(' / ') + '）。'
+      + 'どれを使うかを Script Properties の PHOTO_FOLDER_ID に設定してください。');
+  }
+  var folder = found.length ? found[0] : DriveApp.createFolder(PHOTO_FOLDER);
+  sp.setProperty('PHOTO_FOLDER_ID', folder.getId());
+  return folder;
 }
 
 // base64のdataURLを受け取りDriveへ保存してファイルIDを返す。既にID/URLならそのまま返す。
@@ -266,6 +306,10 @@ function doGet(e) {
     if (e && e.parameter && e.parameter.action === 'setupTrigger') {
       return json({ ok: true, setup: ensureDailyPurgeTrigger() });
     }
+    /* ★認証の門番（2026-08-25 追加）。ENABLE_AUTH=false のあいだは素通し＝挙動不変。
+       認証.gs を貼っていないプロジェクトでも壊れないよう、関数の有無を見てから呼ぶ。 */
+    var gate = (typeof auth_gate_get_ === 'function') ? auth_gate_get_(e) : { ok: true, u: null };
+    if (!gate.ok) return json({ ok: false, error: 'AUTH_REQUIRED', needLogin: true });
     var sh = getSheet();
     var lastRow = sh.getLastRow();
     var store = e && e.parameter ? e.parameter.store : '';
@@ -278,6 +322,7 @@ function doGet(e) {
         var r = values[i];
         if (!r[0]) continue;
         if (store && store !== 'all' && r[3] !== store) continue;
+        if (gate.u && typeof auth_row_ok_ === 'function' && !auth_row_ok_(gate.u, String(r[2] || ''), String(r[3] || ''))) continue; // ★自店の分だけ返す
         out.push({
           id: r[0], t: Number(r[1]) || 0, kind: r[2], store: r[3],
           item: r[4], level: r[5], note: r[6], photos: parsePhotos(r[7])
@@ -295,6 +340,16 @@ function doGet(e) {
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
+    /* ★ログインなどの認証API（2026-08-25 追加）。該当しなければ null が返り、通常の提出処理へ進む */
+    if (typeof auth_api_ === 'function') {
+      var ar = auth_api_(data);
+      if (ar) return json(ar);
+    }
+    /* ★書き込みの門番。ENABLE_AUTH=false のあいだは素通し＝挙動不変 */
+    if (typeof auth_gate_post_ === 'function') {
+      var gp = auth_gate_post_(data);
+      if (!gp.ok) return json({ ok: false, error: gp.error || 'AUTH_REQUIRED', needLogin: true });
+    }
     var sh = getSheet();
     var id = Utilities.getUuid();
     var ts = data.t || Date.now();
@@ -442,6 +497,12 @@ function storageReport() {
  * doGet(?action=purgeTargets) でも呼べる。
  */
 function listPurgeTargets() {
+  // ★エディタから直接実行してもログで見えるようにする（2026-08-25 移行時、実行しても何も出ず戸惑ったため）
+  var out = listPurgeTargets_();
+  Logger.log(JSON.stringify(out, null, 2));
+  return out;
+}
+function listPurgeTargets_() {
   var cutoffMs = Date.now() - ttlDays_() * 24 * 60 * 60 * 1000;
   var cutoff = new Date(cutoffMs);
   // 写真
