@@ -2755,8 +2755,15 @@ console.log('== 日報一本化（2026-08-26 構築MTG決定：アプリ入力�
   // ⑥ 印刷スタイル＝A4横・画面の飾りは刷らない
   const css = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/styles.css', 'utf8');
   ok(/@media print/.test(css) && /A4 landscape/.test(css), '印刷はA4横');
-  ok(/\.no-print, \.hdr, \.tabbar, \.taiken-band \{ display: none !important; \}/.test(css),
+  ok(/\.no-print, \.hdr, \.tabbar, \.taiken-band, \.sheet-mask, \.tour-mask, \.lightbox, \.splash, \.toast \{ display: none !important; \}/.test(css),
      '印刷時にヘッダー・タブ・ボタンは消える');
+  // 2026-08-27 印刷の実物検品で見つけた3件をここで固定する
+  ok(/\.sheet-mask/.test((css.match(/@media print\{?[\s\S]*$/) || [''])[0]) && /\.tour-mask/.test(css) && /\.splash/.test(css),
+     '印刷時に「はじめの設定」等の重なりものは紙に写らない（検品で写り込みが出た）');
+  ok(/@media print[\s\S]*#app \{ max-width: none; box-shadow: none;/.test(css),
+     '印刷時はスマホ幅の柱を外す（外すと表の背後に灰色が刷られていた）');
+  ok(/@media print[\s\S]*\.skp-table tr \{ break-inside: avoid; \}/.test(css) && /@media print[\s\S]*line-height: 1\.4/.test(css),
+     '31日の月でも合計・注記まで1枚に収まる行の詰め方');
 }
 FETCH_ROWS = { ok:false };
 
