@@ -495,10 +495,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
   body { background: #fff; }
-  .no-print, .hdr, .tabbar, .taiken-band { display: none !important; }
+  /* アプリはスマホ幅の柱で描いているが、紙では柱を外して紙幅いっぱいに使う。
+     ★これが無いと、表が柱からはみ出した部分の背後に地色（灰色）が印刷される */
+  #app { max-width: none; box-shadow: none; padding-bottom: 0; }
+  /* 画面に重なるもの（設定シート・ガイド・写真拡大・起動画面・トースト）は紙に写さない。
+     ★「はじめの設定」が開いたまま印刷すると、灰色の幕ごと紙に出ていた（2026-08-27 検品で発見） */
+  .no-print, .hdr, .tabbar, .taiken-band, .sheet-mask, .tour-mask, .lightbox, .splash, .toast { display: none !important; }
   .screen.skp { padding: 0; max-width: none; }
   .skp-sheet { border: none; border-radius: 0; padding: 0; }
   .skp-scroll { overflow: visible; }
-  .skp-table { min-width: 0; font-size: 9.5px; }
+  .skp-table { min-width: 0; font-size: 9.5px; line-height: 1.4; }
   .skp-table th, .skp-table td { padding: 2px 4px; }
+  /* 合計行が翌ページへ独り歩きしない（31日の月でも1枚に収める） */
+  .skp-table tr { break-inside: avoid; }
+  /* 下部の指標と注記も同じ紙に収める（注記だけ2枚目に切れていた） */
+  .skp-foot { margin-top: 6px; font-size: 10px; }
+  .skp-note { margin-top: 3px; font-size: 8.5px; line-height: 1.5; }
 }
