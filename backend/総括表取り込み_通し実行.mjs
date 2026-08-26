@@ -70,7 +70,7 @@ function 偽環境を作る({ ブック群 = {}, フォルダ群 = {}, 既存行
   let uuid = 0;
   const ctx = {
     Logger: { log: () => {} }, console, JSON, Date, Object, String, Number, Array, Math, Error, RegExp,
-    PropertiesService: { getScriptProperties: () => ({ getProperty: k => (プロパティ.has(k) ? プロパティ.get(k) : null), setProperty: (k, v) => プロパティ.set(k, String(v)) }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: k => (プロパティ.has(k) ? プロパティ.get(k) : null), setProperty: (k, v) => プロパティ.set(k, String(v)), deleteProperty: (k) => プロパティ.delete(k) }) },
     SpreadsheetApp: { getActiveSpreadsheet: () => アプリSS,
       openById: (id) => { const b = ブック群[id]; if (!b) throw new Error('開けません: ' + id);
         return { getName: () => id, getSheets: () => b.map(s => new 偽シート(s.name, s.data)) }; } },
@@ -210,6 +210,39 @@ console.log('\n===== ⑨ 全期間の遡り取り込み（リリース前の過�
 
   const r2 = 実行(env, '総括表_全期間を取り込む()');
   確認('もう一度実行しても二重に入らない', r2.新規 === 0 && r2.変わらず === 4 && 行数(env) === 4, r2);
+}
+
+console.log('\n===== ⑩ 6分の上限に当たらない（時間切れ→再実行で続きから／済んだ店は飛ばす） =====\n');
+{
+  /* 2026-08-27 実機で発生＝全期間の取り込みが DEADLINE_EXCEEDED（GASの上限6分）で落ちた。
+     直し＝①店舗ごとの一括書き込み ②時間予算で自分から止まって報告 ③済んだ店は次の実行で飛ばす。 */
+  const ブック群 = {
+    A1: [{ name: '売上台帳', data: 台帳シート([[1, 100, 0, '100', 2]]) }],
+    B1: [{ name: '売上台帳', data: 台帳シート([[2, 200, 0, '200', 3], [3, 300, 0, '300', 4]]) }]
+  };
+  const フォルダ群 = {
+    '寿司世桜 心斎橋店': [{ id: 'A1', name: `総括表Ver.2.6_寿司世桜_心斎橋店（${YM}）` }],
+    '和牛世桜 広島店': [{ id: 'B1', name: `総括表Ver.2.6_和牛世桜_広島店（${YM}）` }]
+  };
+  const env = 偽環境を作る({ ブック群, フォルダ群 });
+
+  // 予算を負にする＝1店舗目に入る前に必ず時間切れ → 何も書かず、残り全店を報告する
+  const r0 = 実行(env, 'sk_実行_(true, true, -1)');
+  確認('時間切れを自分から報告する（DEADLINE_EXCEEDEDまで走らない）', !!r0.時間切れ && 行数(env) === 0, r0);
+  確認('未処理の店舗が分かる', (r0.未処理の店舗 || []).length === 2, r0.未処理の店舗);
+
+  // 前回「心斎橋だけ済み」で止まった想定 → 済んだ店は読み直さず、残りだけ入る
+  実行(env, `PropertiesService.getScriptProperties().setProperty('SK_ZENKIKAN_DONE', JSON.stringify(['寿司世桜 心斎橋店']))`);
+  const r1 = 実行(env, '総括表_全期間を取り込む()');
+  確認('済んだ店は飛ばす', r1.店舗['寿司世桜 心斎橋店'] === '前回までに完了（飛ばした）', r1.店舗);
+  確認('残りの店だけ入る', r1.新規 === 2 && 行数(env) === 2, r1);
+  確認('全店が済んだら覚え書きを消して完了を報告', !!r1.完了 && 実行(env, `PropertiesService.getScriptProperties().getProperty('SK_ZENKIKAN_DONE')`) === null, r1.完了);
+
+  // 覚え書きが消えた後の再実行＝全店をあらためて確かめ、入っていない分（心斎橋）だけ入る
+  const r2 = 実行(env, '総括表_全期間を取り込む()');
+  確認('再実行で取りこぼし（飛ばされていた店）が入る', r2.新規 === 1 && r2.変わらず === 2 && 行数(env) === 3, r2);
+  const r3 = 実行(env, '総括表_全期間を取り込む()');
+  確認('もう一度実行しても二重に入らない', r3.新規 === 0 && r3.変わらず === 3 && 行数(env) === 3, r3);
 }
 
 console.log(`\n----- ${通過} 項目 PASS ／ ${失敗.length} 項目 FAIL -----`);
