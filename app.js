@@ -2424,7 +2424,7 @@
         </div>
         <div class="stat-row" style="margin:2px 0 10px">
           <div class="stat"><div class="n" id="sk_avg">¥0</div><div class="k">${L({ja:'客単価（自動計算）',en:'Per guest (auto)',vi:'BQ/khách (tự động)'})}</div></div>
-          <div class="stat"><div class="n" id="sk_rate">—</div><div class="k">${L({ja:'到達度（自動）',en:'To goal (auto)',vi:'Đạt mục tiêu (auto)'})}</div></div>
+          <div class="stat"><div class="n" id="sk_rate">—</div><div class="k">${L({ja:'到達度（自動計算）',en:'To goal (auto)',vi:'Đạt mục tiêu (auto)'})}</div></div>
         </div>
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'純売上',en:'Net sales',vi:'Doanh thu thuần'})}</span><input type="text" inputmode="numeric" id="sk_net" placeholder="129136"></label>
@@ -2465,8 +2465,8 @@
           <label class="fld"><span>${L({ja:'ロス金額（円）',en:'Loss amount',vi:'Tiền hao hụt'})}</span><input type="text" inputmode="numeric" id="sk_loss" placeholder="0"></label>
         </div>
         <div class="stat-row" style="margin:2px 0 10px">
-          <div class="stat"><div class="n" id="sk_prodh">—</div><div class="k">${L({ja:'人時生産性（自動）',en:'Sales per hour (auto)',vi:'DT/giờ (tự động)'})}</div></div>
-          <div class="stat"><div class="n" id="sk_laborauto">—</div><div class="k">${L({ja:'人件費率（自動）',en:'Labor % (auto)',vi:'% nhân sự (tự động)'})}</div></div>
+          <div class="stat"><div class="n" id="sk_prodh">—</div><div class="k">${L({ja:'人時生産性（自動計算）',en:'Sales per hour (auto)',vi:'DT/giờ (tự động)'})}</div></div>
+          <div class="stat"><div class="n" id="sk_laborauto">—</div><div class="k">${L({ja:'人件費率（自動計算）',en:'Labor % (auto)',vi:'% nhân sự (tự động)'})}</div></div>
         </div>
         <label class="fld"><span>${L({ ja:'所感（今日の感想）', en:'Notes on the day', vi:'Cảm nhận hôm nay' })}</span><textarea id="sk_memo" placeholder="${L({ja:'客足・ランチ／ディナー・運営面など',en:'traffic, lunch/dinner, operations …',vi:'khách, trưa/tối, vận hành …'})}"></textarea></label>
 
@@ -2715,10 +2715,10 @@
       <div class="stat-row" style="margin-top:12px">
         <div class="stat"><div class="n">${esc(yenShort(numOr0(r.sales)))}</div><div class="k">${L({ ja:'売上', en:'Sales', vi:'DT' })}</div></div>
         <div class="stat"><div class="n">${numOr0(r.guests)}</div><div class="k">${L({ ja:'客数', en:'Guests', vi:'Khách' })}</div></div>
-        <div class="stat"><div class="n">${per ? esc(yenShort(per)) : '—'}</div><div class="k">${L({ ja:'客単価', en:'Per guest', vi:'BQ/khách' })}</div></div>
+        <div class="stat"><div class="n">${per ? esc(yenShort(per)) : '—'}</div><div class="k">${L({ ja:'客単価（自動計算）', en:'Per guest (auto)', vi:'BQ/khách (tự động)' })}</div></div>
       </div>
       ${fl ? `<p class="hint" style="display:block">FL ${esc(fl)}（${L({ ja:'原価', en:'Food', vi:'Giá vốn' })} ${esc(numOr0(r.food).toFixed(1))}% ＋ ${L({ ja:'人件費', en:'Labor', vi:'Nhân sự' })} ${esc(numOr0(r.labor).toFixed(1))}%）</p>` : ''}
-      ${(numOr0(r.hours) && numOr0(r.sales)) ? `<p class="hint" style="display:block">${L({ ja:'人時生産性（自動）', en:'Sales per hour (auto)', vi:'DT/giờ (tự động)' })} ¥${Math.round(numOr0(r.sales)/numOr0(r.hours)).toLocaleString('en-US')}/h${(numOr0(r.laborcost)) ? `　/　${L({ ja:'人件費率（自動）', en:'Labor % (auto)', vi:'% NS (tự động)' })} ${(numOr0(r.laborcost)/numOr0(r.sales)*100).toFixed(1)}%` : ''}</p>` : ''}
+      ${(numOr0(r.hours) && numOr0(r.sales)) ? `<p class="hint" style="display:block">${L({ ja:'人時生産性（自動計算）', en:'Sales per hour (auto)', vi:'DT/giờ (tự động)' })} ¥${Math.round(numOr0(r.sales)/numOr0(r.hours)).toLocaleString('en-US')}/h${(numOr0(r.laborcost)) ? `　/　${L({ ja:'人件費率（自動計算）', en:'Labor % (auto)', vi:'% NS (tự động)' })} ${(numOr0(r.laborcost)/numOr0(r.sales)*100).toFixed(1)}%` : ''}</p>` : ''}
       <div class="dgrid">
         ${SK_FIELDS.map(f => `<div class="dcell${hasVal(r[f.k]) ? '' : ' off'}"><span class="dk">${esc(L(f.t))}</span><b class="dv">${hasVal(r[f.k]) ? skFmtVal(f.f, r[f.k]) : '—'}</b></div>`).join('')}
       </div>
@@ -2852,9 +2852,9 @@
     days.forEach(x => { if (!x.r) return; tot.entered++;
       ['sales','cash','card','guests','buy','laborcost','loss','hours','staffct','err'].forEach(k => { tot[k] += numOr0(x.r[k]); }); });
     tot.per = tot.guests ? Math.round(tot.sales / tot.guests) : 0;
-    tot.foodRate = tot.sales ? tot.buy / tot.sales * 100 : 0;          // 原価率（自動）＝仕入計÷売上計
-    tot.laborRate = tot.sales ? tot.laborcost / tot.sales * 100 : 0;   // 人件費率（自動）＝人件費計÷売上計
-    tot.prodh = tot.hours ? Math.round(tot.sales / tot.hours) : 0;     // 人時生産性（自動）＝売上計÷労働時間計
+    tot.foodRate = tot.sales ? tot.buy / tot.sales * 100 : 0;          // 原価率（自動計算）＝仕入計÷売上計
+    tot.laborRate = tot.sales ? tot.laborcost / tot.sales * 100 : 0;   // 人件費率（自動計算）＝人件費計÷売上計
+    tot.prodh = tot.hours ? Math.round(tot.sales / tot.hours) : 0;     // 人時生産性（自動計算）＝売上計÷労働時間計
     return { days, tot };
   }
   const SKP_COLS = [
@@ -2862,7 +2862,7 @@
     { k:'cash',      t:{ ja:'現金', en:'Cash', vi:'Tiền mặt' },         f:'yen' },
     { k:'card',      t:{ ja:'カード', en:'Card', vi:'Thẻ' },            f:'yen' },
     { k:'guests',    t:{ ja:'客数', en:'Guests', vi:'Khách' },          f:'num' },
-    { k:'per',       t:{ ja:'客単価', en:'Per guest', vi:'BQ/khách' },  f:'yen', auto:true },
+    { k:'per',       t:{ ja:'客単価（自動計算）', en:'Per guest (auto)', vi:'BQ/khách (tự động)' },  f:'yen', auto:true },
     { k:'buy',       t:{ ja:'仕入', en:'Purchases', vi:'Nhập hàng' },   f:'yen' },
     { k:'laborcost', t:{ ja:'人件費', en:'Labor', vi:'Nhân sự' },       f:'yen' },
     { k:'staffct',   t:{ ja:'人数', en:'Staff', vi:'Số NV' },           f:'num' },
@@ -2911,11 +2911,11 @@
           </table></div>
           <div class="skp-foot">
             <span>${L({ ja:'入力日数', en:'Days entered', vi:'Số ngày' })}：${tot.entered}${L({ ja:'日', en:'', vi:'' })}</span>
-            <span>${L({ ja:'原価率（自動）', en:'Food cost % (auto)', vi:'% giá vốn (auto)' })}：${tot.buy ? tot.foodRate.toFixed(1) + '%' : '—'}</span>
-            <span>${L({ ja:'人件費率（自動）', en:'Labor % (auto)', vi:'% nhân sự (auto)' })}：${tot.laborcost ? tot.laborRate.toFixed(1) + '%' : '—'}</span>
-            <span>${L({ ja:'人時生産性（自動）', en:'Sales/hour (auto)', vi:'DT/giờ (auto)' })}：${tot.prodh ? '¥' + tot.prodh.toLocaleString('en-US') + '/h' : '—'}</span>
+            <span>${L({ ja:'原価率（自動計算）', en:'Food cost % (auto)', vi:'% giá vốn (auto)' })}：${tot.buy ? tot.foodRate.toFixed(1) + '%' : '—'}</span>
+            <span>${L({ ja:'人件費率（自動計算）', en:'Labor % (auto)', vi:'% nhân sự (auto)' })}：${tot.laborcost ? tot.laborRate.toFixed(1) + '%' : '—'}</span>
+            <span>${L({ ja:'人時生産性（自動計算）', en:'Sales/hour (auto)', vi:'DT/giờ (auto)' })}：${tot.prodh ? '¥' + tot.prodh.toLocaleString('en-US') + '/h' : '—'}</span>
           </div>
-          <p class="hint skp-note">${L({ ja:'※ 率と人時生産性は入力された元の数字（仕入・人件費・労働時間）から自動計算しています。空欄の日は未入力です。', en:'Rates are auto-calculated from entered base numbers. Blank days have no entry.', vi:'Tỷ lệ tính tự động từ số gốc. Ngày trống là chưa nhập.' })}</p>
+          <p class="hint skp-note">${L({ ja:'※ 「自動計算」と書かれた数字（客単価・原価率・人件費率・人時生産性）は、入力された元の数字（売上・客数・仕入・人件費・労働時間）から自動で計算されます。入力は要りません。空欄の日は未入力です。', en:'Values marked (auto) are calculated automatically from entered base numbers; no input needed. Blank days have no entry.', vi:'Các số ghi (tự động) được tính tự động từ số gốc đã nhập; không cần nhập. Ngày trống là chưa nhập.' })}</p>
         </div>
       </main>`;
   }
