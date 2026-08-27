@@ -2391,7 +2391,11 @@
   const yen = (n) => '¥' + (Number(n) || 0).toLocaleString('en-US');
   APP_VIEWS.soukatsu = () => {
     const vis = visibleStores();
-    const recent = getSk().filter(r => vis.includes(r.store)).sort((a,b)=>b.t-a.t).slice(0,6);
+    /* ★「最近」は対象日の新しい順（2026-08-27 神田さんのご指摘）。
+       提出時刻（t）で並べると、過去分の取り込み（6/1など）が取り込んだ時刻の新しさで
+       先頭に来てしまう。総括表は「どの日の分か」が主役＝date で並べ、同日は t の新しい順 */
+    const recent = getSk().filter(r => vis.includes(r.store))
+      .sort((a, b) => a.date === b.date ? (b.t - a.t) : (a.date < b.date ? 1 : -1)).slice(0, 6);
     const today = todayKey();
     // 店舗比較（複数店舗を見られる本部・オーナー）／個店サマリー（1店舗）
     const head = vis.length > 1 ? skCompare(vis, '/app/soukatsu') : (() => {
