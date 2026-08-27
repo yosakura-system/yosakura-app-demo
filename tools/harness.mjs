@@ -1504,7 +1504,7 @@ console.log('== 接客・ホールは本部の「03.接客ホール」を並べ�
     ok(seed.includes(t), '「' + t + '」が入っている');
   }
   const svc = (seed.match(/mcat:'service'/g) || []).length;
-  ok(svc === 14, '接客・ホールに本部の14件が入っている（実際 ' + svc + ' 件）');
+  ok(svc === 16, '接客・ホールに本部の16件が入っている（実際 ' + svc + ' 件）');
   /* ★2026-08-19 の勉強会で取り上げられた5件が、すべてアプリに入っていること。
      加盟店へLINEで配られたものと、アプリの中身が食い違わないようにする。 */
   for (const [name, id] of [['05-1 手洗い', '1b5m33nQ-ABvTZGAqxfAVka0mZqgqHyuBeAl7YrLo20Q'],
@@ -1669,7 +1669,7 @@ console.log('== 本部ドライブの公式マニュアル14分類が、その�
     ['kaigyo',     '00. 開業前',              1],
     ['philosophy', '01. 店舗の世界観・理念',   8],
     ['staff',      '02. スタッフの基本',       6],
-    ['service',    '03. 接客ホール',          14],
+    ['service',    '03. 接客ホール',          16],
     ['marketing',  '04. 集客・マーケティング',  5],
     ['hygiene',    '05. 衛生管理・厨房機材',   12],
     ['cleaning',   '06. 店舗管理・清掃',       5],
@@ -1678,7 +1678,7 @@ console.log('== 本部ドライブの公式マニュアル14分類が、その�
     ['saiyo',      '09. 採用・面接・シフト',   12],
     ['owner',      '10. キャリアアップ',       3],
     ['sevendays',  '11. 育成・教育',          10],
-    ['print',      '12. 印刷物',              17],
+    ['print',      '12. 印刷物',              19],
     ['checksheet', '13. チェックシート',       8]
   ];
   for (const [gid, name, n] of OFFICIAL) {
@@ -1693,7 +1693,7 @@ console.log('== 本部ドライブの公式マニュアル14分類が、その�
     const u = l.match(/url:'([^']*)'/),   i = l.match(/id:'(mn\d+)'/);
     return (t && m && u && i) ? { title:t[1], mcat:m[1], url:u[1], id:i[1] } : null;
   }).filter(Boolean);
-  ok(rows.length === 115, '公式マニュアルは全部で115件（実際 ' + rows.length + ' 件）');
+  ok(rows.length === 119, '公式マニュアルは全部で119件（実際 ' + rows.length + ' 件）');
 
   // どこにも属さない資料が無い＝分類を消したのに資料だけ残った、が起きない
   const gids  = [...cat.matchAll(/gid:'([a-z]+)'/g)].map(x => x[1]);
