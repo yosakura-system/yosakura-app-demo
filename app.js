@@ -2330,7 +2330,9 @@
     const mc = {}, msum = {}; rows.forEach(r => { const k = ymOf(r.t); mc[k] = (mc[k] || 0) + 1; msum[k] = (msum[k] || 0) + (Number(r.sat) || 0); });
     const mavg = (k) => mc[k] ? (msum[k] / mc[k]) : 0;
     const months = Object.keys(mc).sort().slice(-12); // 過去最大12か月まで表示
-    const barRow = (label, c, total, cls) => `<div class="bar-row"><div class="bl"><span>${esc(label)}</span><b>${c}</b></div><div class="bar-track"><div class="bar-fill ${cls||''}" style="width:${total ? Math.round(c / total * 100) : 0}%"></div></div></div>`;
+    /* tap＝タップで中身を開く行にする（2026-08-27 神田さんのご要望＝「★3の1件」の中身をその場で見たい）。
+       回答が0件の行は開くものが無いのでタップにしない */
+    const barRow = (label, c, total, cls, tap) => `<div class="bar-row${tap && c ? ' tapable' : ''}"${tap && c ? ` ${tap} role="button" tabindex="0"` : ''}><div class="bl"><span>${esc(label)}</span><b>${c}</b></div><div class="bar-track"><div class="bar-fill ${cls||''}" style="width:${total ? Math.round(c / total * 100) : 0}%"></div></div></div>`;
     const byStore = vis.length > 1 ? (() => {
       const bs = {}; vis.forEach(s => bs[s] = { n: 0, sum: 0, low: 0, iss: {} });
       rows.forEach(r => {
@@ -2360,10 +2362,11 @@
         <div class="stat-row">
           <div class="stat"><div class="n">${n}</div><div class="k">${L({ ja:'回答数', en:'Responses', vi:'Phản hồi' })}</div></div>
           <div class="stat"><div class="n">${avg.toFixed(1)}</div><div class="k">${L({ ja:'平均満足度', en:'Avg.', vi:'TB' })}</div></div>
-          <div class="stat"><div class="n" style="${low?'color:#a23b3b':''}">${low}</div><div class="k">${L({ ja:'低評価(1-2)', en:'Low (1-2)', vi:'Thấp' })}</div></div>
+          <div class="stat${low ? ' tapable' : ''}"${low ? ' data-svsat="low" role="button" tabindex="0"' : ''}><div class="n" style="${low?'color:#a23b3b':''}">${low}</div><div class="k">${L({ ja:'低評価(1-2)', en:'Low (1-2)', vi:'Thấp' })}</div></div>
         </div>
         <div class="idlabel" style="margin-top:12px">${L({ ja:'満足度の分布', en:'Rating distribution', vi:'Phân bố đánh giá' })}</div>
-        ${dist.map(d => barRow('★' + d.s, d.c, n, d.s <= 2 ? 'bar-low' : '')).join('')}
+        <p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 行をタップすると、その評価の回答の中身（直近10件）が見られます。', en:'Tap a row to see the answers behind it (latest 10).', vi:'Chạm vào dòng để xem nội dung (10 gần nhất).' })}</p>
+        ${dist.map(d => barRow('★' + d.s, d.c, n, d.s <= 2 ? 'bar-low' : '', `data-svsat="${d.s}"`)).join('')}
         <div class="idlabel" style="margin-top:12px">${L({ ja:'来店経路', en:'Arrival route', vi:'Nguồn khách' })}</div>
         ${ROUTES.map(r => barRow(L(r.t), rc[r.v], n)).join('')}
         ${otherRows.length ? `<p class="hint" style="display:block;margin-top:2px">${L({ ja:'「その他」の内訳', en:'Breakdown of “Other”', vi:'Chi tiết “Khác”' })}：${otherRows.map(([k, c]) => esc(k) + ' ' + c).join(' ／ ')}</p>` : ''}
@@ -2385,6 +2388,40 @@
       </div>` : ''}
       ${byStore}
       <p class="hint" style="display:block">${L({ ja:'※ サーベイ回答（本番フォーム）から集計しています。来店国はデータがある場合に表示します。来店経路は、お客様が回答された言語（韓国語・中国語・ベトナム語など）の値をアプリの区分へ寄せて集計しています。', en:'Aggregated from live survey responses. Country appears when available. Arrival routes answered in other languages are mapped to these categories.', vi:'Tổng hợp từ phản hồi khảo sát. Nguồn khách trả lời bằng ngôn ngữ khác được quy về các nhóm này.' })}</p>`;
+  }
+
+  /* ---------- サーベイ：評価の中身シート（2026-08-27 神田さんのご要望）----------
+     集計の「★3が1件」等をタップ → その評価の回答の中身を下からのシートで見せる。
+     ★全件は出さない＝直近10件まで。それより多いときは「全◯件中、直近10件」と正直に書く */
+  function openSurveySatSheet(satKey) {
+    const vis = visibleStores();
+    const all = getSurvey().filter(r => vis.includes(r.store))
+      .filter(r => satKey === 'low' ? (Number(r.sat) || 0) <= 2 : Number(r.sat) === Number(satKey))
+      .sort((a, b) => b.t - a.t);          // 直近が先
+    const show = all.slice(0, 10);
+    const routeName = (r) => { const v = normalizeRoute(r.route); const f = ROUTES.find(x => x.v === v); return f ? L(f.t) : String(r.route || '').trim(); };
+    const item = (r) => {
+      const c = surveyComment(r.note);
+      const iss = parseSurveyIssues(r.note).filter(v => v !== 'none').map(surveyIssueLabel);
+      const meta = [storeShort(r.store), r.country || '', routeName(r), timeAgo(r.t)].filter(Boolean).join(' ・ ');
+      return `<div class="rep"><span class="amt" style="${(Number(r.sat)||0) <= 2 ? 'color:#a23b3b' : ''}">★${Number(r.sat) || '—'}</span><div class="body">
+        <div class="l1">${c ? esc(c) : `<span class="muted">${L({ ja:'（コメントなし）', en:'(no comment)', vi:'(không có bình luận)' })}</span>`}</div>
+        ${iss.length ? `<div class="l2">${L({ ja:'ご指摘', en:'Issues', vi:'Góp ý' })}：${esc(iss.join(' ・ '))}</div>` : ''}
+        <div class="l2">${esc(meta)}</div>
+      </div></div>`;
+    };
+    const title = satKey === 'low'
+      ? L({ ja:'低評価（★1・★2）の回答', en:'Low ratings (★1–2)', vi:'Đánh giá thấp (★1–2)' })
+      : '★' + satKey + ' ' + L({ ja:'の回答', en:'responses', vi:'phản hồi' });
+    const mask = el(`<div class="sheet-mask"><div class="sheet">
+      <div class="grip"></div>
+      <h3>${title}<span class="demo-tag">${all.length}${L({ ja:'件', en:'', vi:'' })}</span></h3>
+      ${all.length > show.length ? `<p class="hint" style="display:block">${L({ ja:'全' + all.length + '件のうち、直近の10件を表示しています。', en:'Showing the latest 10 of ' + all.length + '.', vi:'Hiển thị 10 gần nhất trong ' + all.length + '.' })}</p>` : ''}
+      ${show.length ? show.map(item).join('') : `<p class="muted">${L({ ja:'この評価の回答はまだありません。', en:'No responses with this rating yet.', vi:'Chưa có phản hồi mức này.' })}</p>`}
+      <button class="btn-primary" data-close="1" style="margin-top:12px">${L({ ja:'閉じる', en:'Close', vi:'Đóng' })}</button>
+    </div></div>`);
+    mask.addEventListener('click', (e) => { if (e.target === mask || e.target.closest('[data-close]')) mask.remove(); });
+    document.body.appendChild(mask);
   }
 
   /* ⑥ 総括表（動く：実日報フォーマットで入力→保存→履歴＆本部集約）*/
@@ -5978,6 +6015,8 @@
 
     // ⑥ サーベイ：本番リンク・改善点(複数選択)・回答送信（高満足時のみ口コミ案内）
     if (byId('surveyOpen')) byId('surveyOpen').onclick = (e) => window.open(e.currentTarget.dataset.url, '_blank', 'noopener');
+    // 集計の★行・低評価タイルをタップ → その評価の回答の中身（直近10件）を開く
+    document.querySelectorAll('[data-svsat]').forEach(b => b.onclick = () => openSurveySatSheet(b.dataset.svsat));
     document.querySelectorAll('[data-multiseg] button').forEach(b => b.onclick = () => b.classList.toggle('on'));
     const subSurvey = byId('submitSurvey');
     if (subSurvey) subSurvey.onclick = () => {
