@@ -2752,6 +2752,19 @@ console.log('== 日報一本化（2026-08-26 構築MTG決定：アプリ入力�
   ok(/広島店/.test(registry.app.innerHTML) && !/長堀橋店/.test(registry.app.innerHTML),
      '店長が他店を指定しても自店にフォールバックする');
 
+  // ⑤b 「最近の総括表」は対象日の新しい順（2026-08-27 神田さんのご指摘）
+  //     ＝過去分の取り込み（対象日6/1・取り込み時刻は最新）が提出時刻の並びで先頭に来ていた
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date:'2026-06-01', sales:150000, guests:47 }), t: 9000, id:'o1' },
+    { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date:'2026-07-06', sales:100000, guests:20 }), t: 2000, id:'o2' },
+  ]};
+  try { run(()=> setLS('manager',S_HIROSHIMA,'ja')); } catch(e){ FAIL++; console.log('  ✗ 最近の並び load threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/soukatsu';
+  const skl = (registry.app.innerHTML.split('id="skList"')[1] || '');
+  ok(skl.indexOf('07-06') !== -1 && skl.indexOf('06-01') !== -1 && skl.indexOf('07-06') < skl.indexOf('06-01'),
+     '★「最近の総括表」は対象日の新しい順＝取り込み時刻の新しさでは並ばない');
+
   // ⑥ 印刷スタイル＝A4横・画面の飾りは刷らない
   const css = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/styles.css', 'utf8');
   ok(/@media print/.test(css) && /A4 landscape/.test(css), '印刷はA4横');
@@ -2762,8 +2775,12 @@ console.log('== 日報一本化（2026-08-26 構築MTG決定：アプリ入力�
      '印刷時に「はじめの設定」等の重なりものは紙に写らない（検品で写り込みが出た）');
   ok(/@media print[\s\S]*#app \{ max-width: none; box-shadow: none;/.test(css),
      '印刷時はスマホ幅の柱を外す（外すと表の背後に灰色が刷られていた）');
-  ok(/@media print[\s\S]*\.skp-table tr \{ break-inside: avoid; \}/.test(css) && /@media print[\s\S]*line-height: 1\.4/.test(css),
+  ok(/@media print[\s\S]*\.skp-table tr \{ break-inside: avoid; \}/.test(css) && /@media print[\s\S]*line-height: 1\.3/.test(css),
      '31日の月でも合計・注記まで1枚に収まる行の詰め方');
+  // 2026-08-27 神田さんの実機で2ページに割れた＝印刷ヘッダー有効の環境でも収まる余裕（9px/1.3/1.5px）
+  ok(/@media print[\s\S]*\.skp-table \{ min-width: 0; font-size: 9px; line-height: 1\.3; \}/.test(css) &&
+     /@media print[\s\S]*padding: 1\.5px 3px/.test(css),
+     '印刷はどの環境でも1枚に収まる詰め方（実機で2ページに割れた対策）');
 }
 FETCH_ROWS = { ok:false };
 
