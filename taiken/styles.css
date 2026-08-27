@@ -463,6 +463,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .delta.dn::before { content: '▼'; margin-right: 1px; }
 .rep.tapable { cursor: pointer; }
 .rep.tapable:active { background: #FAF8F5; }
+/* サーベイ集計＝タップで中身が開く行・タイル（2026-08-27） */
+.bar-row.tapable, .stat.tapable { cursor: pointer; }
+.bar-row.tapable:active, .stat.tapable:active { background: #FAF8F5; border-radius: 8px; }
 
 /* 体験版の帯（2026-08-12）。勉強会のあとに加盟店の皆さまへお配りする版でだけ出る。
    ヘッダーの直下に固定で置き、どの画面へ移っても「触っても大丈夫」が視界に残るようにする。 */
