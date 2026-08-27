@@ -296,9 +296,14 @@ await new Promise(r=>setTimeout(r, 50));
   ok(/data-svsat="5"/.test(hq) && /data-svsat="4"/.test(hq), '★ 回答のある★行はタップできる（data-svsat）');
   ok(!/data-svsat="1"/.test(hq) && !/data-svsat="2"/.test(hq), '回答0件の★行はタップにしない（開くものが無い）');
   ok(/行をタップすると/.test(hq), 'タップできることの案内が出ている');
+  // 同日追記＝来店経路・来店国の行も同じようにタップで開ける
+  ok(/data-svroute="google"/.test(hq) && /data-svroute="instagram"/.test(hq), '★ 回答のある来店経路の行はタップできる（data-svroute）');
+  ok(/data-svcountry="Korea"/.test(hq) && /data-svcountry="Japan"/.test(hq), '★ 来店国の行はタップできる（data-svcountry）');
   const flatSv = code.replace(/\r\n/g, '\n');
-  ok(/function openSurveySatSheet/.test(flatSv) && /\.sort\(\(a, b\) => b\.t - a\.t\);\s*\/\/ 直近が先\s*const show = all\.slice\(0, 10\);/.test(flatSv),
+  ok(/function openSurveyListSheet/.test(flatSv) && /\.sort\(\(a, b\) => b\.t - a\.t\);\s*\/\/ 直近が先\s*const show = all\.slice\(0, 10\);/.test(flatSv),
      '★中身シートは直近の10件まで（全件は出さない）');
+  ok(/function openSurveyRouteSheet/.test(flatSv) && /function openSurveyCountrySheet/.test(flatSv),
+     '来店経路・来店国も同じシートで開く（別実装を作らない）');
   ok(/直近の10件を表示しています/.test(flatSv), '10件を超えるときは「全◯件のうち直近10件」と正直に書く');
 }
 FETCH_ROWS = { ok:false };
