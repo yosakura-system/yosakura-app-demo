@@ -291,6 +291,15 @@ await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/survey';
   const hq = registry.app.innerHTML;
   ok(/来店国/.test(hq) && /Korea/.test(hq), 'hq survey agg shows 来店国 (Korea)');
+
+  // 2026-08-27 神田さんのご要望＝★の行をタップすると回答の中身が見られる
+  ok(/data-svsat="5"/.test(hq) && /data-svsat="4"/.test(hq), '★ 回答のある★行はタップできる（data-svsat）');
+  ok(!/data-svsat="1"/.test(hq) && !/data-svsat="2"/.test(hq), '回答0件の★行はタップにしない（開くものが無い）');
+  ok(/行をタップすると/.test(hq), 'タップできることの案内が出ている');
+  const flatSv = code.replace(/\r\n/g, '\n');
+  ok(/function openSurveySatSheet/.test(flatSv) && /\.sort\(\(a, b\) => b\.t - a\.t\);\s*\/\/ 直近が先\s*const show = all\.slice\(0, 10\);/.test(flatSv),
+     '★中身シートは直近の10件まで（全件は出さない）');
+  ok(/直近の10件を表示しています/.test(flatSv), '10件を超えるときは「全◯件のうち直近10件」と正直に書く');
 }
 FETCH_ROWS = { ok:false };
 
