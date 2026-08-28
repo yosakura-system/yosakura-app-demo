@@ -6692,7 +6692,9 @@
   setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 1150);
   // 初回だけ「はじめの設定」→ 続けて使い方ガイド。2回目以降はどちらも出さない
   if (!localStorage.getItem(SETUP_KEY) && !認証画面が要る_()) setTimeout(() => openIdentitySheet(true), 1350); // ★ログイン画面の上に「はじめの設定」を被せない
-  else if (!localStorage.getItem('yosakura_tour_done')) setTimeout(() => openTour(0), 1450);
+  /* ★ログイン画面の上に使い方ガイドも出さない（2026-08-28 検品で発覚＝初めての端末で
+     ログイン画面にツアーが被さり、IDが入力できなかった）。ガイドはログイン後の初回に出る。 */
+  else if (!localStorage.getItem('yosakura_tour_done') && !認証画面が要る_()) setTimeout(() => openTour(0), 1450);
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
