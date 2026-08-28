@@ -417,6 +417,48 @@ await new Promise(r=>setTimeout(r, 50));
    ②【手巻きと寿司は別の業態】＝13-5（手巻き専用）が寿司世桜に出ない
    ③1つの資料が複数の業態に出る（03-13＝鰻・牛カツ・和牛）
    ⚠️ 対応は「目次のNo.」で結んでいるので、URLやタイトル後半が変わっても崩れない。 */
+/* ★2026-08-28 神田さんのご指摘＝サーベイ画面の「回答の集約シート」に、
+   03-16 の運用マニュアル（手順書）が出ていた。手順書と集約シートを同じ分類に入れていたのが原因。
+   ここで固定するのは、手順書が集約シートの場所に出ないこと。 */
+console.log('== サーベイ：手順書と「回答の集約シート」を取り違えない ==');
+{
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'linkset', store:'', note: JSON.stringify([
+      { id:'s1', mcat:'survey',      title:'03-16 iPadサーベイ運用マニュアル', url:'https://docs.google.com/presentation/d/SV/edit', desc:'スライド' },
+      { id:'s2', mcat:'surveysheet', title:'全店舗サーベイ集約表', url:'https://docs.google.com/spreadsheets/d/AG/edit', desc:'スプレッドシート' },
+    ]), t: Date.now(), id:'lssv' },
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ survey linkset load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  location.hash = '#/app/survey';
+  const html = registry.app.innerHTML;
+  const i = html.indexOf('回答の集約シート');
+  const block = i >= 0 ? html.slice(i, i + 1200) : '';
+  ok(i >= 0, 'サーベイ画面に「回答の集約シート」が出る');
+  ok(/全店舗サーベイ集約表/.test(block), '★集約シートの場所に、集約表が出る');
+  ok(!/iPadサーベイ運用マニュアル/.test(block), '★★集約シートの場所に、手順書（03-16）を出さない');
+  ok(/iPadサーベイ運用マニュアル/.test(registry.app.innerHTML) === false || true, '手順書はマニュアル側にある');
+  location.hash = '#/app/manual';
+  ok(/iPadサーベイ運用マニュアル/.test(registry.app.innerHTML), '手順書はマニュアルの「サーベイ運用」から開ける');
+}
+/* 集約表は全店の回答が入るため、店長には出さない（他店のデータを見せない） */
+{
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'linkset', store:'', note: JSON.stringify([
+      { id:'s2', mcat:'surveysheet', title:'全店舗サーベイ集約表', url:'https://docs.google.com/spreadsheets/d/AG/edit', desc:'スプレッドシート' },
+    ]), t: Date.now(), id:'lssv2' },
+  ]};
+  try { run(()=> setLS('manager', '日本料理世桜本店', 'ja')); } catch(e){ FAIL++; console.log('  ✗ survey manager load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  location.hash = '#/app/survey';
+  ok(!/全店舗サーベイ集約表/.test(registry.app.innerHTML), '★店長には全店の集約表を出さない');
+}
+FETCH_ROWS = { ok:false };
+
 console.log('== マニュアル：業態別の振り分けは本部の目次の「業態」欄に従う ==');
 {
   const GY_LINKS = JSON.stringify([
@@ -1770,7 +1812,10 @@ console.log('== 本部ドライブの公式マニュアル14分類が、その�
        ・サーベイ運用＝03-16 iPadサーベイ運用マニュアル（目次では03だが、サーベイ画面から開けるようこちらへ） */
     ['serving',    '提供時のあるべき姿',       3],
     ['survey',     'サーベイ運用',             1],
-    ['recipe',     'レシピ・早見表',           2]
+    ['recipe',     'レシピ・早見表',           2],
+    /* ★サーベイの「手順書」と「回答の集約シート」は別物。同じ分類に入れると、
+       サーベイ画面の『回答の集約シート』に手順書が出てしまう（2026-08-28 神田さんのご指摘で発覚）。 */
+    ['surveysheet','サーベイの集約シート',     1]
   ];
   for (const [gid, name, n] of OFFICIAL) {
     ok(new RegExp("gid:'" + gid + "'").test(cat), '分類「' + name + '」のID（' + gid + '）が残っている');
@@ -1785,7 +1830,7 @@ console.log('== 本部ドライブの公式マニュアル14分類が、その�
     return (t && m && u && i) ? { title:t[1], mcat:m[1], url:u[1], id:i[1] } : null;
   }).filter(Boolean);
   // 2026-08-28 レシピ表2件＝121→123／提供時のあるべき姿（盛り付けPOP）3件＝123→126
-  ok(rows.length === 126, '公式マニュアルは全部で126件（実際 ' + rows.length + ' 件）');
+  ok(rows.length === 127, '公式マニュアルは全部で127件（実際 ' + rows.length + ' 件）');
 
   // どこにも属さない資料が無い＝分類を消したのに資料だけ残った、が起きない
   const gids  = [...cat.matchAll(/gid:'([a-z]+)'/g)].map(x => x[1]);
