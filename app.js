@@ -2059,13 +2059,24 @@
   const MANUAL_GROUPS = MANUAL_CATALOG.filter(m => m.gid).map(m => ({ v: m.gid, t: m.t }));
   const mgroupLabel = (v) => { const g = MANUAL_GROUPS.find(x => x.v === v); return g ? L(g.t) : L({ ja:'未分類', en:'Unsorted', vi:'Chưa phân loại' }); };
   // Google文書を読み取り専用ビューアで開くURLへ変換（/edit... → /preview）。非本部は編集画面に入れない。
-  const roViewUrl = (u) => String(u || '').replace(/\/edit\b[^#]*(#.*)?$/, '/preview');
+  const roViewUrl = (u) => {
+    let v = String(u || '');
+    if (/\/edit\b/.test(v)) return v.replace(/\/edit\b[^#]*(#.*)?$/, '/preview');
+    // /edit が無い素のURL（…/d/ID だけ）も閲覧専用へ。Googleは素のURLを編集画面へ転送するため。
+    const m = v.match(/^(https:\/\/docs\.google\.com\/(?:document|spreadsheets|presentation|file)\/d\/[^\/?#]+)\/?(?:[?#].*)?$/);
+    if (m) return m[1] + '/preview';
+    return v;
+  };
   /* ★本部以外が開くリンクは、必ず閲覧専用にする（2026-08-13 神田さんのご指摘）。
      勉強会のアジェンダが編集できる状態になっていた。マニュアルだけ変換しており、
      勉強会・サーベイの資料・提出物のシートは編集画面のまま開いていた。
      権限のある方が開くと、その場で本部の資料を書き換えられてしまう。
      本部（hq）だけは、これまでどおり編集できる状態で開く。 */
-  const openUrlFor = (u) => (getRole() === 'hq' ? u : roViewUrl(u));
+  /* ★2026-08-28 増田さんのご要望＝マニュアルから開く資料は【本部も含めて全員】閲覧専用にする。
+     編集したいときは、本部専用の「資料リンクの管理」の「開く」から（そちらは編集画面のまま）。
+     ⚠️ これはアプリの入口の話。ファイル自体の共有が「編集可」なら、プレビューから編集へ移れてしまう
+     　＝根本はドライブ側の共有設定（本部の作業）。 */
+  const openUrlFor = (u) => roViewUrl(u);
   const manualRow = (m) => {
     /* 並び順は番号を数として見る（numeric）。
        ★これが無いと 03-1／03-10／03-11／03-2 の順に並ぶ＝本部の目次と突き合わせられない。 */
