@@ -3846,9 +3846,13 @@
     const buildHTML = () => {
       const role = getRole(), sel = getStoreSel();
       const auth = getAuth();   // ★ログイン済み＝役割は固定・店舗は許された範囲だけ
+      /* ★2026-08-29 神田さんのご要望＝店長でも、許可された店舗が複数あれば切り替えられるようにする
+         （ユンさん＝本店と難波店の2店舗を担当）。以前は .slice(0,1) で先頭の1店舗に絞っていたが、
+         バックエンドの門番はもともと u.stores の全店舗を許す作り＝アプリ側だけが絞っていた。
+         ⚠️ 未ログイン（体験版・認証OFF）の店長は従来どおり全店舗から選べる（見本のため）。 */
       const storeOpts = role === 'hq' ? ['all', ...STORES]
         : role === 'owner' ? ['owned', ...ownerStores_()]
-        : (auth ? (auth.stores || []).slice(0, 1) : STORES);
+        : (auth ? (auth.stores || []) : STORES);
       const storeLabel = (s) => s === 'all' ? L({ ja:'全店（本部）', en:'All stores (HQ)', vi:'Tất cả (HQ)' })
         : s === 'owned' ? L({ ja:'所有店舗すべて（比較）', en:'All my stores (compare)', vi:'Tất cả CH của tôi (so sánh)' }) : s;
       return `<div class="sheet">
