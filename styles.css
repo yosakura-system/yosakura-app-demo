@@ -179,7 +179,8 @@ body {
 /* フォーム */
 label.fld { display: block; margin-bottom: 14px; }
 label.fld > span { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: #4a4340; }
-input[type=text], input[type=date], select, textarea {
+/* password はログイン画面で使う（2026-08-28 追加＝入れないと幅がそろわない） */
+input[type=text], input[type=password], input[type=date], select, textarea {
   width: 100%; font: inherit; font-size: 15px; padding: 12px 13px; border: 1px solid var(--line);
   border-radius: 12px; background: #FCFBF9; color: var(--sumi); font-family: var(--sans);
 }
