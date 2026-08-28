@@ -2014,17 +2014,17 @@
        出所＝`00.【世桜】マニュアル目次（本部用）` の「加盟店さん共有」。分類名も番号も本部のまま。
        ★既存の分類ID（philosophy／service／hygiene／cleaning／storeops／owner／sevendays）は変えていない。
          IDを付け替えると、本部が画面から登録済みのリンクが全部はぐれるため。 */
-    { ic:'book',  gyotai:'all', roles:['owner'],             gid:'kaigyo', t:{ja:'00. 開業前',en:'00. Before opening',vi:'00. Trước khai trương'}, s:{ja:'プレオープンマニュアル',en:'Pre-open manual',vi:'Cẩm nang tiền khai trương'} },
+    { ic:'book',  gyotai:'all', roles:['all'],               gid:'kaigyo',  /* 2026-08-28 増田さん確定＝全員に開放 */ t:{ja:'00. 開業前',en:'00. Before opening',vi:'00. Trước khai trương'}, s:{ja:'プレオープンマニュアル',en:'Pre-open manual',vi:'Cẩm nang tiền khai trương'} },
     { ic:'book',  gyotai:'all', roles:['all'],               gid:'philosophy', t:{ja:'01. 店舗の世界観・理念',en:'01. Brand & Philosophy',vi:'01. Thương hiệu & Triết lý'}, s:{ja:'5つの価値／ビジョン／ブランドコア',en:'5 values / vision / brand core',vi:'5 giá trị / tầm nhìn'} },
     { ic:'grad',  gyotai:'all', roles:['all'],               gid:'staff', t:{ja:'02. スタッフの基本',en:'02. Staff basics',vi:'02. Cơ bản cho nhân viên'}, s:{ja:'身だしなみ／ハウスルール／優先順位表／朝礼',en:'Grooming / house rules / priorities',vi:'Tác phong / nội quy / ưu tiên'} },
     { ic:'star',  gyotai:'all', roles:['all'],               gid:'service', t:{ja:'03. 接客ホール',en:'03. Service & Hall',vi:'03. Phục vụ & Sảnh'}, s:{ja:'おもてなし／営業中の優先順位／世桜BOOK案内',en:'Hospitality / priorities / guide',vi:'Hiếu khách / ưu tiên'} },
     { ic:'idea',  gyotai:'all', roles:['all'],               gid:'marketing', t:{ja:'04. 集客・マーケティング',en:'04. Marketing',vi:'04. Thu hút khách'}, s:{ja:'Google口コミ／販促物／来店経路／送客',en:'Reviews / promo / channels',vi:'Đánh giá / khuyến mãi'} },
     { ic:'video', gyotai:'all', roles:['all'],               gid:'hygiene', t:{ja:'05. 衛生管理・厨房機材',en:'05. Hygiene & kitchen',vi:'05. Vệ sinh & bếp'}, s:{ja:'身だしなみ／手洗い／食中毒対策',en:'Grooming / handwash / food safety',vi:'Tác phong / rửa tay / an toàn TP'} },
     { ic:'check', gyotai:'all', roles:['all'],               gid:'cleaning', t:{ja:'06. 店舗管理・清掃',en:'06. Store & cleaning',vi:'06. Quản lý & vệ sinh'}, s:{ja:'清掃基準／好事例（ウタマロ等）',en:'Cleaning standards / good practices',vi:'Chuẩn vệ sinh / thực hành tốt'} },
-    { ic:'table', gyotai:'all', roles:['manager','owner'],   gid:'storeops', t:{ja:'07. レジ・業務管理',en:'07. Register & ops',vi:'07. Thu ngân & vận hành'}, s:{ja:'タイムカード・シフト・鍵管理',en:'Timecard / shift / key management',vi:'Chấm công / ca / chìa khóa'} },
+    { ic:'table', gyotai:'all', roles:['all'],               gid:'storeops', /* 2026-08-28 増田さん確定＝スタッフにも開放 */ t:{ja:'07. レジ・業務管理',en:'07. Register & ops',vi:'07. Thu ngân & vận hành'}, s:{ja:'タイムカード・シフト・鍵管理',en:'Timecard / shift / key management',vi:'Chấm công / ca / chìa khóa'} },
     { ic:'shield',gyotai:'all', roles:['all'],               gid:'trouble', t:{ja:'08. トラブル・緊急対応',en:'08. Trouble & emergency',vi:'08. Sự cố & khẩn cấp'}, s:{ja:'防火／緊急通報／熱中症／自然災害／害虫',en:'Fire / emergency / heat / disaster / pests',vi:'Cháy / khẩn cấp / thiên tai'} },
     { ic:'hq',    gyotai:'all', roles:['manager','owner'],   gid:'saiyo', t:{ja:'09. 採用・面接・シフト',en:'09. Hiring & shifts',vi:'09. Tuyển dụng & ca'}, s:{ja:'面接／雇用契約／各種届出／シフト表',en:'Interview / contracts / forms / shifts',vi:'Phỏng vấn / hợp đồng / ca'} },
-    { ic:'yen',   gyotai:'all', roles:['owner'],             gid:'owner', t:{ja:'10. キャリアアップ',en:'10. Career path',vi:'10. Thăng tiến'}, s:{ja:'キャリアアップ実践ガイド／経営の考え方',en:'Career path / management',vi:'Thăng tiến / quản lý'} },
+    { ic:'yen',   gyotai:'all', roles:['manager','owner'],   gid:'owner',   /* 2026-08-28 増田さん確定＝店長にも開放 */ t:{ja:'10. キャリアアップ',en:'10. Career path',vi:'10. Thăng tiến'}, s:{ja:'キャリアアップ実践ガイド／経営の考え方',en:'Career path / management',vi:'Thăng tiến / quản lý'} },
     /* ★2026-08-12 アプリ構築MTG（アクション7）＝7DAYS新人教育はオーナー様も見られるようにする。
        多くの店舗でオーナー様が店長を兼ねておられるため。 */
     { ic:'grad',  gyotai:'all', roles:['staff','manager','owner'], gid:'sevendays', t:{ja:'11. 育成・教育',en:'11. Training',vi:'11. Đào tạo'}, s:{ja:'7DAYS研修（1〜7日目・活用）／ハウスルール／朝礼',en:'7DAYS (day1-7) / house rules / morning brief',vi:'7DAYS / nội quy / họp sáng'} },
@@ -2035,7 +2035,7 @@
     /* ★2026-08-20 本部ご回答④＝本部運用の資料はオーナー様にも見せる（表示範囲4点の最後の1つ）。
        roles に 'owner' を入れると、manualVisibleRole の仕組みでオーナー様＋本部が見える形になる。
        ⚠️ アプリで出すのは入口だけ＝資料そのものが開けるかはドライブ側の共有設定による（シートの「大事な点」）。 */
-    { ic:'hq',    gyotai:'all', roles:['owner'],             gid:'hq', t:{ja:'本部運用',en:'HQ operations',vi:'Vận hành HQ'}, s:{ja:'研修トレーナー育成／7DAYS研修プログラム／権限',en:'Trainer dev / 7DAYS program / perms',vi:'Đào tạo trainer / 7DAYS / quyền'} },
+    { ic:'hq',    gyotai:'all', roles:[],                    gid:'hq',      /* 2026-08-28 増田さん確定＝本部のみ（オーナー様から外す） */ t:{ja:'本部運用',en:'HQ operations',vi:'Vận hành HQ'}, s:{ja:'研修トレーナー育成／7DAYS研修プログラム／権限',en:'Trainer dev / 7DAYS program / perms',vi:'Đào tạo trainer / 7DAYS / quyền'} },
     /* ★2026-08-27＝本部チェック（店舗管理チェックの見本・原本）のリンク置き場。
        roles:[] ＝本部だけに見える分類（manualVisibleRole は hq を常に通す）。
        「資料リンクの管理」の大項目にも並ぶ＝本部が見本アプリのURL・原本をここへ登録する */
