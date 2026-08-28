@@ -2044,7 +2044,9 @@
     { ic:'grad',  gyotai:'all', roles:['staff','manager','owner'], gid:'sevendays', t:{ja:'11. 育成・教育',en:'11. Training',vi:'11. Đào tạo'}, s:{ja:'7DAYS研修（1〜7日目・活用）／ハウスルール／朝礼',en:'7DAYS (day1-7) / house rules / morning brief',vi:'7DAYS / nội quy / họp sáng'} },
     { ic:'box',   gyotai:'all', roles:['all'],               gid:'print', t:{ja:'12. 印刷物',en:'12. Printables',vi:'12. Ấn phẩm'}, s:{ja:'POP／朝礼シート／発注リスト／緊急連絡先一覧',en:'POP / forms / order list',vi:'POP / biểu mẫu / đặt hàng'} },
     { ic:'check', gyotai:'all', roles:['all'],               gid:'checksheet', t:{ja:'13. チェックシート',en:'13. Check sheets',vi:'13. Bảng kiểm'}, s:{ja:'お手すき／桜／定期清掃／OPEN・CLOSE',en:'Idle / sakura / cleaning / open-close',vi:'Rảnh / vệ sinh / mở-đóng'} },
-    { ic:'camera',gyotai:'all', roles:['all'],               gid:'serving', t:{ja:'提供時のあるべき姿',en:'Serving standards',vi:'Chuẩn phục vụ'}, s:{ja:'盛り付け・グラム規定・提供基準（最重要）',en:'Plating, grams, serving rules (key)',vi:'Trình bày, định lượng (quan trọng)'} },
+    /* ★2026-08-28＝目次の「提供時のあるべき姿」は盛り付けPOP3件（鰻・牛カツ・和牛）で、すべて業態別。
+       gyOnly＝業態別の画面にだけ出す。自店の業態のPOPがまだ無い店舗には「準備中」と出る（隠さない）。 */
+    { ic:'camera',gyotai:'all', gyOnly:true, roles:['all'],  gid:'serving', t:{ja:'提供時のあるべき姿',en:'Serving standards',vi:'Chuẩn phục vụ'}, s:{ja:'盛り付け・グラム規定・提供基準（最重要）',en:'Plating, grams, serving rules (key)',vi:'Trình bày, định lượng (quan trọng)'} },
     { ic:'star',  gyotai:'all', roles:['all'],               gid:'survey', t:{ja:'サーベイ運用',en:'Survey operation',vi:'Vận hành khảo sát'}, s:{ja:'iPad案内／回答の取り方',en:'iPad guidance / collecting answers',vi:'Hướng dẫn iPad'} },
     /* ★2026-08-20 本部ご回答④＝本部運用の資料はオーナー様にも見せる（表示範囲4点の最後の1つ）。
        roles に 'owner' を入れると、manualVisibleRole の仕組みでオーナー様＋本部が見える形になる。
@@ -2088,7 +2090,11 @@
     'U-1':   ['unagi'],                         // TOひつまぶしマニュアル＝3.日本鰻
     /* 目次の「レシピ表」欄＝番号が振られていないので、タイトルそのもので結ぶ。 */
     '【日本料理】ドリンク早見表（コース）': ['washoku'],                   // 2.日本料理
-    '【世桜】ドリンク早見表（アラカルト）': ['unagi', 'gyukatsu', 'sushi']  // 3.日本鰻, 4.牛カツ, 5.寿司
+    '【世桜】ドリンク早見表（アラカルト）': ['unagi', 'gyukatsu', 'sushi'],  // 3.日本鰻, 4.牛カツ, 5.寿司
+    /* 目次の「提供時のあるべき姿」の節＝盛り付けPOPが業態ごとに並んでいる。 */
+    '【世桜】鰻盛り付けPOP':    ['unagi'],
+    '【世桜】牛カツ盛り付けPOP': ['gyukatsu'],
+    '【世桜】和牛盛り付けPOP':  ['wagyu']
   };
   /* 資料のタイトル先頭の番号（例「13-5 定期清掃シート…」）から業態を引く。
      番号が無いものは、タイトルそのもので引く（目次のレシピ表がこれ）。
@@ -4872,7 +4878,11 @@
       { id:'mn117', title:'03-13 蛍・チェキマニュアル（アラカルトver.）', url:'https://docs.google.com/presentation/d/1Tc44bVrokmEEy47M0p7wE1qvZJDWfBd5sm6B0ftZdNU/edit?usp=sharing', mcat:'service', desc:'スライド' },
       { id:'mn027', title:'03-14 BDプレート', url:'https://drive.google.com/file/d/1MFEOdL_Dx5zJef0TsGZCcXYyluQFtcky/view', mcat:'service', desc:'動画' },
       { id:'mn028', title:'03-15 蛍マニュアル', url:'https://drive.google.com/file/d/13_PpSHaFLxJkHg_WDly9DfqtP9-ziCza/view', mcat:'service', desc:'動画' },
-      { id:'mn029', title:'03-16 iPadサーベイ運用マニュアル', url:'https://docs.google.com/presentation/d/1C-iag9SzUzMg7_qFIp6g5ifRh8pT5IOHM_lOR2L8Mk4/edit?usp=sharing', mcat:'service', desc:'スライド' },
+      /* ★2026-08-28＝アプリの分類は「サーベイ運用」に置く（目次では 03.接客ホール）。
+         同じ資料を2か所に登録すると「資料リンクの管理」で二重になるため、置き場は1つにする。
+         番号は 03-16 のまま＝目次のどこから来たかは題名で分かる。
+         これでサーベイ画面からもこの手順書が開ける。 */
+      { id:'mn029', title:'03-16 iPadサーベイ運用マニュアル', url:'https://docs.google.com/presentation/d/1C-iag9SzUzMg7_qFIp6g5ifRh8pT5IOHM_lOR2L8Mk4/edit?usp=sharing', mcat:'survey', desc:'スライド' },
       { id:'mn030', title:'04-1 Google口コミの重要性', url:'https://docs.google.com/presentation/d/1X7gcRzVlWq4Us7y0UN0qK9H8Irc4p7WmIpmipuuvXZg/edit?usp=sharing', mcat:'marketing', desc:'スライド' },
       { id:'mn031', title:'04-2 販促物の重要性', url:'https://docs.google.com/presentation/d/1ZJCTWIwB3TrmjMxiT4Qbh50ibOFKvQ17zwlQvH0cp30/edit?usp=sharing', mcat:'marketing', desc:'スライド' },
       { id:'mn032', title:'04-3 顧客流入経路 情報管理', url:'https://docs.google.com/presentation/d/1VboR_tMBbONyak2npIxiJVy_i-pxTUVNTYYXaw_SWmo/edit?usp=sharing', mcat:'marketing', desc:'スライド' },
@@ -4969,6 +4979,12 @@
          （同名で info@sharelive.jp 所有の旧版＝_20260218 付きがあるが、そちらは指さない）。 */
       { id:'mn122', title:'【日本料理】ドリンク早見表（コース）', url:'https://docs.google.com/spreadsheets/d/1po6eRa22nFzbk2Xo582GUTK0tTB59gVs7dEnziuSUEo/edit?usp=sharing', mcat:'recipe', desc:'スプレッドシート' },
       { id:'mn123', title:'【世桜】ドリンク早見表（アラカルト）', url:'https://docs.google.com/spreadsheets/d/1ObdkIN-gzhqD2WIJWP74-G-KMC1f3bh6PdpjLngq8kE/edit?usp=sharing', mcat:'recipe', desc:'スプレッドシート' },
+      /* ★2026-08-28＝本部の目次に「提供時のあるべき姿」という節があり、盛り付けPOP3件が並んでいる
+         （鰻／牛カツ／和牛。目次に置かれたフォルダ 1OFie-… の中身と一致）。
+         番号が振られていないので、業態は MANUAL_GYOTAI にタイトルで登録している。 */
+      { id:'mn124', title:'【世桜】鰻盛り付けPOP',    url:'https://docs.google.com/presentation/d/15GUrfcuhIB9tDeFQvQSkTABmcLmEzQiwQ9USaMKjSSk/edit?usp=sharing', mcat:'serving', desc:'スライド' },
+      { id:'mn125', title:'【世桜】牛カツ盛り付けPOP', url:'https://docs.google.com/presentation/d/1TCOWRe44VKSJSeLZnX7qL5gepUDwwgE_mqvs7ZREQD0/edit?usp=sharing', mcat:'serving', desc:'スライド' },
+      { id:'mn126', title:'【世桜】和牛盛り付けPOP',  url:'https://docs.google.com/presentation/d/1c-znB4ntKbux3lBkkCTUDNYUD7DtwYPV2MKP-WZPTL8/edit?usp=sharing', mcat:'serving', desc:'スライド' },
     ]);
     seedMark('links');
   }
