@@ -411,7 +411,7 @@ await new Promise(r=>setTimeout(r, 50));
   ok(/世桜とは/.test(html) && /ハウスルール/.test(html), '理念/7DAYSに対応資料が紐づく');
   ok(/\/preview/.test(html) && !/\/edit/.test(html), 'スタッフは読み取り専用(/preview)で開く（編集防止）');
 }
-console.log('== マニュアル：本部は編集リンクで開く ==');
+console.log('== マニュアル：本部も閲覧専用で開く（2026-08-28 増田さんのご要望＝編集は資料リンクの管理から）==');
 {
   FETCH_ROWS = { ok:true, reports:[
     { kind:'linkset', store:'', note: JSON.stringify([
@@ -424,7 +424,7 @@ await new Promise(r=>setTimeout(r, 50));
 {
   location.hash = '#/app/manual';
   const html = registry.app.innerHTML;
-  ok(/\/edit/.test(html), '本部は編集リンク(/edit)で開く');
+  ok(/\/preview/.test(html) && !/data-openurl="[^"]*\/edit/.test(html), '★本部も閲覧専用(/preview)で開く（2026-08-28 変更）');
 }
 FETCH_ROWS = { ok:false };
 
@@ -2406,7 +2406,7 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
     ok(edit === 0, `${role}：編集画面で開くリンクが1つも無い（${edit}件）`);
     ok(ro > 0, `${role}：閲覧専用で開くリンクがある（${ro}件）`);
   }
-  ok(/const openUrlFor = \(u\) => \(getRole\(\) === 'hq'/.test(code),
+  ok(/const openUrlFor = \(u\) => roViewUrl\(u\)/.test(code),
      '閲覧専用にするかどうかの判断が1か所にまとまっている');
 
   /* ★体験版は保存先を持たないので、アプリからご意見を送っても本部へは届かない。
