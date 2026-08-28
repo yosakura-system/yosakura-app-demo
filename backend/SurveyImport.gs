@@ -30,6 +30,17 @@
  */
 
 var SURVEY_KIND = 'survey';
+/* 旧名義で入っている既存行を、正式名義と同じ回答として扱う（二重取り込みの防止）。
+   ★2026-08-28＝本店の既存14件が「心斎橋（おまかせ）」名義のため、正式名義で登録し直すと
+   同じ回答がもう一度入ってしまう。突き合わせのときだけ正式名義に読み替える。 */
+var SURVEY_STORE_ALIASES = {
+  '日本料理世桜 心斎橋（おまかせ）': '日本料理世桜本店',
+  '日本料理世桜 心斎橋': '日本料理世桜本店'
+};
+function surveyCanonStore_(name) {
+  var s = String(name || '');
+  return SURVEY_STORE_ALIASES[s] || s;
+}
 var SURVEY_READ_TAIL = 5000;   // 重複判定のために遡って読む行数（reports シート側）
 var SURVEY_HEADER_SCAN = 6;    // 見出し行を探す範囲（上から何行目まで見るか）
 
@@ -65,7 +76,7 @@ function seenSurveyKeys_(sh) {
   var values = sh.getRange(startRow, 1, lastRow - startRow + 1, HEADERS.length).getValues();
   for (var i = 0; i < values.length; i++) {
     if (values[i][2] !== SURVEY_KIND) continue;
-    seen[String(values[i][3]) + '||' + Number(values[i][1] || 0)] = true;
+    seen[surveyCanonStore_(values[i][3]) + '||' + Number(values[i][1] || 0)] = true;
   }
   return seen;
 }
@@ -209,7 +220,7 @@ function importSurveys(dryRun) {
     var r = readSurveySource_(src);
     var added = 0, dup = 0, test = 0;
     r.rows.forEach(function (row) {
-      var key = src.store + '||' + row.t;
+      var key = surveyCanonStore_(src.store) + '||' + row.t;
       if (seen[key]) { dup++; return; }
       seen[key] = true;                                // 同じ実行内での重複も防ぐ
       if (row.isTest) test++;

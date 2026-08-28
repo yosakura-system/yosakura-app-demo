@@ -109,6 +109,14 @@ const second = sandbox.importSurveys(false);
 ok(second.追加件数 === 0, `2回目は追加0件＝何度実行しても二重登録されない／実際=${second.追加件数}`);
 ok(appended.length === 11, 'シートに残るのは11行のまま');
 
+console.log('== 旧名義の既存行と突き合わせる（2026-08-28 本店の名義違い対策）==');
+// 既存行が「心斎橋（おまかせ）」名義でも、正式名義で登録し直したときに同じ回答を二重に入れない
+{
+  const canon = sandbox.surveyCanonStore_('日本料理世桜 心斎橋（おまかせ）');
+  ok(canon === '日本料理世桜本店', `旧名義が正式名義に読み替わる／実際=${canon}`);
+  ok(sandbox.surveyCanonStore_('和牛世桜 広島店') === '和牛世桜 広島店', '対応表に無い店舗はそのまま');
+}
+
 console.log('== 書き込む形がアプリの読み取り形式と合っている ==');
 const row = appended[0];
 ok(row[2] === 'survey', 'kind は survey');
