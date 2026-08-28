@@ -411,6 +411,54 @@ await new Promise(r=>setTimeout(r, 50));
   ok(/世桜とは/.test(html) && /ハウスルール/.test(html), '理念/7DAYSに対応資料が紐づく');
   ok(/\/preview/.test(html) && !/\/edit/.test(html), 'スタッフは読み取り専用(/preview)で開く（編集防止）');
 }
+/* ★2026-08-28 増田さんが本部のマニュアル目次の「業態」欄を埋めてくださった＝それをアプリへ写した。
+   ここで固定するのは3点：
+   ①業態が入っている資料は【共通マニュアルに出さない】（共通と業態別の二重掲載を作らない）
+   ②【手巻きと寿司は別の業態】＝13-5（手巻き専用）が寿司世桜に出ない
+   ③1つの資料が複数の業態に出る（03-13＝鰻・牛カツ・和牛）
+   ⚠️ 対応は「目次のNo.」で結んでいるので、URLやタイトル後半が変わっても崩れない。 */
+console.log('== マニュアル：業態別の振り分けは本部の目次の「業態」欄に従う ==');
+{
+  const GY_LINKS = JSON.stringify([
+    { id:'g1', mcat:'checksheet', title:'13-5 定期清掃シート【手巻き寿司世桜】', url:'https://docs.google.com/spreadsheets/d/T5/edit', desc:'スプレッドシート' },
+    { id:'g2', mcat:'service',    title:'03-13 蛍・チェキマニュアル（アラカルトver.）', url:'https://docs.google.com/presentation/d/A13/edit', desc:'スライド' },
+    { id:'g3', mcat:'checksheet', title:'13-1 お手すきチェックリスト', url:'https://docs.google.com/spreadsheets/d/C1/edit', desc:'スプレッドシート' },
+  ]);
+  /* 店舗ごとに開く＝自店の業態が最初から選ばれるので、6業態すべてを押さずに確かめられる。 */
+  const openAs = async (store) => {
+    FETCH_ROWS = { ok:true, reports:[ { kind:'linkset', store:'', note: GY_LINKS, t: Date.now(), id:'lsgy' } ] };
+    try { run(()=> setLS('manager', store, 'ja')); } catch(e){ FAIL++; console.log('  ✗ gyotai load threw: '+e.message); }
+    await new Promise(r=>setTimeout(r, 50));
+    location.hash = '#/app/manual';
+    const common = registry.app.innerHTML;
+    location.hash = '#/app/gyotaiman';
+    return { common, gy: registry.app.innerHTML };
+  };
+
+  {
+    const v = await openAs('手巻き寿司世桜 難波店');
+    ok(!/13-5 /.test(v.common), '①業態が入っている資料は共通マニュアルに出さない（13-5）');
+    ok(/13-1 /.test(v.common), '①業態欄が空の資料は共通マニュアルに出る（13-1）');
+    ok(/13-5 /.test(v.gy), '②手巻き寿司の店舗では、業態別に13-5が出る');
+    ok(!/13-1 /.test(v.gy), '業態別の画面に、共通の資料は出さない');
+    ok(!/03-13 /.test(v.gy), '手巻きに03-13は出ない（目次の業態欄どおり）');
+  }
+  {
+    const v = await openAs('寿司世桜 心斎橋店');
+    ok(!/13-5 /.test(v.gy), '★②寿司世桜には、手巻き専用の13-5を出さない（手巻きと寿司は別の業態）');
+  }
+  /* ③1つの資料が複数の業態に出る＝03-13 は 3.日本鰻 / 4.牛カツ / 7.和牛 */
+  for (const [store, label] of [['日本鰻世桜 浅草橋店','鰻'], ['牛カツ世桜 長堀橋店','牛カツ'], [S_HIROSHIMA,'和牛']]) {
+    const v = await openAs(store);
+    ok(/03-13 /.test(v.gy), `③${label}の店舗に03-13が出る（1つの資料が複数の業態に入る）`);
+  }
+  {
+    const v = await openAs('日本料理世桜本店');
+    ok(!/03-13 /.test(v.gy), '③日本料理には03-13（アラカルト版）を出さない＝コース版03-12の側');
+  }
+}
+FETCH_ROWS = { ok:false };
+
 console.log('== マニュアル：本部も閲覧専用で開く（2026-08-28 増田さんのご要望＝編集は資料リンクの管理から）==');
 {
   FETCH_ROWS = { ok:true, reports:[

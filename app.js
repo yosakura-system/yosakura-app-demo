@@ -2002,14 +2002,25 @@
   /* ④ マニュアル（権限別×業態別に出し分け）
      店舗名から業態を判定し、共通マニュアル＋その店舗の業態マニュアルを表示。
      さらに閲覧できるロールで絞る（スタッフには管理者向けを出さない）。 */
+  /* ★2026-08-28 本部の目次（マニュアル一覧）の「業態」欄に合わせた。並びも目次の番号順。
+     目次では **5.寿司 と 6.手巻き が別の業態**（例：13-5 定期清掃シート【手巻き寿司世桜】＝6.手巻きだけ）。
+     以前は手巻きを寿司に含めていたため、寿司世桜 心斎橋店にも手巻き専用の資料が出てしまう形だった。 */
   const GYOTAI = [
-    { code:'sushi',    key:['寿司','手巻き'], label:{ ja:'寿司', en:'Sushi', vi:'Sushi' } },
-    { code:'gyukatsu', key:['牛カツ'],        label:{ ja:'牛カツ', en:'Gyukatsu', vi:'Gyukatsu' } },
-    { code:'unagi',    key:['鰻'],            label:{ ja:'鰻', en:'Unagi (eel)', vi:'Lươn' } },
-    { code:'wagyu',    key:['和牛'],          label:{ ja:'和牛', en:'Wagyu', vi:'Wagyu' } },
-    { code:'washoku',  key:['日本料理'],      label:{ ja:'日本料理', en:'Japanese cuisine', vi:'Ẩm thực Nhật' } }
+    { code:'washoku',  key:['日本料理'],      label:{ ja:'日本料理', en:'Japanese cuisine', vi:'Ẩm thực Nhật' } },   // 2
+    { code:'unagi',    key:['鰻'],            label:{ ja:'鰻', en:'Unagi (eel)', vi:'Lươn' } },                       // 3
+    { code:'gyukatsu', key:['牛カツ'],        label:{ ja:'牛カツ', en:'Gyukatsu', vi:'Gyukatsu' } },                  // 4
+    { code:'sushi',    key:['寿司'],          label:{ ja:'寿司', en:'Sushi', vi:'Sushi' } },                          // 5
+    { code:'temaki',   key:['手巻き'],        label:{ ja:'手巻き寿司', en:'Temaki sushi', vi:'Sushi cuộn tay' } },    // 6
+    { code:'wagyu',    key:['和牛'],          label:{ ja:'和牛', en:'Wagyu', vi:'Wagyu' } }                           // 7
   ];
-  const storeGyotai = (store) => { const g = GYOTAI.find(x => x.key.some(k => (store || '').includes(k))); return g ? g.code : null; };
+  /* ⚠️ 「手巻き寿司世桜 難波店」は"寿司"の字も含む＝上から順に当てると寿司になってしまう。
+     **長い手がかりを先に当てる**ことで、GYOTAI の並び（＝画面に出す順）を自由に変えても壊れない。 */
+  const storeGyotai = (store) => {
+    const s = String(store || '');
+    let hit = null, len = 0;
+    GYOTAI.forEach(g => g.key.forEach(k => { if (s.includes(k) && k.length > len) { hit = g.code; len = k.length; } }));
+    return hit;
+  };
   const gyotaiLabel = (code) => { const g = GYOTAI.find(x => x.code === code); return g ? L(g.label) : code; };
   // roles: 閲覧できるロール（'all'は全員）／gyotai: 'all' or 業態code
   const MANUAL_CATALOG = [
@@ -2050,6 +2061,34 @@
     { ic:'food',  gyotai:'washoku',  roles:['all'], gid:'washoku', t:{ja:'日本料理コース',en:'Japanese course',vi:'Set Nhật'}, s:{ja:'おまかせの流れ／季節の献立',en:'Omakase flow / seasonal menu',vi:'Quy trình omakase'} }
   ];
   const manualVisibleRole = (m, role) => role === 'hq' || m.roles.includes('all') || m.roles.includes(role);
+
+  /* ★資料ごとの業態＝本部の目次（マニュアル一覧）の「業態」欄を、そのまま写したもの（2026-08-28 増田さんご記入）。
+     ⚠️ ここは**こちらで決めた分類ではない**。目次が正で、目次が変われば直す。
+     ・目次で業態欄が**空**の資料＝全業態共通。この表に**書かない**（書かない＝共通、が唯一の合図）。
+     ・1つの資料が複数の業態に入る（例：03-12 は 日本料理と寿司）ため、値は配列。
+     ★結び方は**目次のNo.**（URLでもタイトル全文でもない）。本部が資料を差し替えてURLが変わっても、
+       またタイトルの後半を直されても、番号が同じなら対応は崩れない。 */
+  const MANUAL_GYOTAI = {
+    '03-12': ['washoku', 'sushi'],              // 蛍・チェキマニュアル（コースver.）＝2.日本料理, 5.寿司
+    '03-13': ['unagi', 'gyukatsu', 'wagyu'],    // 蛍・チェキマニュアル（アラカルトver.）＝3.日本鰻, 4.牛カツ, 7.和牛
+    '05-12': ['washoku', 'unagi'],              // 厨房機器類管理メンテナンス＝2.日本料理, 3.日本鰻
+    '05-13': ['gyukatsu'],                      // フライヤー清掃マニュアル＝4.牛カツ
+    '12-13': ['washoku', 'sushi'],              // 世桜BOOKプレゼントマニュアル（コース店舗）＝2.日本料理, 5.寿司
+    '12-22': ['washoku', 'unagi'],              // 鰻の焼き加減表＝2.日本料理, 3.日本鰻
+    '13-3':  ['washoku', 'unagi'],              // 定期清掃シート【高度な機材店舗】＝2.日本料理, 3.日本鰻
+    '13-4':  ['gyukatsu'],                      // 定期清掃シート【フライヤー店舗】＝4.牛カツ
+    '13-5':  ['temaki'],                        // 定期清掃シート【手巻き寿司世桜】＝6.手巻き
+    '13-6':  ['washoku'],                       // 【日本料理】OPEN/CLOSEチェックリスト＝2.日本料理
+    '13-7':  ['unagi'],                         // 鰻_OPEN/CLOSEチェックリスト＝3.日本鰻
+    '13-8':  ['gyukatsu'],                      // 牛カツ_OPEN/CLOSEチェックリスト＝4.牛カツ
+    'U-1':   ['unagi']                          // TOひつまぶしマニュアル＝3.日本鰻
+  };
+  /* 資料のタイトル先頭の番号（例「13-5 定期清掃シート…」）から業態を引く。
+     番号が無い資料・表に無い番号＝null＝全業態共通。 */
+  const linkGyotai = (l) => {
+    const m = String((l && l.title) || '').match(/^\s*(\d{2}-\d{1,2}|U-\d{1,2})/);
+    return (m && MANUAL_GYOTAI[m[1]]) || null;
+  };
   /* マニュアルの分類の中に置く「アプリの中で読めるもの」。
      ★いまは空＝マニュアルに並ぶのは本部が登録した資料だけ（2026-08-17 神田さんのご判断）。
        アプリ側で文面を持つと、本部が資料を直したときにアプリだけ古いまま残るため。
@@ -2077,10 +2116,18 @@
      ⚠️ これはアプリの入口の話。ファイル自体の共有が「編集可」なら、プレビューから編集へ移れてしまう
      　＝根本はドライブ側の共有設定（本部の作業）。 */
   const openUrlFor = (u) => roViewUrl(u);
-  const manualRow = (m) => {
+  /* gyCode を渡すと「その業態の資料だけ」、渡さないと「全業態共通の資料だけ」を出す。
+     ★同じ資料が共通と業態別の両方に出ないようにするのが目的（2026-08-28 増田さんのご要望）。 */
+  const manualRow = (m, gyCode) => {
     /* 並び順は番号を数として見る（numeric）。
        ★これが無いと 03-1／03-10／03-11／03-2 の順に並ぶ＝本部の目次と突き合わせられない。 */
-    const mats = m.gid ? getLinks().filter(l => l.mcat === m.gid).sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'ja', { numeric: true })) : [];
+    const mats = m.gid ? getLinks().filter(l => {
+      if (l.mcat !== m.gid) return false;
+      /* 業態専用の分類（レシピ等）は、中身がまるごとその業態のもの＝番号での判定はしない。 */
+      if (m.gyotai !== 'all') return true;
+      const g = linkGyotai(l);
+      return gyCode ? !!(g && g.indexOf(gyCode) >= 0) : !g;
+    }).sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'ja', { numeric: true })) : [];
     const roForRole = getRole() !== 'hq'; // 本部以外は読み取り専用で開く
     /* アプリの中で読めるものを、資料リンクより先に並べる。
        ★資料が1件も登録されていない分類でも、これがあれば「準備中」にはならない。 */
@@ -2090,7 +2137,7 @@
     const total = builtins.length + mats.length;
     /* ★2026-08-28 増田さんのご要望＝最初は大項目だけを出し、タップで中身を開く
        （全資料が縦に並ぶと下までのスクロールが大変なため）。 */
-    const fk = m.gid || L(m.t);
+    const fk = (gyCode ? gyCode + ':' : '') + (m.gid || L(m.t));
     const head = `<div class="mrow" data-mfold="${esc(fk)}"><div class="mi">${svg(m.ic)}</div><div class="mt"><b>${esc(L(m.t))}</b><span>${esc(L(m.s))}</span></div><span class="chev"><small style="color:#8a8">${total ? L({ ja:'資料', en:'Docs', vi:'TL' }) + total : L({ ja:'準備中', en:'Coming', vi:'Sắp có' })}</small>　${svg('chev')}</span></div>`;
     /* ★リンクと同じ見た目で並ぶので、押す前に「飛ぶのか・その場で読めるのか」が分かるようにする。 */
     const bsubs = builtins.map(a => `<div class="mrow mrow--sub" data-go="/app/${esc(a.id)}" style="padding-left:22px"><div class="mi">${svg(a.icon)}</div><div class="mt"><b>${esc(L(a.name))}</b><span>${L({ ja:'アプリで読めます', en:'Read in the app', vi:'Đọc ngay trong ứng dụng' })}</span></div><span class="chev">${svg('chev')}</span></div>`).join('');
@@ -2131,7 +2178,9 @@
                en:'Tap a section to see its documents. Business-type manuals & recipes are under "By business type".',
                vi:'Chạm vào mục lớn để xem tài liệu. Cẩm nang theo loại hình nằm ở "Theo loại hình".' })}
       <div class="sec-h" style="margin:6px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'全業態共通', en:'All types', vi:'Chung' })}</h2></div>
-      <div class="card" style="padding:2px 0">${common.map(manualRow).join('')}</div>
+      <!-- ⚠️ map に manualRow をそのまま渡さない＝mapは第2引数に「番号」を渡すため、
+           それが業態の指定として効いてしまう（2026-08-28 実際に23件のテストが落ちた）。 -->
+      <div class="card" style="padding:2px 0">${common.map(m => manualRow(m)).join('')}</div>
       <div class="mrow" data-go="/app/gyotaiman" style="margin-top:10px"><div class="mi">${svg('food')}</div><div class="mt"><b>${L({ ja:'業態別マニュアル・レシピ', en:'By business type', vi:'Theo loại hình' })}</b><span>${L({ ja:'鰻・寿司・牛カツ・和牛・日本料理', en:'Eel / Sushi / Gyukatsu / Wagyu / Washoku', vi:'Lươn / Sushi / Gyukatsu / Wagyu / Washoku' })}</span></div><span class="chev">${svg('chev')}</span></div>
       <div class="hint">${L({ ja:'動画マニュアルもこの中に統合していく構想です。', en:'Video manuals will also be integrated here.', vi:'Cẩm nang video cũng sẽ được tích hợp tại đây.' })}</div>`;
   };
@@ -2143,16 +2192,24 @@
     const role = getRole();
     const store = visibleStores()[0];
     const myGy = getRole() === 'hq' && getStoreSel() === 'all' ? null : storeGyotai(store);
-    const codes = [...new Set(MANUAL_CATALOG.filter(m => m.gyotai !== 'all' && manualVisibleRole(m, role)).map(m => m.gyotai))];
+    /* ★業態の一覧は GYOTAI（＝店舗の業態）から作る。分類から作ると、まだ専用分類の無い
+       「手巻き寿司」が出てこない（13-5 定期清掃シートは手巻きだけの資料）。 */
+    const codes = GYOTAI.map(g => g.code);
     const sel = codes.includes(gySelState) ? gySelState : (codes.includes(myGy) ? myGy : codes[0]);
     const seg = `<div class="seg" style="flex-wrap:wrap">${codes.map(c => `<button class="${c === sel ? 'on' : ''}" data-gysel="${esc(c)}">${esc(gyotaiLabel(c))}</button>`).join('')}</div>`;
-    const list = MANUAL_CATALOG.filter(m => m.gyotai === sel && manualVisibleRole(m, role));
+    /* ① この業態のための分類（レシピ等・本部がこれから登録する枠） */
+    const own = MANUAL_CATALOG.filter(m => m.gyotai === sel && manualVisibleRole(m, role));
+    /* ② 共通の分類の中にある、この業態だけの資料（本部の目次の業態欄でこの業態に入っているもの）。
+       中身が1件も無い分類は出さない＝ここは業態別だけを見る画面なので、空の見出しは邪魔になる。 */
+    const shared = MANUAL_CATALOG.filter(m => m.gyotai === 'all' && m.gid && manualVisibleRole(m, role)
+      && getLinks().some(l => l.mcat === m.gid && (linkGyotai(l) || []).indexOf(sel) >= 0));
+    const rows = own.map(m => manualRow(m)).join('') + shared.map(m => manualRow(m, sel)).join('');
     return `
-      ${NOTE({ ja:'◆ 業態を選ぶと、その業態のマニュアル・レシピが出ます。資料は本部が「資料リンクの管理」から登録すると、再配信なしでここに並びます。',
-               en:'Pick a business type to see its manuals & recipes. HQ can register documents without redeploying.',
-               vi:'Chọn loại hình để xem cẩm nang & công thức. HQ đăng ký tài liệu mà không cần phát hành lại.' })}
+      ${NOTE({ ja:'◆ 業態を選ぶと、その業態のマニュアル・レシピが出ます。どの業態に入るかは、本部のマニュアル目次の「業態」欄に合わせています。資料は本部が「資料リンクの管理」から登録すると、再配信なしでここに並びます。',
+               en:'Pick a business type to see its manuals & recipes. Assignment follows the "business type" column of HQ’s manual index. HQ can register documents without redeploying.',
+               vi:'Chọn loại hình để xem cẩm nang & công thức. Phân loại theo cột "loại hình" trong mục lục của HQ. HQ đăng ký tài liệu mà không cần phát hành lại.' })}
       ${seg}
-      <div class="card" style="padding:2px 0;margin-top:8px">${list.map(manualRow).join('')}</div>`;
+      <div class="card" style="padding:2px 0;margin-top:8px">${rows}</div>`;
   };
 
   /* ⑤ サーベイ（モック）*/
