@@ -2054,6 +2054,10 @@
        roles:[] ＝本部だけに見える分類（manualVisibleRole は hq を常に通す）。
        「資料リンクの管理」の大項目にも並ぶ＝本部が見本アプリのURL・原本をここへ登録する */
     { ic:'check', gyotai:'all', roles:['all'],               gid:'hqcheck', t:{ja:'店舗運営チェック',en:'Store operations check',vi:'Kiểm tra vận hành'}, s:{ja:'店舗運営チェック（セルフチェック・見本と原本）',en:'Store operations check (self-check)',vi:'Kiểm tra vận hành cửa hàng'} },
+    /* ★2026-08-28＝本部の目次の「レシピ表」に当たる置き場。
+       中身は業態欄で振り分けるので、共通マニュアルには出ず、業態別の画面に並ぶ。
+       業態欄が空のレシピを本部が登録された場合だけ、共通マニュアルにも出る。 */
+    { ic:'food',  gyotai:'all', gyOnly:true, roles:['all'],  gid:'recipe', t:{ja:'レシピ・早見表',en:'Recipes & quick charts',vi:'Công thức & bảng tra'}, s:{ja:'ドリンク早見表ほか',en:'Drink charts and more',vi:'Bảng tra đồ uống, v.v.'} },
     { ic:'food',  gyotai:'unagi',    roles:['all'], gid:'unagi', t:{ja:'鰻の焼成・タレ',en:'Eel grilling & sauce',vi:'Nướng lươn & sốt'}, s:{ja:'あぶり直し／タレ／提供の説明',en:'Re-grilling / sauce / explanation',vi:'Nướng lại / sốt / giải thích'} },
     { ic:'food',  gyotai:'sushi',    roles:['all'], gid:'sushi', t:{ja:'寿司オペレーション',en:'Sushi operation',vi:'Vận hành sushi'}, s:{ja:'シャリ／握り／衛生',en:'Rice / nigiri / hygiene',vi:'Cơm / nắm / vệ sinh'} },
     { ic:'food',  gyotai:'gyukatsu', roles:['all'], gid:'gyukatsu', t:{ja:'牛カツの提供基準',en:'Gyukatsu serving',vi:'Phục vụ gyukatsu'}, s:{ja:'揚げ／断面／盛り付け（和牛のみ使用）',en:'Frying / cut / plating',vi:'Chiên / lát cắt / trình bày'} },
@@ -2081,13 +2085,18 @@
     '13-6':  ['washoku'],                       // 【日本料理】OPEN/CLOSEチェックリスト＝2.日本料理
     '13-7':  ['unagi'],                         // 鰻_OPEN/CLOSEチェックリスト＝3.日本鰻
     '13-8':  ['gyukatsu'],                      // 牛カツ_OPEN/CLOSEチェックリスト＝4.牛カツ
-    'U-1':   ['unagi']                          // TOひつまぶしマニュアル＝3.日本鰻
+    'U-1':   ['unagi'],                         // TOひつまぶしマニュアル＝3.日本鰻
+    /* 目次の「レシピ表」欄＝番号が振られていないので、タイトルそのもので結ぶ。 */
+    '【日本料理】ドリンク早見表（コース）': ['washoku'],                   // 2.日本料理
+    '【世桜】ドリンク早見表（アラカルト）': ['unagi', 'gyukatsu', 'sushi']  // 3.日本鰻, 4.牛カツ, 5.寿司
   };
   /* 資料のタイトル先頭の番号（例「13-5 定期清掃シート…」）から業態を引く。
-     番号が無い資料・表に無い番号＝null＝全業態共通。 */
+     番号が無いものは、タイトルそのもので引く（目次のレシピ表がこれ）。
+     どちらにも当たらない＝null＝全業態共通。 */
   const linkGyotai = (l) => {
-    const m = String((l && l.title) || '').match(/^\s*(\d{2}-\d{1,2}|U-\d{1,2})/);
-    return (m && MANUAL_GYOTAI[m[1]]) || null;
+    const title = String((l && l.title) || '').trim();
+    const m = title.match(/^(\d{2}-\d{1,2}|U-\d{1,2})/);
+    return (m && MANUAL_GYOTAI[m[1]]) || MANUAL_GYOTAI[title] || null;
   };
   /* マニュアルの分類の中に置く「アプリの中で読めるもの」。
      ★いまは空＝マニュアルに並ぶのは本部が登録した資料だけ（2026-08-17 神田さんのご判断）。
@@ -2123,9 +2132,12 @@
        ★これが無いと 03-1／03-10／03-11／03-2 の順に並ぶ＝本部の目次と突き合わせられない。 */
     const mats = m.gid ? getLinks().filter(l => {
       if (l.mcat !== m.gid) return false;
-      /* 業態専用の分類（レシピ等）は、中身がまるごとその業態のもの＝番号での判定はしない。 */
+      /* 業態専用の分類は、中身がまるごとその業態のもの＝番号での判定はしない。 */
       if (m.gyotai !== 'all') return true;
       const g = linkGyotai(l);
+      /* 業態別の画面にしか置かない分類（レシピ・早見表）で、業態欄が空の資料は
+         **どの業態でも出す**。共通マニュアルに出ないので、ここで外すと行き場が無くなる。 */
+      if (m.gyOnly) return gyCode ? (!g || g.indexOf(gyCode) >= 0) : false;
       return gyCode ? !!(g && g.indexOf(gyCode) >= 0) : !g;
     }).sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'ja', { numeric: true })) : [];
     const roForRole = getRole() !== 'hq'; // 本部以外は読み取り専用で開く
@@ -2168,7 +2180,7 @@
     const role = getRole();
     /* ★2026-08-28 増田さんのご要望＝マニュアルは【全業態共通】だけを出す。
        業態別（レシピ等）は別窓口「業態別マニュアル・レシピ」へ分けた（gyotaiman）。 */
-    const common = MANUAL_CATALOG.filter(m => m.gyotai === 'all' && manualVisibleRole(m, role));
+    const common = MANUAL_CATALOG.filter(m => m.gyotai === 'all' && !m.gyOnly && manualVisibleRole(m, role));
     return `
       ${TAIKEN ? `<p class="hint" style="display:block;margin:0 0 10px">${L({
           ja:'※ 資料は本部のドライブにあります。閲覧権限をお持ちの方は、そのまま開きます。開かない場合は「アクセス権をリクエスト」は押さず、本部の増田までご連絡ください。',
@@ -2202,7 +2214,7 @@
     /* ② 共通の分類の中にある、この業態だけの資料（本部の目次の業態欄でこの業態に入っているもの）。
        中身が1件も無い分類は出さない＝ここは業態別だけを見る画面なので、空の見出しは邪魔になる。 */
     const shared = MANUAL_CATALOG.filter(m => m.gyotai === 'all' && m.gid && manualVisibleRole(m, role)
-      && getLinks().some(l => l.mcat === m.gid && (linkGyotai(l) || []).indexOf(sel) >= 0));
+      && (m.gyOnly || getLinks().some(l => l.mcat === m.gid && (linkGyotai(l) || []).indexOf(sel) >= 0)));
     const rows = own.map(m => manualRow(m)).join('') + shared.map(m => manualRow(m, sel)).join('');
     return `
       ${NOTE({ ja:'◆ 業態を選ぶと、その業態のマニュアル・レシピが出ます。どの業態に入るかは、本部のマニュアル目次の「業態」欄に合わせています。資料は本部が「資料リンクの管理」から登録すると、再配信なしでここに並びます。',
@@ -4952,6 +4964,11 @@
       /* 2026-08-19 の勉強会で取り上げられ、同日 12.印刷物 へ追加されたもの（番号なし） */
       { id:'mn115', title:'手袋運用の徹底（POP用）', url:'https://docs.google.com/presentation/d/1JfLS8EjrUJMMrRueCJvnbyVvkoLeJddq10OGV8v0xdE/edit?usp=sharing', mcat:'print', desc:'スライド' },
       { id:'mn121', title:'U-1 TOひつまぶしマニュアル', url:'https://docs.google.com/presentation/d/1NzpfFbPRp8KWoh41fvtGtQjnkNKEB-mDD979iiqNoPM/edit?usp=sharing', mcat:'unagi', desc:'スライド' },
+      /* ★2026-08-28＝本部の目次「レシピ表」の2件。目次には業態が入っているが番号が無いため、
+         MANUAL_GYOTAI ではタイトルで結んでいる。ファイルは yosakura.fc 所有のものを指す
+         （同名で info@sharelive.jp 所有の旧版＝_20260218 付きがあるが、そちらは指さない）。 */
+      { id:'mn122', title:'【日本料理】ドリンク早見表（コース）', url:'https://docs.google.com/spreadsheets/d/1po6eRa22nFzbk2Xo582GUTK0tTB59gVs7dEnziuSUEo/edit?usp=sharing', mcat:'recipe', desc:'スプレッドシート' },
+      { id:'mn123', title:'【世桜】ドリンク早見表（アラカルト）', url:'https://docs.google.com/spreadsheets/d/1ObdkIN-gzhqD2WIJWP74-G-KMC1f3bh6PdpjLngq8kE/edit?usp=sharing', mcat:'recipe', desc:'スプレッドシート' },
     ]);
     seedMark('links');
   }

@@ -423,6 +423,9 @@ console.log('== マニュアル：業態別の振り分けは本部の目次の�
     { id:'g1', mcat:'checksheet', title:'13-5 定期清掃シート【手巻き寿司世桜】', url:'https://docs.google.com/spreadsheets/d/T5/edit', desc:'スプレッドシート' },
     { id:'g2', mcat:'service',    title:'03-13 蛍・チェキマニュアル（アラカルトver.）', url:'https://docs.google.com/presentation/d/A13/edit', desc:'スライド' },
     { id:'g3', mcat:'checksheet', title:'13-1 お手すきチェックリスト', url:'https://docs.google.com/spreadsheets/d/C1/edit', desc:'スプレッドシート' },
+    /* 目次の「レシピ表」＝番号が振られていないので、タイトルそのもので業態に結んでいる */
+    { id:'g4', mcat:'recipe', title:'【世桜】ドリンク早見表（アラカルト）', url:'https://docs.google.com/spreadsheets/d/DA/edit', desc:'スプレッドシート' },
+    { id:'g5', mcat:'recipe', title:'【日本料理】ドリンク早見表（コース）', url:'https://docs.google.com/spreadsheets/d/DC/edit', desc:'スプレッドシート' },
   ]);
   /* 店舗ごとに開く＝自店の業態が最初から選ばれるので、6業態すべてを押さずに確かめられる。 */
   const openAs = async (store) => {
@@ -455,6 +458,14 @@ console.log('== マニュアル：業態別の振り分けは本部の目次の�
   {
     const v = await openAs('日本料理世桜本店');
     ok(!/03-13 /.test(v.gy), '③日本料理には03-13（アラカルト版）を出さない＝コース版03-12の側');
+    ok(/ドリンク早見表（コース）/.test(v.gy) && !/ドリンク早見表（アラカルト）/.test(v.gy),
+       '★④番号の無い資料はタイトルで業態に結ぶ（日本料理＝コース版のドリンク早見表だけ）');
+    ok(!/ドリンク早見表/.test(v.common), '④レシピ表も共通マニュアルには出さない');
+  }
+  {
+    const v = await openAs('牛カツ世桜 長堀橋店');
+    ok(/ドリンク早見表（アラカルト）/.test(v.gy) && !/ドリンク早見表（コース）/.test(v.gy),
+       '★④牛カツにはアラカルト版のドリンク早見表だけを出す');
   }
 }
 FETCH_ROWS = { ok:false };
@@ -1766,7 +1777,8 @@ console.log('== 本部ドライブの公式マニュアル14分類が、その�
     const u = l.match(/url:'([^']*)'/),   i = l.match(/id:'(mn\d+)'/);
     return (t && m && u && i) ? { title:t[1], mcat:m[1], url:u[1], id:i[1] } : null;
   }).filter(Boolean);
-  ok(rows.length === 121, '公式マニュアルは全部で121件（実際 ' + rows.length + ' 件）');
+  // 2026-08-28 目次「レシピ表」のドリンク早見表2件を追加＝121→123
+  ok(rows.length === 123, '公式マニュアルは全部で123件（実際 ' + rows.length + ' 件）');
 
   // どこにも属さない資料が無い＝分類を消したのに資料だけ残った、が起きない
   const gids  = [...cat.matchAll(/gid:'([a-z]+)'/g)].map(x => x[1]);
