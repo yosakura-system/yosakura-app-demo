@@ -5617,7 +5617,9 @@
     const head = `
       <div style="text-align:center;margin:48px 0 20px">
         <img src="${IMG_ICON}" alt="" style="width:56px;height:56px;border-radius:14px">
-        <div style="font-size:20px;font-weight:700;margin-top:8px">世桜 <small style="font-weight:400;color:#888">YOSAKURA APP</small></div>
+        <!-- ★2026-08-28 神田さんのご指摘＝「世桜」はHPと同じ書体で。
+             アプリ上部の hdr__brand と同じ明朝（var(--serif)）・字間に合わせる。 -->
+        <div style="font-family:var(--serif);font-size:22px;letter-spacing:.16em;padding-left:.16em;margin-top:8px">世桜 <small style="font-family:var(--sans);font-weight:400;font-size:11px;letter-spacing:.2em;color:#888">YOSAKURA APP</small></div>
       </div>`;
     if (a && a.mustChange) {
       return `${head}
@@ -5638,8 +5640,10 @@
     return `${head}
       <div class="card" style="max-width:430px;margin:0 auto">
         <h3>${L({ ja:'ログイン', en:'Sign in', vi:'Đăng nhập' })}</h3>
-        <p class="hint" style="display:block">${L({
-          ja:'本部からお渡ししたIDとパスワードを入力してください。分からない場合は本部までご連絡ください。',
+        <!-- ★2026-08-28 神田さんのご指摘＝「ください。」で改行し、2行で揃える。
+             文の途中で折り返されると読みにくいため、改行位置を固定する（他言語は1文なのでそのまま）。 -->
+        <p class="hint" style="display:block;text-align:center">${L({
+          ja:'本部からお渡ししたIDとパスワードを入力してください。<br>分からない場合は本部までご連絡ください。',
           en:'Enter the ID and password provided by HQ.',
           vi:'Nhập ID và mật khẩu do HQ cung cấp.' })}</p>
         <label class="fld"><span>ID</span><input type="text" id="au_id" autocapitalize="none" autocomplete="username"></label>
