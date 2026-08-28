@@ -308,10 +308,12 @@
       desc:{ ja:'お客様アンケートの運用と結果集計（満足度・来店経路・月別）', en:'Run survey & view results', vi:'Vận hành & xem kết quả' } },
     /* ★2026-08-27 神田さんのご要望＝店舗管理チェック（見本アプリ・原本）へ本部画面から飛べる入口。
        アプリの中に採点画面は作り込まない（9/1前に新機能を足さない）＝URLで飛ぶ入口だけ。
-       URLは「資料リンクの管理」（大項目＝本部チェック）で本部が登録する＝登録すれば再配信なしで出る */
-    { id:'hqcheck', group:'storeops', icon:'check', roles:['hq'],
-      name:{ ja:'本部チェック', en:'HQ Check', vi:'Kiểm tra HQ' },
-      desc:{ ja:'店舗管理チェックの見本・原本を開く（本部のみ）', en:'Open store-check sample & master (HQ only)', vi:'Mở bản mẫu & bản gốc kiểm tra (chỉ HQ)' } },
+       URLは「資料リンクの管理」（大項目＝店舗運営チェック）で本部が登録する＝登録すれば再配信なしで出る */
+    /* ★2026-08-28 構築MTG決定＝名称は「店舗運営チェック」。本部用と加盟店用で項目を分けず、
+       アルバイトを含む全スタッフが操作・閲覧できる（実施者の記録で本部チェックかセルフかを判別する）。 */
+    { id:'hqcheck', group:'storeops', icon:'check', roles:['staff','manager','owner','hq'],
+      name:{ ja:'店舗運営チェック', en:'Store Operations Check', vi:'Kiểm tra vận hành' },
+      desc:{ ja:'店舗運営チェック（セルフチェック・見本）を開く', en:'Open the store operations check (self-check)', vi:'Mở kiểm tra vận hành cửa hàng' } },
     { id:'guide', group:'other', icon:'play', roles:['staff','manager','owner','hq'],
       name:{ ja:'使い方ガイド', en:'How to use', vi:'Hướng dẫn' },
       desc:{ ja:'このアプリの使い方（1分）', en:'Quick app guide (1 min)', vi:'Hướng dẫn nhanh (1 phút)' } },
@@ -2037,7 +2039,7 @@
     /* ★2026-08-27＝本部チェック（店舗管理チェックの見本・原本）のリンク置き場。
        roles:[] ＝本部だけに見える分類（manualVisibleRole は hq を常に通す）。
        「資料リンクの管理」の大項目にも並ぶ＝本部が見本アプリのURL・原本をここへ登録する */
-    { ic:'check', gyotai:'all', roles:[],                    gid:'hqcheck', t:{ja:'本部チェック',en:'HQ check',vi:'Kiểm tra HQ'}, s:{ja:'店舗管理チェックの見本・原本（本部のみ）',en:'Store-check sample & master (HQ only)',vi:'Bản mẫu & bản gốc (chỉ HQ)'} },
+    { ic:'check', gyotai:'all', roles:['all'],               gid:'hqcheck', t:{ja:'店舗運営チェック',en:'Store operations check',vi:'Kiểm tra vận hành'}, s:{ja:'店舗運営チェック（セルフチェック・見本と原本）',en:'Store operations check (self-check)',vi:'Kiểm tra vận hành cửa hàng'} },
     { ic:'food',  gyotai:'unagi',    roles:['all'], t:{ja:'鰻の焼成・タレ',en:'Eel grilling & sauce',vi:'Nướng lươn & sốt'}, s:{ja:'あぶり直し／タレ／提供の説明',en:'Re-grilling / sauce / explanation',vi:'Nướng lại / sốt / giải thích'} },
     { ic:'food',  gyotai:'sushi',    roles:['all'], t:{ja:'寿司オペレーション',en:'Sushi operation',vi:'Vận hành sushi'}, s:{ja:'シャリ／握り／衛生',en:'Rice / nigiri / hygiene',vi:'Cơm / nắm / vệ sinh'} },
     { ic:'food',  gyotai:'gyukatsu', roles:['all'], t:{ja:'牛カツの提供基準',en:'Gyukatsu serving',vi:'Phục vụ gyukatsu'}, s:{ja:'揚げ／断面／盛り付け（和牛のみ使用）',en:'Frying / cut / plating',vi:'Chiên / lát cắt / trình bày'} },
@@ -2311,7 +2313,7 @@
           <div class="homelinks">
             ${mats.map(l => `<button class="homelink" data-openurl="${esc(openUrlFor(l.url))}"><span class="hl-ic">${svg('check')}</span><span class="hl-t">${esc(l.title)}</span><span class="hl-c">${svg('chev')}</span></button>`).join('')}
           </div>`
-        : `<p class="muted">${L({ ja:'まだ登録されていません。「資料リンクの管理」で大項目を「本部チェック」にして登録すると、ここから開けるようになります（見本アプリのURL・原本のスプレッドシートなど）。', en:'Not registered yet. Add links in “Manage material links” under “HQ check” (sample-app URL, master sheet, etc.).', vi:'Chưa đăng ký. Thêm ở “Quản lý liên kết” với nhóm “Kiểm tra HQ”.' })}</p>
+        : `<p class="muted">${L({ ja:'まだ登録されていません。「資料リンクの管理」で大項目を「店舗運営チェック」にして登録すると、ここから開けるようになります（見本アプリのURL・原本のスプレッドシートなど）。', en:'Not registered yet. Add links in “Manage material links” under “HQ check” (sample-app URL, master sheet, etc.).', vi:'Chưa đăng ký. Thêm ở “Quản lý liên kết” với nhóm “Kiểm tra HQ”.' })}</p>
            <button class="mini" data-open="materials">${L({ ja:'資料リンクの管理を開く', en:'Open material links', vi:'Mở quản lý liên kết' })}</button>`}
         <div class="hint">${L({ ja:'※ 点数の正は原本のスプレッドシートです。見本アプリの入力は端末の中だけに残り、どこにも送られません。', en:'The master sheet is the source of truth. Sample-app input stays on this device only.', vi:'Bảng gốc là chuẩn. Nhập ở bản mẫu chỉ lưu trên máy này.' })}</div>
       </div>`;

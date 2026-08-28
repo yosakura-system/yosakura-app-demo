@@ -220,7 +220,7 @@ console.log('== サーベイ集計が見つかる（0件でも表示・報告タ
   ok(/サーベイ・集計/.test(tab), '報告タブに「サーベイ・集計」が並ぶ');
 }
 
-console.log('== 本部チェック：本部だけの入口＋リンクは資料リンクの管理で登録（2026-08-27）==');
+console.log('== 店舗運営チェック：全スタッフに出る入口（2026-08-28 構築MTG＝本部と加盟店で分けない）==');
 {
   // ① タイル＝本部にだけ出る
   let hqTab = '';
@@ -229,15 +229,19 @@ console.log('== 本部チェック：本部だけの入口＋リンクは資料�
   let mgrTab = '';
   try { run(()=> setLS('manager',S_HIROSHIMA,'ja')); location.hash = '#/home?tab=genba'; mgrTab = registry.app.innerHTML; }
   catch(e){ FAIL++; console.log('  ✗ hqcheck tab(mgr) threw: '+e.message); }
-  ok(/本部チェック/.test(hqTab), '★本部の報告タブに「本部チェック」が並ぶ');
-  ok(!/本部チェック/.test(mgrTab), '店長には「本部チェック」を出さない（本部専用）');
+  ok(/店舗運営チェック/.test(hqTab), '★本部の報告タブに「店舗運営チェック」が並ぶ');
+  ok(/店舗運営チェック/.test(mgrTab), '★店長にも「店舗運営チェック」が出る（2026-08-28 全スタッフへ開放）');
+  let stTab = '';
+  try { run(()=> setLS('staff',S_HIROSHIMA,'ja')); location.hash = '#/home?tab=genba'; stTab = registry.app.innerHTML; }
+  catch(e){ FAIL++; console.log('  ✗ hqcheck tab(staff) threw: '+e.message); }
+  ok(/店舗運営チェック/.test(stTab), '★スタッフ（店舗iPad）にも出る（アルバイトを含む全スタッフが操作できる）');
   // ② 未登録＝案内と「資料リンクの管理」への導線が出る（空の器で終わらせない）
   for (const lang of ['ja','en','vi']) {
     const v = renderView('hqcheck','hq','all',lang);
     ok(/data-open="materials"/.test(v), `[${lang}] 未登録でも資料リンクの管理への導線がある`);
   }
   const vj = renderView('hqcheck','hq','all','ja');
-  ok(/まだ登録されていません/.test(vj) && /本部チェック」にして登録/.test(vj), '未登録の案内文がある（どこで登録するか分かる）');
+  ok(/まだ登録されていません/.test(vj) && /店舗運営チェック」にして登録/.test(vj), '未登録の案内文がある（どこで登録するか分かる）');
   ok(/点数の正は原本のスプレッドシート/.test(vj), '正は原本、と明記されている');
   // ③ リンクを登録すると、そこから開ける（サーベイの集約シートと同じ作り）
   try { run(()=> { setLS('hq','all','ja');
@@ -251,7 +255,7 @@ console.log('== 本部チェック：本部だけの入口＋リンクは資料�
   ok(/data-openurl/.test(withLink) && /本部チェック（見本アプリ）/.test(withLink), '★登録したリンクがボタンとして並ぶ（再配信なしで出る）');
   // ④ 資料リンクの管理の大項目に「本部チェック」がある
   const mat = renderView('materials','hq','all','ja');
-  ok(/本部チェック/.test(mat), '資料リンクの管理の大項目に「本部チェック」が選べる');
+  ok(/店舗運営チェック/.test(mat), '資料リンクの管理の大項目に「店舗運営チェック」が選べる');
 }
 
 console.log('== ホームに「みんなの投稿」カードが出る ==');
