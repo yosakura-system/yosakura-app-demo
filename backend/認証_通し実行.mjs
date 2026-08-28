@@ -201,6 +201,28 @@ console.log('\n===== ⑥ 書きの門番（フラグON） =====\n');
   確認('本部は書ける', 本.ok === true, 本);
 }
 
+console.log('\n===== ⑥b 店舗の変更＝パスワードを壊さない（2026-08-29 追加）=====\n');
+{
+  const env = 偽環境を作る({ プロパティ初期値: { ENABLE_AUTH: 'true' } });
+  実行(env, `認証_利用者を登録('ten', '店長', 'manager', '日本料理世桜本店', 'kari1234')`);
+  const a1 = POST(env, { action: 'login', uid: 'ten', pw: 'kari1234' });
+  確認('登録直後にログインできる', a1.ok === true, a1);
+  実行(env, `auth_api_({ action:'chpw', token: '${a1.auth.token}', oldPw: 'kari1234', newPw: 'jibun-pw' })`);
+  実行(env, `認証_店舗を変更('ten', '日本料理世桜本店／手巻き寿司世桜 難波店')`);
+  const a2 = POST(env, { action: 'login', uid: 'ten', pw: 'jibun-pw' });
+  確認('★店舗を変えても、本人のパスワードのまま入れる', a2.ok === true, a2);
+  確認('★2店舗とも入っている', a2.ok && a2.auth.stores.length === 2, a2.auth && a2.auth.stores);
+  確認('初回変更に戻らない', a2.ok && a2.auth.mustChange === false, a2.auth);
+  const a3 = POST(env, { action: 'login', uid: 'ten', pw: 'kari1234' });
+  確認('仮パスワードには戻っていない', a3.ok !== true, a3);
+  実行(env, `認証_店舗を変更('ten', '日本料理世桜本店')`);
+  const a4 = POST(env, { action: 'login', uid: 'ten', pw: 'jibun-pw' });
+  確認('減らす方向も同じ関数でできる', a4.ok && a4.auth.stores.length === 1, a4.auth && a4.auth.stores);
+  let err6b = '';
+  try { 実行(env, `認証_店舗を変更('ten', '')`); } catch (e) { err6b = String(e.message); }
+  確認('店舗を空にはできない（本部以外）', err6b.includes('1つ以上'), err6b);
+}
+
 console.log('\n===== ⑦ 再発行＝全端末からログアウト =====\n');
 {
   const env = 偽環境を作る({ プロパティ初期値: { ENABLE_AUTH: 'true' } });

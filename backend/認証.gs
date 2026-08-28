@@ -104,6 +104,23 @@ function 認証_一覧() {
   });
   Logger.log(JSON.stringify({ 件数: out.length, 一覧: out }, null, 2)); return out;
 }
+/* ★2026-08-29 神田さんのご要望＝担当店舗をあとから増減できるようにする。
+   認証_利用者を登録 で登録し直すとパスワードが仮に戻ってしまうため、店舗だけを書き換える。
+   例：認証_店舗を変更('nagai-ten', '日本料理世桜本店／手巻き寿司世桜 難波店')
+   　　認証_店舗を変更('yun', '日本料理世桜本店')   ← 減らすときも同じ（残す店舗だけを書く） */
+function 認証_店舗を変更(uid, storesSlash) {
+  var rec = auth_find_(uid);
+  if (!rec) throw new Error('見つかりません: ' + uid);
+  var stores = String(storesSlash || '').split('／').map(function (s) { return s.trim(); }).filter(String);
+  if (rec.role !== 'hq' && !stores.length) throw new Error('本部以外は店舗を1つ以上入れてください（区切りは「／」）');
+  var before = rec.stores;
+  rec.stores = stores.join('／');
+  rec.updated = new Date();
+  auth_write_(rec);
+  var out = { uid: uid, 変更前: before, 変更後: rec.stores, パスワード: '変更していません（そのまま使えます）' };
+  Logger.log(JSON.stringify(out)); return out;
+}
+
 function 認証_削除(uid) {
   var rec = auth_find_(uid);
   if (!rec) { Logger.log('見つかりません: ' + uid); return { 結果: '見つかりません' }; }
