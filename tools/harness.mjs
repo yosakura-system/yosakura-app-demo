@@ -1675,7 +1675,7 @@ console.log('== 本部ドライブの公式マニュアル14分類が、その�
     ['staff',      '02. スタッフの基本',       6],
     ['service',    '03. 接客ホール',          16],
     ['marketing',  '04. 集客・マーケティング',  5],
-    ['hygiene',    '05. 衛生管理・厨房機材',   12],
+    ['hygiene',    '05. 衛生管理・厨房機材',   13],
     ['cleaning',   '06. 店舗管理・清掃',       5],
     ['storeops',   '07. レジ・業務管理',       7],
     ['trouble',    '08. トラブル・緊急対応',    7],
@@ -1697,7 +1697,7 @@ console.log('== 本部ドライブの公式マニュアル14分類が、その�
     const u = l.match(/url:'([^']*)'/),   i = l.match(/id:'(mn\d+)'/);
     return (t && m && u && i) ? { title:t[1], mcat:m[1], url:u[1], id:i[1] } : null;
   }).filter(Boolean);
-  ok(rows.length === 119, '公式マニュアルは全部で119件（実際 ' + rows.length + ' 件）');
+  ok(rows.length === 121, '公式マニュアルは全部で121件（実際 ' + rows.length + ' 件）');
 
   // どこにも属さない資料が無い＝分類を消したのに資料だけ残った、が起きない
   const gids  = [...cat.matchAll(/gid:'([a-z]+)'/g)].map(x => x[1]);

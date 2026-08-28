@@ -2040,7 +2040,7 @@
        roles:[] ＝本部だけに見える分類（manualVisibleRole は hq を常に通す）。
        「資料リンクの管理」の大項目にも並ぶ＝本部が見本アプリのURL・原本をここへ登録する */
     { ic:'check', gyotai:'all', roles:['all'],               gid:'hqcheck', t:{ja:'店舗運営チェック',en:'Store operations check',vi:'Kiểm tra vận hành'}, s:{ja:'店舗運営チェック（セルフチェック・見本と原本）',en:'Store operations check (self-check)',vi:'Kiểm tra vận hành cửa hàng'} },
-    { ic:'food',  gyotai:'unagi',    roles:['all'], t:{ja:'鰻の焼成・タレ',en:'Eel grilling & sauce',vi:'Nướng lươn & sốt'}, s:{ja:'あぶり直し／タレ／提供の説明',en:'Re-grilling / sauce / explanation',vi:'Nướng lại / sốt / giải thích'} },
+    { ic:'food',  gyotai:'unagi',    roles:['all'], gid:'unagi', t:{ja:'鰻の焼成・タレ',en:'Eel grilling & sauce',vi:'Nướng lươn & sốt'}, s:{ja:'あぶり直し／タレ／提供の説明',en:'Re-grilling / sauce / explanation',vi:'Nướng lại / sốt / giải thích'} },
     { ic:'food',  gyotai:'sushi',    roles:['all'], t:{ja:'寿司オペレーション',en:'Sushi operation',vi:'Vận hành sushi'}, s:{ja:'シャリ／握り／衛生',en:'Rice / nigiri / hygiene',vi:'Cơm / nắm / vệ sinh'} },
     { ic:'food',  gyotai:'gyukatsu', roles:['all'], t:{ja:'牛カツの提供基準',en:'Gyukatsu serving',vi:'Phục vụ gyukatsu'}, s:{ja:'揚げ／断面／盛り付け（和牛のみ使用）',en:'Frying / cut / plating',vi:'Chiên / lát cắt / trình bày'} },
     { ic:'food',  gyotai:'wagyu',    roles:['all'], t:{ja:'和牛の扱い',en:'Wagyu handling',vi:'Xử lý wagyu'}, s:{ja:'カット／藁焼き／保管',en:'Cutting / straw-grill / storage',vi:'Cắt / nướng rơm / bảo quản'} },
@@ -4789,6 +4789,7 @@
       { id:'mn044', title:'05-10 羽釜の取り扱いについて', url:'https://docs.google.com/presentation/d/1MFSRcKY7drTbAvMRt68xHG25xpBKZ_wncl7Shah9JmI/edit?usp=sharing', mcat:'hygiene', desc:'スライド' },
       { id:'mn045', title:'05-11 使用している牛肉に関する注意点', url:'https://docs.google.com/presentation/d/1su3Jf-NoStTYMK9z_J2k4vn7L-3Xk8odPOg-QQGlQFU/edit?usp=sharing', mcat:'hygiene', desc:'スライド' },
       { id:'mn046', title:'05-12 厨房機器類管理メンテナンス', url:'https://docs.google.com/presentation/d/10LEhYpO52r1fM3DrN_sDyQGw_DqirtfsuY5fjSKTYdc/edit?usp=sharing', mcat:'hygiene', desc:'スライド' },
+      { id:'mn120', title:'05-13 フライヤー清掃マニュアル', url:'https://docs.google.com/presentation/d/1h_ARlwfmGc_xBwc3gusAtAJENy-Mnt64--ovWwdeZUI/edit?usp=sharing', mcat:'hygiene', desc:'スライド' },
       { id:'mn047', title:'06-1 世桜の衛生管理5S', url:'https://docs.google.com/presentation/d/1c8N0p8b6E36eo2xuigh1p2WvTph_e8BO2ou2Gwfs6hw/edit?usp=sharing', mcat:'cleaning', desc:'スライド' },
       { id:'mn048', title:'06-2 嘔吐物の処理方法', url:'https://docs.google.com/presentation/d/1TFd2AMRqTOxTg3Pyf6eYEZ0Zi6miAth6GSf_Op1XVx4/edit?usp=sharing', mcat:'cleaning', desc:'スライド' },
       { id:'mn049', title:'06-3 店舗前準備マニュアル', url:'https://docs.google.com/presentation/d/1PHDaLQiHBrzDFzXZkhNsJ_FrjO_F8Dvj5q3my_h2YMo/edit?usp=sharing', mcat:'cleaning', desc:'スライド' },
@@ -4860,7 +4861,8 @@
       { id:'mn113', title:'13-7 鰻_OPEN/CLOSEチェックリスト', url:'https://docs.google.com/spreadsheets/d/1EzJsby3m5aJBCXVgahR4U_LmoGP0QqG-lZY2jY7BDhY/edit?usp=sharing', mcat:'checksheet', desc:'スプレッドシート' },
       { id:'mn114', title:'13-8 牛カツ_OPEN/CLOSEチェックリスト', url:'https://docs.google.com/spreadsheets/d/11AZc4-_rARq4FBtj-gL29MLzuD3EVlM2CsneGchJZ3Y/edit?usp=sharing', mcat:'checksheet', desc:'スプレッドシート' },
       /* 2026-08-19 の勉強会で取り上げられ、同日 12.印刷物 へ追加されたもの（番号なし） */
-      { id:'mn115', title:'手袋運用の徹底（POP用）', url:'https://docs.google.com/presentation/d/1JfLS8EjrUJMMrRueCJvnbyVvkoLeJddq10OGV8v0xdE/edit?usp=sharing', mcat:'print', desc:'スライド' }
+      { id:'mn115', title:'手袋運用の徹底（POP用）', url:'https://docs.google.com/presentation/d/1JfLS8EjrUJMMrRueCJvnbyVvkoLeJddq10OGV8v0xdE/edit?usp=sharing', mcat:'print', desc:'スライド' },
+      { id:'mn121', title:'U-1 TOひつまぶしマニュアル', url:'https://docs.google.com/presentation/d/1NzpfFbPRp8KWoh41fvtGtQjnkNKEB-mDD979iiqNoPM/edit?usp=sharing', mcat:'unagi', desc:'スライド' },
     ]);
     seedMark('links');
   }
