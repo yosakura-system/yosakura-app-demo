@@ -2047,6 +2047,11 @@
     /* ★2026-08-28＝目次の「提供時のあるべき姿」は盛り付けPOP3件（鰻・牛カツ・和牛）で、すべて業態別。
        gyOnly＝業態別の画面にだけ出す。自店の業態のPOPがまだ無い店舗には「準備中」と出る（隠さない）。 */
     { ic:'camera',gyotai:'all', gyOnly:true, roles:['all'],  gid:'serving', t:{ja:'提供時のあるべき姿',en:'Serving standards',vi:'Chuẩn phục vụ'}, s:{ja:'盛り付け・グラム規定・提供基準（最重要）',en:'Plating, grams, serving rules (key)',vi:'Trình bày, định lượng (quan trọng)'} },
+    /* ★2026-08-28＝「サーベイ運用（手順書）」と「回答の集約シート（生データ）」を分ける。
+       同じ分類に入れていたため、03-16の手順書がサーベイ画面の『回答の集約シート』に出てしまった
+       （神田さんのご指摘）。集約シートは全店の回答が入るため roles:[] ＝本部だけに見せる。
+       ⚠️ 店舗ごとのサーベイシートを本部が登録されたら、そのときに見せる範囲を決める。 */
+    { ic:'star',  gyotai:'all', roles:[],                    gid:'surveysheet', t:{ja:'サーベイの集約シート',en:'Survey response sheets',vi:'Bảng tổng hợp khảo sát'}, s:{ja:'回答の生データ（全店）',en:'Raw responses (all stores)',vi:'Dữ liệu thô (toàn hệ thống)'} },
     { ic:'star',  gyotai:'all', roles:['all'],               gid:'survey', t:{ja:'サーベイ運用',en:'Survey operation',vi:'Vận hành khảo sát'}, s:{ja:'iPad案内／回答の取り方',en:'iPad guidance / collecting answers',vi:'Hướng dẫn iPad'} },
     /* ★2026-08-20 本部ご回答④＝本部運用の資料はオーナー様にも見せる（表示範囲4点の最後の1つ）。
        roles に 'owner' を入れると、manualVisibleRole の仕組みでオーナー様＋本部が見える形になる。
@@ -2387,12 +2392,14 @@
      8/7 増田さんご要望。二重管理を避けるため、URLは既存の「資料リンク」で持つ
      （大項目＝サーベイ運用）。本部が1度登録すれば、店長・オーナーもここから開ける。 */
   function surveySheets() {
-    const mats = getLinks().filter(l => l.mcat === 'survey' && isHttp(l.url));
+    const cat = MANUAL_CATALOG.find(m => m.gid === 'surveysheet');
+    if (cat && !manualVisibleRole(cat, getRole())) return '';
+    const mats = getLinks().filter(l => l.mcat === 'surveysheet' && isHttp(l.url));
     if (!mats.length) {
       return getRole() === 'hq' ? `
         <div class="card">
           <h3>${L({ ja:'回答の集約シート', en:'Response sheets', vi:'Bảng tổng hợp' })}</h3>
-          <p class="muted">${L({ ja:'まだ登録されていません。「資料リンクの管理」で大項目を「サーベイ運用」にして登録すると、ここから開けるようになります。', en:'Not registered yet. Add it in “Manage material links” under “Survey operation”.', vi:'Chưa đăng ký. Thêm ở “Quản lý liên kết” với nhóm “Vận hành khảo sát”.' })}</p>
+          <p class="muted">${L({ ja:'まだ登録されていません。「資料リンクの管理」で大項目を「サーベイの集約シート」にして登録すると、ここから開けるようになります。', en:'Not registered yet. Add it in “Manage material links” under “Survey operation”.', vi:'Chưa đăng ký. Thêm ở “Quản lý liên kết” với nhóm “Vận hành khảo sát”.' })}</p>
           <button class="mini" data-open="materials">${L({ ja:'資料リンクの管理を開く', en:'Open material links', vi:'Mở quản lý liên kết' })}</button>
         </div>` : '';
     }
@@ -2505,21 +2512,21 @@
           <div class="stat${low ? ' tapable' : ''}"${low ? ' data-svsat="low" role="button" tabindex="0"' : ''}><div class="n" style="${low?'color:#a23b3b':''}">${low}</div><div class="k">${L({ ja:'低評価(1-2)', en:'Low (1-2)', vi:'Thấp' })}</div></div>
         </div>
         <div class="idlabel" style="margin-top:12px">${L({ ja:'満足度の分布', en:'Rating distribution', vi:'Phân bố đánh giá' })}</div>
-        <p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ ★・来店経路・来店国の行をタップすると、回答の中身（直近10件）が見られます。', en:'Tap a ★ / route / country row to see the answers behind it (latest 10).', vi:'Chạm vào dòng ★ / nguồn khách / quốc gia để xem nội dung (10 gần nhất).' })}</p>
+        <p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ ★・来店経路・来店国・月別・ご指摘の行をタップすると、回答の中身（直近10件）が見られます。', en:'Tap a ★ / route / country row to see the answers behind it (latest 10).', vi:'Chạm vào dòng ★ / nguồn khách / quốc gia để xem nội dung (10 gần nhất).' })}</p>
         ${dist.map(d => barRow('★' + d.s, d.c, n, d.s <= 2 ? 'bar-low' : '', `data-svsat="${d.s}"`)).join('')}
         <div class="idlabel" style="margin-top:12px">${L({ ja:'来店経路', en:'Arrival route', vi:'Nguồn khách' })}</div>
         ${ROUTES.map(r => barRow(L(r.t), rc[r.v], n, '', `data-svroute="${r.v}"`)).join('')}
         ${otherRows.length ? `<p class="hint" style="display:block;margin-top:2px">${L({ ja:'「その他」の内訳', en:'Breakdown of “Other”', vi:'Chi tiết “Khác”' })}：${otherRows.map(([k, c]) => esc(k) + ' ' + c).join(' ／ ')}</p>` : ''}
         ${countryRows.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'来店国', en:'Country', vi:'Quốc gia' })}</div>${countryRows.map(([c, ct]) => barRow(c, ct, n, '', `data-svcountry="${esc(c)}"`)).join('')}` : ''}
-        ${months.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'月別（回答数・平均満足度）', en:'By month (responses & avg)', vi:'Theo tháng (PH & TB)' })}</div>${months.map(m => barRow(`${m}　★${mavg(m).toFixed(1)}`, mc[m], Math.max(...months.map(x => mc[x])))).join('')}` : ''}
+        ${months.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'月別（回答数・平均満足度）', en:'By month (responses & avg)', vi:'Theo tháng (PH & TB)' })}</div>${months.map(m => barRow(`${m}　★${mavg(m).toFixed(1)}`, mc[m], Math.max(...months.map(x => mc[x])), '', `data-svmonth="${m}"`)).join('')}` : ''}
       </div>
       ${(issueN || noneN) ? `<div class="card">
         <h3>${L({ ja:'いただいたご指摘', en:'Reported issues', vi:'Điểm được góp ý' })}</h3>
         ${issueRows.length
-          ? `${issueRows.map(x => barRow(L(x.t), ic[x.v], Math.max(1, issueN), 'bar-low')).join('')}
+          ? `${issueRows.map(x => barRow(L(x.t), ic[x.v], Math.max(1, issueN), 'bar-low', `data-svissue="${x.v}"`)).join('')}
              <p class="hint" style="display:block">${L({ ja:'※ ご指摘があった回答は' + issueN + '件です（1件で複数のご指摘をいただく場合があるため、合計は一致しません）。', en:'Responses containing an issue: ' + issueN + ' (one response can raise several).', vi:'Phản hồi có góp ý: ' + issueN + '.' })}</p>`
           : `<p class="muted">${L({ ja:'ご指摘のあった回答はまだありません。', en:'No issues reported yet.', vi:'Chưa có góp ý.' })}</p>`}
-        ${noneN ? `<div class="rep"><span class="amt">${noneN}</span><div class="body"><div class="l1">${L({ ja:'特にご指摘なし', en:'No particular issue', vi:'Không có vấn đề' })}</div><div class="l2">${L({ ja:'回答全体の', en:'of all responses', vi:'trên tổng số' })} ${Math.round(noneN / n * 100)}%</div></div></div>` : ''}
+        ${noneN ? `<div class="rep tapable" data-svissue="none" role="button" tabindex="0"><span class="amt">${noneN}</span><div class="body"><div class="l1">${L({ ja:'特にご指摘なし', en:'No particular issue', vi:'Không có vấn đề' })}</div><div class="l2">${L({ ja:'回答全体の', en:'of all responses', vi:'trên tổng số' })} ${Math.round(noneN / n * 100)}%</div></div></div>` : ''}
       </div>` : ''}
       ${voices.length ? `<div class="card">
         <h3>${L({ ja:'お客様の声', en:'Guest comments', vi:'Ý kiến khách' })}</h3>
@@ -2572,6 +2579,20 @@
   }
   function openSurveyCountrySheet(c) {
     openSurveyListSheet(esc(c) + ' ' + svNoKai(), (r) => String(r.country || '') === c);
+  }
+  /* ★2026-08-28 神田さんのご要望＝月別・ご指摘の数字もタップで中身が出るようにする。
+     数字だけ見えて中身にたどり着けないと、結局スプレッドシートを開くことになる。 */
+  function openSurveyMonthSheet(ym) {
+    const ymOf = (t) => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+    openSurveyListSheet(ym + svNoKai(), (r) => ymOf(r.t) === ym);
+  }
+  function openSurveyIssueSheet(v) {
+    if (v === 'none') {
+      return openSurveyListSheet(L({ ja:'特にご指摘なしの回答', en:'Responses with no issue', vi:'Phản hồi không có góp ý' }),
+        (r) => { const vs = parseSurveyIssues(r.note); return vs.length > 0 && vs[0] === 'none'; });
+    }
+    openSurveyListSheet(surveyIssueLabel(v) + svNoKai(),
+      (r) => parseSurveyIssues(r.note).indexOf(v) >= 0);
   }
 
   /* ⑥ 総括表（動く：実日報フォーマットで入力→保存→履歴＆本部集約）*/
@@ -4985,6 +5006,9 @@
       { id:'mn124', title:'【世桜】鰻盛り付けPOP',    url:'https://docs.google.com/presentation/d/15GUrfcuhIB9tDeFQvQSkTABmcLmEzQiwQ9USaMKjSSk/edit?usp=sharing', mcat:'serving', desc:'スライド' },
       { id:'mn125', title:'【世桜】牛カツ盛り付けPOP', url:'https://docs.google.com/presentation/d/1TCOWRe44VKSJSeLZnX7qL5gepUDwwgE_mqvs7ZREQD0/edit?usp=sharing', mcat:'serving', desc:'スライド' },
       { id:'mn126', title:'【世桜】和牛盛り付けPOP',  url:'https://docs.google.com/presentation/d/1c-znB4ntKbux3lBkkCTUDNYUD7DtwYPV2MKP-WZPTL8/edit?usp=sharing', mcat:'serving', desc:'スライド' },
+      /* ★2026-08-28＝サーベイ画面の「回答の集約シート」から開くもの（常山さんご共有の全店集約表）。
+         ⚠️ 全店の回答が入っているため、分類 surveysheet は本部だけに見せる設定にしてある。 */
+      { id:'mn128', title:'全店舗サーベイ集約表', url:'https://docs.google.com/spreadsheets/d/1lRMLzhTSpGu-LUs7oMBRFKkKMXlsKEYQEx1zV_QCqAU/edit?usp=sharing', mcat:'surveysheet', desc:'スプレッドシート' },
     ]);
     seedMark('links');
   }
@@ -6197,6 +6221,8 @@
     document.querySelectorAll('[data-svsat]').forEach(b => b.onclick = () => openSurveySatSheet(b.dataset.svsat));
     document.querySelectorAll('[data-svroute]').forEach(b => b.onclick = () => openSurveyRouteSheet(b.dataset.svroute));
     document.querySelectorAll('[data-svcountry]').forEach(b => b.onclick = () => openSurveyCountrySheet(b.dataset.svcountry));
+    document.querySelectorAll('[data-svmonth]').forEach(b => b.onclick = () => openSurveyMonthSheet(b.dataset.svmonth));
+    document.querySelectorAll('[data-svissue]').forEach(b => b.onclick = () => openSurveyIssueSheet(b.dataset.svissue));
     document.querySelectorAll('[data-multiseg] button').forEach(b => b.onclick = () => b.classList.toggle('on'));
     const subSurvey = byId('submitSurvey');
     if (subSurvey) subSurvey.onclick = () => {
