@@ -1,7 +1,7 @@
 /* 世桜アプリ（デモ）Service Worker
    ネットワーク優先（オンライン時は常に最新を取得／オフライン時のみキャッシュ）。
    → iPhone等でも更新が即反映される。オフラインでも起動可能。 */
-const CACHE = 'yosakura-taiken-v79';
+const CACHE = 'yosakura-taiken-v80';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
   './icons/logo-full.png', './icons/icon-192.png', './icons/icon-512.png',
