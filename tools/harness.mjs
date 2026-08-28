@@ -420,6 +420,30 @@ await new Promise(r=>setTimeout(r, 50));
 /* ★2026-08-28 神田さんのご指摘＝サーベイ画面の「回答の集約シート」に、
    03-16 の運用マニュアル（手順書）が出ていた。手順書と集約シートを同じ分類に入れていたのが原因。
    ここで固定するのは、手順書が集約シートの場所に出ないこと。 */
+/* ★2026-08-28 神田さんのご要望＝よくある質問に大項目を用意する（小項目は本部が足していく）。
+   大項目は本部のマニュアル目次の章立てに合わせた＝同じ話が2つの名前にならないようにするため。 */
+console.log('== よくある質問：大項目 ==');
+{
+  const CATS = ['店舗運営のルール','お客様対応','衛生・食材・厨房','販促物・制作物',
+                '提出物・報告','採用・シフト・スタッフ','トラブル・緊急時','アプリの使い方','その他'];
+  run(()=> setLS('hq','all','ja'));
+  location.hash = '#/app/faq';
+  const hq = registry.app.innerHTML;
+  CATS.forEach(c => ok(hq.includes(c), '本部に大項目「' + c + '」が出る'));
+  ok((hq.match(/data-faqfold=/g)||[]).length === CATS.length,
+     '大項目が' + CATS.length + '個ぶん、折りたためる形で出る（実際 ' + (hq.match(/data-faqfold=/g)||[]).length + '）');
+  ok(/data-faqfoldbody="[^"]*" hidden/.test(hq), '★最初は閉じている（中の質問は開いてから出る）');
+
+  run(()=> setLS('staff','日本料理世桜本店','ja'));
+  location.hash = '#/app/faq';
+  const st = registry.app.innerHTML;
+  ok(st.includes('販促物・制作物') && st.includes('店舗運営のルール'),
+     '中身のある大項目は、店舗の方にも出る');
+  ok(!st.includes('アプリの使い方'),
+     '★中身がまだ無い大項目は、店舗の方には出さない（空の見出しを並べない）');
+  ok(/販促物は、いつまでに/.test(st), '会議で決まったルールは、これまでどおり読める');
+}
+
 console.log('== サーベイ：手順書と「回答の集約シート」を取り違えない ==');
 {
   FETCH_ROWS = { ok:true, reports:[
