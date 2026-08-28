@@ -5614,12 +5614,13 @@
   };
   function authScreenHTML_() {
     const a = getAuth();
+    /* ★2026-08-28 神田さんのご要望＝HPのロゴそのもの（筆の桜枝＋筆文字）に寄せる。
+       IMG_LOGO＝公式ロゴ（枝・JAPANESE RESTAURANT YOSAKURA・日本料理 世桜）をホームの
+       brandhead と同じ使い方で置き、下に小さく「YOSAKURA APP」とだけ添える。 */
     const head = `
-      <div style="text-align:center;margin:48px 0 20px">
-        <img src="${IMG_ICON}" alt="" style="width:56px;height:56px;border-radius:14px">
-        <!-- ★2026-08-28 神田さんのご指摘＝「世桜」はHPと同じ書体で。
-             アプリ上部の hdr__brand と同じ明朝（var(--serif)）・字間に合わせる。 -->
-        <div style="font-family:var(--serif);font-size:22px;letter-spacing:.16em;padding-left:.16em;margin-top:8px">世桜 <small style="font-family:var(--sans);font-weight:400;font-size:11px;letter-spacing:.2em;color:#888">YOSAKURA APP</small></div>
+      <div style="text-align:center;margin:44px 0 24px">
+        <img src="${IMG_LOGO}" alt="日本料理 世桜 -yosakura-" style="width:58%;max-width:210px;height:auto">
+        <div style="font-family:var(--sans);font-size:10px;letter-spacing:.3em;color:#9a948c;margin-top:14px">YOSAKURA APP</div>
       </div>`;
     if (a && a.mustChange) {
       return `${head}
