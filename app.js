@@ -3581,11 +3581,35 @@
      2026-08-10 構築MTG A-04。単発のお知らせ欄ではなく「あとから確認できる場所」として新設。
      ・本部で決まったルール（FAQ_FIXED）＝会議の決定事項。アプリ側で編集しない
      ・本部が追加した項目（faqset）＝配列を丸ごと保存し最新版が正（資料リンクと同じ方式・全端末同期） */
+  /* ★2026-08-28 神田さんのご要望＝まず大項目を用意する（小項目＝Q&Aは本部が足していく形）。
+     ⚠️ 大項目はこちらで考えたものではなく、**本部のマニュアル目次の章立てに合わせている**
+     　（お客様対応＝03.接客ホール／衛生・食材・厨房＝05／提出物・報告＝07／採用・シフト＝02・09・10／
+     　　トラブル・緊急時＝08）。同じ話が、マニュアルとFAQで別の名前にならないようにするため。
+     ★既存の3つ（promo / store / other）は値を変えない＝すでに入っている項目が行き場を失うため。
+     ★『アプリの使い方』だけは目次に対応する章が無い（アプリが新しいもののため）。 */
   const FAQ_CATS = [
-    { v:'promo', t:{ ja:'販促物・制作物', en:'Promotional items', vi:'Vật phẩm quảng bá' } },
-    { v:'store', t:{ ja:'店舗運営のルール', en:'Store rules', vi:'Quy định cửa hàng' } },
-    { v:'other', t:{ ja:'その他', en:'Other', vi:'Khác' } }
+    { v:'store',   t:{ ja:'店舗運営のルール', en:'Store rules', vi:'Quy định cửa hàng' },
+                   s:{ ja:'営業中の判断・持ち込み・店内の決めごと', en:'Decisions during service, outside items, in-store rules', vi:'Quyết định trong ca, đồ mang vào, quy định trong quán' } },
+    { v:'guest',   t:{ ja:'お客様対応', en:'Guest handling', vi:'Tiếp khách' },
+                   s:{ ja:'ご案内・ご要望・お困りごとへの対応', en:'Seating, requests, and difficult situations', vi:'Hướng dẫn, yêu cầu, tình huống khó' } },
+    { v:'hygiene', t:{ ja:'衛生・食材・厨房', en:'Hygiene, ingredients & kitchen', vi:'Vệ sinh, nguyên liệu & bếp' },
+                   s:{ ja:'温度・期限・清掃・機材の扱い', en:'Temperature, expiry, cleaning, equipment', vi:'Nhiệt độ, hạn dùng, vệ sinh, thiết bị' } },
+    { v:'promo',   t:{ ja:'販促物・制作物', en:'Promotional items', vi:'Vật phẩm quảng bá' },
+                   s:{ ja:'POP・印刷物・撮影の依頼', en:'POP, printing, and photo requests', vi:'POP, in ấn, chụp ảnh' } },
+    { v:'submit',  t:{ ja:'提出物・報告', en:'Submissions & reports', vi:'Nộp bài & báo cáo' },
+                   s:{ ja:'日報・月次・LINEでの報告の出し方', en:'Daily/monthly reports and LINE reporting', vi:'Báo cáo ngày/tháng và báo cáo qua LINE' } },
+    { v:'staff',   t:{ ja:'採用・シフト・スタッフ', en:'Hiring, shifts & staff', vi:'Tuyển dụng, ca làm & nhân viên' },
+                   s:{ ja:'募集・面接・勤怠・キャリアアップ', en:'Recruiting, interviews, attendance, career path', vi:'Tuyển dụng, phỏng vấn, chấm công, thăng tiến' } },
+    { v:'trouble', t:{ ja:'トラブル・緊急時', en:'Trouble & emergencies', vi:'Sự cố & khẩn cấp' },
+                   s:{ ja:'設備の不具合・けが・災害・クレーム', en:'Equipment failure, injury, disaster, complaints', vi:'Hỏng thiết bị, chấn thương, thiên tai, khiếu nại' } },
+    { v:'app',     t:{ ja:'アプリの使い方', en:'Using the app', vi:'Cách dùng ứng dụng' },
+                   s:{ ja:'ログイン・入力・写真・うまくいかないとき', en:'Login, input, photos, troubleshooting', vi:'Đăng nhập, nhập liệu, ảnh, xử lý sự cố' } },
+    { v:'other',   t:{ ja:'その他', en:'Other', vi:'Khác' },
+                   s:{ ja:'上のどれにも当てはまらないもの', en:'Anything that does not fit above', vi:'Những mục không thuộc nhóm trên' } }
   ];
+  /* 分類が上の一覧に無い項目（本部が分類を消した等）は、消さずに「その他」で拾う。
+     ★これが無いと、分類を1つ減らした時点で中の項目が黙って画面から消える。 */
+  const faqCatOf = (v) => (FAQ_CATS.some(c => c.v === v) ? v : 'other');
   // 会議で決まったルール（2026-08-10 構築MTG）。出典を明記し、勝手に増やさない。
   // 本部が直したいときは faqset 側に同じ id の「上書き」を持たせる（deleted:true で非表示にもできる）。
   const FAQ_FIXED = [
@@ -3642,9 +3666,11 @@
     const all = faqList();
     const catOpts = (sel) => FAQ_CATS.map(c => `<option value="${c.v}"${c.v === sel ? ' selected' : ''}>${esc(L(c.t))}</option>`).join('');
     const rows = FAQ_CATS.map(c => {
-      const items = all.filter(f => f.cat === c.v);
-      if (!items.length) return '';
-      return `<div class="card"><h3>${esc(L(c.t))}</h3>
+      const items = all.filter(f => faqCatOf(f.cat) === c.v);
+      /* ★2026-08-28＝空の大項目は、本部にだけ見せる（どこに足せばよいかが分かるように）。
+         店舗の方には出さない＝中身の無い見出しが8つ並ぶと、探すのがかえって遅くなる。 */
+      if (!items.length && !isHQ) return '';
+      return `<div class="card"><div class="mrow" data-faqfold="${esc(c.v)}" style="padding:6px 2px"><div class="mt"><b>${esc(L(c.t))}</b><span>${esc(L(c.s))}</span></div><span class="chev"><small style="color:#8a8">${items.length ? L({ ja:'質問', en:'Q&A ', vi:'Câu hỏi ' }) + items.length : L({ ja:'準備中', en:'coming soon', vi:'đang chuẩn bị' })}</small>　${svg('chev')}</span></div><div data-faqfoldbody="${esc(c.v)}" hidden>
         ${items.map(it => (isHQ && faqEditId === it.id) ? `
         <div class="rep" style="display:block;padding:10px 2px">
           <label class="fl">${esc(L({ ja:'分類', en:'Category', vi:'Phân loại' }))}</label>
@@ -3667,10 +3693,10 @@
             <button class="btn sm" data-faqdel="${esc(it.id)}">${esc(L({ ja:'削除', en:'Delete', vi:'Xoá' }))}</button>
           </div>` : ''}
         </details>`).join('')}
-      </div>`;
+      </div></div>`;
     }).join('');
     return `
-      ${NOTE({ ja:'◆ 迷ったときに確認する場所です。お知らせと違い、あとから探せます', en:'◆ Check here when in doubt — unlike announcements, these stay searchable', vi:'◆ Xem tại đây khi phân vân — khác thông báo, nội dung luôn tìm lại được' })}
+      ${NOTE({ ja:'◆ 迷ったときに確認する場所です。大項目をタップすると中の質問が開きます。お知らせと違い、あとから探せます', en:'◆ Check here when in doubt — unlike announcements, these stay searchable', vi:'◆ Xem tại đây khi phân vân — khác thông báo, nội dung luôn tìm lại được' })}
       ${rows || `<div class="card"><div class="muted">${L({ ja:'まだ項目がありません。', en:'No entries yet.', vi:'Chưa có mục nào.' })}</div></div>`}
       ${isHQ ? `<div class="card"><h3>${esc(L({ ja:'項目を追加（本部）', en:'Add an entry (HQ)', vi:'Thêm mục (HQ)' }))}</h3>
         <label class="fl">${esc(L({ ja:'分類', en:'Category', vi:'Phân loại' }))}</label>
@@ -5703,6 +5729,10 @@
       const body = document.querySelector(`[data-mfoldbody="${(window.CSS && CSS.escape) ? CSS.escape(b.dataset.mfold) : b.dataset.mfold}"]`);
       if (body) { body.hidden = !body.hidden; }
     });
+  document.querySelectorAll('[data-faqfold]').forEach(b => b.onclick = () => {
+    const body = document.querySelector(`[data-faqfoldbody="${(window.CSS && CSS.escape) ? CSS.escape(b.dataset.faqfold) : b.dataset.faqfold}"]`);
+    if (body) { body.hidden = !body.hidden; }
+  });
     // 業態別マニュアル＝業態の切り替え
     document.querySelectorAll('[data-gysel]').forEach(b => b.onclick = () => { gySelState = b.dataset.gysel; render(); });
     document.querySelectorAll('[data-storelink]').forEach(b => b.onclick = () => go(`/store?s=${encodeURIComponent(b.dataset.storelink)}`));
