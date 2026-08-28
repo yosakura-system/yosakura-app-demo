@@ -300,6 +300,9 @@
     { id:'manual', group:'learn', icon:'book', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' },
       desc:{ ja:'権限・業態別に表示（理念・接客・衛生・商品）', en:'By role & store type', vi:'Theo vai trò & loại hình' } },
+    { id:'gyotaiman', group:'learn', icon:'food', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'業態別マニュアル・レシピ', en:'By Business Type', vi:'Theo loại hình' },
+      desc:{ ja:'鰻・寿司・牛カツ・和牛・日本料理のマニュアルとレシピ', en:'Manuals & recipes per business type', vi:'Cẩm nang & công thức theo loại hình' } },
     { id:'materials', group:'learn', icon:'link', live:true, roles:['hq'],
       name:{ ja:'資料リンクの管理', en:'Manage material links', vi:'Quản lý liên kết' },
       desc:{ ja:'本部が資料を登録・編集（スタッフはマニュアルから閲覧）', en:'HQ registers materials (staff view via Manuals)', vi:'HQ đăng ký (nhân viên xem qua Cẩm nang)' } },
@@ -2041,10 +2044,10 @@
        「資料リンクの管理」の大項目にも並ぶ＝本部が見本アプリのURL・原本をここへ登録する */
     { ic:'check', gyotai:'all', roles:['all'],               gid:'hqcheck', t:{ja:'店舗運営チェック',en:'Store operations check',vi:'Kiểm tra vận hành'}, s:{ja:'店舗運営チェック（セルフチェック・見本と原本）',en:'Store operations check (self-check)',vi:'Kiểm tra vận hành cửa hàng'} },
     { ic:'food',  gyotai:'unagi',    roles:['all'], gid:'unagi', t:{ja:'鰻の焼成・タレ',en:'Eel grilling & sauce',vi:'Nướng lươn & sốt'}, s:{ja:'あぶり直し／タレ／提供の説明',en:'Re-grilling / sauce / explanation',vi:'Nướng lại / sốt / giải thích'} },
-    { ic:'food',  gyotai:'sushi',    roles:['all'], t:{ja:'寿司オペレーション',en:'Sushi operation',vi:'Vận hành sushi'}, s:{ja:'シャリ／握り／衛生',en:'Rice / nigiri / hygiene',vi:'Cơm / nắm / vệ sinh'} },
-    { ic:'food',  gyotai:'gyukatsu', roles:['all'], t:{ja:'牛カツの提供基準',en:'Gyukatsu serving',vi:'Phục vụ gyukatsu'}, s:{ja:'揚げ／断面／盛り付け（和牛のみ使用）',en:'Frying / cut / plating',vi:'Chiên / lát cắt / trình bày'} },
-    { ic:'food',  gyotai:'wagyu',    roles:['all'], t:{ja:'和牛の扱い',en:'Wagyu handling',vi:'Xử lý wagyu'}, s:{ja:'カット／藁焼き／保管',en:'Cutting / straw-grill / storage',vi:'Cắt / nướng rơm / bảo quản'} },
-    { ic:'food',  gyotai:'washoku',  roles:['all'], t:{ja:'日本料理コース',en:'Japanese course',vi:'Set Nhật'}, s:{ja:'おまかせの流れ／季節の献立',en:'Omakase flow / seasonal menu',vi:'Quy trình omakase'} }
+    { ic:'food',  gyotai:'sushi',    roles:['all'], gid:'sushi', t:{ja:'寿司オペレーション',en:'Sushi operation',vi:'Vận hành sushi'}, s:{ja:'シャリ／握り／衛生',en:'Rice / nigiri / hygiene',vi:'Cơm / nắm / vệ sinh'} },
+    { ic:'food',  gyotai:'gyukatsu', roles:['all'], gid:'gyukatsu', t:{ja:'牛カツの提供基準',en:'Gyukatsu serving',vi:'Phục vụ gyukatsu'}, s:{ja:'揚げ／断面／盛り付け（和牛のみ使用）',en:'Frying / cut / plating',vi:'Chiên / lát cắt / trình bày'} },
+    { ic:'food',  gyotai:'wagyu',    roles:['all'], gid:'wagyu', t:{ja:'和牛の扱い',en:'Wagyu handling',vi:'Xử lý wagyu'}, s:{ja:'カット／藁焼き／保管',en:'Cutting / straw-grill / storage',vi:'Cắt / nướng rơm / bảo quản'} },
+    { ic:'food',  gyotai:'washoku',  roles:['all'], gid:'washoku', t:{ja:'日本料理コース',en:'Japanese course',vi:'Set Nhật'}, s:{ja:'おまかせの流れ／季節の献立',en:'Omakase flow / seasonal menu',vi:'Quy trình omakase'} }
   ];
   const manualVisibleRole = (m, role) => role === 'hq' || m.roles.includes('all') || m.roles.includes(role);
   /* マニュアルの分類の中に置く「アプリの中で読めるもの」。
@@ -2074,7 +2077,10 @@
       ? MANUAL_BUILTIN.filter(b => b.gid === m.gid).map(b => appById(b.app)).filter(a => a && !a.hide && canOpen(a, getRole()))
       : [];
     const total = builtins.length + mats.length;
-    const head = `<div class="mrow"${total ? '' : ' data-mock="1"'}><div class="mi">${svg(m.ic)}</div><div class="mt"><b>${esc(L(m.t))}</b><span>${esc(L(m.s))}</span></div><span class="chev">${total ? `<small style="color:#8a8">${L({ ja:'資料', en:'Docs', vi:'TL' })}${total}</small>` : svg('chev')}</span></div>`;
+    /* ★2026-08-28 増田さんのご要望＝最初は大項目だけを出し、タップで中身を開く
+       （全資料が縦に並ぶと下までのスクロールが大変なため）。 */
+    const fk = m.gid || L(m.t);
+    const head = `<div class="mrow" data-mfold="${esc(fk)}"><div class="mi">${svg(m.ic)}</div><div class="mt"><b>${esc(L(m.t))}</b><span>${esc(L(m.s))}</span></div><span class="chev"><small style="color:#8a8">${total ? L({ ja:'資料', en:'Docs', vi:'TL' }) + total : L({ ja:'準備中', en:'Coming', vi:'Sắp có' })}</small>　${svg('chev')}</span></div>`;
     /* ★リンクと同じ見た目で並ぶので、押す前に「飛ぶのか・その場で読めるのか」が分かるようにする。 */
     const bsubs = builtins.map(a => `<div class="mrow mrow--sub" data-go="/app/${esc(a.id)}" style="padding-left:22px"><div class="mi">${svg(a.icon)}</div><div class="mt"><b>${esc(L(a.name))}</b><span>${L({ ja:'アプリで読めます', en:'Read in the app', vi:'Đọc ngay trong ứng dụng' })}</span></div><span class="chev">${svg('chev')}</span></div>`).join('');
     /* リンクがまだ登録されていない資料は、押しても開かない（空のタブが開いてしまうため）。
@@ -2093,7 +2099,8 @@
         : L({ ja:'（見本）本部が資料を登録すると開けます', en:'(sample) opens once HQ registers the document', vi:'(mẫu) mở được khi HQ đăng ký tài liệu' });
       return `<div class="mrow mrow--sub"${has ? ` data-openurl="${esc(ou)}"` : ' data-mock="1"'} style="padding-left:22px"><div class="mi">${svg('link')}</div><div class="mt"><b>${esc(l.title)}</b><span>${l.desc ? esc(l.desc) + ' ・ ' : ''}${note}</span></div><span class="chev">${svg('chev')}</span></div>`;
     }).join('');
-    return head + bsubs + subs;
+    const bodyInner = (bsubs + subs) || `<div class="mrow mrow--sub" data-mock="1" style="padding-left:22px"><div class="mt"><span>${L({ ja:'まだ資料が登録されていません', en:'No documents registered yet', vi:'Chưa có tài liệu' })}</span></div></div>`;
+    return head + `<div data-mfoldbody="${esc(fk)}" hidden>` + bodyInner + `</div>`;
   };
   /* ★世桜10訓をアプリの中に書き写す画面は置かない（2026-08-17 神田さんのご判断）。
      見出しだけを写すと意味が伝わらず、解説・具体例のある本部のスライドを開いていただくほうが早い。
@@ -2101,26 +2108,40 @@
 
   APP_VIEWS.manual = () => {
     const role = getRole();
-    const store = visibleStores()[0];
-    const gy = getRole() === 'hq' && getStoreSel() === 'all' ? null : storeGyotai(store);
+    /* ★2026-08-28 増田さんのご要望＝マニュアルは【全業態共通】だけを出す。
+       業態別（レシピ等）は別窓口「業態別マニュアル・レシピ」へ分けた（gyotaiman）。 */
     const common = MANUAL_CATALOG.filter(m => m.gyotai === 'all' && manualVisibleRole(m, role));
-    // 業態別：店舗の業態のみ（本部・全店表示のときは全業態）
-    const gyList = MANUAL_CATALOG.filter(m => m.gyotai !== 'all' && manualVisibleRole(m, role) && (gy ? m.gyotai === gy : true));
-    const byGyotai = {};
-    gyList.forEach(m => { (byGyotai[m.gyotai] = byGyotai[m.gyotai] || []).push(m); });
-    const gySections = Object.keys(byGyotai).map(code => `
-      <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${esc(gyotaiLabel(code))}${L({ ja:'のマニュアル', en:' manuals', vi:'' })}</h2></div>
-      <div class="card" style="padding:2px 0">${byGyotai[code].map(manualRow).join('')}</div>`).join('');
     return `
       ${TAIKEN ? `<p class="hint" style="display:block;margin:0 0 10px">${L({
           ja:'※ 資料は本部のドライブにあります。閲覧権限をお持ちの方は、そのまま開きます。開かない場合は「アクセス権をリクエスト」は押さず、本部の増田までご連絡ください。',
-          en:'Documents live in HQ Drive. They open if you have view access. If not, contact Masuda at HQ instead of pressing “Request access”.',
-          vi:'Tài liệu nằm trên Drive của HQ. Sẽ mở được nếu bạn có quyền xem. Nếu không, hãy liên hệ Masuda ở HQ thay vì bấm “Yêu cầu quyền truy cập”.' })}</p>` : ''}
-      ${NOTE({ ja:`◆ ${role==='hq'&&!gy ? '全店・全業態のマニュアルを表示（本部）' : (gy ? gyotaiLabel(gy)+'業態のマニュアルを表示中' : 'マニュアル')}。権限に応じて表示が変わります（中身は順次追加）`, en:'◆ Manuals filtered by role and store type (content added progressively)', vi:'◆ Cẩm nang lọc theo vai trò & loại hình (nội dung bổ sung dần)' })}
+          en:'Documents live in HQ Drive. They open if you have view access. If not, contact Masuda at HQ instead of pressing "Request access".',
+          vi:'Tài liệu nằm trên Drive của HQ. Sẽ mở được nếu bạn có quyền xem. Nếu không, hãy liên hệ Masuda ở HQ thay vì bấm "Yêu cầu quyền".' })}</p>` : ''}
+      ${NOTE({ ja:'◆ 大項目をタップすると中の資料が開きます。業態別のマニュアル・レシピは「業態別マニュアル・レシピ」からご覧ください。',
+               en:'Tap a section to see its documents. Business-type manuals & recipes are under "By business type".',
+               vi:'Chạm vào mục lớn để xem tài liệu. Cẩm nang theo loại hình nằm ở "Theo loại hình".' })}
       <div class="sec-h" style="margin:6px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'全業態共通', en:'All types', vi:'Chung' })}</h2></div>
       <div class="card" style="padding:2px 0">${common.map(manualRow).join('')}</div>
-      ${gySections}
-      <div class="hint">${L({ ja:'動画マニュアルもこの中に統合していく構想です。', en:'Video manuals will also be integrated here.', vi:'Cẩm nang video cũng sẽ được tích hợp.' })}</div>`;
+      <div class="mrow" data-go="/app/gyotaiman" style="margin-top:10px"><div class="mi">${svg('food')}</div><div class="mt"><b>${L({ ja:'業態別マニュアル・レシピ', en:'By business type', vi:'Theo loại hình' })}</b><span>${L({ ja:'鰻・寿司・牛カツ・和牛・日本料理', en:'Eel / Sushi / Gyukatsu / Wagyu / Washoku', vi:'Lươn / Sushi / Gyukatsu / Wagyu / Washoku' })}</span></div><span class="chev">${svg('chev')}</span></div>
+      <div class="hint">${L({ ja:'動画マニュアルもこの中に統合していく構想です。', en:'Video manuals will also be integrated here.', vi:'Cẩm nang video cũng sẽ được tích hợp tại đây.' })}</div>`;
+  };
+
+  /* ★業態別マニュアル・レシピ（2026-08-28 増田さんのご要望で独立）＝
+     業態を選ぶ → その業態の分類（折りたたみ）。店舗の方は自店の業態が最初から選ばれる。 */
+  let gySelState = '';
+  APP_VIEWS.gyotaiman = () => {
+    const role = getRole();
+    const store = visibleStores()[0];
+    const myGy = getRole() === 'hq' && getStoreSel() === 'all' ? null : storeGyotai(store);
+    const codes = [...new Set(MANUAL_CATALOG.filter(m => m.gyotai !== 'all' && manualVisibleRole(m, role)).map(m => m.gyotai))];
+    const sel = codes.includes(gySelState) ? gySelState : (codes.includes(myGy) ? myGy : codes[0]);
+    const seg = `<div class="seg" style="flex-wrap:wrap">${codes.map(c => `<button class="${c === sel ? 'on' : ''}" data-gysel="${esc(c)}">${esc(gyotaiLabel(c))}</button>`).join('')}</div>`;
+    const list = MANUAL_CATALOG.filter(m => m.gyotai === sel && manualVisibleRole(m, role));
+    return `
+      ${NOTE({ ja:'◆ 業態を選ぶと、その業態のマニュアル・レシピが出ます。資料は本部が「資料リンクの管理」から登録すると、再配信なしでここに並びます。',
+               en:'Pick a business type to see its manuals & recipes. HQ can register documents without redeploying.',
+               vi:'Chọn loại hình để xem cẩm nang & công thức. HQ đăng ký tài liệu mà không cần phát hành lại.' })}
+      ${seg}
+      <div class="card" style="padding:2px 0;margin-top:8px">${list.map(manualRow).join('')}</div>`;
   };
 
   /* ⑤ サーベイ（モック）*/
@@ -5552,6 +5573,13 @@
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab === 'home' ? '/home' : `/home?tab=${b.dataset.tab}`));
     // 総括表のビジュアル：期間/指標の切替・個店カルテ・その日の日報
     document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
+    // マニュアルの大項目＝タップで中身を開閉（2026-08-28 増田さんのご要望）
+    document.querySelectorAll('[data-mfold]').forEach(b => b.onclick = () => {
+      const body = document.querySelector(`[data-mfoldbody="${(window.CSS && CSS.escape) ? CSS.escape(b.dataset.mfold) : b.dataset.mfold}"]`);
+      if (body) { body.hidden = !body.hidden; }
+    });
+    // 業態別マニュアル＝業態の切り替え
+    document.querySelectorAll('[data-gysel]').forEach(b => b.onclick = () => { gySelState = b.dataset.gysel; render(); });
     document.querySelectorAll('[data-storelink]').forEach(b => b.onclick = () => go(`/store?s=${encodeURIComponent(b.dataset.storelink)}`));
     document.querySelectorAll('[data-skday]').forEach(b => b.onclick = () => openSkDay(b.dataset.skday));
     // 総括表の月次出力：印刷（そのままA4横で紙になる）とCSV保存

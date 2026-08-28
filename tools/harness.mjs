@@ -220,6 +220,27 @@ console.log('== サーベイ集計が見つかる（0件でも表示・報告タ
   ok(/サーベイ・集計/.test(tab), '報告タブに「サーベイ・集計」が並ぶ');
 }
 
+console.log('== マニュアル＝大項目の折りたたみ＋業態別の分離（2026-08-28 増田さんのご要望）==');
+{
+  // ① マニュアル画面＝共通のみ。大項目は折りたたみで、中身は最初は隠れている
+  const mv = renderView('manual', 'staff', S_HIROSHIMA, 'ja');
+  ok(/data-mfold=/.test(mv), '大項目にタップで開く仕掛けがある');
+  ok(/data-mfoldbody=/.test(mv) && /hidden/.test(mv), '中身は最初は隠れている（初期は大項目だけ）');
+  ok(!/鰻の焼成・タレ/.test(mv), 'マニュアル画面に業態別（鰻の焼成・タレ）は出ない＝共通のみ');
+  ok(/業態別マニュアル・レシピ/.test(mv), '業態別への導線がある');
+  // ② 業態別窓口＝広島店（和牛）の店員には和牛が最初から選ばれる
+  const gv = renderView('gyotaiman', 'staff', S_HIROSHIMA, 'ja');
+  ok(/和牛の扱い/.test(gv), '広島店では「和牛の扱い」が出る');
+  ok(/data-gysel/.test(gv), '業態の切り替えボタンがある');
+  // ③ 本部・全店表示では全業態が選べる
+  let hv = '';
+  try { run(()=> setLS('hq','all','ja')); hv = renderView('gyotaiman','hq','all','ja'); }
+  catch(e){ FAIL++; console.log('  ✗ gyotaiman(hq) threw: '+e.message); }
+  ok(/data-gysel="unagi"/.test(hv) && /data-gysel="sushi"/.test(hv) && /data-gysel="wagyu"/.test(hv), '本部は全業態を切り替えられる');
+  // ④ U-1（レシピ）は鰻の業態別に入っている
+  try { run(()=> setLS('hq','all','ja')); } catch(e){}
+}
+
 console.log('== 店舗運営チェック：全スタッフに出る入口（2026-08-28 構築MTG＝本部と加盟店で分けない）==');
 {
   // ① タイル＝本部にだけ出る
