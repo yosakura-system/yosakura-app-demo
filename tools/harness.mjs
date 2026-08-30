@@ -3075,5 +3075,34 @@ FETCH_ROWS = { ok:false };
   ok(/function samplePhotoIds_/.test(gs) && /keep\[f\.getId\(\)\]/.test(gs), 'Code.gs：見本が参照する写真の実体も削除しない');
 }
 
+console.log('== 点検の「お手本」＝正しい状態の写真＋注意書き（2026-08-30 長田さんのご提案の展開）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const seed = () => localStorage.setItem('yosakura_demo_phsample', JSON.stringify({
+    [`${S}||ck-open`]: { photos: ['CK_SAMPLE_ID_1', 'CK_SAMPLE_ID_2'], memo: 'テーブルは膝で押して確かめる', by: '店長', t: Date.now() }
+  }));
+  // ① 店長＝お手本と注意書きが出て、編集できる
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); seed(); });
+  location.hash = '#/app/checklist';
+  let h = registry.app.innerHTML;
+  ok(/この店舗のお手本（見本）/.test(h), '店長：お手本の枠が点検画面に出る');
+  ok(h.includes('CK_SAMPLE_ID_1') && h.includes('CK_SAMPLE_ID_2'), 'お手本写真が表示される');
+  ok(/テーブルは膝で押して確かめる/.test(h), '注意書きが表示される');
+  ok(/id="ckSmpEdit"/.test(h), '店長：お手本を編集できる');
+  // ② 点検の種類ごとに別＝クローズには出ない（登録したのはオープンだけ）
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'close'); seed(); });
+  location.hash = '#/app/checklist';
+  ok(!/CK_SAMPLE_ID_1/.test(registry.app.innerHTML), 'お手本は点検の種類ごとに別（クローズには出ない）');
+  // ③ スタッフ＝見るだけ／未登録なら枠ごと出さない
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); seed(); });
+  location.hash = '#/app/checklist';
+  h = registry.app.innerHTML;
+  ok(/この店舗のお手本（見本）/.test(h) && /テーブルは膝で押して確かめる/.test(h), 'スタッフ：お手本と注意書きが見える');
+  ok(!/id="ckSmpEdit"/.test(h), 'スタッフ：編集は出ない');
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); });
+  location.hash = '#/app/checklist';
+  ok(!/この店舗のお手本（見本）/.test(registry.app.innerHTML), 'スタッフ：未登録なら枠ごと出さない');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

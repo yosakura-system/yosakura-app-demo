@@ -1848,6 +1848,7 @@
   const saveCkDone = (o) => { try { localStorage.setItem('yosakura_demo_ckdone', JSON.stringify(o)); } catch (e) {} };
   const ckDoneKey = (store, mode) => `${store}||${mode}||${todayKey()}`;
   const ckCanEdit = () => ['manager','owner','hq'].includes(getRole());
+  let ckSampleEditOpen = false; // 点検の「お手本」編集欄を開いているか（2026-08-30）
   // 誰がいつ実施したか（全端末共有）。チェックの中身とは別に持つ（IDと混ざらないように）
   const getCkMeta = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckmeta')) || {}; } catch { return {}; } };
   /* その店舗×モードで「いま画面に出ている項目」のIDを、画面と同じ手順で作る。
@@ -1944,6 +1945,32 @@
     const n = allIds.filter(id => done[id]).length;
     /* 店舗で外した共通項目は画面から消す。空になったグループは見出しごと出さない
        （見出しだけが残ると「中身が消えた」ように見えるため）。 */
+    /* ★この店舗のお手本（見本）＝2026-08-30 長田さんのご提案の展開。
+       点検・清掃の「正しい状態」の写真＋注意書きを、点検の種類ごと・店舗ごとに持てる。
+       初日のスタッフでも、お手本と見比べながら点検できる。
+       保存＝写真提出の見本と同じ仕組み（kind: phsample・対象は ck-オープン等）＝
+       バックエンドの90日削除保護もそのまま効く。 */
+    const ckSmpTarget = `ck-${mode}`;
+    const ckSmp = phSampleOf(store, ckSmpTarget) || {};
+    const ckSmpPhotos = (ckSmp.photos || []).slice(0, 4);
+    const ckSmpMemo = String(ckSmp.memo || '').trim();
+    const ckSmpHTML = (ckSmpPhotos.length || ckSmpMemo || editable) ? `
+      <div class="card">
+        <h3>${L({ ja:'この店舗のお手本（見本）', en:'Model photos for this store', vi:'Ảnh mẫu chuẩn của cửa hàng' })}</h3>
+        ${ckSmpPhotos.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 10px">${ckSmpPhotos.map(p => `<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="" style="width:calc(50% - 5px);aspect-ratio:4/3;object-fit:cover;border-radius:12px;height:auto">`).join('')}</div>`
+          : (editable && !ckSampleEditOpen ? `<div class="hint" style="display:block">${L({ ja:'「正しい状態」の写真と注意書きを登録すると、点検のお手本としてスタッフの画面にも表示されます。', en:'Register model photos and notes; staff will see them as the standard.', vi:'Đăng ảnh mẫu và ghi chú; nhân viên sẽ thấy làm chuẩn.' })}</div>` : '')}
+        ${ckSmpMemo && !ckSampleEditOpen ? `<div style="border:1px solid #d9d2c8;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.8;white-space:pre-wrap">${esc(ckSmpMemo)}</div>` : ''}
+        ${editable ? (ckSampleEditOpen ? `
+          <label class="fld" style="margin-top:8px"><span>${L({ ja:'お手本の写真（正しい状態を撮って登録・4枚まで）', en:'Model photos (up to 4)', vi:'Ảnh mẫu (tối đa 4)' })}</span>
+            <div class="photo-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ ja:'写真を追加', en:'Add photos', vi:'Thêm ảnh' })}</b><br><small>${L({ ja:'いまの「正しい状態」をそのまま撮ってください', en:'Photograph the correct state as-is', vi:'Chụp đúng trạng thái chuẩn' })}</small></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
+            <div class="photo-thumbs" id="photoThumbs">${ckSmpPhotos.map(p => `<div class="pt" data-thumb="${esc(p)}"><img src="${photoThumb(p)}" alt=""><button type="button" class="pt-x">×</button></div>`).join('')}</div>
+          </label>
+          <label class="fld"><span>${L({ ja:'注意書き（見るポイント・お店ごとの決まり）', en:'Notes (what to check)', vi:'Ghi chú (điểm cần xem)' })}</span><textarea id="cks_memo" rows="4">${esc(String(ckSmp.memo || ''))}</textarea></label>
+          <button class="mini" id="ckSmpSave">${L({ ja:'お手本を保存', en:'Save model', vi:'Lưu mẫu' })}</button>
+          <button class="mini" id="ckSmpCancel" style="margin-left:8px">${L({ ja:'やめる', en:'Cancel', vi:'Hủy' })}</button>`
+          : `<button class="mini" id="ckSmpEdit" style="margin-top:8px">${L({ ja:'お手本を編集', en:'Edit model', vi:'Sửa mẫu' })}</button>`)
+          + `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ お手本は点検の種類ごと・店舗ごとに保存され、スタッフの画面にも表示されます。', en:'Saved per check type and store; staff can see them.', vi:'Lưu theo loại kiểm tra và cửa hàng; nhân viên cũng thấy.' })}</div>` : ''}
+      </div>` : '';
     /* 追加項目の分類（2026-08-30 長田さんのご要望）：
        追加のときにホール／キッチン等の分類を選べる。選んだ項目はそのグループの末尾に並ぶ。
        ★分類は日本語の見出し文字列で持つ（c.g）＝グループの並び替えに耐える。
@@ -2009,6 +2036,7 @@
         <div style="font-size:26px;font-weight:700;letter-spacing:.02em">${n}<span style="color:var(--gray);font-size:17px">/${total}</span></div>
         <div class="bar-track" style="margin:9px 0 2px"><div class="bar-fill" style="width:${Math.round(n/total*100)}%"></div></div>
       </div>
+      ${ckSmpHTML}
       ${groupsHTML}
       ${customHTML}
       ${hiddenHTML}
@@ -6422,6 +6450,18 @@
       setPhSample(visibleStores()[0], getPhotoTarget(), { photos: r.photos.slice(0, 2) });
       toast(L({ ja:'見本にしました', en:'Set as sample', vi:'Đã đặt làm mẫu' })); render(true);
     });
+    // 点検の「お手本」（2026-08-30 長田さんのご提案の展開）
+    if (byId('ckSmpEdit')) byId('ckSmpEdit').onclick = () => { ckSampleEditOpen = true; render(true); };
+    if (byId('ckSmpCancel')) byId('ckSmpCancel').onclick = () => { ckSampleEditOpen = false; render(true); };
+    if (byId('ckSmpSave')) byId('ckSmpSave').onclick = () => {
+      const photos = Array.from(document.querySelectorAll('#photoThumbs .pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0, 4);
+      const memo = (byId('cks_memo') ? byId('cks_memo').value : '').trim();
+      setPhSample(visibleStores()[0], `ck-${getCkMode()}`, { photos, memo });
+      ckSampleEditOpen = false;
+      toast(L({ ja:'お手本を保存しました', en:'Saved', vi:'Đã lưu' })); render(true);
+    };
+    // 編集中に出す既存のお手本写真の「×」（汎用の写真取り込みが作るサムネと同じ形）
+    document.querySelectorAll('#photoThumbs .pt-x').forEach(x => { if (!x.onclick) x.onclick = (e) => { e.stopPropagation(); x.parentElement.remove(); }; });
     if (byId('phsMemoEdit')) byId('phsMemoEdit').onclick = () => { phMemoEditOpen = true; render(true); };
     if (byId('phsMemoCancel')) byId('phsMemoCancel').onclick = () => { phMemoEditOpen = false; render(true); };
     if (byId('phsMemoSave')) byId('phsMemoSave').onclick = () => {
