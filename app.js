@@ -4543,6 +4543,61 @@
   };
 
   /* ---------- 本部向け：提出状況一覧・未提出抽出（実データ集約） ---------- */
+  /* ★提出状況マトリクス（店舗×直近7日）＝2026-08-31 神田さんのご要望。
+     「当日は見えるが、過去の提出状況が見えない」を解消する1枚。
+     ・数えるのは日次の提出物だけ（週次・月次を混ぜると毎日のマスの意味がなくなる）
+     ・●=全部提出／数字=提出できた数（一部）／✗=ゼロ／休=定休日／今日は途中経過
+     ・行をタップすると、その店舗の提出履歴（日別の内訳）が開く */
+  function subMatrixCard(stores) {
+    const N = 7;
+    const masters = getMasters().filter(m => m.oblig !== 'off' && m.detect !== 'none' && m.freq === 'daily');
+    const offsets = []; for (let i = N - 1; i >= 0; i--) offsets.push(i);
+    const heads = offsets.map(i => i === 0 ? L({ ja:'今日', en:'Now', vi:'Nay' })
+      : mdLabel(new Date(Date.now() - i * 864e5).toLocaleDateString('en-CA')));
+    const rows = stores.map(s => {
+      const ms = masters.filter(m => appliesToStore(m, s));
+      const cells = offsets.map(i => {
+        const dk = dateKeyFor(s, Date.now() - i * 864e5);
+        if (isHoliday(s, dk)) return { h: true };
+        let k = 0; ms.forEach(m => { if (detectSubmitted(s, m, dk)) k++; });
+        return { k, n: ms.length };
+      });
+      // 率は「今日を除いた6日」（今日は営業中＝入れると必ず低く見える）
+      const past = cells.filter((c, idx) => !c.h && offsets[idx] > 0);
+      const tot = past.reduce((a, c) => a + c.n, 0), got = past.reduce((a, c) => a + c.k, 0);
+      return { store: s, cells, pct: tot ? Math.round(got / tot * 100) : null };
+    }).sort((a, b) => ((a.pct == null) - (b.pct == null)) || (a.pct - b.pct));
+    const CW = 'flex:none;width:31px;text-align:center;font-size:12px';
+    const cell = (c) => c.h ? `<span style="${CW};color:#b7b0a6">${L({ ja:'休', en:'–', vi:'–' })}</span>`
+      : !c.n ? `<span style="${CW};color:#b7b0a6">—</span>`
+      : c.k >= c.n ? `<span style="${CW};color:#2a7;font-weight:700">●</span>`
+      : c.k === 0 ? `<span style="${CW};color:#a23b3b;font-weight:700">✗</span>`
+      : `<span style="${CW};color:#8a6d3b;font-weight:700">${c.k}</span>`;
+    return `
+      <div class="card">
+        <h3>${L({ ja:'提出状況（店舗別・直近7日）', en:'Submissions by store (last 7 days)', vi:'Nộp theo cửa hàng (7 ngày)' })}</h3>
+        <div class="hint" style="display:block;margin:2px 0 8px">${L({
+          ja:'日次の提出物だけを数えています（週次・月次は含みません）。●=全部提出／数字=提出できた数／✗=ゼロ／休=定休日。右の率は今日を除いた6日ぶんです。',
+          en:'Daily items only. ●=all, number=partial, ✗=none, –=holiday. Rate excludes today.',
+          vi:'Chỉ mục nộp hằng ngày. ●=đủ, số=một phần, ✗=không, –=nghỉ.' })}</div>
+        <div style="display:flex;align-items:center;gap:2px;padding:4px 0 6px;border-bottom:1px solid #eee">
+          <span style="flex:1;min-width:0"></span>
+          ${heads.map(hd => `<span class="muted" style="${CW};font-size:10px">${esc(hd)}</span>`).join('')}
+          <span class="muted" style="flex:none;width:40px;text-align:right;font-size:10px">${L({ ja:'率', en:'%', vi:'%' })}</span>
+        </div>
+        ${rows.map(r => `
+          <button data-go="/app/history?s=${encodeURIComponent(r.store)}" style="display:flex;align-items:center;gap:2px;width:100%;background:none;border:0;border-bottom:1px solid #eee;padding:8px 0;text-align:left;cursor:pointer;font:inherit;color:inherit">
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;font-weight:600">${esc(storeLabel(r.store))}</span>
+            ${r.cells.map(cell).join('')}
+            <b style="flex:none;width:40px;text-align:right;font-size:12.5px">${r.pct == null ? '<span class="muted">—</span>' : r.pct + '%'}</b>
+          </button>`).join('')}
+        <div class="hint" style="display:block;margin-top:8px">${L({
+          ja:'※ 店舗をタップすると、その店舗の日別の内訳（提出履歴）が開きます。率の低い店舗から並べています。',
+          en:'Tap a store for its daily breakdown. Sorted lowest rate first.',
+          vi:'Chạm cửa hàng để xem chi tiết theo ngày.' })}</div>
+      </div>`;
+  }
+
   APP_VIEWS.teishutsu = () => {
     const role = getRole();
     if (role !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
@@ -4581,6 +4636,7 @@
         </div>
         ${cells || `<p class="hint" style="display:block">${L({ja:'未提出はありません。',en:'No missing.',vi:'Không thiếu.'})}</p>`}
       </div>
+      ${subMatrixCard(stores)}
       <div class="card">
         <h3>${L({ja:'提出物マスタ（本部設定）',en:'Submission master (HQ)',vi:'Cấu hình mục nộp (HQ)'})}</h3>
         ${masters.map(m => `<div class="rep"><span class="kind b">${L(OBLIG_LABEL[m.oblig])}</span><div class="body"><div class="l1">${esc(L(m.name))}</div><div class="l2">${L({daily:{ja:'毎日',en:'Daily',vi:'Hàng ngày'},weekly:{ja:'週1',en:'Weekly',vi:'Hàng tuần'},monthly:{ja:'月1',en:'Monthly',vi:'Hàng tháng'},quarterly:{ja:'四半期',en:'Quarterly',vi:'Hàng quý'}}[m.freq]||{ja:'毎日',en:'Daily',vi:'Hàng ngày'})} ・ ${L({ja:'締切',en:'Due',vi:'Hạn'})} ${m.due} ・ ${m.hqReview==='each'?L({ja:'本部確認あり',en:'HQ review',vi:'HQ duyệt'}):m.hqReview==='exception'?L({ja:'例外のみ本部',en:'Exceptions to HQ',vi:'Ngoại lệ HQ'}):L({ja:'本部確認なし',en:'No HQ review',vi:'Không HQ'})}</div></div></div>`).join('')}
@@ -4999,7 +5055,10 @@
 
   /* ---------- 提出履歴（直近7日・実データ） ---------- */
   APP_VIEWS.history = () => {
-    const store = visibleStores()[0];
+    /* ★?s=店舗 で開けるように（2026-08-31）＝提出状況マトリクスの行タップから、その店の内訳へ */
+    const visH = visibleStores();
+    const spH = currentRoute().params.get('s');
+    const store = (spH && visH.includes(spH)) ? spH : visH[0];
     const masters = getMasters().filter(m => appliesToStore(m, store) && m.oblig !== 'off' && m.detect !== 'none');
     /* ★期間を選べるように（2026-08-31 神田さんのご指摘＝過去の提出状況が7日で埋もれる） */
     const dsel = [7, 14, 30].includes(Number(localStorage.getItem('yosakura_hist_days'))) ? Number(localStorage.getItem('yosakura_hist_days')) : 7;
