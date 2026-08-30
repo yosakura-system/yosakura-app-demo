@@ -3018,5 +3018,62 @@ console.log('== 日報一本化（2026-08-26 構築MTG決定：アプリ入力�
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== 見本写真＋店舗ごとの注意書き（2026-08-30 長田さんのご提案）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const seed = () => localStorage.setItem('yosakura_demo_phsample', JSON.stringify({
+    [`${S}||openphoto`]: { photos: ['SAMPLE_DRIVE_ID_1'], memo: '外観は通りの向かい側から', by: '店長', t: Date.now() }
+  }));
+  // ① 店長＝見本・注意書き・編集・「見本にする」の導線が出る
+  run(() => { setLS('manager', S, 'ja'); seed();
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'subrec', store:S, item:'openphoto|2026-08-30', note: JSON.stringify({ by:'店長' }), photos:['RECENT_DRIVE_ID_9'], t: Date.now() }
+    ])); });
+  location.hash = '#/app/openphoto';
+  let h = registry.app.innerHTML;
+  ok(/この店舗の撮り方（見本）/.test(h), '店長：見本の枠が出る');
+  ok(h.includes('SAMPLE_DRIVE_ID_1'), '見本写真が表示される（Drive参照）');
+  ok(/外観は通りの向かい側から/.test(h), '店舗ごとの注意書きが表示される');
+  ok(/id="phsMemoEdit"/.test(h), '店長：注意書きを編集できる');
+  ok(/data-mksample=/.test(h), '店長：最近の提出から「これを見本にする」を押せる');
+  // ② スタッフ＝見るだけ
+  run(() => { setLS('staff', S, 'ja'); seed(); });
+  location.hash = '#/app/openphoto';
+  h = registry.app.innerHTML;
+  ok(/この店舗の撮り方（見本）/.test(h) && /外観は通りの向かい側から/.test(h), 'スタッフ：見本と注意書きが見える');
+  ok(!/id="phsMemoEdit"/.test(h) && !/data-mksample=/.test(h), 'スタッフ：編集と「見本にする」は出ない');
+  // ③ 未登録のときは、スタッフには枠を出さない／店長には登録のしかたを案内する
+  run(() => setLS('staff', S, 'ja'));
+  location.hash = '#/app/openphoto';
+  ok(!/この店舗の撮り方（見本）/.test(registry.app.innerHTML), 'スタッフ：未登録なら枠ごと出さない');
+  run(() => setLS('manager', S, 'ja'));
+  location.hash = '#/app/openphoto';
+  ok(/これを見本にする」を押すと/.test(registry.app.innerHTML), '店長：未登録なら登録のしかたを案内する');
+}
+// distribute()：バックエンドの phsample 行がローカルへ復元される（最新版が正）
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const now = Date.now();
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'phsample', store:S, item:'openphoto', note: JSON.stringify({ memo:'古い注意書き', by:'店長' }), photos:['OLD_ID'], t: now - 1000, id:'p1' },
+    { kind:'phsample', store:S, item:'openphoto', note: JSON.stringify({ memo:'新しい注意書き', by:'店長' }), photos:['NEW_ID'], t: now, id:'p2' },
+  ]};
+  try { run(()=> setLS('manager', S, 'ja')); } catch(e){ FAIL++; console.log('  ✗ load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const m = JSON.parse(localStorage.getItem('yosakura_demo_phsample')||'{}');
+  const rec = m[`${S}||openphoto`];
+  ok(!!rec && rec.memo==='新しい注意書き' && rec.photos[0]==='NEW_ID', 'phsample は店舗×提出物ごとに最新版が正で復元される');
+}
+FETCH_ROWS = { ok:false };
+// バックエンド側：見本の行と写真が自動削除から守られている（Code.gs を機械検査）
+{
+  const gs = fs.readFileSync(APP.replace(/app\.js$/, 'backend/Code.gs'), 'utf8');
+  ok(/PURGE_KEEP_KINDS\s*=\s*\[[^\]]*'phsample'/.test(gs), 'Code.gs：phsample の行は自動削除の対象外');
+  ok(/function samplePhotoIds_/.test(gs) && /keep\[f\.getId\(\)\]/.test(gs), 'Code.gs：見本が参照する写真の実体も削除しない');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

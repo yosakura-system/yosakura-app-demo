@@ -40,8 +40,11 @@ function autoPurgeOn_()    { return getSetting_('ENABLE_AUTO_PURGE', true) === t
 /* ★2026-08-27 追加＝soukatsu（総括表の日次）。
    日報一本化（2026-08-26 構築MTG決定）でアプリが入力の正本・月次出力（紙保管）の元データになった。
    90日で消すと過去月の月次出力も店舗比較も出せなくなる。写真を持たない軽量な行なので容量負担も小さい。 */
+/* ★2026-08-30 追加＝phsample（見本写真＋店舗ごとの注意書き。長田さんのご提案）。
+   店舗の「正しい撮り方」の見本＝設定情報。行だけでなく、参照している写真の実体も
+   purgeOldPhotos 側で削除対象から外す（samplePhotoIds_）。行が守られても写真が消えたら意味がない。 */
 var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide',
-                         'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu'];
+                         'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu', 'phsample'];
 
 // スクリプトプロパティから設定を読む（無ければ既定値）。管理画面や手動で変更できる。
 function getSetting_(key, def) {
@@ -384,14 +387,39 @@ function purgeOldPhotos() {
   }
   var folder = getPhotoFolder();
   var cutoff = new Date(Date.now() - ttlDays_() * 24 * 60 * 60 * 1000);
+  var keep = samplePhotoIds_();   // ★見本写真は消さない（2026-08-30）
   var files = folder.getFiles();
-  var removed = 0;
+  var removed = 0, protectedCount = 0;
   while (files.hasNext()) {
     var f = files.next();
-    try { if (f.getDateCreated() < cutoff) { f.setTrashed(true); removed++; } } catch (_) {}
+    try {
+      if (f.getDateCreated() >= cutoff) continue;
+      if (keep[f.getId()]) { protectedCount++; continue; } // 見本に指定された写真＝期限を過ぎても残す
+      f.setTrashed(true); removed++;
+    } catch (_) {}
   }
-  Logger.log('purgeOldPhotos: trashed ' + removed + ' file(s) older than ' + ttlDays_() + ' days');
-  return { enabled: true, trashed: removed, ttlDays: ttlDays_() };
+  Logger.log('purgeOldPhotos: trashed ' + removed + ' file(s) older than ' + ttlDays_() + ' days (protected as sample: ' + protectedCount + ')');
+  return { enabled: true, trashed: removed, protectedAsSample: protectedCount, ttlDays: ttlDays_() };
+}
+
+/* ★見本写真（kind: phsample）が参照している写真IDの一覧（2026-08-30 追加）。
+   見本は店舗の「正しい撮り方」として長く使うため、90日を過ぎても削除しない。
+   行は PURGE_KEEP_KINDS で守られるが、Driveの写真本体もここで守らないと
+   「見本の枠だけ残って画像が表示されない」事故になる。 */
+function samplePhotoIds_() {
+  var keep = {};
+  try {
+    var sh = getSheet();
+    var last = sh.getLastRow();
+    if (last < 2) return keep;
+    var values = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
+    for (var i = 0; i < values.length; i++) {
+      if (String(values[i][2] || '') !== 'phsample') continue;
+      var ids = parsePhotos(values[i][7]);
+      for (var j = 0; j < ids.length; j++) { if (ids[j]) keep[String(ids[j])] = true; }
+    }
+  } catch (e) {}
+  return keep;
 }
 
 /**
@@ -514,14 +542,18 @@ function listPurgeTargets() {
 function listPurgeTargets_() {
   var cutoffMs = Date.now() - ttlDays_() * 24 * 60 * 60 * 1000;
   var cutoff = new Date(cutoffMs);
-  // 写真
+  // 写真（★見本に指定された写真は削除予定に入れない＝2026-08-30）
   var folder = getPhotoFolder();
+  var keep = samplePhotoIds_();
   var files = folder.getFiles();
-  var photoTargets = [], photoTotal = 0;
+  var photoTargets = [], photoTotal = 0, photoProtected = 0;
   while (files.hasNext()) {
     var f = files.next(); photoTotal++;
     var created = f.getDateCreated();
-    if (created < cutoff) photoTargets.push({ id: f.getId(), name: f.getName(), created: created.toISOString() });
+    if (created < cutoff) {
+      if (keep[f.getId()]) { photoProtected++; continue; }
+      photoTargets.push({ id: f.getId(), name: f.getName(), created: created.toISOString() });
+    }
   }
   // 提出データ（行）
   var sh = getSheet(); var last = sh.getLastRow();
@@ -540,7 +572,7 @@ function listPurgeTargets_() {
     autoPurgeEnabled: autoPurgeOn_(),
     cutoff: cutoff.toISOString(),
     keepKinds: PURGE_KEEP_KINDS,
-    photos: { total: photoTotal, wouldTrash: photoTargets.length, sample: photoTargets.slice(0, 20) },
+    photos: { total: photoTotal, wouldTrash: photoTargets.length, protectedAsSample: photoProtected, sample: photoTargets.slice(0, 20) },
     rows: { total: rowTotal, wouldDelete: rowTargets, keptAsConfig: keepCount, byKind: byKind }
   };
 }
