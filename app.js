@@ -4554,13 +4554,20 @@
     const offsets = []; for (let i = N - 1; i >= 0; i--) offsets.push(i);
     const heads = offsets.map(i => i === 0 ? L({ ja:'今日', en:'Now', vi:'Nay' })
       : mdLabel(new Date(Date.now() - i * 864e5).toLocaleDateString('en-CA')));
+    /* ★日報の提出経路（2026-08-31 神田さんのご要望）＝アプリで入力したのか、
+       シート（総括表）からの毎時取込なのかを見分けられるようにする。
+       取込の行には note に src:'drive' の印がある（総括表取り込み.gs の SK_SRC_TAG） */
+    const skRouteOf = (s, dk) => {
+      const r = getSk().filter(x => x.store === s && x.date === dk).sort((a, b) => b.t - a.t)[0];
+      return r ? (r.src === 'drive' ? 'import' : 'app') : '';
+    };
     const rows = stores.map(s => {
       const ms = masters.filter(m => appliesToStore(m, s));
       const cells = offsets.map(i => {
         const dk = dateKeyFor(s, Date.now() - i * 864e5);
         if (isHoliday(s, dk)) return { h: true };
         let k = 0; ms.forEach(m => { if (detectSubmitted(s, m, dk)) k++; });
-        return { k, n: ms.length };
+        return { k, n: ms.length, route: skRouteOf(s, dk) };
       });
       // 率は「今日を除いた6日」（今日は営業中＝入れると必ず低く見える）
       const past = cells.filter((c, idx) => !c.h && offsets[idx] > 0);
@@ -4570,16 +4577,18 @@
     const CW = 'flex:none;width:31px;text-align:center;font-size:12px';
     const cell = (c) => c.h ? `<span style="${CW};color:#b7b0a6">${L({ ja:'休', en:'–', vi:'–' })}</span>`
       : !c.n ? `<span style="${CW};color:#b7b0a6">—</span>`
-      : c.k >= c.n ? `<span style="${CW};color:#2a7;font-weight:700">●</span>`
+      : c.k >= c.n ? (c.route === 'import'
+          ? `<span style="${CW};color:#2a7;font-weight:700">○</span>`
+          : `<span style="${CW};color:#2a7;font-weight:700">●</span>`)
       : c.k === 0 ? `<span style="${CW};color:#a23b3b;font-weight:700">✗</span>`
-      : `<span style="${CW};color:#8a6d3b;font-weight:700">${c.k}</span>`;
+      : `<span style="${CW};color:${c.route === 'import' ? '#5f8d5f' : '#8a6d3b'};font-weight:700">${c.k}</span>`;
     return `
       <div class="card">
         <h3>${L({ ja:'提出状況（店舗別・直近7日）', en:'Submissions by store (last 7 days)', vi:'Nộp theo cửa hàng (7 ngày)' })}</h3>
         <div class="hint" style="display:block;margin:2px 0 8px">${L({
-          ja:'日次の提出物だけを数えています（週次・月次は含みません）。●=全部提出／数字=提出できた数／✗=ゼロ／休=定休日。右の率は今日を除いた6日ぶんです。',
-          en:'Daily items only. ●=all, number=partial, ✗=none, –=holiday. Rate excludes today.',
-          vi:'Chỉ mục nộp hằng ngày. ●=đủ, số=một phần, ✗=không, –=nghỉ.' })}</div>
+          ja:'日次の提出物だけを数えています（週次・月次は含みません）。●=全部提出（日報もアプリ入力）／○=全部提出（日報はシートからの取込）／数字=提出できた数（緑系=日報は取込）／✗=ゼロ／休=定休日。右の率は今日を除いた6日ぶんです。',
+          en:'Daily items only. ●=all (report via app) / ○=all (report imported from sheet) / number=partial / ✗=none / –=holiday. Rate excludes today.',
+          vi:'Chỉ mục hằng ngày. ●=đủ (app) / ○=đủ (nhập từ bảng) / số=một phần / ✗=không / –=nghỉ.' })}</div>
         <div style="display:flex;align-items:center;gap:2px;padding:4px 0 6px;border-bottom:1px solid #eee">
           <span style="flex:1;min-width:0"></span>
           ${heads.map(hd => `<span class="muted" style="${CW};font-size:10px">${esc(hd)}</span>`).join('')}
@@ -4587,7 +4596,7 @@
         </div>
         ${rows.map(r => `
           <button data-go="/app/history?s=${encodeURIComponent(r.store)}" style="display:flex;align-items:center;gap:2px;width:100%;background:none;border:0;border-bottom:1px solid #eee;padding:8px 0;text-align:left;cursor:pointer;font:inherit;color:inherit">
-            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;font-weight:600">${esc(storeLabel(r.store))}</span>
+            <span style="flex:1;min-width:0;font-size:12px;font-weight:600;line-height:1.35;white-space:normal;word-break:break-word">${esc(storeLabel(r.store))}</span>
             ${r.cells.map(cell).join('')}
             <b style="flex:none;width:40px;text-align:right;font-size:12.5px">${r.pct == null ? '<span class="muted">—</span>' : r.pct + '%'}</b>
           </button>`).join('')}
@@ -4601,6 +4610,16 @@
   APP_VIEWS.teishutsu = () => {
     const role = getRole();
     if (role !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
+    /* ★タブ化（2026-08-31 神田さんのご要望）＝縦に長くスクロールして探さない。
+       本日の提出／店舗別×7日／提出物マスタ／シートの場所 をタブで切り替える（位置も保たれる） */
+    const TT = [
+      { v:'today',  t:{ ja:'本日の提出', en:'Today', vi:'Hôm nay' } },
+      { v:'matrix', t:{ ja:'店舗別×7日', en:'By store', vi:'Theo CH' } },
+      { v:'master', t:{ ja:'提出物マスタ', en:'Master', vi:'Cấu hình' } },
+      { v:'sheets', t:{ ja:'シートの場所', en:'Sheets', vi:'Bảng' } }
+    ];
+    const ttab = TT.some(o => o.v === localStorage.getItem('yosakura_teishutsu_tab')) ? localStorage.getItem('yosakura_teishutsu_tab') : 'today';
+    const ttabSeg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="ttab">${TT.map(o => `<button type="button" data-ttab="${o.v}" class="${o.v === ttab ? 'on' : ''}">${L(o.t)}</button>`).join('')}</div></div>`;
     const missingOnly = localStorage.getItem('yosakura_sub_missingonly') === '1';
     const masters = getMasters().filter(m => m.oblig !== 'off');
     const stores = STORES.slice();
@@ -4628,23 +4647,24 @@
         <div class="l2">${chips}</div>${act}</div></div>`;
     }).join('');
     return `
-      <div class="card">
+      ${ttabSeg}
+      ${ttab !== 'today' ? '' : `<div class="card">
         <h3>${L({ja:'本日の提出状況（全店）',en:'Today submissions (all stores)',vi:'Trạng thái nộp (mọi cửa hàng)'})}</h3>
         <div style="display:flex;gap:8px;align-items:center;margin:6px 0 12px">
           <button class="mini ${missingOnly?'on':''}" data-tmissing="1">${missingOnly?'☑':'☐'} ${L({ja:'未提出のみ',en:'Missing only',vi:'Chỉ thiếu'})}</button>
           <span class="hint" style="display:inline">${L({ja:'未提出',en:'Missing',vi:'Thiếu'})} ${totalMissing}</span>
         </div>
         ${cells || `<p class="hint" style="display:block">${L({ja:'未提出はありません。',en:'No missing.',vi:'Không thiếu.'})}</p>`}
-      </div>
-      ${subMatrixCard(stores)}
-      <div class="card">
+      </div>`}
+      ${ttab !== 'matrix' ? '' : subMatrixCard(stores)}
+      ${ttab !== 'master' ? '' : `<div class="card">
         <h3>${L({ja:'提出物マスタ（本部設定）',en:'Submission master (HQ)',vi:'Cấu hình mục nộp (HQ)'})}</h3>
         ${masters.map(m => `<div class="rep"><span class="kind b">${L(OBLIG_LABEL[m.oblig])}</span><div class="body"><div class="l1">${esc(L(m.name))}</div><div class="l2">${L({daily:{ja:'毎日',en:'Daily',vi:'Hàng ngày'},weekly:{ja:'週1',en:'Weekly',vi:'Hàng tuần'},monthly:{ja:'月1',en:'Monthly',vi:'Hàng tháng'},quarterly:{ja:'四半期',en:'Quarterly',vi:'Hàng quý'}}[m.freq]||{ja:'毎日',en:'Daily',vi:'Hàng ngày'})} ・ ${L({ja:'締切',en:'Due',vi:'Hạn'})} ${m.due} ・ ${m.hqReview==='each'?L({ja:'本部確認あり',en:'HQ review',vi:'HQ duyệt'}):m.hqReview==='exception'?L({ja:'例外のみ本部',en:'Exceptions to HQ',vi:'Ngoại lệ HQ'}):L({ja:'本部確認なし',en:'No HQ review',vi:'Không HQ'})}</div></div></div>`).join('')}
         <p class="hint" style="display:block">${L({ja:'※ この設定はこの端末に保存されています。全店で共有するにはバックエンド接続（次段階）が必要です。',en:'Saved on this device. Cross-store sharing needs backend (next step).',vi:'Lưu trên máy này. Cần backend để chia sẻ (bước sau).'})}</p>
-      </div>
+      </div>`}
       ${/* 本部が用意されたシートへの入口を設定する（コンプラチェックなど）。
             対象月ごとにシートが変わるため、本部の方がここで差し替えられるようにしている。 */''}
-      ${masters.filter(m => 'url' in m).map(m => `
+      ${ttab !== 'sheets' ? '' : masters.filter(m => 'url' in m).map(m => `
       <div class="card">
         <h3>${L({ja:'シートの場所',en:'Sheet link',vi:'Liên kết bảng'})} — ${esc(L(m.name))}</h3>
         <p class="hint" style="display:block">${L({ja:'ここに入れたシートが、店舗の「シートを開く」から開きます。対象月ごとに差し替えられます。',en:'Stores open this sheet from “Open sheet”. Replace it each period.',vi:'Cửa hàng mở bảng này từ “Mở bảng”. Có thể thay mỗi kỳ.'})}</p>
@@ -4663,7 +4683,7 @@
             isHttp(cur) ? `<button class="mini" data-openurl="${esc(cur)}" style="margin-left:6px">${L({ja:'開いて確認',en:'Open',vi:'Mở'})}</button>` : ''}</div>`;
         }).join('')}
       </div>`).join('')}
-      <p class="hint" style="display:block">${L({ja:'※ 提出状況は実際の提出データ（同期済み）から自動集約しています。LINE通知・AI判定は未接続（手動運用中）。',en:'Auto-aggregated from real synced data. LINE & AI not connected (manual).',vi:'Tự tổng hợp từ dữ liệu thật (đã đồng bộ). LINE & AI chưa kết nối (thủ công).'})}</p>`;
+      ${ttab === 'today' || ttab === 'matrix' ? `<p class="hint" style="display:block">${L({ja:'※ 提出状況は実際の提出データ（同期済み）から自動集約しています。LINE通知・AI判定は未接続（手動運用中）。',en:'Auto-aggregated from real synced data. LINE & AI not connected (manual).',vi:'Tự tổng hợp từ dữ liệu thật (đã đồng bộ). LINE & AI chưa kết nối (thủ công).'})}</p>` : ''}`;
   };
 
   /* ---------- 本部向け：店舗の判定・本部確認（手動判定＝AI未接続時） ---------- */
@@ -5064,7 +5084,17 @@
     const dsel = [7, 14, 30].includes(Number(localStorage.getItem('yosakura_hist_days'))) ? Number(localStorage.getItem('yosakura_hist_days')) : 7;
     const days = []; for (let i = 0; i < dsel; i++) days.push(dateKeyFor(store, Date.now() - i * 86400000));
     const rows = days.map(dk => {
-      const chips = masters.map(m => { const sub = detectSubmitted(store, m, dk); const st = getStatus(store, m.id, dk); const jl = st.judge ? ` ${L(JUDGE_LABEL[st.judge])}` : ''; return `<span class="kind ${sub?'b':'a'}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(m.name))}${sub?'✓':'✗'}${jl}</span>`; }).join('');
+      const chips = masters.map(m => {
+        const sub = detectSubmitted(store, m, dk); const st = getStatus(store, m.id, dk);
+        const jl = st.judge ? ` ${L(JUDGE_LABEL[st.judge])}` : '';
+        // ★日報（総括表）は提出経路も添える（アプリ入力か、シートからの取込か）＝2026-08-31
+        let rt = '';
+        if (m.detect === 'sk' && sub) {
+          const rr = getSk().filter(x => x.store === store && x.date === dk).sort((a, b) => b.t - a.t)[0];
+          if (rr) rt = rr.src === 'drive' ? L({ ja:'（取込）', en:'(import)', vi:'(nhập)' }) : L({ ja:'（アプリ）', en:'(app)', vi:'(app)' });
+        }
+        return `<span class="kind ${sub?'b':'a'}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(m.name))}${sub?'✓':'✗'}${rt}${jl}</span>`;
+      }).join('');
       // 提出者＝その日に提出された記録から（同じ方が複数出していれば1回だけ表示）
       const who = [...new Set(masters.map(m => detectSubmitted(store, m, dk) ? submitterOf(store, m, dk) : '').filter(Boolean))];
       return `<div class="rep"><div class="body"><div class="l1">${dk}${isHoliday(store,dk)?` <small style="color:#8a8">(${L({ja:'定休日',en:'Holiday',vi:'Nghỉ'})})</small>`:''}</div><div class="l2">${chips || '—'}</div>${who.length?`<div class="l2">${L({ja:'提出者',en:'Submitted by',vi:'Người nộp'})}：${esc(who.join('・'))}</div>`:''}</div></div>`;
@@ -5082,12 +5112,13 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab]');
       if (!t) return;
       if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(true); return; }
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
+      if (t.dataset.ttab) { localStorage.setItem('yosakura_teishutsu_tab', t.dataset.ttab); render(true); return; }
       if (t.dataset.ackdone) { setAck(t.dataset.ackdone, 'done', ''); toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(true); return; }
       if (t.dataset.ackmemo) {
         // ★ブラウザのダイアログは使わない（iPhoneのホーム画面版では表示されない）＝その場にメモ欄を開く
