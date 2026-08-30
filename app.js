@@ -4472,6 +4472,27 @@
     hygiene_m: { ja:'本部から今月指定された箇所の、清掃前と清掃後を撮ってください。', en:'Before and after photos of the spot assigned by HQ this month.', vi:'Ảnh trước và sau khi vệ sinh khu vực HQ chỉ định tháng này.' },
     menubook:  { ja:'メニューブックと販促物を並べて、汚れや破れが分かるように撮ってください。', en:'Lay out the menu books and POP so stains or tears are visible.', vi:'Bày menu và vật phẩm quảng bá để thấy rõ vết bẩn hoặc rách.' }
   };
+  /* ★見本写真＋店舗ごとの注意書き（2026-08-30 長田さんのご提案）
+     「この店舗の撮り方（見本）」を写真提出画面に出す＝初日のスタッフでも見本を見ながら同じ画角で撮れる。
+     ・見本の登録＝過去の提出から「これを見本にする」を押すだけ（撮影経路を増やさない）
+     ・注意書き＝店舗ごとの自由記述（撮る位置・気をつけること）。店長・オーナー・本部のみ編集可
+     ・保存＝店舗×提出物ごとに最新版が正（kind: phsample）。
+       ⚠️ バックエンド側で、見本が参照する写真を90日自動削除から守る（Code.gs samplePhotoIds_） */
+  const getPhSamples = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_phsample')) || {}; } catch { return {}; } };
+  const savePhSamples = (o) => { try { localStorage.setItem('yosakura_demo_phsample', JSON.stringify(o)); } catch (e) {} };
+  const phSampleOf = (store, target) => getPhSamples()[`${store}||${target}`] || null;
+  let phMemoEditOpen = false; // 注意書きの編集欄を開いているか（描き直しをまたいで保持）
+  function setPhSample(store, target, patch) {
+    const all = getPhSamples();
+    const key = `${store}||${target}`;
+    const cur = all[key] || { photos: [], memo: '' };
+    const next = { photos: patch.photos !== undefined ? patch.photos : (cur.photos || []),
+                   memo:   patch.memo   !== undefined ? patch.memo   : (cur.memo || ''),
+                   by: getUserName() || '', t: Date.now() };
+    all[key] = next; savePhSamples(all);
+    postReport({ kind:'phsample', store, item: target, note: JSON.stringify({ memo: next.memo, by: next.by }), photos: next.photos, t: next.t });
+  }
+
   APP_VIEWS.openphoto = () => {
     const store = visibleStores()[0];
     const dk = dateKeyFor(store, Date.now());
@@ -4487,6 +4508,25 @@
     const recent = subRows(SUB_KINDS.open)
       .filter(r => visibleStores().includes(r.store) && String(r.item || '').split('|')[0] === target)
       .sort((a, b) => b.t - a.t).slice(0, 6);
+    /* ★この店舗の撮り方（見本）＝2026-08-30 長田さんのご提案。
+       スタッフは見るだけ（未登録なら枠ごと出さない）。店長・オーナー・本部は未登録でも枠を出し、登録の導線を案内する */
+    const canEditSample = ckCanEdit();
+    const sample = phSampleOf(store, target) || {};
+    const sPhotos = (sample.photos || []).slice(0, 2);
+    const sMemo = String(sample.memo || '').trim();
+    const sampleHTML = (sPhotos.length || sMemo || canEditSample) ? `
+      <div class="card">
+        <h3>${L({ ja:'この店舗の撮り方（見本）', en:'How to shoot at this store (sample)', vi:'Cách chụp ở cửa hàng này (mẫu)' })}</h3>
+        ${sPhotos.length ? `<div style="display:flex;gap:10px;margin:8px 0 10px">${sPhotos.map(p => `<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="" style="flex:1;min-width:0;max-width:${sPhotos.length === 1 ? '62%' : '100%'};aspect-ratio:4/3;object-fit:cover;border-radius:12px;height:auto">`).join('')}</div>`
+          : (canEditSample ? `<div class="hint" style="display:block">${L({ ja:'見本写真はまだありません。下の「最近の提出」で「これを見本にする」を押すと、ここに表示されます。', en:'No sample photos yet. Tap “Use as sample” under Recent submissions.', vi:'Chưa có ảnh mẫu. Nhấn “Dùng làm mẫu” ở phần Đã nộp gần đây.' })}</div>` : '')}
+        ${sMemo ? `<div style="border:1px solid #d9d2c8;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.8;white-space:pre-wrap">${esc(sMemo)}</div>` : ''}
+        ${canEditSample ? (phMemoEditOpen
+          ? `<label class="fld" style="margin-top:10px"><span>${L({ ja:'この店舗の注意書き（撮る位置・気をつけること）', en:'Store notes (position, cautions)', vi:'Ghi chú của cửa hàng (vị trí, lưu ý)' })}</span><textarea id="phs_memo" rows="4">${esc(String(sample.memo || ''))}</textarea></label>
+             <button class="mini" id="phsMemoSave">${L({ ja:'注意書きを保存', en:'Save notes', vi:'Lưu ghi chú' })}</button>
+             <button class="mini" id="phsMemoCancel" style="margin-left:8px">${L({ ja:'やめる', en:'Cancel', vi:'Hủy' })}</button>`
+          : `<button class="mini" id="phsMemoEdit" style="margin-top:8px">${L({ ja:'注意書きを編集', en:'Edit notes', vi:'Sửa ghi chú' })}</button>`)
+          + `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 見本と注意書きは店舗ごとに保存され、スタッフの画面にも表示されます。', en:'Samples and notes are saved per store and shown to staff.', vi:'Mẫu và ghi chú lưu theo cửa hàng, nhân viên cũng thấy.' })}</div>` : ''}
+      </div>` : '';
     return `
       <div class="card">
         <h3>${esc(title)} — ${esc(storeShort(store))}</h3>
@@ -4501,8 +4541,9 @@
         <button class="btn-primary" data-topensubmit="1">${L({ja:'提出する',en:'Submit',vi:'Gửi'})}</button>
         <div class="hint">${L({ja:'※ 写真が無いと提出できません（提出漏れ防止）。',en:'A photo is required to submit.',vi:'Cần có ảnh mới gửi được.'})}</div>
       </div>
+      ${sampleHTML}
       <div class="card"><h3>${L({ja:'最近の提出',en:'Recent submissions',vi:'Đã nộp gần đây'})}</h3>
-        ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join(''):`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div></div></div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
+        ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join(''):`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div></div>${canEditSample && r.photos && r.photos.length ? `<button class="mini" data-mksample="${esc(String(r.id || r.t))}" style="flex:none;margin-left:auto">${L({ja:'これを見本にする',en:'Use as sample',vi:'Dùng làm mẫu'})}</button>` : ''}</div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
       </div>`;
   };
 
@@ -6373,6 +6414,22 @@
       const key = ckKey(store, mode, day);
       return { store, mode, day, key, mk: key.slice(store.length + 2) }; // mk＝キーの後半（mode または mode-曜日）
     };
+    // 見本写真＋注意書き（2026-08-30 長田さんのご提案）
+    document.querySelectorAll('[data-mksample]').forEach(b => b.onclick = () => {
+      const key = String(b.dataset.mksample);
+      const r = subRows(SUB_KINDS.open).find(x => String(x.id || x.t) === key);
+      if (!r || !r.photos || !r.photos.length) { toast(L({ ja:'写真が見つかりません', en:'Photo not found', vi:'Không thấy ảnh' })); return; }
+      setPhSample(visibleStores()[0], getPhotoTarget(), { photos: r.photos.slice(0, 2) });
+      toast(L({ ja:'見本にしました', en:'Set as sample', vi:'Đã đặt làm mẫu' })); render(true);
+    });
+    if (byId('phsMemoEdit')) byId('phsMemoEdit').onclick = () => { phMemoEditOpen = true; render(true); };
+    if (byId('phsMemoCancel')) byId('phsMemoCancel').onclick = () => { phMemoEditOpen = false; render(true); };
+    if (byId('phsMemoSave')) byId('phsMemoSave').onclick = () => {
+      const v = (byId('phs_memo') ? byId('phs_memo').value : '').trim();
+      setPhSample(visibleStores()[0], getPhotoTarget(), { memo: v });
+      phMemoEditOpen = false;
+      toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' })); render(true);
+    };
     // 店舗独自項目：追加
     if (byId('ckAdd')) byId('ckAdd').onclick = () => {
       const inp = byId('ck_new'); const label = inp ? inp.value.trim() : '';
@@ -6523,7 +6580,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null;
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null;
     (rows || []).forEach(r => {
       // 店舗名は正式名称へ寄せる（過去のデータが旧い表記でも、同じ店舗として扱う）
       const t = Number(r.t) || 0, id = r.id, store = normalizeStore(r.store || '');
@@ -6544,6 +6601,8 @@
         case 'whistle': { const p=pj(r.note); whistle.push({ store, cat:p.cat||'other', body:p.body||'', anon:!!p.anon, t, id }); } break;
         case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', video:p.video||'', photos:r.photos||[], t, id }); } break;
         case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モード（定期衛生は×曜日）ごと最新版が正
+        // 見本写真＋注意書き＝店舗×提出物ごと最新版が正（2026-08-30 長田さんのご提案）
+        case 'phsample': { const p=pj(r.note); const k=`${store}||${r.item||'openphoto'}`; if (phsT[k]==null || t>=phsT[k]) { phs[k]={ photos: r.photos||[], memo: p.memo||'', by: p.by||'', t }; phsT[k]=t; } } break;
         // 店舗で外した共通項目（定期衛生）＝同じく最新版が正
         case 'ckhide': { const p=pj(r.note); const k=`${store}||${p.mode||''}`; if (ckhideT[k]==null || t>=ckhideT[k]) { ckhide[k]=Array.isArray(p.ids)?p.ids:[]; ckhideT[k]=t; } } break;
         // オープン/クローズの実施状況＝店舗×モード×日付ごと最新が正。誰が実施したかは別に持つ
@@ -6576,7 +6635,7 @@
       Object.keys(next).forEach(k => { cur[k] = next[k]; });
       set(lsKey, cur);
     };
-    mergeMap('yosakura_demo_ckitem', ckitem); mergeMap('yosakura_demo_ckhide', ckhide);
+    mergeMap('yosakura_demo_ckitem', ckitem); mergeMap('yosakura_demo_ckhide', ckhide); mergeMap('yosakura_demo_phsample', phs);
     if (Object.keys(ckdone).length) { set('yosakura_demo_ckdone', ckdone); set('yosakura_demo_ckmeta', ckmeta); } // 実施状況が1件も無い同期では、この端末の記録を消さない
     if (Object.keys(study).length) set('yosakura_demo_study', Object.values(study).filter(s => s && !s.deleted));
     Object.keys(commlike).forEach(k => { if (commlike[k] < 0) commlike[k] = 0; }); // 取り消しが多くても負にしない（保存の前に直す）
@@ -6684,6 +6743,7 @@
     [['yosakura_demo_emg', s => normalizeStore(s)],
      ['yosakura_demo_ckitem', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }],
      ['yosakura_demo_ckhide', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }],
+     ['yosakura_demo_phsample', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }],
      ['yosakura_demo_ckdone', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }],
      ['yosakura_demo_ckmeta', s => { const p = String(s).split('||'); p[0] = normalizeStore(p[0]); return p.join('||'); }]
     ].forEach(([k, fn]) => {
