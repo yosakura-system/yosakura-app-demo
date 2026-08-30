@@ -889,7 +889,17 @@
     go(prev || '/home');
   };
   navPush();                          // 開いた最初の画面を覚える
-  window.addEventListener('hashchange', () => { navPush(); render(); });
+  /* ★同じ画面の中の切り替え（期間チップ・並べ替え等＝?パラメータだけが変わる遷移）は、
+     スクロール位置を保つ（2026-08-30 神田さんのご指摘＝「7日/28日を押すたびに先頭へ戻って面倒」）。
+     ⚠️ /home はタブ（ホーム・本部メニュー等）の切り替えに同じパスを使う＝中身は別画面なので、従来どおり先頭から。 */
+  let 前回のパス = (location.hash.replace(/^#/, '') || '/home').split('?')[0];
+  window.addEventListener('hashchange', () => {
+    navPush();
+    const いまのパス = (location.hash.replace(/^#/, '') || '/home').split('?')[0];
+    const 同じ画面 = いまのパス === 前回のパス && いまのパス !== '/home';
+    前回のパス = いまのパス;
+    render(同じ画面);
+  });
   /* 画面の位置はアプリ側で決める。ブラウザに任せると、別の画面へ移ったのに
      前の画面の位置が復元され、途中から始まってしまう（2026-08-12 神田さんのご指摘）。 */
   try { if (window.history && 'scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'; } catch (e) {}
