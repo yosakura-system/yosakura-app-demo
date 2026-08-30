@@ -2744,7 +2744,6 @@
         <button class="btn-primary" id="submitSk">${L({ja:'提出する',en:'Submit',vi:'Nộp'})}</button>
         <div class="hint">${L({ja:'保存すると、下の履歴と「本部ダッシュボード」に反映されます',en:'Saved and shown below and in the HQ Dashboard',vi:'Được lưu và hiển thị bên dưới và ở Bảng điều khiển'})}</div>
       </div>
-      ${vis.length === 1 ? skMovement(vis, '/app/soukatsu') + skOutlook(vis) : ''}
       <div class="card">
         <h3>${L({ ja:'最近の総括表', en:'Recent daily reports', vi:'Báo cáo gần đây' })}</h3>
         <div id="skList">${recent.length ? recent.map(skRow).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}</div>
@@ -2938,7 +2937,7 @@
       return ` ・ <b>${L({ ja:'主因＝', en:'mainly: ', vi:'chủ yếu: ' })}${which}</b>`;
     };
     const keep = (k) => { const v = params.get(k); return v ? `&${k}=${encodeURIComponent(v)}` : ''; };
-    const wchip = (n, label) => `<button class="chip${w === n ? ' on' : ''}" data-go="${esc(base)}?w=${n}${keep('p')}${keep('m')}">${esc(L(label))}</button>`;
+    const wchip = (n, label) => `<button class="chip${w === n ? ' on' : ''}" data-go="${esc(base)}?w=${n}${keep('p')}${keep('m')}${keep('s')}${keep('ym')}">${esc(L(label))}</button>`;
     return `
       <div class="card">
         <h3>${single ? L({ ja:'お店の動き（前の期間との比較）', en:'Your store movement', vi:'Biến động cửa hàng' }) : L({ ja:'店舗の動き（前の期間との比較）', en:'Store movement (vs previous period)', vi:'Biến động cửa hàng (so kỳ trước)' })}</h3>
@@ -3212,6 +3211,8 @@
           ${colChart(days, (d) => byDate[d] ? numOr0(byDate[d].sales) : 0, { store, title:{ ja:'日別の売上', en:'Daily sales', vi:'Doanh thu theo ngày' } })}
           <button class="btn-primary" data-go="/skprint?s=${encodeURIComponent(store)}&ym=${ym}" style="margin-top:12px">${L({ ja:'総括表の形で出力（印刷・CSV）', en:'Export as summary sheet (print / CSV)', vi:'Xuất dạng bảng tổng kết (in / CSV)' })}</button>
         </div>
+        ${skMovement([store], '/store')}
+        ${skOutlook([store])}
         <div class="card">
           <h3>${L({ ja:'曜日別の平均売上', en:'Average sales by weekday', vi:'Doanh thu TB theo thứ' })}</h3>
           ${st.days ? wd.map(x => hBar(L(x.w), { n: x.avg, txt: x.avg ? yenShort(x.avg) : '—' }, wdMax, x.n ? `（${x.n}${L({ ja:'日', en:'d', vi:'n' })}）` : '')).join('')
@@ -3227,7 +3228,7 @@
             <div class="dcell${sv.length ? '' : ' off'}"><span class="dk">${L({ ja:'サーベイ 平均満足度', en:'Survey avg.', vi:'Khảo sát TB' })}</span><b class="dv">${sv.length ? '★' + svAvg.toFixed(1) : '—'}</b></div>
             <div class="dcell${sv.length ? '' : ' off'}"><span class="dk">${L({ ja:'サーベイ 回答数／低評価', en:'Responses / low', vi:'Phản hồi / thấp' })}</span><b class="dv">${sv.length ? sv.length + ' / ' + svLow : '—'}</b></div>
             <div class="dcell${moC ? '' : ' off'}"><span class="dk">${L({ ja:'月次 原価率', en:'Monthly cost ratio', vi:'Giá vốn tháng' })}</span><b class="dv">${moC ? moC.costRate.toFixed(1) + '%' : '—'}</b></div>
-            <div class="dcell${moC ? '' : ' off'}"><span class="dk">${L({ ja:'月次 粗利', en:'Gross profit', vi:'Lãi gộp' })}</span><b class="dv">${moC ? esc(yenShort(moC.gross)) : '—'}</b></div>
+            ${getRole() === 'staff' ? '' : `<div class="dcell${moC ? '' : ' off'}"><span class="dk">${L({ ja:'月次 粗利', en:'Gross profit', vi:'Lãi gộp' })}</span><b class="dv">${moC ? esc(yenShort(moC.gross)) : '—'}</b></div>`}
             <div class="dcell${kzN ? '' : ' off'}"><span class="dk">${L({ ja:'気づきの報告', en:'Insights', vi:'Ghi nhận' })}</span><b class="dv">${kzN ? kzN + L({ ja:'件', en:'', vi:'' }) : '—'}</b></div>
             <div class="dcell${fdN ? '' : ' off'}"><span class="dk">${L({ ja:'食べ残し報告', en:'Leftover reports', vi:'Báo cáo đồ thừa' })}</span><b class="dv">${fdN ? fdN + L({ ja:'件', en:'', vi:'' }) : '—'}</b></div>
           </div>
