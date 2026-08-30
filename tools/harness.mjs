@@ -3135,6 +3135,25 @@ console.log('== 店舗の動き（前週比）＝下がった店から並ぶ・�
      '同じ画面内の切り替えは位置を保つ（/homeのタブ切替だけは従来どおり先頭から）');
 }
 
+console.log('== 受信箱の「メモを付けて完了」＝prompt()をやめ、その場のメモ欄に（2026-08-30 実機で発覚）==');
+{
+  /* iPhoneのホーム画面版（standalone）では prompt/alert/confirm が表示されず undefined が返り、
+     .trim() が落ちて「送れない・画面が変」になっていた（神田さんの実機報告）。 */
+  ok(!/dataset\.ackmemo\b[\s\S]{0,300}?prompt\(/.test(code), '「メモを付けて完了」で prompt() を使っていない');
+  ok(/data-ackmemosave/.test(code) && /data-ackmemocancel/.test(code) && /ack_memo_input/.test(code),
+     'その場に開くメモ欄（保存・やめる）に置き換わっている');
+  // 画面でも確かめる：メモ欄を開いた状態の受信箱に textarea が出る
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('hq', 'all', 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'subrec', store:S, item:'openphoto|2026-08-30', note: JSON.stringify({ by:'店長' }), photos:['PH1'], t: Date.now() }
+    ])); });
+  location.hash = '#/app/inbox';
+  const h = registry.app.innerHTML;
+  ok(/data-ackmemo=/.test(h), '受信箱に「メモを付けて完了」ボタンが出る');
+  ok(/data-ackdone=/.test(h), '「対応済みにする」も従来どおり出る');
+}
+
 console.log('== 今月の着地見込み＋月別の推移（第2弾・2026-08-30）==');
 {
   const D = (off) => new Date(Date.now() - off * 864e5).toLocaleDateString('en-CA');
