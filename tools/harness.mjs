@@ -3036,12 +3036,16 @@ console.log('== 見本写真＋店舗ごとの注意書き（2026-08-30 長田�
   ok(/外観は通りの向かい側から/.test(h), '店舗ごとの注意書きが表示される');
   ok(/id="phsMemoEdit"/.test(h), '店長：注意書きを編集できる');
   ok(/data-mksample=/.test(h), '店長：最近の提出から「これを見本にする」を押せる');
+  ok(/data-phsdel=/.test(h), '店長：見本写真を1枚ずつ「×」で外せる');
+  // 「見本にする」は置き換えでなく追加（2枚まで）＝内観と外観をそろえられる（2026-08-30 長田さんのご要望）
+  ok(/data-mksample[\s\S]{0,700}?\.concat\(r\.photos\)[\s\S]{0,120}?\.slice\(-2\)/.test(code),
+     '「見本にする」＝追加式・重複なし・最新2枚（置き換えではない）');
   // ② スタッフ＝見るだけ
   run(() => { setLS('staff', S, 'ja'); seed(); });
   location.hash = '#/app/openphoto';
   h = registry.app.innerHTML;
   ok(/この店舗の撮り方（見本）/.test(h) && /外観は通りの向かい側から/.test(h), 'スタッフ：見本と注意書きが見える');
-  ok(!/id="phsMemoEdit"/.test(h) && !/data-mksample=/.test(h), 'スタッフ：編集と「見本にする」は出ない');
+  ok(!/id="phsMemoEdit"/.test(h) && !/data-mksample=/.test(h) && !/data-phsdel=/.test(h), 'スタッフ：編集・「見本にする」・「×」は出ない');
   // ③ 未登録のときは、スタッフには枠を出さない／店長には登録のしかたを案内する
   run(() => setLS('staff', S, 'ja'));
   location.hash = '#/app/openphoto';

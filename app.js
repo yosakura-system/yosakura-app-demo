@@ -4545,8 +4545,8 @@
     const sampleHTML = (sPhotos.length || sMemo || canEditSample) ? `
       <div class="card">
         <h3>${L({ ja:'この店舗の撮り方（見本）', en:'How to shoot at this store (sample)', vi:'Cách chụp ở cửa hàng này (mẫu)' })}</h3>
-        ${sPhotos.length ? `<div style="display:flex;gap:10px;margin:8px 0 10px">${sPhotos.map(p => `<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="" style="flex:1;min-width:0;max-width:${sPhotos.length === 1 ? '62%' : '100%'};aspect-ratio:4/3;object-fit:cover;border-radius:12px;height:auto">`).join('')}</div>`
-          : (canEditSample ? `<div class="hint" style="display:block">${L({ ja:'見本写真はまだありません。下の「最近の提出」で「これを見本にする」を押すと、ここに表示されます。', en:'No sample photos yet. Tap “Use as sample” under Recent submissions.', vi:'Chưa có ảnh mẫu. Nhấn “Dùng làm mẫu” ở phần Đã nộp gần đây.' })}</div>` : '')}
+        ${sPhotos.length ? `<div style="display:flex;gap:10px;margin:8px 0 10px">${sPhotos.map((p, i) => `<div style="position:relative;flex:1;min-width:0;max-width:${sPhotos.length === 1 ? '62%' : '100%'}"><img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;height:auto">${canEditSample ? `<button type="button" class="pt-x" data-phsdel="${i}" style="position:absolute;top:6px;right:6px">×</button>` : ''}</div>`).join('')}</div>`
+          : (canEditSample ? `<div class="hint" style="display:block">${L({ ja:'見本写真はまだありません。下の「最近の提出」で「これを見本にする」を押すと、ここに追加されます（内観・外観など2枚まで）。', en:'No sample photos yet. Tap “Use as sample” under Recent submissions (up to 2, e.g. interior & exterior).', vi:'Chưa có ảnh mẫu. Nhấn “Dùng làm mẫu” ở Đã nộp gần đây (tối đa 2 ảnh).' })}</div>` : '')}
         ${sMemo ? `<div style="border:1px solid #d9d2c8;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.8;white-space:pre-wrap">${esc(sMemo)}</div>` : ''}
         ${canEditSample ? (phMemoEditOpen
           ? `<label class="fld" style="margin-top:10px"><span>${L({ ja:'この店舗の注意書き（撮る位置・気をつけること）', en:'Store notes (position, cautions)', vi:'Ghi chú của cửa hàng (vị trí, lưu ý)' })}</span><textarea id="phs_memo" rows="4">${esc(String(sample.memo || ''))}</textarea></label>
@@ -6447,8 +6447,22 @@
       const key = String(b.dataset.mksample);
       const r = subRows(SUB_KINDS.open).find(x => String(x.id || x.t) === key);
       if (!r || !r.photos || !r.photos.length) { toast(L({ ja:'写真が見つかりません', en:'Photo not found', vi:'Không thấy ảnh' })); return; }
-      setPhSample(visibleStores()[0], getPhotoTarget(), { photos: r.photos.slice(0, 2) });
-      toast(L({ ja:'見本にしました', en:'Set as sample', vi:'Đã đặt làm mẫu' })); render(true);
+      /* ★置き換えでなく「追加」（2026-08-30 長田さんのご要望）＝内観と外観の2枚をそろえられる。
+         同じ写真は重複させない。3枚目からは古い方を落として最新の2枚を残す */
+      const st0 = visibleStores()[0], tg0 = getPhotoTarget();
+      const cur0 = phSampleOf(st0, tg0) || {};
+      const merged = (cur0.photos || []).concat(r.photos).filter((p, i, a) => p && a.indexOf(p) === i).slice(-2);
+      setPhSample(st0, tg0, { photos: merged });
+      toast(L({ ja:'見本に追加しました（2枚まで）', en:'Added to samples (up to 2)', vi:'Đã thêm vào mẫu (tối đa 2)' })); render(true);
+    });
+    // 見本写真の「×」＝1枚ずつ外せる（外観だけ差し替えたいとき等）
+    document.querySelectorAll('[data-phsdel]').forEach(b => b.onclick = (e) => {
+      e.stopPropagation();
+      const st0 = visibleStores()[0], tg0 = getPhotoTarget();
+      const cur0 = phSampleOf(st0, tg0) || {};
+      const photos = (cur0.photos || []).filter((_, j) => j !== Number(b.dataset.phsdel));
+      setPhSample(st0, tg0, { photos });
+      toast(L({ ja:'見本から外しました', en:'Removed from samples', vi:'Đã bỏ khỏi mẫu' })); render(true);
     });
     // 点検の「お手本」（2026-08-30 長田さんのご提案の展開）
     if (byId('ckSmpEdit')) byId('ckSmpEdit').onclick = () => { ckSampleEditOpen = true; render(true); };
