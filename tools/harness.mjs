@@ -3108,5 +3108,29 @@ console.log('== 点検の「お手本」＝正しい状態の写真＋注意書�
   ok(!/この店舗のお手本（見本）/.test(registry.app.innerHTML), 'スタッフ：未登録なら枠ごと出さない');
 }
 
+console.log('== 店舗の動き（前週比）＝下がった店から並ぶ・要因分解つき（2026-08-30 神田さんのご要望）==');
+{
+  const D = (off) => new Date(Date.now() - off * 864e5).toLocaleDateString('en-CA');
+  const rows = [];
+  // 下降店（売上-20%・客数-30%→主因=客数）／上昇店（+20%）／データ不足店（直近のみ）
+  for (let i = 1; i <= 7; i++) {
+    rows.push({ store:'牛カツ世桜 長堀橋店', date:D(i), sales:80000, guests:35, t: Date.now() - i });
+    rows.push({ store:'牛カツ世桜 長堀橋店', date:D(i + 7), sales:100000, guests:50, t: Date.now() - i });
+    rows.push({ store:'和牛世桜 広島店', date:D(i), sales:60000, guests:55, t: Date.now() - i });
+    rows.push({ store:'和牛世桜 広島店', date:D(i + 7), sales:50000, guests:50, t: Date.now() - i });
+    rows.push({ store:'日本料理世桜本店', date:D(i), sales:70000, guests:20, t: Date.now() - i });
+  }
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows)); });
+  location.hash = '#/app/dashboard';
+  const h = registry.app.innerHTML;
+  ok(/店舗の動き（前の期間との比較）/.test(h), '本部ダッシュボードに「店舗の動き」が出る');
+  ok(/−20\.0%/.test(h) && /\+20\.0%/.test(h), '前の期間との増減率が出る（−20%と+20%）');
+  ok(/主因＝<\/b>客数|主因＝＜?\/?b＞?客数|主因＝.{0,10}客数/.test(h.replace(/<b>/g,'')), '売上が大きく動いた店には主因（客数/客単価）が付く');
+  const iDown = h.indexOf('−20.0%'), iUp = h.indexOf('+20.0%');
+  ok(iDown >= 0 && iUp >= 0 && iDown < iUp, '下がっている店舗が上に並ぶ');
+  ok(/比較データ不足/.test(h), '前の期間のデータが無い店は「比較データ不足」と出る（隠さない）');
+  ok(/直近28日/.test(h), '期間は7日／28日を切り替えられる');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
