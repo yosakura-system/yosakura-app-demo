@@ -4868,9 +4868,17 @@
   APP_VIEWS.inbox = () => {
     if (getRole() !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
     const showDone = localStorage.getItem('yosakura_inbox_showdone') === '1';
+    /* ★2026-08-31 神田さんのご指摘＝毎日のオープン写真が積もると、古い未対応（気づき等）が
+       件数上限の外へ押し出されて埋もれていた。
+       ①未対応は上限で切らない（未対応が見えないのは受信箱の敗北）
+       ②種類チップで絞り込める（気づきだけを見る等）
+       ③日付見出しでまとめる（過去の分も構造的に辿れる） */
+    const kindFilter = localStorage.getItem('yosakura_inbox_kind') || '';
     const all = collectHqItems();
     const open = all.filter(i => i.state !== 'done');
-    const list = (showDone ? all : open).slice(0, 40);
+    const pool = showDone ? all : open;
+    const filtered = kindFilter ? pool.filter(i => i.kind === kindFilter) : pool;
+    const list = showDone ? filtered.slice(0, 120) : filtered;  // 未対応は全件。対応済み込みのときだけ上限
     const row = (i) => {
       const ph = i.photos && i.photos.length ? `<img class="rep-photo" src="${photoThumb(i.photos[0])}" data-full="${photoFull(i.photos[0])}" alt="">` : `<span class="kind ${i.state==='done'?'b':'a'}">${esc(L(i.label))}</span>`;
       // 公開待ちの投稿だけは「公開する」で完了する（対応済みでは消さない＝未公開のまま埋もれないように）
@@ -4891,20 +4899,38 @@
         ${i.detail?`<div class="l2" style="color:var(--sumi)">${esc(String(i.detail).slice(0,90))}</div>`:''}
         ${st}</div></div>`;
     };
-    const byKind = {};
-    open.forEach(i => { const k = L(i.label); byKind[k] = (byKind[k] || 0) + 1; });
+    // 種類の絞り込みチップ（未対応の件数つき）。押すと同じ位置のまま切り替わる
+    const kindsSeen = {};
+    open.forEach(i => { if (!kindsSeen[i.kind]) kindsSeen[i.kind] = { label: i.label, n: 0 }; kindsSeen[i.kind].n++; });
+    const kchip = (v, label, n) => `<button class="chip${kindFilter === v ? ' on' : ''}" data-inboxkind="${esc(v)}">${esc(label)}${n != null ? ` ${n}` : ''}</button>`;
+    const kindChips = kchip('', L({ ja:'すべて', en:'All', vi:'Tất cả' }), open.length)
+      + Object.keys(kindsSeen).map(k => kchip(k, L(kindsSeen[k].label), kindsSeen[k].n)).join('');
+    // 日付の見出し（今日／昨日／M/D（曜））＝過去の報告も構造的に辿れるように
+    const today = todayKey(), yest = new Date(Date.now() - 864e5).toLocaleDateString('en-CA');
+    const dayLabel = (t) => {
+      const key = new Date(Number(t) || 0).toLocaleDateString('en-CA');
+      if (key === today) return L({ ja:'今日', en:'Today', vi:'Hôm nay' });
+      if (key === yest) return L({ ja:'昨日', en:'Yesterday', vi:'Hôm qua' });
+      return `${mdLabel(key)}（${L(WDAYS[wdOf(key)])}）`;
+    };
+    let lastDay = '';
+    const rowsHtml = list.map(i => {
+      const dl = dayLabel(i.t);
+      const head = dl !== lastDay ? `<div class="idlabel" style="margin:14px 2px 4px">${esc(dl)}</div>` : '';
+      lastDay = dl;
+      return head + row(i);
+    }).join('');
     return `
       <div class="card">
         <h3>${L({ja:'未対応の報告',en:'Needs response',vi:'Chưa xử lý'})} <small style="color:#8a8">${open.length}</small></h3>
         <p class="hint" style="display:block">${L({ja:'現場からの報告のうち、本部がまだ対応していないものです。対応したら「対応済みにする」を押してください（全端末で共有されます）。',en:'Reports not yet handled by HQ. Mark done after you respond (shared across devices).',vi:'Báo cáo HQ chưa xử lý. Bấm đã xử lý sau khi phản hồi (chia sẻ mọi máy).'})}</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-          ${Object.keys(byKind).map(k => `<span class="kind a">${esc(k)} ${byKind[k]}</span>`).join('') || `<span class="kind b">${L({ja:'未対応なし',en:'All clear',vi:'Không còn'})}</span>`}
-        </div>
+        <div class="seg-chips" style="margin-bottom:10px">${kindChips}</div>
         <button class="mini ${showDone?'on':''}" data-inboxdone="1">${showDone?'☑':'☐'} ${L({ja:'対応済みも表示',en:'Show done',vi:'Hiện đã xử lý'})}</button>
       </div>
       <div class="card">
-        <h3>${showDone?L({ja:'すべての報告',en:'All reports',vi:'Tất cả'}):L({ja:'対応が必要な報告',en:'To respond',vi:'Cần xử lý'})}</h3>
-        ${list.length ? list.map(row).join('') : `<div class="muted">${L({ja:'ありません',en:'None',vi:'Không có'})}</div>`}
+        <h3>${showDone?L({ja:'すべての報告',en:'All reports',vi:'Tất cả'}):L({ja:'対応が必要な報告',en:'To respond',vi:'Cần xử lý'})}${kindFilter && kindsSeen[kindFilter] ? `　<span class="muted" style="font-size:12px">${esc(L(kindsSeen[kindFilter].label))}${L({ja:'のみ',en:' only',vi:''})}</span>` : ''}</h3>
+        ${list.length ? rowsHtml : `<div class="muted">${L({ja:'ありません',en:'None',vi:'Không có'})}</div>`}
+        ${!showDone ? `<p class="hint" style="display:block;margin-top:8px">${L({ja:'※ 未対応はすべて表示しています（古いものは下にあります）。対応済みは上のチェックで表示できます。',en:'All unhandled items are shown (older ones below). Toggle above to include done.',vi:'Hiển thị tất cả mục chưa xử lý.'})}</p>` : ''}
       </div>
       <p class="hint" style="display:block">${L({ja:'※ 提出物（1食目写真・日報など）の提出状況は「加盟店・提出物管理」でご確認ください。',en:'For submission status, see “Submissions”.',vi:'Xem trạng thái nộp tại “Nộp tài liệu”.'})}</p>`;
   };
@@ -4975,14 +5001,18 @@
   APP_VIEWS.history = () => {
     const store = visibleStores()[0];
     const masters = getMasters().filter(m => appliesToStore(m, store) && m.oblig !== 'off' && m.detect !== 'none');
-    const days = []; for (let i = 0; i < 7; i++) days.push(dateKeyFor(store, Date.now() - i * 86400000));
+    /* ★期間を選べるように（2026-08-31 神田さんのご指摘＝過去の提出状況が7日で埋もれる） */
+    const dsel = [7, 14, 30].includes(Number(localStorage.getItem('yosakura_hist_days'))) ? Number(localStorage.getItem('yosakura_hist_days')) : 7;
+    const days = []; for (let i = 0; i < dsel; i++) days.push(dateKeyFor(store, Date.now() - i * 86400000));
     const rows = days.map(dk => {
       const chips = masters.map(m => { const sub = detectSubmitted(store, m, dk); const st = getStatus(store, m.id, dk); const jl = st.judge ? ` ${L(JUDGE_LABEL[st.judge])}` : ''; return `<span class="kind ${sub?'b':'a'}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(m.name))}${sub?'✓':'✗'}${jl}</span>`; }).join('');
       // 提出者＝その日に提出された記録から（同じ方が複数出していれば1回だけ表示）
       const who = [...new Set(masters.map(m => detectSubmitted(store, m, dk) ? submitterOf(store, m, dk) : '').filter(Boolean))];
       return `<div class="rep"><div class="body"><div class="l1">${dk}${isHoliday(store,dk)?` <small style="color:#8a8">(${L({ja:'定休日',en:'Holiday',vi:'Nghỉ'})})</small>`:''}</div><div class="l2">${chips || '—'}</div>${who.length?`<div class="l2">${L({ja:'提出者',en:'Submitted by',vi:'Người nộp'})}：${esc(who.join('・'))}</div>`:''}</div></div>`;
     }).join('');
-    return `<div class="card"><h3>${L({ja:'提出履歴（直近7日）',en:'History (last 7 days)',vi:'Lịch sử (7 ngày)'})} — ${esc(storeShort(store))}</h3>${rows}
+    return `<div class="card"><h3>${L({ja:`提出履歴（直近${dsel}日）`,en:`History (last ${dsel} days)`,vi:`Lịch sử (${dsel} ngày)`})} — ${esc(storeShort(store))}</h3>
+      <div class="seg-chips" style="margin:6px 0 10px">${[7, 14, 30].map(n => `<button class="chip${dsel === n ? ' on' : ''}" data-histdays="${n}">${n}${L({ja:'日',en:'d',vi:'n'})}</button>`).join('')}</div>
+      ${rows}
       <p class="hint" style="display:block">${L({ja:'※ 実際の提出データ（全端末同期）から表示しています。提出者は、お名前をご登録いただいた端末からの提出に記録されます。',en:'From real synced submission data. The submitter is recorded when a name is registered on the device.',vi:'Từ dữ liệu đã nộp (đồng bộ). Người nộp được ghi khi thiết bị đã đăng ký tên.'})}</p></div>`;
   };
 
@@ -4993,9 +5023,12 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays]');
       if (!t) return;
-      if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(); return; }
+      if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(true); return; }
+      // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
+      if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
+      if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
       if (t.dataset.ackdone) { setAck(t.dataset.ackdone, 'done', ''); toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(true); return; }
       if (t.dataset.ackmemo) {
         // ★ブラウザのダイアログは使わない（iPhoneのホーム画面版では表示されない）＝その場にメモ欄を開く
