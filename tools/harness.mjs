@@ -1257,6 +1257,27 @@ console.log('== 定期衛生管理を、店舗ごと・曜日ごとに作り替�
      '曜日で分ける前に足した項目は、どの曜日でも出続ける（画面から消えない）');
   ok(/この店舗の追加項目（月/.test(mon2), 'どの曜日へ足すのかが見出しに出る');
 
+  // ③b 追加項目をホール／キッチン等の分類へ振り分けられる（2026-08-30 長田さんのご要望）
+  {
+    const seedGrp = () => localStorage.setItem('yosakura_demo_ckitem', JSON.stringify({
+      [`${S}||open`]: [{ id:'open-x-hall1', label:'ホールへ振り分けた独自項目', g:'ホール' },
+                       { id:'open-x-none1', label:'分類なしの独自項目' }]
+    }));
+    run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); seedGrp(); });
+    location.hash = '#/app/checklist';
+    const h = registry.app.innerHTML;
+    ok(/id="ck_grp"/.test(h) && /<option value="ホール">/.test(h), '追加のときにホール等の分類を選べる');
+    const tail = h.split('この店舗の追加項目')[1] || '';
+    ok(/ホールへ振り分けた独自項目/.test(h) && !tail.includes('ホールへ振り分けた独自項目'),
+       '振り分けた項目は「追加項目」枠でなく、そのグループの中に出る');
+    ok(tail.includes('分類なしの独自項目'), '分類なしの項目は、従来どおり「追加項目」枠に出る');
+    ok(/data-ckdel="open-x-hall1"/.test(h), '振り分けた項目も「×」で消せる');
+    // スタッフには分類の選択そのものが出ない（追加ができないため）
+    run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); seedGrp(); });
+    location.hash = '#/app/checklist';
+    ok(!/id="ck_grp"/.test(registry.app.innerHTML), 'スタッフには分類の選択が出ない');
+  }
+
   /* ④ 5種類とも店舗ごとに作り替えられる（2026-08-14 神田さんのご要望で拡大）。
      オープン／アイドル／クローズ／桜も、設備・レイアウトが店舗で違うため。 */
   for (const m of ['open', 'idle', 'close', 'sakura']) {
