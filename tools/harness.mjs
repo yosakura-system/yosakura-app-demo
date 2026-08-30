@@ -3263,5 +3263,18 @@ console.log('== 受信箱：未対応が埋もれない＋提出履歴の期間�
   ok(/data-histdays="7"/.test(h) && /data-histdays="14"/.test(h), '期間チップ（7/14/30日）が出る');
 }
 
+console.log('== 提出状況マトリクス（店舗×直近7日）＝過去の提出が見える（2026-08-31 神田さんのご要望）==');
+{
+  run(() => setLS('hq', 'all', 'ja'));
+  location.hash = '#/app/teishutsu';
+  const h = registry.app.innerHTML;
+  ok(/提出状況（店舗別・直近7日）/.test(h), '提出物管理に店舗×7日のマトリクスが出る');
+  ok(/今日/.test(h) && /日次の提出物だけ/.test(h), '今日の列と、数え方の説明がある');
+  ok(/data-go="\/app\/history\?s=/.test(h), '行をタップでその店舗の提出履歴へ飛べる');
+  const S2 = '和牛世桜 広島店';
+  location.hash = '#/app/history?s=' + encodeURIComponent(S2);
+  ok(/提出履歴（直近\d+日） — 広島店/.test(registry.app.innerHTML), '本部が指定した店舗の提出履歴が開く（?s=）');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
