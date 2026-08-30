@@ -2307,7 +2307,7 @@ console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12
 
     // 本部が設定すると、店舗の画面に入口が出る（設定は全端末で共有される）
     FETCH_ROWS = { ok:true, reports:[] };
-    run(() => setLS('hq', 'all', 'ja'));
+    run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'sheets'); }); // タブ化後＝シートの場所タブで見る
     location.hash = '#/app/teishutsu';
     ok(/data-msturl="compliance"/.test(registry.app.innerHTML), '本部の画面に、シートの場所を入れる欄がある');
 
@@ -2341,11 +2341,14 @@ console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12
     location.hash = '#/app/getsuji';
     const set3 = registry.app.innerHTML;
     ok(/シートを開く/.test(set3), 'URLだけの設定でも「シートを開く」が出る');
-    // 一覧はこちらの既定のまま＝提出物を足せば、URL設定後でも本部の画面に出る
-    run(() => setLS('hq', 'all', 'ja'));
+    // 一覧はこちらの既定のまま＝提出物を足せば、URL設定後でも本部の画面に出る（タブ化後＝シートとマスタを別々に見る）
+    run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'sheets'); });
     location.hash = '#/app/teishutsu';
     const hqAfter = registry.app.innerHTML;
-    ok(/data-msturl="compliance"/.test(hqAfter) && /メニューブック|卓上POP/.test(hqAfter),
+    run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'master'); });
+    location.hash = '#/app/teishutsu';
+    const hqMaster = registry.app.innerHTML;
+    ok(/data-msturl="compliance"/.test(hqAfter) && /メニューブック|卓上POP/.test(hqMaster),
        'URLを入れても、提出物の一覧は既定のまま（あとから足した項目も出る）');
 
     /* ★店舗ごとに別のシートを持てる（2026-08-14）。
@@ -2374,8 +2377,8 @@ console.log('== 月次・週次の提出物もアプリで出せる（2026-08-12
     location.hash = '#/app/getsuji';
     const gyuk = registry.app.innerHTML;
     ok(/kyotsu/.test(gyuk) && !/asakusabashi/.test(gyuk), '設定していない店舗には、共通のURLが出る（他店のシートは出ない）');
-    // 本部の画面に、店舗ごとの入力欄がある
-    run(() => setLS('hq', 'all', 'ja'));
+    // 本部の画面に、店舗ごとの入力欄がある（タブ化後＝シートの場所タブ）
+    run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'sheets'); });
     location.hash = '#/app/teishutsu';
     const hqStore = registry.app.innerHTML;
     ok(/data-mstsurl="compliance__/.test(hqStore), '本部の画面に、店舗ごとのシートを入れる欄がある');
@@ -3265,7 +3268,7 @@ console.log('== 受信箱：未対応が埋もれない＋提出履歴の期間�
 
 console.log('== 提出状況マトリクス（店舗×直近7日）＝過去の提出が見える（2026-08-31 神田さんのご要望）==');
 {
-  run(() => setLS('hq', 'all', 'ja'));
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'matrix'); });
   location.hash = '#/app/teishutsu';
   const h = registry.app.innerHTML;
   ok(/提出状況（店舗別・直近7日）/.test(h), '提出物管理に店舗×7日のマトリクスが出る');
@@ -3274,6 +3277,40 @@ console.log('== 提出状況マトリクス（店舗×直近7日）＝過去の�
   const S2 = '和牛世桜 広島店';
   location.hash = '#/app/history?s=' + encodeURIComponent(S2);
   ok(/提出履歴（直近\d+日） — 広島店/.test(registry.app.innerHTML), '本部が指定した店舗の提出履歴が開く（?s=）');
+}
+
+console.log('== 提出物管理のタブ化＋日報の提出経路（アプリ／取込）の見分け（2026-08-31 神田さんのご要望）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const D0 = new Date().toLocaleDateString('en-CA');
+  // ① タブ＝開いたタブの中身だけが出る
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'today'); });
+  location.hash = '#/app/teishutsu';
+  let h = registry.app.innerHTML;
+  ok(/data-ttab="matrix"/.test(h) && /data-ttab="sheets"/.test(h), 'タブ（本日／店舗別×7日／マスタ／シートの場所）が出る');
+  ok(/本日の提出状況（全店）/.test(h) && !/提出物マスタ（本部設定）/.test(h), '「本日」タブでは本日の状況だけが出る');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'master'); });
+  location.hash = '#/app/teishutsu';
+  h = registry.app.innerHTML;
+  ok(/提出物マスタ（本部設定）/.test(h) && !/本日の提出状況（全店）/.test(h), '「マスタ」タブではマスタだけが出る');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'sheets'); });
+  location.hash = '#/app/teishutsu';
+  ok(/シートの場所/.test(registry.app.innerHTML), '「シートの場所」タブが出る');
+  // ② 日報の経路＝取込（src:drive）は ○／アプリ入力は ●（マトリクス）・履歴には（取込）/（アプリ）
+  const seedRoute = (src) => () => {
+    setLS('hq', 'all', 'ja');
+    localStorage.setItem('yosakura_teishutsu_tab', 'matrix');
+    const row = { store: S, date: D0, sales: 100000, guests: 40, t: Date.now() };
+    if (src) row.src = src;
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([row]));
+  };
+  run(seedRoute('drive'));
+  location.hash = '#/app/history?s=' + encodeURIComponent(S);
+  ok(/（取込）/.test(registry.app.innerHTML), '提出履歴：シート取込の日報は（取込）と出る');
+  run(seedRoute(''));
+  location.hash = '#/app/history?s=' + encodeURIComponent(S);
+  ok(/（アプリ）/.test(registry.app.innerHTML), '提出履歴：アプリ入力の日報は（アプリ）と出る');
+  ok(/route === 'import'[\s\S]{0,200}?○/.test(code), 'マトリクス：取込の日は ○（アプリ入力は ●）で描き分ける');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
