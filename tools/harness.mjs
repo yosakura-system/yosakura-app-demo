@@ -3132,5 +3132,25 @@ console.log('== 店舗の動き（前週比）＝下がった店から並ぶ・�
   ok(/直近28日/.test(h), '期間は7日／28日を切り替えられる');
 }
 
+console.log('== 今月の着地見込み＋月別の推移（第2弾・2026-08-30）==');
+{
+  const D = (off) => new Date(Date.now() - off * 864e5).toLocaleDateString('en-CA');
+  // 今日と先月内の1日に売上を置く＝どの日付に実行しても「今月あり」「別の月あり」になる
+  const rows = [
+    { store:'牛カツ世桜 長堀橋店', date:D(0), sales:100000, guests:40, t: Date.now() },
+    { store:'牛カツ世桜 長堀橋店', date:D(0), goal:3000000, sales:100000, guests:40, t: Date.now() + 1 },
+    { store:'牛カツ世桜 長堀橋店', date:D(35), sales:90000, guests:38, t: Date.now() - 35 }
+  ];
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows)); });
+  location.hash = '#/app/dashboard';
+  const h = registry.app.innerHTML;
+  ok(/今月の着地見込み/.test(h), '本部ダッシュボードに「今月の着地見込み」が出る');
+  ok(/ここまで/.test(h) && /直近ペース/.test(h), '実績と直近ペース（式の材料）を添えて出す');
+  ok(/目標/.test(h) && /%/.test(h), '総括表に目標が入っている店は目標比が出る');
+  ok(/今月の入力なし/.test(h), '今月の入力が無い店も一覧に出る（隠さない）');
+  ok(/月別の推移（全店合計）/.test(h), '月別の推移（全店合計）が出る');
+  ok(/進行中/.test(h), '進行中の月にはその旨が付く');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

@@ -2960,6 +2960,71 @@
       </div>`;
   }
 
+  /* --- 今月の見通し＋月別の推移（第2弾）＝2026-08-30 神田さんのご要望 ---
+     月例MTGで「今月どこまで行きそうか」を本部が先に言えるようにする。
+     ・着地見込み＝今月ここまでの実績 ＋ 直近7日の平均日商 × 残り日数
+       （直近7日＝定休日の0もそのまま含む＝いまのペースが素直に出る。式を画面にも書く＝説明できる数字だけを出す）
+     ・目標は総括表に入っていれば出す（無ければ出さない。勝手な基準を作らない） */
+  function skOutlook(vis) {
+    const today = todayKey();
+    const ym = todayYm();
+    const mDays = daysOfYm(ym);
+    const elapsed = mDays.filter(d => d <= today).length;
+    const remain = mDays.length - elapsed;
+    const all = getSk().filter(r => vis.includes(r.store));
+    const last7 = []; for (let i = 7; i >= 1; i--) last7.push(new Date(Date.now() - i * 864e5).toLocaleDateString('en-CA'));
+    const rows = vis.map(s => {
+      const rm = all.filter(r => r.store === s && ymOfDate(r.date) === ym);
+      const mtd = rm.reduce((a, r) => a + numOr0(r.sales), 0);
+      if (!rm.length) return { store: s, none: true };
+      const pace = all.filter(r => r.store === s && last7.includes(r.date)).reduce((a, r) => a + numOr0(r.sales), 0) / 7;
+      const fc = Math.round(mtd + pace * remain);
+      let goal = 0; rm.slice().sort((a, b) => b.t - a.t).some(r => { if (numOr0(r.goal) > 0) { goal = numOr0(r.goal); return true; } return false; });
+      return { store: s, mtd, days: rm.length, pace: Math.round(pace), fc, goal };
+    }).sort((a, b) => (a.none ? -1 : a.fc) < (b.none ? -1 : b.fc) ? 1 : -1);
+    const maxFc = Math.max(1, ...rows.map(r => r.none ? 0 : r.fc));
+    // 月別の推移（全店合計・貯まった月ぶんだけ）
+    const byYm = {};
+    all.forEach(r => { const k = ymOfDate(r.date); if (k) byYm[k] = (byYm[k] || 0) + numOr0(r.sales); });
+    const yms = Object.keys(byYm).sort().slice(-6);
+    const maxYm = Math.max(1, ...yms.map(k => byYm[k]));
+    return `
+      <div class="card">
+        <h3>${L({ ja:'今月の着地見込み', en:'This month: projected close', vi:'Dự kiến chốt tháng này' })}</h3>
+        <div class="hint" style="display:block;margin:2px 0 10px">${L({
+          ja:`今月ここまでの実績に、直近7日の平均ペース × 残り${remain}日を足した見込みです（定休日も含んだ素のペース）。`,
+          en:`Month-to-date plus the last-7-day average pace × ${remain} remaining days.`,
+          vi:`Lũy kế tháng + tốc độ TB 7 ngày × ${remain} ngày còn lại.` })}</div>
+        ${rows.map(r => r.none ? `
+          <div class="bar-row"><div class="bl"><span>${esc(storeLabel(r.store))}</span><b class="muted">${L({ ja:'今月の入力なし', en:'No data this month', vi:'Chưa nhập tháng này' })}</b></div></div>` : `
+          <button class="cmp" data-storelink="${esc(r.store)}">
+            <div class="cmp-top"><span class="cmp-name">${esc(storeLabel(r.store))}</span><b class="cmp-val">${esc(yenShort(r.fc))}</b></div>
+            <div class="cmp-bar"><div class="cmp-fill" style="width:${Math.round(r.fc / maxFc * 100)}%"></div></div>
+            <div class="cmp-sub"><span style="display:block;white-space:normal;line-height:1.7">${L({ ja:'ここまで', en:'MTD', vi:'Lũy kế' })} ${esc(yenShort(r.mtd))}（${r.days}${L({ ja:'日', en:'d', vi:'n' })}） ・ ${L({ ja:'直近ペース', en:'Pace', vi:'Tốc độ' })} ${esc(yenShort(r.pace))}/${L({ ja:'日', en:'day', vi:'ngày' })}${r.goal ? ` ・ ${L({ ja:'目標', en:'Goal', vi:'Mục tiêu' })} ${esc(yenShort(r.goal))}（<b style="color:${r.fc >= r.goal ? '#2a7' : '#a23b3b'}">${Math.round(r.fc / r.goal * 100)}%</b>）` : ''}</span></div>
+          </button>`).join('')}
+        <div class="hint" style="display:block;margin-top:8px">${L({
+          ja:'※ 見込みはいまのペースが続いた場合の目安です。目標は総括表に入力がある店舗のみ表示します。',
+          en:'A guide assuming current pace continues. Goals shown only where entered.',
+          vi:'Chỉ là ước tính theo tốc độ hiện tại.' })}</div>
+      </div>
+      ${yms.length >= 2 ? `
+      <div class="card">
+        <h3>${L({ ja:'月別の推移（全店合計）', en:'Monthly trend (all stores)', vi:'Xu hướng theo tháng (toàn bộ)' })}</h3>
+        ${yms.map((k, i) => {
+          const prev = i > 0 ? byYm[yms[i - 1]] : 0;
+          const d = prev > 0 ? (byYm[k] - prev) / prev * 100 : null;
+          const cur = k === ym;
+          const sub = [cur ? L({ ja:'進行中', en:'in progress', vi:'đang diễn ra' }) : '',
+                       d == null ? '' : (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(1) + '%'].filter(Boolean).join(' ・ ');
+          return hBar(ymLabel(k), { n: byYm[k], txt: yenShort(byYm[k]) }, maxYm, sub);
+        }).join('')}
+        <div class="hint" style="display:block;margin-top:6px">${L({
+          ja:'※ 進行中の月は月末に向けて伸びていきます（前月比は月が締まってから見てください）。',
+          en:'The current month grows until month-end.',
+          vi:'Tháng hiện tại sẽ tăng đến cuối tháng.' })}</div>
+      </div>` : ''}`;
+  }
+
   /* --- 個店カルテ（#/store?s=店舗&ym=YYYY-MM）--- */
   const SK_FIELDS = [
     { k:'sales',   t:{ ja:'当日売上', en:'Sales', vi:'Doanh thu' },              f:'yen' },
@@ -3521,7 +3586,7 @@
         if (!sk.length) return '';
         const latest = {}; sk.slice().sort((a,b)=>a.t-b.t).forEach(r => latest[r.store] = r);
         const rows = Object.values(latest).sort((a,b)=>b.t-a.t).slice(0,6);
-        return `${vis.length > 1 ? skMovement(vis, '/app/dashboard') + skCompare(vis, '/app/dashboard') : ''}
+        return `${vis.length > 1 ? skMovement(vis, '/app/dashboard') + skOutlook(vis) + skCompare(vis, '/app/dashboard') : ''}
           <div class="card"><h3>${L({ ja:'最新の総括表（店舗別）', en:'Latest daily report by store', vi:'Báo cáo mới theo cửa hàng' })}</h3>${rows.map(skRow).join('')}</div>`;
       })()}
       ${(() => {
