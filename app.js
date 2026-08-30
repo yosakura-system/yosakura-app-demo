@@ -2869,7 +2869,8 @@
       return { store: s, st, val: metric.get(st), sp: spDays.map(d => byD[d] || 0) };
     }).sort((a, b) => b.val - a.val);
     const max = Math.max(1, ...rows.map(r => r.val));
-    const chip = (o, key, cur) => `<button class="chip${o.v === cur ? ' on' : ''}" data-go="${esc(base)}?p=${key === 'p' ? o.v : p}&m=${key === 'm' ? o.v : mv}">${esc(L(o.t))}</button>`;
+    const wq = params.get('w') === '28' ? '&w=28' : '';   // 「店舗の動き」の期間選択を保つ
+    const chip = (o, key, cur) => `<button class="chip${o.v === cur ? ' on' : ''}" data-go="${esc(base)}?p=${key === 'p' ? o.v : p}&m=${key === 'm' ? o.v : mv}${wq}">${esc(L(o.t))}</button>`;
     const totalByDay = (d) => all.filter(r => r.date === d).reduce((s, r) => s + numOr0(r.sales), 0);
     return `
       <div class="card">
@@ -2890,6 +2891,72 @@
             <div class="cmp-sub"><span>${L({ ja:'入力', en:'Days', vi:'Ngày' })} ${r.st.days}${L({ ja:'日', en:'d', vi:'n' })}${r.st.days ? ` ・ ${L({ ja:'客数', en:'Guests', vi:'Khách' })} ${r.st.guests} ・ ${L({ ja:'客単価', en:'Per', vi:'BQ' })} ${esc(yenShort(r.st.per))}` : ''}</span>${spark(r.sp)}</div>
           </button>`).join('')}
         <div class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 店舗をタップすると、その店の詳細（カルテ）が開きます', en:'Tap a store to open its detail page', vi:'Chạm vào cửa hàng để xem chi tiết' })}</div>
+      </div>`;
+  }
+
+  /* --- 店舗の動き（前週比）＝2026-08-30 神田さんのご要望 ---
+     「本部が数字を把握している」を作る1枚。平均ではなく**変化**を見る：
+     ・直近7日（昨日まで）と、その前7日を比べる＝曜日の構成が同じ＝週の波に惑わされない
+     ・下がっている店舗から上に並べる＝先に気づいて、本部から店舗へ声をかけるための順番
+     ・売上の変化を「客数」と「客単価」に分解＝「単価を上げる/下げる」の議論に数字で答えられる
+     ⚠️ 順位づけ・評価のためではない（サーベイと同じ方針）。注記で明示する。 */
+  function skMovement(vis, base) {
+    const params = currentRoute().params;
+    const w = params.get('w') === '28' ? 28 : 7;
+    const dayList = (endOffset, n) => { const out = []; for (let i = endOffset + n - 1; i >= endOffset; i--) out.push(new Date(Date.now() - i * 864e5).toLocaleDateString('en-CA')); return out; };
+    const A = dayList(1, w);       // 昨日までの w 日（今日は営業中＝入れると必ず下がって見える）
+    const B = dayList(1 + w, w);   // その前の w 日
+    const inWin = (r, win) => r.date >= win[0] && r.date <= win[win.length - 1];
+    const all = getSk().filter(r => vis.includes(r.store));
+    const pctOf = (a, b) => b > 0 ? (a - b) / b * 100 : null;
+    const rows = vis.map(s => {
+      const stA = skStats(all.filter(r => r.store === s && inWin(r, A)));
+      const stB = skStats(all.filter(r => r.store === s && inWin(r, B)));
+      const ok = stA.days > 0 && stB.days > 0 && stB.sales > 0;
+      return { store: s, stA, stB,
+               sales: ok ? pctOf(stA.sales, stB.sales) : null,
+               guests: ok ? pctOf(stA.guests, stB.guests) : null,
+               per: ok ? pctOf(stA.per, stB.per) : null };
+    }).sort((a, b) => ((a.sales == null) - (b.sales == null)) || ((a.sales || 0) - (b.sales || 0)));
+    const up = rows.filter(r => r.sales != null && r.sales >= 0).length;
+    const down = rows.filter(r => r.sales != null && r.sales < 0).length;
+    const nodata = rows.length - up - down;
+    const fmtPct = (v) => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '%';
+    const colOf = (v) => v == null ? 'var(--gray)' : (v < 0 ? '#a23b3b' : '#2a7');
+    // 売上が±5%以上動いたとき、客数と客単価のどちらが主因かを添える（説明できる形だけを出す）
+    const cause = (r) => {
+      if (r.sales == null || Math.abs(r.sales) < 5) return '';
+      const which = Math.abs(r.guests || 0) >= Math.abs(r.per || 0)
+        ? L({ ja:'客数', en:'guests', vi:'khách' }) : L({ ja:'客単価', en:'per-guest', vi:'BQ/khách' });
+      return ` ・ <b>${L({ ja:'主因＝', en:'mainly: ', vi:'chủ yếu: ' })}${which}</b>`;
+    };
+    const keep = (k) => { const v = params.get(k); return v ? `&${k}=${encodeURIComponent(v)}` : ''; };
+    const wchip = (n, label) => `<button class="chip${w === n ? ' on' : ''}" data-go="${esc(base)}?w=${n}${keep('p')}${keep('m')}">${esc(L(label))}</button>`;
+    return `
+      <div class="card">
+        <h3>${L({ ja:'店舗の動き（前の期間との比較）', en:'Store movement (vs previous period)', vi:'Biến động cửa hàng (so kỳ trước)' })}</h3>
+        <div class="seg-chips">${wchip(7, { ja:'直近7日', en:'Last 7 days', vi:'7 ngày' })}${wchip(28, { ja:'直近28日', en:'Last 28 days', vi:'28 ngày' })}</div>
+        <div class="hint" style="display:block;margin:2px 0 10px">${L({
+          ja:`昨日までの${w}日と、その前の${w}日の比較（曜日の構成が同じ＝週の波の影響を受けません）。下がっている店舗から並べています。`,
+          en:`Last ${w} days (through yesterday) vs the ${w} days before. Sorted with declining stores first.`,
+          vi:`${w} ngày gần nhất so với ${w} ngày trước đó. Cửa hàng giảm xếp trên.` })}</div>
+        <div class="stat-row">
+          <div class="stat"><div class="n" style="color:#a23b3b">${down}</div><div class="k">${L({ ja:'下降', en:'Down', vi:'Giảm' })}</div></div>
+          <div class="stat"><div class="n" style="color:#2a7">${up}</div><div class="k">${L({ ja:'上昇', en:'Up', vi:'Tăng' })}</div></div>
+          <div class="stat"><div class="n">${nodata}</div><div class="k">${L({ ja:'比較データ不足', en:'Not enough data', vi:'Thiếu dữ liệu' })}</div></div>
+        </div>
+        ${rows.map(r => `
+          <button class="cmp" data-storelink="${esc(r.store)}">
+            <div class="cmp-top"><span class="cmp-name">${esc(storeLabel(r.store))}</span>
+              <b class="cmp-val" style="color:${colOf(r.sales)}">${r.sales == null ? `<span class="muted">${L({ ja:'比較データ不足', en:'No data', vi:'Thiếu dữ liệu' })}</span>` : esc(fmtPct(r.sales))}</b></div>
+            <div class="cmp-sub"><span style="display:block;white-space:normal;line-height:1.7">${r.sales == null
+              ? `${L({ ja:'入力', en:'Days', vi:'Ngày' })} ${r.stA.days}${L({ ja:'日', en:'d', vi:'n' })}（${L({ ja:'前の期間', en:'prev', vi:'kỳ trước' })} ${r.stB.days}${L({ ja:'日', en:'d', vi:'n' })}）`
+              : `${L({ ja:'売上', en:'Sales', vi:'DT' })} ${esc(yenShort(r.stA.sales))}（${L({ ja:'前', en:'prev ', vi:'trước ' })}${esc(yenShort(r.stB.sales))}） ・ ${L({ ja:'客数', en:'Guests', vi:'Khách' })} <b style="color:${colOf(r.guests)}">${esc(fmtPct(r.guests))}</b> ・ ${L({ ja:'客単価', en:'Per', vi:'BQ' })} <b style="color:${colOf(r.per)}">${esc(fmtPct(r.per))}</b>${cause(r)}`}</span></div>
+          </button>`).join('')}
+        <div class="hint" style="display:block;margin-top:10px">${L({
+          ja:'※ 順位づけや評価のためではなく、変化に早く気づいて店舗と話すための一覧です。店舗をタップすると詳細（カルテ）が開きます。',
+          en:'Not a ranking — a list to notice changes early and talk with stores. Tap a store for details.',
+          vi:'Không phải xếp hạng — để sớm nhận ra thay đổi và trao đổi với cửa hàng.' })}</div>
       </div>`;
   }
 
@@ -3454,7 +3521,7 @@
         if (!sk.length) return '';
         const latest = {}; sk.slice().sort((a,b)=>a.t-b.t).forEach(r => latest[r.store] = r);
         const rows = Object.values(latest).sort((a,b)=>b.t-a.t).slice(0,6);
-        return `${vis.length > 1 ? skCompare(vis, '/app/dashboard') : ''}
+        return `${vis.length > 1 ? skMovement(vis, '/app/dashboard') + skCompare(vis, '/app/dashboard') : ''}
           <div class="card"><h3>${L({ ja:'最新の総括表（店舗別）', en:'Latest daily report by store', vi:'Báo cáo mới theo cửa hàng' })}</h3>${rows.map(skRow).join('')}</div>`;
       })()}
       ${(() => {
