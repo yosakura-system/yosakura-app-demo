@@ -3227,5 +3227,41 @@ await new Promise(r=>setTimeout(r, 50));
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== 受信箱：未対応が埋もれない＋提出履歴の期間切替（2026-08-31 神田さんのご指摘）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const now = Date.now();
+  // 未対応45件（オープン写真40＋3日前の気づき5）＝以前の「新しい順40件」だと気づきが押し出されて埋もれていた
+  const reps = [];
+  for (let i = 0; i < 40; i++) reps.push({ kind:'subrec', store:S, item:`openphoto|d${i}`, note:'{}', photos:['P'+i], t: now - i * 3600e3 });
+  const kzRows = [];
+  for (let i = 0; i < 5; i++) kzRows.push({ store:S, cat:'service', note:'埋もれていた気づき'+i, photos:[], t: now - 3 * 864e5 - i * 60e3 });
+  const seedInbox = (kindFilter) => () => {
+    setLS('hq', 'all', 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify(reps));
+    localStorage.setItem('yosakura_demo_kizuki', JSON.stringify(kzRows));
+    localStorage.setItem('yosakura_demo_fp', '[]');
+    localStorage.setItem('yosakura_demo_community', '[]');
+    if (kindFilter) localStorage.setItem('yosakura_inbox_kind', kindFilter);
+  };
+  run(seedInbox(''));
+  location.hash = '#/app/inbox';
+  let h = registry.app.innerHTML;
+  ok((h.match(/data-ackdone=/g) || []).length === 45, '未対応は上限で切らない（45件すべて出る）');
+  ok(/埋もれていた気づき4/.test(h), '3日前の気づきも一覧に出る（埋もれない）');
+  ok(/data-inboxkind="kizuki"/.test(h) && /data-inboxkind=""/.test(h), '種類の絞り込みチップ（すべて／気づき等）が出る');
+  ok(/今日/.test(h), '日付の見出しでまとまる');
+  run(seedInbox('kizuki'));
+  location.hash = '#/app/inbox';
+  h = registry.app.innerHTML;
+  ok((h.match(/data-ackdone=/g) || []).length === 5 && /埋もれていた気づき0/.test(h), '「気づき」チップで気づきだけに絞れる');
+  // 提出履歴＝期間を選べる（7日固定だった）
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_hist_days', '30'); });
+  location.hash = '#/app/history';
+  h = registry.app.innerHTML;
+  ok(/提出履歴（直近30日）/.test(h), '提出履歴の期間を30日へ広げられる');
+  ok(/data-histdays="7"/.test(h) && /data-histdays="14"/.test(h), '期間チップ（7/14/30日）が出る');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
