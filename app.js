@@ -1944,6 +1944,12 @@
     const n = allIds.filter(id => done[id]).length;
     /* 店舗で外した共通項目は画面から消す。空になったグループは見出しごと出さない
        （見出しだけが残ると「中身が消えた」ように見えるため）。 */
+    /* 追加項目の分類（2026-08-30 長田さんのご要望）：
+       追加のときにホール／キッチン等の分類を選べる。選んだ項目はそのグループの末尾に並ぶ。
+       ★分類は日本語の見出し文字列で持つ（c.g）＝グループの並び替えに耐える。
+         見出しが変わって一致しなくなった項目は、従来どおり「この店舗の追加項目」枠に出る（消えない）。 */
+    const grpJa = (gr) => (gr.g && gr.g.ja) || String(gr.g);
+    const customRow = (c) => `<div class="check ${done[c.id]?'done':''}" data-ck="${c.id}"><span class="box">${svg('tick')}</span><span class="lbl"${editable && canRemove ? ' style="padding-right:26px"' : ''}>${esc(c.label)}</span>${editable && canRemove ? `<button class="ck-del" data-ckdel="${c.id}" aria-label="delete">×</button>` : ''}</div>`;
     const groupsHTML = groups.map((gr, gi) => {
       const rows = gr.items.map((it, ii) => {
         const id = `${idBase}-c-${gi}-${ii}`;
@@ -1951,10 +1957,12 @@
         // ×は右端に重ねて出るので、文章がその下へ潜らないように右側を空ける
         return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl"${canHide && canRemove ? ' style="padding-right:26px"' : ''}>${esc(L(it))}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span>${canHide && canRemove ? `<button class="ck-del" data-ckhide="${id}" aria-label="${esc(L({ ja:'この店舗では使わない', en:'Not used at this store', vi:'Không dùng ở cửa hàng này' }))}">×</button>` : ''}</div>`;
       }).join('');
-      if (!rows) return '';
+      // この分類に振り分けられた追加項目は、グループの末尾に出す
+      const extras = custom.filter(c => c.g && c.g === grpJa(gr)).map(customRow).join('');
+      if (!rows && !extras) return '';
       return `
       <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${esc(L(gr.g))}</h2></div>
-      <div class="card" style="padding:4px 14px">${rows}</div>`;
+      <div class="card" style="padding:4px 14px">${rows}${extras}</div>`;
     }).join('');
     /* 外した項目は消さずに畳んでおく＝間違えて外しても、その場で戻せるようにする */
     const hiddenHTML = (canHide && hidden.length) ? `
@@ -1971,18 +1979,27 @@
     const customTitle = mode === 'hygiene'
       ? `${L({ ja:'この店舗の追加項目', en:'Store-specific items', vi:'Mục riêng của cửa hàng' })}（${L(WDAY_LABELS[hygDay])}${L({ ja:'曜日', en:'', vi:'' })}）`
       : L({ ja:'この店舗の追加項目', en:'Store-specific items', vi:'Mục riêng của cửa hàng' });
+    /* 分類に振り分けた項目は上のグループへ出したので、ここには「分類なし」だけを出す。
+       ★昔の追加項目（gなし）と、見出しが変わって行き先を失った項目もここに出る＝画面から消えない */
+    const grpJaList = groups.map(grpJa);
+    const unassigned = custom.filter(c => !c.g || !grpJaList.includes(c.g));
     const customHTML = `
       <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${customTitle}</h2></div>
       <div class="card" style="padding:4px 14px">
-        ${custom.length ? custom.map(c => `<div class="check ${done[c.id]?'done':''}" data-ck="${c.id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(c.label)}</span>${editable && canRemove ? `<button class="ck-del" data-ckdel="${c.id}" aria-label="delete">×</button>` : ''}</div>`).join('')
+        ${unassigned.length ? unassigned.map(customRow).join('')
           : `<div class="muted" style="padding:10px 4px">${L({ ja:'追加項目はありません', en:'No custom items', vi:'Chưa có mục thêm' })}</div>`}
-        ${editable ? `<div class="ck-add"><input type="text" id="ck_new" placeholder="${esc(L({ ja:'例）季節の掲示物を差し替え', en:'e.g. Swap seasonal signage', vi:'vd: Thay bảng theo mùa' }))}"><button class="mini" id="ckAdd">${L({ ja:'追加', en:'Add', vi:'Thêm' })}</button></div>` : ''}
+        ${editable ? `<div class="ck-add" style="flex-wrap:wrap;gap:6px">
+          <select id="ck_grp" style="min-width:132px">
+            <option value="">${esc(L({ ja:'分類なし（この枠）', en:'No section (here)', vi:'Không phân mục' }))}</option>
+            ${groups.map(gr => `<option value="${esc(grpJa(gr))}">${esc(L(gr.g))}</option>`).join('')}
+          </select>
+          <input type="text" id="ck_new" placeholder="${esc(L({ ja:'例）季節の掲示物を差し替え', en:'e.g. Swap seasonal signage', vi:'vd: Thay bảng theo mùa' }))}"><button class="mini" id="ckAdd">${L({ ja:'追加', en:'Add', vi:'Thêm' })}</button></div>` : ''}
       </div>`;
     return `
       ${NOTE(canHide
-        ? { ja:`◆ この一覧を出発点として、店舗ごとに作り替えられます。使わない項目は「×」で外し、必要な項目は下から追加してください（店長・オーナーのみ${mode === 'hygiene' ? '／曜日ごとに保存されます' : ''}）`,
-            en:`◆ This list is a starting point for your store. Managers/owners can remove items with “×” and add their own.${mode === 'hygiene' ? ' Saved per weekday.' : ''}`,
-            vi:`◆ Danh sách này là điểm khởi đầu. Quản lý/chủ có thể bỏ mục bằng “×” và thêm mục riêng.${mode === 'hygiene' ? ' Lưu theo từng thứ.' : ''}` }
+        ? { ja:`◆ この一覧を出発点として、店舗ごとに作り替えられます。使わない項目は「×」で外し、必要な項目は下から追加してください。追加のときにホール・キッチン等の分類も選べます（店長・オーナーのみ${mode === 'hygiene' ? '／曜日ごとに保存されます' : ''}）`,
+            en:`◆ This list is a starting point for your store. Managers/owners can remove items with “×” and add their own, choosing a section such as Hall or Kitchen.${mode === 'hygiene' ? ' Saved per weekday.' : ''}`,
+            vi:`◆ Danh sách này là điểm khởi đầu. Quản lý/chủ có thể bỏ mục bằng “×” và thêm mục riêng, chọn khu vực như Sảnh hoặc Bếp.${mode === 'hygiene' ? ' Lưu theo từng thứ.' : ''}` }
         : { ja:'◆ 開店・閉店の点検です。項目の追加・削除は店長・オーナーが行えます', en:'◆ Opening/closing checks. Managers/owners can add or remove items.', vi:'◆ Kiểm tra mở/đóng. Quản lý/chủ có thể thêm hoặc bỏ mục.' })}
       <div class="card" style="text-align:center">
         <div class="seg" data-seg="ckmode" style="margin-bottom:14px">${CK_MODES.map(m => `<button type="button" data-ckmode="${m.v}" class="${m.v===mode?'on':''}">${L(m.t)}</button>`).join('')}</div>
@@ -6362,7 +6379,10 @@
       if (!label) { toast(L({ ja:'項目名を入力してください', en:'Enter an item name', vi:'Nhập tên mục' })); return; }
       const { store, key, mk } = ckEditCtx();
       const all = getCkItems(); const list = (all[key] || []).slice();
-      list.push({ id: `${mk}-x-${Date.now().toString(36)}`, label });
+      // 分類（ホール／キッチン等）を選んでいたら、項目に持たせる（2026-08-30 長田さんのご要望）
+      const sel = byId('ck_grp'); const g = sel && sel.value ? sel.value : '';
+      list.push(g ? { id: `${mk}-x-${Date.now().toString(36)}`, label, g }
+                  : { id: `${mk}-x-${Date.now().toString(36)}`, label });
       all[key] = list; saveCkItems(all);
       const t = Date.now(); lastSync = t;
       toast(L({ ja:'追加しました', en:'Added', vi:'Đã thêm' })); render(true); // 画面の下のほうにあるので位置を保つ
