@@ -4820,6 +4820,10 @@
      「未対応の報告」を1画面に集め、確認済み／対応済みにできるようにする。
      対応状況は全端末で共有（本部メンバー全員が同じ状態を見る）。 */
   const HQ_ACK_KIND = 'hqack';
+  /* ★「メモを付けて完了」＝prompt() をやめ、その場に開くメモ欄にする（2026-08-30 神田さんの実機報告）。
+     iPhoneのホーム画面版（standalone）では prompt/alert/confirm が表示されず undefined が返り、
+     後続の .trim() が落ちて挙動が壊れていた。ダイアログはアプリ内では使わない。 */
+  let inboxMemoKey = '';   // メモ欄を開いている報告のキー
   function ackKey(kind, t, store) { return `${kind}|${t}|${store || ''}`; }
   function getAckMap() {
     const map = {};
@@ -4874,6 +4878,12 @@
         ? `<div class="l2"><button class="mini" data-commpub="${esc(i.ckey)}">${L({ja:'公開する',en:'Publish',vi:'Duyệt'})}</button> <button class="mini" data-commhide="${esc(i.ckey)}">${L({ja:'公開しない',en:'Do not publish',vi:'Không duyệt'})}</button></div>`
         : i.state === 'done'
         ? `<div class="l2" style="color:#2a7">${L({ja:'対応済み',en:'Done',vi:'Đã xử lý'})}${i.by?` ・${esc(i.by)}`:''}${i.memo?` ・${esc(i.memo)}`:''}</div>`
+        : inboxMemoKey === i.key
+        ? `<div class="l2" style="display:block;margin-top:6px">
+             <textarea id="ack_memo_input" rows="2" style="width:100%;box-sizing:border-box" placeholder="${esc(L({ja:'対応した内容（任意）', en:'What you did (optional)', vi:'Nội dung xử lý (tùy chọn)'}))}"></textarea>
+             <div style="margin-top:6px"><button class="mini" data-ackmemosave="${esc(i.key)}">${L({ja:'この内容で完了',en:'Done with this note',vi:'Hoàn tất với ghi chú'})}</button>
+             <button class="mini" data-ackmemocancel="1" style="margin-left:8px">${L({ja:'やめる',en:'Cancel',vi:'Hủy'})}</button></div>
+           </div>`
         : `<div class="l2"><button class="mini" data-ackdone="${esc(i.key)}">${L({ja:'対応済みにする',en:'Mark done',vi:'Đã xử lý'})}</button> <button class="mini" data-ackmemo="${esc(i.key)}">${L({ja:'メモを付けて完了',en:'Done with note',vi:'Xong kèm ghi chú'})}</button></div>`;
       return `<div class="rep" style="align-items:flex-start">${ph}<div class="body">
         <div class="l1">${esc(L(i.label))}${i.title?` ・${esc(i.title)}`:''}</div>
@@ -4983,14 +4993,21 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-inboxdone]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone]');
       if (!t) return;
       if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(); return; }
       if (t.dataset.ackdone) { setAck(t.dataset.ackdone, 'done', ''); toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(true); return; }
       if (t.dataset.ackmemo) {
-        const memo = prompt(L({ja:'対応した内容をメモできます（任意）',en:'Add a note (optional)',vi:'Ghi chú (tùy chọn)'}) || '', '');
-        if (memo === null) return;
-        setAck(t.dataset.ackmemo, 'done', memo.trim());
+        // ★ブラウザのダイアログは使わない（iPhoneのホーム画面版では表示されない）＝その場にメモ欄を開く
+        inboxMemoKey = t.dataset.ackmemo; render(true);
+        setTimeout(() => { const inp = document.getElementById('ack_memo_input'); if (inp) inp.focus(); }, 60);
+        return;
+      }
+      if (t.dataset.ackmemocancel) { inboxMemoKey = ''; render(true); return; }
+      if (t.dataset.ackmemosave) {
+        const inp = document.getElementById('ack_memo_input');
+        setAck(t.dataset.ackmemosave, 'done', ((inp && inp.value) || '').trim());
+        inboxMemoKey = '';
         toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(true); return;
       }
       if (t.dataset.fbsend) {
