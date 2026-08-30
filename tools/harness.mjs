@@ -3157,16 +3157,21 @@ console.log('== 今月の着地見込み＋月別の推移（第2弾・2026-08-3
     { store: S, date: new Date().toLocaleDateString('en-CA'), sales: 100000, guests: 40, t: Date.now() },
     { store: S, date: new Date(Date.now() - 35 * 864e5).toLocaleDateString('en-CA'), sales: 90000, guests: 38, t: Date.now() - 1 }
   ]));
+  // ★置き場所＝個店カルテ（2026-08-30 神田さんのご指摘。日報は入力の場・カルテが見る場）
   run(() => { setLS('manager', S, 'ja'); seedOwn(); });
-  location.hash = '#/app/soukatsu';
+  location.hash = '#/store?s=' + encodeURIComponent(S);
   let h2 = registry.app.innerHTML;
-  ok(/お店の動き（前の期間との比較）/.test(h2), '店長：日報画面に「お店の動き」が出る');
+  ok(/お店の動き（前の期間との比較）/.test(h2), '店長：個店カルテに「お店の動き」が出る');
   ok(/今月の着地見込み/.test(h2), '店長：「今月の着地見込み」が出る');
   ok(!/下降<\/div>/.test(h2), '店長（1店舗）：下降/上昇の集計タイルは出ない');
   ok(/月別の推移（自店）/.test(h2), '店長：月別の推移は「自店」の見出しになる');
-  run(() => { setLS('staff', S, 'ja'); seedOwn(); });
   location.hash = '#/app/soukatsu';
-  ok(/お店の動き（前の期間との比較）/.test(registry.app.innerHTML), '店舗iPadにも「お店の動き」が出る（売上表示は8/28決定どおり可）');
+  ok(!/お店の動き（前の期間との比較）/.test(registry.app.innerHTML), '日報（入力）画面には出さない（見る場所はカルテ）');
+  run(() => { setLS('staff', S, 'ja'); seedOwn(); });
+  location.hash = '#/store?s=' + encodeURIComponent(S);
+  const hs = registry.app.innerHTML;
+  ok(/お店の動き（前の期間との比較）/.test(hs), '店舗iPadもカルテで「お店の動き」を見られる（売上表示は8/28決定どおり可）');
+  ok(!/粗利/.test(hs), '店舗iPadのカルテに粗利を出さない（8/28決定＝スタッフにPL・粗利は非表示）');
   run(() => { setLS('owner', 'owned', 'ja'); seedOwn(); });
   location.hash = '#/app/soukatsu';
   const h3 = registry.app.innerHTML;
