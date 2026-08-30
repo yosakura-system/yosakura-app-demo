@@ -3201,5 +3201,31 @@ console.log('== 今月の着地見込み＋月別の推移（第2弾・2026-08-3
   ok(!/月別の推移（全店合計）/.test(h3), 'オーナーには「全店合計」と書かない（所有店舗の合計）');
 }
 
+console.log('== 受信箱の対応済み・ご意見が、同期で消えない（2026-08-31 実機で発覚）==');
+{
+  /* hqack（対応済みの記録）と appfb（ご意見）が distribute の振り分けに無く、
+     同期のたびにローカルから捨てられていた＝「完了したのにまた出てくる」（神田さんの実機報告）。 */
+  const S = '牛カツ世桜 長堀橋店';
+  const now = Date.now();
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'subrec', store:S, item:'openphoto|2026-08-30', note: JSON.stringify({ by:'店長' }), photos:['PH1'], t: now - 1000, id:'r1' },
+    { kind:'hqack', store:'all', item:`openphoto|${now - 1000}|${S}`, note: JSON.stringify({ state:'done', by:'本部', memo:'確認しました' }), t: now, id:'k1' },
+    { kind:'appfb', store:S, item:'', note: JSON.stringify({ cat:'want', note:'ご意見テスト', by:'店長' }), t: now, id:'f1' }
+  ]};
+  try { run(()=> { setLS('hq','all','ja'); localStorage.setItem('yosakura_inbox_showdone', '1'); }); } catch(e){ FAIL++; console.log('  ✗ load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  const reps = JSON.parse(localStorage.getItem('yosakura_demo_reports')||'[]');
+  ok(reps.some(r => r.kind==='hqack'), '対応済みの記録（hqack）が同期で残る（消えて未対応へ戻らない）');
+  ok(reps.some(r => r.kind==='appfb'), 'アプリへのご意見（appfb）も同期で残る');
+  location.hash = '#/app/inbox';
+  const h = registry.app.innerHTML;
+  ok(/対応済み/.test(h) && /確認しました/.test(h), '受信箱で「対応済み＋メモ」が表示される');
+  location.hash = '#/app/appfb';
+  ok(/ご意見テスト/.test(registry.app.innerHTML), 'ご意見の一覧にも同期した行が出る');
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
