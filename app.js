@@ -6814,7 +6814,10 @@
         case 'a': case 'b': food.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         // 提出物まわり（オープン写真の提出・提出物マスタ・判定/本部確認・定休日）＝subRows()が読む同じ置き場へ戻す。
         // これを入れないと、提出はバックエンドに届いているのに次の同期でローカルから消え、「提出済み」が未提出に戻る。
-        case 'subrec': case 'submaster': case 'substat': case 'subholiday':
+        // ★2026-08-31 追加＝hqack（受信箱の対応済み）と appfb（アプリへのご意見）。
+        //   どちらも subRows() で読むのに振り分けに無く、同期のたびにローカルから消えていた
+        //   （受信箱で「完了したのにまた出てくる」＝神田さんの実機報告で発覚。まさに上の注意の再発）。
+        case 'subrec': case 'submaster': case 'substat': case 'subholiday': case 'hqack': case 'appfb':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
         case 'route': route.push({ store, route:r.item, t, id }); break;
