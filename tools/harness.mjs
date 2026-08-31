@@ -3349,5 +3349,31 @@ console.log('== 日報（総括表）のタブ化＝入力／今月の推移／�
   ok(/店舗の動き（前の期間との比較）/.test(h) && /今月の着地見込み/.test(h), 'オーナー：サマリータブに店舗の状況が出る');
 }
 
+console.log('== 使い方ガイドのアプリ内掲載（2026-08-31 構築MTG アクション11）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  // ① きほん／くわしくの2タブ
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_guide_tab', 'basic'); });
+  location.hash = '#/app/guide';
+  let h = registry.app.innerHTML;
+  ok(/data-gdtab="detail"/.test(h) && /この端末での使い方/.test(h), 'ガイドに「きほん／くわしいガイド」のタブが出る');
+  // ② くわしく＝スタッフ向けの中身と画面リンク
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_guide_tab', 'detail'); });
+  location.hash = '#/app/guide';
+  h = registry.app.innerHTML;
+  ok(/スタッフの皆さまへ/.test(h) && /お手本/.test(h), 'スタッフ向け＝お手本の見方まで載っている');
+  ok(/data-go="\/app\/kyou"/.test(h), '「この画面を開く」で実際の画面へ飛べる');
+  // ③ 店長向け＝ログイン・見本の登録・数字の見方
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_guide_tab', 'detail'); });
+  location.hash = '#/app/guide';
+  h = registry.app.innerHTML;
+  ok(/店長・オーナー様へ/.test(h) && /仮パスワード/.test(h) && /これを見本にする/.test(h), '店長向け＝ログイン〜見本の登録まで載っている');
+  ok(/data-go="\/app\/soukatsu\?tab=summary"/.test(h), '数字の見方＝日報のサマリータブへ直接飛べる');
+  // ④ 日報のタブはURL指定が最優先（ガイドからの直リンク用）
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_soukatsu_tab', 'input'); });
+  location.hash = '#/app/soukatsu?tab=summary';
+  ok(/今月の推移/.test(registry.app.innerHTML) && !/id="skForm"/.test(registry.app.innerHTML), '?tab=summary でサマリータブが開く（localStorageより優先）');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
