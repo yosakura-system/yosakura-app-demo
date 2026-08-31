@@ -3313,5 +3313,11 @@ console.log('== 提出物管理のタブ化＋日報の提出経路（アプリ�
   ok(/route === 'import'[\s\S]{0,200}?○/.test(code), 'マトリクス：取込の日は ○（アプリ入力は ●）で描き分ける');
 }
 
+console.log('== 「1つ前へ」＝同じ画面のパラメータ切替を履歴に積まない（2026-08-31 常山さんの所感の原因）==');
+{
+  ok(/pathOf\(top\) === pathOf\(h\) && pathOf\(h\) !== '\/home'/.test(code) && /NAV\[NAV\.length - 1\] = h/.test(code),
+     '同一画面のパラメータ切替は履歴を「置き換える」＝戻るたびに同じ画面へ戻らない');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
