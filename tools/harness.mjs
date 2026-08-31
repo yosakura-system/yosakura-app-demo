@@ -574,7 +574,7 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
     sk('牛カツ世桜 長堀橋店', 1, 60000, 12), sk('牛カツ世桜 長堀橋店', 2, 75000, 15,
       { net:50000, err:'0', mtd:135000, goal:3000000, foodct:'29', drinkct:'14', rvt:'2', rva:'70', hear:'9', disc:'0', food:'36.5', labor:'23.6', tipt:'21000', tipa:'84541', cancel:'31700', closer:'田中', note:'厨房の床を清掃', order:'豆乳6／お米' }),
   ]};
-  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ compare load threw: '+e.message); }
+  try { run(()=> { setLS('hq','all','ja'); localStorage.setItem('yosakura_soukatsu_tab','summary'); }); } catch(e){ FAIL++; console.log('  ✗ compare load threw: '+e.message); } // タブ化後＝サマリータブで見る
   await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/soukatsu';
   const html = registry.app.innerHTML;
@@ -583,7 +583,7 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
   if (CAN_SPARK) ok(/class="spark"/.test(html), '店舗行にスパークライン（推移）が出る');
   else console.log('  － スパークラインは対象外（今日が月の1日＝履歴が1日ぶんのため推移線を引けない）');
   ok(/data-storelink="和牛世桜 広島店"/.test(html), '店舗行が個店カルテへのタップ導線を持つ');
-  ok(/data-skday=/.test(html), '棒・日報行から「その日の日報」を開ける');
+  // data-skday（その日の日報を開く導線）はタブ化後「最近の総括表」タブ側＝下で別途確認する
   ok(/data-go="\/app\/soukatsu\?p=prev/.test(html) && /m=guests/.test(html), '期間（今月/先月/直近30日）と指標（売上/客数/客単価）の切替がある');
   ok(html.indexOf('cmp-rank">1<') < html.indexOf('cmp-rank">2<'), 'ランキング順に並ぶ');
   ok(/全店 売上合計/.test(html), '全店合計のKPIが出る（増田さんご要望①）');
@@ -603,8 +603,14 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
   ok(/この店舗の他のデータ/.test(st), 'サーベイ・原価率など他データも同じ画面に出る');
   ok(/dcell off/.test(st), '未入力の項目は「—」で分かる');
 
+  // 「その日の日報を開く」導線（data-skday）＝タブ化後は「最近の総括表」タブ側にある
+  try { run(()=> { setLS('hq','all','ja'); localStorage.setItem('yosakura_soukatsu_tab','recent'); }); } catch(e){ FAIL++; console.log('  ✗ skday load threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/soukatsu';
+  ok(/data-skday=/.test(registry.app.innerHTML), '棒・日報行から「その日の日報」を開ける（最近の総括表タブ）');
+
   console.log('== 個店カルテ：権限（自店以外は開けない）==');
-  try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ store detail role threw: '+e.message); }
+  try { run(()=> { setLS('manager', S_HIROSHIMA, 'ja'); localStorage.setItem('yosakura_soukatsu_tab','summary'); }); } catch(e){ FAIL++; console.log('  ✗ store detail role threw: '+e.message); }
   await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/store?s=' + encodeURIComponent('牛カツ世桜 長堀橋店');
   const mg = registry.app.innerHTML;
@@ -613,7 +619,7 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
   ok(/この店舗の詳細/.test(registry.app.innerHTML), '単店ロールには個店カルテへのボタンが出る');
 
   for (const lang of ['en','vi']) {
-    try { run(()=> setLS('hq','all',lang)); } catch(e){ FAIL++; console.log('  ✗ compare '+lang+' threw: '+e.message); }
+    try { run(()=> { setLS('hq','all',lang); localStorage.setItem('yosakura_soukatsu_tab','summary'); }); } catch(e){ FAIL++; console.log('  ✗ compare '+lang+' threw: '+e.message); }
     await new Promise(r=>setTimeout(r, 50));
     location.hash = '#/app/soukatsu';
     ok(/class="colchart"/.test(registry.app.innerHTML), '['+lang+'] 比較グラフが多言語でも描画される');
@@ -2995,7 +3001,7 @@ console.log('== 日報一本化（2026-08-26 構築MTG決定：アプリ入力�
     { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date:'2026-06-01', sales:150000, guests:47 }), t: 9000, id:'o1' },
     { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date:'2026-07-06', sales:100000, guests:20 }), t: 2000, id:'o2' },
   ]};
-  try { run(()=> setLS('manager',S_HIROSHIMA,'ja')); } catch(e){ FAIL++; console.log('  ✗ 最近の並び load threw: '+e.message); }
+  try { run(()=> { setLS('manager',S_HIROSHIMA,'ja'); localStorage.setItem('yosakura_soukatsu_tab','recent'); }); } catch(e){ FAIL++; console.log('  ✗ 最近の並び load threw: '+e.message); }
   await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/soukatsu';
   const skl = (registry.app.innerHTML.split('id="skList"')[1] || '');
@@ -3197,7 +3203,7 @@ console.log('== 今月の着地見込み＋月別の推移（第2弾・2026-08-3
   const hs = registry.app.innerHTML;
   ok(/お店の動き（前の期間との比較）/.test(hs), '店舗iPadもカルテで「お店の動き」を見られる（売上表示は8/28決定どおり可）');
   ok(!/粗利/.test(hs), '店舗iPadのカルテに粗利を出さない（8/28決定＝スタッフにPL・粗利は非表示）');
-  run(() => { setLS('owner', 'owned', 'ja'); seedOwn(); });
+  run(() => { setLS('owner', 'owned', 'ja'); seedOwn(); localStorage.setItem('yosakura_soukatsu_tab', 'summary'); });
   location.hash = '#/app/soukatsu';
   const h3 = registry.app.innerHTML;
   ok(/店舗の動き（前の期間との比較）/.test(h3) && /今月の着地見込み/.test(h3), 'オーナー（所有店舗まとめて）：動きと着地見込みが出る');
@@ -3317,6 +3323,30 @@ console.log('== 「1つ前へ」＝同じ画面のパラメータ切替を履歴
 {
   ok(/pathOf\(top\) === pathOf\(h\) && pathOf\(h\) !== '\/home'/.test(code) && /NAV\[NAV\.length - 1\] = h/.test(code),
      '同一画面のパラメータ切替は履歴を「置き換える」＝戻るたびに同じ画面へ戻らない');
+}
+
+console.log('== 日報（総括表）のタブ化＝入力／今月の推移／最近の総括表（2026-08-31 神田さんのご指示）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const setTab = (v) => () => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_soukatsu_tab', v); };
+  run(setTab('input'));
+  location.hash = '#/app/soukatsu';
+  let h = registry.app.innerHTML;
+  ok(/data-sktab="summary"/.test(h) && /data-sktab="recent"/.test(h), '日報にタブ（入力／今月の推移／最近の総括表）が出る');
+  ok(/id="skForm"/.test(h) && !/id="skList"/.test(h), '「入力」タブでは入力フォームだけが出る');
+  run(setTab('summary'));
+  location.hash = '#/app/soukatsu';
+  h = registry.app.innerHTML;
+  ok(/今月の推移/.test(h) && !/id="skForm"/.test(h), '「今月の推移」タブではサマリーだけが出る');
+  run(setTab('recent'));
+  location.hash = '#/app/soukatsu';
+  h = registry.app.innerHTML;
+  ok(/id="skList"/.test(h) && !/id="skForm"/.test(h), '「最近の総括表」タブでは履歴だけが出る');
+  // 複数店（オーナー）＝サマリータブに店舗の状況（動き・着地見込み・比較）が出る
+  run(() => { setLS('owner', 'owned', 'ja'); localStorage.setItem('yosakura_soukatsu_tab', 'summary'); });
+  location.hash = '#/app/soukatsu';
+  h = registry.app.innerHTML;
+  ok(/店舗の動き（前の期間との比較）/.test(h) && /今月の着地見込み/.test(h), 'オーナー：サマリータブに店舗の状況が出る');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);

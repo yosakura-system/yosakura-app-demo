@@ -2667,10 +2667,19 @@
     const recent = getSk().filter(r => vis.includes(r.store))
       .sort((a, b) => a.date === b.date ? (b.t - a.t) : (a.date < b.date ? 1 : -1)).slice(0, 6);
     const today = todayKey();
+    /* ★タブ化（2026-08-31 神田さんのご指示＝役割・項目が違うものは縦に積まずタブで分ける。
+       「スクロールは結構見なくなる」）。入力／今月の推移（複数店は店舗の状況）／最近の総括表 の3タブ */
+    const SKT = [
+      { v:'input',   t:{ ja:'入力', en:'Enter', vi:'Nhập' } },
+      { v:'summary', t: vis.length > 1 ? { ja:'店舗の状況', en:'Stores', vi:'Cửa hàng' } : { ja:'今月の推移', en:'This month', vi:'Tháng này' } },
+      { v:'recent',  t:{ ja:'最近の総括表', en:'Recent', vi:'Gần đây' } }
+    ];
+    const skTab = SKT.some(o => o.v === localStorage.getItem('yosakura_soukatsu_tab')) ? localStorage.getItem('yosakura_soukatsu_tab') : 'input';
+    const skTabSeg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="sktab">${SKT.map(o => `<button type="button" data-sktab="${o.v}" class="${o.v === skTab ? 'on' : ''}">${L(o.t)}</button>`).join('')}</div></div>`;
     /* 店舗比較（複数店舗を見られる本部・オーナー）／個店サマリー（1店舗）
        ★2026-08-30 神田さんのご要望＝分析（動き・着地見込み・月別推移）を本部だけでなく
        店長・オーナー・店舗iPadにも出す。門番が自店ぶんしか渡さない＝見える範囲は役割どおりに絞られる */
-    const head = vis.length > 1 ? skMovement(vis, '/app/soukatsu') + skOutlook(vis) + skCompare(vis, '/app/soukatsu') : (() => {
+    const head = skTab !== 'summary' ? '' : vis.length > 1 ? skMovement(vis, '/app/soukatsu') + skOutlook(vis) + skCompare(vis, '/app/soukatsu') : (() => {
       const s = vis[0], ym = todayYm();
       const rows = getSk().filter(r => r.store === s && ymOfDate(r.date) === ym);
       const st = skStats(rows);
@@ -2689,8 +2698,9 @@
     })();
     return `
       ${NOTE({ ja:'◆ 実際の日報フォーマットで入力→保存できます（履歴と本部集約に反映）', en:'◆ Enter in the real daily-report format; it saves to history & HQ', vi:'◆ Nhập theo mẫu báo cáo ngày thực tế; lưu vào lịch sử & HQ' })}
+      ${skTabSeg}
       ${head}
-      <div class="card" id="skForm">
+      ${skTab !== 'input' ? '' : `<div class="card" id="skForm">
         <h3>${L({ ja:'本日の総括表', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
@@ -2759,12 +2769,12 @@
         </div>
         <label class="fld"><span>${L({ ja:'翌日の食材発注', en:'Tomorrow ingredient order', vi:'Đặt NL ngày mai' })}</span><textarea id="sk_order" placeholder="${L({ja:'例：豆乳6／寿司のエビ2／お米 …',en:'e.g. soy milk 6 / shrimp 2 / rice …',vi:'vd: sữa đậu 6 / tôm 2 / gạo …'})}"></textarea></label>
         <button class="btn-primary" id="submitSk">${L({ja:'提出する',en:'Submit',vi:'Nộp'})}</button>
-        <div class="hint">${L({ja:'保存すると、下の履歴と「本部ダッシュボード」に反映されます',en:'Saved and shown below and in the HQ Dashboard',vi:'Được lưu và hiển thị bên dưới và ở Bảng điều khiển'})}</div>
-      </div>
-      <div class="card">
+        <div class="hint">${L({ja:'保存すると、「最近の総括表」タブと「本部ダッシュボード」に反映されます',en:'Saved to the Recent tab and the HQ Dashboard',vi:'Được lưu vào thẻ Gần đây và Bảng điều khiển'})}</div>
+      </div>`}
+      ${skTab !== 'recent' ? '' : `<div class="card">
         <h3>${L({ ja:'最近の総括表', en:'Recent daily reports', vi:'Báo cáo gần đây' })}</h3>
         <div id="skList">${recent.length ? recent.map(skRow).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}</div>
-      </div>`;
+      </div>`}`;
   };
   const skRow = (r) => `
     <div class="rep tapable" data-skday="${esc((r.store||'') + '||' + (r.date||''))}" role="button" tabindex="0">
@@ -5119,13 +5129,14 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab],[data-sktab]');
       if (!t) return;
       if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(true); return; }
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
       if (t.dataset.ttab) { localStorage.setItem('yosakura_teishutsu_tab', t.dataset.ttab); render(true); return; }
+      if (t.dataset.sktab) { localStorage.setItem('yosakura_soukatsu_tab', t.dataset.sktab); render(true); return; }
       if (t.dataset.ackdone) { setAck(t.dataset.ackdone, 'done', ''); toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(true); return; }
       if (t.dataset.ackmemo) {
         // ★ブラウザのダイアログは使わない（iPhoneのホーム画面版では表示されない）＝その場にメモ欄を開く
