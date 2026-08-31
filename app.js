@@ -1220,7 +1220,8 @@
     const role = getRole();
     /* ★タブ＝きほん（従来のこの端末での使い方＋案内ツアー）／くわしく（配布ガイドのアプリ内版）。
        役割・項目が違うものは縦に積まずタブで分ける（2026-08-31 神田さんのご指示） */
-    const gtab = localStorage.getItem('yosakura_guide_tab') === 'detail' ? 'detail' : 'basic';
+    /* 初期表示は「くわしいガイド」＝配布スライド（2026-08-31 神田さんのご指示＝押してすぐスライドが見える） */
+    const gtab = localStorage.getItem('yosakura_guide_tab') === 'basic' ? 'basic' : 'detail';
     const seg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="gdtab">
       <button type="button" data-gdtab="basic" class="${gtab === 'basic' ? 'on' : ''}">${L({ ja:'きほん', en:'Basics', vi:'Cơ bản' })}</button>
       <button type="button" data-gdtab="detail" class="${gtab === 'detail' ? 'on' : ''}">${L({ ja:'くわしいガイド', en:'Full guide', vi:'Chi tiết' })}</button>
@@ -6256,7 +6257,9 @@
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
       toast(L({ ja:'CSVを保存しました', en:'CSV saved', vi:'Đã lưu CSV' }));
     };
-    document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { if (b.dataset.open === 'guide') openTour(0); else go(`/app/${b.dataset.open}`); });
+    /* ★「使い方ガイド」カードはツアーを直接開かず、ガイドのページへ移動する（2026-08-31 神田さんの実機報告）。
+       ツアーだけ開くと、スライド版（くわしいガイド）へたどり着く入口が無くなるため。ツアーはページ内の「順番に見る」から。 */
+    document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => go(`/app/${b.dataset.open}`));
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
     document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'この画面は準備中です（順次追加します）', en:'This screen is in preparation', vi:'Màn hình đang chuẩn bị' })));
     // 準備中のボタンにも必ずフィードバックを返す＝無反応ボタンを排除
