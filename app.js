@@ -1157,6 +1157,8 @@
           <div><h1>${esc(L(a.name))}</h1><p>${esc(L(a.desc))}</p></div>
         </div>
         ${body}
+        ${/* ★下からも戻れるように（2026-08-31 ユンさんのご要望＝戻るが一番上にしかない） */''}
+        <div class="appbar" style="margin-top:18px">${appbarHTML()}</div>
       </main>`;
     return shell(inner, groupTab(a.group));
   }
@@ -1220,21 +1222,19 @@
       <button type="button" data-gdtab="detail" class="${gtab === 'detail' ? 'on' : ''}">${L({ ja:'くわしいガイド', en:'Full guide', vi:'Chi tiết' })}</button>
     </div></div>`;
     if (gtab === 'detail') {
-      const items = GUIDE_DETAIL(role);
-      const rows = items.map((s, i) => `
-        <div class="rep" style="align-items:flex-start">
-          <span class="kind b" style="min-width:26px;text-align:center">${i + 1}</span>
-          <div class="body">
-            <div class="l1">${esc(L(s.t))}</div>
-            <div class="l2" style="white-space:normal;line-height:1.7">${esc(L(s.b))}</div>
-            ${s.go ? `<div style="margin-top:6px"><button class="mini" data-go="${esc(s.go)}">${L({ ja:'この画面を開く', en:'Open this screen', vi:'Mở màn hình này' })}</button></div>` : ''}
-          </div>
-        </div>`).join('');
+      /* ★配布ガイド（スライド）をそのまま掲載（2026-08-31 神田さんのご指示）。
+         画像は guide/ に同梱（gitが正本）。上のボタン列から各画面へ直接移動できる。 */
+      const nSlides = role === 'staff' ? 10 : 17;
+      const pref = role === 'staff' ? 'staff' : 'owner';
+      const slides = Array.from({ length: nSlides }, (_, i) =>
+        `<img src="guide/${pref}-${String(i + 1).padStart(2, '0')}.jpg" loading="lazy" alt="guide ${i + 1}/${nSlides}" style="width:100%;display:block;border:1px solid #eee;border-radius:10px;margin:6px 0">`).join('');
+      const links = GUIDE_DETAIL(role).filter(s => s.go).map(s => `<button class="chip" data-go="${esc(s.go)}">${esc(L(s.t))}</button>`).join('');
       return `${seg}
         <div class="card">
           <h3>${role === 'staff' ? L({ ja:'スタッフの皆さまへ', en:'For staff', vi:'Dành cho nhân viên' }) : L({ ja:'店長・オーナー様へ', en:'For managers & owners', vi:'Dành cho quản lý & chủ' })}</h3>
-          <p class="hint" style="display:block">${L({ ja:'配布している使い方ガイドと同じ内容です。「この画面を開く」で実際の画面へ移動できます。', en:'Same content as the printed guide. Jump straight to each screen.', vi:'Nội dung như bản in. Có thể mở thẳng màn hình.' })}</p>
-          ${rows}
+          <p class="hint" style="display:block">${L({ ja:'配布している使い方ガイド（スライド）を、そのまま掲載しています。下のボタンから各画面へ直接移動できます。', en:'The printed guide slides, as-is. Use the buttons to jump to each screen.', vi:'Bản hướng dẫn (slide) nguyên bản. Dùng nút để mở màn hình.' })}</p>
+          <div class="seg-chips" style="margin-bottom:8px">${links}</div>
+          ${slides}
         </div>`;
     }
     const steps = guideFor(role);
@@ -2049,6 +2049,32 @@
           : `<button class="mini" id="ckSmpEdit" style="margin-top:8px">${L({ ja:'お手本を編集', en:'Edit model', vi:'Sửa mẫu' })}</button>`)
           + `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ お手本は点検の種類ごと・店舗ごとに保存され、スタッフの画面にも表示されます。', en:'Saved per check type and store; staff can see them.', vi:'Lưu theo loại kiểm tra và cửa hàng; nhân viên cũng thấy.' })}</div>` : ''}
       </div>` : '';
+    /* ★定期清掃の「全体」表示（2026-08-31 ユンさんのご要望）：
+       忙しい日は決められた曜日どおりに回せない＝余裕のある日に、できる箇所から進める運用に合わせて、
+       7曜日ぶんをまとめて見られるビュー。どの曜日の項目にもチェックできる（記録は今日の日付で残る）。
+       項目の編集（外す・足す）は曜日ごとの表示から＝全体表示は見る・チェックする専用。 */
+    const hygAll = mode === 'hygiene' && localStorage.getItem('yosakura_hygall') === '1';
+    let hygAllHTML = '';
+    if (hygAll) {
+      hygAllHTML = WDAY_LABELS.map((w, d) => {
+        const idB = `hygiene-${d}`;
+        const hid = ckHidden(store, 'hygiene', d);
+        const dayCustom = (getCkItems()[`${store}||hygiene-${d}`] || []);
+        const rows2 = ckGroupsOf('hygiene', d).map((gr, gi) => gr.items.map((it, ii) => {
+          const id = `${idB}-c-${gi}-${ii}`;
+          if (hid.includes(id)) return '';
+          return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span></div>`;
+        }).join('')).join('')
+          + dayCustom.map(c => `<div class="check ${done[c.id]?'done':''}" data-ck="${c.id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(c.label)}</span></div>`).join('');
+        if (!rows2) return '';
+        return `
+      <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L(w)}${L({ ja:'曜日', en:'', vi:'' })}</h2></div>
+      <div class="card" style="padding:4px 14px">${rows2}</div>`;
+      }).join('') + `<div class="hint" style="display:block;margin-top:8px">${L({
+        ja:'※ 全体表示です。どの曜日の項目にもチェックできます（記録は今日の日付で残ります）。項目を外す・足すは、曜日を選んだ表示から行えます。',
+        en:'All weekdays shown. You can check any item (recorded for today). Edit items from a weekday view.',
+        vi:'Hiển thị tất cả các thứ. Có thể đánh dấu bất kỳ mục nào (ghi cho hôm nay).' })}</div>`;
+    }
     /* 追加項目の分類（2026-08-30 長田さんのご要望）：
        追加のときにホール／キッチン等の分類を選べる。選んだ項目はそのグループの末尾に並ぶ。
        ★分類は日本語の見出し文字列で持つ（c.g）＝グループの並び替えに耐える。
@@ -2110,14 +2136,12 @@
         <div class="seg" data-seg="ckmode" style="margin-bottom:14px">${CK_MODES.map(m => `<button type="button" data-ckmode="${m.v}" class="${m.v===mode?'on':''}">${L(m.t)}</button>`).join('')}</div>
         <h3>${L({ ja:'本日の', en:'Today: ', vi:'Hôm nay: ' })}${esc(L((CK_MODES.find(m => m.v === mode) || {}).t || ''))}${L({ ja:'点検', en:' check', vi:'' })}</h3>
         <div class="muted" style="margin:2px 0 8px">${esc(store)}</div>
-        ${mode === 'hygiene' ? `<div class="seg" data-seg="hygday" style="margin:6px 0 10px">${WDAY_LABELS.map((w, i) => `<button type="button" data-hygday="${i}" class="${i===getHygDay()?'on':''}">${L(w)}</button>`).join('')}</div>` : ''}
+        ${mode === 'hygiene' ? `<div class="seg" data-seg="hygday" style="margin:6px 0 10px"><button type="button" data-hygall="1" class="${hygAll ? 'on' : ''}">${L({ ja:'全体', en:'All', vi:'Tất cả' })}</button>${WDAY_LABELS.map((w, i) => `<button type="button" data-hygday="${i}" class="${!hygAll && i===getHygDay()?'on':''}">${L(w)}</button>`).join('')}</div>` : ''}
         <div style="font-size:26px;font-weight:700;letter-spacing:.02em">${n}<span style="color:var(--gray);font-size:17px">/${total}</span></div>
         <div class="bar-track" style="margin:9px 0 2px"><div class="bar-fill" style="width:${Math.round(n/total*100)}%"></div></div>
       </div>
       ${ckSmpHTML}
-      ${groupsHTML}
-      ${customHTML}
-      ${hiddenHTML}
+      ${hygAll ? hygAllHTML : groupsHTML + customHTML + hiddenHTML}
       ${CK_NOTES[mode] ? `<div class="hint" style="display:block">${L(CK_NOTES[mode])}</div>` : ''}
       <div class="hint">${L({ ja:'上から順に実施すれば完了です。チェックは店舗ごと・当日分として保存されます（翌日は自動でリセット）。実施状況は本部・オーナーからも確認できます。', en:'Work top to bottom. Checks are saved per store for today (auto-resets next day) and visible to HQ/owners.', vi:'Làm từ trên xuống. Lưu theo cửa hàng cho hôm nay; HQ/chủ có thể xem.' })}</div>`;
   };
@@ -6793,7 +6817,13 @@
     // 写真の提出物の切り替え（オープン写真／月次の衛生写真／メニューブック）
     document.querySelectorAll('[data-phtarget]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_photo_target', b.dataset.phtarget); render(); });
     // 定期衛生：曜日の切替（手が空いていれば他の曜日を先に実施してもよい運用）
-    document.querySelectorAll('[data-hygday]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', `${todayKey()}|${b.dataset.hygday}`); render(); });
+    document.querySelectorAll('[data-hygday]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', `${todayKey()}|${b.dataset.hygday}`); localStorage.removeItem('yosakura_hygall'); render(true); });
+    // 定期衛生：全体表示（7曜日まとめて・2026-08-31 ユンさんのご要望）
+    document.querySelectorAll('[data-hygall]').forEach(b => b.onclick = () => {
+      if (localStorage.getItem('yosakura_hygall') === '1') localStorage.removeItem('yosakura_hygall');
+      else localStorage.setItem('yosakura_hygall', '1');
+      render(true);
+    });
     // チェックのON/OFF（店舗×モード×当日で保存）
     document.querySelectorAll('[data-ck]').forEach(row => row.onclick = (e) => {
       if (e.target.closest('[data-ckdel]') || e.target.closest('[data-ckhide]')) return; // 削除・非表示ボタンは別処理
@@ -7102,7 +7132,8 @@
           localStorage.setItem('yosakura_demo_raw', nextRaw);
           distribute(d.reports);
           // ★写真の作業中は描き直さない（貼った写真と選択中の入力欄が消えるため）。取り込み自体は済んでいる
-          if (画面を作り直してよい_()) render();
+          // ★同期の描き直しでは位置を保つ（2026-08-31 ユンさんの報告＝チェックのたびに同期→再描画で先頭へ戻っていた）
+          if (画面を作り直してよい_()) render(true);
         }
       }
     } catch (_) { /* オフライン時はローカル（既存データ）を使用 */ }

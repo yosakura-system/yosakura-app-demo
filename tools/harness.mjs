@@ -2793,8 +2793,8 @@ console.log('== 写真の添付：貼れないときに黙って捨てない（2
      スマホは写真を選ぶあいだアプリが背面へ回る。その数秒で同期の通信が終わると render() が走り、
      貼り付け先も選択中の <input type=file> も別物に差し替わって、選んだ写真がどこにも入らない。
      PCではファイル選択がすぐ終わるので起きない＝現場のスマホでだけ起きる形。 */
-  ok(/if \(画面を作り直してよい_\(\)\) render\(\);/.test(code),
-     '★自動同期は、作り直してよいときだけ画面を描き直す');
+  ok(/if \(画面を作り直してよい_\(\)\) render\(true\);/.test(code),
+     '★自動同期は、作り直してよいときだけ画面を描き直す（位置も保つ＝2026-08-31 ユンさんの報告）');
   ok(!/distribute\(d\.reports\);\s*render\(\);/.test(code),
      '★無条件に render() する形へ戻っていない（これが元の不具合）');
   ok(/fi\.addEventListener\('click', \(\) => \{[\s\S]{0,400}写真の操作を始める_\(\);/.test(code),
@@ -3357,22 +3357,49 @@ console.log('== 使い方ガイドのアプリ内掲載（2026-08-31 構築MTG �
   location.hash = '#/app/guide';
   let h = registry.app.innerHTML;
   ok(/data-gdtab="detail"/.test(h) && /この端末での使い方/.test(h), 'ガイドに「きほん／くわしいガイド」のタブが出る');
-  // ② くわしく＝スタッフ向けの中身と画面リンク
+  // ② くわしく＝配布ガイドのスライドがそのまま載る（2026-08-31 神田さんのご指示）＋画面への直接リンク
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_guide_tab', 'detail'); });
   location.hash = '#/app/guide';
   h = registry.app.innerHTML;
-  ok(/スタッフの皆さまへ/.test(h) && /お手本/.test(h), 'スタッフ向け＝お手本の見方まで載っている');
-  ok(/data-go="\/app\/kyou"/.test(h), '「この画面を開く」で実際の画面へ飛べる');
-  // ③ 店長向け＝ログイン・見本の登録・数字の見方
+  ok(/スタッフの皆さまへ/.test(h) && /guide\/staff-01\.jpg/.test(h) && /guide\/staff-10\.jpg/.test(h), 'スタッフ向け＝配布ガイドのスライド10枚がそのまま載る');
+  ok(/data-go="\/app\/kyou"/.test(h), 'ボタンから実際の画面へ飛べる');
+  // ③ 店長向け＝オーナー店長用スライド17枚
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_guide_tab', 'detail'); });
   location.hash = '#/app/guide';
   h = registry.app.innerHTML;
-  ok(/店長・オーナー様へ/.test(h) && /仮パスワード/.test(h) && /これを見本にする/.test(h), '店長向け＝ログイン〜見本の登録まで載っている');
+  ok(/店長・オーナー様へ/.test(h) && /guide\/owner-01\.jpg/.test(h) && /guide\/owner-17\.jpg/.test(h), '店長向け＝配布ガイドのスライド17枚がそのまま載る');
   ok(/data-go="\/app\/soukatsu\?tab=summary"/.test(h), '数字の見方＝日報のサマリータブへ直接飛べる');
+  // 画像の実体がリポジトリに同梱されている（配信物にも同梱される）
+  ok(fs.existsSync(APP.replace(/app\.js$/, 'guide/owner-17.jpg')) && fs.existsSync(APP.replace(/app\.js$/, 'guide/staff-10.jpg')),
+     'スライド画像が guide/ に同梱されている');
   // ④ 日報のタブはURL指定が最優先（ガイドからの直リンク用）
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_soukatsu_tab', 'input'); });
   location.hash = '#/app/soukatsu?tab=summary';
   ok(/今月の推移/.test(registry.app.innerHTML) && !/id="skForm"/.test(registry.app.innerHTML), '?tab=summary でサマリータブが開く（localStorageより優先）');
+}
+
+console.log('== ユンさんの3件（2026-08-31）＝同期で先頭へ戻らない・下からも戻れる・定期清掃の全体表示 ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  // ① 同期の描き直しは位置を保つ（チェックのたびに先頭へ戻っていた）
+  ok(/画面を作り直してよい_\(\)\) render\(true\)/.test(code), '同期の再描画は render(true)＝チェック中に先頭へ戻らない');
+  // ② アプリ画面の下にも戻るバーがある
+  run(() => setLS('manager', S, 'ja'));
+  location.hash = '#/app/checklist';
+  let h = registry.app.innerHTML;
+  ok((h.match(/class="appbar"/g) || []).length >= 2, 'アプリ画面の下部にも「1つ前へ・ホーム」のバーが出る');
+  // ③ 定期清掃の「全体」表示
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'hygiene'); });
+  location.hash = '#/app/checklist';
+  h = registry.app.innerHTML;
+  ok(/data-hygall="1"/.test(h), '定期清掃に「全体」の切り替えが出る');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'hygiene'); localStorage.setItem('yosakura_hygall', '1'); });
+  location.hash = '#/app/checklist';
+  h = registry.app.innerHTML;
+  ok(/月曜日/.test(h) && /木曜日/.test(h) && /日曜日/.test(h), '全体表示＝7曜日ぶんがまとめて出る');
+  ok(/どの曜日の項目にもチェックできます/.test(h), '全体表示の説明（記録は今日の日付）がある');
+  ok(!/data-ckhide=/.test(h) && !/id="ckAdd"/.test(h), '全体表示では外す・足すを出さない（編集は曜日ごとの表示から）');
+  ok(/data-ck="hygiene-1-c-0-0"/.test(h) && /data-ck="hygiene-4-c-0-0"/.test(h), 'どの曜日の項目にもチェックを入れられる');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
