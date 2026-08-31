@@ -378,9 +378,18 @@
      ★端末に本部が保存されていても、体験版では店長として開く（配る版なので入口を残さない）。 */
   const ROLE_KEYS_ALL = ['staff', 'manager', 'owner', 'hq'];
   const roleKeys = () => TAIKEN ? ['staff', 'manager', 'owner'] : ROLE_KEYS_ALL;
+  /* 開発者ビューの対象（2026-09-01 神田さんのご要望）＝本部のこのアカウントだけ、
+     端末で選んだ役割を「見え方」として使える。ログイン・権限・保存は本部のまま。 */
+  const DEV_VIEW_UIDS = ['kanda'];
   const getRole = () => {
     const a = getAuth();
-    if (a && a.role) return a.role;   // ★ログイン済み＝役割はサーバーが返したもので固定（端末の保存値は見ない）
+    if (a && a.role) {
+      if (a.role === 'hq' && DEV_VIEW_UIDS.includes(String(a.uid || ''))) {
+        const rv = localStorage.getItem(LS.role) || 'hq';   // ★開発者ビュー＝見え方だけ端末の選択に従う
+        return roleKeys().includes(rv) ? rv : 'hq';
+      }
+      return a.role;   // ★ログイン済み＝役割はサーバーが返したもので固定（端末の保存値は見ない）
+    }
     const r = localStorage.getItem(LS.role) || 'staff';
     return roleKeys().includes(r) ? r : (TAIKEN ? 'manager' : 'staff');
   };
@@ -425,6 +434,17 @@
     try { localStorage.setItem(SETUP_KEY, '1'); } catch (e) {} // はじめの設定（役割選び）はもう不要
   }
   function logoutAuth_() { setAuth(null); render(); }
+  /* ★開発者ビュー（2026-09-01 神田さんのご要望＝店舗側の見え方を自分の端末で確認したい）。
+     対象は DEV_VIEW_UIDS（getRole の上で定義）にある本部アカウントだけ。ログイン・権限・保存はすべて本部のまま、
+     「画面の見え方」だけを店舗iPad・店長・オーナーに切り替える。確認中は上部に戻るバナーを常時出す。 */
+  const devViewAllowed = () => { const a = getAuth(); return !!a && a.role === 'hq' && DEV_VIEW_UIDS.includes(String(a.uid || '')); };
+  const inDevView = () => devViewAllowed() && getRole() !== 'hq';
+  const devViewBanner = () => inDevView()
+    ? `<button type="button" class="devview-bar" data-devexit="1">${L({
+        ja:'開発者ビュー：店舗側の表示を確認中（権限は本部のまま）・タップで本部に戻る',
+        en:'Developer view: store-side display (HQ account). Tap to return to HQ.',
+        vi:'Chế độ phát triển: đang xem như cửa hàng (tài khoản HQ). Chạm để về HQ.' })}</button>`
+    : '';
   // 通信が「ログインしてください」と言ってきたときの受け（トークン切れ・再発行後も含む）
   function onNeedLogin_() { markAuthRequired(true); setAuth(null); render(); }
   // ★オーナー様の所有店舗＝ログイン済みならサーバーが返したもの／未ログイン（デモ・プレビュー）は従来の見本
@@ -4190,7 +4210,7 @@
          ⚠️ 未ログイン（体験版・認証OFF）の店長は従来どおり全店舗から選べる（見本のため）。 */
       const storeOpts = role === 'hq' ? ['all', ...STORES]
         : role === 'owner' ? ['owned', ...ownerStores_()]
-        : (auth ? (auth.stores || []) : STORES);
+        : (auth && !devViewAllowed() ? (auth.stores || []) : STORES);   // 開発者ビューは全店舗から選べる
       const storeLabel = (s) => s === 'all' ? L({ ja:'全店（本部）', en:'All stores (HQ)', vi:'Tất cả (HQ)' })
         : s === 'owned' ? L({ ja:'所有店舗すべて（比較）', en:'All my stores (compare)', vi:'Tất cả CH của tôi (so sánh)' }) : s;
       return `<div class="sheet">
@@ -4202,7 +4222,7 @@
             ? L({ ja:'店舗iPad・店長・加盟店オーナーで、見えるものが変わります。切り替えてお試しください。', en:'What you see changes by role. Feel free to switch and try.', vi:'Nội dung thay đổi theo vai trò. Hãy thử chuyển đổi.' })
             : L({ ja:'本部は全店を閲覧できます。店舗iPad・店長・加盟店オーナーは自分の店舗のみ（数値なども自店だけ）。', en:'HQ sees all stores. Store iPad, managers and franchisees see only their own store, including numbers.', vi:'HQ xem mọi cửa hàng. iPad cửa hàng/quản lý/chủ chỉ xem cửa hàng của mình.' })}</div>
         <div class="idlabel">${L({ ja:'役割', en:'Role', vi:'Vai trò' })}</div>
-        ${auth ? `
+        ${auth && !devViewAllowed() ? `
           <div class="role-opt on" style="cursor:default">
             <span class="rr">${(ROLES[role]||{}).mark||''}</span>
             <span class="ri"><b>${L((ROLES[role]||{}).label||{ja:role})}</b><span>${esc(auth.uid||'')}${L({ ja:' でログイン中（役割は固定です）', en:' — signed in (role is fixed)', vi:' — đã đăng nhập (vai trò cố định)' })}</span></span>
@@ -4213,6 +4233,10 @@
             <span class="ri"><b>${L(v.label)}</b><span>${L(v.desc)}</span></span>
             ${k===role?`<span class="rc">${svg('tick')}</span>`:''}
           </button>`; }).join('')}
+        ${auth && devViewAllowed() ? `<p class="hint" style="display:block;margin:-2px 0 10px">${L({
+          ja:'開発者ビュー（' + esc(auth.uid || '') + '）＝画面の見え方だけを切り替えます。ログイン・権限・保存は本部のままです。店舗側の表示中は上部に戻るバナーが出ます。',
+          en:'Developer view: switches only what you see. Login, permissions and saves stay as HQ.',
+          vi:'Chế độ phát triển: chỉ đổi cách hiển thị. Đăng nhập/quyền vẫn là HQ.' })}</p>` : ''}
         <div class="idlabel">${L({ ja:'お名前（提出の記録に残ります）', en:'Your name (recorded on submissions)', vi:'Tên của bạn (ghi vào mục đã nộp)' })}</div>
         <label class="fld"><input type="text" id="idName" maxlength="20" value="${esc(getUserName())}" placeholder="${L({ ja:'例：山田', en:'e.g. Yamada', vi:'VD: Yamada' })}"></label>
         <p class="hint" style="display:block;margin:-2px 0 12px">${L({ ja:'一度ご登録いただくと、以後の提出に自動で記録されます。未登録でも提出はできます（1食目写真は店舗名だけで大丈夫です）。', en:'Register once and it is recorded automatically on later submissions. You can still submit without it.', vi:'Đăng ký một lần, các lần nộp sau sẽ tự ghi. Không có tên vẫn nộp được.' })}</p>
@@ -4229,7 +4253,7 @@
     const mask = el(`<div class="sheet-mask">${buildHTML()}</div>`);
     const wire = () => {
       mask.querySelectorAll('[data-role]').forEach(b => b.onclick = () => {
-        if (getAuth()) return;   // ★ログイン済み＝役割は変えられない（表示上ボタンも出ていない）
+        if (getAuth() && !devViewAllowed()) return;   // ★ログイン済み＝役割は変えられない（開発者ビューだけ例外）
         const r = b.dataset.role; setRole(r);
         const sel = getStoreSel();
         if (r === 'owner') { if (sel !== 'owned' && !ownerStores_().includes(sel)) setStoreSel('owned'); }
@@ -5261,8 +5285,10 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab],[data-sktab],[data-gdtab]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab],[data-sktab],[data-gdtab],[data-devexit]');
       if (!t) return;
+      // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
+      if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
       if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(true); return; }
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
@@ -6241,7 +6267,7 @@
     else if (path === '/skprint') html = viewSkPrint(params.get('s') || '', params.get('ym') || ''); // 総括表の形での月次出力
     else if (path === '/home') html = viewHome(params.get('tab') || 'home');
     else html = viewHome('home');
-    $app.innerHTML = html;
+    $app.innerHTML = devViewBanner() + html;   // 開発者ビュー中は戻るバナーを全画面の先頭に出す
     window.scrollTo(0, y);
     /* ★別の画面へ移ったのに、前の画面で読んでいた位置のまま始まることがあった（2026-08-12 神田さんのご指摘）。
        中身を入れ替えた直後は高さがまだ決まっておらず、一度の scrollTo では戻りきらないため、

@@ -556,7 +556,10 @@ FETCH_ROWS = { ok:false };
 console.log('== 総括表：店舗比較グラフ（本部・全店）==');
 {
   const S_NAGA = '牛カツ世桜 長堀橋店';
-  const ym = new Date().toISOString().slice(0,7);
+  /* ★年月は現地時間で作る（2026-09-01 修正）。toISOString はUTCのため、日本時間の月初の朝
+     （9/1 0時〜9時）は前月扱いになり、getDate()（現地）と食い違って個店カルテのテストが落ちた。
+     アプリ側（todayKey/todayYm）は現地時間＝アプリは正しく、テストデータだけが間違っていた。 */
+  const ym = new Date().toLocaleDateString('en-CA').slice(0,7);
   /* ★日付は「今日」から遡って作る（2026-08-17 修正）。
      以前は月の1〜3日で固定していたため、店舗比較のスパークラインが見る
      「今日までの直近14日」（app.js の spDays）から外れる月の後半に必ず落ちていた。
@@ -2931,10 +2934,11 @@ console.log('== ログイン：役割と店舗を、サーバーの返答で固�
   ok(!/au_pw/.test(html), '★needLogin を受けるまでは、ログイン画面は出ない＝今日の配信物の挙動は不変');
 
   // ⑥ 静的な守り＝通信と切替
-  ok(/data-role\]'\)\.forEach\(b => b\.onclick = \(\) => \{\s*if \(getAuth\(\)\) return;/.test(code.replace(/\r\n/g, '\n')),
-     'ログイン済みは役割ボタンを押しても変わらない（二重の守り）');
-  ok(/const getRole = \(\) => \{\s*const a = getAuth\(\);\s*if \(a && a\.role\) return a\.role;/.test(code.replace(/\r\n/g, '\n')),
-     '★getRole はログイン情報を最優先で見る');
+  ok(/data-role\]'\)\.forEach\(b => b\.onclick = \(\) => \{\s*if \(getAuth\(\) && !devViewAllowed\(\)\) return;/.test(code.replace(/\r\n/g, '\n')),
+     'ログイン済みは役割ボタンを押しても変わらない（開発者ビューの許可リストだけ例外）');
+  ok(/const getRole = \(\) => \{\s*const a = getAuth\(\);\s*if \(a && a\.role\) \{/.test(code.replace(/\r\n/g, '\n'))
+     && /return a\.role;   \/\/ ★ログイン済み＝役割はサーバーが返したもので固定/.test(code),
+     '★getRole はログイン情報を最優先で見る（開発者ビューの許可リストだけ見え方を切替可）');
   ok(/data-logout="1"/.test(code), 'ログアウトの入口がある');
   ok(/if \(d && d\.needLogin\) \{ onNeedLogin_\(\); return; \}/.test(code),
      '同期が needLogin を受けたらログイン画面へ');
@@ -3491,6 +3495,37 @@ console.log('== 本部のコメントが店舗に届く（2026-08-31 神田さ�
   seedHome('hq', '本部自身には出さない', Date.now() - 3600000);
   location.hash = '#/home';
   ok(!/本部からの返答/.test(registry.app.innerHTML), '本部のホームには出さない（本部は受信箱で見る）');
+}
+
+console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店舗側の見え方を自分の端末で確認）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const seedAuth = (uid, authRole, viewRole) => run(() => {
+    setLS(viewRole, S, 'ja');
+    localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid, name: 'テスト', role: authRole, stores: ['*'] }));
+  });
+  // ① 対象アカウント（kanda・本部）が店舗表示に切り替えると、戻るバナーが全画面に出る
+  seedAuth('kanda', 'hq', 'staff');
+  location.hash = '#/home';
+  ok(/開発者ビュー：店舗側の表示を確認中/.test(registry.app.innerHTML), '店舗表示中はホームに戻るバナーが出る');
+  ok(!/本部メニュー/.test(registry.app.innerHTML), '店舗表示中は本部メニューが消える（見え方が本当に店舗側になる）');
+  location.hash = '#/app/kizuki';
+  ok(/開発者ビュー：店舗側の表示を確認中/.test(registry.app.innerHTML), 'アプリ画面にも戻るバナーが出る');
+  // ② 本部の表示に戻っているときはバナーを出さない
+  seedAuth('kanda', 'hq', 'hq');
+  location.hash = '#/home';
+  ok(!/開発者ビュー/.test(registry.app.innerHTML), '本部の表示ではバナーが出ない');
+  // ③ 対象でない本部アカウントには何も起きない（切替の入口も開かない）
+  seedAuth('masuda', 'hq', 'staff');
+  location.hash = '#/home';
+  ok(!/開発者ビュー/.test(registry.app.innerHTML), '対象でないアカウントにはバナーを出さない');
+  // ④ ソース＝対象は許可リストのみ・ログイン済みの役割切替は開発者ビューだけ例外
+  const dsrc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/const DEV_VIEW_UIDS = \['kanda'\];/.test(dsrc), '対象は許可リスト（kanda）だけ');
+  ok(/if \(getAuth\(\) && !devViewAllowed\(\)\) return;/.test(dsrc), 'ログイン済みの役割切替は開発者ビューだけ例外');
+  ok(/data-devexit/.test(dsrc) && /setRole\('hq'\); setStoreSel\('all'\);/.test(dsrc), 'バナーを押すと本部の表示（全店）へ戻る');
+  // 後始末＝以後のテストにログイン状態を残さない
+  run(() => { setLS('hq', 'all', 'ja'); });
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
