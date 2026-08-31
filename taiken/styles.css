@@ -156,6 +156,11 @@ body {
 .tile.locked .lock svg { width: 16px; height: 16px; }
 .tile .need { position: absolute; bottom: 12px; right: 12px; font-size: 9px; color: #B0A79C; font-weight: 700; }
 
+/* ===== 開発者ビュー（店舗側の表示を確認中の戻るバナー）===== */
+.devview-bar { display: block; width: 100%; border: 0; cursor: pointer; text-align: center;
+  background: #7a5c1e; color: #fff; font-family: var(--sans); font-size: 12px; font-weight: 700;
+  padding: 9px 14px; line-height: 1.5; position: sticky; top: 0; z-index: 60; }
+
 /* ===== アプリ詳細 ===== */
 .appbar { display: flex; align-items: center; gap: 10px; padding: 6px 0 4px; }
 .back { background: none; border: none; color: var(--suou); font-size: 15px; font-weight: 700; cursor: pointer;
