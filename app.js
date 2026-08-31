@@ -1380,6 +1380,7 @@
       <div class="body">
         <div class="l1">${esc(r.item||L({ja:'（品目未記入）',en:'(no item)',vi:'(chưa nhập)'}))}</div>
         <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}${r.note?' ・ '+esc(L(r.note)):''}</div>
+        ${hqAckLine('waste', r.t, r.store)}
         ${(r.photos && r.photos.length) ? `<div class="rep-photos">${r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" alt="" data-full="${photoFull(p)}" loading="lazy">`).join('')}</div>` : ''}
       </div>
       <span class="amt">${esc(levelLabel(r.level))}</span>
@@ -1419,6 +1420,7 @@
         <div class="l1">${esc(r.item||'—')}</div>
         <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}</div>
         ${fb && fb.comment ? `<div class="l2" style="color:var(--sumi)">💬 ${esc(fb.comment)}</div>` : ''}
+        ${hqAckLine('firstphoto', r.t, r.store)}
         ${hq && r.id ? `<button class="stag st-new" data-fpfb="${esc(r.id)}" style="cursor:pointer;margin-top:6px">${fb?L({ja:'FBを編集',en:'Edit feedback',vi:'Sửa FB'}):L({ja:'本部フィードバック',en:'Give HQ feedback',vi:'FB từ HQ'})}</button>` : ''}
       </div>
       ${badge}
@@ -1505,6 +1507,7 @@
       <div class="body">
         <div class="l1">${esc(r.note||'—')}</div>
         <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}</div>
+        ${hqAckLine('kizuki', r.t, r.store)}
         ${(r.photos && r.photos.length) ? `<div class="rep-photos">${r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" alt="" data-full="${photoFull(p)}" loading="lazy">`).join('')}</div>` : ''}
       </div>
     </div>`;
@@ -4913,7 +4916,7 @@
       </div>
       ${sampleHTML}
       <div class="card"><h3>${L({ja:'最近の提出',en:'Recent submissions',vi:'Đã nộp gần đây'})}</h3>
-        ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join(''):`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div></div>${canEditSample && r.photos && r.photos.length ? `<button class="mini" data-mksample="${esc(String(r.id || r.t))}" style="flex:none;margin-left:auto">${L({ja:'これを見本にする',en:'Use as sample',vi:'Dùng làm mẫu'})}</button>` : ''}</div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
+        ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join(''):`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div>${hqAckLine('openphoto', r.t, r.store)}</div>${canEditSample && r.photos && r.photos.length ? `<button class="mini" data-mksample="${esc(String(r.id || r.t))}" style="flex:none;margin-left:auto">${L({ja:'これを見本にする',en:'Use as sample',vi:'Dùng làm mẫu'})}</button>` : ''}</div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
       </div>`;
   };
 
@@ -5020,9 +5023,20 @@
     return map;
   }
   function setAck(key, state, memo) {
-    postSub(HQ_ACK_KIND, getStoreSel() || '*', key, { state, by: L(ROLES[getRole()].label), memo: memo || '' });
+    /* ★store には対象の報告の店舗名を入れる（2026-08-31）。以前は本部の選択（=all）で保存しており、
+       認証の絞り込みで店舗端末に届かない＝本部のコメントが店舗に見えなかった。
+       キーの3要素目が店舗名なので、そこから取る。 */
+    const ackStore = String(key).split('|').slice(2).join('|') || '*';
+    postSub(HQ_ACK_KIND, ackStore, key, { state, by: L(ROLES[getRole()].label), memo: memo || '' });
     pushAudit('hq_ack', `${key}:${state}`);
   }
+  /* 店舗側の報告一覧に、本部の対応（確認済み＋コメント）を添える（2026-08-31 神田さんのご質問＝
+     「私が送ったコメントは店舗に届いている？」→ 届いていなかったため、表示の場所ごと追加）。 */
+  const hqAckLine = (kind, t, store) => {
+    const a = getAckMap()[ackKey(kind, t, store)];
+    if (!a || a.state !== 'done') return '';
+    return `<div class="l2" style="color:#2a7">✓ ${L({ ja:'本部確認済み', en:'Checked by HQ', vi:'HQ đã xem' })}${a.memo ? ` ・${esc(a.memo)}` : ''}</div>`;
+  };
   // 本部が確認すべき「現場からの報告」を集める（種類をまたいで1本化）
   function collectHqItems() {
     const vis = visibleStores();

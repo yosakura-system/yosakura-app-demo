@@ -185,10 +185,18 @@ function auth_gate_get_(e) {
   return u ? { ok: true, u: u } : { ok: false };
 }
 /* その行を、この利用者に返してよいか */
-function auth_row_ok_(u, kind, store) {
+function auth_row_ok_(u, kind, store, item) {
   if (!u || u.role === 'hq') return true;
   if (AUTH_HQ_READ_KINDS.indexOf(kind) !== -1) return false;      // ★公益通報・ご意見は本部のみ
   if (AUTH_PUBLIC_KINDS.indexOf(kind) !== -1) return true;
+  /* ★hqack（受信箱の対応済み＋本部コメント）は、対象の報告の店舗にだけ返す（2026-08-31）。
+     行のstore列は初期の記録が「all」のため、キー（item＝種類|時刻|店舗名）の3要素目で判定する。
+     こうすると過去に付けたコメントも、その店舗の端末に正しく届く。 */
+  if (kind === 'hqack') {
+    var ks = String(item || '').split('|');
+    var st = ks.length >= 3 ? ks.slice(2).join('|') : '';
+    return !st || u.stores.indexOf(st) !== -1;
+  }
   if (!store || store === '*') return true;                        // 全体設定
   return u.stores.indexOf(String(store)) !== -1;                   // 自店（オーナーは所有店すべて）
 }

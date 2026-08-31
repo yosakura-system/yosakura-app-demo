@@ -3421,5 +3421,53 @@ console.log('== ユンさんの3件（2026-08-31）＝同期で先頭へ戻ら�
   ok(/data-ck="hygiene-1-c-0-0"/.test(h) && /data-ck="hygiene-4-c-0-0"/.test(h), 'どの曜日の項目にもチェックを入れられる');
 }
 
+console.log('== 本部のコメントが店舗に届く（2026-08-31 神田さんのご質問＝受信箱のコメントは店舗に見えるか）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const T = Date.now() - 3600000;
+  const seed = (role) => run(() => {
+    setLS(role, S, 'ja');
+    localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([{ store: S, cat: 'other', note: '虫が多い', photos: [], t: T }]));
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind: 'hqack', store: S, item: `kizuki|${T}|${S}`,
+        note: JSON.stringify({ state: 'done', by: '本部', memo: '気づきのご報告ありがとうございます' }), photos: [], t: Date.now() }
+    ]));
+  });
+  // ① スタッフの「気づき」一覧に、本部の確認済み＋コメントが出る
+  seed('staff');
+  location.hash = '#/app/kizuki';
+  let h = registry.app.innerHTML;
+  ok(/本部確認済み/.test(h) && /気づきのご報告ありがとうございます/.test(h),
+     'スタッフの気づき一覧に「本部確認済み＋コメント」が出る');
+  // ② 店長でも同じく見える
+  seed('manager');
+  location.hash = '#/app/kizuki';
+  h = registry.app.innerHTML;
+  ok(/本部確認済み/.test(h), '店長の気づき一覧にも本部の確認が出る');
+  // ③ 対応済みでない（コメントが無い）報告には何も出ない
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([{ store: S, cat: 'other', note: '虫が多い', photos: [], t: T }]));
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([]));
+  });
+  location.hash = '#/app/kizuki';
+  ok(!/本部確認済み/.test(registry.app.innerHTML), '本部が対応していない報告には何も付かない');
+  // ④ 保存時に対象店舗名が入る（＝認証の絞り込みで店舗端末に届く）
+  const asrc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/const ackStore = String\(key\)\.split\('\|'\)\.slice\(2\)\.join\('\|'\) \|\| '\*';/.test(asrc),
+     '対応済みの保存は対象の報告の店舗名で行う（本部の「all」で保存しない）');
+  // ⑤ 食べ残し・1食目写真・オープン写真の一覧にも同じ表示が結ばれている
+  ok(/hqAckLine\('waste', r\.t, r\.store\)/.test(asrc) && /hqAckLine\('firstphoto', r\.t, r\.store\)/.test(asrc)
+     && /hqAckLine\('openphoto', r\.t, r\.store\)/.test(asrc),
+     '食べ残し・1食目写真・オープン写真の一覧にも本部コメントが出る');
+  // ⑥ 認証（GAS）側＝hqackはキー内の店舗名で自店だけに返す（過去の「all」保存分も届く）
+  const gsrc = fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8');
+  ok(/kind === 'hqack'/.test(gsrc) && /ks\.slice\(2\)\.join\('\|'\)/.test(gsrc),
+     '認証側＝hqackは対象店舗にだけ返す（他店のコメントは見えない）');
+  const csrc = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
+  ok(/auth_row_ok_\(gate\.u, String\(r\[2\] \|\| ''\), String\(r\[3\] \|\| ''\), String\(r\[4\] \|\| ''\)\)/.test(csrc),
+     'doGetがitem（キー）を認証判定へ渡している');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

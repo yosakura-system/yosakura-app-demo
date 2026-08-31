@@ -334,7 +334,7 @@ function doGet(e) {
         var r = values[i];
         if (!r[0]) continue;
         if (store && store !== 'all' && r[3] !== store) continue;
-        if (gate.u && typeof auth_row_ok_ === 'function' && !auth_row_ok_(gate.u, String(r[2] || ''), String(r[3] || ''))) continue; // ★自店の分だけ返す
+        if (gate.u && typeof auth_row_ok_ === 'function' && !auth_row_ok_(gate.u, String(r[2] || ''), String(r[3] || ''), String(r[4] || ''))) continue; // ★自店の分だけ返す（hqackはitem内の店舗名で判定）
         out.push({
           id: r[0], t: Number(r[1]) || 0, kind: r[2], store: r[3],
           item: r[4], level: r[5], note: r[6], photos: parsePhotos(r[7])
