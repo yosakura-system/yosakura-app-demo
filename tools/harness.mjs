@@ -2028,7 +2028,8 @@ console.log('== 「1つ前へ」で1画面ずつ戻れる（2026-08-17 神田さ
 
   // 押すと1つ前（学ぶタブ）へ戻る
   const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/prevBtn'\)\.onclick = \(\) => goBack\(\)/.test(src), '「1つ前へ」は goBack につながっている');
+  ok(/prevBtn'\)\.onclick = \(\) => goBack\(\)/.test(src) && /prevBtn2'\)\.onclick = \(\) => goBack\(\)/.test(src),
+     '「1つ前へ」は goBack につながっている（下部のバーも同じ）');
   /* ★ブラウザの戻る（history.back）を使うと、アプリを直接開いた直後に押したとき
      アプリの外（前に見ていたサイト）へ出てしまう。自前でたどった道を持つ作りであること */
   ok(/const NAV = \[\]/.test(src) && !/history\.back\(\)/.test(src),
@@ -2040,7 +2041,7 @@ console.log('== 「1つ前へ」で1画面ずつ戻れる（2026-08-17 神田さ
   location.hash = '#/home';
   location.hash = '#/home?tab=learn';
   location.hash = '#/app/manual';
-  const press = () => { const b = doc.getElementById('prevBtn'); if (typeof b.onclick === 'function') { b.onclick(); return true; } return false; };
+  const press = () => { const b = doc.getElementById('prevBtn'); if (b && typeof b.onclick === 'function') { b.onclick(); return true; } return false; };
   ok(press(), '「1つ前へ」が押せる状態で描かれている');
   const at = () => location.hash.replace(/^#/, '');   // この試験環境では # が付かないことがある
   ok(at() === '/home?tab=learn', '押すと1つ前（学ぶタブ）へ戻る（いま ' + at() + '）');
@@ -3388,6 +3389,7 @@ console.log('== ユンさんの3件（2026-08-31）＝同期で先頭へ戻ら�
   location.hash = '#/app/checklist';
   let h = registry.app.innerHTML;
   ok((h.match(/class="appbar"/g) || []).length >= 2, 'アプリ画面の下部にも「1つ前へ・ホーム」のバーが出る');
+  ok(/id="backBtn2"/.test(h), '下のバーは別ID＝上下どちらのボタンも反応する（同じidの複製にしない）');
   // ③ 定期清掃の「全体」表示
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'hygiene'); });
   location.hash = '#/app/checklist';

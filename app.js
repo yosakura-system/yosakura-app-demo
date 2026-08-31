@@ -914,10 +914,14 @@
   /* 画面の左上。ホームへ戻るのと、1つ前へ戻るのを並べる（2026-08-17 神田さんのご要望）。
      ★「戻る」は、たどってきた道がある画面にだけ出す。
        いつも出すと、押しても何も起きない画面ができて迷わせる。 */
-  function appbarHTML() {
-    const home = `<button class="back" id="backBtn">${svg('back')}${L({ ja:'ホーム', en:'Home', vi:'Trang chủ' })}</button>`;
+  function appbarHTML(pos) {
+    /* ★バーは画面の上下2か所に置く（2026-08-31 ユンさんのご要望）。
+       同じidを2回使うと後の方に反応が付かない（＝下のバーが押しても効かなかった・神田さんの実機報告）ため、
+       下部は別id（backBtn2/prevBtn2）にして両方へ反応を結ぶ。 */
+    const sfx = pos === 'btm' ? '2' : '';
+    const home = `<button class="back" id="backBtn${sfx}">${svg('back')}${L({ ja:'ホーム', en:'Home', vi:'Trang chủ' })}</button>`;
     if (!canGoBack()) return home;
-    const back = `<button class="back back--prev" id="prevBtn">${svg('back')}${L({ ja:'1つ前へ', en:'Back', vi:'Quay lại' })}</button>`;
+    const back = `<button class="back back--prev" id="prevBtn${sfx}">${svg('back')}${L({ ja:'1つ前へ', en:'Back', vi:'Quay lại' })}</button>`;
     return back + home;
   }
 
@@ -1158,7 +1162,7 @@
         </div>
         ${body}
         ${/* ★下からも戻れるように（2026-08-31 ユンさんのご要望＝戻るが一番上にしかない） */''}
-        <div class="appbar" style="margin-top:18px">${appbarHTML()}</div>
+        <div class="appbar" style="margin-top:18px">${appbarHTML('btm')}</div>
       </main>`;
     return shell(inner, groupTab(a.group));
   }
@@ -6218,6 +6222,8 @@
     if (byId('installDismiss')) byId('installDismiss').onclick = () => { localStorage.setItem('yosakura_install_hide', '1'); render(); };
     if (byId('backBtn')) byId('backBtn').onclick = () => go('/home');
     if (byId('prevBtn')) byId('prevBtn').onclick = () => goBack();
+    if (byId('backBtn2')) byId('backBtn2').onclick = () => go('/home');   // 下部のバー（2026-08-31）
+    if (byId('prevBtn2')) byId('prevBtn2').onclick = () => goBack();
 
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab === 'home' ? '/home' : `/home?tab=${b.dataset.tab}`));
     // 総括表のビジュアル：期間/指標の切替・個店カルテ・その日の日報
