@@ -1069,6 +1069,30 @@
         <div class="news-h"><span class="news-ic">${svg('chat')}</span><b>${L({ ja:'みんなの投稿', en:'Community', vi:'Cộng đồng' })}</b></div>
         <p class="news-body">${L({ ja:'現場のグッドストーリー（お客様が喜んだこと・ファインプレー）をここで共有しましょう。', en:'Share good stories from the field here.', vi:'Chia sẻ câu chuyện hay tại đây.' })}</p>
       </button>`;
+    /* ★本部からの返答＝ホームのお知らせ欄で気づけるように（2026-08-31 神田さんのご指摘＝
+       気づき一覧の奥までたどらないと返答に気づけない）。
+       コメントの無い「確認済み」だけは出さない（毎日のオープン写真の確認で埋まるため）。直近7日・3件まで。 */
+    const HQR_ROUTE = { kizuki:'/app/kizuki', waste:'/app/tabemono', firstphoto:'/app/firstphoto', openphoto:'/app/openphoto' };
+    const HQR_LABEL = {
+      kizuki:{ ja:'気づき', en:'Insight', vi:'Ghi nhận' }, waste:{ ja:'食べ残し', en:'Waste', vi:'Đồ thừa' },
+      firstphoto:{ ja:'1食目写真', en:'First plate', vi:'Ảnh món đầu' }, openphoto:{ ja:'オープン写真', en:'Opening photo', vi:'Ảnh mở cửa' } };
+    const hqReplies = role === 'hq' ? [] : Object.entries(getAckMap())
+      .map(([k, a]) => { const p = k.split('|'); return { kind: p[0], store: p.slice(2).join('|'), a }; })
+      .filter(x => x.a.state === 'done' && x.a.memo && HQR_ROUTE[x.kind] && visibleStores().includes(x.store)
+                   && Date.now() - (x.a.ts || 0) < 7 * 86400000)
+      .sort((x, y) => (y.a.ts || 0) - (x.a.ts || 0)).slice(0, 3);
+    const hqReplyCard = hqReplies.length ? `
+      <div class="card news-card">
+        <div class="news-h"><span class="news-ic">${svg('chat')}</span><b>${L({ ja:'本部からの返答', en:'Replies from HQ', vi:'Phản hồi từ HQ' })}</b><span class="news-ago">${timeAgo(hqReplies[0].a.ts)}</span></div>
+        ${hqReplies.map(x => `
+        <button class="rep" data-go="${esc(HQR_ROUTE[x.kind])}" style="width:100%;text-align:left;background:none;border:0;border-top:1px solid rgba(0,0,0,.06);padding:10px 0;cursor:pointer;display:flex;gap:8px;align-items:flex-start">
+          <span class="kind b" style="flex:none">${esc(L(HQR_LABEL[x.kind]))}</span>
+          <span style="min-width:0;flex:1">
+            <span class="news-body" style="display:block;margin:0">${esc(x.a.memo)}</span>
+            <span class="news-ago" style="display:block;margin-top:2px">${esc(storeShort(x.store))} ・ ${timeAgo(x.a.ts)}</span>
+          </span>
+        </button>`).join('')}
+      </div>` : '';
     const links = `
       <div class="homelinks">
         <button class="homelink" data-tab="genba"><span class="hl-ic">${svg('report')}</span><span class="hl-t">${L({ ja:'報告する', en:'Report', vi:'Báo cáo' })}</span><span class="hl-c">${svg('chev')}</span></button>
@@ -1079,7 +1103,7 @@
     // 店舗（iPad・店長・オーナー）は「今日やること」を最初に見る＝画面の左上に置く。
     // 本部はお知らせの配信・確認が主なので、従来どおりお知らせを先頭にする。
     const dutySection = sec({ ja:'提出・業務', en:'Tasks', vi:'Nhiệm vụ' }) + dutyBlock;
-    const newsSection = news + communityCard;
+    const newsSection = hqReplyCard + news + communityCard;   // 返答はお知らせ欄の先頭（2026-08-31）
     const isStoreSide = role !== 'hq';
     return `
       <main class="screen">
