@@ -3467,6 +3467,30 @@ console.log('== 本部のコメントが店舗に届く（2026-08-31 神田さ�
   const csrc = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
   ok(/auth_row_ok_\(gate\.u, String\(r\[2\] \|\| ''\), String\(r\[3\] \|\| ''\), String\(r\[4\] \|\| ''\)\)/.test(csrc),
      'doGetがitem（キー）を認証判定へ渡している');
+
+  // ⑦ ホームで気づける（2026-08-31 神田さんのご指摘＝一覧の奥までたどらないと返答に気づけない）
+  const seedHome = (role, memo, ackT) => run(() => {
+    setLS(role, S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind: 'hqack', store: S, item: `kizuki|${T}|${S}`,
+        note: JSON.stringify({ state: 'done', by: '本部', memo }), photos: [], t: ackT }
+    ]));
+  });
+  seedHome('staff', '気づきのご報告ありがとうございます', Date.now() - 3600000);
+  location.hash = '#/home';
+  h = registry.app.innerHTML;
+  ok(/本部からの返答/.test(h) && /気づきのご報告ありがとうございます/.test(h),
+     'ホームのお知らせ欄に「本部からの返答」が出る（コメント全文つき)');
+  ok(/data-go="\/app\/kizuki"/.test(h), '返答を押すと該当の画面（気づき）へ移動できる');
+  seedHome('staff', '', Date.now() - 3600000);
+  location.hash = '#/home';
+  ok(!/本部からの返答/.test(registry.app.innerHTML), 'コメントの無い「確認済み」だけはホームに出さない（オープン写真の確認で埋まらない）');
+  seedHome('staff', '古い返答です', Date.now() - 9 * 86400000);
+  location.hash = '#/home';
+  ok(!/本部からの返答/.test(registry.app.innerHTML), '7日より古い返答はホームに出さない');
+  seedHome('hq', '本部自身には出さない', Date.now() - 3600000);
+  location.hash = '#/home';
+  ok(!/本部からの返答/.test(registry.app.innerHTML), '本部のホームには出さない（本部は受信箱で見る）');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
