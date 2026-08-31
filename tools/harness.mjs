@@ -1402,7 +1402,13 @@ FETCH_ROWS = { ok:false };
 
 console.log('== 使い方が役割ごとに変わる（紙のガイドと同じ中身）==');
 {
-  const g = (role, store) => renderView('guide', role, store, 'ja');
+  // 初期タブは「くわしいガイド（スライド）」になったので、この検査は「きほん」タブを明示して行う
+  // （run() が localStorage ごと作り直すため、タブの指定は run の中で行う）
+  const g = (role, store) => {
+    const app = run(() => { setLS(role, store, 'ja'); localStorage.setItem('yosakura_guide_tab', 'basic'); });
+    location.hash = '#/app/guide';
+    return app.innerHTML;
+  };
   const staff = g('staff', S_HIROSHIMA), mgr = g('manager', S_HIROSHIMA);
   const own = g('owner', 'owned'), hq = g('hq', 'all');
   ok(/この端末での使い方/.test(staff), '使い方の画面が出る');
@@ -3373,6 +3379,17 @@ console.log('== 使い方ガイドのアプリ内掲載（2026-08-31 構築MTG �
   // 画像の実体がリポジトリに同梱されている（配信物にも同梱される）
   ok(fs.existsSync(APP.replace(/app\.js$/, 'guide/owner-17.jpg')) && fs.existsSync(APP.replace(/app\.js$/, 'guide/staff-10.jpg')),
      'スライド画像が guide/ に同梱されている');
+  // ③b 初めて開いたとき（タブ未選択）はスライドが最初に見える（2026-08-31 神田さんの実機報告＝
+  //     「使い方ガイドを押してもスライドが出ない」。入口で必ずスライドへたどり着けるようにする）
+  run(() => { setLS('manager', S, 'ja'); localStorage.removeItem('yosakura_guide_tab'); });
+  location.hash = '#/app/guide';
+  h = registry.app.innerHTML;
+  ok(/guide\/owner-01\.jpg/.test(h), 'ガイドを開くと最初から配布スライドが見える（タブ未選択の初期表示）');
+  // ③c 「使い方ガイド」カードはツアーを直接開かず、必ずガイドのページへ移動する
+  //     （ツアーだけ開くとスライドへの入口が無くなる＝2026-08-31 実機で発覚）
+  const gsrc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/\[data-open\]'\)\.forEach\(b => b\.onclick = \(\) => go\(`\/app\/\$\{b\.dataset\.open\}`\)\)/.test(gsrc),
+     '「使い方ガイド」カードはガイドのページへ移動する（ツアー直行にしない）');
   // ④ 日報のタブはURL指定が最優先（ガイドからの直リンク用）
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_soukatsu_tab', 'input'); });
   location.hash = '#/app/soukatsu?tab=summary';
