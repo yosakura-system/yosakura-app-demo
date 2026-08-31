@@ -76,6 +76,12 @@ fs.writeFileSync(path.join(OUT, 'sw.js'), sw);
 for (const f of ['index.html', 'styles.css', 'manifest.webmanifest']) {
   fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
 }
+// 使い方ガイドのスライド画像（アプリ内ガイド用・2026-08-31）
+const GDIR = path.join(ROOT, 'guide');
+if (fs.existsSync(GDIR)) {
+  fs.mkdirSync(path.join(OUT, 'guide'), { recursive: true });
+  for (const f of fs.readdirSync(GDIR)) fs.copyFileSync(path.join(GDIR, f), path.join(OUT, 'guide', f));
+}
 
 /* アイコンは「gitが持っているもの」を正とする。
    ★2026-08-12：作業ツリーの icons/ に skip-worktree が立っていて実体が無く、

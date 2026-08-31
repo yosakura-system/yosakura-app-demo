@@ -92,9 +92,17 @@ if (!dm) throw new Error('デモ sw.js の CACHE 行が見つかりません');
 sw = sw.replace(dm[0], `const CACHE = 'yosakura-hq-v${next}';`);
 fs.writeFileSync(path.join(WORK, 'sw.js'), sw, 'utf8');
 
+// 4-b) 使い方ガイドのスライド画像（アプリ内ガイド用・2026-08-31）
+//      ※ guide/ だけ変わった場合は app.js も変わっているはず（枚数の焼き込み）＝「変更なし」早期終了の影響なし
+const GDIR = path.join(DEMO, 'guide');
+if (fs.existsSync(GDIR)) {
+  fs.mkdirSync(path.join(WORK, 'guide'), { recursive: true });
+  for (const f of fs.readdirSync(GDIR)) fs.copyFileSync(path.join(GDIR, f), path.join(WORK, 'guide', f));
+}
+
 // 5) commit & push
 const msg = process.argv.slice(2).join(' ') || 'デモから同期（プレビュー反映）';
-sh('git add app.js styles.css sw.js', WORK);
+sh('git add app.js styles.css sw.js guide', WORK);
 sh(`git -c user.name="yosakura-system" -c user.email="yosakura.system@gmail.com" commit -m "${msg}\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"`, WORK);
 sh('git push origin HEAD', WORK);
 console.log(`OK: プレビューへ同期・push 完了（SWキャッシュ → yosakura-hq-v${next}）`);
