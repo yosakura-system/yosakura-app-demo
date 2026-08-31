@@ -1173,8 +1173,70 @@
   /* 使い方＝いつでも読み返せる1枚（役割ごとに中身が変わる）。
      案内（初回のモーダル）と同じ内容を、順番つきで並べているだけ。
      ※ 紙の「つかいかた」と同じことを書く。紙とアプリで違うと現場が迷うため。 */
+  /* ★くわしいガイド（2026-08-31 構築MTG アクション11＝使い方ガイドをアプリ内へ）。
+     8/30の配布ガイド（スタッフ用・オーナー店長用）の中身を、役割別・画面への直接リンク付きで載せる。
+     PDFと違い、①更新がすぐ届く ②「開く」を押せばその画面へ飛べる ③3言語で読める。 */
+  const GUIDE_DETAIL = (role) => role === 'staff' ? [
+    { t:{ ja:'はじめて使うとき', en:'First time', vi:'Lần đầu sử dụng' },
+      b:{ ja:'お店のiPadでお使いください（ログインは店長が設定済み）。右上からお名前を登録すると、提出にお名前が残ります。', en:'Use the store iPad (login is set up). Register your name from the top right.', vi:'Dùng iPad cửa hàng (đã đăng nhập). Đăng ký tên ở góc trên phải.' } },
+    { t:{ ja:'今日出すもの', en:'Today’s items', vi:'Việc hôm nay' }, go:'/app/kyou',
+      b:{ ja:'開けば今日やることが上から順に並んでいます。出したものは消えます。', en:'Everything due today, top to bottom. Done items disappear.', vi:'Việc hôm nay xếp từ trên xuống. Xong sẽ biến mất.' } },
+    { t:{ ja:'写真を出す', en:'Submit photos', vi:'Gửi ảnh' }, go:'/app/openphoto',
+      b:{ ja:'撮って送るだけ。送り先を選ぶ必要はありません。見本写真が登録されていれば、同じ画角で撮れます。', en:'Just shoot and send. Follow the sample photos if registered.', vi:'Chỉ chụp và gửi. Làm theo ảnh mẫu nếu có.' } },
+    { t:{ ja:'点検する', en:'Checks', vi:'Kiểm tra' }, go:'/app/checklist',
+      b:{ ja:'項目ごとにやり方が書いてあります。お手本の写真があれば、見比べながら進められます。', en:'Each item explains how. Compare with the model photos if set.', vi:'Mỗi mục có hướng dẫn. So với ảnh mẫu nếu có.' } },
+    { t:{ ja:'気づいたことを送る', en:'Share insights', vi:'Gửi ghi nhận' }, go:'/app/kizuki',
+      b:{ ja:'良かったことも困ったことも、そのままの言葉で。あなたの気づきがお店を良くします。', en:'Good or bad, in your own words.', vi:'Tốt hay khó, cứ viết thật.' } },
+    { t:{ ja:'調べる・学ぶ', en:'Learn', vi:'Học' }, go:'/app/manual',
+      b:{ ja:'マニュアル・レシピ・勉強会の録画がここから開きます。迷ったらまずここ。', en:'Manuals, recipes and study videos.', vi:'Tài liệu, công thức, video học.' } },
+    { t:{ ja:'困ったとき', en:'If stuck', vi:'Khi gặp khó' },
+      b:{ ja:'画面が古いときは、いちばん下の「最新にする」。分からないときは「よくある質問」か店長へ。', en:'Tap “Refresh” at the bottom if the screen looks old. Ask FAQ or your manager.', vi:'Nhấn “Cập nhật” ở cuối màn hình. Hỏi FAQ hoặc quản lý.' } }
+  ] : [
+    { t:{ ja:'毎日の報告は、アプリへ一本化していきます', en:'Reports are moving into the app', vi:'Báo cáo đang chuyển vào ứng dụng' },
+      b:{ ja:'提出物・写真・日報を順次アプリへ統一していきます。移行の時期・対象は本部からご案内します。', en:'Submissions, photos and daily reports are being unified here. HQ will announce the schedule.', vi:'Các báo cáo sẽ thống nhất tại đây. HQ sẽ thông báo lộ trình.' } },
+    { t:{ ja:'はじめかた（最初に1回だけ）', en:'Getting started (once)', vi:'Bắt đầu (một lần)' },
+      b:{ ja:'本部からお渡ししたIDと仮パスワードでログインし、ご自分のパスワードへ変更してください（6文字以上）。ホーム画面に追加しておくと、次からワンタップです。', en:'Sign in with the HQ-issued ID and temporary password, then set your own (6+ chars). Add to home screen for one-tap access.', vi:'Đăng nhập bằng ID và mật khẩu tạm, sau đó đổi mật khẩu riêng (6+ ký tự).' } },
+    { t:{ ja:'今日出すもの・写真', en:'Today’s items & photos', vi:'Việc hôm nay & ảnh' }, go:'/app/kyou',
+      b:{ ja:'今日出すものが上から並びます。写真は撮って送るだけで、送り先を選びません。', en:'Everything due today, top to bottom. Photos: just shoot and send.', vi:'Việc hôm nay từ trên xuống. Ảnh chỉ cần chụp và gửi.' } },
+    { t:{ ja:'日報（総括表）は一度入れるだけ', en:'Daily report: enter once', vi:'Báo cáo ngày: nhập một lần' }, go:'/app/soukatsu',
+      b:{ ja:'「入力」タブに入れた数字が、そのままグラフ・月次のまとめ・本部の集計になります。転記のやり直しはありません。', en:'Numbers entered once feed the graphs, monthly summary and HQ view.', vi:'Nhập một lần, tự động thành biểu đồ và tổng hợp.' } },
+    { t:{ ja:'お店の数字を見る', en:'See your numbers', vi:'Xem số liệu' }, go:'/app/soukatsu?tab=summary',
+      b:{ ja:'お店の動き（前の期間との比較・客数と客単価の分解）、今月の着地見込み、月別の推移、曜日別が見られます。', en:'Movement vs previous period, projected month-end, monthly and weekday trends.', vi:'Biến động, dự kiến chốt tháng, xu hướng theo tháng/thứ.' } },
+    { t:{ ja:'見本・お手本を登録する', en:'Register samples', vi:'Đăng ảnh mẫu' }, go:'/app/openphoto',
+      b:{ ja:'写真提出＝「最近の提出」の「これを見本にする」（内観・外観の2枚まで）。点検＝「お手本を編集」から正しい状態の写真と注意書きを登録できます。', en:'Photos: “Use as sample” under recent submissions. Checks: edit the model photos and notes.', vi:'Ảnh: “Dùng làm mẫu”. Kiểm tra: sửa ảnh mẫu và ghi chú.' } },
+    { t:{ ja:'お店に合わせて整える', en:'Tailor to your store', vi:'Tùy chỉnh cửa hàng' }, go:'/app/checklist',
+      b:{ ja:'点検の項目は「×」で外し、ホール・キッチンの分類を選んで自店の項目を足せます。緊急連絡先・月次業務も店舗ごとに設定できます。', en:'Remove items with ×, add your own by section. Emergency contacts and monthly tasks are per-store.', vi:'Bỏ mục bằng ×, thêm mục riêng theo khu vực.' } },
+    { t:{ ja:'困ったとき', en:'If stuck', vi:'Khi gặp khó' },
+      b:{ ja:'画面が古いときは、いちばん下の「最新にする」。パスワードを忘れたら本部へ（新しい仮パスワードを再発行）。マニュアルが開かないときは「アクセス権をリクエスト」を押さず、本部の増田までご連絡ください。', en:'“Refresh” at the bottom if the screen looks old. Forgot password → contact HQ. If a manual won’t open, don’t request access — contact HQ (Masuda).', vi:'Nhấn “Cập nhật” nếu màn hình cũ. Quên mật khẩu → liên hệ HQ.' } }
+  ];
+
   APP_VIEWS.guide = () => {
     const role = getRole();
+    /* ★タブ＝きほん（従来のこの端末での使い方＋案内ツアー）／くわしく（配布ガイドのアプリ内版）。
+       役割・項目が違うものは縦に積まずタブで分ける（2026-08-31 神田さんのご指示） */
+    const gtab = localStorage.getItem('yosakura_guide_tab') === 'detail' ? 'detail' : 'basic';
+    const seg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="gdtab">
+      <button type="button" data-gdtab="basic" class="${gtab === 'basic' ? 'on' : ''}">${L({ ja:'きほん', en:'Basics', vi:'Cơ bản' })}</button>
+      <button type="button" data-gdtab="detail" class="${gtab === 'detail' ? 'on' : ''}">${L({ ja:'くわしいガイド', en:'Full guide', vi:'Chi tiết' })}</button>
+    </div></div>`;
+    if (gtab === 'detail') {
+      const items = GUIDE_DETAIL(role);
+      const rows = items.map((s, i) => `
+        <div class="rep" style="align-items:flex-start">
+          <span class="kind b" style="min-width:26px;text-align:center">${i + 1}</span>
+          <div class="body">
+            <div class="l1">${esc(L(s.t))}</div>
+            <div class="l2" style="white-space:normal;line-height:1.7">${esc(L(s.b))}</div>
+            ${s.go ? `<div style="margin-top:6px"><button class="mini" data-go="${esc(s.go)}">${L({ ja:'この画面を開く', en:'Open this screen', vi:'Mở màn hình này' })}</button></div>` : ''}
+          </div>
+        </div>`).join('');
+      return `${seg}
+        <div class="card">
+          <h3>${role === 'staff' ? L({ ja:'スタッフの皆さまへ', en:'For staff', vi:'Dành cho nhân viên' }) : L({ ja:'店長・オーナー様へ', en:'For managers & owners', vi:'Dành cho quản lý & chủ' })}</h3>
+          <p class="hint" style="display:block">${L({ ja:'配布している使い方ガイドと同じ内容です。「この画面を開く」で実際の画面へ移動できます。', en:'Same content as the printed guide. Jump straight to each screen.', vi:'Nội dung như bản in. Có thể mở thẳng màn hình.' })}</p>
+          ${rows}
+        </div>`;
+    }
     const steps = guideFor(role);
     const rows = steps.map((s, i) => `
       <div class="rep">
@@ -1184,15 +1246,14 @@
           <div class="l2" style="white-space:normal">${esc(L(s.b))}</div>
         </div>
       </div>`).join('');
-    return `
+    return `${seg}
       <div class="card">
         <h3>${L({ ja:'この端末での使い方', en:'How to use on this device', vi:'Cách dùng trên thiết bị này' })}
           <small style="color:#8a8">${esc(L(ROLES[role].label))}</small></h3>
         <p class="hint" style="display:block">${L({ ja:'いま選ばれている役割に合わせて表示しています。役割を変えると内容も変わります（右上から切替）。', en:'Shown for the current role. Switch roles at the top right to see other guides.', vi:'Hiển thị theo vai trò hiện tại. Đổi ở góc trên phải.' })}</p>
         ${rows}
         <button class="btn-primary" data-guide-tour="1" style="margin-top:10px">${L({ ja:'順番に見る（案内）', en:'Walk me through it', vi:'Xem lần lượt' })}</button>
-      </div>
-      <p class="hint" style="display:block">${L({ ja:'※ 同じ内容を紙（A4 1枚）でもお配りしています。', en:'The same content is also available on a one-page handout.', vi:'Nội dung tương tự cũng có bản in 1 trang.' })}</p>`;
+      </div>`;
   };
 
   /* 食べ残し報告のメニュー選択（木村さん要望：自由入力→選択式）。店舗の業態でメニューを出し分け＋「その他（自由入力）」 */
@@ -2674,7 +2735,10 @@
       { v:'summary', t: vis.length > 1 ? { ja:'店舗の状況', en:'Stores', vi:'Cửa hàng' } : { ja:'今月の推移', en:'This month', vi:'Tháng này' } },
       { v:'recent',  t:{ ja:'最近の総括表', en:'Recent', vi:'Gần đây' } }
     ];
-    const skTab = SKT.some(o => o.v === localStorage.getItem('yosakura_soukatsu_tab')) ? localStorage.getItem('yosakura_soukatsu_tab') : 'input';
+    // タブはURL（?tab=）が最優先＝ガイド等からタブ指定で飛べる。無ければ前回選んだタブ、初回は入力
+    const urlSkTab = currentRoute().params.get('tab');
+    const skTab = SKT.some(o => o.v === urlSkTab) ? urlSkTab
+      : SKT.some(o => o.v === localStorage.getItem('yosakura_soukatsu_tab')) ? localStorage.getItem('yosakura_soukatsu_tab') : 'input';
     const skTabSeg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="sktab">${SKT.map(o => `<button type="button" data-sktab="${o.v}" class="${o.v === skTab ? 'on' : ''}">${L(o.t)}</button>`).join('')}</div></div>`;
     /* 店舗比較（複数店舗を見られる本部・オーナー）／個店サマリー（1店舗）
        ★2026-08-30 神田さんのご要望＝分析（動き・着地見込み・月別推移）を本部だけでなく
@@ -2899,7 +2963,8 @@
     }).sort((a, b) => b.val - a.val);
     const max = Math.max(1, ...rows.map(r => r.val));
     const wq = params.get('w') === '28' ? '&w=28' : '';   // 「店舗の動き」の期間選択を保つ
-    const chip = (o, key, cur) => `<button class="chip${o.v === cur ? ' on' : ''}" data-go="${esc(base)}?p=${key === 'p' ? o.v : p}&m=${key === 'm' ? o.v : mv}${wq}">${esc(L(o.t))}</button>`;
+    const tq = params.get('tab') ? '&tab=' + encodeURIComponent(params.get('tab')) : ''; // 日報のタブ指定も保つ
+    const chip = (o, key, cur) => `<button class="chip${o.v === cur ? ' on' : ''}" data-go="${esc(base)}?p=${key === 'p' ? o.v : p}&m=${key === 'm' ? o.v : mv}${wq}${tq}">${esc(L(o.t))}</button>`;
     const totalByDay = (d) => all.filter(r => r.date === d).reduce((s, r) => s + numOr0(r.sales), 0);
     return `
       <div class="card">
@@ -2964,7 +3029,7 @@
       return ` ・ <b>${L({ ja:'主因＝', en:'mainly: ', vi:'chủ yếu: ' })}${which}</b>`;
     };
     const keep = (k) => { const v = params.get(k); return v ? `&${k}=${encodeURIComponent(v)}` : ''; };
-    const wchip = (n, label) => `<button class="chip${w === n ? ' on' : ''}" data-go="${esc(base)}?w=${n}${keep('p')}${keep('m')}${keep('s')}${keep('ym')}">${esc(L(label))}</button>`;
+    const wchip = (n, label) => `<button class="chip${w === n ? ' on' : ''}" data-go="${esc(base)}?w=${n}${keep('p')}${keep('m')}${keep('s')}${keep('ym')}${keep('tab')}">${esc(L(label))}</button>`;
     return `
       <div class="card">
         <h3>${single ? L({ ja:'お店の動き（前の期間との比較）', en:'Your store movement', vi:'Biến động cửa hàng' }) : L({ ja:'店舗の動き（前の期間との比較）', en:'Store movement (vs previous period)', vi:'Biến động cửa hàng (so kỳ trước)' })}</h3>
@@ -5129,14 +5194,15 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab],[data-sktab]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab],[data-sktab],[data-gdtab]');
       if (!t) return;
       if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(true); return; }
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
       if (t.dataset.ttab) { localStorage.setItem('yosakura_teishutsu_tab', t.dataset.ttab); render(true); return; }
-      if (t.dataset.sktab) { localStorage.setItem('yosakura_soukatsu_tab', t.dataset.sktab); render(true); return; }
+      if (t.dataset.sktab) { localStorage.setItem('yosakura_soukatsu_tab', t.dataset.sktab); go('/app/soukatsu?tab=' + t.dataset.sktab); return; }
+      if (t.dataset.gdtab) { localStorage.setItem('yosakura_guide_tab', t.dataset.gdtab); render(true); return; }
       if (t.dataset.ackdone) { setAck(t.dataset.ackdone, 'done', ''); toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(true); return; }
       if (t.dataset.ackmemo) {
         // ★ブラウザのダイアログは使わない（iPhoneのホーム画面版では表示されない）＝その場にメモ欄を開く
