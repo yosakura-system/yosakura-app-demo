@@ -879,7 +879,14 @@
   const NAV = [];
   const navPush = () => {
     const h = location.hash.replace(/^#/, '') || '/home';
-    if (NAV[NAV.length - 1] !== h) NAV.push(h);
+    const top = NAV[NAV.length - 1] || '';
+    if (top === h) return;
+    /* ★同じ画面のパラメータ切替（期間チップ・並べ替え・月送り等）は履歴に積まず「置き換える」。
+       積むと「1つ前へ」が同じ画面のパラメータ違いを何度も遡る＝2026-08-31 常山さんの
+       「戻るボタンで同じ画面へ何度も戻る」の原因。/home のタブ切替だけは別画面扱いで従来どおり積む。 */
+    const pathOf = (x) => String(x).split('?')[0];
+    if (top && pathOf(top) === pathOf(h) && pathOf(h) !== '/home') { NAV[NAV.length - 1] = h; return; }
+    NAV.push(h);
     if (NAV.length > 30) NAV.shift();   // 長く使っても増え続けないように
   };
   const canGoBack = () => NAV.length > 1;
