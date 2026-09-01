@@ -3559,6 +3559,44 @@ console.log('== 牛カツ長堀橋店トライアル：LINEアルバムの提出
   h = registry.app.innerHTML;
   ok(/納品書の写真/.test(h), '受信箱で納品書の提出が項目名で出る');
   ok(/オープン写真/.test(h), 'オープン写真は従来どおりの表示のまま');
+
+  // ⑤ 中間報告＝フォームで受ける（2026-09-01 常山さんよりフォーマット受領）
+  h = renderView('chukan', 'staff', S, 'ja');
+  ok(/報告の種類/.test(h) && /朝食報告/.test(h), '中間報告に朝食／中間の切替がある');
+  ['組数', '客数', '現金', 'カード', '電子マネー', '未会計（お食事中）', '総売り上げ', 'チップ',
+   '従業員（1行に1名）', '営業内容', 'Googleレビュー獲得件数'].forEach(f =>
+    ok(h.includes(f), `中間報告フォームに「${f}」がある`));
+  ok(/日計レポート（アイドルクローズ）/.test(h), 'フォームから日計レポート写真の出し場所も案内している');
+  // 送信＝提出データに残り、今日出すものが「中間報告」を提出済みにできる
+  doc.getElementById('ch_kyaku').value = '26';
+  doc.getElementById('ch_total').value = '143800';
+  doc.getElementById('submitChukan').onclick();
+  const reps = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]');
+  const ch = reps.find(r => r.kind === 'chukan');
+  ok(!!ch && JSON.parse(ch.note).kyaku === 26 && JSON.parse(ch.note).total === 143800, '送信すると chukan として保存される（客数・総売上入り）');
+  location.hash = '#/app/kyou';
+  ok(/中間報告/.test(registry.app.innerHTML), '今日出すものに「中間報告」が出る');
+  ok(/提出済/.test(registry.app.innerHTML), '送信後は提出済みの判定が付く');
+  // 全部空の送信は保存しない（誤タップ対策）
+  h = renderView('chukan', 'staff', S, 'ja');
+  doc.getElementById('submitChukan').onclick();
+  ok(!JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').some(r => r.kind === 'chukan'),
+     '客数・総売上・営業内容が全部空だと保存しない');
+  // 他店には中間報告が出ない
+  h = renderView('kyou', 'staff', '日本料理世桜本店', 'ja');
+  ok(!/中間報告/.test(h), '他の店舗の「今日出すもの」に中間報告は出ない');
+  // ⑥ 受信箱に中間報告が要約つきで出る
+  run(() => {
+    setLS('hq', 'all', 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind: 'chukan', store: S, item: 'midday',
+        note: JSON.stringify({ rtype: 'midday', kumi: 15, kyaku: 26, total: 143800, memo: 'ピーク落ち着き', by: 'テスト' }),
+        photos: [], t: Date.now() - 3600000 }
+    ]));
+  });
+  location.hash = '#/app/inbox';
+  h = registry.app.innerHTML;
+  ok(/中間報告/.test(h) && /143,800/.test(h), '受信箱に中間報告が総売上つきで出る');
   // 後始末
   run(() => { setLS('hq', 'all', 'ja'); });
 }
