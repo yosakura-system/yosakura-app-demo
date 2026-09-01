@@ -1573,13 +1573,30 @@
   ];
   const chTypeLabel = (v) => { const c = CH_TYPES.find(x => x.v === v); return c ? L(c.t) : L(CH_TYPES[0].t); };
   const getChukan = () => { try { return getReports().filter(r => r.kind === 'chukan'); } catch { return []; } };
+  /* ★日計レポート写真からの自動読み取り（下書き・2026-09-01）。
+     GAS（日計OCR.gs）が写真をOCRし、chukandraft（アイドル分）／skdraft（クローズ分）の行を作る。
+     ここでは「今日の・この店舗の・最新の」下書きを拾ってフォームに自動で入れる。
+     ★送信は必ず人が押す＝読み取りが間違っていても、目で見て直せる形を守る */
+  function nikkeiDraft(store, kind, dks) {
+    let best = null;
+    try {
+      getReports().forEach(r => {
+        if (r.kind !== kind || r.store !== store || dks.indexOf(String(r.item || '')) === -1) return;
+        if (!best || r.t > best.t) best = r;
+      });
+    } catch (e) {}
+    if (!best) return null;
+    const p = parseNote(best.note);
+    return (p && p.src === 'ocr') ? Object.assign({ _t: best.t }, p) : null;
+  }
   APP_VIEWS.chukan = () => {
     const vis = visibleStores();
     const recent = getChukan().filter(r => vis.includes(r.store)).sort((a, b) => b.t - a.t).slice(0, 5);
-    const numFld = (id, label, unit) => `
+    const draft = nikkeiDraft(vis[0], 'chukandraft', [dateKeyFor(vis[0], Date.now())]) || {};
+    const numFld = (id, label, unit, val) => `
         <label class="fld"><span>${L(label)}</span>
           <div style="display:flex;align-items:center;gap:8px">
-            <input type="number" id="${id}" inputmode="numeric" min="0" style="flex:1" placeholder="0">
+            <input type="number" id="${id}" inputmode="numeric" min="0" style="flex:1" placeholder="0"${val != null ? ` value="${val}"` : ''}>
             <span class="muted" style="font-size:13px;white-space:nowrap">${L(unit)}</span>
           </div></label>`;
     return `
@@ -1590,14 +1607,15 @@
           <select id="ch_store">${vis.map(s => `<option>${esc(s)}</option>`).join('')}</select></label>
         <label class="fld"><span>${L({ ja:'報告の種類', en:'Type', vi:'Loại' })}</span>
           <div class="seg" data-seg="chtype">${CH_TYPES.map((c, i) => `<button type="button" data-v="${c.v}" class="${i === 0 ? 'on' : ''}">${L(c.t)}</button>`).join('')}</div></label>
+        ${draft._t ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 日計レポートの写真から読み取った数字が入っています。確認して、違うところは直してから送信してください。', en:'Numbers were read from the daily-report photo. Check and correct before submitting.', vi:'Số liệu đọc từ ảnh báo cáo. Kiểm tra và sửa trước khi gửi.' })}（${timeAgo(draft._t)}）</p>` : ''}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
-          ${numFld('ch_kumi', { ja:'組数', en:'Groups', vi:'Số nhóm' }, { ja:'組', en:'groups', vi:'nhóm' })}
-          ${numFld('ch_kyaku', { ja:'客数', en:'Guests', vi:'Số khách' }, { ja:'名', en:'guests', vi:'khách' })}
-          ${numFld('ch_cash', { ja:'現金', en:'Cash', vi:'Tiền mặt' }, { ja:'円', en:'yen', vi:'yên' })}
-          ${numFld('ch_card', { ja:'カード', en:'Card', vi:'Thẻ' }, { ja:'円', en:'yen', vi:'yên' })}
-          ${numFld('ch_emoney', { ja:'電子マネー', en:'E-money', vi:'Ví điện tử' }, { ja:'円', en:'yen', vi:'yên' })}
+          ${numFld('ch_kumi', { ja:'組数', en:'Groups', vi:'Số nhóm' }, { ja:'組', en:'groups', vi:'nhóm' }, draft.kumi)}
+          ${numFld('ch_kyaku', { ja:'客数', en:'Guests', vi:'Số khách' }, { ja:'名', en:'guests', vi:'khách' }, draft.kyaku)}
+          ${numFld('ch_cash', { ja:'現金', en:'Cash', vi:'Tiền mặt' }, { ja:'円', en:'yen', vi:'yên' }, draft.cash)}
+          ${numFld('ch_card', { ja:'カード', en:'Card', vi:'Thẻ' }, { ja:'円', en:'yen', vi:'yên' }, draft.card)}
+          ${numFld('ch_emoney', { ja:'電子マネー', en:'E-money', vi:'Ví điện tử' }, { ja:'円', en:'yen', vi:'yên' }, draft.emoney)}
           ${numFld('ch_unpaid', { ja:'未会計（お食事中）', en:'Unpaid (dining)', vi:'Chưa thanh toán' }, { ja:'円', en:'yen', vi:'yên' })}
-          ${numFld('ch_total', { ja:'総売り上げ', en:'Total sales', vi:'Tổng doanh thu' }, { ja:'円', en:'yen', vi:'yên' })}
+          ${numFld('ch_total', { ja:'総売り上げ', en:'Total sales', vi:'Tổng doanh thu' }, { ja:'円', en:'yen', vi:'yên' }, draft.total)}
           ${numFld('ch_tip', { ja:'チップ', en:'Tips', vi:'Tiền tip' }, { ja:'円', en:'yen', vi:'yên' })}
         </div>
         <div class="hint" style="display:block">${L({ ja:'※「未会計」は主に朝食報告で使います（無ければ空欄のままで大丈夫です）。', en:'“Unpaid” is mainly for the breakfast report (leave blank if none).', vi:'“Chưa thanh toán” chủ yếu dùng cho báo cáo bữa sáng.' })}</div>
@@ -2883,6 +2901,10 @@
     const recent = getSk().filter(r => vis.includes(r.store))
       .sort((a, b) => a.date === b.date ? (b.t - a.t) : (a.date < b.date ? 1 : -1)).slice(0, 6);
     const today = todayKey();
+    /* ★レジクローズの日計レポート写真からの下書き（skdraft・2026-09-01）。
+       日報は前日分を翌朝に出すことがあるため、今日と昨日の下書きを対象にする
+       （どちらの場合も「最新のクローズ写真＝これから出す日報の日」になる） */
+    const skDraft = nikkeiDraft(vis[0], 'skdraft', [dateKeyFor(vis[0], Date.now()), dateKeyFor(vis[0], Date.now() - 864e5)]) || {};
     /* ★タブ化（2026-08-31 神田さんのご指示＝役割・項目が違うものは縦に積まずタブで分ける。
        「スクロールは結構見なくなる」）。入力／今月の推移（複数店は店舗の状況）／最近の総括表 の3タブ */
     const SKT = [
@@ -2921,11 +2943,12 @@
       ${head}
       ${skTab !== 'input' ? '' : `<div class="card" id="skForm">
         <h3>${L({ ja:'本日の総括表', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
+        ${skDraft._t ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ レジクローズの日計レポート写真から読み取った数字（売上・客数・現金・カード）が入っています。確認して、違うところは直してから提出してください。', en:'Sales, guests, cash and card were read from the register-close photo. Check and correct before submitting.', vi:'Doanh thu, khách, tiền mặt, thẻ đọc từ ảnh đóng ca. Kiểm tra trước khi gửi.' })}（${timeAgo(skDraft._t)}）</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
           <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${today}" max="${today}"></label>
-          <label class="fld"><span>${L({ja:'当日売上',en:'Sales',vi:'Doanh thu'})}</span><input type="text" inputmode="numeric" id="sk_sales" placeholder="186817"></label>
-          <label class="fld"><span>${L({ja:'客数',en:'Guests',vi:'Khách'})}</span><input type="text" inputmode="numeric" id="sk_guests" placeholder="16"></label>
+          <label class="fld"><span>${L({ja:'当日売上',en:'Sales',vi:'Doanh thu'})}</span><input type="text" inputmode="numeric" id="sk_sales" placeholder="186817"${skDraft.total != null ? ` value="${skDraft.total}"` : ''}></label>
+          <label class="fld"><span>${L({ja:'客数',en:'Guests',vi:'Khách'})}</span><input type="text" inputmode="numeric" id="sk_guests" placeholder="16"${skDraft.kyaku != null ? ` value="${skDraft.kyaku}"` : ''}></label>
         </div>
         <div class="stat-row" style="margin:2px 0 10px">
           <div class="stat"><div class="n" id="sk_avg">¥0</div><div class="k">${L({ja:'客単価（自動計算）',en:'Per guest (auto)',vi:'BQ/khách (tự động)'})}</div></div>
@@ -2952,8 +2975,8 @@
           <label class="fld"><span>${L({ja:'レジ締め担当',en:'Cash-up by',vi:'Người chốt sổ'})}</span><input type="text" id="sk_closer" placeholder="${L({ja:'担当者名',en:'staff name',vi:'tên NV'})}"></label>
         </div>
         <div class="sk-grid">
-          <label class="fld"><span>${L({ja:'現金売上',en:'Cash sales',vi:'DT tiền mặt'})}</span><input type="text" inputmode="numeric" id="sk_cash" placeholder="96800"></label>
-          <label class="fld"><span>${L({ja:'カード売上',en:'Card sales',vi:'DT thẻ'})}</span><input type="text" inputmode="numeric" id="sk_card" placeholder="251700"></label>
+          <label class="fld"><span>${L({ja:'現金売上',en:'Cash sales',vi:'DT tiền mặt'})}</span><input type="text" inputmode="numeric" id="sk_cash" placeholder="96800"${skDraft.cash != null ? ` value="${skDraft.cash}"` : ''}></label>
+          <label class="fld"><span>${L({ja:'カード売上',en:'Card sales',vi:'DT thẻ'})}</span><input type="text" inputmode="numeric" id="sk_card" placeholder="251700"${skDraft.card != null ? ` value="${skDraft.card}"` : ''}></label>
           <label class="fld"><span>${L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'})}</span><input type="text" inputmode="numeric" id="sk_lunch" placeholder="186400" value="${skChukanToday(vis[0]) != null ? skChukanToday(vis[0]) : ''}"></label>
           <label class="fld"><span>${L({ja:'仕入金額（当日）',en:'Purchases today',vi:'Nhập hàng'})}</span><input type="text" inputmode="numeric" id="sk_buy" placeholder="7049"></label>
           <label class="fld"><span>${L({ja:'消耗品金額',en:'Supplies',vi:'Vật tư'})}</span><input type="text" inputmode="numeric" id="sk_supply" placeholder="0"></label>
