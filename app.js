@@ -1120,6 +1120,15 @@
     const HQR_LABEL = {
       kizuki:{ ja:'気づき', en:'Insight', vi:'Ghi nhận' }, waste:{ ja:'食べ残し', en:'Waste', vi:'Đồ thừa' },
       firstphoto:{ ja:'1食目写真', en:'First plate', vi:'Ảnh món đầu' }, openphoto:{ ja:'オープン写真', en:'Opening photo', vi:'Ảnh mở cửa' } };
+    /* ★提出物マスタ由来の種類（日計レポート・納品書・中間報告など）も返答の対象にする（2026-09-02）。
+       v180で受信箱の表示を項目名に分けた際、対応済みの保存キーも項目idになったが、
+       ここが旧4種しか知らず、新しい項目へのコメントが店舗のホームに出ていなかった（神田さんの実機報告）。
+       写真系（linkApp=openphoto）は data-tsubphoto でその項目を開いた状態で写真画面へ飛ばす */
+    const HQR_PHOTO = {};
+    try { getMasters().forEach(m => { if (!HQR_ROUTE[m.id] && m.linkApp) {
+      HQR_ROUTE[m.id] = '/app/' + m.linkApp; HQR_LABEL[m.id] = m.name;
+      if (m.linkApp === 'openphoto') HQR_PHOTO[m.id] = true;
+    } }); } catch (e) {}
     const hqReplies = role === 'hq' ? [] : Object.entries(getAckMap())
       .map(([k, a]) => { const p = k.split('|'); return { kind: p[0], store: p.slice(2).join('|'), a }; })
       .filter(x => x.a.state === 'done' && x.a.memo && HQR_ROUTE[x.kind] && visibleStores().includes(x.store)
@@ -1129,7 +1138,7 @@
       <div class="card news-card">
         <div class="news-h"><span class="news-ic">${svg('chat')}</span><b>${L({ ja:'本部からの返答', en:'Replies from HQ', vi:'Phản hồi từ HQ' })}</b><span class="news-ago">${timeAgo(hqReplies[0].a.ts)}</span></div>
         ${hqReplies.map(x => `
-        <button class="rep" data-go="${esc(HQR_ROUTE[x.kind])}" style="width:100%;text-align:left;background:none;border:0;border-top:1px solid rgba(0,0,0,.06);padding:10px 0;cursor:pointer;display:flex;gap:8px;align-items:flex-start">
+        <button class="rep" ${HQR_PHOTO[x.kind] ? `data-tsub="openphoto" data-tsubphoto="${esc(x.kind)}"` : `data-go="${esc(HQR_ROUTE[x.kind])}"`} style="width:100%;text-align:left;background:none;border:0;border-top:1px solid rgba(0,0,0,.06);padding:10px 0;cursor:pointer;display:flex;gap:8px;align-items:flex-start">
           <span class="kind b" style="flex:none">${esc(L(HQR_LABEL[x.kind]))}</span>
           <span style="min-width:0;flex:1">
             <span class="news-body" style="display:block;margin:0">${esc(x.a.memo)}</span>
@@ -5248,7 +5257,7 @@
       </div>
       ${sampleHTML}
       <div class="card"><h3>${L({ja:'最近の提出',en:'Recent submissions',vi:'Đã nộp gần đây'})}</h3>
-        ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join(''):`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div>${hqAckLine('openphoto', r.t, r.store)}</div>${canEditSample && r.photos && r.photos.length ? `<button class="mini" data-mksample="${esc(String(r.id || r.t))}" style="flex:none;margin-left:auto">${L({ja:'これを見本にする',en:'Use as sample',vi:'Dùng làm mẫu'})}</button>` : ''}</div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
+        ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join(''):`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div>${hqAckLine(['openphoto','hygiene_m','menubook'].includes(target)?'openphoto':target, r.t, r.store)}</div>${canEditSample && r.photos && r.photos.length ? `<button class="mini" data-mksample="${esc(String(r.id || r.t))}" style="flex:none;margin-left:auto">${L({ja:'これを見本にする',en:'Use as sample',vi:'Dùng làm mẫu'})}</button>` : ''}</div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
       </div>`;
   };
 
