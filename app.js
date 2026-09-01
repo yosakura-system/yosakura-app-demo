@@ -3910,17 +3910,22 @@
        前月に数えた品目は名前と単価を引き継いで出す＝毎月は数量を入れるだけ。
      ★保存＝既存の月次数値レコード（kind:'monthly'）の close と closeDetail に持たせる＝新しいkindを作らない
        （認証・同期の追加作業を増やさない）。原価率と翌月の月初在庫への引き継ぎは既存の仕組みがそのまま働く。 */
-  const TN_FOOD_N = 12, TN_DRINK_N = 6;  // 食材12行＋飲料6行（空きスロット式・足りない店が出たら増やす）
+  const TN_FOOD_N = 12, TN_DRINK_N = 6;  // 食材12行＋飲料6行（空きスロット式・貼り付け取り込みで自動的に増える）
+  /* 「まとめて貼り付け」の下書き（店舗×月ごと・保存で消す）＝ゼロから手打ちしないための入口 */
+  const tnDraftKey = (store, ym) => `${store}||${ym}`;
+  const getTnDrafts = () => { try { return JSON.parse(localStorage.getItem('yosakura_tn_draft')) || {}; } catch { return {}; } };
   function tanaRowsFor(store, ym, type) {
     const rec = getMonthly().find(r => r.store === store && r.ym === ym);
     const prev = getMonthly().find(r => r.store === store && r.ym === prevYm(ym));
-    /* 当月に保存済みならそれ。無ければ前月の品目（名前・単価だけ引き継ぎ・数量は空） */
-    const detail = (rec && Array.isArray(rec.closeDetail) && rec.closeDetail.length) ? rec.closeDetail
+    const draft = getTnDrafts()[tnDraftKey(store, ym)];
+    /* 貼り付けの下書き ＞ 当月の保存分 ＞ 前月の品目（名前・単価だけ引き継ぎ・数量は空） */
+    const detail = (Array.isArray(draft) && draft.length) ? draft
+      : (rec && Array.isArray(rec.closeDetail) && rec.closeDetail.length) ? rec.closeDetail
       : (prev && Array.isArray(prev.closeDetail) && prev.closeDetail.length) ? prev.closeDetail.map(d => ({ n: d.n, t: d.t, u: d.u, q: null })) : [];
     const n = type === 'f' ? TN_FOOD_N : TN_DRINK_N;
     const rows = detail.filter(d => d.t === type).map(d => ({ n: d.n, u: d.u, q: d.q }));
     while (rows.length < n) rows.push({ n: '', u: null, q: null });
-    return rows.slice(0, Math.max(n, rows.length));
+    return rows;
   }
   function tanaCard(store, curYm) {
     /* 対象月＝選び直した月を保持（renderで巻き戻さない）。既定は今月 */
@@ -3942,13 +3947,21 @@
           <input type="text" inputmode="decimal" id="tn_${type}${i}_q" value="${r.q != null ? esc(String(r.q)) : ''}" placeholder="0" style="flex:0.55;min-width:0;text-align:right;padding:10px 8px">
           <span id="tn_${type}${i}_amt" class="muted" style="width:64px;flex:none;text-align:right;font-size:12px;overflow:hidden;text-overflow:ellipsis">—</span>
         </div>`).join('')}`;
+    const fRows = tanaRowsFor(store, nowYm, 'f'), dRows = tanaRowsFor(store, nowYm, 'd');
     return `
       <div class="card" id="tnForm">
         <h3>${L({ ja:'棚卸（月末・食材のみ）', en:'Stocktake (month-end, food only)', vi:'Kiểm kê (cuối tháng, thực phẩm)' })} — ${esc(storeShort(store))}</h3>
         <p class="hint" style="display:block">${L({ ja:'月末に、店の食材を数えて入力してください。開封済み・使いかけは 0.25／0.5／0.75／1 のどれかで概算します（例：粉が半分→0.5）。包材や消耗品は数えません（PLで別に管理します）。', en:'Count food items at month end. Opened/partial items are estimated as 0.25 / 0.5 / 0.75 / 1 (e.g. half a bag = 0.5). Packaging and supplies are not counted (managed separately in P&L).', vi:'Cuối tháng đếm thực phẩm. Hàng đã mở ước lượng 0.25/0.5/0.75/1. Không đếm bao bì, vật tư.' })}</p>
         <label class="fld"><span>${L({ ja:'対象月', en:'Month', vi:'Tháng' })}</span><input type="month" id="tn_ym" value="${esc(nowYm)}"></label>
-        ${block('f', { ja:'食材', en:'Food', vi:'Thực phẩm' }, tanaRowsFor(store, nowYm, 'f'))}
-        ${block('d', { ja:'飲料', en:'Drinks', vi:'Đồ uống' }, tanaRowsFor(store, nowYm, 'd'))}
+        <input type="hidden" id="tn_fcount" value="${fRows.length}"><input type="hidden" id="tn_dcount" value="${dRows.length}">
+        ${block('f', { ja:'食材', en:'Food', vi:'Thực phẩm' }, fRows)}
+        ${block('d', { ja:'飲料', en:'Drinks', vi:'Đồ uống' }, dRows)}
+        <details style="margin:10px 0">
+          <summary style="cursor:pointer;font-size:13px;color:#6a6458">${L({ ja:'品目をまとめて貼り付けて登録（最初の1回だけ）', en:'Paste item list at once (first time only)', vi:'Dán danh sách mặt hàng (lần đầu)' })}</summary>
+          <p class="hint" style="display:block;margin-top:8px">${L({ ja:'1行に1品目で「品名 単価」（例：米 3000）。単価が分からなければ品名だけでも大丈夫です。「飲料」とだけ書いた行より下は飲料として取り込みます。既存の行は置き換わります。', en:'One item per line: “name price” (e.g. rice 3000). Lines after a line saying “飲料” are treated as drinks. Existing rows are replaced.', vi:'Mỗi dòng 1 mặt hàng “tên giá”. Sau dòng “飲料” là đồ uống.' })}</p>
+          <textarea id="tn_paste" rows="6" placeholder="${esc(L({ ja:'米 3000\nサーロイン肉 12000\nパン粉 800\n飲料\nビール（瓶） 200\nコーラ（瓶） 130', en:'rice 3000\nbeer 200', vi:'gạo 3000' }))}" style="width:100%"></textarea>
+          <button class="mini" id="tnImport" style="margin-top:6px">${L({ ja:'この内容で品目を登録する', en:'Import items', vi:'Nhập danh sách' })}</button>
+        </details>
         <div class="stat-row" style="margin:10px 0">
           <div class="stat"><div class="n" id="tn_food_sum">¥0</div><div class="k">${L({ ja:'食材 計', en:'Food total', vi:'Tổng thực phẩm' })}</div></div>
           <div class="stat"><div class="n" id="tn_drink_sum">¥0</div><div class="k">${L({ ja:'飲料 計', en:'Drinks total', vi:'Tổng đồ uống' })}</div></div>
@@ -6682,9 +6695,12 @@
     // 棚卸（品目×数量0.25刻み→月末在庫へ。2026-09-01）
     const tnForm = byId('tnForm');
     if (tnForm) {
+      /* 行数は描画時に確定した数（貼り付け取り込みで既定より増えることがある） */
+      const fN = Number(byId('tn_fcount') && byId('tn_fcount').value) || TN_FOOD_N;
+      const dN = Number(byId('tn_dcount') && byId('tn_dcount').value) || TN_DRINK_N;
       const tnIds = [];
-      for (let i = 0; i < TN_FOOD_N; i++) tnIds.push('f' + i);
-      for (let i = 0; i < TN_DRINK_N; i++) tnIds.push('d' + i);
+      for (let i = 0; i < fN; i++) tnIds.push('f' + i);
+      for (let i = 0; i < dN; i++) tnIds.push('d' + i);
       const tnNum = (id) => { const v = Number((byId(id) && byId(id).value || '').toString().replace(/[^0-9.]/g, '')); return isNaN(v) ? 0 : v; };
       const tnRow = (k) => {
         const name = (byId('tn_' + k + '_n') && byId('tn_' + k + '_n').value || '').trim();
@@ -6707,6 +6723,30 @@
       tnRecalc();
       /* 対象月を変えたら、その月の保存分（無ければ前月の品目）を出し直す */
       if (byId('tn_ym')) byId('tn_ym').onchange = () => { localStorage.setItem('yosakura_tn_ym', byId('tn_ym').value); render(); };
+      /* 品目のまとめて貼り付け＝最初の1回の手打ちを無くす（2026-09-01 神田さんの方針「いかに手間なく使ってもらえるか」）。
+         「品名 単価」を行で貼る→下書きとして保存→行に展開。数量はその後入れて保存 */
+      if (byId('tnImport')) byId('tnImport').onclick = () => {
+        const store = visibleStores()[0];
+        const ym = (byId('tn_ym') && byId('tn_ym').value) || '';
+        const raw = (byId('tn_paste') && byId('tn_paste').value) || '';
+        const items = [];
+        let mode = 'f';
+        raw.split(/\r?\n/).forEach(line => {
+          const s = line.trim();
+          if (!s) return;
+          if (/^(飲料|ドリンク|drinks?)[：:]?$/i.test(s)) { mode = 'd'; return; }
+          if (/^(食材|フード|food)[：:]?$/i.test(s)) { mode = 'f'; return; }
+          /* 「品名 単価」…最後の数字の塊を単価とみなす。数字が無ければ品名だけ（単価は後で入れる） */
+          const m = s.match(/^(.*?)[\s,、\t]+([\d,]+)\s*(?:円)?$/);
+          if (m) items.push({ n: m[1].trim(), t: mode, u: Number(m[2].replace(/,/g, '')) || null, q: null });
+          else items.push({ n: s.replace(/[\s,、\t]+$/, ''), t: mode, u: null, q: null });
+        });
+        if (!items.length) { toast(L({ ja:'貼り付け欄に品目を入れてください', en:'Paste items first', vi:'Dán danh sách trước' })); return; }
+        const drafts = getTnDrafts(); drafts[tnDraftKey(store, ym)] = items;
+        try { localStorage.setItem('yosakura_tn_draft', JSON.stringify(drafts)); } catch (e) {}
+        toast(`${items.length}${L({ ja:'品目を取り込みました。数量を入れて保存してください。', en:' items imported. Enter quantities and save.', vi:' mặt hàng đã nhập.' })}`);
+        render();
+      };
       if (byId('tnSave')) byId('tnSave').onclick = () => {
         const store = visibleStores()[0];
         const ym = (byId('tn_ym') && byId('tn_ym').value) || '';
@@ -6726,6 +6766,8 @@
         const arr = getMonthly().filter(r => !(r.store === store && r.ym === ym)); arr.push(rec);
         try { saveMonthly(arr.slice(-300)); } catch (e) { saveMonthly(arr.slice(-120)); }
         lastSync = rec.t;
+        /* 貼り付けの下書きは保存で役目を終える（残すと保存済みの内容より優先されてしまう） */
+        try { const dr = getTnDrafts(); delete dr[tnDraftKey(store, ym)]; localStorage.setItem('yosakura_tn_draft', JSON.stringify(dr)); } catch (e) {}
         toast(L({ ja:'棚卸を保存しました（月末在庫へ反映済み）', en:'Stocktake saved (closing stock updated)', vi:'Đã lưu kiểm kê' }));
         render();
         postReport({ kind:'monthly', store, note: JSON.stringify({ ym, sales: rec.sales, purchase: rec.purchase, open: rec.open, close: rec.close, goal: rec.goal, closeDetail: detail, by: rec.by }), t: rec.t });
