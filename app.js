@@ -4368,9 +4368,21 @@
       //   運用が決まったら oblig を 'required' に戻すだけで有効化できる。
       { id:'firstphoto', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'},          oblig:'off',      freq:'daily', due:'23:59', target:'except_course', hqReview:'exception', detect:'fp', linkApp:'firstphoto' },
       { id:'ck_idle',    name:{ja:'アイドルタイムチェックリスト',en:'Idle-time checklist',vi:'Checklist giữa ca'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'idle',   linkApp:'checklist' },
+      /* ★牛カツ長堀橋店のトライアル4項目（2026-09-01 常山さん経由・現場のご要望）。
+         これまで店舗LINEのアルバムで共有していたもの（日計レポート・納品書・在庫チェック表）をアプリで受ける。
+         写真を出す仕組みはオープン写真と同じなので、同じ画面で受ける（項目を足すだけ）。
+         まず言い出しの店舗だけで試し、良ければ本部と相談して全店へ広げる（stores の配列に足すだけ）。 */
+      { id:'nikkei_idle', name:{ja:'日計レポート（アイドルクローズ）',en:'Daily sales report (idle close)',vi:'Báo cáo doanh thu (giữa ca)'}, oblig:'store', freq:'daily', due:'17:00', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
+        how:{ja:'アイドルクローズ時にレジから日計レポートを出力し、撮影して提出してください',en:'Print the daily report at idle close and submit a photo',vi:'In báo cáo doanh thu lúc nghỉ giữa ca và nộp ảnh'} },
+      { id:'nouhin',     name:{ja:'納品書の写真',en:'Delivery slip photos',vi:'Ảnh phiếu giao hàng'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
+        how:{ja:'納品書や買い出しのレシートを、届いたつど撮影して提出してください（1日に何回でも）',en:'Photograph delivery slips and purchase receipts as they arrive (any number per day)',vi:'Chụp phiếu giao hàng và hóa đơn mua ngoài khi nhận được (bao nhiêu lần cũng được)'} },
       { id:'ck_sakura',  name:{ja:'桜チェックリスト（トイレ）',en:'Sakura checklist (restroom)',vi:'Checklist WC'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'sakura', linkApp:'checklist' },
       { id:'hygiene_d',  name:{ja:'定期衛生管理（本日の曜日の箇所）',en:'Periodic hygiene (today\'s spots)',vi:'Vệ sinh định kỳ (hôm nay)'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'hygiene', linkApp:'checklist' },
+      { id:'zaiko_photo', name:{ja:'在庫チェック表の写真',en:'Stock check sheet photos',vi:'Ảnh bảng kiểm kho'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
+        how:{ja:'記入した在庫チェック表（食材①②・ドリンク・消耗品）を撮影して提出してください',en:'Photograph the filled stock check sheets (ingredients, drinks, supplies)',vi:'Chụp các bảng kiểm kho đã điền (nguyên liệu, đồ uống, vật tư)'} },
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
+      { id:'nikkei_close', name:{ja:'日計レポート（レジクローズ）',en:'Daily sales report (register close)',vi:'Báo cáo doanh thu (đóng ca)'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
+        how:{ja:'レジクローズ時に日計レポートを出力し、現金売上の封筒と合わせて撮影・提出してください',en:'Print the daily report at register close and submit it with the cash envelope',vi:'In báo cáo lúc đóng ca và nộp ảnh cùng phong bì tiền mặt'} },
       { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
       /* ★気づきの報告を、1日の最後に置く（2026-08-12 神田さんのご指摘）。
          これまで日報の中に「清掃・特記事項」という自由入力があり、
@@ -4882,7 +4894,10 @@
      グループLINEへ送っていただく設計だった。仕組みは同じなのに受けていなかっただけなので、
      同じ画面で受けるようにした（送り先を選ばずに済む＝アプリでまとまる、が本当になる）。
      どれを出すかは「今日出すもの」から渡す（チェックリストと同じ考え方）。 */
-  const photoSubIds = () => getMasters().filter(m => m.detect === 'subrec' && m.linkApp === 'openphoto').map(m => m.id);
+  /* ★いま見ている店舗に当てはまる項目だけを出す（2026-09-01）。
+     店舗を限定したトライアル項目（牛カツ長堀橋店の納品書写真など）が、
+     ほかの店舗の写真画面の切替ボタンに出てしまわないようにする。 */
+  const photoSubIds = () => { const s = visibleStores()[0]; return getMasters(s).filter(m => m.detect === 'subrec' && m.linkApp === 'openphoto' && appliesToStore(m, s)).map(m => m.id); };
   const getPhotoTarget = () => {
     const v = localStorage.getItem('yosakura_photo_target');
     return photoSubIds().includes(v) ? v : 'openphoto';
@@ -4891,7 +4906,12 @@
   const PHOTO_HINTS = {
     openphoto: { ja:'開店時の店内・外観を1枚。', en:'One photo of the store at opening.', vi:'Một ảnh cửa hàng khi mở cửa.' },
     hygiene_m: { ja:'本部から今月指定された箇所の、清掃前と清掃後を撮ってください。', en:'Before and after photos of the spot assigned by HQ this month.', vi:'Ảnh trước và sau khi vệ sinh khu vực HQ chỉ định tháng này.' },
-    menubook:  { ja:'メニューブックと販促物を並べて、汚れや破れが分かるように撮ってください。', en:'Lay out the menu books and POP so stains or tears are visible.', vi:'Bày menu và vật phẩm quảng bá để thấy rõ vết bẩn hoặc rách.' }
+    menubook:  { ja:'メニューブックと販促物を並べて、汚れや破れが分かるように撮ってください。', en:'Lay out the menu books and POP so stains or tears are visible.', vi:'Bày menu và vật phẩm quảng bá để thấy rõ vết bẩn hoặc rách.' },
+    // ★牛カツ長堀橋店トライアル（2026-09-01）：LINEアルバム運用をアプリへ
+    nikkei_idle:  { ja:'レジから出した日計レポート（取引別・商品別）を、文字が読める距離で撮ってください。', en:'Photograph the printed daily report so the text is readable.', vi:'Chụp báo cáo doanh thu đã in, chữ đọc được rõ.' },
+    nouhin:       { ja:'納品書・レシートを1枚ずつ、金額と日付が読めるように撮ってください。', en:'Photograph each slip/receipt so the amount and date are readable.', vi:'Chụp từng phiếu/hóa đơn, thấy rõ số tiền và ngày.' },
+    zaiko_photo:  { ja:'記入後の在庫チェック表を1枚ずつ撮ってください（食材①②・ドリンク・消耗品）。', en:'Photograph each filled stock sheet (ingredients ①②, drinks, supplies).', vi:'Chụp từng bảng kiểm kho đã điền (nguyên liệu ①②, đồ uống, vật tư).' },
+    nikkei_close: { ja:'クローズの日計レポート3枚と現金売上の封筒を撮ってください。', en:'Photograph the three closing reports and the cash envelope.', vi:'Chụp 3 báo cáo đóng ca và phong bì tiền mặt.' }
   };
   /* ★見本写真＋店舗ごとの注意書き（2026-08-30 長田さんのご提案）
      「この店舗の撮り方（見本）」を写真提出画面に出す＝初日のスタッフでも見本を見ながら同じ画角で撮れる。
@@ -5100,7 +5120,17 @@
       getReports().filter(r => (r.kind === 'a' || r.kind === 'b') && vis.includes(r.store)).forEach(r => add('waste', { ja:'食べ残し', en:'Waste', vi:'Đồ thừa' }, r.t, r.store, r.item, L(r.note) || '', r.photos));
       getFP().filter(r => vis.includes(r.store)).forEach(r => add('firstphoto', { ja:'1食目写真', en:'First-plate', vi:'Ảnh món đầu' }, r.t, r.store, r.item || '', '', r.photos));
       getReports().filter(r => r.kind === 'svfb' && vis.includes(r.store)).forEach(r => add('svfb', { ja:'巡回FB', en:'Visit FB', vi:'Phản hồi' }, r.t, r.store, r.item || '', String(r.note || '').slice(0, 60), r.photos));
-      subRows(SUB_KINDS.open).filter(r => vis.includes(r.store)).forEach(r => add('openphoto', { ja:'オープン写真', en:'Opening photo', vi:'Ảnh mở cửa' }, r.t, r.store, '', '', r.photos));
+      subRows(SUB_KINDS.open).filter(r => vis.includes(r.store)).forEach(r => {
+        /* 従来の3種（オープン写真・月次衛生・メニューブック）は kind='openphoto' のまま
+           （対応済みの記録が kind で引かれているため変えない）。
+           2026-09-01 以降に足した写真提出は、項目名のままそれぞれ別の種類として出す
+           （全部「オープン写真」と表示されて、何の提出か分からなくなるのを防ぐ）。 */
+        const mid = String(r.item || '').split('|')[0];
+        const legacy = !mid || ['openphoto', 'hygiene_m', 'menubook'].includes(mid);
+        const mm = legacy ? null : getMasters().find(x => x.id === mid);
+        if (mm) add(mid, mm.name, r.t, r.store, '', '', r.photos);
+        else add('openphoto', { ja:'オープン写真', en:'Opening photo', vi:'Ảnh mở cửa' }, r.t, r.store, '', '', r.photos);
+      });
     } catch (e) {}
     // 公開待ちの投稿＝本部が「みんなの投稿」を開かないと気づけなかったため、受信箱にも出す。
     // 公開すると pending でなくなり、この一覧から自然に消える（「対応済み」では消さない）。
@@ -6102,7 +6132,8 @@
     // 2026-08-12：日次業務・月次業務から開くため、タブの一覧には出さない（同じものが二重に並んでいた）
     APPS.unshift({ id:'openphoto', group:'genba', icon:'camera', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'写真の提出', en:'Photo submission', vi:'Nộp ảnh' },
-      desc:{ ja:'オープン写真・月次の衛生写真・メニューブックの確認', en:'Opening photo, monthly hygiene, menu book', vi:'Ảnh mở cửa, vệ sinh tháng, menu' } });
+      /* 項目が店舗ごとに増減するようになったため、名指しをやめて総称に（2026-09-01 長堀橋トライアルで4項目追加） */
+      desc:{ ja:'オープン写真など、写真で出す提出物はすべてここから', en:'All photo submissions in one place', vi:'Mọi bài nộp bằng ảnh đều ở đây' } });
   }
   if (!appById('history')) {
     APPS.unshift({ id:'history', group:'genba', icon:'report', roles:['staff','manager','owner','hq'],

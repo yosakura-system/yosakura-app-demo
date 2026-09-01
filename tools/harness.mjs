@@ -3528,5 +3528,39 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 牛カツ長堀橋店トライアル：LINEアルバムの提出物をアプリで受ける（2026-09-01 常山さん経由の現場のご要望）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  // ① 長堀橋の「今日出すもの」にトライアル4項目が並ぶ
+  let h = renderView('kyou', 'staff', S, 'ja');
+  ok(/日計レポート（アイドルクローズ）/.test(h), '今日出すものに「日計レポート（アイドルクローズ）」が出る');
+  ok(/納品書の写真/.test(h), '今日出すものに「納品書の写真」が出る');
+  ok(/在庫チェック表の写真/.test(h), '今日出すものに「在庫チェック表の写真」が出る');
+  ok(/日計レポート（レジクローズ）/.test(h), '今日出すものに「日計レポート（レジクローズ）」が出る');
+  // ② トライアル対象でない店舗には出ない（全店に広げるかは本部と相談してから）
+  h = renderView('kyou', 'staff', '日本料理世桜本店', 'ja');
+  ok(!/納品書の写真/.test(h) && !/日計レポート/.test(h), '他の店舗の「今日出すもの」には出ない');
+  // ③ 写真提出画面の切替ボタンも、その店舗に当てはまる項目だけ
+  h = renderView('openphoto', 'staff', S, 'ja');
+  ok(/data-phtarget="nouhin"/.test(h) && /data-phtarget="zaiko_photo"/.test(h), '長堀橋の写真画面に切替ボタンが出る');
+  h = renderView('openphoto', 'staff', '日本料理世桜本店', 'ja');
+  ok(!/data-phtarget="nouhin"/.test(h), '他の店舗の写真画面には切替ボタンが出ない');
+  // ④ 受信箱＝新しい項目は項目名で出る（全部「オープン写真」と表示されない）。従来の3種は従来どおり
+  run(() => {
+    setLS('hq', 'all', 'ja');
+    const t = Date.now() - 3600000;
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind: 'subrec', store: S, item: `nouhin|2026-09-01`, note: '{}', photos: ['p1'], t },
+      { kind: 'subrec', store: S, item: `openphoto|2026-09-01`, note: '{}', photos: ['p2'], t: t + 1 }
+    ]));
+  });
+  location.hash = '#/app/inbox';
+  h = registry.app.innerHTML;
+  ok(/納品書の写真/.test(h), '受信箱で納品書の提出が項目名で出る');
+  ok(/オープン写真/.test(h), 'オープン写真は従来どおりの表示のまま');
+  // 後始末
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
