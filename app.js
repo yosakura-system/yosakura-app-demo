@@ -252,6 +252,11 @@
     { id:'kizuki', group:'genba', icon:'idea', tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'気づきの報告', en:'Daily Insights', vi:'Ghi nhận cuối ca' },
       desc:{ ja:'クローズ後の気づきを本部へ共有', en:'Share end-of-shift insights', vi:'Chia sẻ ghi nhận sau ca' } },
+    /* 中間報告＝長堀橋トライアル（2026-09-01）。タブには出さず「今日出すもの」の行から開く
+       （hide だと画面ごと開けなくなるので tabHide。対象店舗の判定は提出物マスタ側の stores で行う） */
+    { id:'chukan', group:'genba', icon:'report', tabHide:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'中間報告', en:'Midday Report', vi:'Báo cáo giữa ngày' },
+      desc:{ ja:'アイドルクローズ時の数字とメモを本部へ', en:'Midday numbers and notes to HQ', vi:'Số liệu giữa ngày gửi HQ' } },
     { id:'route', group:'genba', icon:'pin', hide:true, roles:['staff','manager','owner','hq'], // 議事録12-1: 来店経路はサーベイで回収（アプリに重複入力を作らない）。結果は「サーベイ集計」で表示
       name:{ ja:'来店経路の記録', en:'Arrival Route', vi:'Nguồn khách' },
       desc:{ ja:'来店きっかけをワンタップで', en:'One-tap arrival source', vi:'Nguồn khách 1 chạm' } },
@@ -1555,6 +1560,80 @@
         ${(r.photos && r.photos.length) ? `<div class="rep-photos">${r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" alt="" data-full="${photoFull(p)}" loading="lazy">`).join('')}</div>` : ''}
       </div>
     </div>`;
+
+  /* ---------- 中間報告（牛カツ長堀橋店トライアル・2026-09-01） ----------
+     LINEで送っていたテキスト報告（常山さんよりフォーマット受領）をフォームで受ける。
+     ・朝食報告をするスタッフもいる＝種類を選んで同じ画面から1日に何回でも出せる
+     ・「未会計（お食事中）」は主に朝食報告で使う欄
+     ・数字は最終的に総括表へ転記されている運用とのこと＝ここで受ければ転記を無くす入口になる
+     ・日計レポートの写真は別項目（nikkei_idle）＝このフォームは数字とテキストだけ */
+  const CH_TYPES = [
+    { v:'midday',  t:{ ja:'中間報告', en:'Midday', vi:'Giữa ngày' } },
+    { v:'morning', t:{ ja:'朝食報告', en:'Breakfast', vi:'Bữa sáng' } }
+  ];
+  const chTypeLabel = (v) => { const c = CH_TYPES.find(x => x.v === v); return c ? L(c.t) : L(CH_TYPES[0].t); };
+  const getChukan = () => { try { return getReports().filter(r => r.kind === 'chukan'); } catch { return []; } };
+  APP_VIEWS.chukan = () => {
+    const vis = visibleStores();
+    const recent = getChukan().filter(r => vis.includes(r.store)).sort((a, b) => b.t - a.t).slice(0, 5);
+    const numFld = (id, label, unit) => `
+        <label class="fld"><span>${L(label)}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="${id}" inputmode="numeric" min="0" style="flex:1" placeholder="0">
+            <span class="muted" style="font-size:13px;white-space:nowrap">${L(unit)}</span>
+          </div></label>`;
+    return `
+      ${NOTE({ ja:'◆ アイドルクローズ時に、その時点の数字を報告（朝食営業のある日は朝食報告も同じ画面から）', en:'◆ Report the numbers at idle close (breakfast report uses this screen too)', vi:'◆ Báo cáo số liệu lúc nghỉ giữa ca (báo cáo bữa sáng cũng ở đây)' })}
+      <div class="card">
+        <h3>${L({ ja:'中間報告', en:'Midday report', vi:'Báo cáo giữa ngày' })}</h3>
+        <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
+          <select id="ch_store">${vis.map(s => `<option>${esc(s)}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'報告の種類', en:'Type', vi:'Loại' })}</span>
+          <div class="seg" data-seg="chtype">${CH_TYPES.map((c, i) => `<button type="button" data-v="${c.v}" class="${i === 0 ? 'on' : ''}">${L(c.t)}</button>`).join('')}</div></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+          ${numFld('ch_kumi', { ja:'組数', en:'Groups', vi:'Số nhóm' }, { ja:'組', en:'groups', vi:'nhóm' })}
+          ${numFld('ch_kyaku', { ja:'客数', en:'Guests', vi:'Số khách' }, { ja:'名', en:'guests', vi:'khách' })}
+          ${numFld('ch_cash', { ja:'現金', en:'Cash', vi:'Tiền mặt' }, { ja:'円', en:'yen', vi:'yên' })}
+          ${numFld('ch_card', { ja:'カード', en:'Card', vi:'Thẻ' }, { ja:'円', en:'yen', vi:'yên' })}
+          ${numFld('ch_emoney', { ja:'電子マネー', en:'E-money', vi:'Ví điện tử' }, { ja:'円', en:'yen', vi:'yên' })}
+          ${numFld('ch_unpaid', { ja:'未会計（お食事中）', en:'Unpaid (dining)', vi:'Chưa thanh toán' }, { ja:'円', en:'yen', vi:'yên' })}
+          ${numFld('ch_total', { ja:'総売り上げ', en:'Total sales', vi:'Tổng doanh thu' }, { ja:'円', en:'yen', vi:'yên' })}
+          ${numFld('ch_tip', { ja:'チップ', en:'Tips', vi:'Tiền tip' }, { ja:'円', en:'yen', vi:'yên' })}
+        </div>
+        <div class="hint" style="display:block">${L({ ja:'※「未会計」は主に朝食報告で使います（無ければ空欄のままで大丈夫です）。', en:'“Unpaid” is mainly for the breakfast report (leave blank if none).', vi:'“Chưa thanh toán” chủ yếu dùng cho báo cáo bữa sáng.' })}</div>
+        <label class="fld"><span>${L({ ja:'従業員（1行に1名）', en:'Staff (one per line)', vi:'Nhân viên (mỗi dòng 1 người)' })}</span>
+          <textarea id="ch_staff" rows="3"></textarea></label>
+        <label class="fld"><span>${L({ ja:'営業内容', en:'Notes on service', vi:'Nội dung ca' })}</span>
+          <textarea id="ch_memo" rows="3" placeholder="${esc(L({ ja:'例）ピーク時の様子・トラブル・お客様のご反応 等', en:'e.g. peak-time notes, issues, guest reactions', vi:'vd: giờ cao điểm, sự cố, phản hồi của khách' }))}"></textarea></label>
+        ${numFld('ch_greview', { ja:'Googleレビュー獲得件数', en:'Google reviews gained', vi:'Số review Google mới' }, { ja:'件', en:'', vi:'' })}
+        <button class="btn-primary" id="submitChukan">${L({ ja:'報告する', en:'Submit', vi:'Gửi' })}</button>
+        <div class="hint">${L({ ja:'※ 日計レポートの写真は「写真の提出」→「日計レポート（アイドルクローズ）」からお願いします。', en:'Submit the printed report photo via Photo submissions.', vi:'Ảnh báo cáo in nộp ở mục Nộp ảnh.' })}</div>
+      </div>
+      <div class="card">
+        <h3>${L({ ja:'最近の報告', en:'Recent reports', vi:'Báo cáo gần đây' })}</h3>
+        ${recent.length ? recent.map(chRow).join('') : `<div class="muted">${L({ ja:'まだありません', en:'None yet', vi:'Chưa có' })}</div>`}
+      </div>`;
+  };
+  const chSummary = (p) => {
+    const parts = [];
+    if (p.kumi || p.kyaku) parts.push(`${p.kumi || 0}${L({ ja:'組', en:' groups ', vi:' nhóm ' })}${p.kyaku || 0}${L({ ja:'名', en:' guests', vi:' khách' })}`);
+    if (p.total) parts.push(`${L({ ja:'総売上', en:'Total', vi:'Tổng' })} ${yen(p.total)}`);
+    if (p.greview) parts.push(`${L({ ja:'レビュー', en:'Reviews ', vi:'Review ' })}${p.greview}${L({ ja:'件', en:'', vi:'' })}`);
+    return parts.join(' ・ ');
+  };
+  const chRow = (r) => {
+    const p = parseNote(r.note);
+    return `
+    <div class="rep">
+      <span class="kind ${p.rtype === 'morning' ? 'b' : 'a'}">${esc(chTypeLabel(p.rtype))}</span>
+      <div class="body">
+        <div class="l1">${esc(chSummary(p) || '—')}</div>
+        ${p.memo ? `<div class="l2">${esc(String(p.memo).slice(0, 80))}</div>` : ''}
+        <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}${p.by ? ` ・ ${esc(p.by)}` : ''}</div>
+        ${hqAckLine('chukan', r.t, r.store)}
+      </div>
+    </div>`;
+  };
 
   /* 来店経路の記録（まな＝記入減少→ワンタップで記録）*/
   const getRoute = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_route')) || []; } catch { return []; } };
@@ -4376,6 +4455,10 @@
          これまで店舗LINEのアルバムで共有していたもの（日計レポート・納品書・在庫チェック表）をアプリで受ける。
          写真を出す仕組みはオープン写真と同じなので、同じ画面で受ける（項目を足すだけ）。
          まず言い出しの店舗だけで試し、良ければ本部と相談して全店へ広げる（stores の配列に足すだけ）。 */
+      /* 中間報告＝2026-09-01 常山さんよりフォーマット受領。LINEのテキスト報告をフォームで受ける。
+         日計レポートの写真（nikkei_idle）と同じタイミングで出すもの。朝食報告も同じ画面 */
+      { id:'chukan', name:{ja:'中間報告',en:'Midday report',vi:'Báo cáo giữa ngày'}, oblig:'store', freq:'daily', due:'17:00', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'chukan', linkApp:'chukan',
+        how:{ja:'アイドルクローズ時に、組客数・売上内訳・営業内容を入力してください（朝食報告も同じ画面です）',en:'Enter guest counts, sales breakdown and notes at idle close',vi:'Nhập số khách, doanh thu, nội dung ca lúc nghỉ giữa ca'} },
       { id:'nikkei_idle', name:{ja:'日計レポート（アイドルクローズ）',en:'Daily sales report (idle close)',vi:'Báo cáo doanh thu (giữa ca)'}, oblig:'store', freq:'daily', due:'17:00', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'アイドルクローズ時にレジから日計レポートを出力し、撮影して提出してください',en:'Print the daily report at idle close and submit a photo',vi:'In báo cáo doanh thu lúc nghỉ giữa ca và nộp ảnh'} },
       { id:'nouhin',     name:{ja:'納品書の写真',en:'Delivery slip photos',vi:'Ảnh phiếu giao hàng'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
@@ -4591,6 +4674,8 @@
       if (m.detect === 'sk')     return getSk().some(r => r.store === store && (r.date ? inScopeD(r.date) : inScope(r.t)));
       // 気づきは「その日に1件でも出ていれば実施」（何件出してもよいもののため）
       if (m.detect === 'kizuki') return getKz().some(r => r.store === store && inScope(r.t)); // 対象日で判定（翌朝提出でも前日分として数える）
+      // 中間報告も同様＝朝食報告・中間報告のどちらか1件でもあれば提出済み
+      if (m.detect === 'chukan') return getReports().some(r => r.kind === 'chukan' && r.store === store && inScope(r.t));
       if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
       /* アプリのチェックリスト＝★その日の項目が「全部」終わったときだけ提出済みとする。
          2026-08-12 神田さんのご指摘で修正。以前は1つでもチェックすれば実施とみなしていたため、
@@ -5125,6 +5210,12 @@
       getReports().filter(r => (r.kind === 'a' || r.kind === 'b') && vis.includes(r.store)).forEach(r => add('waste', { ja:'食べ残し', en:'Waste', vi:'Đồ thừa' }, r.t, r.store, r.item, L(r.note) || '', r.photos));
       getFP().filter(r => vis.includes(r.store)).forEach(r => add('firstphoto', { ja:'1食目写真', en:'First-plate', vi:'Ảnh món đầu' }, r.t, r.store, r.item || '', '', r.photos));
       getReports().filter(r => r.kind === 'svfb' && vis.includes(r.store)).forEach(r => add('svfb', { ja:'巡回FB', en:'Visit FB', vi:'Phản hồi' }, r.t, r.store, r.item || '', String(r.note || '').slice(0, 60), r.photos));
+      // 中間報告（長堀橋トライアル）＝組客数・総売上の要約と営業内容を1行で
+      getReports().filter(r => r.kind === 'chukan' && vis.includes(r.store)).forEach(r => {
+        const p = parseNote(r.note);
+        add('chukan', { ja:'中間報告', en:'Midday report', vi:'Báo cáo giữa ngày' }, r.t, r.store, chTypeLabel(p.rtype),
+          chSummary(p) + (p.memo ? '／' + String(p.memo).slice(0, 40) : ''), r.photos);
+      });
       subRows(SUB_KINDS.open).filter(r => vis.includes(r.store)).forEach(r => {
         /* 従来の3種（オープン写真・月次衛生・メニューブック）は kind='openphoto' のまま
            （対応済みの記録が kind で引かれているため変えない）。
@@ -6702,6 +6793,33 @@
       toast(L({ ja:'気づきを共有しました。ありがとうございます！', en:'Insight shared. Thank you!', vi:'Đã gửi. Cảm ơn!' }));
       render();
       postReport({ kind:'kizuki', store, item:cat, note, photos, t });
+    };
+
+    // 中間報告（長堀橋トライアル）：数字は空欄=0でよい。ただし全部空の送信だけは止める
+    const subCh = document.getElementById('submitChukan');
+    if (subCh) subCh.onclick = () => {
+      const store = (document.getElementById('ch_store') || {}).value || visibleStores()[0];
+      const typeEl = document.querySelector('[data-seg="chtype"] .on');
+      const num = (id) => { const v = Number((document.getElementById(id) || {}).value); return isNaN(v) ? 0 : v; };
+      const txt = (id) => String((document.getElementById(id) || {}).value || '').trim();
+      const payload = {
+        rtype: typeEl ? typeEl.dataset.v : 'midday',
+        kumi: num('ch_kumi'), kyaku: num('ch_kyaku'),
+        cash: num('ch_cash'), card: num('ch_card'), emoney: num('ch_emoney'),
+        unpaid: num('ch_unpaid'), total: num('ch_total'), tip: num('ch_tip'),
+        staff: txt('ch_staff'), memo: txt('ch_memo'), greview: num('ch_greview'),
+        by: submitterLabel()
+      };
+      if (!payload.kyaku && !payload.total && !payload.memo) {
+        toast(L({ ja:'客数・総売り上げ・営業内容のいずれかを入力してください', en:'Enter guests, total sales or notes', vi:'Nhập số khách, doanh thu hoặc nội dung' })); return;
+      }
+      const t = Date.now();
+      const rep = { kind:'chukan', store, item: payload.rtype, note: JSON.stringify(payload), photos: [], t };
+      try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
+      lastSync = t; // 直後の重複同期を抑止（postReportがforce同期）
+      toast(L({ ja:'報告を送信しました。ありがとうございます！', en:'Report submitted. Thank you!', vi:'Đã gửi báo cáo. Cảm ơn!' }));
+      go('/app/kyou');
+      postReport(rep);
     };
 
     // みんなの投稿：投稿（本部承認後に公開）
