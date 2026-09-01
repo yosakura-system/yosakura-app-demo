@@ -489,6 +489,25 @@
   }
   const getSk = () => { try { return skClean(JSON.parse(localStorage.getItem('yosakura_demo_soukatsu')) || []); } catch { return []; } };
   const saveSk = (a) => localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(a));
+  /* ★累計の起点（2026-09-02 ユンさんのご提案「当日だけ入れれば累計が自動で入る」）。
+     前回（対象日より前で最新の日報・同日再提出は最新が正）の累計を起点にし、当日の数字を足す。
+     月累計売上・チップ累計・キャンセル累計＝月のもの（月が替わると0から）／口コミ累計＝通算で引き継ぐ */
+  function skCumBase(store, dateStr) {
+    const byDate = {};
+    getSk().forEach(r => {
+      if (r.store !== store || !r.date || r.date >= dateStr) return;
+      if (!byDate[r.date] || (Number(r.t) || 0) >= (Number(byDate[r.date].t) || 0)) byDate[r.date] = r;
+    });
+    let last = null;
+    Object.values(byDate).forEach(r => { if (!last || r.date > last.date) last = r; });
+    const sameYm = last && String(last.date).slice(0, 7) === String(dateStr).slice(0, 7);
+    return {
+      mtd:    sameYm ? Number(last.mtd)    || 0 : 0,
+      tipa:   sameYm ? Number(last.tipa)   || 0 : 0,
+      cancel: sameYm ? Number(last.cancel) || 0 : 0,
+      rva:    last   ? Number(last.rva)    || 0 : 0
+    };
+  }
 
   function seedIfEmpty() {
     if (localStorage.getItem(LS.reports)) return;
@@ -2941,8 +2960,9 @@
       ${NOTE({ ja:'◆ 実際の日報フォーマットで入力→保存できます（履歴と本部集約に反映）', en:'◆ Enter in the real daily-report format; it saves to history & HQ', vi:'◆ Nhập theo mẫu báo cáo ngày thực tế; lưu vào lịch sử & HQ' })}
       ${skTabSeg}
       ${head}
-      ${skTab !== 'input' ? '' : `<div class="card" id="skForm">
+      ${skTab !== 'input' ? '' : (() => { const skCum0 = skCumBase(vis[0], today); return `<div class="card" id="skForm">
         <h3>${L({ ja:'本日の総括表', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
+        ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの日報から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
         ${skDraft._t ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ レジクローズの日計レポート写真から読み取った数字（売上・客数・現金・カード）が入っています。確認して、違うところは直してから提出してください。', en:'Sales, guests, cash and card were read from the register-close photo. Check and correct before submitting.', vi:'Doanh thu, khách, tiền mặt, thẻ đọc từ ảnh đóng ca. Kiểm tra trước khi gửi.' })}（${timeAgo(skDraft._t)}）</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
@@ -2957,21 +2977,22 @@
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'純売上',en:'Net sales',vi:'Doanh thu thuần'})}</span><input type="text" inputmode="numeric" id="sk_net" placeholder="129136"></label>
           <label class="fld"><span>${L({ja:'レジ誤差',en:'Register error',vi:'Sai lệch quầy'})}</span><input type="text" inputmode="numeric" id="sk_err" placeholder="0"></label>
-          <label class="fld"><span>${L({ja:'月累計売上',en:'Month-to-date',vi:'Lũy kế tháng'})}</span><input type="text" inputmode="numeric" id="sk_mtd" placeholder="2146145"></label>
+          <label class="fld"><span>${L({ja:'月累計売上（自動計算）',en:'Month-to-date (auto)',vi:'Lũy kế tháng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_mtd" placeholder="2146145" value="${skCum0.mtd || ''}"></label>
           <label class="fld"><span>${L({ja:'売上目標（月）',en:'Monthly goal',vi:'Mục tiêu tháng'})}</span><input type="text" inputmode="numeric" id="sk_goal" placeholder="3000000"></label>
           <label class="fld"><span>${L({ja:'フード数',en:'Food items',vi:'Số món ăn'})}</span><input type="text" inputmode="numeric" id="sk_foodct" placeholder="29"></label>
           <label class="fld"><span>${L({ja:'飲料数',en:'Drink items',vi:'Số đồ uống'})}</span><input type="text" inputmode="numeric" id="sk_drinkct" placeholder="14"></label>
         </div>
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'口コミ 当日',en:'Reviews today',vi:'Đánh giá nay'})}</span><input type="text" inputmode="numeric" id="sk_rvt" placeholder="2"></label>
-          <label class="fld"><span>${L({ja:'口コミ 累計',en:'Reviews total',vi:'Đánh giá tổng'})}</span><input type="text" inputmode="numeric" id="sk_rva" placeholder="70"></label>
+          <label class="fld"><span>${L({ja:'口コミ 累計（自動計算）',en:'Reviews total (auto)',vi:'Đánh giá tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_rva" placeholder="70" value="${skCum0.rva || ''}"></label>
           <label class="fld"><span>${L({ja:'ヒアリング 当日',en:'Hearings today',vi:'Phỏng vấn nay'})}</span><input type="text" inputmode="numeric" id="sk_hear" placeholder="9"></label>
           <label class="fld"><span>${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})}</span><input type="text" inputmode="numeric" id="sk_disc" placeholder="0"></label>
           <label class="fld"><span>${L({ja:'原価率 %',en:'Food cost %',vi:'Giá vốn %'})}</span><input type="text" inputmode="decimal" id="sk_food" placeholder="36.5"></label>
           <label class="fld"><span>${L({ja:'人件費率 %',en:'Labor %',vi:'Nhân sự %'})}</span><input type="text" inputmode="decimal" id="sk_labor" placeholder="23.6"></label>
           <label class="fld"><span>${L({ja:'チップ 当日',en:'Tips today',vi:'Tip nay'})}</span><input type="text" inputmode="numeric" id="sk_tipt" placeholder="21000"></label>
-          <label class="fld"><span>${L({ja:'チップ 累計',en:'Tips total',vi:'Tip tổng'})}</span><input type="text" inputmode="numeric" id="sk_tipa" placeholder="84541"></label>
-          <label class="fld"><span>${L({ja:'キャンセル 累計',en:'Cancel total',vi:'Hủy tổng'})}</span><input type="text" inputmode="numeric" id="sk_cancel" placeholder="31700"></label>
+          <label class="fld"><span>${L({ja:'チップ 累計（自動計算）',en:'Tips total (auto)',vi:'Tip tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_tipa" placeholder="84541" value="${skCum0.tipa || ''}"></label>
+          <label class="fld"><span>${L({ja:'キャンセル 当日',en:'Cancel today',vi:'Hủy hôm nay'})}</span><input type="text" inputmode="numeric" id="sk_cancelt" placeholder="0"></label>
+          <label class="fld"><span>${L({ja:'キャンセル 累計（自動計算）',en:'Cancel total (auto)',vi:'Hủy tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_cancel" placeholder="31700" value="${skCum0.cancel || ''}"></label>
           <label class="fld"><span>${L({ja:'レジ締め担当',en:'Cash-up by',vi:'Người chốt sổ'})}</span><input type="text" id="sk_closer" placeholder="${L({ja:'担当者名',en:'staff name',vi:'tên NV'})}"></label>
         </div>
         <div class="sk-grid">
@@ -3013,7 +3034,7 @@
         <label class="fld"><span>${L({ ja:'翌日の食材発注', en:'Tomorrow ingredient order', vi:'Đặt NL ngày mai' })}</span><textarea id="sk_order" placeholder="${L({ja:'例：豆乳6／寿司のエビ2／お米 …',en:'e.g. soy milk 6 / shrimp 2 / rice …',vi:'vd: sữa đậu 6 / tôm 2 / gạo …'})}"></textarea></label>
         <button class="btn-primary" id="submitSk">${L({ja:'提出する',en:'Submit',vi:'Nộp'})}</button>
         <div class="hint">${L({ja:'保存すると、「最近の総括表」タブと「本部ダッシュボード」に反映されます',en:'Saved to the Recent tab and the HQ Dashboard',vi:'Được lưu vào thẻ Gần đây và Bảng điều khiển'})}</div>
-      </div>`}
+      </div>`; })()}
       ${skTab !== 'recent' ? '' : `<div class="card">
         <h3>${L({ ja:'最近の総括表', en:'Recent daily reports', vi:'Báo cáo gần đây' })}</h3>
         <div id="skList">${recent.length ? recent.map(skRow).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}</div>
@@ -7466,6 +7487,28 @@
       };
       skSales.addEventListener('input', upd3); skHours.oninput = upd3; skLc.oninput = upd3;
     }
+    /* ★累計の自動足し上げ（2026-09-02 ユンさんのご提案）。
+       当日欄（売上・口コミ・チップ・キャンセル）を入力すると、前回までの累計＋当日を累計欄へ入れる。
+       手で直すこともできる（当日欄を触り直すと自動値に戻る＝説明を画面に明記済み） */
+    if (byId('skForm') && byId('sk_cancelt')) {
+      const cumUpd = () => {
+        const store = (byId('sk_store') && byId('sk_store').value) || visibleStores()[0];
+        const d = (byId('sk_date') && byId('sk_date').value) || todayKey();
+        const c = skCumBase(store, d);
+        const n = (id) => Number((byId(id) && byId(id).value) || 0) || 0;
+        if (byId('sk_mtd')) byId('sk_mtd').value = (c.mtd + n('sk_sales')) || '';
+        if (byId('sk_rva')) byId('sk_rva').value = (c.rva + n('sk_rvt')) || '';
+        if (byId('sk_tipa')) byId('sk_tipa').value = (c.tipa + n('sk_tipt')) || '';
+        if (byId('sk_cancel')) byId('sk_cancel').value = (c.cancel + n('sk_cancelt')) || '';
+        /* 到達度（月累計÷目標）も追従させる */
+        if (byId('sk_rate') && byId('sk_goal')) {
+          const g = Number(byId('sk_goal').value) || 0, m = Number(byId('sk_mtd').value) || 0;
+          byId('sk_rate').textContent = g ? ((m / g * 100).toFixed(1) + '%') : '—';
+        }
+      };
+      ['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt'].forEach(id => { const el = byId(id); if (el) el.addEventListener('input', cumUpd); });
+      ['sk_date', 'sk_store'].forEach(id => { const el = byId(id); if (el) el.addEventListener('change', cumUpd); });
+    }
     const subSk = byId('submitSk');
     if (subSk) subSk.onclick = () => {
       const v = (id) => { const e = byId(id); return e ? e.value.trim() : ''; };
@@ -7476,7 +7519,7 @@
         foodct: v('sk_foodct'), drinkct: v('sk_drinkct'),
         rvt: v('sk_rvt'), rva: v('sk_rva'), hear: v('sk_hear'), disc: v('sk_disc'),
         food: v('sk_food'), labor: v('sk_labor'), tipt: v('sk_tipt'), tipa: v('sk_tipa'),
-        cancel: v('sk_cancel'), closer: v('sk_closer'), order: v('sk_order'),
+        cancel: v('sk_cancel'), cancelt: v('sk_cancelt'), closer: v('sk_closer'), order: v('sk_order'),
         // 総括表 Ver.2.6 に合わせて足した項目
         cash: v('sk_cash'), card: v('sk_card'), lunch: v('sk_lunch'), buy: v('sk_buy'),
         supply: v('sk_supply'), unagi: v('sk_unagi'), errnote: v('sk_errnote'),

@@ -3606,11 +3606,14 @@ console.log('== 牛カツ長堀橋店トライアル：LINEアルバムの提出
   // ⑦ 総括表の形の月次出力＝「昼のみ売上」列が入り、日報が空の日は中間報告から自動で拾う（転記を無くす）
   const ymNow = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
   const dkNow = new Date().toLocaleDateString('en-CA');
+  /* ⚠️ 時刻は「今日の正午」で固定する。Date.now()-3600e3 だと深夜0時台の実行で昨日扱いになり落ちる
+     （2026-09-02 0時台に実際に落ちた＝日付またぎの罠） */
+  const noonT = new Date(dkNow + 'T12:00:00').getTime();
   const seedSkCh = (skRow) => run(() => {
     setLS('staff', S, 'ja');
-    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([Object.assign({ store: S, date: dkNow, sales: 143800, guests: 26, cash: 44700, card: 99100, t: Date.now() }, skRow || {})]));
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([Object.assign({ store: S, date: dkNow, sales: 143800, guests: 26, cash: 44700, card: 99100, t: noonT }, skRow || {})]));
     localStorage.setItem('yosakura_demo_reports', JSON.stringify([
-      { kind: 'chukan', store: S, item: 'midday', note: JSON.stringify({ rtype: 'midday', total: 77600, kyaku: 17 }), photos: [], t: Date.now() - 3600000 }
+      { kind: 'chukan', store: S, item: 'midday', note: JSON.stringify({ rtype: 'midday', total: 77600, kyaku: 17 }), photos: [], t: noonT }
     ]));
   });
   seedSkCh();
@@ -3756,6 +3759,50 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   ok(/closeDetail:Array\.isArray\(p\.closeDetail\)/.test(src2), '同期（distribute）がcloseDetailを運ぶ');
   const gsrc2 = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
   ok(/'monthly'\]/.test(gsrc2.match(/PURGE_KEEP_KINDS\s*=\s*\[[^\]]*\]/)[0]), 'GAS＝monthlyが90日削除から守られる（要貼り替え）');
+  // 後始末
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 日報の累計＝当日だけ入れれば自動で足し上がる（2026-09-02 ユンさんのご提案）==');
+{
+  const S = '日本料理世桜本店';
+  const today3 = new Date().toLocaleDateString('en-CA');
+  const monthFirst = today3.slice(0, 7) + '-01';
+  const pmDate = (() => { const d = new Date(); d.setDate(0); d.setDate(15); return d.toLocaleDateString('en-CA'); })(); // 前月15日
+  const seedSk3 = (rows) => run(() => {
+    setLS('manager', S, 'ja');
+    localStorage.setItem('yosakura_soukatsu_tab', 'input');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows));
+  });
+  // ① 月替わり＝口コミ累計だけ通算で引き継ぎ、月累計売上・チップ・キャンセルは0から
+  seedSk3([{ store: S, date: pmDate, sales: 200000, mtd: 4000000, tipa: 84541, cancel: 31700, rva: 70, t: Date.now() - 86400e3 }]);
+  location.hash = '#/app/soukatsu';
+  let h = registry.app.innerHTML;
+  ok(/id="sk_rva"[^>]*value="70"/.test(h), '口コミ累計＝前月から通算で自動で入る');
+  ok(/id="sk_mtd"[^>]*value=""/.test(h) && /id="sk_tipa"[^>]*value=""/.test(h), '月累計売上・チップ累計は月が替わると0から（空欄）');
+  ok(/id="sk_cancelt"/.test(h), '「キャンセル 当日」の欄が増えた');
+  ok(/月累計売上（自動計算）/.test(h) && /前回までの日報から自動で入っています/.test(h), 'ラベルと説明で自動計算だと分かる');
+  // ② 同月内＝前回の累計がそのまま起点として入る
+  if (today3 !== monthFirst) {
+    seedSk3([{ store: S, date: monthFirst, sales: 143800, mtd: 143800, tipa: 21000, cancel: 5000, rva: 72, t: Date.now() - 3600e3 }]);
+    location.hash = '#/app/soukatsu?x=cum2';
+    h = registry.app.innerHTML;
+    ok(/id="sk_mtd"[^>]*value="143800"/.test(h) && /id="sk_tipa"[^>]*value="21000"/.test(h)
+       && /id="sk_cancel"[^>]*value="5000"/.test(h) && /id="sk_rva"[^>]*value="72"/.test(h),
+       '同月内＝前回の累計4種が起点として自動で入る');
+  }
+  // ③ 提出に「キャンセル 当日」も入る（機能で確認）
+  doc.getElementById('sk_store').value = S;
+  doc.getElementById('sk_date').value = today3;
+  doc.getElementById('sk_sales').value = '100000';
+  doc.getElementById('sk_cancelt').value = '2000';
+  doc.getElementById('submitSk').onclick();
+  const last3 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
+  ok(last3 && last3.cancelt === '2000', '提出データに当日キャンセルが入る');
+  // ④ ソース＝当日欄4つの入力と日付・店舗の変更で累計を足し上げ直す配線がある
+  const src3 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/\['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt'\]\.forEach/.test(src3), '当日欄の入力で累計が自動で足し上がる（配線）');
+  ok(/\['sk_date', 'sk_store'\]\.forEach/.test(src3), '日付・店舗を変えると累計の起点を取り直す（配線）');
   // 後始末
   run(() => { setLS('hq', 'all', 'ja'); });
 }
