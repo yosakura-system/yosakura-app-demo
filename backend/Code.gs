@@ -43,8 +43,10 @@ function autoPurgeOn_()    { return getSetting_('ENABLE_AUTO_PURGE', true) === t
 /* ★2026-08-30 追加＝phsample（見本写真＋店舗ごとの注意書き。長田さんのご提案）。
    店舗の「正しい撮り方」の見本＝設定情報。行だけでなく、参照している写真の実体も
    purgeOldPhotos 側で削除対象から外す（samplePhotoIds_）。行が守られても写真が消えたら意味がない。 */
+/* ★2026-09-01 追加＝monthly（月次数値＋棚卸の品目内訳 closeDetail）。
+   90日で消すと過去月の原価率の推移・前年比較が出せなくなる。soukatsu と同じ理由で守る。 */
 var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide',
-                         'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu', 'phsample'];
+                         'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu', 'phsample', 'monthly'];
 
 // スクリプトプロパティから設定を読む（無ければ既定値）。管理画面や手動で変更できる。
 function getSetting_(key, def) {

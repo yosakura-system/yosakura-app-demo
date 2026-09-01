@@ -3380,9 +3380,14 @@ console.log('== 使い方ガイドのアプリ内掲載（2026-08-31 構築MTG �
   h = registry.app.innerHTML;
   ok(/店長・オーナー様へ/.test(h) && /guide\/owner-01\.jpg/.test(h) && /guide\/owner-17\.jpg/.test(h), '店長向け＝配布ガイドのスライド17枚がそのまま載る');
   ok(/data-go="\/app\/soukatsu\?tab=summary"/.test(h), '数字の見方＝日報のサマリータブへ直接飛べる');
-  // 画像の実体がリポジトリに同梱されている（配信物にも同梱される）
-  ok(fs.existsSync(APP.replace(/app\.js$/, 'guide/owner-17.jpg')) && fs.existsSync(APP.replace(/app\.js$/, 'guide/staff-10.jpg')),
-     'スライド画像が guide/ に同梱されている');
+  /* 画像の実体は「git が持っているか」で確かめる（2026-09-01 変更）。
+     ローカルの実体はOneDriveの写真ビュー経由で定期削除される＝無いのが定常状態（skip-worktree済み）。
+     配信物（preview）には実体があるので、gitが追跡していれば配信は成立する */
+  {
+    const { execSync } = await import('node:child_process');
+    const tracked = execSync('git ls-files guide', { cwd: APP.replace(/app\.js$/, '') }).toString();
+    ok(/owner-17\.jpg/.test(tracked) && /staff-10\.jpg/.test(tracked), 'スライド画像をgitが追跡している（ローカル実体は無くてよい）');
+  }
   // ③b 初めて開いたとき（タブ未選択）はスライドが最初に見える（2026-08-31 神田さんの実機報告＝
   //     「使い方ガイドを押してもスライドが出ない」。入口で必ずスライドへたどり着けるようにする）
   run(() => { setLS('manager', S, 'ja'); localStorage.removeItem('yosakura_guide_tab'); });
@@ -3662,6 +3667,73 @@ console.log('== 牛カツ長堀橋店トライアル：LINEアルバムの提出
   ok(!/id="ch_kumi"[^>]*value=/.test(registry.app.innerHTML), 'src=ocrの印が無い行は下書きとして扱わない');
   h = renderView('chukan', 'staff', S, 'ja');
   ok(!/写真から読み取った数字/.test(h) && !/id="ch_total"[^>]*value=/.test(h), '下書きが無ければ従来どおり空のフォーム');
+  // 後始末
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月末・食材のみ・0.25刻み＝8/18デモMTG決定どおり）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const ymNow2 = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
+  const prevYm2 = (() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
+  // ① 店長のpl画面にタブが出て、棚卸タブにルールが書いてある
+  let h = renderView('pl', 'manager', S, 'ja');
+  ok(/data-pltab="tana"/.test(h) && /data-pltab="input"/.test(h) && /data-pltab="history"/.test(h), 'pl画面が3タブになる（月次数値・棚卸・月別の推移）');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
+  location.hash = '#/app/pl';
+  h = registry.app.innerHTML;
+  ok(/棚卸（月末・食材のみ）/.test(h), '棚卸タブが開き「月末・食材のみ」と明記');
+  ok(/0\.25／0\.5／0\.75／1/.test(h), '開封済みの0.25刻みルールが画面に書いてある');
+  ok(/包材や消耗品は数えません/.test(h), '包材・消耗品は対象外（PL別項目）と明記');
+  ok(/id="tn_f0_n"/.test(h) && /id="tn_d0_n"/.test(h), '食材・飲料の品目行がある');
+  // ② 入力→保存＝月次数値の月末在庫（close）に合計が入り、内訳（closeDetail）が残る
+  doc.getElementById('tn_f0_n').value = '米'; doc.getElementById('tn_f0_u').value = '3000'; doc.getElementById('tn_f0_q').value = '2.5';
+  doc.getElementById('tn_f1_n').value = 'パン粉'; doc.getElementById('tn_f1_u').value = '800'; doc.getElementById('tn_f1_q').value = '0.75';
+  doc.getElementById('tn_d0_n').value = 'ビール'; doc.getElementById('tn_d0_u').value = '300'; doc.getElementById('tn_d0_q').value = '20';
+  doc.getElementById('tn_ym').value = ymNow2;
+  doc.getElementById('tnSave').onclick();
+  const mon = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
+  ok(!!mon && mon.close === 3000 * 2.5 + 800 * 0.75 + 300 * 20, '保存で月末在庫＝品目合計（米7500+パン粉600+ビール6000=14100）');
+  ok(Array.isArray(mon.closeDetail) && mon.closeDetail.length === 3 && mon.closeDetail[0].q === 2.5, '品目の内訳（数量0.25刻み）が保存される');
+  // ③ 0.25刻みでない数量は寄せる（②の入力欄が残っているので明示的に空へ）
+  doc.getElementById('tn_f1_n').value = ''; doc.getElementById('tn_d0_n').value = '';
+  doc.getElementById('tn_f0_n').value = '米'; doc.getElementById('tn_f0_u').value = '1000'; doc.getElementById('tn_f0_q').value = '1.3';
+  doc.getElementById('tn_ym').value = ymNow2;
+  doc.getElementById('tnSave').onclick();
+  const mon2 = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
+  ok(mon2.closeDetail[0].q === 1.25 && mon2.close === 1250, '1.3のような端数は0.25単位へ寄せる（→1.25）');
+  // ④ 前月の品目が翌月へ引き継がれる（名前・単価だけ・数量は空）
+  run(() => {
+    setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana');
+    localStorage.setItem('yosakura_demo_monthly', JSON.stringify([
+      { store: S, ym: prevYm2, close: 7500, closeDetail: [{ n: '米', t: 'f', u: 3000, q: 2.5, a: 7500 }], t: Date.now() }
+    ]));
+  });
+  location.hash = '#/app/pl';
+  h = registry.app.innerHTML;
+  ok(/id="tn_f0_n"[^>]*value="米"/.test(h) && /id="tn_f0_u"[^>]*value="3000"/.test(h), '前月の品目名と単価が今月に引き継がれる');
+  ok(/id="tn_f0_q"[^>]*value=""/.test(h), '数量は空（毎月数え直す）');
+  // ⑤ スタッフ（店舗iPad）には入力タブが出ない（読み取り専用のまま）
+  h = renderView('pl', 'staff', S, 'ja');
+  ok(!/data-pltab/.test(h) && !/tnSave/.test(h), 'スタッフには棚卸の入力が出ない（従来どおり閲覧のみ）');
+  // ⑥ 月次数値タブで月末在庫を内訳と違う値に直したら、内訳は外れる（食い違いを残さない）
+  run(() => {
+    setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'input');
+    localStorage.setItem('yosakura_demo_monthly', JSON.stringify([
+      { store: S, ym: ymNow2, sales: 100000, close: 7500, closeDetail: [{ n: '米', t: 'f', u: 3000, q: 2.5, a: 7500 }], t: Date.now() }
+    ]));
+  });
+  location.hash = '#/app/pl';
+  doc.getElementById('pl_ym').value = ymNow2;
+  doc.getElementById('pl_close').value = '9999';
+  doc.getElementById('plSave').onclick();
+  const mon3 = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
+  ok(mon3.close === 9999 && !mon3.closeDetail, '月末在庫を手で直すと古い内訳は外れる');
+  // ⑦ ソース＝同期のmonthlyが closeDetail を運ぶ／GASの90日削除からmonthlyが守られる
+  const src2 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/closeDetail:Array\.isArray\(p\.closeDetail\)/.test(src2), '同期（distribute）がcloseDetailを運ぶ');
+  const gsrc2 = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
+  ok(/'monthly'\]/.test(gsrc2.match(/PURGE_KEEP_KINDS\s*=\s*\[[^\]]*\]/)[0]), 'GAS＝monthlyが90日削除から守られる（要貼り替え）');
   // 後始末
   run(() => { setLS('hq', 'all', 'ja'); });
 }
