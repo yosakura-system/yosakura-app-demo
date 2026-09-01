@@ -3597,6 +3597,40 @@ console.log('== 牛カツ長堀橋店トライアル：LINEアルバムの提出
   location.hash = '#/app/inbox';
   h = registry.app.innerHTML;
   ok(/中間報告/.test(h) && /143,800/.test(h), '受信箱に中間報告が総売上つきで出る');
+
+  // ⑦ 総括表の形の月次出力＝「昼のみ売上」列が入り、日報が空の日は中間報告から自動で拾う（転記を無くす）
+  const ymNow = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
+  const dkNow = new Date().toLocaleDateString('en-CA');
+  const seedSkCh = (skRow) => run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([Object.assign({ store: S, date: dkNow, sales: 143800, guests: 26, cash: 44700, card: 99100, t: Date.now() }, skRow || {})]));
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind: 'chukan', store: S, item: 'midday', note: JSON.stringify({ rtype: 'midday', total: 77600, kyaku: 17 }), photos: [], t: Date.now() - 3600000 }
+    ]));
+  });
+  seedSkCh();
+  location.hash = `#/skprint?s=${encodeURIComponent(S)}&ym=${ymNow}`;
+  h = registry.app.innerHTML;
+  ok(/昼のみ/.test(h), '総括表の月次出力に「昼のみ」列がある');
+  ok(/77,600＊/.test(h), '日報が空の昼のみ売上へ中間報告の数字が＊付きで入る');
+  ok(/143,800/.test(h), '日報の売上もそのまま出ている');
+  // 日報に昼のみ売上の入力がある日は、そちらが優先（自動値で上書きしない）
+  seedSkCh({ lunch: 88000 });
+  location.hash = `#/skprint?s=${encodeURIComponent(S)}&ym=${ymNow}`;
+  h = registry.app.innerHTML;
+  ok(/88,000/.test(h) && !/77,600＊/.test(h), '日報に入力がある日は日報の数字が優先される');
+  // 日報入力の「昼のみ売上」に本日の中間報告が自動で入る（同じ数字を2回打たない）
+  seedSkCh();
+  location.hash = '#/app/soukatsu?tab=input';
+  h = registry.app.innerHTML;
+  ok(/id="sk_lunch"[^>]*value="77600"/.test(h), '日報入力の昼のみ売上に本日の中間報告が自動で入る');
+  ok(/中間報告の総売り上げから自動で入っています/.test(h), '自動で入った旨の説明が出る');
+  // 最近の総括表タブから月次出力へ飛べる
+  location.hash = '#/app/soukatsu?tab=recent';
+  ok(/data-go="\/skprint\?s=/.test(registry.app.innerHTML), '「最近の総括表」から総括表の形の出力へ飛べる');
+  // 中間報告が無い店舗では、昼のみ売上は空のまま（他店の挙動を変えない）
+  h = renderView('soukatsu', 'staff', '日本料理世桜本店', 'ja');
+  ok(/id="sk_lunch"[^>]*value=""/.test(h) && !/中間報告の総売り上げから自動/.test(h), '中間報告が無い店舗の入力欄は従来どおり');
   // 後始末
   run(() => { setLS('hq', 'all', 'ja'); });
 }

@@ -2954,11 +2954,12 @@
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'現金売上',en:'Cash sales',vi:'DT tiền mặt'})}</span><input type="text" inputmode="numeric" id="sk_cash" placeholder="96800"></label>
           <label class="fld"><span>${L({ja:'カード売上',en:'Card sales',vi:'DT thẻ'})}</span><input type="text" inputmode="numeric" id="sk_card" placeholder="251700"></label>
-          <label class="fld"><span>${L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'})}</span><input type="text" inputmode="numeric" id="sk_lunch" placeholder="186400"></label>
+          <label class="fld"><span>${L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'})}</span><input type="text" inputmode="numeric" id="sk_lunch" placeholder="186400" value="${skChukanToday(vis[0]) != null ? skChukanToday(vis[0]) : ''}"></label>
           <label class="fld"><span>${L({ja:'仕入金額（当日）',en:'Purchases today',vi:'Nhập hàng'})}</span><input type="text" inputmode="numeric" id="sk_buy" placeholder="7049"></label>
           <label class="fld"><span>${L({ja:'消耗品金額',en:'Supplies',vi:'Vật tư'})}</span><input type="text" inputmode="numeric" id="sk_supply" placeholder="0"></label>
           ${storeGyotai(vis[0]) === 'unagi' ? `<label class="fld"><span>${L({ja:'鰻の使用尾数',en:'Eel used',vi:'Số lươn'})}</span><input type="text" inputmode="numeric" id="sk_unagi" placeholder="12"></label>` : ''}
         </div>
+        ${skChukanToday(vis[0]) != null ? `<p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 昼のみ売上は、本日の中間報告の総売り上げから自動で入っています（違うときは直してください）。', en:'Lunch-only sales is pre-filled from today’s midday report (edit if different).', vi:'Doanh thu buổi trưa được điền sẵn từ báo cáo giữa ngày hôm nay (sửa nếu khác).' })}</p>` : ''}
         <label class="fld"><span>${L({ ja:'過不足（現金）の理由', en:'Reason for cash difference', vi:'Lý do chênh lệch tiền mặt' })}</span><input type="text" id="sk_errnote" placeholder="${L({ja:'差がある場合のみ',en:'only if there is a difference',vi:'chỉ khi có chênh lệch'})}"></label>
 
         <div class="idlabel" style="margin-top:14px">${L({ ja:'勤怠・ロス（総括表の項目）', en:'Staffing & loss (summary-sheet items)', vi:'Nhân sự & hao hụt (mục bảng tổng kết)' })}</div>
@@ -2993,8 +2994,25 @@
       ${skTab !== 'recent' ? '' : `<div class="card">
         <h3>${L({ ja:'最近の総括表', en:'Recent daily reports', vi:'Báo cáo gần đây' })}</h3>
         <div id="skList">${recent.length ? recent.map(skRow).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}</div>
+        ${vis.length === 1 ? `<button class="btn-primary" data-go="/skprint?s=${encodeURIComponent(vis[0])}&ym=${todayYm()}" style="margin-top:12px">${L({ ja:'総括表の形で出力（印刷・CSV）', en:'Export as summary sheet (print / CSV)', vi:'Xuất dạng bảng tổng kết (in / CSV)' })}</button>` : ''}
       </div>`}`;
   };
+  /* 本日の中間報告（朝食報告は除く・最新）の総売り上げ。日報入力の「昼のみ売上」に自動で入れる
+     ＝同じ数字を2回打たない（長堀橋トライアル・2026-09-01） */
+  function skChukanToday(store) {
+    let best = null;
+    try {
+      const d = dateKeyFor(store, Date.now());
+      getReports().forEach(r => {
+        if (r.kind !== 'chukan' || r.store !== store) return;
+        if (dateKeyFor(store, r.t) !== d) return;
+        const p = parseNote(r.note);
+        if (p.rtype === 'morning') return;
+        if (!best || r.t > best.t) best = { t: r.t, total: numOr0(p.total) };
+      });
+    } catch (e) {}
+    return best && best.total ? best.total : null;
+  }
   const skRow = (r) => `
     <div class="rep tapable" data-skday="${esc((r.store||'') + '||' + (r.date||''))}" role="button" tabindex="0">
       <span class="kind b">${esc((r.date||'').slice(5))}</span>
@@ -3496,8 +3514,28 @@
     const byDate = {};
     getSk().filter(r => r.store === store && ymOfDate(r.date) === ym)
       .forEach(r => { if (!byDate[r.date] || (Number(r.t) || 0) >= (Number(byDate[r.date].t) || 0)) byDate[r.date] = r; });
-    const days = daysOfYm(ym).map(d => ({ date: d, r: byDate[d] || null }));
-    const tot = { sales:0, cash:0, card:0, guests:0, buy:0, laborcost:0, loss:0, hours:0, staffct:0, err:0, entered:0 };
+    /* ★中間報告との結合（長堀橋トライアル・2026-09-01）。
+       アイドルクローズ時点の総売上＝総括表の「昼のみ売上」に手で転記されていた数字そのもの。
+       日報に昼のみ売上が入っていない日は、その日の中間報告（朝食報告は除く）から自動で拾う
+       ＝転記を無くす第一歩。日報に入力があればそちらが正（自動の数字で上書きしない） */
+    const chByDate = {};
+    try {
+      getReports().filter(r => r.kind === 'chukan' && r.store === store).forEach(r => {
+        const d = dateKeyFor(store, r.t);
+        if (ymOfDate(d) !== ym) return;
+        const p = parseNote(r.note);
+        if (p.rtype === 'morning') return;
+        if (!chByDate[d] || r.t >= chByDate[d].t) chByDate[d] = { t: r.t, total: numOr0(p.total) };
+      });
+    } catch (e) {}
+    const days = daysOfYm(ym).map(d => {
+      const r = byDate[d] || null;
+      const own = r && hasVal(r.lunch);
+      const lunch = own ? numOr0(r.lunch) : (chByDate[d] ? chByDate[d].total : null);
+      return { date: d, r, lunch, lunchFromCh: !own && !!chByDate[d] };
+    });
+    const tot = { sales:0, cash:0, card:0, lunch:0, guests:0, buy:0, laborcost:0, loss:0, hours:0, staffct:0, err:0, entered:0 };
+    days.forEach(x => { if (x.lunch != null) tot.lunch += x.lunch; });
     days.forEach(x => { if (!x.r) return; tot.entered++;
       ['sales','cash','card','guests','buy','laborcost','loss','hours','staffct','err'].forEach(k => { tot[k] += numOr0(x.r[k]); }); });
     tot.per = tot.guests ? Math.round(tot.sales / tot.guests) : 0;
@@ -3510,6 +3548,7 @@
     { k:'sales',     t:{ ja:'売上計', en:'Sales', vi:'DT' },            f:'yen' },
     { k:'cash',      t:{ ja:'現金', en:'Cash', vi:'Tiền mặt' },         f:'yen' },
     { k:'card',      t:{ ja:'カード', en:'Card', vi:'Thẻ' },            f:'yen' },
+    { k:'lunch',     t:{ ja:'昼のみ', en:'Lunch', vi:'Trưa' },          f:'yen' }, // ★日報が空の日は中間報告から自動（＊印）
     { k:'guests',    t:{ ja:'客数', en:'Guests', vi:'Khách' },          f:'num' },
     { k:'per',       t:{ ja:'客単価（自動計算）', en:'Per guest (auto)', vi:'BQ/khách (tự động)' },  f:'yen', auto:true },
     { k:'buy',       t:{ ja:'仕入', en:'Purchases', vi:'Nhập hàng' },   f:'yen' },
@@ -3525,7 +3564,12 @@
     const store = vis.includes(sParam) ? sParam : (vis[0] || STORES[0]);
     const ym = /^\d{4}-\d{2}$/.test(ymParam || '') ? ymParam : todayYm();
     const { days, tot } = skMonthData(store, ym);
-    const cell = (r, c) => {
+    const cell = (x, c) => {
+      const r = x.r;
+      /* 昼のみ売上＝日報が空の日は中間報告の数字（＊印を付けて出どころを示す） */
+      if (c.k === 'lunch') return (x.lunch != null)
+        ? `<td>${x.lunch.toLocaleString('en-US')}${x.lunchFromCh ? '＊' : ''}</td>`
+        : `<td class="${r ? '' : 'off'}">—</td>`;
       if (!r) return '<td class="off">—</td>';
       if (c.k === 'per') { const p = numOr0(r.guests) ? Math.round(numOr0(r.sales) / numOr0(r.guests)) : 0; return `<td>${p ? p.toLocaleString('en-US') : '—'}</td>`; }
       if (c.f === 'txt') return `<td class="tx">${esc(String(r[c.k] || ''))}</td>`;
@@ -3550,7 +3594,7 @@
           <div class="skp-scroll"><table class="skp-table">
             <thead><tr><th>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</th><th>${L({ ja:'曜', en:'Day', vi:'Thứ' })}</th>${SKP_COLS.map(c => `<th>${L(c.t)}</th>`).join('')}</tr></thead>
             <tbody>
-              ${days.map(x => `<tr><td class="c">${Number(x.date.slice(8, 10))}</td><td class="c">${esc(L(WDAYS[wdOf(x.date)]))}</td>${SKP_COLS.map(c => cell(x.r, c)).join('')}</tr>`).join('')}
+              ${days.map(x => `<tr><td class="c">${Number(x.date.slice(8, 10))}</td><td class="c">${esc(L(WDAYS[wdOf(x.date)]))}</td>${SKP_COLS.map(c => cell(x, c)).join('')}</tr>`).join('')}
               <tr class="sum"><td class="c" colspan="2">${L({ ja:'合計', en:'Total', vi:'Tổng' })}</td>
                 ${SKP_COLS.map(c => c.k === 'per' ? `<td>${tot.per ? tot.per.toLocaleString('en-US') : '—'}</td>`
                   : c.f === 'txt' ? `<td class="tx"></td>`
@@ -3564,7 +3608,7 @@
             <span>${L({ ja:'人件費率（自動計算）', en:'Labor % (auto)', vi:'% nhân sự (auto)' })}：${tot.laborcost ? tot.laborRate.toFixed(1) + '%' : '—'}</span>
             <span>${L({ ja:'人時生産性（自動計算）', en:'Sales/hour (auto)', vi:'DT/giờ (auto)' })}：${tot.prodh ? '¥' + tot.prodh.toLocaleString('en-US') + '/h' : '—'}</span>
           </div>
-          <p class="hint skp-note">${L({ ja:'※ 「自動計算」と書かれた数字（客単価・原価率・人件費率・人時生産性）は、入力された元の数字（売上・客数・仕入・人件費・労働時間）から自動で計算されます。入力は要りません。空欄の日は未入力です。', en:'Values marked (auto) are calculated automatically from entered base numbers; no input needed. Blank days have no entry.', vi:'Các số ghi (tự động) được tính tự động từ số gốc đã nhập; không cần nhập. Ngày trống là chưa nhập.' })}</p>
+          <p class="hint skp-note">${L({ ja:'※ 「自動計算」と書かれた数字（客単価・原価率・人件費率・人時生産性）は、入力された元の数字（売上・客数・仕入・人件費・労働時間）から自動で計算されます。入力は要りません。空欄の日は未入力です。＊印の昼のみ売上は、その日の中間報告から自動で拾った数字です（日報に入力があればそちらが優先されます）。', en:'Values marked (auto) are calculated automatically from entered base numbers; no input needed. Blank days have no entry. Lunch values marked ＊ are taken automatically from that day’s midday report (a value entered in the daily report takes priority).', vi:'Các số ghi (tự động) được tính tự động từ số gốc đã nhập. Ngày trống là chưa nhập. Số có dấu ＊ lấy tự động từ báo cáo giữa ngày.' })}</p>
         </div>
       </main>`;
   }
@@ -3577,6 +3621,7 @@
     days.forEach(x => {
       const r = x.r;
       lines.push([x.date, L(WDAYS[wdOf(x.date)])].concat(SKP_COLS.map(c => {
+        if (c.k === 'lunch') return x.lunch != null ? x.lunch : ''; // 画面と同じ＝中間報告からの自動値も入る
         if (!r) return '';
         if (c.k === 'per') return numOr0(r.guests) ? Math.round(numOr0(r.sales) / numOr0(r.guests)) : '';
         if (c.f === 'txt') return r[c.k] || '';
