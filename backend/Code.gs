@@ -235,6 +235,10 @@ function validateBackendConfiguration() {
   try { hasTrigger = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'purgeOldData'; }); } catch (e) {}
   ck('削除トリガー(purgeOldData)が設定されている', hasTrigger, hasTrigger ? '毎日実行されます' : '未設定：GASの時計アイコン→日タイマーで purgeOldData を追加してください');
   ck('環境が設定されている', !!sp.getProperty('ENV'), 'ENV=' + sp.getProperty('ENV'));
+  /* 日計OCR（長堀橋トライアル）＝任意機能なので ok は常に true。貼付状態は detail で分かる
+     ＝外から ?action=validate で「貼り替えが済んだか」を確認できる */
+  ck('日計OCR（写真の自動読み取り・長堀橋トライアル）', true,
+     (typeof nikkei_ocr_hook_ === 'function') ? '貼付済み' : '未貼付（任意：backend/日計OCR.gs を追加すると有効）');
 
   var ng = checks.filter(function (c) { return !c.ok; });
   var out = { allOk: ng.length === 0, ngCount: ng.length, checks: checks };

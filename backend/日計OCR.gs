@@ -34,6 +34,32 @@ var NIKKEI_TARGETS = { nikkei_idle: 'chukandraft', nikkei_close: 'skdraft' };
 var NIKKEI_MAX_PHOTOS = 3;          // 読み取る写真の上限（取引別＋商品別＋封筒を想定）
 var NIKKEI_MAX_YEN = 100000000;     // これ以上の金額は誤読とみなして捨てる（1億円）
 
+/**
+ * ★動作確認（エディタから1回実行する）＝初回のアクセス承認もここで出る。
+ *   1. GASエディタ上部の関数選択で「日計OCR_動作確認」を選び「実行」
+ *   2. 「承認が必要です」→ アカウント選択 →「詳細」→「（プロジェクト名）に移動」→ 許可
+ *      ※ この承認は再デプロイでは出ない。関数を実行したときにだけ出る
+ *   3. 実行ログに「読み取れた欄」が表示されれば成功
+ * 写真フォルダのいちばん新しい画像を1枚読むだけで、何も書き込まない（下書き行も作らない）。
+ */
+function 日計OCR_動作確認() {
+  var files = getPhotoFolder().getFiles();
+  var newest = null, seen = 0;
+  while (files.hasNext() && seen < 500) {
+    var f = files.next(); seen++;
+    if (String(f.getMimeType()).indexOf('image/') !== 0) continue;
+    if (!newest || f.getDateCreated() > newest.getDateCreated()) newest = f;
+  }
+  if (!newest) { Logger.log('写真フォルダに画像がありません。アプリから日計レポートの写真を1枚提出してから、もう一度実行してください。'); return null; }
+  var text = nikkei_ocr_text_(newest.getId());
+  var parsed = nikkei_parse_(text);
+  Logger.log('対象の写真: ' + newest.getName() + '（作成 ' + newest.getDateCreated() + '）');
+  Logger.log('読み取れた欄: ' + JSON.stringify(parsed));
+  Logger.log('※ 日計レポート以外の写真（店内写真など）だと空 {} になります。それで正常です。');
+  Logger.log('OCR本文（先頭600字）:\n' + String(text).slice(0, 600));
+  return parsed;
+}
+
 /* doPost から呼ばれる入口。失敗しても提出を壊さない（呼び出し側で try/catch 済みだが二重に守る） */
 function nikkei_ocr_hook_(data, photoIds) {
   try {
@@ -91,11 +117,14 @@ function nikkei_ocr_text_(fileId) {
 }
 
 /* OCRテキスト → 数字。POSの「日計レポート 取引別」の行ラベルで拾う。
-   ★行の最後の数字を金額とみなす（例「現金 4件 ¥44,700」→ 44700。件数でなく金額を取る）。
+   ★OCRは「現金 4件 ¥44,700」を「現金」「4件」「¥44,700」のように行を割ることがあるため、
+     ラベル行＋続く最大2行（別のラベル行が来たらそこまで）を1つの窓として見る。
+   ★金額は「¥付きの数字」を最優先で取る＝「4件」（件数）を金額と取り違えない。
+     ¥が無ければ、窓の中で最初に数字が出た行の末尾の数字（「組数 15組」→15、「客数 26客」→26）。
    ★「現金在高」「お預かり現金」「レジオープン時現金」等は行頭が違うので混ざらない。
    ★読めなかった欄は入れない（0で埋めない） */
 function nikkei_parse_(text) {
-  var lines = String(text || '').split(/\r?\n/);
+  var lines = String(text || '').split(/\r?\n/).map(function (s) { return s.replace(/^\s+/, ''); });
   var LABELS = [
     { key: 'kumi',   re: /^組数/ },
     { key: 'kyaku',  re: /^客数/ },
@@ -104,18 +133,33 @@ function nikkei_parse_(text) {
     { key: 'card',   re: /^クレジット/ },
     { key: 'emoney', re: /^電子マネー/ }
   ];
+  /* 窓を打ち切る行＝別のラベル・別の項目の行（この先の数字は別の欄のもの） */
+  var isBoundary = function (line) {
+    for (var j = 0; j < LABELS.length; j++) if (LABELS[j].re.test(line)) return true;
+    return /^(純売上|控除後|総売上|お預かり|レジオープン|現金在高|ポイント|客単価|消費税|税率|入出金|入金|出金|おつり|商品券|掛売|値割引|端数値引|サービス料|深夜料|男性|女性|選択なし)/.test(line);
+  };
   var out = {};
   for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].replace(/^\s+/, '');
     for (var j = 0; j < LABELS.length; j++) {
       var lb = LABELS[j];
-      if (out[lb.key] !== undefined || !lb.re.test(line)) continue;
-      /* ラベル行に数字が無い（OCRで折り返された）場合は次の行も見る */
-      var nums = (line.match(/[\d,]+/g) || []);
-      if (!nums.length && lines[i + 1]) nums = (String(lines[i + 1]).match(/[\d,]+/g) || []);
-      if (!nums.length) continue;
-      var v = Number(String(nums[nums.length - 1]).replace(/,/g, ''));
-      if (isNaN(v) || v < 0 || v >= NIKKEI_MAX_YEN) continue;
+      if (out[lb.key] !== undefined || !lb.re.test(lines[i])) continue;
+      var win = [lines[i]];
+      for (var k = i + 1; k <= i + 2 && k < lines.length; k++) {
+        if (isBoundary(lines[k])) break;
+        win.push(lines[k]);
+      }
+      var joined = win.join(' ');
+      var v = null;
+      var yens = joined.match(/¥\s*[\d,]+/g);
+      if (yens) {
+        v = Number(String(yens[yens.length - 1]).replace(/[^\d]/g, ''));
+      } else {
+        for (var w = 0; w < win.length; w++) {
+          var nums = win[w].match(/[\d,]+/g);
+          if (nums) { v = Number(String(nums[nums.length - 1]).replace(/,/g, '')); break; }
+        }
+      }
+      if (v === null || isNaN(v) || v < 0 || v >= NIKKEI_MAX_YEN) continue;
       out[lb.key] = v;
     }
   }
