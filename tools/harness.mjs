@@ -3729,6 +3729,28 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   doc.getElementById('plSave').onclick();
   const mon3 = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
   ok(mon3.close === 9999 && !mon3.closeDetail, '月末在庫を手で直すと古い内訳は外れる');
+  // ⑥b 品目のまとめて貼り付け＝最初の1回の手打ちを無くす（「いかに手間なく使ってもらえるか」）
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
+  location.hash = '#/app/pl';
+  ok(/品目をまとめて貼り付けて登録/.test(registry.app.innerHTML), '棚卸タブに「まとめて貼り付け」がある');
+  doc.getElementById('tn_ym').value = ymNow2;
+  doc.getElementById('tn_paste').value = '米 3,000\nサーロイン肉 12000円\n単価まだ不明の品\n飲料\nビール（瓶） 200\nコーラ（瓶）,130';
+  doc.getElementById('tnImport').onclick();
+  const draft = JSON.parse(localStorage.getItem('yosakura_tn_draft') || '{}')[S + '||' + ymNow2];
+  ok(Array.isArray(draft) && draft.length === 5, '5品目が取り込まれる（「飲料」の行は区切りとして消費）');
+  ok(draft[0].n === '米' && draft[0].u === 3000 && draft[0].t === 'f', 'カンマ入り単価「3,000」を読める');
+  ok(draft[1].u === 12000, '「12000円」の円付きも読める');
+  ok(draft[2].n === '単価まだ不明の品' && draft[2].u === null, '単価なしは品名だけで取り込む（後で入れられる）');
+  ok(draft[3].t === 'd' && draft[3].n === 'ビール（瓶）' && draft[4].u === 130, '「飲料」行より下は飲料として入る（読点区切りも可）');
+  location.hash = '#/app/pl?x=reimport';
+  h = registry.app.innerHTML;
+  ok(/id="tn_f0_n"[^>]*value="米"/.test(h) && /id="tn_d0_n"[^>]*value="ビール（瓶）"/.test(h), '取り込んだ品目が行に展開される');
+  // 保存すると下書きは消える（保存済みが正になる）
+  doc.getElementById('tn_f0_n').value = '米'; doc.getElementById('tn_f0_u').value = '3000'; doc.getElementById('tn_f0_q').value = '1';
+  doc.getElementById('tn_ym').value = ymNow2;
+  doc.getElementById('tnSave').onclick();
+  ok(!JSON.parse(localStorage.getItem('yosakura_tn_draft') || '{}')[S + '||' + ymNow2], '保存で下書きが消える');
+
   // ⑦ ソース＝同期のmonthlyが closeDetail を運ぶ／GASの90日削除からmonthlyが守られる
   const src2 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/closeDetail:Array\.isArray\(p\.closeDetail\)/.test(src2), '同期（distribute）がcloseDetailを運ぶ');
