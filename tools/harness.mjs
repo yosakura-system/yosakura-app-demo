@@ -3467,8 +3467,8 @@ console.log('== 本部のコメントが店舗に届く（2026-08-31 神田さ�
      '対応済みの保存は対象の報告の店舗名で行う（本部の「all」で保存しない）');
   // ⑤ 食べ残し・1食目写真・オープン写真の一覧にも同じ表示が結ばれている
   ok(/hqAckLine\('waste', r\.t, r\.store\)/.test(asrc) && /hqAckLine\('firstphoto', r\.t, r\.store\)/.test(asrc)
-     && /hqAckLine\('openphoto', r\.t, r\.store\)/.test(asrc),
-     '食べ残し・1食目写真・オープン写真の一覧にも本部コメントが出る');
+     && /hqAckLine\(\['openphoto','hygiene_m','menubook'\]\.includes\(target\)\?'openphoto':target, r\.t, r\.store\)/.test(asrc),
+     '食べ残し・1食目写真・写真提出（項目別）の一覧にも本部コメントが出る');
   // ⑥ 認証（GAS）側＝hqackはキー内の店舗名で自店だけに返す（過去の「all」保存分も届く）
   const gsrc = fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8');
   ok(/kind === 'hqack'/.test(gsrc) && /ks\.slice\(2\)\.join\('\|'\)/.test(gsrc),
@@ -3803,6 +3803,66 @@ console.log('== 日報の累計＝当日だけ入れれば自動で足し上が�
   const src3 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/\['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt'\]\.forEach/.test(src3), '当日欄の入力で累計が自動で足し上がる（配線）');
   ok(/\['sk_date', 'sk_store'\]\.forEach/.test(src3), '日付・店舗を変えると累計の起点を取り直す（配線）');
+  // 後始末
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 新しい提出物への本部コメントが店舗に届く（2026-09-02 神田さんの実機報告＝v180のラベル分けの取りこぼし）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const T4 = Date.now() - 3600e3; // 時刻は表示のみ＝日付またぎの影響なし
+  const seedAck = (kind, extraReports) => run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind: 'hqack', store: S, item: `${kind}|${T4}|${S}`,
+        note: JSON.stringify({ state: 'done', by: '本部', memo: '数字は自動で反映されてましたでしょうか？' }), photos: [], t: Date.now() - 1800e3 }
+    ].concat(extraReports || [])));
+  });
+  // ① 日計レポート（レジクローズ）へのコメントが、店舗のホーム「本部からの返答」に出る
+  seedAck('nikkei_close');
+  location.hash = '#/home';
+  let h = registry.app.innerHTML;
+  ok(/本部からの返答/.test(h) && /数字は自動で反映されてましたでしょうか/.test(h), '新しい提出物へのコメントがホームに出る');
+  ok(/日計レポート（レジクローズ）/.test(h), '種類が項目名で表示される');
+  ok(/data-tsub="openphoto" data-tsubphoto="nikkei_close"/.test(h), '押すとその項目を開いた状態で写真画面へ飛ぶ');
+  // ② 写真提出画面の「最近の提出」にも確認済み＋コメントが出る
+  seedAck('nikkei_close', [
+    { kind: 'subrec', store: S, item: `nikkei_close|2026-09-01`, note: '{}', photos: ['p1'], t: T4 }
+  ]);
+  run(() => {}); // no-op
+  seedAck('nikkei_close', [
+    { kind: 'subrec', store: S, item: `nikkei_close|2026-09-01`, note: '{}', photos: ['p1'], t: T4 }
+  ]);
+  location.hash = '#/app/openphoto';
+  // 写真画面の対象を nikkei_close に
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_photo_target', 'nikkei_close');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind: 'hqack', store: S, item: `nikkei_close|${T4}|${S}`,
+        note: JSON.stringify({ state: 'done', by: '本部', memo: '数字は自動で反映されてましたでしょうか？' }), photos: [], t: Date.now() - 1800e3 },
+      { kind: 'subrec', store: S, item: `nikkei_close|2026-09-01`, note: '{}', photos: ['p1'], t: T4 }
+    ]));
+  });
+  location.hash = '#/app/openphoto';
+  h = registry.app.innerHTML;
+  ok(/本部確認済み/.test(h) && /数字は自動で反映されてましたでしょうか/.test(h), '写真画面の「最近の提出」に確認済み＋コメントが出る');
+  // ③ 従来のオープン写真へのコメントは従来どおり（回帰なし）
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_photo_target', 'openphoto');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind: 'hqack', store: S, item: `openphoto|${T4}|${S}`,
+        note: JSON.stringify({ state: 'done', by: '本部', memo: 'いつもありがとうございます' }), photos: [], t: Date.now() - 1800e3 },
+      { kind: 'subrec', store: S, item: `openphoto|2026-09-01`, note: '{}', photos: ['p1'], t: T4 }
+    ]));
+  });
+  location.hash = '#/app/openphoto';
+  ok(/本部確認済み/.test(registry.app.innerHTML), 'オープン写真へのコメントは従来どおり見える');
+  // ④ 中間報告へのコメント＝ホームから中間報告画面へ飛ぶ
+  seedAck('chukan');
+  location.hash = '#/home';
+  ok(/data-go="\/app\/chukan"/.test(registry.app.innerHTML), '中間報告へのコメントは中間報告画面へ飛ぶ');
   // 後始末
   run(() => { setLS('hq', 'all', 'ja'); });
 }
