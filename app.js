@@ -4364,6 +4364,10 @@
       // ── 毎日 ──
       { id:'openphoto',  name:{ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'},                 oblig:'required', freq:'daily', due:'11:00', target:'all', hqReview:'none',      detect:'subrec', linkApp:'openphoto' },
       { id:'ck_open',    name:{ja:'オープンチェックリスト',en:'Opening checklist',vi:'Checklist mở cửa'}, oblig:'store',  freq:'daily', due:'11:00', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'open',   linkApp:'checklist' },
+      /* ★予約状況＝長堀橋トライアル（2026-09-01）。LINEでの共有の形が確認できていないため、
+         まず「その日の予約が分かる写真」で受ける。締切・中身は常山さんのFBを聞いてから調整する */
+      { id:'yoyaku',     name:{ja:'予約状況の共有',en:'Reservation status',vi:'Tình hình đặt bàn'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
+        how:{ja:'その日の予約が分かるもの（予約表・予約画面など）を撮影して共有してください',en:'Photograph today’s reservations (list or screen) and share',vi:'Chụp danh sách/màn hình đặt bàn hôm nay và chia sẻ'} },
       // ★一食目写真：AI判定の運用が未確定（木村さんと協議中）のため、当面は提出物の対象から外す（準備中）。
       //   運用が決まったら oblig を 'required' に戻すだけで有効化できる。
       { id:'firstphoto', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'},          oblig:'off',      freq:'daily', due:'23:59', target:'except_course', hqReview:'exception', detect:'fp', linkApp:'firstphoto' },
@@ -4908,6 +4912,7 @@
     hygiene_m: { ja:'本部から今月指定された箇所の、清掃前と清掃後を撮ってください。', en:'Before and after photos of the spot assigned by HQ this month.', vi:'Ảnh trước và sau khi vệ sinh khu vực HQ chỉ định tháng này.' },
     menubook:  { ja:'メニューブックと販促物を並べて、汚れや破れが分かるように撮ってください。', en:'Lay out the menu books and POP so stains or tears are visible.', vi:'Bày menu và vật phẩm quảng bá để thấy rõ vết bẩn hoặc rách.' },
     // ★牛カツ長堀橋店トライアル（2026-09-01）：LINEアルバム運用をアプリへ
+    yoyaku:       { ja:'その日の予約が分かるもの（予約表・予約画面など）を撮ってください。', en:'Photograph today’s reservation list or screen.', vi:'Chụp danh sách hoặc màn hình đặt bàn hôm nay.' },
     nikkei_idle:  { ja:'レジから出した日計レポート（取引別・商品別）を、文字が読める距離で撮ってください。', en:'Photograph the printed daily report so the text is readable.', vi:'Chụp báo cáo doanh thu đã in, chữ đọc được rõ.' },
     nouhin:       { ja:'納品書・レシートを1枚ずつ、金額と日付が読めるように撮ってください。', en:'Photograph each slip/receipt so the amount and date are readable.', vi:'Chụp từng phiếu/hóa đơn, thấy rõ số tiền và ngày.' },
     zaiko_photo:  { ja:'記入後の在庫チェック表を1枚ずつ撮ってください（食材①②・ドリンク・消耗品）。', en:'Photograph each filled stock sheet (ingredients ①②, drinks, supplies).', vi:'Chụp từng bảng kiểm kho đã điền (nguyên liệu ①②, đồ uống, vật tư).' },
