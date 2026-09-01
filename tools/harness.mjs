@@ -3631,6 +3631,37 @@ console.log('== 牛カツ長堀橋店トライアル：LINEアルバムの提出
   // 中間報告が無い店舗では、昼のみ売上は空のまま（他店の挙動を変えない）
   h = renderView('soukatsu', 'staff', '日本料理世桜本店', 'ja');
   ok(/id="sk_lunch"[^>]*value=""/.test(h) && !/中間報告の総売り上げから自動/.test(h), '中間報告が無い店舗の入力欄は従来どおり');
+
+  // ⑧ 日計レポート写真のOCR下書き＝フォームへの自動読み取り（2026-09-01 神田さんのご要望）
+  const seedDraft = (kind, dk, note) => run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind, store: S, item: dk, note: JSON.stringify(note), photos: [], t: Date.now() - 600000 }
+    ]));
+  });
+  // 中間報告フォーム：今日の chukandraft が数字を自動で入れる
+  seedDraft('chukandraft', dkNow, { src: 'ocr', kumi: 15, kyaku: 26, cash: 44700, card: 99100, emoney: 0, total: 143800 });
+  location.hash = '#/app/chukan';
+  h = registry.app.innerHTML;
+  ok(/id="ch_kyaku"[^>]*value="26"/.test(h) && /id="ch_total"[^>]*value="143800"/.test(h), '中間報告に客数・総売上が自動で入る');
+  ok(/id="ch_cash"[^>]*value="44700"/.test(h) && /id="ch_emoney"[^>]*value="0"/.test(h), '現金・電子マネー（0円も）が自動で入る');
+  ok(/写真から読み取った数字が入っています/.test(h), '読み取りである旨の説明が出る（確認して送信を促す）');
+  // 日報入力：skdraft（今日 or 昨日）が売上・客数・現金・カードを自動で入れる
+  seedDraft('skdraft', dkNow, { src: 'ocr', kyaku: 26, cash: 44700, card: 99100, total: 143800 });
+  location.hash = '#/app/soukatsu?tab=input';
+  h = registry.app.innerHTML;
+  ok(/id="sk_sales"[^>]*value="143800"/.test(h) && /id="sk_guests"[^>]*value="26"/.test(h), '日報に売上・客数が自動で入る');
+  ok(/id="sk_cash"[^>]*value="44700"/.test(h) && /id="sk_card"[^>]*value="99100"/.test(h), '日報に現金・カードが自動で入る');
+  const ydk = new Date(Date.now() - 864e5).toLocaleDateString('en-CA');
+  seedDraft('skdraft', ydk, { src: 'ocr', total: 88000 });
+  location.hash = '#/app/soukatsu?tab=input';
+  ok(/id="sk_sales"[^>]*value="88000"/.test(registry.app.innerHTML), '昨日のクローズ写真の下書きも拾う（前日分を翌朝出す運用）');
+  // 下書きが無い・他店・src無しは従来どおり空
+  seedDraft('chukandraft', dkNow, { kumi: 99 }); // src:'ocr' が無い＝下書き扱いしない
+  location.hash = '#/app/chukan';
+  ok(!/id="ch_kumi"[^>]*value=/.test(registry.app.innerHTML), 'src=ocrの印が無い行は下書きとして扱わない');
+  h = renderView('chukan', 'staff', S, 'ja');
+  ok(!/写真から読み取った数字/.test(h) && !/id="ch_total"[^>]*value=/.test(h), '下書きが無ければ従来どおり空のフォーム');
   // 後始末
   run(() => { setLS('hq', 'all', 'ja'); });
 }

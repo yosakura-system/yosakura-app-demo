@@ -368,6 +368,10 @@ function doPost(e) {
     var input = Array.isArray(data.photos) ? data.photos.slice(0, 6) : [];
     var photoIds = input.map(savePhoto);
     sh.appendRow([id, ts, data.kind || '', data.store || '', data.item || '', data.level || '', normNote(data.note), JSON.stringify(photoIds)]);
+    /* ★日計レポート写真の自動読み取り（日計OCR.gs・長堀橋トライアル 2026-09-01）。
+       ファイルを貼っていないプロジェクトでも壊れないよう、関数の有無を見てから呼ぶ。
+       読み取りに失敗しても提出は成功のまま（下書きが作られないだけ） */
+    if (typeof nikkei_ocr_hook_ === 'function') { try { nikkei_ocr_hook_(data, photoIds); } catch (ocrErr) {} }
     return json({ ok: true, id: id });
   } catch (err) {
     return json({ ok: false, error: String(err) });
