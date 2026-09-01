@@ -3861,9 +3861,22 @@
         </div>`;
     }
 
+    /* ★タブ化（2026-09-01 棚卸の実装に合わせて）。神田さんのUI原則＝役割が違うものは縦に積まずタブで分ける。
+       月次数値／棚卸（業者別の内訳→月末在庫へ自動反映）／月別の推移 の3タブ */
+    const PLT = [
+      { v:'input',   t:{ ja:'月次数値', en:'Numbers', vi:'Số liệu' } },
+      { v:'tana',    t:{ ja:'棚卸', en:'Stocktake', vi:'Kiểm kê' } },
+      { v:'history', t:{ ja:'月別の推移', en:'History', vi:'Lịch sử' } }
+    ];
+    const urlPlTab = currentRoute().params.get('tab');
+    const plTab = PLT.some(o => o.v === urlPlTab) ? urlPlTab
+      : PLT.some(o => o.v === localStorage.getItem('yosakura_pl_tab')) ? localStorage.getItem('yosakura_pl_tab') : 'input';
+    const plTabSeg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="pltab">${PLT.map(o => `<button type="button" data-pltab="${o.v}" class="${o.v === plTab ? 'on' : ''}">${L(o.t)}</button>`).join('')}</div></div>`;
     return `
       ${NOTE({ ja:'◆ 月次の売上・仕入・在庫を入力→原価率を自動計算。前月末在庫は今月の月初在庫へ自動で引き継ぎます', en:'◆ Enter monthly sales/purchases/stock → cost ratio auto-calculated', vi:'◆ Nhập doanh thu/nhập hàng/tồn kho → tự tính giá vốn' })}
-      <div class="card" id="plForm">
+      ${plTabSeg}
+      ${plTab === 'tana' ? tanaCard(store, nowYm) : ''}
+      ${plTab !== 'input' ? '' : `<div class="card" id="plForm"
         <h3>${L({ ja:'月次数値の入力', en:'Monthly numbers', vi:'Số liệu tháng' })} — ${esc(storeShort(store))}</h3>
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'対象月', en:'Month', vi:'Tháng' })}</span><input type="month" id="pl_ym" value="${esc(nowYm)}"></label>
@@ -3881,12 +3894,71 @@
         </div>
         <button class="btn-primary" id="plSave">${L({ ja:'保存する', en:'Save', vi:'Lưu' })}</button>
         <div class="hint">${L({ ja:'原価率＝（月初在庫＋当月仕入－月末在庫）÷売上', en:'Cost ratio = (open + purchases − close) ÷ sales', vi:'Giá vốn = (đầu + nhập − cuối) ÷ doanh thu' })}</div>
-      </div>
-      ${plTrend(store)}
+      </div>`}
+      ${plTab !== 'history' ? '' : plTrend(store) + `
       <div class="card"><h3>${L({ ja:'月別の推移', en:'Monthly history', vi:'Lịch sử theo tháng' })}</h3>
         ${rows.length ? rows.map(plRow).join('') : `<div class="muted">${L({ ja:'まだ入力がありません', en:'No data yet', vi:'Chưa có' })}</div>`}
-      </div>`;
+      </div>`}`;
   };
+
+  /* ---------- 棚卸（2026-09-01 長田さんのご質問「棚卸しもアプリから作業可能になるか」への回答）----------
+     ★ルールは 2026-08-18 アプリデモMTGで確定済みのものに合わせる：
+       ①月末に実施 ②対象は【食材のみ】（包材・消耗品は数えない＝PLで別項目）
+       ③開封済み・使いかけは残量を 0.25／0.5／0.75／1 の4段階で概算カウント
+     ★入力＝品目リスト方式：品目名・単価・数量（0.25刻み）→ 金額を自動計算 → 合計が「月末在庫（棚卸）」。
+       品目リストは店舗ごとに自由（各店が何をカウントしているかは店ごとに違うため、決め打ちしない）。
+       前月に数えた品目は名前と単価を引き継いで出す＝毎月は数量を入れるだけ。
+     ★保存＝既存の月次数値レコード（kind:'monthly'）の close と closeDetail に持たせる＝新しいkindを作らない
+       （認証・同期の追加作業を増やさない）。原価率と翌月の月初在庫への引き継ぎは既存の仕組みがそのまま働く。 */
+  const TN_FOOD_N = 12, TN_DRINK_N = 6;  // 食材12行＋飲料6行（空きスロット式・足りない店が出たら増やす）
+  function tanaRowsFor(store, ym, type) {
+    const rec = getMonthly().find(r => r.store === store && r.ym === ym);
+    const prev = getMonthly().find(r => r.store === store && r.ym === prevYm(ym));
+    /* 当月に保存済みならそれ。無ければ前月の品目（名前・単価だけ引き継ぎ・数量は空） */
+    const detail = (rec && Array.isArray(rec.closeDetail) && rec.closeDetail.length) ? rec.closeDetail
+      : (prev && Array.isArray(prev.closeDetail) && prev.closeDetail.length) ? prev.closeDetail.map(d => ({ n: d.n, t: d.t, u: d.u, q: null })) : [];
+    const n = type === 'f' ? TN_FOOD_N : TN_DRINK_N;
+    const rows = detail.filter(d => d.t === type).map(d => ({ n: d.n, u: d.u, q: d.q }));
+    while (rows.length < n) rows.push({ n: '', u: null, q: null });
+    return rows.slice(0, Math.max(n, rows.length));
+  }
+  function tanaCard(store, curYm) {
+    /* 対象月＝選び直した月を保持（renderで巻き戻さない）。既定は今月 */
+    const saved = localStorage.getItem('yosakura_tn_ym');
+    const nowYm = /^\d{4}-\d{2}$/.test(saved || '') ? saved : curYm;
+    const rec = getMonthly().find(r => r.store === store && r.ym === nowYm) || {};
+    const block = (type, label, rows) => `
+      <div class="idlabel" style="margin-top:${type === 'f' ? '4' : '14'}px">${L(label)}</div>
+      <div style="display:flex;gap:6px;font-size:11px;color:#8a8478;margin-bottom:4px">
+        <span style="flex:1.2;min-width:0">${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span>
+        <span style="flex:0.7;min-width:0;text-align:right">${L({ ja:'単価', en:'Unit ¥', vi:'Đơn giá' })}</span>
+        <span style="flex:0.55;min-width:0;text-align:right">${L({ ja:'数量', en:'Qty', vi:'SL' })}</span>
+        <span style="width:64px;flex:none;text-align:right">${L({ ja:'金額', en:'Amount', vi:'Tiền' })}</span>
+      </div>
+      ${rows.map((r, i) => `
+        <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+          <input type="text" id="tn_${type}${i}_n" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên hàng' })}" style="flex:1.2;min-width:0;padding:10px 8px">
+          <input type="text" inputmode="numeric" id="tn_${type}${i}_u" value="${r.u != null ? esc(String(r.u)) : ''}" placeholder="0" style="flex:0.7;min-width:0;text-align:right;padding:10px 8px">
+          <input type="text" inputmode="decimal" id="tn_${type}${i}_q" value="${r.q != null ? esc(String(r.q)) : ''}" placeholder="0" style="flex:0.55;min-width:0;text-align:right;padding:10px 8px">
+          <span id="tn_${type}${i}_amt" class="muted" style="width:64px;flex:none;text-align:right;font-size:12px;overflow:hidden;text-overflow:ellipsis">—</span>
+        </div>`).join('')}`;
+    return `
+      <div class="card" id="tnForm">
+        <h3>${L({ ja:'棚卸（月末・食材のみ）', en:'Stocktake (month-end, food only)', vi:'Kiểm kê (cuối tháng, thực phẩm)' })} — ${esc(storeShort(store))}</h3>
+        <p class="hint" style="display:block">${L({ ja:'月末に、店の食材を数えて入力してください。開封済み・使いかけは 0.25／0.5／0.75／1 のどれかで概算します（例：粉が半分→0.5）。包材や消耗品は数えません（PLで別に管理します）。', en:'Count food items at month end. Opened/partial items are estimated as 0.25 / 0.5 / 0.75 / 1 (e.g. half a bag = 0.5). Packaging and supplies are not counted (managed separately in P&L).', vi:'Cuối tháng đếm thực phẩm. Hàng đã mở ước lượng 0.25/0.5/0.75/1. Không đếm bao bì, vật tư.' })}</p>
+        <label class="fld"><span>${L({ ja:'対象月', en:'Month', vi:'Tháng' })}</span><input type="month" id="tn_ym" value="${esc(nowYm)}"></label>
+        ${block('f', { ja:'食材', en:'Food', vi:'Thực phẩm' }, tanaRowsFor(store, nowYm, 'f'))}
+        ${block('d', { ja:'飲料', en:'Drinks', vi:'Đồ uống' }, tanaRowsFor(store, nowYm, 'd'))}
+        <div class="stat-row" style="margin:10px 0">
+          <div class="stat"><div class="n" id="tn_food_sum">¥0</div><div class="k">${L({ ja:'食材 計', en:'Food total', vi:'Tổng thực phẩm' })}</div></div>
+          <div class="stat"><div class="n" id="tn_drink_sum">¥0</div><div class="k">${L({ ja:'飲料 計', en:'Drinks total', vi:'Tổng đồ uống' })}</div></div>
+          <div class="stat"><div class="n" id="tn_total">¥0</div><div class="k">${L({ ja:'月末在庫（合計）', en:'Closing stock', vi:'Tồn cuối kỳ' })}</div></div>
+        </div>
+        <button class="btn-primary" id="tnSave">${L({ ja:'棚卸を保存する', en:'Save stocktake', vi:'Lưu kiểm kê' })}</button>
+        <div class="hint">${L({ ja:'※ 金額＝単価×数量（単価が分からないものは単価を空にして、数量の欄はそのまま・金額が出ません＝本部へご相談ください）。品目と単価は翌月に引き継がれ、毎月は数量を入れるだけになります。保存すると「月次数値」タブの月末在庫と原価率、翌月の月初在庫へ自動で反映されます。', en:'Amount = unit price × qty. Items and prices carry over to next month, so you only enter quantities monthly. Saving updates closing stock, cost ratio and next month’s opening stock.', vi:'Thành tiền = đơn giá × SL. Mặt hàng và giá chuyển sang tháng sau.' })}</div>
+        ${rec.close != null && rec.close !== '' && !(Array.isArray(rec.closeDetail) && rec.closeDetail.length) ? `<p class="hint" style="display:block">${L({ ja:'※ この月の月末在庫は手入力済みです（内訳なし）。ここで保存すると品目からの合計で上書きされます。', en:'Closing stock was entered manually this month; saving here overwrites it with the itemised total.', vi:'Tồn cuối kỳ đã nhập tay; lưu ở đây sẽ ghi đè.' })}</p>` : ''}
+      </div>`;
+  }
 
   /* ⑨ 本部ダッシュボード（動く）*/
   APP_VIEWS.dashboard = () => {
@@ -5479,7 +5551,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab],[data-sktab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab],[data-sktab],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -5489,6 +5561,7 @@
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
       if (t.dataset.ttab) { localStorage.setItem('yosakura_teishutsu_tab', t.dataset.ttab); render(true); return; }
       if (t.dataset.sktab) { localStorage.setItem('yosakura_soukatsu_tab', t.dataset.sktab); go('/app/soukatsu?tab=' + t.dataset.sktab); return; }
+      if (t.dataset.pltab) { localStorage.setItem('yosakura_pl_tab', t.dataset.pltab); go('/app/pl?tab=' + t.dataset.pltab); return; }
       if (t.dataset.gdtab) { localStorage.setItem('yosakura_guide_tab', t.dataset.gdtab); render(true); return; }
       if (t.dataset.ackdone) { setAck(t.dataset.ackdone, 'done', ''); toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(true); return; }
       if (t.dataset.ackmemo) {
@@ -6591,12 +6664,71 @@
       if (byId('plSave')) byId('plSave').onclick = () => {
         const store = visibleStores()[0], ym = byId('pl_ym').value;
         if (!ym) { toast(L({ ja:'対象月を選んでください', en:'Pick a month', vi:'Chọn tháng' })); return; }
+        /* 棚卸の内訳（closeDetail）は消さずに引き継ぐ。ただし月末在庫を内訳の合計と違う値へ
+           手で直した場合は、内訳が古い（数字が合わない）ので外す（黙って食い違いを残さない） */
+        const ex = getMonthly().find(r => r.store === store && r.ym === ym) || {};
+        const keepDetail = Array.isArray(ex.closeDetail) && ex.closeDetail.length
+          && num('pl_close') === ex.closeDetail.reduce((s, d) => s + (Number(d.a) || 0), 0);
         const rec = { store, ym, sales: num('pl_sales'), purchase: num('pl_purchase'), open: num('pl_open'), close: num('pl_close'), goal: num('pl_goal'), by: submitterLabel(), t: Date.now() };
+        if (keepDetail) rec.closeDetail = ex.closeDetail;
         const arr = getMonthly().filter(r => !(r.store === store && r.ym === ym)); arr.push(rec);
         try { saveMonthly(arr.slice(-300)); } catch (e) { saveMonthly(arr.slice(-120)); }
         lastSync = rec.t;
         toast(L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' })); render();
-        postReport({ kind:'monthly', store, note: JSON.stringify({ ym, sales: rec.sales, purchase: rec.purchase, open: rec.open, close: rec.close, goal: rec.goal, by: rec.by }), t: rec.t });
+        postReport({ kind:'monthly', store, note: JSON.stringify({ ym, sales: rec.sales, purchase: rec.purchase, open: rec.open, close: rec.close, goal: rec.goal, closeDetail: rec.closeDetail, by: rec.by }), t: rec.t });
+      };
+    }
+
+    // 棚卸（品目×数量0.25刻み→月末在庫へ。2026-09-01）
+    const tnForm = byId('tnForm');
+    if (tnForm) {
+      const tnIds = [];
+      for (let i = 0; i < TN_FOOD_N; i++) tnIds.push('f' + i);
+      for (let i = 0; i < TN_DRINK_N; i++) tnIds.push('d' + i);
+      const tnNum = (id) => { const v = Number((byId(id) && byId(id).value || '').toString().replace(/[^0-9.]/g, '')); return isNaN(v) ? 0 : v; };
+      const tnRow = (k) => {
+        const name = (byId('tn_' + k + '_n') && byId('tn_' + k + '_n').value || '').trim();
+        const u = tnNum('tn_' + k + '_u'), q = tnNum('tn_' + k + '_q');
+        return { k, name, u, q, amt: Math.round(u * q) };
+      };
+      const tnRecalc = () => {
+        let f = 0, d = 0;
+        tnIds.forEach(k => {
+          const r = tnRow(k);
+          const el = byId('tn_' + k + '_amt');
+          if (el) el.textContent = (r.u && r.q) ? r.amt.toLocaleString('en-US') : '—';
+          if (r.name && r.u && r.q) { if (k[0] === 'f') f += r.amt; else d += r.amt; }
+        });
+        if (byId('tn_food_sum')) byId('tn_food_sum').textContent = yen(f);
+        if (byId('tn_drink_sum')) byId('tn_drink_sum').textContent = yen(d);
+        if (byId('tn_total')) byId('tn_total').textContent = yen(f + d);
+      };
+      tnIds.forEach(k => ['n', 'u', 'q'].forEach(s => { const el = byId('tn_' + k + '_' + s); if (el) el.oninput = tnRecalc; }));
+      tnRecalc();
+      /* 対象月を変えたら、その月の保存分（無ければ前月の品目）を出し直す */
+      if (byId('tn_ym')) byId('tn_ym').onchange = () => { localStorage.setItem('yosakura_tn_ym', byId('tn_ym').value); render(); };
+      if (byId('tnSave')) byId('tnSave').onclick = () => {
+        const store = visibleStores()[0];
+        const ym = (byId('tn_ym') && byId('tn_ym').value) || '';
+        if (!/^\d{4}-\d{2}$/.test(ym)) { toast(L({ ja:'対象月を選んでください', en:'Pick a month', vi:'Chọn tháng' })); return; }
+        const detail = [];
+        tnIds.forEach(k => {
+          const r = tnRow(k);
+          if (!r.name) return;
+          /* 数量は0.25刻みへ丸める（8/18決定＝0.25/0.5/0.75/1の概算カウント。1.3のような端数は0.25単位に寄せる） */
+          const q = Math.round(r.q / 0.25) * 0.25;
+          detail.push({ n: r.name, t: k[0], u: r.u, q, a: Math.round(r.u * q) });
+        });
+        if (!detail.length) { toast(L({ ja:'品目を1つ以上入力してください', en:'Enter at least one item', vi:'Nhập ít nhất 1 mặt hàng' })); return; }
+        const total = detail.reduce((s, d) => s + d.a, 0);
+        const ex = getMonthly().find(r => r.store === store && r.ym === ym) || {};
+        const rec = Object.assign({}, ex, { store, ym, close: total, closeDetail: detail, by: submitterLabel(), t: Date.now() });
+        const arr = getMonthly().filter(r => !(r.store === store && r.ym === ym)); arr.push(rec);
+        try { saveMonthly(arr.slice(-300)); } catch (e) { saveMonthly(arr.slice(-120)); }
+        lastSync = rec.t;
+        toast(L({ ja:'棚卸を保存しました（月末在庫へ反映済み）', en:'Stocktake saved (closing stock updated)', vi:'Đã lưu kiểm kê' }));
+        render();
+        postReport({ kind:'monthly', store, note: JSON.stringify({ ym, sales: rec.sales, purchase: rec.purchase, open: rec.open, close: rec.close, goal: rec.goal, closeDetail: detail, by: rec.by }), t: rec.t });
       };
     }
 
@@ -7370,7 +7502,7 @@
         case 'ckdone': { const p=pj(r.note); const k=`${store}||${r.item}`; if (ckdoneT[k]==null || t>=ckdoneT[k]) { ckdone[k]=p.done||{}; ckmeta[k]={ by:p.by||'', t }; ckdoneT[k]=t; } } break;
         // 勉強会＝IDごと最新が正。削除は deleted:true の行で表す（追記式のため）
         case 'study': { const p=pj(r.note); const k=r.item || (p && p.id); if (!k) break; if (studyT[k]==null || t>=studyT[k]) { study[k]=p; studyT[k]=t; } } break;
-        case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, goal:p.goal, by:p.by||'', t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正
+        case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, goal:p.goal, closeDetail:Array.isArray(p.closeDetail)?p.closeDetail:undefined, by:p.by||'', t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正（closeDetail=棚卸の品目内訳・2026-09-01）
         case 'community': { const p=pj(r.note); comm.push({ store, cat:r.item, body:p.body||'', by:p.by||'', photos:r.photos||[], t, id }); } break;
         case 'commmod': { const p=pj(r.note); const k=r.item; if (commmodT[k]==null || t>=commmodT[k]) { commmod[k]={ state:p.state||'published', t }; commmodT[k]=t; } } break; // 投稿キーごと最新の公開状態が正
         // 拍手は件数を合算。取り消し（off）は -1 として数える（追記式なので行は消せない）
