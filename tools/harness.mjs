@@ -3801,8 +3801,57 @@ console.log('== 日報の累計＝当日だけ入れれば自動で足し上が�
   ok(last3 && last3.cancelt === '2000', '提出データに当日キャンセルが入る');
   // ④ ソース＝当日欄4つの入力と日付・店舗の変更で累計を足し上げ直す配線がある
   const src3 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/\['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt'\]\.forEach/.test(src3), '当日欄の入力で累計が自動で足し上がる（配線）');
+  ok(/\['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt', 'sk_buy'\]\.forEach/.test(src3), '当日欄の入力で累計が自動で足し上がる（配線・仕入率も追従）');
   ok(/\['sk_date', 'sk_store'\]\.forEach/.test(src3), '日付・店舗を変えると累計の起点を取り直す（配線）');
+  // 後始末
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 日報：フード・ドリンクは金額＋構成比、原価率の手入力を廃止し仕入率を自動計算（2026-09-02 常山さんのご指摘）==');
+{
+  const S = '日本料理世桜本店';
+  const today4 = new Date().toLocaleDateString('en-CA');
+  run(() => {
+    setLS('manager', S, 'ja');
+    localStorage.setItem('yosakura_soukatsu_tab', 'input');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([]));
+  });
+  // ① 入力フォーム＝金額の欄と自動計算の表示。点数と原価率の手入力は無い
+  location.hash = '#/app/soukatsu?x=amt';
+  let h = registry.app.innerHTML;
+  ok(/id="sk_foodamt"/.test(h) && /id="sk_drinkamt"/.test(h), '入力欄がフード金額・ドリンク金額になっている');
+  ok(!/id="sk_foodct"/.test(h) && !/id="sk_drinkct"/.test(h), '点数の入力欄は無い');
+  ok(!/id="sk_food"/.test(h), '原価率の手入力欄は無い');
+  ok(/id="sk_buyrate"/.test(h) && /仕入率＝当月の仕入合計÷売上合計/.test(h), '仕入率（自動計算）の表示と説明がある');
+  ok(/フード構成比/.test(h) && /ドリンク構成比/.test(h), '構成比（自動計算）の表示がある');
+  // ② 提出＝金額のキーで保存され、旧キー（原価率手入力・点数）は保存しない
+  doc.getElementById('sk_store').value = S;
+  doc.getElementById('sk_date').value = today4;
+  doc.getElementById('sk_sales').value = '100000';
+  doc.getElementById('sk_foodamt').value = '80000';
+  doc.getElementById('sk_drinkamt').value = '20000';
+  doc.getElementById('sk_buy').value = '18000';
+  doc.getElementById('submitSk').onclick();
+  const last4 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
+  ok(last4 && last4.foodamt === '80000' && last4.drinkamt === '20000' && last4.buy === '18000', '提出データにフード金額・ドリンク金額・仕入が入る');
+  ok(last4 && !('food' in last4) && !('foodct' in last4) && !('drinkct' in last4), '旧キー（原価率手入力・点数）は保存しない');
+  // ③ 個店カルテ＝新形式はフード金額を表示し、点数の欄は出ない
+  location.hash = '#/store?s=' + encodeURIComponent(S);
+  h = registry.app.innerHTML;
+  ok(/フード金額/.test(h) && !/フード数/.test(h), 'カルテ＝新形式はフード金額（点数の欄は出ない）');
+  // ④ 旧形式の日報（点数・手入力の原価率あり）は、その値をそのまま表示（legacy＝黙って消さない）
+  run(() => {
+    setLS('manager', S, 'ja');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+      { store: S, date: today4, sales: 100000, foodct: 29, drinkct: 14, food: 33.3, labor: 20, t: Date.now() }
+    ]));
+  });
+  location.hash = '#/store?s=' + encodeURIComponent(S) + '&x=legacy';
+  h = registry.app.innerHTML;
+  ok(/フード数/.test(h) && /原価率（旧・手入力）/.test(h), 'カルテ＝旧形式の日報は点数と原価率（旧）をそのまま表示');
+  // ⑤ 月次出力の呼び方＝「仕入率（自動計算）」（在庫込みの原価率は月締めの「数値・原価率」の呼び名のまま）
+  const src4 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/仕入率（自動計算）/.test(src4), '月次出力の表記が仕入率（自動計算）になっている');
   // 後始末
   run(() => { setLS('hq', 'all', 'ja'); });
 }

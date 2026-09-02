@@ -501,11 +501,18 @@
     let last = null;
     Object.values(byDate).forEach(r => { if (!last || r.date > last.date) last = r; });
     const sameYm = last && String(last.date).slice(0, 7) === String(dateStr).slice(0, 7);
+    /* 仕入は累計欄が無い（毎日「当日分」だけ入れる）ので、当月分をここで足し上げる。
+       仕入率（自動計算）＝（この合計＋当日の仕入）÷ 月累計売上 */
+    let buym = 0;
+    Object.values(byDate).forEach(r => {
+      if (String(r.date).slice(0, 7) === String(dateStr).slice(0, 7)) buym += Number(r.buy) || 0;
+    });
     return {
       mtd:    sameYm ? Number(last.mtd)    || 0 : 0,
       tipa:   sameYm ? Number(last.tipa)   || 0 : 0,
       cancel: sameYm ? Number(last.cancel) || 0 : 0,
-      rva:    last   ? Number(last.rva)    || 0 : 0
+      rva:    last   ? Number(last.rva)    || 0 : 0,
+      buym
     };
   }
 
@@ -2988,15 +2995,18 @@
           <label class="fld"><span>${L({ja:'レジ誤差',en:'Register error',vi:'Sai lệch quầy'})}</span><input type="text" inputmode="numeric" id="sk_err" placeholder="0"></label>
           <label class="fld"><span>${L({ja:'月累計売上（自動計算）',en:'Month-to-date (auto)',vi:'Lũy kế tháng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_mtd" placeholder="2146145" value="${skCum0.mtd || ''}"></label>
           <label class="fld"><span>${L({ja:'売上目標（月）',en:'Monthly goal',vi:'Mục tiêu tháng'})}</span><input type="text" inputmode="numeric" id="sk_goal" placeholder="3000000"></label>
-          <label class="fld"><span>${L({ja:'フード数',en:'Food items',vi:'Số món ăn'})}</span><input type="text" inputmode="numeric" id="sk_foodct" placeholder="29"></label>
-          <label class="fld"><span>${L({ja:'飲料数',en:'Drink items',vi:'Số đồ uống'})}</span><input type="text" inputmode="numeric" id="sk_drinkct" placeholder="14"></label>
+          <label class="fld"><span>${L({ja:'フード金額',en:'Food sales (¥)',vi:'Tiền món ăn'})}</span><input type="text" inputmode="numeric" id="sk_foodamt" placeholder="88400"></label>
+          <label class="fld"><span>${L({ja:'ドリンク金額',en:'Drink sales (¥)',vi:'Tiền đồ uống'})}</span><input type="text" inputmode="numeric" id="sk_drinkamt" placeholder="20100"></label>
+        </div>
+        <div class="stat-row" style="margin:2px 0 10px">
+          <div class="stat"><div class="n" id="sk_foodpct">—</div><div class="k">${L({ja:'フード構成比（自動計算）',en:'Food share (auto)',vi:'Tỷ trọng món ăn (tự động)'})}</div></div>
+          <div class="stat"><div class="n" id="sk_drinkpct">—</div><div class="k">${L({ja:'ドリンク構成比（自動計算）',en:'Drink share (auto)',vi:'Tỷ trọng đồ uống (tự động)'})}</div></div>
         </div>
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'口コミ 当日',en:'Reviews today',vi:'Đánh giá nay'})}</span><input type="text" inputmode="numeric" id="sk_rvt" placeholder="2"></label>
           <label class="fld"><span>${L({ja:'口コミ 累計（自動計算）',en:'Reviews total (auto)',vi:'Đánh giá tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_rva" placeholder="70" value="${skCum0.rva || ''}"></label>
           <label class="fld"><span>${L({ja:'ヒアリング 当日',en:'Hearings today',vi:'Phỏng vấn nay'})}</span><input type="text" inputmode="numeric" id="sk_hear" placeholder="9"></label>
           <label class="fld"><span>${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})}</span><input type="text" inputmode="numeric" id="sk_disc" placeholder="0"></label>
-          <label class="fld"><span>${L({ja:'原価率 %',en:'Food cost %',vi:'Giá vốn %'})}</span><input type="text" inputmode="decimal" id="sk_food" placeholder="36.5"></label>
           <label class="fld"><span>${L({ja:'人件費率 %',en:'Labor %',vi:'Nhân sự %'})}</span><input type="text" inputmode="decimal" id="sk_labor" placeholder="23.6"></label>
           <label class="fld"><span>${L({ja:'チップ 当日',en:'Tips today',vi:'Tip nay'})}</span><input type="text" inputmode="numeric" id="sk_tipt" placeholder="21000"></label>
           <label class="fld"><span>${L({ja:'チップ 累計（自動計算）',en:'Tips total (auto)',vi:'Tip tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_tipa" placeholder="84541" value="${skCum0.tipa || ''}"></label>
@@ -3013,6 +3023,10 @@
           ${storeGyotai(vis[0]) === 'unagi' ? `<label class="fld"><span>${L({ja:'鰻の使用尾数',en:'Eel used',vi:'Số lươn'})}</span><input type="text" inputmode="numeric" id="sk_unagi" placeholder="12"></label>` : ''}
         </div>
         ${skChukanToday(vis[0]) != null ? `<p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 昼のみ売上は、本日の中間報告の総売り上げから自動で入っています（違うときは直してください）。', en:'Lunch-only sales is pre-filled from today’s midday report (edit if different).', vi:'Doanh thu buổi trưa được điền sẵn từ báo cáo giữa ngày hôm nay (sửa nếu khác).' })}</p>` : ''}
+        <div class="stat-row" style="margin:2px 0 10px">
+          <div class="stat"><div class="n" id="sk_buyrate">—</div><div class="k">${L({ja:'仕入率（自動計算・当月）',en:'Purchase ratio (auto, month)',vi:'Tỷ lệ nhập hàng (tự động, tháng)'})}</div></div>
+        </div>
+        <p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 仕入率＝当月の仕入合計÷売上合計。毎日「仕入金額（当日）」を入れると自動で出ます（率の手入力は不要です）。在庫まで含めた正式な原価率は、月締めの「数値・原価率」画面で計算します。', en:'Purchase ratio = month purchases ÷ month sales, calculated automatically from the daily purchase amounts. The official cost ratio including stock is calculated on the monthly Numbers & Cost screen.', vi:'Tỷ lệ nhập hàng = tổng nhập ÷ tổng doanh thu trong tháng, tự tính từ số nhập hàng mỗi ngày. Giá vốn chính thức (gồm tồn kho) tính ở màn hình số liệu tháng.' })}</p>
         <label class="fld"><span>${L({ ja:'過不足（現金）の理由', en:'Reason for cash difference', vi:'Lý do chênh lệch tiền mặt' })}</span><input type="text" id="sk_errnote" placeholder="${L({ja:'差がある場合のみ',en:'only if there is a difference',vi:'chỉ khi có chênh lệch'})}"></label>
 
         <div class="idlabel" style="margin-top:14px">${L({ ja:'勤怠・ロス（総括表の項目）', en:'Staffing & loss (summary-sheet items)', vi:'Nhân sự & hao hụt (mục bảng tổng kết)' })}</div>
@@ -3362,13 +3376,17 @@
     { k:'err',     t:{ ja:'レジ誤差', en:'Register error', vi:'Sai lệch quầy' }, f:'yen' },
     { k:'mtd',     t:{ ja:'月累計売上', en:'Month-to-date', vi:'Lũy kế tháng' }, f:'yen' },
     { k:'goal',    t:{ ja:'売上目標（月）', en:'Monthly goal', vi:'Mục tiêu tháng' }, f:'yen' },
-    { k:'foodct',  t:{ ja:'フード数', en:'Food items', vi:'Số món ăn' },         f:'num' },
-    { k:'drinkct', t:{ ja:'飲料数', en:'Drink items', vi:'Số đồ uống' },         f:'num' },
+    /* 2026-09-02 常山さんのご指摘＝総括表はフード・ドリンクを金額と構成比で管理→点数から金額入力へ切替。
+       点数（foodct/drinkct）と手入力の原価率（food）は、切替前の日報を表示するためだけに legacy で残す */
+    { k:'foodamt', t:{ ja:'フード金額', en:'Food sales', vi:'Tiền món ăn' },     f:'yen' },
+    { k:'drinkamt',t:{ ja:'ドリンク金額', en:'Drink sales', vi:'Tiền đồ uống' }, f:'yen' },
+    { k:'foodct',  t:{ ja:'フード数', en:'Food items', vi:'Số món ăn' },         f:'num', legacy:true },
+    { k:'drinkct', t:{ ja:'飲料数', en:'Drink items', vi:'Số đồ uống' },         f:'num', legacy:true },
     { k:'rvt',     t:{ ja:'口コミ 当日', en:'Reviews today', vi:'Đánh giá nay' }, f:'num' },
     { k:'rva',     t:{ ja:'口コミ 累計', en:'Reviews total', vi:'Đánh giá tổng' }, f:'num' },
     { k:'hear',    t:{ ja:'ヒアリング 当日', en:'Hearings today', vi:'Phỏng vấn nay' }, f:'num' },
     { k:'disc',    t:{ ja:'値引き', en:'Discount', vi:'Giảm giá' },              f:'yen' },
-    { k:'food',    t:{ ja:'原価率', en:'Food cost', vi:'Giá vốn' },              f:'pct' },
+    { k:'food',    t:{ ja:'原価率（旧・手入力）', en:'Food cost (old)', vi:'Giá vốn (cũ)' },  f:'pct', legacy:true },
     { k:'labor',   t:{ ja:'人件費率', en:'Labor cost', vi:'Nhân sự' },           f:'pct' },
     { k:'tipt',    t:{ ja:'チップ 当日', en:'Tips today', vi:'Tip nay' },        f:'yen' },
     { k:'tipa',    t:{ ja:'チップ 累計', en:'Tips total', vi:'Tip tổng' },       f:'yen' },
@@ -3424,12 +3442,14 @@
   const skFmtVal = (f, v) => f === 'yen' ? yen(numOr0(v)) : f === 'pct' ? (numOr0(v).toFixed(1) + '%') : f === 'num' ? numOr0(v).toLocaleString('en-US') : esc(String(v));
   // 日報1件の全項目（未入力は「—」＝アップされたら自動で埋まる）
   function skFieldGrid(r) {
-    const filled = SK_FIELDS.filter(f => hasVal(r[f.k])).length;
+    // legacy＝旧形式の項目（点数・手入力の原価率）。値が入っている古い日報でだけ表示する
+    const flds = SK_FIELDS.filter(f => !f.legacy || hasVal(r[f.k]));
+    const filled = flds.filter(f => hasVal(r[f.k])).length;
     const per = numOr0(r.guests) ? Math.round(numOr0(r.sales) / numOr0(r.guests)) : 0;
-    const fl = (hasVal(r.food) || hasVal(r.labor)) ? (numOr0(r.food) + numOr0(r.labor)).toFixed(1) + '%' : '';
+    const fl = hasVal(r.food) ? (numOr0(r.food) + numOr0(r.labor)).toFixed(1) + '%' : '';
     return `
-      <div class="fillhead"><span>${L({ ja:'入力済みの項目', en:'Filled items', vi:'Mục đã nhập' })}</span><b>${filled} / ${SK_FIELDS.length}</b></div>
-      <div class="fillbar"><i style="width:${Math.round(filled / SK_FIELDS.length * 100)}%"></i></div>
+      <div class="fillhead"><span>${L({ ja:'入力済みの項目', en:'Filled items', vi:'Mục đã nhập' })}</span><b>${filled} / ${flds.length}</b></div>
+      <div class="fillbar"><i style="width:${Math.round(filled / flds.length * 100)}%"></i></div>
       <div class="stat-row" style="margin-top:12px">
         <div class="stat"><div class="n">${esc(yenShort(numOr0(r.sales)))}</div><div class="k">${L({ ja:'売上', en:'Sales', vi:'DT' })}</div></div>
         <div class="stat"><div class="n">${numOr0(r.guests)}</div><div class="k">${L({ ja:'客数', en:'Guests', vi:'Khách' })}</div></div>
@@ -3438,7 +3458,7 @@
       ${fl ? `<p class="hint" style="display:block">FL ${esc(fl)}（${L({ ja:'原価', en:'Food', vi:'Giá vốn' })} ${esc(numOr0(r.food).toFixed(1))}% ＋ ${L({ ja:'人件費', en:'Labor', vi:'Nhân sự' })} ${esc(numOr0(r.labor).toFixed(1))}%）</p>` : ''}
       ${(numOr0(r.hours) && numOr0(r.sales)) ? `<p class="hint" style="display:block">${L({ ja:'人時生産性（自動計算）', en:'Sales per hour (auto)', vi:'DT/giờ (tự động)' })} ¥${Math.round(numOr0(r.sales)/numOr0(r.hours)).toLocaleString('en-US')}/h${(numOr0(r.laborcost)) ? `　/　${L({ ja:'人件費率（自動計算）', en:'Labor % (auto)', vi:'% NS (tự động)' })} ${(numOr0(r.laborcost)/numOr0(r.sales)*100).toFixed(1)}%` : ''}</p>` : ''}
       <div class="dgrid">
-        ${SK_FIELDS.map(f => `<div class="dcell${hasVal(r[f.k]) ? '' : ' off'}"><span class="dk">${esc(L(f.t))}</span><b class="dv">${hasVal(r[f.k]) ? skFmtVal(f.f, r[f.k]) : '—'}</b></div>`).join('')}
+        ${flds.map(f => `<div class="dcell${hasVal(r[f.k]) ? '' : ' off'}"><span class="dk">${esc(L(f.t))}</span><b class="dv">${hasVal(r[f.k]) ? skFmtVal(f.f, r[f.k]) : '—'}</b></div>`).join('')}
       </div>
       ${Object.keys(ctyOf(r)).length ? `
         <div class="idlabel" style="margin-top:14px">${L({ ja:'お客様の内訳（国別）', en:'Guests by country', vi:'Khách theo quốc gia' })}
@@ -3538,7 +3558,7 @@
         </div>
         <div class="card">
           <h3>${L({ ja:'最新の日報（全項目）', en:'Latest daily report (all fields)', vi:'Báo cáo mới nhất (tất cả)' })}${latest ? `　<span class="muted">${esc(mdLabel(latest.date))}</span>` : ''}</h3>
-          ${latest ? skFieldGrid(latest) : `<p class="muted">${L({ ja:'この月の日報がまだありません。提出されると、売上・客数のほか、口コミ・ヒアリング・原価率・チップ・発注など全項目がここに表示されます。', en:'No report yet this month. Once submitted, all fields appear here.', vi:'Chưa có báo cáo tháng này.' })}</p>`}
+          ${latest ? skFieldGrid(latest) : `<p class="muted">${L({ ja:'この月の日報がまだありません。提出されると、売上・客数のほか、口コミ・ヒアリング・仕入・チップ・発注など全項目がここに表示されます。', en:'No report yet this month. Once submitted, all fields appear here.', vi:'Chưa có báo cáo tháng này.' })}</p>`}
         </div>
         <div class="card">
           <h3>${L({ ja:'この店舗の他のデータ', en:'Other data for this store', vi:'Dữ liệu khác' })}</h3>
@@ -3592,7 +3612,7 @@
     days.forEach(x => { if (!x.r) return; tot.entered++;
       ['sales','cash','card','guests','buy','laborcost','loss','hours','staffct','err'].forEach(k => { tot[k] += numOr0(x.r[k]); }); });
     tot.per = tot.guests ? Math.round(tot.sales / tot.guests) : 0;
-    tot.foodRate = tot.sales ? tot.buy / tot.sales * 100 : 0;          // 原価率（自動計算）＝仕入計÷売上計
+    tot.foodRate = tot.sales ? tot.buy / tot.sales * 100 : 0;          // 仕入率（自動計算）＝仕入計÷売上計（在庫を見ない速報値。在庫込みの原価率は「数値・原価率」）
     tot.laborRate = tot.sales ? tot.laborcost / tot.sales * 100 : 0;   // 人件費率（自動計算）＝人件費計÷売上計
     tot.prodh = tot.hours ? Math.round(tot.sales / tot.hours) : 0;     // 人時生産性（自動計算）＝売上計÷労働時間計
     return { days, tot };
@@ -3657,11 +3677,11 @@
           </table></div>
           <div class="skp-foot">
             <span>${L({ ja:'入力日数', en:'Days entered', vi:'Số ngày' })}：${tot.entered}${L({ ja:'日', en:'', vi:'' })}</span>
-            <span>${L({ ja:'原価率（自動計算）', en:'Food cost % (auto)', vi:'% giá vốn (auto)' })}：${tot.buy ? tot.foodRate.toFixed(1) + '%' : '—'}</span>
+            <span>${L({ ja:'仕入率（自動計算）', en:'Purchase ratio (auto)', vi:'% nhập hàng (auto)' })}：${tot.buy ? tot.foodRate.toFixed(1) + '%' : '—'}</span>
             <span>${L({ ja:'人件費率（自動計算）', en:'Labor % (auto)', vi:'% nhân sự (auto)' })}：${tot.laborcost ? tot.laborRate.toFixed(1) + '%' : '—'}</span>
             <span>${L({ ja:'人時生産性（自動計算）', en:'Sales/hour (auto)', vi:'DT/giờ (auto)' })}：${tot.prodh ? '¥' + tot.prodh.toLocaleString('en-US') + '/h' : '—'}</span>
           </div>
-          <p class="hint skp-note">${L({ ja:'※ 「自動計算」と書かれた数字（客単価・原価率・人件費率・人時生産性）は、入力された元の数字（売上・客数・仕入・人件費・労働時間）から自動で計算されます。入力は要りません。空欄の日は未入力です。＊印の昼のみ売上は、その日の中間報告から自動で拾った数字です（日報に入力があればそちらが優先されます）。', en:'Values marked (auto) are calculated automatically from entered base numbers; no input needed. Blank days have no entry. Lunch values marked ＊ are taken automatically from that day’s midday report (a value entered in the daily report takes priority).', vi:'Các số ghi (tự động) được tính tự động từ số gốc đã nhập. Ngày trống là chưa nhập. Số có dấu ＊ lấy tự động từ báo cáo giữa ngày.' })}</p>
+          <p class="hint skp-note">${L({ ja:'※ 「自動計算」と書かれた数字（客単価・仕入率・人件費率・人時生産性）は、入力された元の数字（売上・客数・仕入・人件費・労働時間）から自動で計算されます。仕入率は在庫を見ない速報値で、在庫込みの原価率は月締めの「数値・原価率」で計算します。入力は要りません。空欄の日は未入力です。＊印の昼のみ売上は、その日の中間報告から自動で拾った数字です（日報に入力があればそちらが優先されます）。', en:'Values marked (auto) are calculated automatically from entered base numbers; no input needed. Blank days have no entry. Lunch values marked ＊ are taken automatically from that day’s midday report (a value entered in the daily report takes priority).', vi:'Các số ghi (tự động) được tính tự động từ số gốc đã nhập. Ngày trống là chưa nhập. Số có dấu ＊ lấy tự động từ báo cáo giữa ngày.' })}</p>
         </div>
       </main>`;
   }
@@ -7481,6 +7501,16 @@
       const upd = () => { const s = Number(skSales.value)||0, g = Number(skGuests.value)||0; skAvg.textContent = g ? ('¥' + Math.round(s/g).toLocaleString('en-US')) : '¥0'; };
       skSales.oninput = upd; skGuests.oninput = upd;
     }
+    /* フード・ドリンクの構成比（自動計算）＝金額÷当日売上（2026-09-02 常山さんのご指摘＝総括表は金額と構成比） */
+    const skFa = byId('sk_foodamt'), skDa = byId('sk_drinkamt'), skFp = byId('sk_foodpct'), skDp = byId('sk_drinkpct');
+    if (skSales && skFa && skDa && skFp && skDp) {
+      const updShare = () => {
+        const s = Number(skSales.value)||0, f = Number(skFa.value)||0, d = Number(skDa.value)||0;
+        skFp.textContent = (s && f) ? ((f/s*100).toFixed(1) + '%') : '—';
+        skDp.textContent = (s && d) ? ((d/s*100).toFixed(1) + '%') : '—';
+      };
+      skSales.addEventListener('input', updShare); skFa.oninput = updShare; skDa.oninput = updShare;
+    }
     const skMtd = byId('sk_mtd'), skGoal = byId('sk_goal'), skRate = byId('sk_rate');
     if (skMtd && skGoal && skRate) {
       const upd2 = () => { const m = Number(skMtd.value)||0, g = Number(skGoal.value)||0; skRate.textContent = g ? ((m/g*100).toFixed(1) + '%') : '—'; };
@@ -7514,8 +7544,15 @@
           const g = Number(byId('sk_goal').value) || 0, m = Number(byId('sk_mtd').value) || 0;
           byId('sk_rate').textContent = g ? ((m / g * 100).toFixed(1) + '%') : '—';
         }
+        /* 仕入率（自動計算）＝（当月これまでの仕入合計＋当日仕入）÷月累計売上。
+           呼び方は総括表に合わせて「仕入率」（在庫込みの原価率は月締めの「数値・原価率」が受け持つ） */
+        if (byId('sk_buyrate')) {
+          const m = Number((byId('sk_mtd') && byId('sk_mtd').value) || 0) || 0;
+          const b = (c.buym || 0) + n('sk_buy');
+          byId('sk_buyrate').textContent = (m && b) ? ((b / m * 100).toFixed(1) + '%') : '—';
+        }
       };
-      ['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt'].forEach(id => { const el = byId(id); if (el) el.addEventListener('input', cumUpd); });
+      ['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt', 'sk_buy'].forEach(id => { const el = byId(id); if (el) el.addEventListener('input', cumUpd); });
       ['sk_date', 'sk_store'].forEach(id => { const el = byId(id); if (el) el.addEventListener('change', cumUpd); });
     }
     const subSk = byId('submitSk');
@@ -7525,9 +7562,10 @@
       const rec = {
         store: v('sk_store'), date: v('sk_date'), sales: Number(v('sk_sales'))||0, guests: Number(v('sk_guests'))||0,
         net: Number(v('sk_net'))||0, err: v('sk_err'), mtd: Number(v('sk_mtd'))||0, goal: Number(v('sk_goal'))||0,
-        foodct: v('sk_foodct'), drinkct: v('sk_drinkct'),
+        // 点数→金額へ切替（2026-09-02）。旧キー（foodct/drinkct/food）は新規保存しない
+        foodamt: v('sk_foodamt'), drinkamt: v('sk_drinkamt'),
         rvt: v('sk_rvt'), rva: v('sk_rva'), hear: v('sk_hear'), disc: v('sk_disc'),
-        food: v('sk_food'), labor: v('sk_labor'), tipt: v('sk_tipt'), tipa: v('sk_tipa'),
+        labor: v('sk_labor'), tipt: v('sk_tipt'), tipa: v('sk_tipa'),
         cancel: v('sk_cancel'), cancelt: v('sk_cancelt'), closer: v('sk_closer'), order: v('sk_order'),
         // 総括表 Ver.2.6 に合わせて足した項目
         cash: v('sk_cash'), card: v('sk_card'), lunch: v('sk_lunch'), buy: v('sk_buy'),
