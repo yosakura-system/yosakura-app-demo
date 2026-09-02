@@ -4012,5 +4012,35 @@ console.log('== 手巻き業態専用の初期チェックリスト（2026-09-02
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 受信箱が件数で重くならない（2026-09-03 実機報告＝対応ボタンがカクカクする）==');
+{
+  /* 原因＝1回の描画で保存データ（全提出）を何度も JSON.parse し直していた。
+     写真提出の行ごとに提出物マスタを引き直しており、件数が増えるほど二乗で重くなっていた
+     （実測：45日ぶん1,350件で reports を2,255回パース＝描画2.2秒）。
+     ここでは「読み直しの回数」を数えて固定する＝時間で測るとPCの速さに左右されるため。 */
+  const STORES5 = ['牛カツ世桜 長堀橋店','日本料理世桜本店','手巻き寿司世桜 難波店','牛カツ世桜 富士山店','日本鰻世桜 富士山店'];
+  const ITEMS = ['openphoto','nikkei_idle','nikkei_close','nouhin','zaiko_photo','yoyaku'];
+  const reports = [], now = Date.now();
+  for (let d = 0; d < 20; d++) STORES5.forEach((s, si) => ITEMS.forEach((it, ii) => {
+    reports.push({ kind:'subrec', store:s, item:`${it}|2026-09-0${(d % 9) + 1}`, note:'{}',
+      photos:[`FILEID${d}_${si}_${ii}`], t: now - d * 864e5 - ii * 3600e3 });
+  }));
+  run(() => {
+    setLS('hq', 'all', 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify(reports));
+    localStorage.setItem('yosakura_inbox_showdone', '1');
+  });
+  const orig = localStorage.getItem.bind(localStorage);
+  let reads = 0;
+  localStorage.getItem = (k) => { if (k === 'yosakura_demo_reports') reads++; return orig(k); };
+  location.hash = '#/app/inbox?x=perf';
+  const h = registry.app.innerHTML;
+  localStorage.getItem = orig;
+  ok(reads <= 5, `提出データの読み直しは1回の描画で数回まで（実測 ${reads}回・直す前は1,000回超）`);
+  ok(/loading="lazy"/.test(h), '受信箱の写真は画面に入ってから読み込む（lazy）');
+  ok(/data-ackdone=/.test(h), '対応ボタンは従来どおり出る');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_inbox_showdone'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
