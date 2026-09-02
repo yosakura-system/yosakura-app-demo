@@ -1661,6 +1661,14 @@
         ${numFld('ch_greview', { ja:'Googleレビュー獲得件数', en:'Google reviews gained', vi:'Số review Google mới' }, { ja:'件', en:'', vi:'' })}
         <button class="btn-primary" id="submitChukan">${L({ ja:'報告する', en:'Submit', vi:'Gửi' })}</button>
         <div class="hint">${L({ ja:'※ 日計レポートの写真は「写真の提出」→「日計レポート（アイドルクローズ）」からお願いします。', en:'Submit the printed report photo via Photo submissions.', vi:'Ảnh báo cáo in nộp ở mục Nộp ảnh.' })}</div>
+        ${(() => {
+          /* ★現金売上・チップの写真へ、この画面から直接飛べるように（2026-09-02 m.taigaさんのご要望＝
+             「中間報告のタブのなかに現金売り上げの写真上げるところを」。写真の提出画面の該当項目を開く） */
+          const phs2 = getMasters(vis[0]).filter(m => ['genkin_photo', 'tip_photo'].includes(m.id) && appliesToStore(m, vis[0]));
+          return phs2.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            ${phs2.map(m => `<button class="mini" data-tsub="openphoto" data-tsubphoto="${esc(m.id)}">${esc(L(m.name))}${L({ja:'を出す',en:'',vi:''})}</button>`).join('')}
+          </div>` : '';
+        })()}
       </div>
       <div class="card">
         <h3>${L({ ja:'最近の報告', en:'Recent reports', vi:'Báo cáo gần đây' })}</h3>
@@ -2308,7 +2316,15 @@
             <option value="">${esc(L({ ja:'分類なし（この枠）', en:'No section (here)', vi:'Không phân mục' }))}</option>
             ${groups.map(gr => `<option value="${esc(grpJa(gr))}">${esc(L(gr.g))}</option>`).join('')}
           </select>
-          <input type="text" id="ck_new" placeholder="${esc(L({ ja:'例）季節の掲示物を差し替え', en:'e.g. Swap seasonal signage', vi:'vd: Thay bảng theo mùa' }))}"><button class="mini" id="ckAdd">${L({ ja:'追加', en:'Add', vi:'Thêm' })}</button></div>` : ''}
+          <input type="text" id="ck_new" placeholder="${esc(L({ ja:'例）季節の掲示物を差し替え', en:'e.g. Swap seasonal signage', vi:'vd: Thay bảng theo mùa' }))}"><button class="mini" id="ckAdd">${L({ ja:'追加', en:'Add', vi:'Thêm' })}</button></div>
+        ${/* ★項目のまとめて貼り付け（2026-09-02 難波店のご要望＝紙のチェックシートの項目をそのまま移せるように。
+             棚卸の「まとめて貼り付け」（v186）と同じ考え方＝最初の1回の手打ちを無くす） */''}
+        <details style="margin-top:8px">
+          <summary class="muted" style="cursor:pointer;font-size:12.5px">${L({ ja:'項目をまとめて貼り付け（紙のチェックシートから移すとき）', en:'Paste multiple items at once', vi:'Dán nhiều mục cùng lúc' })}</summary>
+          <textarea id="ck_bulk" rows="6" style="margin-top:6px" placeholder="${esc(L({ ja:'1行に1項目で貼り付けてください。例）\nグリラーの洗浄（網・ガラス・部品）\nまな板を洗浄し、乾燥させる', en:'One item per line.', vi:'Mỗi dòng một mục.' }))}"></textarea>
+          <div class="hint" style="display:block">${L({ ja:'※ 上の「分類」を選んでいれば、その分類でまとめて追加されます。行頭の「・」や番号は自動で外します。', en:'Items are added under the selected section. Leading bullets/numbers are removed automatically.', vi:'Mục được thêm vào phân mục đã chọn.' })}</div>
+          <button class="mini" id="ckBulkAdd" style="margin-top:4px">${L({ ja:'まとめて追加', en:'Add all', vi:'Thêm tất cả' })}</button>
+        </details>` : ''}
       </div>`;
     return `
       ${NOTE(canHide
@@ -4673,6 +4689,12 @@
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
       { id:'nikkei_close', name:{ja:'日計レポート（レジクローズ）',en:'Daily sales report (register close)',vi:'Báo cáo doanh thu (đóng ca)'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'レジクローズ時に日計レポートを出力し、現金売上の封筒と合わせて撮影・提出してください',en:'Print the daily report at register close and submit it with the cash envelope',vi:'In báo cáo lúc đóng ca và nộp ảnh cùng phong bì tiền mặt'} },
+      /* ★現金売上・チップの写真（2026-09-02 常山さん経由・m.taigaさんのご要望）。
+         これまでオープン写真の欄に相乗りで上げられていた＝専用の項目を用意し、中間報告の画面からも飛べるようにする */
+      { id:'genkin_photo', name:{ja:'現金売上の写真',en:'Cash sales photo',vi:'Ảnh tiền mặt'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
+        how:{ja:'締めで数えた現金売上を撮影して提出してください（中間報告の画面からも開けます）',en:'Photograph the counted cash sales and submit',vi:'Chụp tiền mặt đã đếm khi chốt ca và nộp'} },
+      { id:'tip_photo',    name:{ja:'チップの写真',en:'Tips photo',vi:'Ảnh tiền tip'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
+        how:{ja:'その日のチップを撮影して提出してください（中間報告の画面からも開けます）',en:'Photograph the day’s tips and submit',vi:'Chụp tiền tip trong ngày và nộp'} },
       { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
       /* ★気づきの報告を、1日の最後に置く（2026-08-12 神田さんのご指摘）。
          これまで日報の中に「清掃・特記事項」という自由入力があり、
@@ -4886,7 +4908,8 @@
          点検は最後まで通してこそ意味があるので、途中は未提出のまま残す。 */
       if (m.detect === 'ckdone') return ckAllDoneOf(store, m.ckMode || 'open', dk);
       if (m.detect === 'video')  return getReports().some(r => r.kind === 'video' && r.store === store && inScope(r.t));
-      if (m.detect === 'monthly') return getMonthly().some(r => r.store === store && r.ym === new Date().toISOString().slice(0, 7));
+      // ★対象日の月で判定する（以前は常に「今月」だったため、先月ぶんの確認ができなかった）
+      if (m.detect === 'monthly') return getMonthly().some(r => r.store === store && r.ym === dk.slice(0, 7));
       if (m.detect === 'subrec' || m.detect === 'didit') return subRows(SUB_KINDS.open).some(r => r.store === store && String(r.item || '').split('|')[0] === m.id && inScope(r.t));
     } catch (e) {}
     return false;
@@ -5016,7 +5039,10 @@
      ・行をタップすると、その店舗の提出履歴（日別の内訳）が開く */
   function subMatrixCard(stores) {
     const N = 7;
-    const masters = getMasters().filter(m => m.oblig !== 'off' && m.detect !== 'none' && m.freq === 'daily');
+    /* ★数えるのは「必須（required）」だけ（2026-09-02 構築MTG＝増田さんの指摘で方向性合意）。
+       任意（店舗運用）を分母に入れると「必須を全部出しているのに100%にならない」が起きる。
+       任意の提出はアプリに残り、提出履歴では従来どおり見られる。 */
+    const masters = getMasters().filter(m => m.oblig === 'required' && m.detect !== 'none' && m.freq === 'daily');
     const offsets = []; for (let i = N - 1; i >= 0; i--) offsets.push(i);
     const heads = offsets.map(i => i === 0 ? L({ ja:'今日', en:'Now', vi:'Nay' })
       : mdLabel(new Date(Date.now() - i * 864e5).toLocaleDateString('en-CA')));
@@ -5050,11 +5076,11 @@
       : `<span style="${CW};color:${c.route === 'import' ? '#5f8d5f' : '#8a6d3b'};font-weight:700">${c.k}</span>`;
     return `
       <div class="card">
-        <h3>${L({ ja:'提出状況（店舗別・直近7日）', en:'Submissions by store (last 7 days)', vi:'Nộp theo cửa hàng (7 ngày)' })}</h3>
+        <h3>${L({ ja:'日次・必須の提出状況（店舗別・直近7日）', en:'Daily required submissions (last 7 days)', vi:'Mục bắt buộc hằng ngày (7 ngày)' })}</h3>
         <div class="hint" style="display:block;margin:2px 0 8px">${L({
-          ja:'日次の提出物だけを数えています（週次・月次は含みません）。●=全部提出（日報もアプリ入力）／○=全部提出（日報はシートからの取込）／数字=提出できた数（緑系=日報は取込）／✗=ゼロ／休=定休日。右の率は今日を除いた6日ぶんです。',
-          en:'Daily items only. ●=all (report via app) / ○=all (report imported from sheet) / number=partial / ✗=none / –=holiday. Rate excludes today.',
-          vi:'Chỉ mục hằng ngày. ●=đủ (app) / ○=đủ (nhập từ bảng) / số=một phần / ✗=không / –=nghỉ.' })}</div>
+          ja:'必須の日次提出物だけを数えています（任意（店舗運用）と週次・月次は分母に入れません。週次・月次は下のカード、任意の提出は提出履歴で見られます）。●=全部提出（日報もアプリ入力）／○=全部提出（日報はシートからの取込）／数字=提出できた数（緑系=日報は取込）／✗=ゼロ／休=定休日。右の率は今日を除いた6日ぶんです。',
+          en:'Required daily items only (optional/weekly/monthly are not in the denominator). ●=all (report via app) / ○=all (report imported from sheet) / number=partial / ✗=none / –=holiday. Rate excludes today.',
+          vi:'Chỉ mục bắt buộc hằng ngày. ●=đủ (app) / ○=đủ (nhập từ bảng) / số=một phần / ✗=không / –=nghỉ.' })}</div>
         <div style="display:flex;align-items:center;gap:2px;padding:4px 0 6px;border-bottom:1px solid #eee">
           <span style="flex:1;min-width:0"></span>
           ${heads.map(hd => `<span class="muted" style="${CW};font-size:10px">${esc(hd)}</span>`).join('')}
@@ -5073,6 +5099,59 @@
       </div>`;
   }
 
+  /* ★週次・月次・四半期の提出状況（2026-09-02 構築MTG＝高原社長「日次・週次・月次を分けて見える化する」・神田対応）。
+     数えるのは必須（required）だけ＝日次マトリクスと同じ考え方。
+     手動確認の項目（detect:'none'＝PL・コンプラ等）は自動判定できないため「・」で並べ、率には入れない。
+     カッコ内は前の期（先週／先月／前四半期）の実績＝締まった期の結果が分かる。 */
+  function subPeriodCard(stores, freq) {
+    const masters = getMasters().filter(m => m.oblig === 'required' && m.freq === freq);
+    if (!masters.length) return '';
+    const T = freq === 'weekly'
+      ? { title:{ja:'週次・必須の提出状況（今週）',en:'Weekly required (this week)',vi:'Hàng tuần bắt buộc (tuần này)'}, prev:{ja:'先週',en:'last wk',vi:'tuần trước'} }
+      : freq === 'monthly'
+      ? { title:{ja:'月次・必須の提出状況（今月）',en:'Monthly required (this month)',vi:'Hàng tháng bắt buộc (tháng này)'}, prev:{ja:'先月',en:'last mo',vi:'tháng trước'} }
+      : { title:{ja:'四半期・必須の提出状況（今期）',en:'Quarterly required (this quarter)',vi:'Hàng quý bắt buộc (quý này)'}, prev:{ja:'前期',en:'prev',vi:'kỳ trước'} };
+    const rows = stores.map(s => {
+      const ms = masters.filter(m => appliesToStore(m, s));
+      if (!ms.length) return null;
+      const dkNow = dateKeyFor(s, Date.now());
+      const dPrev = new Date(dkNow + 'T00:00:00');
+      if (freq === 'weekly') dPrev.setDate(dPrev.getDate() - 7);
+      else { dPrev.setDate(1); dPrev.setMonth(dPrev.getMonth() - (freq === 'quarterly' ? 3 : 1)); }
+      const dkPrev = dPrev.toLocaleDateString('en-CA');
+      const items = ms.map(m => {
+        const manual = m.detect === 'none';
+        return { m, manual,
+          now: manual ? null : detectSubmitted(s, m, dkNow),
+          prev: manual ? null : detectSubmitted(s, m, dkPrev) };
+      });
+      const auto = items.filter(it => !it.manual);
+      return { store: s, items, got: auto.filter(it => it.now).length, n: auto.length,
+        gotPrev: auto.filter(it => it.prev).length };
+    }).filter(Boolean)
+      .sort((a, b) => ((a.n ? a.got / a.n : 1) - (b.n ? b.got / b.n : 1)));
+    if (!rows.length) return '';
+    const chip = (it) => it.manual
+      ? `<span class="kind" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(it.m.name))}・</span>`
+      : `<span class="kind ${it.now ? 'b' : 'a'}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(it.m.name))}${it.now ? '✓' : '✗'}</span>`;
+    return `
+      <div class="card">
+        <h3>${L(T.title)}</h3>
+        ${rows.map(r => `
+          <button data-go="/app/history?s=${encodeURIComponent(r.store)}" style="display:flex;align-items:flex-start;gap:8px;width:100%;background:none;border:0;border-bottom:1px solid #eee;padding:8px 0;text-align:left;cursor:pointer;font:inherit;color:inherit">
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:12px;font-weight:600;line-height:1.35">${esc(storeLabel(r.store))}</span>
+              <span style="display:block;margin-top:3px">${r.items.map(chip).join('')}</span>
+            </span>
+            <b style="flex:none;max-width:96px;text-align:right;font-size:12.5px">${r.n ? `${r.got}/${r.n}` : '—'}<small class="muted" style="font-weight:400;display:block">${r.n ? `（${L(T.prev)} ${r.gotPrev}/${r.n}）` : ''}</small></b>
+          </button>`).join('')}
+        <p class="hint" style="display:block;margin-top:8px">${L({
+          ja:'※ 必須だけを数えています。「・」の項目（PL・コンプラチェック等）は手動確認のため率に入れていません。カッコ内は前の期の実績です。',
+          en:'Required only. Items marked “・” are manually checked and excluded from the rate. Figures in brackets are the previous period.',
+          vi:'Chỉ mục bắt buộc. Mục “・” kiểm tra thủ công, không tính vào tỷ lệ.' })}</p>
+      </div>`;
+  }
+
   APP_VIEWS.teishutsu = () => {
     const role = getRole();
     if (role !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
@@ -5080,7 +5159,7 @@
        本日の提出／店舗別×7日／提出物マスタ／シートの場所 をタブで切り替える（位置も保たれる） */
     const TT = [
       { v:'today',  t:{ ja:'本日の提出', en:'Today', vi:'Hôm nay' } },
-      { v:'matrix', t:{ ja:'店舗別×7日', en:'By store', vi:'Theo CH' } },
+      { v:'matrix', t:{ ja:'店舗別（日・週・月）', en:'By store', vi:'Theo CH' } },
       { v:'master', t:{ ja:'提出物マスタ', en:'Master', vi:'Cấu hình' } },
       { v:'sheets', t:{ ja:'シートの場所', en:'Sheets', vi:'Bảng' } }
     ];
@@ -5096,16 +5175,18 @@
       const items = masters.filter(m => appliesToStore(m, store)).map(m => {
         const manual = m.detect === 'none';
         const submitted = manual ? null : (holiday ? true : detectSubmitted(store, m, dk));
-        if (!manual && !submitted && !holiday) totalMissing++;
+        // ★未提出に数えるのは必須だけ（2026-09-02 構築MTG＝任意は分母に入れない）。任意はチップの表示のみ
+        if (!manual && !submitted && !holiday && m.oblig === 'required') totalMissing++;
         return { m, submitted, manual, holiday, status: getStatus(store, m.id, dk), dk };
       });
-      const missing = items.filter(it => !it.manual && !it.submitted && !it.holiday);
+      const missing = items.filter(it => !it.manual && !it.submitted && !it.holiday && it.m.oblig === 'required');
       if (missingOnly && !missing.length) return '';
       const chips = items.map(it => {
-        const cls = it.manual ? '' : (it.submitted ? 'b' : 'a');
+        const opt = it.m.oblig !== 'required'; // 任意（店舗運用）＝未提出でも赤くしない
+        const cls = it.manual ? '' : (it.submitted ? 'b' : (opt ? '' : 'a'));
         const sym = it.manual ? '·' : (it.submitted ? '✓' : '✗');
         const jl = it.status.judge ? ` ${L(JUDGE_LABEL[it.status.judge])}` : '';
-        return `<span class="kind ${cls}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(it.m.name))}${sym}${jl}</span>`;
+        return `<span class="kind ${cls}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(it.m.name))}${opt ? L({ja:'（任意）',en:' (opt)',vi:' (tùy chọn)'}) : ''}${sym}${jl}</span>`;
       }).join('');
       const act = missing.length ? `<div style="margin-top:8px"><button class="mini" data-treminder="${esc(store)}">${L({ja:'未提出の連絡文をコピー',en:'Copy reminder',vi:'Sao chép nhắc'})}</button> <button class="mini" data-tdrill="${esc(store)}">${L({ja:'判定・確認',en:'Review',vi:'Duyệt'})}${svg('chev')}</button></div>` : '';
       return `<div class="rep" style="align-items:flex-start"><span class="kind ${missing.length?'a':'b'}">${missing.length?L({ja:'未',en:'Miss',vi:'Thiếu'}):L({ja:'済',en:'OK',vi:'OK'})}</span>
@@ -5122,11 +5203,11 @@
         </div>
         ${cells || `<p class="hint" style="display:block">${L({ja:'未提出はありません。',en:'No missing.',vi:'Không thiếu.'})}</p>`}
       </div>`}
-      ${ttab !== 'matrix' ? '' : subMatrixCard(stores)}
+      ${ttab !== 'matrix' ? '' : subMatrixCard(stores) + subPeriodCard(stores, 'weekly') + subPeriodCard(stores, 'monthly') + subPeriodCard(stores, 'quarterly')}
       ${ttab !== 'master' ? '' : `<div class="card">
         <h3>${L({ja:'提出物マスタ（本部設定）',en:'Submission master (HQ)',vi:'Cấu hình mục nộp (HQ)'})}</h3>
         ${masters.map(m => `<div class="rep"><span class="kind b">${L(OBLIG_LABEL[m.oblig])}</span><div class="body"><div class="l1">${esc(L(m.name))}</div><div class="l2">${L({daily:{ja:'毎日',en:'Daily',vi:'Hàng ngày'},weekly:{ja:'週1',en:'Weekly',vi:'Hàng tuần'},monthly:{ja:'月1',en:'Monthly',vi:'Hàng tháng'},quarterly:{ja:'四半期',en:'Quarterly',vi:'Hàng quý'}}[m.freq]||{ja:'毎日',en:'Daily',vi:'Hàng ngày'})} ・ ${L({ja:'締切',en:'Due',vi:'Hạn'})} ${m.due} ・ ${m.hqReview==='each'?L({ja:'本部確認あり',en:'HQ review',vi:'HQ duyệt'}):m.hqReview==='exception'?L({ja:'例外のみ本部',en:'Exceptions to HQ',vi:'Ngoại lệ HQ'}):L({ja:'本部確認なし',en:'No HQ review',vi:'Không HQ'})}</div></div></div>`).join('')}
-        <p class="hint" style="display:block">${L({ja:'※ この設定はこの端末に保存されています。全店で共有するにはバックエンド接続（次段階）が必要です。',en:'Saved on this device. Cross-store sharing needs backend (next step).',vi:'Lưu trên máy này. Cần backend để chia sẻ (bước sau).'})}</p>
+        <p class="hint" style="display:block">${L({ja:'※ 「店舗運用」＝任意の項目です。任意は必須達成率の分母に入れません（2026-09-02 構築MTGの方向性）。必須／任意の最終分類は、既存の提出物一覧表と照合のうえ確定します。',en:'“Store-run” items are optional and excluded from the required completion rate.',vi:'Mục “cửa hàng” là tùy chọn, không tính vào tỷ lệ bắt buộc.'})}</p>
       </div>`}
       ${/* 本部が用意されたシートへの入口を設定する（コンプラチェックなど）。
             対象月ごとにシートが変わるため、本部の方がここで差し替えられるようにしている。 */''}
@@ -5735,8 +5816,11 @@
       if (t.dataset.tdrill) { openTeishutsuDrill(t.dataset.tdrill); return; }
       if (t.dataset.treminder) {
         const store = t.dataset.treminder; const dk = dateKeyFor(store, Date.now());
-        const miss = getMasters().filter(m => appliesToStore(m, store) && m.oblig !== 'off' && m.detect !== 'none' && !detectSubmitted(store, m, dk)).map(m => '・' + L(m.name));
-        const text = `${storeShort(store)} ${L({ja:'様',en:'',vi:''})}\n${L({ja:'本日分の未提出があります。ご確認をお願いします。',en:'You have missing submissions today. Please check.',vi:'Hôm nay còn mục chưa nộp. Vui lòng kiểm tra.'})}\n${miss.join('\n')}`;
+        // ★催促するのは必須だけ（2026-09-02 構築MTG＝任意を催促に混ぜない）。任意は参考として分けて添える
+        const missAll = getMasters().filter(m => appliesToStore(m, store) && m.oblig !== 'off' && m.detect !== 'none' && !detectSubmitted(store, m, dk));
+        const miss = missAll.filter(m => m.oblig === 'required').map(m => '・' + L(m.name));
+        const missOpt = missAll.filter(m => m.oblig !== 'required').map(m => '・' + L(m.name));
+        const text = `${storeShort(store)} ${L({ja:'様',en:'',vi:''})}\n${L({ja:'本日分の未提出があります。ご確認をお願いします。',en:'You have missing submissions today. Please check.',vi:'Hôm nay còn mục chưa nộp. Vui lòng kiểm tra.'})}\n${miss.join('\n')}${missOpt.length ? `\n${L({ja:'（任意・店舗運用の未提出）',en:'(Optional, store-run)',vi:'(Tùy chọn)'})}\n${missOpt.join('\n')}` : ''}`;
         try { navigator.clipboard.writeText(text); } catch (_) {}
         pushAudit('reminder_copy', store);
         toast(L({ja:'連絡文をコピーしました（LINEは手動送信）',en:'Reminder copied (send via LINE manually)',vi:'Đã sao chép (gửi LINE thủ công)'}));
@@ -7427,6 +7511,25 @@
       toast(L({ ja:'追加しました', en:'Added', vi:'Đã thêm' })); render(true); // 画面の下のほうにあるので位置を保つ
       postReport({ kind:'ckitem', store, note: JSON.stringify({ mode: mk, items: list }), t });
     };
+    // 店舗独自項目：まとめて貼り付け（2026-09-02 難波店のご要望＝紙のチェックシートをそのまま移す）
+    if (byId('ckBulkAdd')) byId('ckBulkAdd').onclick = () => {
+      const ta = byId('ck_bulk');
+      // 行頭の記号（・-*等）と「1.」「2)」形式の番号だけを外す（「3合を炊く」の数字は残す）
+      const labels = String(ta ? ta.value : '').split('\n')
+        .map(s => s.replace(/^[\s・･•◦‣*◇◆□■▶▼\-–—]+/, '').replace(/^\d+[\.\)）、]\s*/, '').trim())
+        .filter(Boolean);
+      if (!labels.length) { toast(L({ ja:'貼り付け内容がありません', en:'Nothing to add', vi:'Chưa có nội dung' })); return; }
+      const { store, key, mk } = ckEditCtx();
+      const all = getCkItems(); const list = (all[key] || []).slice();
+      const sel = byId('ck_grp'); const g = sel && sel.value ? sel.value : '';
+      const base = Date.now().toString(36);
+      labels.forEach((label, i) => list.push(g ? { id: `${mk}-x-${base}${i.toString(36)}`, label, g }
+                                               : { id: `${mk}-x-${base}${i.toString(36)}`, label }));
+      all[key] = list; saveCkItems(all);
+      const t = Date.now(); lastSync = t;
+      toast(labels.length + L({ ja:'件を追加しました', en:' item(s) added', vi:' mục đã thêm' })); render(true);
+      postReport({ kind:'ckitem', store, note: JSON.stringify({ mode: mk, items: list }), t });
+    };
     // 店舗独自項目：削除
     document.querySelectorAll('[data-ckdel]').forEach(b => b.onclick = (e) => {
       e.stopPropagation();
@@ -7614,6 +7717,11 @@
         //   どちらも subRows() で読むのに振り分けに無く、同期のたびにローカルから消えていた
         //   （受信箱で「完了したのにまた出てくる」＝神田さんの実機報告で発覚。まさに上の注意の再発）。
         case 'subrec': case 'submaster': case 'substat': case 'subholiday': case 'hqack': case 'appfb':
+        // ★2026-09-02 追加＝chukan（中間報告）と chukandraft／skdraft（日計OCRの下書き）。
+        //   3つとも getReports() で読むのに振り分けに無く、同期のたびにローカルから消えていた
+        //   （長堀橋店「中間報告を出したのに履歴に無い→もう一度提出した」＝m.taigaさんの実機報告で発覚。
+        //     hqack/appfb（2026-08-31）と同じ取りこぼしの3回目。kind追加は distribute＋KEEP＋テストの3点セットを守る）
+        case 'chukan': case 'chukandraft': case 'skdraft':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
         case 'route': route.push({ store, route:r.item, t, id }); break;
@@ -7661,7 +7769,21 @@
       set(lsKey, cur);
     };
     mergeMap('yosakura_demo_ckitem', ckitem); mergeMap('yosakura_demo_ckhide', ckhide); mergeMap('yosakura_demo_phsample', phs);
-    if (Object.keys(ckdone).length) { set('yosakura_demo_ckdone', ckdone); set('yosakura_demo_ckmeta', ckmeta); } // 実施状況が1件も無い同期では、この端末の記録を消さない
+    /* ★実施状況（ckdone）はキーごとに「新しいほう」を残す（2026-09-02 常山さんのスマホでの報告＝
+         連続タップで直前のチェックが外れる）。原因＝タップ→送信→直後の同期の読み取りに
+         いま送った行がまだ載っておらず、古い行でローカルを丸ごと上書き→チェックが巻き戻っていた。
+         端末側のほうが新しいキーは端末の記録を守る（端末の時刻は ckmeta の t）。 */
+    if (Object.keys(ckdone).length) {
+      let curD = {}, curM = {};
+      try { curD = JSON.parse(localStorage.getItem('yosakura_demo_ckdone')) || {}; } catch (_) {}
+      try { curM = JSON.parse(localStorage.getItem('yosakura_demo_ckmeta')) || {}; } catch (_) {}
+      Object.keys(ckdone).forEach(k => {
+        const lt = Number((curM[k] || {}).t) || 0;
+        if (lt > (ckdoneT[k] || 0) && curD[k]) { ckdone[k] = curD[k]; ckmeta[k] = curM[k]; }
+      });
+      set('yosakura_demo_ckdone', Object.assign({}, curD, ckdone));
+      set('yosakura_demo_ckmeta', Object.assign({}, curM, ckmeta));
+    } // 実施状況が1件も無い同期では、この端末の記録を消さない
     if (Object.keys(study).length) set('yosakura_demo_study', Object.values(study).filter(s => s && !s.deleted));
     Object.keys(commlike).forEach(k => { if (commlike[k] < 0) commlike[k] = 0; }); // 取り消しが多くても負にしない（保存の前に直す）
     set('yosakura_demo_community', comm); set('yosakura_demo_commmod', commmod); set('yosakura_demo_commlike', commlike);

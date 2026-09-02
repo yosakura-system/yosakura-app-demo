@@ -3289,7 +3289,7 @@ console.log('== 提出状況マトリクス（店舗×直近7日）＝過去の�
   location.hash = '#/app/teishutsu';
   const h = registry.app.innerHTML;
   ok(/提出状況（店舗別・直近7日）/.test(h), '提出物管理に店舗×7日のマトリクスが出る');
-  ok(/今日/.test(h) && /日次の提出物だけ/.test(h), '今日の列と、数え方の説明がある');
+  ok(/今日/.test(h) && /必須の日次提出物だけ/.test(h), '今日の列と、数え方の説明がある（必須のみ＝2026-09-02）');
   ok(/data-go="\/app\/history\?s=/.test(h), '行をタップでその店舗の提出履歴へ飛べる');
   const S2 = '和牛世桜 広島店';
   location.hash = '#/app/history?s=' + encodeURIComponent(S2);
@@ -3913,6 +3913,72 @@ console.log('== 新しい提出物への本部コメントが店舗に届く（2
   location.hash = '#/home';
   ok(/data-go="\/app\/chukan"/.test(registry.app.innerHTML), '中間報告へのコメントは中間報告画面へ飛ぶ');
   // 後始末
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 中間報告・OCR下書きが同期で消えない＋チェックの巻き戻り防止（2026-09-02 m.taigaさん・常山さんの実機報告）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const now = Date.now();
+  const tk = new Date().toLocaleDateString('en-CA');
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'chukan', store:S, item:'idle', note: JSON.stringify({ rtype:'idle', kumi:5, kyaku:12, total:88000, by:'m.taiga' }), t: now - 1000, id:'c1' },
+    { kind:'chukandraft', store:S, item: tk, note: JSON.stringify({ src:'ocr', kumi:6, kyaku:14, total:90000 }), t: now - 900, id:'c2' },
+    { kind:'skdraft', store:S, item: tk, note: JSON.stringify({ src:'ocr', total:180000 }), t: now - 800, id:'c3' },
+    // サーバー側のチェック実施は古い（aだけ）。端末側はa+bの新しい記録を持っている想定
+    { kind:'ckdone', store:S, item:`open||${tk}`, note: JSON.stringify({ done:{ a:true }, by:'古い行' }), t: now - 60000, id:'c4' }
+  ]};
+  try { run(() => {
+    setLS('manager', S, 'ja');
+    localStorage.setItem('yosakura_demo_ckdone', JSON.stringify({ [`${S}||open||${tk}`]: { a:true, b:true } }));
+    localStorage.setItem('yosakura_demo_ckmeta', JSON.stringify({ [`${S}||open||${tk}`]: { by:'この端末', t: now } }));
+  }); } catch(e){ FAIL++; console.log('  ✗ load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const tk = new Date().toLocaleDateString('en-CA');
+  const reps = JSON.parse(localStorage.getItem('yosakura_demo_reports')||'[]');
+  ok(reps.some(r => r.kind==='chukan'), '中間報告（chukan）が同期で残る（＝出したのに履歴に無い、が直る）');
+  ok(reps.some(r => r.kind==='chukandraft') && reps.some(r => r.kind==='skdraft'), 'OCRの下書き（chukandraft/skdraft）も同期で残る（＝プレフィルが働く）');
+  location.hash = '#/app/chukan';
+  const h = registry.app.innerHTML;
+  ok(/最近の報告/.test(h) && /88,000/.test(h), '中間報告画面の「最近の報告」に提出済みが出る');
+  ok(/data-tsubphoto="genkin_photo"/.test(h) && /data-tsubphoto="tip_photo"/.test(h), '現金売上・チップの写真へこの画面から飛べる');
+  const done = JSON.parse(localStorage.getItem('yosakura_demo_ckdone')||'{}')[`${S}||open||${tk}`] || {};
+  ok(done.a === true && done.b === true, '端末の新しいチェックが、古い同期の行に巻き戻されない');
+}
+FETCH_ROWS = { ok:false };
+
+console.log('== 提出状況を日次・週次・月次で分けて見える化＋必須のみを数える（2026-09-02 構築MTG）==');
+{
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'matrix'); });
+  location.hash = '#/app/teishutsu';
+  const h = registry.app.innerHTML;
+  ok(/日次・必須の提出状況/.test(h), '日次マトリクスは「必須のみ」と明記される');
+  ok(/週次・必須の提出状況（今週）/.test(h), '週次カードが出る（前の期の実績つき）');
+  ok(/月次・必須の提出状況（今月）/.test(h), '月次カードが出る');
+  ok(/四半期・必須の提出状況/.test(h), '四半期カードが出る');
+  const src6 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/m\.oblig === 'required' && m\.detect !== 'none' && m\.freq === 'daily'/.test(src6), 'マトリクスの分母は必須の日次のみ（任意を入れない）');
+  ok(/（任意・店舗運用の未提出）/.test(src6), '催促文は必須と任意を分ける');
+  ok(/r\.ym === dk\.slice\(0, 7\)/.test(src6), '月次の提出判定は対象日の月で行う（先月の確認ができる）');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== チェックリスト項目のまとめて貼り付け（2026-09-02 手巻き難波店のご要望）==');
+{
+  const S = '手巻き寿司世桜 難波店';
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); localStorage.setItem('yosakura_demo_ckitem', '{}'); });
+  location.hash = '#/app/checklist';
+  ok(/id="ck_bulk"/.test(registry.app.innerHTML) && /まとめて貼り付け/.test(registry.app.innerHTML), '貼り付け欄が出る（店長・オーナーのみ）');
+  doc.getElementById('ck_bulk').value = '・シャッターの支柱を立て、鍵を閉める\n2. 酢飯（基本：5合）を作る\n\n 3合を炊く';
+  doc.getElementById('ckBulkAdd').onclick();
+  const items = JSON.parse(localStorage.getItem('yosakura_demo_ckitem')||'{}')[`${S}||open`] || [];
+  ok(items.length === 3, '3行が3項目として追加される（空行は無視）');
+  ok(items.some(c => c.label === 'シャッターの支柱を立て、鍵を閉める'), '行頭の「・」が外れる');
+  ok(items.some(c => c.label === '酢飯（基本：5合）を作る'), '「2.」の番号が外れる');
+  ok(items.some(c => c.label === '3合を炊く'), '文頭の数字（3合を炊く）は削られず残る');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
