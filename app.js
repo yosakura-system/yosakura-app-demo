@@ -468,9 +468,35 @@
   const storeShort = (s) => s === 'all' ? L({ ja:'全店', en:'All', vi:'Tất cả' })
     : s === 'owned' ? L({ ja:'所有店舗', en:'My stores', vi:'CH của tôi' })
     : (String(s || '').replace(/^.*世桜[\s　]*/, '') || s);
-  const getReports = () => { try { return JSON.parse(localStorage.getItem(LS.reports)) || []; } catch { return []; } };
+  /* ★保存データの読み直しを1回で済ませる（2026-09-03 実機報告＝本部の受信箱で「対応済みにする」が
+       カクカクする・反応が遅い への対応）。
+     原因＝1画面を描くたびに localStorage の中身（全提出データ）を JSON.parse し直していた。
+       受信箱は写真提出の行ごとに提出物マスタを引き直しており、実測で
+       **1回の描画に reports を 2,255回パース（45日ぶん＝1,350件で 2.2秒）**。
+       データが増えるほど重くなる＝日が経つほど遅くなる形だった。
+     直し方＝中身（文字列）が前回と同じなら、前回の結果をそのまま返す。
+       書き込むと文字列が変わるので、次の読み出しで自動的に読み直される＝古い値は残らない。 */
+  const _lsCache = {};
+  /* ★描画中は、同じデータを何度も取り出さない。
+     描画は「HTMLの文字列を組み立てるだけ」で、その途中で保存は起きない（JSは1本道）ため、
+     1回の描画のあいだキャッシュを使い回しても、古い内容が出ることはない。
+     描画の外（保存の直後など）は毎回きちんと読み直す＝安全側に倒している。 */
+  let _rendering = false, _lsPass = 0;
+  function lsJson(key) {
+    const c0 = _lsCache[key];
+    if (_rendering && c0 && c0.pass === _lsPass) return c0.val;
+    let raw = null;
+    try { raw = localStorage.getItem(key); } catch (e) { return []; }
+    const c = _lsCache[key];
+    if (c && c.raw === raw) { c.pass = _lsPass; return c.val; }
+    let val = [];
+    try { val = JSON.parse(raw) || []; } catch (e) { val = []; }
+    _lsCache[key] = { raw, val, pass: _lsPass };
+    return val;
+  }
+  const getReports = () => lsJson(LS.reports);
   const saveReports = (a) => localStorage.setItem(LS.reports, JSON.stringify(a));
-  const getFP = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_fp')) || []; } catch { return []; } };
+  const getFP = () => lsJson('yosakura_demo_fp');
   const saveFP = (a) => localStorage.setItem('yosakura_demo_fp', JSON.stringify(a));
   // 端末の現地日付（YYYY-MM-DD）。toISOString はUTCのため、日本時間の午前9時前に「前日」になってしまう
   const todayKey = () => { try { return new Date().toLocaleDateString('en-CA'); } catch (e) { return new Date().toISOString().slice(0, 10); } };
@@ -487,7 +513,19 @@
     });
     return Object.values(latest).filter(r => (Number(r.sales) || 0) > 0);
   }
-  const getSk = () => { try { return skClean(JSON.parse(localStorage.getItem('yosakura_demo_soukatsu')) || []); } catch { return []; } };
+  // 総括表＝正規化（skClean）まで含めて1回で済ませる（日付が変わったら作り直す）
+  let _skCache = null;
+  const getSk = () => {
+    if (_rendering && _skCache && _skCache.pass === _lsPass) return _skCache.val;
+    let raw = null;
+    try { raw = localStorage.getItem('yosakura_demo_soukatsu'); } catch (e) { return []; }
+    const day = todayKey();
+    if (_skCache && _skCache.raw === raw && _skCache.day === day) { _skCache.pass = _lsPass; return _skCache.val; }
+    let val = [];
+    try { val = skClean(JSON.parse(raw) || []); } catch (e) { val = []; }
+    _skCache = { raw, day, val, pass: _lsPass };
+    return val;
+  };
   const saveSk = (a) => localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(a));
   /* ★累計の起点（2026-09-02 ユンさんのご提案「当日だけ入れれば累計が自動で入る」）。
      前回（対象日より前で最新の日報・同日再提出は最新が正）の累計を起点にし、当日の数字を足す。
@@ -1548,7 +1586,7 @@
   }
 
   /* 気づきの報告（まな運用：クローズ後に全スタッフが気づきを送信）*/
-  const getKz = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_kizuki')) || []; } catch { return []; } };
+  const getKz = () => lsJson('yosakura_demo_kizuki');
   const saveKz = (a) => localStorage.setItem('yosakura_demo_kizuki', JSON.stringify(a));
   const KZ_CATS = [
     { v:'food',    t:{ ja:'料理', en:'Food', vi:'Món ăn' } },
@@ -5720,6 +5758,10 @@
         add('chukan', { ja:'中間報告', en:'Midday report', vi:'Báo cáo giữa ngày' }, r.t, r.store, chTypeLabel(p.rtype),
           chSummary(p) + (p.memo ? '／' + String(p.memo).slice(0, 40) : ''), r.photos);
       });
+      /* ★提出物マスタは1回だけ引く（2026-09-03）。以前は写真提出の行ごとに getMasters() を
+         呼んでおり、その中で保存データを何度も読み直していた＝件数が増えるほど二乗で重くなっていた。 */
+      const mastersById = {};
+      getMasters().forEach(m => { mastersById[m.id] = m; });
       subRows(SUB_KINDS.open).filter(r => vis.includes(r.store)).forEach(r => {
         /* 従来の3種（オープン写真・月次衛生・メニューブック）は kind='openphoto' のまま
            （対応済みの記録が kind で引かれているため変えない）。
@@ -5727,7 +5769,7 @@
            （全部「オープン写真」と表示されて、何の提出か分からなくなるのを防ぐ）。 */
         const mid = String(r.item || '').split('|')[0];
         const legacy = !mid || ['openphoto', 'hygiene_m', 'menubook'].includes(mid);
-        const mm = legacy ? null : getMasters().find(x => x.id === mid);
+        const mm = legacy ? null : mastersById[mid];
         if (mm) add(mid, mm.name, r.t, r.store, '', '', r.photos);
         else add('openphoto', { ja:'オープン写真', en:'Opening photo', vi:'Ảnh mở cửa' }, r.t, r.store, '', '', r.photos);
       });
@@ -5759,7 +5801,9 @@
     const filtered = kindFilter ? pool.filter(i => i.kind === kindFilter) : pool;
     const list = showDone ? filtered.slice(0, 120) : filtered;  // 未対応は全件。対応済み込みのときだけ上限
     const row = (i) => {
-      const ph = i.photos && i.photos.length ? `<img class="rep-photo" src="${photoThumb(i.photos[0])}" data-full="${photoFull(i.photos[0])}" alt="">` : `<span class="kind ${i.state==='done'?'b':'a'}">${esc(L(i.label))}</span>`;
+      /* ★写真は「画面に入ってから読む」（2026-09-03）。受信箱は写真の行が最も多く、
+         100枚以上を一度に読み込むと、押した直後の反応が目に見えて遅くなるため。 */
+      const ph = i.photos && i.photos.length ? `<img class="rep-photo" src="${photoThumb(i.photos[0])}" data-full="${photoFull(i.photos[0])}" alt="" loading="lazy" decoding="async">` : `<span class="kind ${i.state==='done'?'b':'a'}">${esc(L(i.label))}</span>`;
       // 公開待ちの投稿だけは「公開する」で完了する（対応済みでは消さない＝未公開のまま埋もれないように）
       const st = i.kind === 'commpend'
         ? `<div class="l2"><button class="mini" data-commpub="${esc(i.ckey)}">${L({ja:'公開する',en:'Publish',vi:'Duyệt'})}</button> <button class="mini" data-commhide="${esc(i.ckey)}">${L({ja:'公開しない',en:'Do not publish',vi:'Không duyệt'})}</button></div>`
@@ -6897,11 +6941,15 @@
     const y = keepScroll ? (window.scrollY || window.pageYOffset || 0) : 0;
     const { path, params } = currentRoute();
     let html;
-    if (path.startsWith('/app/')) html = viewApp(path.slice(5));
-    else if (path === '/store') html = viewStore(params.get('s') || '', params.get('ym') || ''); // 個店カルテ
-    else if (path === '/skprint') html = viewSkPrint(params.get('s') || '', params.get('ym') || ''); // 総括表の形での月次出力
-    else if (path === '/home') html = viewHome(params.get('tab') || 'home');
-    else html = viewHome('home');
+    // 描画のあいだは保存が起きない＝保存データの読み直しを1回で済ませる（[[lsJson]]の印）
+    _rendering = true; _lsPass++;
+    try {
+      if (path.startsWith('/app/')) html = viewApp(path.slice(5));
+      else if (path === '/store') html = viewStore(params.get('s') || '', params.get('ym') || ''); // 個店カルテ
+      else if (path === '/skprint') html = viewSkPrint(params.get('s') || '', params.get('ym') || ''); // 総括表の形での月次出力
+      else if (path === '/home') html = viewHome(params.get('tab') || 'home');
+      else html = viewHome('home');
+    } finally { _rendering = false; }
     $app.innerHTML = devViewBanner() + html;   // 開発者ビュー中は戻るバナーを全画面の先頭に出す
     window.scrollTo(0, y);
     /* ★別の画面へ移ったのに、前の画面で読んでいた位置のまま始まることがあった（2026-08-12 神田さんのご指摘）。
