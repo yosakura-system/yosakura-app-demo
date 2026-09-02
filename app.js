@@ -2054,6 +2054,224 @@
         {ja:'椅子',d:{ja:'フレームや脚を拭き上げ／足を乗せる場所の黒ずみは必ず落とす／脚裏のアジャスターやクッションが取れていないか'}} ] } ] }
   ];
   const CK_COMMON = { open: CHECK_GROUPS, idle: IDLE_GROUPS, close: CLOSE_GROUPS, sakura: SAKURA_GROUPS };
+  /* ★手巻き寿司業態（難波店）専用の初期チェックリスト（2026-09-02 永井さん経由・難波店のご要望）。
+     「店の作りが違い、共通シートだと項目が抜ける」→ 難波店の紙チェックシート
+     （OPEN業務／中間業務lunch後・dinner前／CLOSE業務・2026/04/24-25更新版）を、そのまま項目化した。
+     ＝内容は現場が使っている実物で、こちらで新設した基準ではない。
+     ・紙の「このチェックリストを撮影しGLINEへ送信」＝アプリのチェック記録が代わりになるため入れていない
+     ・店舗前（全体）の写真＝オープン写真の提出で代替（説明文に記載）
+     ・紙の中間業務2枚（lunch後／dinner前）は、アプリではアイドル1本＝分類名で区別する
+     ・店舗側は従来どおり「×で外す」「追加」「まとめて貼り付け」で作り替えられる（桜・定期衛生は共通のまま） */
+  const CK_TEMAKI = {
+    open: [
+      { g:{ja:'出勤・身支度',en:'Clock-in & grooming',vi:'Vào ca & tác phong'}, items:[
+        {ja:'タイムカード打刻',en:'Clock in',vi:'Chấm công',
+         d:{ja:'打刻後：制服を着用し、身だしなみを整える／体調が悪い場合は打刻前に責任者へ連絡'}},
+        {ja:'手洗い＋手指消毒',en:'Handwash & sanitize',vi:'Rửa tay & sát khuẩn',
+         d:{ja:'最低20秒は手を洗う／仕上げに手指消毒'}},
+        {ja:'制服を畳む',en:'Fold uniforms',vi:'Gấp đồng phục',
+         d:{ja:'ハンガーにかかっていればキレイに畳んでケースへ／汚れている場合：買い物袋に入れて「洗濯」と記入'}},
+        {ja:'看板を外に出す',en:'Put out the signboard',vi:'Đưa biển hiệu ra',
+         d:{ja:'シャッターは閉めたままOK／一人でも多くの通行人に看板を見てもらう'}}
+      ]},
+      { g:{ja:'炊飯・レジ',en:'Rice & register',vi:'Cơm & thu ngân'}, items:[
+        {ja:'温度管理',en:'Temperature check',vi:'Kiểm tra nhiệt độ',
+         d:{ja:'扉を開ける前に計測。冷蔵庫2〜5℃／冷凍庫−18〜−20℃。基準より高い場合：30分後に再確認'}},
+        {ja:'酢飯を作る（基本：5合）',en:'Make sushi rice (5 go)',vi:'Làm cơm giấm',
+         d:{ja:'炊飯できているか確認し酢飯を作る。白米1合：すし酢30ml／白米5合：すし酢150ml。営業準備をしながら10分に1回程度は混ぜる（ご飯が冷めるのに時間がかかるため、業務開始後すぐに実施）'}},
+        {ja:'炊飯（基本：5合）',en:'Cook rice (5 go)',vi:'Nấu cơm',
+         d:{ja:'状況を確認し、必要であれば「早炊き」にて炊飯'}},
+        {ja:'充電確認',en:'Charging check',vi:'Kiểm tra sạc',
+         d:{ja:'iPad（レジ用）・決済端末・スピーカー。充電できていなければすぐに充電（営業中：コードレス）'}},
+        {ja:'決済端末の電源ON',en:'Payment terminal on',vi:'Bật máy thanh toán',
+         d:{ja:'正常に立ち上がっているか確認'}},
+        {ja:'レジOPEN（金種別確認）',en:'Register open (cash count)',vi:'Mở két (đếm tiền)',
+         d:{ja:'レジ金確認（35,000円・各種枚数）。各種枚数が少ない場合は報告／iPadの金種別確認画面を撮影して報告'}}
+      ]},
+      { g:{ja:'食材・仕込み',en:'Ingredients & prep',vi:'Nguyên liệu & chuẩn bị'}, items:[
+        {ja:'食材管理（量・品質）',en:'Ingredients check',vi:'Kiểm tra nguyên liệu',
+         d:{ja:'当日使用する食材の確認。量：調理台各1バット＋台下冷蔵庫各1バット／品質：色・形・におい・温度／使用期限：ラベル確認'}},
+        {ja:'買い出し',en:'Shopping',vi:'Mua bổ sung',
+         d:{ja:'不足するものは買い出し（食材・消耗品など）。営業中に不足することが無いようにする'}},
+        {ja:'グリラー準備',en:'Griller prep',vi:'Chuẩn bị lò nướng',
+         d:{ja:'別途マニュアル参照'}},
+        {ja:'仕込み（おにぎり）',en:'Prep (onigiri)',vi:'Chuẩn bị (onigiri)',
+         d:{ja:'別途マニュアル参照'}},
+        {ja:'仕込み（うなぎ）',en:'Prep (eel)',vi:'Chuẩn bị (lươn)',
+         d:{ja:'鰻にタレが残らないように、しっかりタレ落としをする'}},
+        {ja:'冷蔵庫から食材を出す',en:'Take out ingredients',vi:'Lấy nguyên liệu ra',
+         d:{ja:'牛しぐれ・海苔。量・品質・使用期限の確認'}},
+        {ja:'各種タレの準備',en:'Sauces',vi:'Chuẩn bị nước sốt',
+         d:{ja:'手巻き用：4種類／おにぎり用：2種類'}},
+        {ja:'オープンカウンターの準備',en:'Open counter',vi:'Chuẩn bị quầy mở',
+         d:{ja:'食材のラップを外し、ステンレスの蓋をする'}},
+        {ja:'しゃりマシン準備',en:'Rice machine',vi:'Máy chia cơm',
+         d:{ja:'正確に組み立てができているか確認／歯車や接続部分などに潤滑油をスプレーする／冷えた酢飯を入れる／マシンの動作確認'}},
+        {ja:'キッチン内を整える',en:'Tidy the kitchen',vi:'Dọn gọn bếp',
+         d:{ja:'外からキッチン内は全て見えていることを意識する'}},
+        {ja:'仕込み（手巻き）',en:'Prep (hand rolls)',vi:'Chuẩn bị (cuộn tay)',
+         d:{ja:'営業時間までに間に合わない場合は営業中にも仕込みをする'}}
+      ]},
+      { g:{ja:'開店前の最終確認',en:'Final check before open',vi:'Kiểm tra trước mở cửa'}, items:[
+        {ja:'BGMを流す',en:'BGM on',vi:'Bật nhạc',
+         d:{ja:'選曲・音量確認／スピーカーの向き確認'}},
+        {ja:'照明・換気扇の確認',en:'Lights & ventilation',vi:'Đèn & quạt thông gió',
+         d:{ja:'照明は全て点灯しているか、換気扇は作動しているか確認'}},
+        {ja:'店舗前の準備',en:'Storefront prep',vi:'Chuẩn bị trước cửa',
+         d:{ja:'別途マニュアル参照。店舗前（全体）の写真は「オープン写真」から提出'}}
+      ]}
+    ],
+    idle: [
+      { g:{ja:'lunch後：店舗の片付け',en:'After lunch: tidy up',vi:'Sau trưa: dọn dẹp'}, items:[
+        {ja:'店舗周辺の掃き掃除',en:'Sweep around the store',vi:'Quét quanh cửa hàng',
+         d:{ja:'箒と塵取り使用。A看板・提灯はそのまま出しておく（店舗前の照明は全て点灯の状態）'}},
+        {ja:'シャッターを下ろし鍵を閉める',en:'Close the shutter',vi:'Đóng cửa cuốn',
+         d:{ja:'シャッターの支柱を立て、シャッターを下ろし鍵を閉める（左端は鍵なし）'}},
+        {ja:'グリラーの洗浄',en:'Clean the griller',vi:'Vệ sinh lò nướng',
+         d:{ja:'網・ガラス4枚・部品2種類。⚠火傷注意。ガス栓を閉める（バーナーも取り外しておく）／受け皿の汚れが激しい場合：水の入れ替え'}},
+        {ja:'おにぎり用トングと容器の洗浄',en:'Wash tongs & containers',vi:'Rửa kẹp & hộp',
+         d:{ja:'洗浄後：グリラーの網の上に置いておく'}},
+        {ja:'タレ類をラップする',en:'Wrap the sauces',vi:'Bọc nước sốt',
+         d:{ja:'手巻き用（タレ＋醤油）・おにぎり用（タレ）。虫が混入するリスクを考える'}},
+        {ja:'まな板の洗浄・乾燥',en:'Wash & dry cutting boards',vi:'Rửa & phơi thớt',
+         d:{ja:'洗浄しグリラーに立てかけておく。雑菌の繁殖を予防するためにも乾燥させる'}},
+        {ja:'作業台などをキレイに拭く',en:'Wipe the worktops',vi:'Lau bàn làm việc',
+         d:{ja:'夜勤務の方が気持ちよく業務に取り掛かれるように'}}
+      ]},
+      { g:{ja:'lunch後：食材',en:'After lunch: ingredients',vi:'Sau trưa: nguyên liệu'}, items:[
+        {ja:'エビ・ツナマヨ・サーモンを台下冷蔵庫へ',en:'Chill shrimp/tuna-mayo/salmon',vi:'Cho tôm/cá hồi vào tủ lạnh',
+         d:{ja:'カウンターキッチンに出しているものは蓋を閉めた状態で台下の冷蔵庫へ入れる'}},
+        {ja:'深型バットの蓋の確認',en:'Check deep tray lids',vi:'Kiểm tra nắp khay',
+         d:{ja:'完全に閉まっているか確認する（虫が混入するリスクを考える）'}},
+        {ja:'牛しぐれ・海苔の保管',en:'Store beef & nori',vi:'Bảo quản bò & rong biển',
+         d:{ja:'しっかり蓋をして常温保管。室内温度が15℃以上の場合：冷蔵保管'}},
+        {ja:'炊飯確認と報告',en:'Rice status & report',vi:'Kiểm tra cơm & báo cáo',
+         d:{ja:'予約or保温、3合or5合などの共有'}},
+        {ja:'夜営業の仕込み量確認と報告',en:'Dinner prep check & report',vi:'Kiểm tra chuẩn bị tối',
+         d:{ja:'不足する食材などがあれば報告'}}
+      ]},
+      { g:{ja:'lunch後：中間報告・入金',en:'After lunch: midday report & deposit',vi:'Sau trưa: báo cáo & nộp tiền'}, items:[
+        {ja:'日計レポートを印刷・報告',en:'Print & report daily sales',vi:'In & báo cáo doanh thu',
+         d:{ja:'日計レポート（取引別・商品別）を印刷し、撮影して報告。口コミ状況・売上金額なども報告する'}},
+        {ja:'前日の現金売上金をATMへ入金',en:'Deposit cash at ATM',vi:'Nộp tiền mặt tại ATM',
+         d:{ja:'りそな銀行ATMへ。土日祝日はそれぞれ日付順に分けて入金する（まとめて入金しない）／明細表を撮影して報告（手書きのメモも一緒に）'}},
+        {ja:'iPad・スピーカー・決済端末を充電する',en:'Charge devices',vi:'Sạc thiết bị',
+         d:{ja:'充電ができていないと、夜営業中に充電が切れます'}},
+        {ja:'ダスターの洗浄・干し',en:'Wash dusters',vi:'Giặt khăn lau',
+         d:{ja:'各種ダスターはきれいに洗浄し、乾きやすいように干す'}}
+      ]},
+      { g:{ja:'lunch後：退勤・戸締り',en:'After lunch: clock out',vi:'Sau trưa: tan ca'}, items:[
+        {ja:'退勤の打刻',en:'Clock out',vi:'Chấm công ra',
+         d:{ja:'丁寧に手を洗い・退勤の打刻をする（打刻をしてから着替えをする）'}},
+        {ja:'電気・ガス・エアコン・給湯器をOFF',en:'Power off utilities',vi:'Tắt điện/ga/điều hòa',
+         d:{ja:'店内電気・ガスの元栓・エアコン・給湯器をOFF（店舗前・換気扇はON）'}},
+        {ja:'鍵を閉め、キーボックスへ',en:'Lock up & key box',vi:'Khóa cửa & hộp chìa',
+         d:{ja:'鍵を閉め、キーボックスに入れて帰る'}}
+      ]},
+      { g:{ja:'dinner前：出勤・準備',en:'Before dinner: clock-in & prep',vi:'Trước tối: vào ca'}, items:[
+        {ja:'タイムカード打刻（dinner）',en:'Clock in (dinner)',vi:'Chấm công (tối)',
+         d:{ja:'打刻後：制服を着用し、身だしなみを整える。体調が悪い場合は打刻前に責任者へ連絡'}},
+        {ja:'手洗い＋手指消毒（dinner）',en:'Handwash (dinner)',vi:'Rửa tay (tối)',
+         d:{ja:'最低20秒は手を洗う／仕上げに手指消毒。17:30〜業務が開始できるように'}},
+        {ja:'制服を畳む（dinner）',en:'Fold uniforms (dinner)',vi:'Gấp đồng phục (tối)',
+         d:{ja:'ハンガーにかかっていればキレイに畳んでケースにしまう'}},
+        {ja:'充電確認（dinner）',en:'Charging check (dinner)',vi:'Kiểm tra sạc (tối)',
+         d:{ja:'iPad・スピーカー・決済端末の充電確認'}},
+        {ja:'温度管理（dinner）',en:'Temperature check (dinner)',vi:'Nhiệt độ (tối)',
+         d:{ja:'扉を開ける前に計測。冷蔵庫2〜5℃／冷凍庫−18〜−20℃。基準より高い場合：30分後に再確認'}}
+      ]},
+      { g:{ja:'dinner前：食材・設備',en:'Before dinner: ingredients',vi:'Trước tối: nguyên liệu'}, items:[
+        {ja:'少ない食材は仕込む',en:'Prep low-stock items',vi:'Chuẩn bị món sắp hết',
+         d:{ja:'目安：オープンカウンター上1バット・台下冷蔵庫1バット。仕込み量が多い場合：①酢飯・おにぎりを優先②鰻の仕込みもOPEN前に実施③他の食材は先に他の準備から（営業中に仕込みをしてもよい）'}},
+        {ja:'不足している食材は買い出しに行く',en:'Shopping run',vi:'Đi mua bổ sung',
+         d:{ja:'2オペレーションの場合：営業が始まってから買い出しに行っても良い（忙しい時には時間を考える）'}},
+        {ja:'台下冷蔵庫の食材を出す',en:'Take out chilled items',vi:'Lấy đồ từ tủ lạnh',
+         d:{ja:'えび・ツナマヨ・サーモンなど。営業中の温度管理を意識：気温が20℃を超える場合はバットを2重にする・下のバットの中にICEを入れる等'}},
+        {ja:'ガスの元栓を開ける',en:'Open the gas valve',vi:'Mở van ga',
+         d:{ja:'バーナーもすぐに使用できるようにセットしておく'}},
+        {ja:'トング用の容器に水を入れる',en:'Water for tongs',vi:'Nước cho kẹp gắp',
+         d:{ja:''}}
+      ]},
+      { g:{ja:'dinner前：開店前確認',en:'Before dinner: final check',vi:'Trước tối: kiểm tra cuối'}, items:[
+        {ja:'BGMを流す（dinner）',en:'BGM on (dinner)',vi:'Bật nhạc (tối)',
+         d:{ja:'選曲・音量確認／スピーカーの向き。リピート再生になっているか確認'}},
+        {ja:'照明・換気扇の確認（dinner）',en:'Lights & fan (dinner)',vi:'Đèn & quạt (tối)',
+         d:{ja:'照明は全て点灯しているか、換気扇は作動しているか確認'}},
+        {ja:'店舗前の準備（dinner）',en:'Storefront (dinner)',vi:'Trước cửa (tối)',
+         d:{ja:'別途マニュアル参照。店舗前（全体）の写真は「オープン写真」から提出'}}
+      ]}
+    ],
+    close: [
+      { g:{ja:'店舗外・食材',en:'Outside & ingredients',vi:'Bên ngoài & nguyên liệu'}, items:[
+        {ja:'店舗周辺の掃き掃除',en:'Sweep around the store',vi:'Quét quanh cửa hàng',
+         d:{ja:'ほうきと塵取り使用'}},
+        {ja:'A看板・提灯を片付ける',en:'Put away signboard & lantern',vi:'Cất biển hiệu & đèn lồng',
+         d:{ja:'A看板（店舗裏）・提灯（カウンター上）。看板のコードはきれいにまとめる'}},
+        {ja:'シャッターを下ろし鍵を閉める',en:'Close the shutter',vi:'Đóng cửa cuốn',
+         d:{ja:'シャッターの支柱を立て、シャッターを下ろし鍵を閉める（左端は鍵なし）'}},
+        {ja:'バット交換→ラップ',en:'Swap & wrap trays',vi:'Đổi & bọc khay',
+         d:{ja:'蓋も洗浄する。閉店までに終わらせておく'}},
+        {ja:'食材ラベルの確認',en:'Check food labels',vi:'Kiểm tra nhãn',
+         d:{ja:'バット・タッパーなど。閉店までに終わらせておく'}},
+        {ja:'食材を台下冷蔵庫にて保管',en:'Chill remaining items',vi:'Bảo quản nguyên liệu',
+         d:{ja:'牛しぐれ・海苔・エビ・ツナマヨ・サーモン'}},
+        {ja:'使用した器具の洗浄',en:'Wash utensils',vi:'Rửa dụng cụ',
+         d:{ja:'盛付などで使用したスプーン等／バットや蓋・タッパー・まな板・包丁・刷毛なども洗浄（ダスターにて拭き上げ）'}}
+      ]},
+      { g:{ja:'翌日準備・発注',en:'Next-day prep & orders',vi:'Chuẩn bị mai & đặt hàng'}, items:[
+        {ja:'翌日の仕込み量の確認・炊飯量の共有',en:'Plan tomorrow prep',vi:'Kế hoạch chuẩn bị mai',
+         d:{ja:'目安：オープンカウンター上1バット・台下冷蔵庫1バット'}},
+        {ja:'解凍する食材を冷蔵庫へ移動',en:'Move items to thaw',vi:'Chuyển đồ rã đông',
+         d:{ja:'冷凍庫から冷蔵庫へ（食材ラベル記入）。閉店までに終わらせておく'}},
+        {ja:'在庫数の確認',en:'Stock count',vi:'Kiểm kê tồn kho',
+         d:{ja:'チェックリストに記入する。閉店までに終わらせておく'}},
+        {ja:'発注・買い出し食材の共有',en:'Share order list',vi:'Chia sẻ danh sách đặt',
+         d:{ja:'翌日スムーズに業務が実行できるように共有する'}}
+      ]},
+      { g:{ja:'レジ締め・売上報告',en:'Register close & sales report',vi:'Chốt két & báo cáo'}, items:[
+        {ja:'日計レポートを印刷',en:'Print daily report',vi:'In báo cáo ngày',
+         d:{ja:'取引別・分類別・商品別'}},
+        {ja:'現金売上金を入金用ポーチへ',en:'Cash to deposit pouch',vi:'Tiền vào túi nộp',
+         d:{ja:'レジから取り出し、入金用の黒いポーチに入れる'}},
+        {ja:'レジ金確認（35,000円）',en:'Count register cash',vi:'Đếm tiền két',
+         d:{ja:'Uレジの金種別にて枚数入力。枚数が少ない場合は報告／金種別確認画面を撮影して報告'}},
+        {ja:'売上報告（メール）',en:'Sales report (email)',vi:'Báo cáo (email)',
+         d:{ja:'別途用紙に必要内容を記入（日計レポートを見て）→前日のメール内容をコピー＆ペースト（担当者変更）→記入後の用紙＋日計レポート（取引別）を撮影（iPadにて）→内容を確認し送信'}},
+        {ja:'売上報告（写真）',en:'Sales report (photo)',vi:'Báo cáo (ảnh)',
+         d:{ja:'日計レポート（取引別・分類別・商品別）を撮影して報告。口コミ結果・仕込み・買い出しなども共有する'}},
+        {ja:'各種充電（電源OFFで）',en:'Charge devices (power off)',vi:'Sạc thiết bị (tắt nguồn)',
+         d:{ja:'iPad・スピーカー・決済端末を充電する（電源OFFにする）'}}
+      ]},
+      { g:{ja:'機器・清掃',en:'Machines & cleaning',vi:'Máy móc & vệ sinh'}, items:[
+        {ja:'シャリマシンの片付け',en:'Clean rice machine',vi:'Dọn máy chia cơm',
+         d:{ja:'残っている酢飯は廃棄（⚠翌日使用不可）／部品を取り外し本体を拭く（アルコール＋ダスター）／部品の洗浄→拭き取り→本体に取付（中性洗剤使用）'}},
+        {ja:'グリラー清掃',en:'Clean the griller',vi:'Vệ sinh lò nướng',
+         d:{ja:'別途マニュアル参照。ガスの元栓を閉める'}},
+        {ja:'ガスバーナーの片付け',en:'Put away gas burner',vi:'Cất đèn khò',
+         d:{ja:'ガス缶がセットされている場合は取り外す。本体もキレイに拭く'}},
+        {ja:'作業台清掃',en:'Clean worktops',vi:'Lau bàn làm việc',
+         d:{ja:'アルコールとおしぼりにてきれいに拭く（汚れが残らないように）'}},
+        {ja:'床清掃',en:'Sweep the floor',vi:'Quét sàn',
+         d:{ja:'すのこを立てかけ、床をほうきできれいに掃く（害虫予防にもなる）'}},
+        {ja:'シンクの掃除',en:'Clean the sink',vi:'Rửa bồn rửa',
+         d:{ja:'シンク全体をキレイに洗浄（グレーのスポンジ＋中性洗剤）／排水かごのゴミを捨てて洗浄（排水ネットを交換）'}},
+        {ja:'ダスター洗浄',en:'Wash dusters',vi:'Giặt khăn lau',
+         d:{ja:'中性洗剤にてしっかり洗浄→ハイターに5分以上浸け、水で洗浄し、しっかり絞って干す'}},
+        {ja:'ゴミ出し',en:'Take out trash',vi:'Đổ rác',
+         d:{ja:'ゴミは1つの袋にまとめ、新しいゴミ袋をセットする（ゴミは裏口の出たところに出す）'}},
+        {ja:'制服の片付け',en:'Uniforms away',vi:'Cất đồng phục',
+         d:{ja:'ハンガーに制服をかけ、ファブリーズ（換気扇の下にかける）'}}
+      ]},
+      { g:{ja:'退勤・戸締り',en:'Clock out & lock up',vi:'Tan ca & khóa cửa'}, items:[
+        {ja:'退勤の打刻',en:'Clock out',vi:'Chấm công ra',
+         d:{ja:'丁寧に手を洗い・退勤の打刻をする（打刻をしてから着替えをする）'}},
+        {ja:'電気・ガスの元栓・エアコン・給湯器をOFF',en:'Power off utilities',vi:'Tắt điện/ga/điều hòa',
+         d:{ja:'看板は店舗内に入れる'}},
+        {ja:'鍵を閉め、キーボックスに入れて帰る',en:'Lock up & key box',vi:'Khóa cửa & hộp chìa',
+         d:{ja:'鍵が閉まっているか確認'}}
+      ]}
+    ]
+  };
   // 定期衛生は曜日で内容が変わる。表示中の曜日（既定＝今日）で切り替える
   /* 表示する曜日。既定は「今日」。
      手が空いていれば他の曜日を先に実施してもよい運用のため切り替えも残すが、
@@ -2068,9 +2286,11 @@
      ★曜日を省いたときは「今日の曜日」を使う（2026-08-12）。
        画面では別の曜日を選んで見られるようにしているが、提出できているかの判定まで
        その選択に引きずられると、今日やるべき箇所が終わっていないのに終わったことになる。 */
-  const ckGroupsOf = (mode, hygDay) => mode === 'hygiene'
+  /* ★store を渡すと業態専用の初期リストへ切り替える（2026-09-02＝手巻き業態のみ。桜・定期衛生は共通のまま）。
+     store 省略時は従来どおり共通リスト＝既存の呼び出しを壊さない */
+  const ckGroupsOf = (mode, hygDay, store) => mode === 'hygiene'
     ? ((HYGIENE_DAYS.find(x => x.d === (hygDay == null ? new Date().getDay() : hygDay)) || {}).g || [])
-    : (CK_COMMON[mode] || []);
+    : ((store && storeGyotai(store) === 'temaki' && CK_TEMAKI[mode]) ? CK_TEMAKI[mode] : (CK_COMMON[mode] || []));
   const WDAY_LABELS = [{ja:'日',en:'Sun',vi:'CN'},{ja:'月',en:'Mon',vi:'T2'},{ja:'火',en:'Tue',vi:'T3'},{ja:'水',en:'Wed',vi:'T4'},{ja:'木',en:'Thu',vi:'T5'},{ja:'金',en:'Fri',vi:'T6'},{ja:'土',en:'Sat',vi:'T7'}];
   const CK_MODES = [
     { v:'open',   t:{ ja:'オープン', en:'Opening', vi:'Mở cửa' } },
@@ -2131,7 +2351,7 @@
     const idBase = mode === 'hygiene' ? `${mode}-${d}` : mode;
     const hid = ckHidden(store, mode, d); // 店舗で外した共通項目は数に入れない
     const ids = [];
-    ckGroupsOf(mode, d).forEach((gr, gi) => gr.items.forEach((_, ii) => {
+    ckGroupsOf(mode, d, store).forEach((gr, gi) => gr.items.forEach((_, ii) => {
       const id = `${idBase}-c-${gi}-${ii}`;
       if (!hid.includes(id)) ids.push(id);
     }));
@@ -2153,7 +2373,7 @@
     const idBase = mode === 'hygiene' ? `${mode}-${d}` : mode;
     const hid = ckHidden(store, mode, d).concat(o.hide ? [o.hide] : []);
     let n = 0;
-    ckGroupsOf(mode, d).forEach((gr, gi) => gr.items.forEach((_, ii) => {
+    ckGroupsOf(mode, d, store).forEach((gr, gi) => gr.items.forEach((_, ii) => {
       if (!hid.includes(`${idBase}-c-${gi}-${ii}`)) n++;
     }));
     ckCustom(store, mode, d).forEach(c => { if (c.id !== o.del) n++; });
@@ -2197,7 +2417,7 @@
     const store = visibleStores()[0];
     const mode = getCkMode();
     const hygDay = getHygDay(); // 画面は「選んだ曜日」を出す（判定は今日の曜日を使う＝ckIdsOfの既定）
-    const groups = ckGroupsOf(mode, hygDay);
+    const groups = ckGroupsOf(mode, hygDay, store); // 手巻き業態は専用の初期リスト（2026-09-02）
     const custom = ckCustom(store, mode, hygDay);
     const hidden = ckHidden(store, mode, hygDay);   // この店舗で外した共通項目
     const done = getCkDone()[ckDoneKey(store, mode)] || {};

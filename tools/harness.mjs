@@ -3982,5 +3982,35 @@ console.log('== チェックリスト項目のまとめて貼り付け（2026-09
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 手巻き業態専用の初期チェックリスト（2026-09-02 永井さん経由・難波店のご要望＝紙シートをそのまま項目化）==');
+{
+  const S = '手巻き寿司世桜 難波店';
+  // ① 難波店＝手巻き専用のオープン項目（酢飯・しゃりマシン等）が出る
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); localStorage.setItem('yosakura_demo_ckitem', '{}'); });
+  location.hash = '#/app/checklist';
+  let h = registry.app.innerHTML;
+  ok(/酢飯を作る（基本：5合）/.test(h) && /しゃりマシン準備/.test(h) && /各種タレの準備/.test(h), '難波店のオープン＝手巻き専用の項目が出る');
+  ok(!/ドリンク場の準備/.test(h), '共通リストの項目（ドリンク場）は出ない＝置き換わっている');
+  // ② アイドル＝lunch後とdinner前が1本にまとまって出る／クローズ＝シャリマシン片付け等
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'idle'); });
+  location.hash = '#/app/checklist?x=t1';
+  h = registry.app.innerHTML;
+  ok(/lunch後：店舗の片付け/.test(h) && /dinner前：出勤・準備/.test(h), 'アイドル＝紙の中間業務2枚（lunch後/dinner前）が分類で並ぶ');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'close'); });
+  location.hash = '#/app/checklist?x=t2';
+  ok(/シャリマシンの片付け/.test(registry.app.innerHTML), 'クローズ＝シャリマシン片付けなど手巻き項目が出る');
+  // ③ 他店舗（牛カツ等）は従来どおり共通リスト＝影響なし
+  run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); });
+  location.hash = '#/app/checklist?x=t3';
+  h = registry.app.innerHTML;
+  ok(/ドリンク場の準備/.test(h) && !/しゃりマシン準備/.test(h), '他店舗は共通リストのまま（手巻き項目は混ざらない）');
+  // ④ 桜・定期衛生は手巻き店でも共通のまま
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'sakura'); });
+  location.hash = '#/app/checklist?x=t4';
+  ok(!/しゃりマシン/.test(registry.app.innerHTML), '桜（トイレ）は共通のまま');
+  // 後始末
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
