@@ -363,7 +363,7 @@
     { id:'invoice', group:'hq', icon:'invoice', soon:true, hide:true, roles:['hq'], // 8/4: 請求関係は初期ダッシュから外す
       name:{ ja:'請求・支払管理', en:'Billing & Payment', vi:'Hóa đơn & Thanh toán' },
       desc:{ ja:'取引先ごとの請求方法・締日', en:'Vendor billing method & cutoff', vi:'Cách & kỳ hạn thanh toán' } },
-    { id:'teishutsu', group:'hq', icon:'inbox', roles:['hq'],
+    { id:'teishutsu', group:'hq', icon:'inbox', roles:['owner','hq'], // ★複数店オーナーにも開放（2026-09-03 増田さんのご要望＝自店へ提出を促せる）。オーナーは自店のみ・確認機能なし
       name:{ ja:'加盟店・提出物管理', en:'Submissions', vi:'Nộp tài liệu' },
       desc:{ ja:'提出状況と未提出の自動抽出', en:'Track & flag missing submissions', vi:'Theo dõi tài liệu chưa nộp' } },
     { id:'camera', group:'hq', icon:'video', soon:true, hide:true, roles:['hq'], // 8/4: 防犯カメラは初期ダッシュから外す
@@ -383,9 +383,9 @@
      ★端末に本部が保存されていても、体験版では店長として開く（配る版なので入口を残さない）。 */
   const ROLE_KEYS_ALL = ['staff', 'manager', 'owner', 'hq'];
   const roleKeys = () => TAIKEN ? ['staff', 'manager', 'owner'] : ROLE_KEYS_ALL;
-  /* 開発者ビューの対象（2026-09-01 神田さんのご要望）＝本部のこのアカウントだけ、
+  /* 開発者ビューの対象（2026-09-01 神田さんのご要望・2026-09-03 増田さんを追加）＝本部のこのアカウントだけ、
      端末で選んだ役割を「見え方」として使える。ログイン・権限・保存は本部のまま。 */
-  const DEV_VIEW_UIDS = ['kanda'];
+  const DEV_VIEW_UIDS = ['kanda', 'masuda'];
   const getRole = () => {
     const a = getAuth();
     if (a && a.role) {
@@ -1239,7 +1239,10 @@
     let sections = '';
     for (const gid of gids) {
       // tabHide＝機能は生きているが、タブの一覧には出さない（日次業務など別の入口へ集約したもの）
-      const apps = APPS.filter(a => a.group === gid && !a.hide && !a.tabHide && canOpen(a, role));
+      let apps = APPS.filter(a => a.group === gid && !a.hide && !a.tabHide && canOpen(a, role));
+      /* ★複数店を持つオーナーには「加盟店・提出物管理」を店舗運営に出す
+         （2026-09-03 増田さんのご要望＝オーナーも自店の未提出を見て提出を促せる。1店だけなら「今日出すもの」で足りるため出さない） */
+      if (gid === 'storeops' && role === 'owner' && ownerStores_().length > 1) apps = apps.concat([appById('teishutsu')]);
       if (!apps.length) continue;
       sections += `
         <div class="sec-h"><span class="bar"></span><h2>${esc(groupName(gid))}</h2></div>
@@ -1295,7 +1298,8 @@
         ${/* ★下からも戻れるように（2026-08-31 ユンさんのご要望＝戻るが一番上にしかない） */''}
         <div class="appbar" style="margin-top:18px">${appbarHTML('btm')}</div>
       </main>`;
-    return shell(inner, groupTab(a.group));
+    // 本部グループの画面をオーナーが開いたとき（提出物管理）は「報告」タブを光らせる（オーナーに本部タブは無い）
+    return shell(inner, groupTab(a.group === 'hq' && getRole() !== 'hq' ? 'storeops' : a.group));
   }
   // グループ→タブの対応（開いている画面のタブを正しくハイライト）
   const TAB_GROUPS = { genba:['genba','storeops'], learn:['learn'], other:['other','biz'], hq:['hq'] };
@@ -5471,20 +5475,26 @@
 
   APP_VIEWS.teishutsu = () => {
     const role = getRole();
-    if (role !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
+    /* ★オーナーにも開放（2026-09-03 増田さんのご要望）＝複数店を持つオーナーが自店の未提出を確認し、
+       本部と同じ「未提出の連絡文をコピー」で自店へ提出を促せる。
+       オーナーに見えるのは自店だけ。本部の確認（判定・確認）・提出物マスタ・シートの場所は出さない。 */
+    if (role !== 'hq' && role !== 'owner') return `<div class="card"><p>${L({ja:'本部・オーナーのみ閲覧できます。',en:'HQ / owner only.',vi:'Chỉ HQ / chủ cửa hàng.'})}</p></div>`;
+    const isHq = role === 'hq';
     /* ★タブ化（2026-08-31 神田さんのご要望）＝縦に長くスクロールして探さない。
        本日の提出／店舗別×7日／提出物マスタ／シートの場所 をタブで切り替える（位置も保たれる） */
     const TT = [
       { v:'today',  t:{ ja:'本日の提出', en:'Today', vi:'Hôm nay' } },
       { v:'matrix', t:{ ja:'店舗別（日・週・月）', en:'By store', vi:'Theo CH' } },
-      { v:'master', t:{ ja:'提出物マスタ', en:'Master', vi:'Cấu hình' } },
-      { v:'sheets', t:{ ja:'シートの場所', en:'Sheets', vi:'Bảng' } }
+      ...(isHq ? [
+        { v:'master', t:{ ja:'提出物マスタ', en:'Master', vi:'Cấu hình' } },
+        { v:'sheets', t:{ ja:'シートの場所', en:'Sheets', vi:'Bảng' } }
+      ] : [])
     ];
     const ttab = TT.some(o => o.v === localStorage.getItem('yosakura_teishutsu_tab')) ? localStorage.getItem('yosakura_teishutsu_tab') : 'today';
     const ttabSeg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="ttab">${TT.map(o => `<button type="button" data-ttab="${o.v}" class="${o.v === ttab ? 'on' : ''}">${L(o.t)}</button>`).join('')}</div></div>`;
     const missingOnly = localStorage.getItem('yosakura_sub_missingonly') === '1';
     const masters = getMasters().filter(m => m.oblig !== 'off');
-    const stores = STORES.slice();
+    const stores = isHq ? STORES.slice() : ownerStores_(); // オーナーは自店だけ
     let totalMissing = 0;
     const cells = stores.map(store => {
       const dk = dateKeyFor(store, Date.now());
@@ -5512,7 +5522,7 @@
           .sort((x, y) => (x.m.oblig === 'required' ? 0 : 1) - (y.m.oblig === 'required' ? 0 : 1));
         return xs.length ? `<div class="l2" style="margin-top:4px"><b style="font-size:11px;color:#9a8f80">${L(FREQ_LABEL[fq])}</b><br>${xs.map(chipOf).join('')}</div>` : '';
       }).join('');
-      const act = missing.length ? `<div style="margin-top:8px"><button class="mini" data-treminder="${esc(store)}">${L({ja:'未提出の連絡文をコピー',en:'Copy reminder',vi:'Sao chép nhắc'})}</button> <button class="mini" data-tdrill="${esc(store)}">${L({ja:'判定・確認',en:'Review',vi:'Duyệt'})}${svg('chev')}</button></div>` : '';
+      const act = missing.length ? `<div style="margin-top:8px"><button class="mini" data-treminder="${esc(store)}">${L({ja:'未提出の連絡文をコピー',en:'Copy reminder',vi:'Sao chép nhắc'})}</button>${isHq ? ` <button class="mini" data-tdrill="${esc(store)}">${L({ja:'判定・確認',en:'Review',vi:'Duyệt'})}${svg('chev')}</button>` : ''}</div>` : '';
       return `<div class="rep" style="align-items:flex-start"><span class="kind ${missing.length?'a':'b'}">${missing.length?L({ja:'未',en:'Miss',vi:'Thiếu'}):L({ja:'済',en:'OK',vi:'OK'})}</span>
         <div class="body"><div class="l1">${esc(storeShort(store))} ${holiday?`<small style="color:#8a8">(${L({ja:'定休日',en:'Holiday',vi:'Nghỉ'})})</small>`:''}</div>
         ${chips}${act}</div></div>`;
@@ -5520,7 +5530,7 @@
     return `
       ${ttabSeg}
       ${ttab !== 'today' ? '' : `<div class="card">
-        <h3>${L({ja:'本日の提出状況（全店）',en:'Today submissions (all stores)',vi:'Trạng thái nộp (mọi cửa hàng)'})}</h3>
+        <h3>${isHq ? L({ja:'本日の提出状況（全店）',en:'Today submissions (all stores)',vi:'Trạng thái nộp (mọi cửa hàng)'}) : L({ja:'本日の提出状況（自店）',en:'Today submissions (your stores)',vi:'Trạng thái nộp (cửa hàng của bạn)'})}</h3>
         <div style="display:flex;gap:8px;align-items:center;margin:6px 0 12px">
           <button class="mini ${missingOnly?'on':''}" data-tmissing="1">${missingOnly?'☑':'☐'} ${L({ja:'未提出のみ',en:'Missing only',vi:'Chỉ thiếu'})}</button>
           <span class="hint" style="display:inline">${L({ja:'未提出',en:'Missing',vi:'Thiếu'})} ${totalMissing}</span>
