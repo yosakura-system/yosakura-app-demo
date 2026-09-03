@@ -4084,5 +4084,80 @@ await new Promise(r => setTimeout(r, 60));
   run(() => { setLS('hq','all','ja'); localStorage.removeItem('yosakura_inbox_showdone'); });
 }
 
+console.log('== 提出した日報を後から直せる（2026-09-03 ユンさんのご要望）==');
+{
+  const S = '日本料理世桜本店';
+  const today5 = new Date().toLocaleDateString('en-CA');
+  const seed = [{ store:S, date: today5, sales:111290, guests:10, foodamt:109090, drinkamt:2200,
+                  rvt:1, rva:3, hear:1, labor:23.3, closer:'ユン', t: Date.now() - 3600e3 }];
+  run(() => {
+    setLS('manager', S, 'ja');
+    localStorage.setItem('yosakura_soukatsu_tab', 'input');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(seed));
+    localStorage.removeItem('yosakura_sk_edit');
+  });
+  location.hash = '#/app/soukatsu?x=edit1';
+  ok(/id="sk_editnote"/.test(registry.app.innerHTML), '「すでに提出されています」の案内欄がある');
+  ok(doc.getElementById('sk_sales').value === '111290' && doc.getElementById('sk_guests').value === '10',
+     '提出済みの日を開くと、その内容が入力欄に入る');
+  ok(doc.getElementById('sk_closer').value === 'ユン', '文字の欄（レジ締め担当）も入る');
+  ok(doc.getElementById('sk_editnote').style.display === 'block', '案内が表示される');
+  // 出し直すと最新が正になる（同じ日が2行に増えない）
+  doc.getElementById('sk_sales').value = '123456';
+  doc.getElementById('submitSk').onclick();
+  const rows = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').filter(r => r.date === today5);
+  ok(rows.length === 2, '出し直しは追記される（記録は消さない）');
+  // ※ run() は保存を消すのでここでは使わない（画面だけ作り直して、入れ直されるかを見る）
+  doc.getElementById('sk_sales').value = '';
+  location.hash = '#/app/soukatsu?x=edit2';
+  ok(doc.getElementById('sk_sales').value === '123456', '直したあとの内容が正として出る（開き直すと最新が入る）');
+  ok(!localStorage.getItem('yosakura_sk_edit'), '提出したら「直す」の指定は外れる');
+  // 個店カルテの日報詳細に「直す」ボタンが出る
+  const src7 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/data-skedit=/.test(src7) && /この日報を直す/.test(src7), '日報の詳細に「この日報を直す」ボタンがある');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_soukatsu_tab', 'input'); });
+}
+
+console.log('== 総括表の月次出力が時計に隠れない／フロアを分けて点検できる（2026-09-03）==');
+{
+  const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  ok(/\.screen\.skp \{ padding-top: calc\(10px \+ env\(safe-area-inset-top\)\); \}/.test(css),
+     '月次出力の画面に端末の安全領域ぶんの余白がある（ボタンが時計に隠れない）');
+  // フロア＝分ける店舗だけに出る
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'close'); });
+  location.hash = '#/app/checklist?x=f1';
+  ok(/data-ckfloor="2F"/.test(registry.app.innerHTML), '長堀橋店には1F/2Fの切替が出る');
+  run(() => { setLS('manager', '日本料理世桜本店', 'ja'); localStorage.setItem('yosakura_ckmode', 'close'); });
+  location.hash = '#/app/checklist?x=f2';
+  ok(!/data-ckfloor/.test(registry.app.innerHTML), 'ほかの店舗には出ない（今までどおり）');
+  // 2Fのチェックと項目は1Fと別に保存される
+  run(() => {
+    setLS('manager', S, 'ja');
+    localStorage.setItem('yosakura_ckmode', 'close@2F');
+    localStorage.setItem('yosakura_demo_ckitem', JSON.stringify({ [`${S}||close@2F`]: [{ id:'close-x-a', label:'2Fの塩スプーンを片付ける' }] }));
+    localStorage.setItem('yosakura_demo_ckdone', JSON.stringify({ [`${S}||close@2F||${new Date().toLocaleDateString('en-CA')}`]: { 'close-x-a': true } }));
+  });
+  location.hash = '#/app/checklist?x=f3';
+  let h = registry.app.innerHTML;
+  ok(/2Fの塩スプーンを片付ける/.test(h), '2Fにだけ足した項目が2Fで出る');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_ckmode', 'close'); });
+  location.hash = '#/app/checklist?x=f4';
+  ok(!/2Fの塩スプーンを片付ける/.test(registry.app.innerHTML), '1Fには2Fの項目が出ない（進み方が混ざらない）');
+  const src8 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/const ckBase\s*=/.test(src8) && /CK_COMMON\[ckBase\(mode\)\]/.test(src8), '点検の種類はフロアを外して選ぶ');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); });
+}
+
+console.log('== ログインが外れたときは理由を出す（2026-09-03 神田さんの実機＝急にログイン画面になった）==');
+{
+  const src9 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/yosakura_auth_dropped/.test(src9) && /この端末のログインが外れました/.test(src9),
+     'ログイン画面に「なぜ外れたか」と「入力内容は残っている」を出す');
+  ok(/removeItem\('yosakura_auth_dropped'\)/.test(src9), 'ログインし直したら案内は消える');
+  const auth = fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8');
+  ok(/var AUTH_TOKEN_MAX = 10;/.test(auth), '同時に使える端末の上限を10へ（要GAS貼り替え）');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
