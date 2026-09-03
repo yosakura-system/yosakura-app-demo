@@ -7974,6 +7974,19 @@
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
     const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null;
+    /* ★同じ提出が何行にもなっているとき、1件にまとめて見せる（2026-09-03 実機で発覚）。
+       受け取り側は1回のPOSTごとに1行を足す作りのため、返事が届かずに送り直されると
+       中身が同じ行が並ぶ（長堀橋店の日計レポートが同じ写真で8行）。
+       ★消すのではなく、表示のときに1件にまとめるだけ＝元の記録には手を触れない。
+       ★写真のIDは送り直しのたびに変わるので、目印には入れない（repKey_ と同じ考え方）。 */
+    const 見た = Object.create(null);
+    const uniq = [];
+    (rows || []).forEach(r => {
+      const k = [r && r.kind, r && r.store, r && r.item, Number(r && r.t) || 0, String((r && r.note) || '')].join('|');
+      if (見た[k]) return;
+      見た[k] = 1; uniq.push(r);
+    });
+    rows = uniq;
     (rows || []).forEach(r => {
       // 店舗名は正式名称へ寄せる（過去のデータが旧い表記でも、同じ店舗として扱う）
       const t = Number(r.t) || 0, id = r.id, store = normalizeStore(r.store || '');
@@ -8096,11 +8109,37 @@
   const LS_PENDING = 'yosakura_pending_posts';
   const getPending_ = () => { try { return JSON.parse(localStorage.getItem(LS_PENDING)) || []; } catch (e) { return []; } };
   const savePending_ = (a) => { try { localStorage.setItem(LS_PENDING, JSON.stringify(a)); } catch (e) {} };
-  async function flushPending_() {
+  /* ★同じ提出の目印（2026-09-03）。写真のIDは送り直すたびに変わる（保存先で新しく作られる）ため、
+     目印には入れない。種類・店舗・項目・提出時刻がすべて同じなら、同じ提出とみなす。 */
+  const repKey_ = (r) => [r && r.kind, r && r.store, r && r.item, Number(r && r.t) || 0].join('|');
+  /* ★もう届いている提出は、送り直さない（2026-09-03 実機で発覚）。
+     受け取り側は1回のPOSTごとに1行を足す作りなので、返事が届かずに再送すると同じ提出が何行にもなる。
+     日計レポートの写真は受け取り側で文字の読み取りを行うぶん返事が遅く、返事だけが失われると
+     「提出は入っているのに、端末はまだ送れていないと思って送り直す」が延々と続いていた
+     （長堀橋店の同じ写真が朝のあいだに2件→8件へ増えた）。
+     直前に取り込んだサーバーの内容に同じ提出があれば、送らずに保留箱から外す。 */
+  function alreadySent_(rep) {
+    try {
+      const raw = localStorage.getItem('yosakura_demo_raw');
+      if (!raw) return false;
+      const key = repKey_(rep);
+      return (JSON.parse(raw) || []).some(r => repKey_(r) === key);
+    } catch (e) { return false; }
+  }
+  let _flushing = null;   // 同時に走らせない（同時に走ると同じ保留分を二重に送ってしまう）
+  function flushPending_() {
+    if (_flushing) return _flushing;
+    _flushing = flushPendingOnce_().catch(() => {}).then(() => { _flushing = null; });
+    return _flushing;
+  }
+  async function flushPendingOnce_() {
     const q = getPending_();
     if (!q.length) return;
     const 残り = [];
+    let 済み = 0;
     for (let i = 0; i < q.length; i++) {
+      // すでにサーバーにある＝送り直さない（重複を作らない）
+      if (alreadySent_(q[i])) { 済み++; continue; }
       try {
         // ★トークンは「送る時点のもの」を付ける＝ログインし直したあとの再送でも通る
         const res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(Object.assign({ token: authToken() }, q[i])) });
@@ -8110,6 +8149,7 @@
       catch (e) { 残り.push(q[i]); }
     }
     savePending_(残り);
+    if (済み && 残り.length === q.length - 済み) { /* 既に届いていたぶんは静かに片付ける（利用者には出さない） */ }
     if (残り.length < q.length) {
       toast(L({ ja:'電波が無いあいだの提出（' + (q.length - 残り.length) + '件）を送信しました',
                 en:'Sent ' + (q.length - 残り.length) + ' pending submission(s).',
