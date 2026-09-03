@@ -5247,6 +5247,9 @@
   }
 
   const OBLIG_LABEL = { required:{ja:'必須',en:'Required',vi:'Bắt buộc'}, store:{ja:'店舗運用',en:'Store-run',vi:'Cửa hàng'}, off:{ja:'対象外',en:'Off',vi:'Không'} };
+  /* ★頻度ラベル（2026-09-03 神田さんのご指摘＝どの項目が日次・週次・月次か見分けられない）
+     ＝「本日の提出」「提出履歴」で頻度ごとに行を分けるための共通ラベル */
+  const FREQ_LABEL = { daily:{ja:'日次',en:'Daily',vi:'Ngày'}, weekly:{ja:'週次',en:'Weekly',vi:'Tuần'}, monthly:{ja:'月次',en:'Monthly',vi:'Tháng'}, quarterly:{ja:'四半期',en:'Quarterly',vi:'Quý'} };
   const JUDGE_LABEL = { '':{ja:'—',en:'—',vi:'—'}, in:{ja:'基準内',en:'In-std',vi:'Đạt'}, check:{ja:'要確認',en:'Check',vi:'Cần KT'}, out:{ja:'基準外',en:'Out-std',vi:'Không đạt'} };
 
   /* ---------- 店舗向け：提出物の行（今日／月次で共通） ---------- */
@@ -5495,17 +5498,24 @@
       });
       const missing = items.filter(it => !it.manual && !it.submitted && !it.holiday && it.m.oblig === 'required');
       if (missingOnly && !missing.length) return '';
-      const chips = items.map(it => {
+      /* ★日次・週次・月次・四半期を行で分ける（2026-09-03 神田さんのご指摘＝
+         頻度の違う項目が1列に混ざり、どれが毎日の提出か見分けられなかった）。各行は必須を先に置く。 */
+      const chipOf = (it) => {
         const opt = it.m.oblig !== 'required'; // 任意（店舗運用）＝未提出でも赤くしない
         const cls = it.manual ? '' : (it.submitted ? 'b' : (opt ? '' : 'a'));
         const sym = it.manual ? '·' : (it.submitted ? '✓' : '✗');
         const jl = it.status.judge ? ` ${L(JUDGE_LABEL[it.status.judge])}` : '';
         return `<span class="kind ${cls}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(it.m.name))}${opt ? L({ja:'（任意）',en:' (opt)',vi:' (tùy chọn)'}) : ''}${sym}${jl}</span>`;
+      };
+      const chips = ['daily', 'weekly', 'monthly', 'quarterly'].map(fq => {
+        const xs = items.filter(it => (it.m.freq || 'daily') === fq)
+          .sort((x, y) => (x.m.oblig === 'required' ? 0 : 1) - (y.m.oblig === 'required' ? 0 : 1));
+        return xs.length ? `<div class="l2" style="margin-top:4px"><b style="font-size:11px;color:#9a8f80">${L(FREQ_LABEL[fq])}</b><br>${xs.map(chipOf).join('')}</div>` : '';
       }).join('');
       const act = missing.length ? `<div style="margin-top:8px"><button class="mini" data-treminder="${esc(store)}">${L({ja:'未提出の連絡文をコピー',en:'Copy reminder',vi:'Sao chép nhắc'})}</button> <button class="mini" data-tdrill="${esc(store)}">${L({ja:'判定・確認',en:'Review',vi:'Duyệt'})}${svg('chev')}</button></div>` : '';
       return `<div class="rep" style="align-items:flex-start"><span class="kind ${missing.length?'a':'b'}">${missing.length?L({ja:'未',en:'Miss',vi:'Thiếu'}):L({ja:'済',en:'OK',vi:'OK'})}</span>
         <div class="body"><div class="l1">${esc(storeShort(store))} ${holiday?`<small style="color:#8a8">(${L({ja:'定休日',en:'Holiday',vi:'Nghỉ'})})</small>`:''}</div>
-        <div class="l2">${chips}</div>${act}</div></div>`;
+        ${chips}${act}</div></div>`;
     }).join('');
     return `
       ${ttabSeg}
@@ -5517,7 +5527,19 @@
         </div>
         ${cells || `<p class="hint" style="display:block">${L({ja:'未提出はありません。',en:'No missing.',vi:'Không thiếu.'})}</p>`}
       </div>`}
-      ${ttab !== 'matrix' ? '' : subMatrixCard(stores) + subPeriodCard(stores, 'weekly') + subPeriodCard(stores, 'monthly') + subPeriodCard(stores, 'quarterly')}
+      ${ttab !== 'matrix' ? '' : (() => {
+        /* ★日次・週次・月次・四半期をサブタブで分ける（2026-09-03 神田さんのご要望＝縦に積んでスクロールさせない） */
+        const MF = [
+          { v:'daily',     t:{ ja:'日次',   en:'Daily',     vi:'Ngày'  } },
+          { v:'weekly',    t:{ ja:'週次',   en:'Weekly',    vi:'Tuần'  } },
+          { v:'monthly',   t:{ ja:'月次',   en:'Monthly',   vi:'Tháng' } },
+          { v:'quarterly', t:{ ja:'四半期', en:'Quarterly', vi:'Quý'   } }
+        ];
+        const mf = MF.some(o => o.v === localStorage.getItem('yosakura_matrix_freq')) ? localStorage.getItem('yosakura_matrix_freq') : 'daily';
+        const seg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg-chips">${MF.map(o => `<button class="chip${o.v === mf ? ' on' : ''}" data-mtxfreq="${o.v}">${L(o.t)}</button>`).join('')}</div></div>`;
+        const body = mf === 'daily' ? subMatrixCard(stores) : subPeriodCard(stores, mf);
+        return seg + (body || `<div class="card"><p class="hint" style="display:block">${L({ja:'この期間の必須提出物はありません。',en:'No required items for this period.',vi:'Không có mục bắt buộc cho kỳ này.'})}</p></div>`);
+      })()}
       ${ttab !== 'master' ? '' : `<div class="card">
         <h3>${L({ja:'提出物マスタ（本部設定）',en:'Submission master (HQ)',vi:'Cấu hình mục nộp (HQ)'})}</h3>
         ${masters.map(m => `<div class="rep"><span class="kind b">${L(OBLIG_LABEL[m.oblig])}</span><div class="body"><div class="l1">${esc(L(m.name))}</div><div class="l2">${L({daily:{ja:'毎日',en:'Daily',vi:'Hàng ngày'},weekly:{ja:'週1',en:'Weekly',vi:'Hàng tuần'},monthly:{ja:'月1',en:'Monthly',vi:'Hàng tháng'},quarterly:{ja:'四半期',en:'Quarterly',vi:'Hàng quý'}}[m.freq]||{ja:'毎日',en:'Daily',vi:'Hàng ngày'})} ・ ${L({ja:'締切',en:'Due',vi:'Hạn'})} ${m.due} ・ ${m.hqReview==='each'?L({ja:'本部確認あり',en:'HQ review',vi:'HQ duyệt'}):m.hqReview==='exception'?L({ja:'例外のみ本部',en:'Exceptions to HQ',vi:'Ngoại lệ HQ'}):L({ja:'本部確認なし',en:'No HQ review',vi:'Không HQ'})}</div></div></div>`).join('')}
@@ -5794,8 +5816,8 @@
     return `<div class="l2" style="color:#2a7">✓ ${L({ ja:'本部確認済み', en:'Checked by HQ', vi:'HQ đã xem' })}${a.memo ? ` ・${esc(a.memo)}` : ''}</div>`;
   };
   // 本部が確認すべき「現場からの報告」を集める（種類をまたいで1本化）
-  function collectHqItems() {
-    const vis = visibleStores();
+  function collectHqItems(storesOpt) {
+    const vis = storesOpt || visibleStores();
     const acks = getAckMap();
     const items = [];
     const add = (kind, label, t, store, title, detail, photos) => {
@@ -5852,6 +5874,20 @@
        ③日付見出しでまとめる（過去の分も構造的に辿れる） */
     const kindFilter = localStorage.getItem('yosakura_inbox_kind') || '';
     const all = collectHqItems();
+    /* ★「報告が全部消えた」ように見える事故を防ぐ（2026-09-03 神田さんの実機報告）。
+       右上の店舗切替が1店舗（例：本店）のままだと、受信箱はその店の報告だけになり、
+       報告の少ない店では0件＝データが消えたように見えていた。
+       本部で1店舗だけを表示中のときは、その旨と全店の未対応件数を出し、1タップで全店へ戻せるようにする。 */
+    const selStore = getStoreSel();
+    let storeFilterNote = '';
+    if (selStore !== 'all') {
+      const allCnt = collectHqItems(STORES.slice()).filter(i => i.state !== 'done').length;
+      storeFilterNote = `<div class="card" style="border:1px solid #d8b56a;background:#fdf6e7">
+        <div class="l1" style="font-weight:600">${L({ja:`いま「${storeShort(selStore)}」の報告だけを表示しています`,en:`Showing only “${storeShort(selStore)}”`,vi:`Chỉ đang hiển thị “${storeShort(selStore)}”`})}</div>
+        <p class="hint" style="display:block;margin:4px 0 8px">${L({ja:`右上の店舗切替が「${storeShort(selStore)}」になっているためです。全店では未対応が ${allCnt} 件あります（データは消えていません）。`,en:`The store switcher (top right) is set to this store. All stores have ${allCnt} unhandled report(s) — nothing is lost.`,vi:`Do bộ chọn cửa hàng (góc phải trên). Toàn bộ có ${allCnt} báo cáo chưa xử lý — không mất dữ liệu.`})}</p>
+        <button class="mini" data-inboxallstores="1">${L({ja:'全店の報告を表示する',en:'Show all stores',vi:'Hiện tất cả cửa hàng'})}</button>
+      </div>`;
+    }
     const open = all.filter(i => i.state !== 'done');
     const pool = showDone ? all : open;
     const filtered = kindFilter ? pool.filter(i => i.kind === kindFilter) : pool;
@@ -5900,6 +5936,7 @@
       return head + row(i);
     }).join('');
     return `
+      ${storeFilterNote}
       <div class="card">
         <h3>${L({ja:'未対応の報告',en:'Needs response',vi:'Chưa xử lý'})} <small style="color:#8a8">${open.length}</small></h3>
         <p class="hint" style="display:block">${L({ja:'現場からの報告のうち、本部がまだ対応していないものです。対応したら「対応済みにする」を押してください（全端末で共有されます）。',en:'Reports not yet handled by HQ. Mark done after you respond (shared across devices).',vi:'Báo cáo HQ chưa xử lý. Bấm đã xử lý sau khi phản hồi (chia sẻ mọi máy).'})}</p>
@@ -5987,7 +6024,10 @@
     const dsel = [7, 14, 30].includes(Number(localStorage.getItem('yosakura_hist_days'))) ? Number(localStorage.getItem('yosakura_hist_days')) : 7;
     const days = []; for (let i = 0; i < dsel; i++) days.push(dateKeyFor(store, Date.now() - i * 86400000));
     const rows = days.map(dk => {
-      const chips = masters.map(m => {
+      /* ★必須／任意と日次・週次・月次が混ざって見分けられない（2026-09-03 神田さんのご指摘）
+         ＝頻度ごとに行を分け（必須を先に）、任意は「（任意）」を付けて未提出でも赤くしない
+         （「本日の提出」と同じ見せ方に揃える） */
+      const chipOf = (m) => {
         const sub = detectSubmitted(store, m, dk); const st = getStatus(store, m.id, dk);
         const jl = st.judge ? ` ${L(JUDGE_LABEL[st.judge])}` : '';
         // ★日報（総括表）は提出経路も添える（アプリ入力か、シートからの取込か）＝2026-08-31
@@ -5996,11 +6036,17 @@
           const rr = getSk().filter(x => x.store === store && x.date === dk).sort((a, b) => b.t - a.t)[0];
           if (rr) rt = rr.src === 'drive' ? L({ ja:'（取込）', en:'(import)', vi:'(nhập)' }) : L({ ja:'（アプリ）', en:'(app)', vi:'(app)' });
         }
-        return `<span class="kind ${sub?'b':'a'}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(m.name))}${sub?'✓':'✗'}${rt}${jl}</span>`;
+        const opt = m.oblig !== 'required';
+        return `<span class="kind ${sub ? 'b' : (opt ? '' : 'a')}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(m.name))}${opt ? L({ja:'（任意）',en:' (opt)',vi:' (tùy chọn)'}) : ''}${sub?'✓':'✗'}${rt}${jl}</span>`;
+      };
+      const chips = ['daily', 'weekly', 'monthly', 'quarterly'].map(fq => {
+        const xs = masters.filter(m => (m.freq || 'daily') === fq)
+          .sort((x, y) => (x.oblig === 'required' ? 0 : 1) - (y.oblig === 'required' ? 0 : 1));
+        return xs.length ? `<div class="l2" style="margin-top:4px"><b style="font-size:11px;color:#9a8f80">${L(FREQ_LABEL[fq])}</b><br>${xs.map(chipOf).join('')}</div>` : '';
       }).join('');
       // 提出者＝その日に提出された記録から（同じ方が複数出していれば1回だけ表示）
       const who = [...new Set(masters.map(m => detectSubmitted(store, m, dk) ? submitterOf(store, m, dk) : '').filter(Boolean))];
-      return `<div class="rep"><div class="body"><div class="l1">${dk}${isHoliday(store,dk)?` <small style="color:#8a8">(${L({ja:'定休日',en:'Holiday',vi:'Nghỉ'})})</small>`:''}</div><div class="l2">${chips || '—'}</div>${who.length?`<div class="l2">${L({ja:'提出者',en:'Submitted by',vi:'Người nộp'})}：${esc(who.join('・'))}</div>`:''}</div></div>`;
+      return `<div class="rep"><div class="body"><div class="l1">${dk}${isHoliday(store,dk)?` <small style="color:#8a8">(${L({ja:'定休日',en:'Holiday',vi:'Nghỉ'})})</small>`:''}</div>${chips || '<div class="l2">—</div>'}${who.length?`<div class="l2">${L({ja:'提出者',en:'Submitted by',vi:'Người nộp'})}：${esc(who.join('・'))}</div>`:''}</div></div>`;
     }).join('');
     return `<div class="card"><h3>${L({ja:`提出履歴（直近${dsel}日）`,en:`History (last ${dsel} days)`,vi:`Lịch sử (${dsel} ngày)`})} — ${esc(storeShort(store))}</h3>
       <div class="seg-chips" style="margin:6px 0 10px">${[7, 14, 30].map(n => `<button class="chip${dsel === n ? ' on' : ''}" data-histdays="${n}">${n}${L({ja:'日',en:'d',vi:'n'})}</button>`).join('')}</div>
@@ -6015,7 +6061,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab],[data-sktab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -6024,6 +6070,10 @@
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
       if (t.dataset.ttab) { localStorage.setItem('yosakura_teishutsu_tab', t.dataset.ttab); render(true); return; }
+      // 店舗別サブタブ（日次・週次・月次・四半期）＝2026-09-03
+      if (t.dataset.mtxfreq) { localStorage.setItem('yosakura_matrix_freq', t.dataset.mtxfreq); render(true); return; }
+      // 受信箱の「全店の報告を表示する」＝店舗の絞り込みを全店へ戻す（2026-09-03）
+      if (t.dataset.inboxallstores) { setStoreSel('all'); toast(L({ ja:'全店の表示に切り替えました', en:'Showing all stores', vi:'Đã chuyển sang tất cả cửa hàng' })); render(true); return; }
       if (t.dataset.sktab) { skEditClear_(); localStorage.setItem('yosakura_soukatsu_tab', t.dataset.sktab); go('/app/soukatsu?tab=' + t.dataset.sktab); return; }
       // 「この日報を直す」＝その日の内容を入れた状態で入力画面を開く（2026-09-03 ユンさんのご要望）
       if (t.dataset.skedit) {

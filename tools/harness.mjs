@@ -3952,13 +3952,23 @@ FETCH_ROWS = { ok:false };
 
 console.log('== 提出状況を日次・週次・月次で分けて見える化＋必須のみを数える（2026-09-02 構築MTG）==');
 {
-  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'matrix'); });
+  /* ★2026-09-03 神田さんのご要望＝日次・週次・月次・四半期は縦に積まずサブタブで分ける。
+     既定は日次。他の期はサブタブを切り替えるとそれぞれ出る（同時には出ない）。 */
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'matrix'); localStorage.removeItem('yosakura_matrix_freq'); });
   location.hash = '#/app/teishutsu';
   const h = registry.app.innerHTML;
-  ok(/日次・必須の提出状況/.test(h), '日次マトリクスは「必須のみ」と明記される');
-  ok(/週次・必須の提出状況（今週）/.test(h), '週次カードが出る（前の期の実績つき）');
-  ok(/月次・必須の提出状況（今月）/.test(h), '月次カードが出る');
-  ok(/四半期・必須の提出状況/.test(h), '四半期カードが出る');
+  ok(/日次・必須の提出状況/.test(h), '日次マトリクスは「必須のみ」と明記される（既定タブ＝日次）');
+  ok(/data-mtxfreq="weekly"/.test(h) && /data-mtxfreq="monthly"/.test(h) && /data-mtxfreq="quarterly"/.test(h), '日次・週次・月次・四半期のサブタブが出る');
+  ok(!/週次・必須の提出状況（今週）/.test(h), '日次タブでは週次カードを混ぜない（縦積みをやめた）');
+  // run() は毎回まっさらに起動し直すため、役割と表示タブも毎回セットする
+  const openMatrix = (fq) => {
+    run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'matrix'); localStorage.setItem('yosakura_matrix_freq', fq); });
+    location.hash = '#/app/teishutsu';
+    return registry.app.innerHTML;
+  };
+  ok(/週次・必須の提出状況（今週）/.test(openMatrix('weekly')), '週次タブで週次カードが出る（前の期の実績つき）');
+  ok(/月次・必須の提出状況（今月）/.test(openMatrix('monthly')), '月次タブで月次カードが出る');
+  ok(/四半期・必須の提出状況/.test(openMatrix('quarterly')), '四半期タブで四半期カードが出る');
   const src6 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/m\.oblig === 'required' && m\.detect !== 'none' && m\.freq === 'daily'/.test(src6), 'マトリクスの分母は必須の日次のみ（任意を入れない）');
   ok(/（任意・店舗運用の未提出）/.test(src6), '催促文は必須と任意を分ける');
@@ -4157,6 +4167,43 @@ console.log('== ログインが外れたときは理由を出す（2026-09-03 �
   ok(/removeItem\('yosakura_auth_dropped'\)/.test(src9), 'ログインし直したら案内は消える');
   const auth = fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8');
   ok(/var AUTH_TOKEN_MAX = 10;/.test(auth), '同時に使える端末の上限を10へ（要GAS貼り替え）');
+}
+
+console.log('== 受信箱＝店舗の絞り込みで「全部消えた」ように見せない（2026-09-03 神田さんの実機報告）==');
+{
+  /* 右上の店舗切替が「本店」のままだと受信箱はその店だけになり、報告の少ない店では0件
+     ＝データが消えたように見えた（実際はバックエンドに2,855行が無事だった）。
+     1店舗だけの表示中はその旨のお知らせと全店の未対応件数を出し、1タップで全店へ戻せる。 */
+  const S = '牛カツ世桜 長堀橋店';
+  const reports = [{ kind:'subrec', store:S, item:'openphoto|2026-09-03', note:'{}', photos:['FILEID_X'], t: Date.now() - 3600e3, id:'op1' }];
+  run(() => {
+    setLS('hq', '日本料理世桜本店', 'ja');   // 本部だが「本店」だけを表示中（報告は長堀橋にある）
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify(reports));
+  });
+  location.hash = '#/app/inbox?x=storefilter';
+  const h = registry.app.innerHTML;
+  ok(/の報告だけを表示しています/.test(h), '1店舗だけの表示中は、その旨のお知らせが出る');
+  ok(/データは消えていません/.test(h) && /1 件/.test(h), '全店の未対応件数を添えて「消えていない」ことが分かる');
+  ok(/data-inboxallstores/.test(h), '「全店の報告を表示する」ボタンで1タップで戻せる');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify(reports)); });
+  location.hash = '#/app/inbox?x=storefilter2';
+  ok(!/の報告だけを表示しています/.test(registry.app.innerHTML), '全店の表示中はお知らせを出さない');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 提出の一覧＝必須／任意と日次・週次・月次を見分けられる（2026-09-03 神田さんのご指摘）==');
+{
+  // 週次（卓上POP）は牛カツ業態だけの項目なので、確認は長堀橋（牛カツ）で行う
+  run(() => { setLS('hq', 'all', 'ja'); });
+  location.hash = '#/app/history?s=' + encodeURIComponent('牛カツ世桜 長堀橋店');
+  const h = registry.app.innerHTML;
+  ok(/>日次</.test(h) && />週次</.test(h) && />月次</.test(h), '提出履歴は頻度ごとに行が分かれる');
+  ok(/（任意）/.test(h), '任意（店舗運用）の項目に「（任意）」が付く');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'today'); });
+  location.hash = '#/app/teishutsu?x=freq';
+  const h2 = registry.app.innerHTML;
+  ok(/>日次</.test(h2) && />月次</.test(h2), '「本日の提出」も頻度ごとに行が分かれる');
+  run(() => { setLS('hq', 'all', 'ja'); });
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
