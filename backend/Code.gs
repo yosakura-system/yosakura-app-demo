@@ -241,6 +241,12 @@ function validateBackendConfiguration() {
      ＝外から ?action=validate で「貼り替えが済んだか」を確認できる */
   ck('日計OCR（写真の自動読み取り・長堀橋トライアル）', true,
      (typeof nikkei_ocr_hook_ === 'function') ? '貼付済み' : '未貼付（任意：backend/日計OCR.gs を追加すると有効）');
+  /* ★2026-09-03 の貼り替えぶん＝外から ?action=validate で「済んだか」を確認できるようにする */
+  ck('提出の重複防止（findSameReport_）', typeof findSameReport_ === 'function',
+     (typeof findSameReport_ === 'function') ? '貼付済み＝送り直しで同じ提出が増えない' : '未貼付：Code.gs を貼り替えてください');
+  var tokenMax = 0; try { tokenMax = AUTH_TOKEN_MAX; } catch (e) {}
+  ck('同時ログイン端末の上限', tokenMax >= 10, 'AUTH_TOKEN_MAX=' + tokenMax + (tokenMax >= 10 ? '' : '（認証.gs を貼り替えると10になります）'));
+  ck('90日削除から守るkindにmonthlyがある', PURGE_KEEP_KINDS.indexOf('monthly') !== -1, PURGE_KEEP_KINDS.join(','));
 
   var ng = checks.filter(function (c) { return !c.ok; });
   var out = { allOk: ng.length === 0, ngCount: ng.length, checks: checks };

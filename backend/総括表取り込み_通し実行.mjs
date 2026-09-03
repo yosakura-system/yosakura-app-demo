@@ -46,6 +46,16 @@ function 台帳シート(rows) {
   return data;
 }
 
+/* ★テストの時計＝毎月15日の正午に固定（2026-09-03 発覚＝月初1〜3日に実行すると「一昨日」が1日に丸まり、
+     既存データの1日と重なって4項目落ちていた。日付依存のテストにしない[ハーネスが落ちたら日付を疑う]）。
+     .gs側（未来日の判定など）にも同じ時計を渡す＝seedと判定で「今日」がズレない。 */
+const 固定今日 = new Date(); 固定今日.setDate(15); 固定今日.setHours(12, 0, 0, 0);
+const 実Date = Date;
+class 固定Date extends 実Date {
+  constructor(...a) { if (a.length) super(...a); else super(固定今日.getTime()); }
+  static now() { return 固定今日.getTime(); }
+}
+
 function 偽環境を作る({ ブック群 = {}, フォルダ群 = {}, 既存行 = [] } = {}) {
   class 偽シート {
     constructor(名前, data) { this.名前 = 名前; this.data = data || []; }
@@ -86,6 +96,7 @@ function 偽環境を作る({ ブック群 = {}, フォルダ群 = {}, 既存行
     Session: { getEffectiveUser: () => ({ getEmail: () => 'x' }) },
     ContentService: { MimeType: { JSON: 'JSON' }, createTextOutput: (s) => ({ _s: s, setMimeType() { return this; }, getContent() { return this._s; } }) }
   };
+  ctx.Date = 固定Date;   // .gs にも固定した時計を見せる
   vm.createContext(ctx);
   vm.runInContext(コード, ctx, { filename: 'Code+取り込み.gs' });
   return { ctx, reports };
@@ -95,7 +106,7 @@ const 行数 = (env) => env.reports.data.length - 1;
 const 取り込まれた = (env) => env.reports.data.slice(1).map(r => ({ store: r[3], ...JSON.parse(r[6]) }));
 
 /* いま（実行時点）の月＝202608 を前提にした偽データ。月が替わっても動くよう ym は動的に作る */
-const now = new Date();
+const now = 固定今日;   // ★毎月15日に固定（上のコメント参照）
 const p2 = n => ('0' + n).slice(-2);
 const YM = `${now.getFullYear()}${p2(now.getMonth() + 1)}`;
 const D = (day) => `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(day)}`;
