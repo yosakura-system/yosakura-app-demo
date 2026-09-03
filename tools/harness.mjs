@@ -3520,13 +3520,17 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   seedAuth('kanda', 'hq', 'hq');
   location.hash = '#/home';
   ok(!/開発者ビュー/.test(registry.app.innerHTML), '本部の表示ではバナーが出ない');
-  // ③ 対象でない本部アカウントには何も起きない（切替の入口も開かない）
+  // ②' 増田さんも対象（2026-09-03 ご要望＝本部・加盟店の両目線）
   seedAuth('masuda', 'hq', 'staff');
+  location.hash = '#/home';
+  ok(/開発者ビュー：店舗側の表示を確認中/.test(registry.app.innerHTML), '増田さんのアカウントでも店舗表示に切り替えられる');
+  // ③ 対象でない本部アカウントには何も起きない（切替の入口も開かない）
+  seedAuth('takahara', 'hq', 'staff');
   location.hash = '#/home';
   ok(!/開発者ビュー/.test(registry.app.innerHTML), '対象でないアカウントにはバナーを出さない');
   // ④ ソース＝対象は許可リストのみ・ログイン済みの役割切替は開発者ビューだけ例外
   const dsrc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/const DEV_VIEW_UIDS = \['kanda'\];/.test(dsrc), '対象は許可リスト（kanda）だけ');
+  ok(/const DEV_VIEW_UIDS = \['kanda', 'masuda'\];/.test(dsrc), '対象は許可リスト（kanda・masuda）だけ');
   ok(/if \(getAuth\(\) && !devViewAllowed\(\)\) return;/.test(dsrc), 'ログイン済みの役割切替は開発者ビューだけ例外');
   ok(/data-devexit/.test(dsrc) && /setRole\('hq'\); setStoreSel\('all'\);/.test(dsrc), 'バナーを押すと本部の表示（全店）へ戻る');
   // 後始末＝以後のテストにログイン状態を残さない
@@ -4203,6 +4207,28 @@ console.log('== 提出の一覧＝必須／任意と日次・週次・月次を�
   location.hash = '#/app/teishutsu?x=freq';
   const h2 = registry.app.innerHTML;
   ok(/>日次</.test(h2) && />月次</.test(h2), '「本日の提出」も頻度ごとに行が分かれる');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 複数店オーナーも自店の未提出を見て提出を促せる（2026-09-03 増田さんのご要望）==');
+{
+  // ① 複数店オーナー（デモ＝富士山2店）には「報告」タブに提出物管理の入口が出る
+  run(() => { setLS('owner', '日本鰻世桜 富士山店', 'ja'); localStorage.setItem('yosakura_teishutsu_tab', 'today'); });
+  location.hash = '#/home?tab=genba';
+  ok(/data-open="teishutsu"/.test(registry.app.innerHTML), '複数店オーナーの「報告」タブに入口が出る');
+  // ② 開くと自店だけ・連絡文コピーはあるが、本部の確認・マスタ・シートは出ない
+  location.hash = '#/app/teishutsu';
+  const h = registry.app.innerHTML;
+  ok(/本日の提出状況（自店）/.test(h), 'オーナーには「自店」の提出状況として出る');
+  ok(/富士山/.test(h) && !/長堀橋/.test(h), '見えるのは自店（富士山2店）だけ');
+  ok(/data-treminder/.test(h), '「未提出の連絡文をコピー」が使える');
+  ok(!/data-tdrill/.test(h), '本部の「判定・確認」は出ない');
+  ok(!/提出物マスタ/.test(h) && !/シートの場所/.test(h), '提出物マスタ・シートの場所のタブは出ない');
+  // ③ スタッフ・店長には開かない（従来どおり）
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); });
+  location.hash = '#/app/teishutsu?x=staff';
+  ok(!/本日の提出状況/.test(registry.app.innerHTML), 'スタッフには提出物管理が開かない');
+  // 後始末
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
