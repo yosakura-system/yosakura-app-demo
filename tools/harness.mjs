@@ -4042,5 +4042,47 @@ console.log('== 受信箱が件数で重くならない（2026-09-03 実機報�
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_inbox_showdone'); });
 }
 
+console.log('== 同じ提出が何行にもならない（2026-09-03 実機＝長堀橋の日計レポートが同じ写真で8行）==');
+{
+  /* 受け取り側は1回のPOSTごとに1行を足す作り。返事が届かないと端末が送り直すため、
+     中身が同じ行が並ぶ。写真IDは送り直しのたびに変わる＝目印に入れてはいけない。 */
+  const S = '牛カツ世桜 長堀橋店';
+  const T = Date.now() - 9 * 3600e3;
+  const dup = (n) => Array.from({ length: n }, (_, i) => ({
+    kind:'subrec', store:S, item:`nikkei_close|2026-09-02`, note: JSON.stringify({ by:'店長', role:'manager' }),
+    photos:[`DRIVEID_${i}`], t:T, id:`row${i}`   // ★写真IDと行IDは毎回変わる（送り直しのたびに保存し直されるため）
+  }));
+  FETCH_ROWS = { ok:true, reports: dup(8) };
+  try { run(() => { setLS('hq','all','ja'); localStorage.setItem('yosakura_inbox_showdone','1'); }); }
+  catch (e) { FAIL++; console.log('  ✗ load threw: ' + e.message); }
+}
+await new Promise(r => setTimeout(r, 60));
+{
+  const reps = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').filter(r => r.kind === 'subrec');
+  ok(reps.length === 1, `同じ提出の8行が1件にまとまる（実測 ${reps.length}件）`);
+  location.hash = '#/app/inbox?x=dup';
+  // 行だけを数える（上の絞り込みチップにも同じ名前が出るため）
+  const rows = (registry.app.innerHTML.match(/class="l1">日計レポート（レジクローズ）/g) || []).length;
+  ok(rows === 1, `受信箱にも1行だけ出る（実測 ${rows}行）`);
+  // 別の日・別の項目は別の提出＝まとめない
+  FETCH_ROWS = { ok:true, reports: [
+    { kind:'subrec', store:'牛カツ世桜 長堀橋店', item:'nikkei_close|2026-09-02', note:'{}', photos:['A'], t: Date.now()-7200e3, id:'a1' },
+    { kind:'subrec', store:'牛カツ世桜 長堀橋店', item:'nikkei_close|2026-09-01', note:'{}', photos:['B'], t: Date.now()-90000e3, id:'a2' },
+    { kind:'subrec', store:'牛カツ世桜 長堀橋店', item:'nouhin|2026-09-02',       note:'{}', photos:['C'], t: Date.now()-7200e3, id:'a3' }
+  ]};
+  run(() => { setLS('hq','all','ja'); });
+}
+await new Promise(r => setTimeout(r, 60));
+{
+  const reps = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').filter(r => r.kind === 'subrec');
+  ok(reps.length === 3, `日付・項目が違うものはまとめない（実測 ${reps.length}件）`);
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/function alreadySent_/.test(src) && /if \(alreadySent_\(q\[i\]\)\)/.test(src), 'すでに届いている提出は送り直さない（重複の元を断つ）');
+  ok(/let _flushing = null/.test(src), '保留分の送信は同時に走らせない');
+  ok(!/photos/.test(src.slice(src.indexOf('const repKey_'), src.indexOf('const repKey_') + 200)), '同じ提出の目印に写真IDを入れない（送り直しで変わるため）');
+  FETCH_ROWS = { ok:false };
+  run(() => { setLS('hq','all','ja'); localStorage.removeItem('yosakura_inbox_showdone'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

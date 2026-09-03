@@ -354,6 +354,26 @@ function doGet(e) {
   }
 }
 
+/* 直近の行に「同じ提出」があれば、その行のidを返す（無ければ空文字）。
+   直近600行だけ見る＝1回の追加が遅くならないように（提出は新しい行に足されるため、
+   送り直しは必ず直近に見つかる）。t（提出時刻）はミリ秒なので、別々の提出が偶然そろうことはない。 */
+function findSameReport_(sh, data) {
+  try {
+    var t = Number(data.t) || 0;
+    if (!t) return '';
+    var last = sh.getLastRow();
+    if (last < 2) return '';
+    var start = Math.max(2, last - 600 + 1);
+    var vals = sh.getRange(start, 1, last - start + 1, 5).getValues(); // id, ts, kind, store, item
+    var kind = String(data.kind || ''), store = String(data.store || ''), item = String(data.item || '');
+    for (var i = vals.length - 1; i >= 0; i--) {
+      if (Number(vals[i][1]) === t && String(vals[i][2]) === kind
+          && String(vals[i][3]) === store && String(vals[i][4]) === item) return String(vals[i][0]);
+    }
+  } catch (err) {}
+  return '';
+}
+
 // 報告を1件追加。写真はDriveへ保存しIDをシートに記録。
 function doPost(e) {
   try {
@@ -369,6 +389,14 @@ function doPost(e) {
       if (!gp.ok) return json({ ok: false, error: gp.error || 'AUTH_REQUIRED', needLogin: true });
     }
     var sh = getSheet();
+    /* ★同じ提出を二重に足さない（2026-09-03 実機で発覚）。
+       返事が端末に届かないと端末は「まだ送れていない」と判断して送り直す。
+       日計レポートの写真は文字の読み取りを行うぶん返事が遅く、返事だけが失われた結果、
+       同じ写真の行が朝のあいだに8行まで増えていた（長堀橋店）。
+       種類・店舗・項目・提出時刻が同じ行が直近にあれば、足さずに成功を返す。
+       ※写真は送り直しのたびに保存し直されるため、目印には使わない。 */
+    var dup = findSameReport_(sh, data);
+    if (dup) return json({ ok: true, id: dup, duplicate: true });
     var id = Utilities.getUuid();
     var ts = data.t || Date.now();
     var input = Array.isArray(data.photos) ? data.photos.slice(0, 6) : [];
