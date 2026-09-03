@@ -431,6 +431,7 @@
   // ログイン成功時：役割・店舗をサーバーの返答どおりに合わせる（以後この端末の表示が確定する）
   function applyAuth_(a) {
     setAuth(a); markAuthRequired(true);
+    try { localStorage.removeItem('yosakura_auth_dropped'); } catch (e) {}   // ログインし直したら案内を消す
     setRole(a.role);
     if (a.role === 'hq') setStoreSel('all');
     else if (a.role === 'owner') setStoreSel((a.stores || []).length > 1 ? 'owned' : ((a.stores || [])[0] || STORES[0]));
@@ -451,7 +452,15 @@
         vi:'Chế độ phát triển: đang xem như cửa hàng (tài khoản HQ). Chạm để về HQ.' })}</button>`
     : '';
   // 通信が「ログインしてください」と言ってきたときの受け（トークン切れ・再発行後も含む）
-  function onNeedLogin_() { markAuthRequired(true); setAuth(null); render(); }
+  /* ログインが外れたとき（2026-09-03 神田さんの実機＝「急にログイン画面になった」）。
+     ★時間切れではない。1つのIDで同時に使える端末数に上限があり、上限を超えて
+       ログインすると**いちばん古い端末のログインが外れる**（本部が利用者を登録し直したときも外れる）。
+     何も出ないと故障に見えるため、理由と「入力した内容は残っている」ことを画面に出す。 */
+  function onNeedLogin_() {
+    markAuthRequired(true); setAuth(null);
+    try { localStorage.setItem('yosakura_auth_dropped', '1'); } catch (e) {}
+    render();
+  }
   // ★オーナー様の所有店舗＝ログイン済みならサーバーが返したもの／未ログイン（デモ・プレビュー）は従来の見本
   const ownerStores_ = () => {
     const a = getAuth();
@@ -2326,9 +2335,9 @@
        その選択に引きずられると、今日やるべき箇所が終わっていないのに終わったことになる。 */
   /* ★store を渡すと業態専用の初期リストへ切り替える（2026-09-02＝手巻き業態のみ。桜・定期衛生は共通のまま）。
      store 省略時は従来どおり共通リスト＝既存の呼び出しを壊さない */
-  const ckGroupsOf = (mode, hygDay, store) => mode === 'hygiene'
+  const ckGroupsOf = (mode, hygDay, store) => ckBase(mode) === 'hygiene'
     ? ((HYGIENE_DAYS.find(x => x.d === (hygDay == null ? new Date().getDay() : hygDay)) || {}).g || [])
-    : ((store && storeGyotai(store) === 'temaki' && CK_TEMAKI[mode]) ? CK_TEMAKI[mode] : (CK_COMMON[mode] || []));
+    : ((store && storeGyotai(store) === 'temaki' && CK_TEMAKI[ckBase(mode)]) ? CK_TEMAKI[ckBase(mode)] : (CK_COMMON[ckBase(mode)] || []));
   const WDAY_LABELS = [{ja:'日',en:'Sun',vi:'CN'},{ja:'月',en:'Mon',vi:'T2'},{ja:'火',en:'Tue',vi:'T3'},{ja:'水',en:'Wed',vi:'T4'},{ja:'木',en:'Thu',vi:'T5'},{ja:'金',en:'Fri',vi:'T6'},{ja:'土',en:'Sat',vi:'T7'}];
   const CK_MODES = [
     { v:'open',   t:{ ja:'オープン', en:'Opening', vi:'Mở cửa' } },
@@ -2343,7 +2352,30 @@
     sakura: { ja:'※ 便器用の清掃具と鏡用の布は、他と分けて使ってください。清掃後は厨房に戻る前に手を洗い、靴裏の汚れを持ち込まないようにしてください。', en:'Use separate tools for the toilet bowl and the mirror. Wash hands before returning to the kitchen.', vi:'Dùng dụng cụ riêng cho bồn cầu và gương. Rửa tay trước khi vào bếp.' },
     hygiene:{ ja:'※ 曜日ごとに決められた箇所を清掃し、1週間でお店全体を1周します。掃除は上から下の順に（ホコリは上から落ちるため）。手が空いていれば、他の曜日を先に実施しても大丈夫です。', en:'Each weekday has its own spots; one week covers the whole store. Clean top-down. You may do another day’s items if you have time.', vi:'Mỗi thứ có khu vực riêng; một tuần phủ toàn bộ. Lau từ trên xuống.' }
   };
-  const getCkMode = () => { const v = localStorage.getItem('yosakura_ckmode'); return CK_MODES.some(m => m.v === v) ? v : 'open'; };
+  /* ★フロアを分けて点検する（2026-09-03 常山さんのご要望・牛カツ長堀橋店でまず運用）。
+     「2Fで締め作業をしていたが、1Fと進み方が違うのでチェックを押すタイミングが難しい」
+     ＝1枚の点検表を2人で共有している状態だった。フロアごとに項目とチェックを分ける。
+     ★作り＝点検の種類（mode）に「@2F」を付けて別の点検として扱う。
+       これだけで、項目・チェック・同期・店舗ごとの作り替えが**すべて既存の仕組みのまま**分かれる。
+     ★本部への「クローズ点検が終わったか」の判定は、これまでどおり1F（既定）を見る＝
+       集計の意味を変えない。2Fは現場の進行用。 */
+  const CK_FLOOR_STORES = ['牛カツ世桜 長堀橋店'];   // フロアを分ける店舗（増やすときはここに足す）
+  const CK_FLOORS = [
+    { v:'',   t:{ ja:'1F', en:'1F', vi:'Tầng 1' } },
+    { v:'2F', t:{ ja:'2F', en:'2F', vi:'Tầng 2' } }
+  ];
+  const ckFloorStore = (store) => CK_FLOOR_STORES.includes(normalizeStore(store || ''));
+  const ckBase  = (mode) => String(mode || '').split('@')[0];            // 点検の種類（@2F を外したもの）
+  const ckFloor = (mode) => String(mode || '').split('@')[1] || '';      // '' なら1F
+  const ckWithFloor = (base, floor) => floor ? `${base}@${floor}` : base;
+  const getCkMode = () => {
+    const v = String(localStorage.getItem('yosakura_ckmode') || '');
+    const base = ckBase(v), floor = ckFloor(v);
+    if (!CK_MODES.some(m => m.v === base)) return 'open';
+    // フロアを分けない店舗では「@2F」を無視する（端末の設定が残っていても1Fを出す）
+    if (floor && (!CK_FLOORS.some(f => f.v === floor) || !ckFloorStore(visibleStores()[0]))) return base;
+    return ckWithFloor(base, floor);
+  };
   /* 店舗ごとのカスタマイズ（店長・オーナーが操作）＝全端末同期。
      ★2026-08-13 上原さんのご要望＝定期衛生管理は業態ごとの参考表があるだけで、
        実際は店舗ごとに作り替えて使っている（設備・レイアウトが違うため）。
@@ -2353,8 +2385,9 @@
      定期衛生だけでなく、オープン／アイドル／クローズ／桜も**設備・レイアウトが店舗で違う**ため、
      一覧を出発点として各店で作り替えられるようにする。外した項目は消さずに残し、いつでも戻せる。 */
   const CK_HIDABLE = ['open', 'idle', 'close', 'sakura', 'hygiene'];
-  const ckKey = (store, mode, day) => mode === 'hygiene'
-    ? `${store}||hygiene-${day == null ? new Date().getDay() : day}`
+  // 定期衛生は曜日ごと。フロア（@2F）は種類の後ろに残す＝別の点検として分かれる
+  const ckKey = (store, mode, day) => ckBase(mode) === 'hygiene'
+    ? `${store}||hygiene-${day == null ? new Date().getDay() : day}${ckFloor(mode) ? '@' + ckFloor(mode) : ''}`
     : `${store}||${mode}`;
   // 店舗独自項目（店長・オーナーが追加）＝店舗×モード（定期衛生は×曜日）ごと・全端末同期
   const getCkItems = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckitem')) || {}; } catch { return {}; } };
@@ -2364,13 +2397,13 @@
   const ckCustom = (store, mode, day) => {
     const all = getCkItems();
     const list = all[ckKey(store, mode, day)] || [];
-    return mode === 'hygiene' ? (all[`${store}||hygiene`] || []).concat(list) : list;
+    return ckBase(mode) === 'hygiene' ? (all[`${store}||hygiene`] || []).concat(list) : list;
   };
   // 店舗ごとに外した共通項目（IDの配列）＝定期衛生のみ。元に戻せる
   const getCkHide = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckhide')) || {}; } catch { return {}; } };
   const saveCkHide = (o) => { try { localStorage.setItem('yosakura_demo_ckhide', JSON.stringify(o)); } catch (e) {} };
   const ckHidden = (store, mode, day) =>
-    CK_HIDABLE.includes(mode) ? (getCkHide()[ckKey(store, mode, day)] || []) : [];
+    CK_HIDABLE.includes(ckBase(mode)) ? (getCkHide()[ckKey(store, mode, day)] || []) : [];
   // チェック状態＝店舗×モード×日付（日付が変わると自動で新しい一日になる）
   const getCkDone = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckdone')) || {}; } catch { return {}; } };
   const saveCkDone = (o) => { try { localStorage.setItem('yosakura_demo_ckdone', JSON.stringify(o)); } catch (e) {} };
@@ -2386,7 +2419,7 @@
        実際には終わっていないのに終わったように見えることがあった。 */
   const ckIdsOf = (store, mode, hygDay) => {
     const d = hygDay == null ? new Date().getDay() : hygDay; // 省いたら今日の曜日
-    const idBase = mode === 'hygiene' ? `${mode}-${d}` : mode;
+    const idBase = ckBase(mode) === 'hygiene' ? `${ckBase(mode)}-${d}` : ckBase(mode);
     const hid = ckHidden(store, mode, d); // 店舗で外した共通項目は数に入れない
     const ids = [];
     ckGroupsOf(mode, d, store).forEach((gr, gi) => gr.items.forEach((_, ii) => {
@@ -2408,7 +2441,7 @@
   const ckRemainAfter = (store, mode, day, opt) => {
     const o = opt || {};
     const d = day == null ? new Date().getDay() : day;
-    const idBase = mode === 'hygiene' ? `${mode}-${d}` : mode;
+    const idBase = ckBase(mode) === 'hygiene' ? `${ckBase(mode)}-${d}` : ckBase(mode);
     const hid = ckHidden(store, mode, d).concat(o.hide ? [o.hide] : []);
     let n = 0;
     ckGroupsOf(mode, d, store).forEach((gr, gi) => gr.items.forEach((_, ii) => {
@@ -2460,9 +2493,9 @@
     const hidden = ckHidden(store, mode, hygDay);   // この店舗で外した共通項目
     const done = getCkDone()[ckDoneKey(store, mode)] || {};
     const editable = ckCanEdit();
-    const canHide = editable && CK_HIDABLE.includes(mode); // 5種類とも、店長・オーナーが外せる
+    const canHide = editable && CK_HIDABLE.includes(ckBase(mode)); // 5種類とも、店長・オーナーが外せる
     // 定期衛生は曜日ごとに内容が違うため、チェックのIDにも曜日を入れる（別の曜日と混ざらないように）
-    const idBase = mode === 'hygiene' ? `${mode}-${hygDay}` : mode;
+    const idBase = ckBase(mode) === 'hygiene' ? `${ckBase(mode)}-${hygDay}` : ckBase(mode);
     // 数えるものは ckIdsOf に集約（「今日出すもの」の判定と必ず同じ数え方になるように）
     const allIds = ckIdsOf(store, mode, hygDay);
     const total = allIds.length || 1;
@@ -2503,7 +2536,7 @@
        忙しい日は決められた曜日どおりに回せない＝余裕のある日に、できる箇所から進める運用に合わせて、
        7曜日ぶんをまとめて見られるビュー。どの曜日の項目にもチェックできる（記録は今日の日付で残る）。
        項目の編集（外す・足す）は曜日ごとの表示から＝全体表示は見る・チェックする専用。 */
-    const hygAll = mode === 'hygiene' && localStorage.getItem('yosakura_hygall') === '1';
+    const hygAll = ckBase(mode) === 'hygiene' && localStorage.getItem('yosakura_hygall') === '1';
     let hygAllHTML = '';
     if (hygAll) {
       hygAllHTML = WDAY_LABELS.map((w, d) => {
@@ -2557,7 +2590,7 @@
         <div class="hint" style="display:block;padding:2px 4px 8px">${L({ ja:'※ 外した項目は点検の件数から除かれます。設備が変わったら「戻す」で元に戻せます。', en:'Removed items are excluded from the count. Use Restore if your equipment changes.', vi:'Mục đã bỏ không tính vào số lượng. Nhấn Khôi phục khi cần.' })}</div>
       </div>` : '';
     // 定期衛生は曜日ごとに持つので、どの曜日への追加かを見出しに出す（別の曜日に足す事故を防ぐ）
-    const customTitle = mode === 'hygiene'
+    const customTitle = ckBase(mode) === 'hygiene'
       ? `${L({ ja:'この店舗の追加項目', en:'Store-specific items', vi:'Mục riêng của cửa hàng' })}（${L(WDAY_LABELS[hygDay])}${L({ ja:'曜日', en:'', vi:'' })}）`
       : L({ ja:'この店舗の追加項目', en:'Store-specific items', vi:'Mục riêng của cửa hàng' });
     /* 分類に振り分けた項目は上のグループへ出したので、ここには「分類なし」だけを出す。
@@ -2586,21 +2619,25 @@
       </div>`;
     return `
       ${NOTE(canHide
-        ? { ja:`◆ この一覧を出発点として、店舗ごとに作り替えられます。使わない項目は「×」で外し、必要な項目は下から追加してください。追加のときにホール・キッチン等の分類も選べます（店長・オーナーのみ${mode === 'hygiene' ? '／曜日ごとに保存されます' : ''}）`,
-            en:`◆ This list is a starting point for your store. Managers/owners can remove items with “×” and add their own, choosing a section such as Hall or Kitchen.${mode === 'hygiene' ? ' Saved per weekday.' : ''}`,
-            vi:`◆ Danh sách này là điểm khởi đầu. Quản lý/chủ có thể bỏ mục bằng “×” và thêm mục riêng, chọn khu vực như Sảnh hoặc Bếp.${mode === 'hygiene' ? ' Lưu theo từng thứ.' : ''}` }
+        ? { ja:`◆ この一覧を出発点として、店舗ごとに作り替えられます。使わない項目は「×」で外し、必要な項目は下から追加してください。追加のときにホール・キッチン等の分類も選べます（店長・オーナーのみ${ckBase(mode) === 'hygiene' ? '／曜日ごとに保存されます' : ''}）`,
+            en:`◆ This list is a starting point for your store. Managers/owners can remove items with “×” and add their own, choosing a section such as Hall or Kitchen.${ckBase(mode) === 'hygiene' ? ' Saved per weekday.' : ''}`,
+            vi:`◆ Danh sách này là điểm khởi đầu. Quản lý/chủ có thể bỏ mục bằng “×” và thêm mục riêng, chọn khu vực như Sảnh hoặc Bếp.${ckBase(mode) === 'hygiene' ? ' Lưu theo từng thứ.' : ''}` }
         : { ja:'◆ 開店・閉店の点検です。項目の追加・削除は店長・オーナーが行えます', en:'◆ Opening/closing checks. Managers/owners can add or remove items.', vi:'◆ Kiểm tra mở/đóng. Quản lý/chủ có thể thêm hoặc bỏ mục.' })}
       <div class="card" style="text-align:center">
-        <div class="seg" data-seg="ckmode" style="margin-bottom:14px">${CK_MODES.map(m => `<button type="button" data-ckmode="${m.v}" class="${m.v===mode?'on':''}">${L(m.t)}</button>`).join('')}</div>
-        <h3>${L({ ja:'本日の', en:'Today: ', vi:'Hôm nay: ' })}${esc(L((CK_MODES.find(m => m.v === mode) || {}).t || ''))}${L({ ja:'点検', en:' check', vi:'' })}</h3>
+        <div class="seg" data-seg="ckmode" style="margin-bottom:14px">${CK_MODES.map(m => `<button type="button" data-ckmode="${m.v}" class="${m.v===ckBase(mode)?'on':''}">${L(m.t)}</button>`).join('')}</div>
+        ${/* ★フロアの切替（2026-09-03 常山さんのご要望）＝1Fと2Fで項目もチェックも分かれる。
+              分ける店舗だけに出す（ほかの店舗の画面は今までどおり） */''}
+        ${ckFloorStore(store) ? `<div class="seg" data-seg="ckfloor" style="margin:-6px 0 12px">${CK_FLOORS.map(f => `<button type="button" data-ckfloor="${f.v}" class="${f.v===ckFloor(mode)?'on':''}">${L(f.t)}</button>`).join('')}</div>
+        <div class="hint" style="display:block;margin:-6px 0 10px">${L({ ja:'※ 1Fと2Fは別々に記録されます。ご自分がいるフロアを選んで、そのフロアの分だけチェックしてください。項目もフロアごとに足したり外したりできます。', en:'1F and 2F are recorded separately. Pick your floor and check only that floor’s items.', vi:'Tầng 1 và tầng 2 được ghi riêng. Chọn tầng của bạn.' })}</div>` : ''}
+        <h3>${L({ ja:'本日の', en:'Today: ', vi:'Hôm nay: ' })}${esc(L((CK_MODES.find(m => m.v === ckBase(mode)) || {}).t || ''))}${L({ ja:'点検', en:' check', vi:'' })}${ckFloor(mode) ? `（${esc(ckFloor(mode))}）` : (ckFloorStore(store) ? `（1F）` : '')}</h3>
         <div class="muted" style="margin:2px 0 8px">${esc(store)}</div>
-        ${mode === 'hygiene' ? `<div class="seg" data-seg="hygday" style="margin:6px 0 10px"><button type="button" data-hygall="1" class="${hygAll ? 'on' : ''}">${L({ ja:'全体', en:'All', vi:'Tất cả' })}</button>${WDAY_LABELS.map((w, i) => `<button type="button" data-hygday="${i}" class="${!hygAll && i===getHygDay()?'on':''}">${L(w)}</button>`).join('')}</div>` : ''}
+        ${ckBase(mode) === 'hygiene' ? `<div class="seg" data-seg="hygday" style="margin:6px 0 10px"><button type="button" data-hygall="1" class="${hygAll ? 'on' : ''}">${L({ ja:'全体', en:'All', vi:'Tất cả' })}</button>${WDAY_LABELS.map((w, i) => `<button type="button" data-hygday="${i}" class="${!hygAll && i===getHygDay()?'on':''}">${L(w)}</button>`).join('')}</div>` : ''}
         <div style="font-size:26px;font-weight:700;letter-spacing:.02em">${n}<span style="color:var(--gray);font-size:17px">/${total}</span></div>
         <div class="bar-track" style="margin:9px 0 2px"><div class="bar-fill" style="width:${Math.round(n/total*100)}%"></div></div>
       </div>
       ${ckSmpHTML}
       ${hygAll ? hygAllHTML : groupsHTML + customHTML + hiddenHTML}
-      ${CK_NOTES[mode] ? `<div class="hint" style="display:block">${L(CK_NOTES[mode])}</div>` : ''}
+      ${CK_NOTES[ckBase(mode)] ? `<div class="hint" style="display:block">${L(CK_NOTES[ckBase(mode)])}</div>` : ''}
       <div class="hint">${L({ ja:'上から順に実施すれば完了です。チェックは店舗ごと・当日分として保存されます（翌日は自動でリセット）。実施状況は本部・オーナーからも確認できます。', en:'Work top to bottom. Checks are saved per store for today (auto-resets next day) and visible to HQ/owners.', vi:'Làm từ trên xuống. Lưu theo cửa hàng cho hôm nay; HQ/chủ có thể xem.' })}</div>`;
   };
 
@@ -3252,11 +3289,14 @@
       ${head}
       ${skTab !== 'input' ? '' : (() => { const skCum0 = skCumBase(vis[0], today); return `<div class="card" id="skForm">
         <h3>${L({ ja:'本日の総括表', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
+        ${/* ★提出済みの日を開いているときに出す案内（2026-09-03 ユンさんのご要望＝後から直したい）。
+              中身は画面を作ったあとに入れる（その日の日報があるかは日付を変えても変わるため） */''}
+        <p class="hint" id="sk_editnote" style="display:none;margin:-2px 0 8px;color:#8a6d3b"></p>
         ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの日報から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
         ${skDraft._t ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ レジクローズの日計レポート写真から読み取った数字（売上・客数・現金・カード）が入っています。確認して、違うところは直してから提出してください。', en:'Sales, guests, cash and card were read from the register-close photo. Check and correct before submitting.', vi:'Doanh thu, khách, tiền mặt, thẻ đọc từ ảnh đóng ca. Kiểm tra trước khi gửi.' })}（${timeAgo(skDraft._t)}）</p>` : ''}
         <div class="sk-grid">
-          <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
-          <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${today}" max="${today}"></label>
+          <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
+          <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || today}" max="${today}"></label>
           <label class="fld"><span>${L({ja:'当日売上',en:'Sales',vi:'Doanh thu'})}</span><input type="text" inputmode="numeric" id="sk_sales" placeholder="186817"${skDraft.total != null ? ` value="${skDraft.total}"` : ''}></label>
           <label class="fld"><span>${L({ja:'客数',en:'Guests',vi:'Khách'})}</span><input type="text" inputmode="numeric" id="sk_guests" placeholder="16"${skDraft.kyaku != null ? ` value="${skDraft.kyaku}"` : ''}></label>
         </div>
@@ -3354,6 +3394,19 @@
     } catch (e) {}
     return best && best.total ? best.total : null;
   }
+  /* ★「この日報を直す」で開いた対象（店舗と日付）。提出したら消す＝次は本日の入力に戻る。
+     端末に持つ（画面を作り直しても残る／別の端末には影響しない） */
+  function skEditTarget_() {
+    try {
+      const v = String(localStorage.getItem('yosakura_sk_edit') || '');
+      const i = v.lastIndexOf('||');
+      if (i < 0) return { store:'', date:'' };
+      const store = v.slice(0, i), date = v.slice(i + 2);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > todayKey()) return { store:'', date:'' };
+      return { store, date };
+    } catch (e) { return { store:'', date:'' }; }
+  }
+  const skEditClear_ = () => { try { localStorage.removeItem('yosakura_sk_edit'); } catch (e) {} };
   const skRow = (r) => `
     <div class="rep tapable" data-skday="${esc((r.store||'') + '||' + (r.date||''))}" role="button" tabindex="0">
       <span class="kind b">${esc((r.date||'').slice(5))}</span>
@@ -3758,6 +3811,9 @@
       <h3>${esc(mdLabel(date))}（${esc(L(WDAYS[wdOf(date)]))}）　${esc(storeLabel(store))}</h3>
       <div class="sub">${esc(store)}</div>
       ${r ? skFieldGrid(r) : `<p class="muted">${L({ ja:'この日はまだ総括表が提出されていません。', en:'No daily report submitted for this day yet.', vi:'Chưa có báo cáo cho ngày này.' })}</p>`}
+      ${/* ★提出した日報を後から直せるように（2026-09-03 ユンさんのご要望）。
+            入力画面をこの日の内容で開き直す＝出し直すと最新の内容に置き換わる */''}
+      ${(r && visibleStores().includes(store)) ? `<button class="btn-primary" data-skedit="${esc(store + '||' + date)}" style="margin-top:14px">${L({ ja:'この日報を直す', en:'Edit this report', vi:'Sửa báo cáo này' })}</button>` : ''}
       <button class="btn-primary" data-close="1" style="margin-top:14px">${L({ ja:'閉じる', en:'Close', vi:'Đóng' })}</button>
     </div></div>`);
     mask.addEventListener('click', (e) => { if (e.target === mask || (e.target.closest && e.target.closest('[data-close]'))) mask.remove(); });
@@ -5959,7 +6015,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab],[data-sktab],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-histdays],[data-ttab],[data-sktab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -5968,7 +6024,15 @@
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
       if (t.dataset.ttab) { localStorage.setItem('yosakura_teishutsu_tab', t.dataset.ttab); render(true); return; }
-      if (t.dataset.sktab) { localStorage.setItem('yosakura_soukatsu_tab', t.dataset.sktab); go('/app/soukatsu?tab=' + t.dataset.sktab); return; }
+      if (t.dataset.sktab) { skEditClear_(); localStorage.setItem('yosakura_soukatsu_tab', t.dataset.sktab); go('/app/soukatsu?tab=' + t.dataset.sktab); return; }
+      // 「この日報を直す」＝その日の内容を入れた状態で入力画面を開く（2026-09-03 ユンさんのご要望）
+      if (t.dataset.skedit) {
+        document.querySelectorAll('.sheet-mask').forEach(m => m.remove());
+        try { localStorage.setItem('yosakura_sk_edit', t.dataset.skedit); } catch (e) {}
+        localStorage.setItem('yosakura_soukatsu_tab', 'input');
+        go('/app/soukatsu?tab=input');
+        return;
+      }
       if (t.dataset.pltab) { localStorage.setItem('yosakura_pl_tab', t.dataset.pltab); go('/app/pl?tab=' + t.dataset.pltab); return; }
       if (t.dataset.gdtab) { localStorage.setItem('yosakura_guide_tab', t.dataset.gdtab); render(true); return; }
       if (t.dataset.ackdone) { setAck(t.dataset.ackdone, 'done', ''); toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(true); return; }
@@ -6888,6 +6952,10 @@
           ja:'本部からお渡ししたIDとパスワードを入力してください。<br>分からない場合は本部までご連絡ください。',
           en:'Enter the ID and password provided by HQ.',
           vi:'Nhập ID và mật khẩu do HQ cung cấp.' })}</p>
+        ${localStorage.getItem('yosakura_auth_dropped') === '1' ? `<p class="hint" style="display:block;color:#8a6d3b;text-align:left">${L({
+          ja:'※ この端末のログインが外れました。1つのIDで同時に使える端末には上限があり、別の端末で新しくログインすると、古い端末から順に外れます（本部がIDを登録し直したときも外れます）。もう一度ログインしてください。入力した内容は端末に残っています。',
+          en:'This device was signed out. Each ID can stay signed in on a limited number of devices; newer sign-ins push out older ones. Please sign in again — your entered data is kept on this device.',
+          vi:'Thiết bị này đã bị đăng xuất. Mỗi ID chỉ đăng nhập được trên số thiết bị giới hạn. Vui lòng đăng nhập lại; dữ liệu đã nhập vẫn còn.' })}</p>` : ''}
         <label class="fld"><span>ID</span><input type="text" id="au_id" autocapitalize="none" autocomplete="username"></label>
         <label class="fld"><span>${L({ ja:'パスワード', en:'Password', vi:'Mật khẩu' })}</span><input type="password" id="au_pw" autocomplete="current-password"></label>
         <p class="hint" id="au_err" style="display:none;color:#b23"></p>
@@ -7658,7 +7726,14 @@
     const upd = document.getElementById('appUpdate'); if (upd) upd.onclick = forceUpdate;
     // 使い方を順番に見る（役割ごとの案内をもう一度）
     document.querySelectorAll('[data-guide-tour]').forEach(b => b.onclick = () => openTour(0));
-    document.querySelectorAll('[data-ckmode]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_ckmode', b.dataset.ckmode); render(); });
+    // 点検の種類を切り替える（選んでいるフロアは保つ＝2Fのままオープン⇄クローズを行き来できる）
+    document.querySelectorAll('[data-ckmode]').forEach(b => b.onclick = () => {
+      localStorage.setItem('yosakura_ckmode', ckWithFloor(b.dataset.ckmode, ckFloor(getCkMode()))); render();
+    });
+    // フロアの切替（2026-09-03 常山さんのご要望）＝種類はそのままでフロアだけ変える
+    document.querySelectorAll('[data-ckfloor]').forEach(b => b.onclick = () => {
+      localStorage.setItem('yosakura_ckmode', ckWithFloor(ckBase(getCkMode()), b.dataset.ckfloor)); render();
+    });
     // 本部：シートの場所を保存する（コンプラチェックなど・全端末へ共有）
     document.querySelectorAll('[data-msturl]').forEach(b => b.onclick = () => {
       const id = b.dataset.msturl;
@@ -7718,7 +7793,7 @@
          同期で戻ってきたときに同じ曜日へ入るようにする。 */
     const ckEditCtx = () => {
       const store = visibleStores()[0], mode = getCkMode();
-      const day = mode === 'hygiene' ? getHygDay() : null;
+      const day = ckBase(mode) === 'hygiene' ? getHygDay() : null;
       const key = ckKey(store, mode, day);
       return { store, mode, day, key, mk: key.slice(store.length + 2) }; // mk＝キーの後半（mode または mode-曜日）
     };
@@ -7866,36 +7941,36 @@
     // 一食目写真：本部フィードバックを開く
     document.querySelectorAll('[data-fpfb]').forEach(b => b.onclick = () => openFPFeedback(b.dataset.fpfb));
 
-    // 総括表：客単価の自動計算＋提出
-    const skSales = byId('sk_sales'), skGuests = byId('sk_guests'), skAvg = byId('sk_avg');
-    if (skSales && skGuests && skAvg) {
-      const upd = () => { const s = Number(skSales.value)||0, g = Number(skGuests.value)||0; skAvg.textContent = g ? ('¥' + Math.round(s/g).toLocaleString('en-US')) : '¥0'; };
-      skSales.oninput = upd; skGuests.oninput = upd;
-    }
-    /* フード・ドリンクの構成比（自動計算）＝金額÷当日売上（2026-09-02 常山さんのご指摘＝総括表は金額と構成比） */
-    const skFa = byId('sk_foodamt'), skDa = byId('sk_drinkamt'), skFp = byId('sk_foodpct'), skDp = byId('sk_drinkpct');
-    if (skSales && skFa && skDa && skFp && skDp) {
-      const updShare = () => {
-        const s = Number(skSales.value)||0, f = Number(skFa.value)||0, d = Number(skDa.value)||0;
-        skFp.textContent = (s && f) ? ((f/s*100).toFixed(1) + '%') : '—';
-        skDp.textContent = (s && d) ? ((d/s*100).toFixed(1) + '%') : '—';
-      };
-      skSales.addEventListener('input', updShare); skFa.oninput = updShare; skDa.oninput = updShare;
-    }
-    const skMtd = byId('sk_mtd'), skGoal = byId('sk_goal'), skRate = byId('sk_rate');
-    if (skMtd && skGoal && skRate) {
-      const upd2 = () => { const m = Number(skMtd.value)||0, g = Number(skGoal.value)||0; skRate.textContent = g ? ((m/g*100).toFixed(1) + '%') : '—'; };
-      skMtd.oninput = upd2; skGoal.oninput = upd2;
-    }
-    // 勤怠：人時生産性（売上÷総労働時間）と人件費率（人件費÷売上）は入力させず、その場で計算して見せる
-    const skHours = byId('sk_hours'), skLc = byId('sk_laborcost'), skProdh = byId('sk_prodh'), skLauto = byId('sk_laborauto');
-    if (skSales && skHours && skLc && skProdh && skLauto) {
-      const upd3 = () => {
-        const s = Number(skSales.value)||0, h = Number(skHours.value)||0, lc = Number(skLc.value)||0;
-        skProdh.textContent = (s && h) ? ('¥' + Math.round(s/h).toLocaleString('en-US') + '/h') : '—';
-        skLauto.textContent = (s && lc) ? ((lc/s*100).toFixed(1) + '%') : '—';
-      };
-      skSales.addEventListener('input', upd3); skHours.oninput = upd3; skLc.oninput = upd3;
+    /* 総括表：自動で出す数字は1か所にまとめる（2026-09-03 整理）。
+       客単価・到達度・フード/ドリンク構成比・人時生産性・人件費率・仕入率は、
+       入れてもらった元の数字から計算して見せるだけ＝入力させない。 */
+    const skSales = byId('sk_sales');
+    const skAuto_ = () => {
+      const num = (id) => Number((byId(id) && byId(id).value) || 0) || 0;
+      const put = (id, v) => { const el = byId(id); if (el) el.textContent = v; };
+      const s = num('sk_sales'), g = num('sk_guests');
+      put('sk_avg', g ? ('¥' + Math.round(s / g).toLocaleString('en-US')) : '¥0');
+      const m = num('sk_mtd'), goal = num('sk_goal');
+      put('sk_rate', goal ? ((m / goal * 100).toFixed(1) + '%') : '—');
+      const f = num('sk_foodamt'), d = num('sk_drinkamt');
+      put('sk_foodpct',  (s && f) ? ((f / s * 100).toFixed(1) + '%') : '—');
+      put('sk_drinkpct', (s && d) ? ((d / s * 100).toFixed(1) + '%') : '—');
+      const h = num('sk_hours'), lc = num('sk_laborcost');
+      put('sk_prodh',     (s && h)  ? ('¥' + Math.round(s / h).toLocaleString('en-US') + '/h') : '—');
+      put('sk_laborauto', (s && lc) ? ((lc / s * 100).toFixed(1) + '%') : '—');
+      /* 仕入率＝（当月これまでの仕入合計＋当日仕入）÷月累計売上。
+         呼び方は総括表に合わせて「仕入率」（在庫込みの原価率は月締めの「数値・原価率」が受け持つ） */
+      if (byId('sk_buyrate')) {
+        const store = (byId('sk_store') && byId('sk_store').value) || visibleStores()[0];
+        const dk = (byId('sk_date') && byId('sk_date').value) || todayKey();
+        const b = (skCumBase(store, dk).buym || 0) + num('sk_buy');
+        put('sk_buyrate', (m && b) ? ((b / m * 100).toFixed(1) + '%') : '—');
+      }
+    };
+    if (skSales) {
+      ['sk_sales', 'sk_guests', 'sk_foodamt', 'sk_drinkamt', 'sk_mtd', 'sk_goal', 'sk_hours', 'sk_laborcost', 'sk_buy']
+        .forEach(id => { const el = byId(id); if (el) el.addEventListener('input', skAuto_); });
+      skAuto_();
     }
     /* ★累計の自動足し上げ（2026-09-02 ユンさんのご提案）。
        当日欄（売上・口コミ・チップ・キャンセル）を入力すると、前回までの累計＋当日を累計欄へ入れる。
@@ -7910,21 +7985,53 @@
         if (byId('sk_rva')) byId('sk_rva').value = (c.rva + n('sk_rvt')) || '';
         if (byId('sk_tipa')) byId('sk_tipa').value = (c.tipa + n('sk_tipt')) || '';
         if (byId('sk_cancel')) byId('sk_cancel').value = (c.cancel + n('sk_cancelt')) || '';
-        /* 到達度（月累計÷目標）も追従させる */
-        if (byId('sk_rate') && byId('sk_goal')) {
-          const g = Number(byId('sk_goal').value) || 0, m = Number(byId('sk_mtd').value) || 0;
-          byId('sk_rate').textContent = g ? ((m / g * 100).toFixed(1) + '%') : '—';
-        }
-        /* 仕入率（自動計算）＝（当月これまでの仕入合計＋当日仕入）÷月累計売上。
-           呼び方は総括表に合わせて「仕入率」（在庫込みの原価率は月締めの「数値・原価率」が受け持つ） */
-        if (byId('sk_buyrate')) {
-          const m = Number((byId('sk_mtd') && byId('sk_mtd').value) || 0) || 0;
-          const b = (c.buym || 0) + n('sk_buy');
-          byId('sk_buyrate').textContent = (m && b) ? ((b / m * 100).toFixed(1) + '%') : '—';
-        }
+        skAuto_();   // 到達度・仕入率も入れ直した累計で出す
       };
       ['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt', 'sk_buy'].forEach(id => { const el = byId(id); if (el) el.addEventListener('input', cumUpd); });
-      ['sk_date', 'sk_store'].forEach(id => { const el = byId(id); if (el) el.addEventListener('change', cumUpd); });
+
+      /* ★提出した日報を後から直せるようにする（2026-09-03 ユンさんのご要望）。
+         その店舗・その日の日報がすでにあれば、入力欄にその内容を入れて開く。
+         直して「提出する」を押すと、同じ日の最新の内容として置き換わる
+         （総括表は「店舗×日付は最新の提出が正」の作り＝出し直しで直せる）。
+         ★すでに提出のある日は、累計も**提出された内容のまま**出す（勝手に計算し直さない）。 */
+      const skFill_ = (空にしてよい) => {
+        const dEl = byId('sk_date'), sEl = byId('sk_store'), note = byId('sk_editnote');
+        if (!dEl || !sEl) return;
+        /* 欄がまだ空のとき（開いた直後など）は、画面の既定＝「直す」で指定された日か本日を使う */
+        const store = sEl.value || skEditTarget_().store || visibleStores()[0];
+        const date  = dEl.value || skEditTarget_().date  || todayKey();
+        const rec = getSk().filter(r => r.store === store && r.date === date).sort((a, b) => (b.t || 0) - (a.t || 0))[0];
+        /* まだ提出の無い日は、写真から読み取った下書きや累計の自動入力を消さない
+           （日付を選び直したときだけ、前の日の内容が残らないように空にする） */
+        if (!rec) {
+          if (note) note.style.display = 'none';
+          if (!空にしてよい) return;
+          SK_FIELDS.map(f => f.k).concat(['cancelt', 'order', 'note']).forEach(k => { const el = byId('sk_' + k); if (el) el.value = ''; });
+          SK_COUNTRIES.concat(SK_VISITKIND).forEach(cn => {
+            ['g', 'p'].forEach(x => { const el = byId('sk_cty_' + cn.k + '_' + x); if (el) el.value = ''; });
+          });
+          cumUpd();   // 選び直した日の累計を入れ直す
+          return;
+        }
+        const set = (id, v) => { const el = byId(id); if (el) el.value = (v == null ? '' : String(v)); };
+        set('sk_date', rec.date); if (rec.store) sEl.value = rec.store;   // どの日・どの店舗を直しているかを欄にも出す
+        SK_FIELDS.map(f => f.k).concat(['cancelt', 'order', 'note']).forEach(k => set('sk_' + k, rec[k]));
+        SK_COUNTRIES.concat(SK_VISITKIND).forEach(cn => {
+          const c = (rec.cty && typeof rec.cty === 'object') ? rec.cty[cn.k] : null;
+          set('sk_cty_' + cn.k + '_g', c ? c.g : ''); set('sk_cty_' + cn.k + '_p', c ? c.p : '');
+        });
+        if (note) {
+          note.textContent = L({
+            ja:'※ この日の総括表はすでに提出されています。内容を直して「提出する」を押すと、最新の内容に置き換わります。',
+            en:'A report for this day already exists. Editing and submitting replaces it with the newer content.',
+            vi:'Đã có báo cáo cho ngày này. Sửa và gửi lại sẽ thay thế bằng nội dung mới.' });
+          note.style.display = 'block';
+        }
+        skAuto_();
+      };
+      ['sk_date', 'sk_store'].forEach(id => { const el = byId(id); if (el) el.addEventListener('change', () => skFill_(true)); });
+      // 開いた時点＝すでに提出のある日なら、その内容を入れて「直せる」状態にする（無い日はそのまま）
+      skFill_(false);
     }
     const subSk = byId('submitSk');
     if (subSk) subSk.onclick = () => {
@@ -7952,10 +8059,14 @@
         }, {}),
         by: submitterLabel(), t: Date.now()
       };
+      const 直した = getSk().some(r => r.store === rec.store && r.date === rec.date);   // 同じ日の提出があった＝直し
       const arr = getSk(); arr.push(rec);
       try { saveSk(arr.slice(-60)); } catch (e) { saveSk(arr.slice(-20)); }
       lastSync = rec.t;
-      toast(L({ ja:'総括表を提出しました。ありがとうございます！', en:'Daily report submitted. Thank you!', vi:'Đã nộp báo cáo. Cảm ơn!' }));
+      skEditClear_();   // 「直す」で開いていた指定を外す＝次に開くときは本日の入力に戻る
+      toast(直した
+        ? L({ ja:'総括表を直しました。最新の内容に置き換わりました', en:'Daily report updated.', vi:'Đã cập nhật báo cáo.' })
+        : L({ ja:'総括表を提出しました。ありがとうございます！', en:'Daily report submitted. Thank you!', vi:'Đã nộp báo cáo. Cảm ơn!' }));
       render();
       const skStore = rec.store, skT = rec.t, skPayload = Object.assign({}, rec); delete skPayload.store; delete skPayload.t;
       postReport({ kind:'soukatsu', store: skStore, note: JSON.stringify(skPayload), t: skT });

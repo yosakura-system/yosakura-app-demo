@@ -28,7 +28,11 @@
 /* ===== 設定 ===== */
 var AUTH_SHEET = '_users';
 var AUTH_HEADERS = ['uid', 'name', 'role', 'stores', 'hash', 'must_change', 'tokens', 'updated'];
-var AUTH_TOKEN_MAX = 5;          // 1アカウントで同時に有効なトークン数（店舗iPad＋スマホ等）
+/* ★1つのIDで同時にログインしていられる端末数。超えると古い端末から順に外れる。
+   2026-09-03＝5→10へ（神田さんの実機で「急にログイン画面になった」＝
+   検証で同じIDを複数の端末・ブラウザで使い、上限を超えて古い端末が押し出されていた）。
+   ⚠️ 上限を無くさない＝退職者の端末が残り続けないようにするための歯止め。 */
+var AUTH_TOKEN_MAX = 10;         // 1アカウントで同時に有効なトークン数（店舗iPad＋スマホ等）
 var AUTH_ROLES = ['staff', 'manager', 'owner', 'hq'];
 
 /* 全員に配る性質のkind（店舗で絞らない）。

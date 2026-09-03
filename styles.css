@@ -486,6 +486,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 /* 総括表の形での月次出力（#/skprint）。
    ★新しい見た目を発明しない＝罫線の表で、総括表と同じ数字の並び。
    画面では横スクロール、印刷ではA4横に1か月が収まる。 */
+/* ★総括表の月次出力はヘッダーの無い画面のため、そのままだと iPhone の時計・電波表示に
+   「個店カルテへ」のボタンが隠れて押せなかった（2026-09-03 ユンさんのご報告）。
+   端末の安全領域のぶんだけ、画面の上に余白を足す。 */
+.screen.skp { padding-top: calc(10px + env(safe-area-inset-top)); }
 .skp-sheet { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
 .skp-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
 .skp-head b { font-size: 15px; }
