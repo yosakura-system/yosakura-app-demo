@@ -35,7 +35,9 @@ body {
   background: var(--kinari);
   position: relative;
   box-shadow: 0 0 60px rgba(0,0,0,.08);
-  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  /* ボトムナビは fixed でなく sticky（下の .tabbar 参照）＝flex縦積みで最下部へ押し下げる。
+     以前の padding-bottom(76px) は fixed バーの重なり避け＝sticky ではバー自身が場所を取るので不要 */
+  display: flex; flex-direction: column;
 }
 
 /* ===== スプラッシュ ===== */
@@ -52,7 +54,7 @@ body {
 
 /* ===== ヘッダー ===== */
 .hdr {
-  position: sticky; top: 0; z-index: 20;
+  position: -webkit-sticky; position: sticky; top: 0; z-index: 20; /* -webkit-＝古いiPadのSafari向け */
   display: flex; align-items: center; gap: 10px;
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
   background: rgba(255,255,255,.85);
@@ -159,7 +161,7 @@ body {
 /* ===== 開発者ビュー（店舗側の表示を確認中の戻るバナー）===== */
 .devview-bar { display: block; width: 100%; border: 0; cursor: pointer; text-align: center;
   background: #7a5c1e; color: #fff; font-family: var(--sans); font-size: 12px; font-weight: 700;
-  padding: 9px 14px; line-height: 1.5; position: sticky; top: 0; z-index: 60; }
+  padding: 9px 14px; line-height: 1.5; position: -webkit-sticky; position: sticky; top: 0; z-index: 60; }
 
 /* ===== アプリ詳細 ===== */
 .appbar { display: flex; align-items: center; gap: 10px; padding: 6px 0 4px; }
@@ -297,10 +299,15 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .stag.st-new { background: #FFFFFF; color: #1F1C1B; box-shadow: inset 0 0 0 1px #1F1C1B; }
 .stag.st-done { background: #EEEBE6; color: #8A817A; }
 
-/* ===== ボトムナビ ===== */
+/* ===== ボトムナビ =====
+   ★fixed＋transform をやめて sticky に（2026-09-04 店舗iPadの実機報告＝スクロール中に
+   バーがページと一緒に動いて画面の途中に現れる。古いiPadのSafariは fixed の描画が
+   スクロールに追従しない既知の症状がある。ヘッダーと同じ sticky なら起きない）。
+   margin-top:auto ＝内容が短い画面でも（#app の flex 縦積みで）画面の最下部へ押し下げる */
 .tabbar {
-  position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 30;
-  width: 100%; max-width: var(--maxw);
+  position: -webkit-sticky; position: sticky; bottom: 0; z-index: 30;
+  margin-top: auto;
+  width: 100%;
   display: flex; justify-content: space-around;
   background: rgba(255,255,255,.9); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--line);
