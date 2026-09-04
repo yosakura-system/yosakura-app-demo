@@ -515,10 +515,19 @@
      ③ 未来の日付は無効 ＝ まだ来ていない日の日報は存在しえない（誤入力・取込ミスの流入を止める） */
   function skClean(arr) {
     const today = todayKey(), latest = {};
+    /* ★同じ店×同じ日に「アプリ提出」と「シート取込（src:'drive'）」の両方があるときは、
+       アプリ提出を勝たせる（2026-09-04 ユンさんの実機報告＝累計が動かない）。
+       取込行は売上・客数しか持たないため、時刻の新しい取込行が勝つと、
+       累計・内訳・チップなどがその日から見えなくなり、翌日の累計の起点も0になる。
+       しかもシートとアプリの数字が少しでも違うと、毎時の取込がその日をかぶせ直す＝毎回負ける。
+       取込の役割は「アプリで出していない日を埋める」＝アプリ提出のある日はアプリが正。
+       同じ出どころ同士は従来どおり新しい方が正（出し直しで直せる）。 */
+    const rank = (r) => r.src === 'drive' ? 0 : 1;
     (arr || []).forEach(r => {
       if (!r || !r.date || r.date > today) return;
       const k = (r.store || '') + '||' + r.date;
-      if (!latest[k] || (Number(r.t) || 0) >= (Number(latest[k].t) || 0)) latest[k] = r;
+      const cur = latest[k];
+      if (!cur || rank(r) > rank(cur) || (rank(r) === rank(cur) && (Number(r.t) || 0) >= (Number(cur.t) || 0))) latest[k] = r;
     });
     return Object.values(latest).filter(r => (Number(r.sales) || 0) > 0);
   }
@@ -540,25 +549,28 @@
      前回（対象日より前で最新の日報・同日再提出は最新が正）の累計を起点にし、当日の数字を足す。
      月累計売上・チップ累計・キャンセル累計＝月のもの（月が替わると0から）／口コミ累計＝通算で引き継ぐ */
   function skCumBase(store, dateStr) {
-    const byDate = {};
-    getSk().forEach(r => {
-      if (r.store !== store || !r.date || r.date >= dateStr) return;
-      if (!byDate[r.date] || (Number(r.t) || 0) >= (Number(byDate[r.date].t) || 0)) byDate[r.date] = r;
-    });
-    let last = null;
-    Object.values(byDate).forEach(r => { if (!last || r.date > last.date) last = r; });
-    const sameYm = last && String(last.date).slice(0, 7) === String(dateStr).slice(0, 7);
+    // getSk()＝店×日1行に正規化済み（同日はアプリ提出＞シート取込・skClean参照）
+    const rows = getSk().filter(r => r.store === store && r.date && r.date < dateStr);
+    const ym = String(dateStr).slice(0, 7);
+    const inM = rows.filter(r => String(r.date).slice(0, 7) === ym);
+    /* 起点にできるのは累計欄を持つ行（＝アプリ提出。取込・旧形式は売上・客数のみ）。
+       月累計売上が入っていれば累計欄を持つ行と見なす（提出があれば当日売上ぶんは必ず入る） */
+    const lastApp = (arr) => { let x = null; arr.forEach(r => { if ((Number(r.mtd) || 0) > 0 && (!x || r.date > x.date)) x = r; }); return x; };
+    const am = lastApp(inM);    // 月内の起点（月累計・チップ・キャンセル＝月が替わると0から）
+    const aa = lastApp(rows);   // 通算の起点（口コミ＝月をまたいで引き継ぐ）
+    /* ★累計欄を持たない行（シート取込の日・累計機能より前の提出）の売上も月累計へ足す（2026-09-04 ユンさんの実機報告）。
+       以前は「直近の1行」だけを見ていたため、直近がその形の行だと起点が0になり、累計が当日分だけになっていた */
+    let mtd = am ? Number(am.mtd) || 0 : 0;
+    inM.forEach(r => { if ((!am || r.date > am.date) && !(Number(r.mtd) || 0)) mtd += Number(r.sales) || 0; });
     /* 仕入は累計欄が無い（毎日「当日分」だけ入れる）ので、当月分をここで足し上げる。
        仕入率（自動計算）＝（この合計＋当日の仕入）÷ 月累計売上 */
     let buym = 0;
-    Object.values(byDate).forEach(r => {
-      if (String(r.date).slice(0, 7) === String(dateStr).slice(0, 7)) buym += Number(r.buy) || 0;
-    });
+    inM.forEach(r => { buym += Number(r.buy) || 0; });
     return {
-      mtd:    sameYm ? Number(last.mtd)    || 0 : 0,
-      tipa:   sameYm ? Number(last.tipa)   || 0 : 0,
-      cancel: sameYm ? Number(last.cancel) || 0 : 0,
-      rva:    last   ? Number(last.rva)    || 0 : 0,
+      mtd,
+      tipa:   am ? Number(am.tipa)   || 0 : 0,
+      cancel: am ? Number(am.cancel) || 0 : 0,
+      rva:    aa ? Number(aa.rva)    || 0 : 0,
       buym
     };
   }
