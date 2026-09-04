@@ -4232,5 +4232,46 @@ console.log('== 複数店オーナーも自店の未提出を見て提出を促�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 日報の累計＝シート取込と同じ日がぶつかっても壊れない（2026-09-04 ユンさんの実機報告）==');
+{
+  const S = '日本料理世桜本店';
+  const today4 = new Date().toLocaleDateString('en-CA');
+  const mFirst4 = today4.slice(0, 7) + '-01';
+  const yest4 = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA'); })();
+  const seedSk4 = (rows) => run(() => {
+    setLS('manager', S, 'ja');
+    localStorage.setItem('yosakura_soukatsu_tab', 'input');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows));
+  });
+  if (yest4 >= mFirst4) {
+    // ① 同じ日にアプリ提出（古い時刻）と取込（新しい時刻・売上が少し違う）が両方ある
+    //    ＝以前は新しい取込が勝ち、累計欄を持たないため起点が0（＝ユンさんの症状）。アプリ提出が正になったことを確認
+    seedSk4([
+      { store: S, date: yest4, sales: 143800, mtd: 143800, tipa: 21000, cancel: 5000, rva: 72, t: Date.now() - 7200e3 },
+      { store: S, date: yest4, sales: 143000, src: 'drive', t: Date.now() - 1800e3 }
+    ]);
+    location.hash = '#/app/soukatsu?x=drv1';
+    let h = registry.app.innerHTML;
+    ok(/id="sk_mtd"[^>]*value="143800"/.test(h) && /id="sk_rva"[^>]*value="72"/.test(h),
+       '取込が同じ日をかぶせても、アプリ提出の累計が起点に入る');
+    // ② 取込しかない日の売上も月累計へ足す（起点＝直近のアプリ提出の累計＋その後の取込日の売上）
+    if (mFirst4 < yest4) {
+      seedSk4([
+        { store: S, date: mFirst4, sales: 100000, mtd: 100000, tipa: 3000, cancel: 0, rva: 70, t: Date.now() - 86400e3 * 3 },
+        { store: S, date: yest4, sales: 50000, src: 'drive', t: Date.now() - 3600e3 }
+      ]);
+      location.hash = '#/app/soukatsu?x=drv2';
+      h = registry.app.innerHTML;
+      ok(/id="sk_mtd"[^>]*value="150000"/.test(h), '取込だけの日の売上も月累計の起点に足される（10万＋5万）');
+      ok(/id="sk_tipa"[^>]*value="3000"/.test(h) && /id="sk_rva"[^>]*value="70"/.test(h), 'チップ・口コミ累計は直近のアプリ提出から引き継ぐ');
+    }
+  }
+  // ③ ソース＝同じ店×同じ日の勝ち方（アプリ提出＞シート取込）が固定されている
+  const src4 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/const rank = \(r\) => r\.src === 'drive' \? 0 : 1;/.test(src4), '同じ店×同じ日はアプリ提出＞シート取込（skClean）');
+  // 後始末
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
