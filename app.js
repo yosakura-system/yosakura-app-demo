@@ -3281,6 +3281,24 @@
         });
       } catch (e) { return false; }
     })();
+    /* ★Google口コミ件数の自動取得（gsnap・2026-09-06 神田さんご承認＝①口コミ欄はGoogle口コミ ②キーはyosakura.fc）。
+       GAS（backend/Google口コミ取得.gs）が1日1回、各店の総口コミ件数と前日比（獲得数）を保存する。
+       ここでは今日か昨日の新しい方を拾い、「口コミ 当日」へ下書きとして入れる（確定は人が提出＝OCRと同じ型）。
+       獲得数が無い日（初回）やマイナスの日（削除があった日）は自動では入れず、手入力に譲る */
+    const gsnap = (() => {
+      let best = null;
+      try {
+        const dks = [dateKeyFor(vis[0], Date.now()), dateKeyFor(vis[0], Date.now() - 864e5)];
+        getReports().forEach(r => {
+          if (r.kind !== 'gsnap' || r.store !== vis[0] || dks.indexOf(String(r.item || '')) === -1) return;
+          if (!best || r.t > best.t) best = r;
+        });
+      } catch (e) {}
+      if (!best) return null;
+      const p = parseNote(best.note);
+      return (p && p.src === 'places' && typeof p.gained === 'number' && p.gained >= 0)
+        ? Object.assign({ _t: best.t, _d: best.item }, p) : null;
+    })();
     /* ★タブ化（2026-08-31 神田さんのご指示＝役割・項目が違うものは縦に積まずタブで分ける。
        「スクロールは結構見なくなる」）。入力／今月の推移（複数店は店舗の状況）／最近の総括表 の3タブ */
     const SKT = [
@@ -3325,6 +3343,7 @@
         ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの総括表から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
         ${skDraft._t ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ レジクローズの日計レポート写真から読み取った数字（売上・客数・現金・カード）が入っています。確認して、違うところは直してから提出してください。', en:'Sales, guests, cash and card were read from the register-close photo. Check and correct before submitting.', vi:'Doanh thu, khách, tiền mặt, thẻ đọc từ ảnh đóng ca. Kiểm tra trước khi gửi.' })}（${timeAgo(skDraft._t)}）</p>` : ''}
         ${skOcrMiss ? `<p class="hint" style="display:block;margin:-2px 0 8px;color:#a23b3b">${L({ ja:'※ 日計レポートの写真は届いていますが、数字を読み取れませんでした（封筒やメモで数字の行が隠れていると読めません）。お手数ですが手入力をお願いします。次回は、レポートの数字が全部見えるように撮っていただくと自動で入ります。', en:'The register-close photo arrived but the numbers could not be read (rows may be covered by the envelope or a note). Please enter them manually; next time keep all numbers visible in the photo.', vi:'Đã nhận ảnh đóng ca nhưng không đọc được số (có thể bị phong bì/ghi chú che). Vui lòng nhập tay; lần sau chụp sao cho thấy rõ các con số.' })}</p>` : ''}
+        ${gsnap ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:`※ 「口コミ 当日」は、Googleの口コミ件数（前日との差）から自動で入っています（対象日 ${gsnap._d}・現在の総数 ${gsnap.total}件）。違うときは直してから提出してください。`, en:`Reviews today was filled from the Google review count (day-over-day, as of ${gsnap._d}, total ${gsnap.total}). Correct if needed.`, vi:`Ô đánh giá hôm nay được điền từ số review Google (so với hôm trước, ${gsnap._d}, tổng ${gsnap.total}). Sửa nếu sai.` })}</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
           <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || today}" max="${today}"></label>
@@ -3348,7 +3367,7 @@
           <div class="stat"><div class="n" id="sk_drinkpct">—</div><div class="k">${L({ja:'ドリンク構成比（自動計算）',en:'Drink share (auto)',vi:'Tỷ trọng đồ uống (tự động)'})}</div></div>
         </div>
         <div class="sk-grid">
-          <label class="fld"><span>${L({ja:'口コミ 当日',en:'Reviews today',vi:'Đánh giá nay'})}</span><input type="text" inputmode="numeric" id="sk_rvt" placeholder="2"></label>
+          <label class="fld"><span>${L({ja:'口コミ 当日',en:'Reviews today',vi:'Đánh giá nay'})}</span><input type="text" inputmode="numeric" id="sk_rvt" placeholder="2"${gsnap ? ` value="${gsnap.gained}"` : ''}></label>
           <label class="fld"><span>${L({ja:'口コミ 累計（自動計算）',en:'Reviews total (auto)',vi:'Đánh giá tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_rva" placeholder="70" value="${skCum0.rva || ''}"></label>
           <label class="fld"><span>${L({ja:'ヒアリング 当日',en:'Hearings today',vi:'Phỏng vấn nay'})}</span><input type="text" inputmode="numeric" id="sk_hear" placeholder="9"></label>
           <label class="fld"><span>${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})}</span><input type="text" inputmode="numeric" id="sk_disc" placeholder="0"></label>
@@ -8277,7 +8296,9 @@
         //   3つとも getReports() で読むのに振り分けに無く、同期のたびにローカルから消えていた
         //   （長堀橋店「中間報告を出したのに履歴に無い→もう一度提出した」＝m.taigaさんの実機報告で発覚。
         //     hqack/appfb（2026-08-31）と同じ取りこぼしの3回目。kind追加は distribute＋KEEP＋テストの3点セットを守る）
-        case 'chukan': case 'chukandraft': case 'skdraft':
+        // ★2026-09-06 追加＝gsnap（Google口コミ件数の1日1回スナップショット）。3点セット（distribute＋KEEP判断＋テスト）
+        //   KEEP判断＝90日で消えてよい（獲得数は総括表の「口コミ 当日」に確定して残るため）
+        case 'chukan': case 'chukandraft': case 'skdraft': case 'gsnap':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
         case 'route': route.push({ store, route:r.item, t, id }); break;

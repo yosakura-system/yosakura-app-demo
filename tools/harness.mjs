@@ -4060,6 +4060,50 @@ console.log('== 写真はあるのに読めなかった夜を、黙って「何�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== Google口コミ件数の自動取得＝「口コミ 当日」へ下書き（2026-09-06 神田さんご承認）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const tk = new Date().toLocaleDateString('en-CA');
+  const noonT = new Date(tk + 'T12:00:00').getTime();
+  // ① 前日比（獲得数）が「口コミ 当日」に自動で入り、出どころの説明が出る
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'gsnap', store:S, item: tk, note: JSON.stringify({ src:'places', total: 132, rating: 4.6, gained: 3 }), photos: [], t: noonT }
+    ]));
+  });
+  location.hash = '#/app/soukatsu?tab=input';
+  let h = registry.app.innerHTML;
+  ok(/id="sk_rvt"[^>]*value="3"/.test(h), '「口コミ 当日」にGoogleの前日比が自動で入る');
+  ok(/Googleの口コミ件数（前日との差）から自動で入っています/.test(h) && /132件/.test(h), '出どころ・対象日・総数の説明が出る');
+  // ② 獲得数がマイナスの日（削除があった日）は自動では入れない（手入力に譲る）
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'gsnap', store:S, item: tk, note: JSON.stringify({ src:'places', total: 132, gained: -1 }), photos: [], t: noonT }
+    ]));
+  });
+  location.hash = '#/app/soukatsu?tab=input';
+  h = registry.app.innerHTML;
+  ok(!/id="sk_rvt"[^>]*value="/.test(h) && !/前日との差）から自動/.test(h), 'マイナスの日は自動では入れない');
+}
+
+console.log('== gsnap が同期で消えない（kind追加の3点セット）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const tk = new Date().toLocaleDateString('en-CA');
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'gsnap', store:S, item: tk, note: JSON.stringify({ src:'places', total: 132, gained: 3 }), t: Date.now() - 1000, id:'g1' }
+  ]};
+  try { run(() => { setLS('manager', S, 'ja'); }); } catch(e){ FAIL++; console.log('  ✗ load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  ok(JSON.parse(localStorage.getItem('yosakura_demo_reports')||'[]').some(r => r.kind==='gsnap'), 'gsnap が同期で残る（＝下書きが働く）');
+  FETCH_ROWS = { ok:false };
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 受信箱＝気づき・コメントの全文が見られる（2026-09-05 神田さんの実機報告＝切れて返答が書けない）==');
 {
   const S = '牛カツ世桜 長堀橋店';
