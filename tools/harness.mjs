@@ -599,7 +599,7 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
   const st = registry.app.innerHTML;
   ok(/長堀橋店/.test(st), '個店カルテが開く');
   ok(/曜日別の平均売上/.test(st), '曜日別の平均売上が出る');
-  ok(/最新の日報（全項目）/.test(st) && /レジ締め担当/.test(st) && /田中/.test(st), '売上・客数以外の全項目（口コミ・原価率・締め担当等）が表示される');
+  ok(/最新の総括表（全項目）/.test(st) && /レジ締め担当/.test(st) && /田中/.test(st), '売上・客数以外の全項目（口コミ・原価率・締め担当等）が表示される');
   ok(/厨房の床を清掃/.test(st) && /豆乳6/.test(st), '特記事項・翌日発注も表示される');
   ok(/入力済みの項目/.test(st) && /<b>18 \/ \d+<\/b>/.test(st), '入力済み項目数（アップされた分だけ表示）が分かる');
   ok(/目標到達/.test(st), '月間目標への到達度が出る');
@@ -682,7 +682,7 @@ console.log('== 日報＝前日分を翌日12時まで（本部の実運用に�
   ok(/前日分/.test(html), '「今日出すもの」の日報は前日分として表示される');
   ok(new RegExp('前日分[^<]*' + yest.slice(5)).test(html), '対象日（前日の日付）が明示される');
   const rowOf = (h, name) => { const i = h.indexOf(name); return i < 0 ? '' : h.slice(Math.max(0, i - 220), i + 220); };
-  ok(/提出済/.test(rowOf(html, '日報')), '翌朝に提出した前日分の日報が「提出済」と判定される');
+  ok(/提出済/.test(rowOf(html, '前日分')), '翌朝に提出した前日分の総括表が「提出済」と判定される');
 
   FETCH_ROWS = { ok:true, reports:[
     { kind:'soukatsu', store:S_HIROSHIMA, note: JSON.stringify({ date: today, sales: 99999, guests: 9 }), t: Date.now(), id:'n2' },
@@ -691,7 +691,7 @@ console.log('== 日報＝前日分を翌日12時まで（本部の実運用に�
   await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/kyou';
   const h2 = registry.app.innerHTML;
-  ok(/未提出/.test(rowOf(h2, '日報')), '当日分だけ出しても、前日分の日報は未提出のまま残る');
+  ok(/未提出/.test(rowOf(h2, '前日分')), '当日分だけ出しても、前日分の総括表は未提出のまま残る');
 }
 FETCH_ROWS = { ok:false };
 
@@ -1069,7 +1069,7 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
   const S_GYU = '牛カツ世桜 長堀橋店';
   const kyou = renderView('kyou','manager',S_GYU,'ja');
   // 出す順＝開店前 → 営業中 → 閉店後
-  const order = ['オープン写真','オープンチェックリスト','アイドルタイムチェックリスト','桜チェックリスト','クローズチェックリスト','日報'];
+  const order = ['オープン写真','オープンチェックリスト','アイドルタイムチェックリスト','桜チェックリスト','クローズチェックリスト','総括表'];
   let prev = -1, ordered = true;
   order.forEach(name => { const i = kyou.indexOf(name); if (i < 0 || i < prev) ordered = false; prev = i; });
   ok(ordered, '日次の提出物が「出す順」に並ぶ（開店前→営業中→閉店後）');
@@ -1418,7 +1418,7 @@ console.log('== 使い方が役割ごとに変わる（紙のガイドと同じ�
   ok(/お名前を登録/.test(staff) && /開いて提出/.test(staff), '店舗＝出すことだけが書いてある');
   ok(!/本部ダッシュボード/.test(staff) && !/資料をマニュアルにひも付/.test(staff),
      '店舗に、本部だけの話は出さない');
-  ok(/日報（総括表）を出す/.test(mgr) && /実施状況を確認/.test(mgr), '店長＝出す＋確かめるまで');
+  ok(/総括表を出す/.test(mgr) && /実施状況を確認/.test(mgr), '店長＝出す＋確かめるまで');
   ok(/所有店舗すべて|見る店舗を切り替え/.test(own), 'オーナー＝複数店の見方が書いてある');
   ok(/加盟店・提出物管理/.test(hq) && /お知らせを配る/.test(hq) && /勉強会を登録/.test(hq),
      '本部＝全店の管理・配信・登録が書いてある');
@@ -2140,9 +2140,9 @@ console.log('== 気づきの報告を、日報から切り離して1日の最後
   location.hash = '#/app/kyou';
   const kyouHtml = registry.app.innerHTML;
   ok(/気づきの報告/.test(kyouHtml), '日次業務に「気づきの報告」が出る');
-  const iNippou = kyouHtml.indexOf('日報');
+  const iNippou = kyouHtml.indexOf('総括表');
   const iKizuki = kyouHtml.indexOf('気づきの報告');
-  ok(iKizuki > iNippou && iNippou >= 0, '日報より後ろ＝1日の最後に並んでいる');
+  ok(iKizuki > iNippou && iNippou >= 0, '総括表より後ろ＝1日の最後に並んでいる');
 
   // 出したら提出済みになる
   FETCH_ROWS = { ok:true, reports:[
@@ -3785,7 +3785,7 @@ console.log('== 日報の累計＝当日だけ入れれば自動で足し上が�
   ok(/id="sk_rva"[^>]*value="70"/.test(h), '口コミ累計＝前月から通算で自動で入る');
   ok(/id="sk_mtd"[^>]*value=""/.test(h) && /id="sk_tipa"[^>]*value=""/.test(h), '月累計売上・チップ累計は月が替わると0から（空欄）');
   ok(/id="sk_cancelt"/.test(h), '「キャンセル 当日」の欄が増えた');
-  ok(/月累計売上（自動計算）/.test(h) && /前回までの日報から自動で入っています/.test(h), 'ラベルと説明で自動計算だと分かる');
+  ok(/月累計売上（自動計算）/.test(h) && /前回までの総括表から自動で入っています/.test(h), 'ラベルと説明で自動計算だと分かる');
   // ② 同月内＝前回の累計がそのまま起点として入る
   if (today3 !== monthFirst) {
     seedSk3([{ store: S, date: monthFirst, sales: 143800, mtd: 143800, tipa: 21000, cancel: 5000, rva: 72, t: Date.now() - 3600e3 }]);
@@ -3993,6 +3993,64 @@ console.log('== チェックリスト項目のまとめて貼り付け（2026-09
   ok(items.some(c => c.label === 'シャッターの支柱を立て、鍵を閉める'), '行頭の「・」が外れる');
   ok(items.some(c => c.label === '酢飯（基本：5合）を作る'), '「2.」の番号が外れる');
   ok(items.some(c => c.label === '3合を炊く'), '文頭の数字（3合を炊く）は削られず残る');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 日報は総括表へ一本化＝長堀橋の日報項目を総括表フォームへ（2026-09-06 神田さんのご指示・別の提出物は作らない）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  let h = renderView('soukatsu', 'staff', S, 'ja');
+  ['日報の項目（長堀橋店）', '昼の人数', '夜の人数', '牛カツサンド販売個数', 'ロスの内容（対象・量・原因）',
+   '今日うまくいかなかったこと・課題', '明日からの改善・アクション', '引き継ぎ（朝・昼 → 夜）', '引き継ぎ（夜 → 翌朝・昼）'].forEach(f =>
+    ok(h.includes(f), `総括表フォームに「${f}」がある`));
+  ok(/id="sk_lprod"/.test(h) && /id="sk_nprod"/.test(h) && /id="sk_rvrate"/.test(h), '昼・夜の人時生産性と口コミ獲得率の自動計算枠がある');
+  // 他店のフォームは従来どおり（長堀橋限定トライアル）
+  h = renderView('soukatsu', 'staff', '日本料理世桜本店', 'ja');
+  ok(!/日報の項目（長堀橋店）/.test(h) && !/id="sk_sand"/.test(h), '他店の総括表フォームは変わらない');
+  // 送信＝新しい項目が soukatsu の同じ1行に入る（別の提出物・別のkindを作らない）
+  h = renderView('soukatsu', 'staff', S, 'ja');
+  doc.getElementById('sk_sales').value = '250000';
+  doc.getElementById('sk_guests').value = '50';
+  doc.getElementById('sk_lstaff').value = '3';
+  doc.getElementById('sk_lhours').value = '4';
+  doc.getElementById('sk_sand').value = '12';
+  doc.getElementById('sk_bad').value = '提供が遅れた時間帯があった';
+  doc.getElementById('sk_hikin').value = 'キャベツ多めに仕込み済み';
+  doc.getElementById('submitSk').onclick();
+  const rows = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]');
+  const r = rows[rows.length - 1];
+  ok(!!r && r.sand === '12' && r.bad === '提供が遅れた時間帯があった' && r.hikin === 'キャベツ多めに仕込み済み',
+     '新しい項目が総括表の同じ1行に保存される（kindは soukatsu のまま）');
+  const src8 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/\(!f\.legacy && !f\.opt\) \|\| hasVal/.test(src8), '日報詳細は値の入った項目だけ表示（他店の表示を変えない）');
+  ok(/sk_lstaff', 'sk_lhours', 'sk_nstaff', 'sk_nhours'/.test(src8), '昼・夜の人数×時間→総労働時間の自動入力が配線されている');
+  ok(!/kind:'eigyo'|kind: 'eigyo'/.test(src8), '別の提出物（営業日報）は作っていない＝総括表1本');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 受信箱＝気づき・コメントの全文が見られる（2026-09-05 神田さんの実機報告＝切れて返答が書けない）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const longNote = '排水口の清掃をしていたところ、グリストラップの蓋の留め具が1か所外れていました。応急で針金で固定しましたが、部品の交換が必要だと思います。型番の分かる方がいれば教えてください。あわせて、夜の閉め作業のチェック項目にも追加した方がよいと思います。';
+  run(() => {
+    setLS('hq', 'all', 'ja');
+    localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([
+      { store:S, cat:'facility', note: longNote, photos: [], t: Date.now() - 3600000 }
+    ]));
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'chukan', store:S, item:'midday',
+        note: JSON.stringify({ rtype:'midday', total: 143800, memo:'常連のお客様から「前より提供が早くなった」と声をいただきました。新人の動きも良いです。' }),
+        photos: [], t: Date.now() - 1800000 }
+    ]));
+  });
+  location.hash = '#/app/inbox';
+  const h = registry.app.innerHTML;
+  ok(/全文を見る/.test(h) && /data-ackfull=/.test(h), '長い気づきに「全文を見る」ボタンが出る');
+  ok(!h.includes('チェック項目にも追加した方がよい'), '一覧では90字で省略される（全部は並べない）');
+  ok(/新人の動きも良いです/.test(h), '中間報告のコメントが40字で切られない（以前はここで切れていた）');
+  const src7 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/dataset\.ackfull/.test(src7) && /inboxFullKey/.test(src7), '「全文を見る」の開閉が配線されている（押すと同じ行で開く）');
+  ok(/white-space:pre-wrap/.test(src7), '全文表示は改行を残す');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
