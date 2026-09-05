@@ -327,7 +327,7 @@
       desc:{ ja:'このアプリの使い方（1分）', en:'Quick app guide (1 min)', vi:'Hướng dẫn nhanh (1 phút)' } },
     // 8/7 増田さん: 日次業務と重複するため「報告する」タブには出さない。日次業務（今日出すもの）から開く
     { id:'soukatsu', group:'storeops', icon:'table', tabHide:true, roles:['staff','manager','owner','hq'], // 日報は店舗iPad（現場）でも入力可（上原さんご要望）
-      name:{ ja:'総括表の入力（日報）', en:'Daily Summary', vi:'Tổng kết ngày' },
+      name:{ ja:'総括表の入力', en:'Summary Sheet', vi:'Bảng tổng kết' },
       desc:{ ja:'日次の売上・客数・分析（店舗iPadでも入力可）', en:'Daily sales, guests, review', vi:'Doanh thu, khách, phân tích' } },
     /* 2026-08-12 神田さんのご要望：実施は一部の店舗でも、今後実施する店舗もあるため、
        自店のスタッフさんが過去の回をアーカイブとして確認できるようにする。 */
@@ -859,7 +859,7 @@
         b:{ ja:'右上の「店長 ・ ○○店」から。出したものに、どなたが出したかが残ります。', en:'From the chip at the top right. Submissions record who sent them.', vi:'Từ chip góc trên phải. Ghi lại ai đã nộp.' } },
       { icon:'check', t:{ ja:'今日出すものを確認して出す', en:'Check and submit today’s items', vi:'Kiểm tra và nộp hôm nay' },
         b:{ ja:'ホームの「日次業務」から。締切を過ぎたものがあると、ホームの上にお知らせが出ます。', en:'From “Daily tasks”. Overdue items appear at the top of Home.', vi:'Từ “Hàng ngày”. Quá hạn sẽ hiện ở đầu Trang chủ.' } },
-      { icon:'report', t:{ ja:'日報（総括表）を出す', en:'Send the daily report', vi:'Gửi báo cáo ngày' },
+      { icon:'report', t:{ ja:'総括表を出す', en:'Send the summary sheet', vi:'Gửi bảng tổng kết' },
         b:{ ja:'前日分を翌日のお昼までに。出すと、本部の数字にそのまま反映されます。二重に書く必要はありません。', en:'Yesterday’s figures by noon. They flow straight into HQ’s numbers.', vi:'Số liệu hôm trước trước trưa. Tự vào số liệu HQ.' } },
       { icon:'gauge', t:{ ja:'自店の数字を見る', en:'See your store’s numbers', vi:'Xem số liệu cửa hàng' },
         b:{ ja:'売上・客数・客単価・原価率と、月の目標に対する達成率が見られます。', en:'Sales, guests, spend per guest, cost rate and progress to target.', vi:'Doanh thu, khách, chi tiêu, tỷ lệ giá vốn và tiến độ.' } },
@@ -882,7 +882,7 @@
       { icon:'inbox', t:{ ja:'加盟店・提出物管理', en:'Submissions', vi:'Quản lý nộp' },
         b:{ ja:'誰が何を出していないかを自動で抽出します。「未提出の連絡文をコピー」で、そのままLINEへ貼れる文面ができます。', en:'Missing items are extracted automatically; copy a ready-made message for LINE.', vi:'Tự trích mục còn thiếu; sao chép tin nhắn cho LINE.' } },
       { icon:'gauge', t:{ ja:'本部ダッシュボード', en:'HQ dashboard', vi:'Bảng điều khiển HQ' },
-        b:{ ja:'日報が出ると、そのまま全店の数字になります。転記は要りません。店舗名から個店カルテへ入れます。', en:'Daily reports become HQ numbers automatically. No re-entry.', vi:'Báo cáo ngày tự thành số liệu HQ. Không nhập lại.' } },
+        b:{ ja:'総括表が出ると、そのまま全店の数字になります。転記は要りません。店舗名から個店カルテへ入れます。', en:'Daily reports become HQ numbers automatically. No re-entry.', vi:'Báo cáo ngày tự thành số liệu HQ. Không nhập lại.' } },
       { icon:'bell', t:{ ja:'お知らせを配る', en:'Send announcements', vi:'Gửi thông báo' },
         b:{ ja:'全店にも、特定の店舗にも配れます。画像と動画リンクを添えられ、重要にすると各店のホーム上部に出ます。', en:'Send to all or selected stores, with images and video links.', vi:'Gửi tất cả hoặc chọn cửa hàng, kèm ảnh và video.' } },
       { icon:'link', t:{ ja:'資料をマニュアルにひも付ける', en:'Link materials to manuals', vi:'Gắn tài liệu vào cẩm nang' },
@@ -1346,12 +1346,12 @@
       b:{ ja:'画面が古いときは、いちばん下の「最新にする」。分からないときは「よくある質問」か店長へ。', en:'Tap “Refresh” at the bottom if the screen looks old. Ask FAQ or your manager.', vi:'Nhấn “Cập nhật” ở cuối màn hình. Hỏi FAQ hoặc quản lý.' } }
   ] : [
     { t:{ ja:'毎日の報告は、アプリへ一本化していきます', en:'Reports are moving into the app', vi:'Báo cáo đang chuyển vào ứng dụng' },
-      b:{ ja:'提出物・写真・日報を順次アプリへ統一していきます。移行の時期・対象は本部からご案内します。', en:'Submissions, photos and daily reports are being unified here. HQ will announce the schedule.', vi:'Các báo cáo sẽ thống nhất tại đây. HQ sẽ thông báo lộ trình.' } },
+      b:{ ja:'提出物・写真・総括表を順次アプリへ統一していきます。移行の時期・対象は本部からご案内します。', en:'Submissions, photos and daily reports are being unified here. HQ will announce the schedule.', vi:'Các báo cáo sẽ thống nhất tại đây. HQ sẽ thông báo lộ trình.' } },
     { t:{ ja:'はじめかた（最初に1回だけ）', en:'Getting started (once)', vi:'Bắt đầu (một lần)' },
       b:{ ja:'本部からお渡ししたIDと仮パスワードでログインし、ご自分のパスワードへ変更してください（6文字以上）。ホーム画面に追加しておくと、次からワンタップです。', en:'Sign in with the HQ-issued ID and temporary password, then set your own (6+ chars). Add to home screen for one-tap access.', vi:'Đăng nhập bằng ID và mật khẩu tạm, sau đó đổi mật khẩu riêng (6+ ký tự).' } },
     { t:{ ja:'今日出すもの・写真', en:'Today’s items & photos', vi:'Việc hôm nay & ảnh' }, go:'/app/kyou',
       b:{ ja:'今日出すものが上から並びます。写真は撮って送るだけで、送り先を選びません。', en:'Everything due today, top to bottom. Photos: just shoot and send.', vi:'Việc hôm nay từ trên xuống. Ảnh chỉ cần chụp và gửi.' } },
-    { t:{ ja:'日報（総括表）は一度入れるだけ', en:'Daily report: enter once', vi:'Báo cáo ngày: nhập một lần' }, go:'/app/soukatsu',
+    { t:{ ja:'総括表は一度入れるだけ', en:'Summary sheet: enter once', vi:'Bảng tổng kết: nhập một lần' }, go:'/app/soukatsu',
       b:{ ja:'「入力」タブに入れた数字が、そのままグラフ・月次のまとめ・本部の集計になります。転記のやり直しはありません。', en:'Numbers entered once feed the graphs, monthly summary and HQ view.', vi:'Nhập một lần, tự động thành biểu đồ và tổng hợp.' } },
     { t:{ ja:'お店の数字を見る', en:'See your numbers', vi:'Xem số liệu' }, go:'/app/soukatsu?tab=summary',
       b:{ ja:'お店の動き（前の期間との比較・客数と客単価の分解）、今月の着地見込み、月別の推移、曜日別が見られます。', en:'Movement vs previous period, projected month-end, monthly and weekday trends.', vi:'Biến động, dự kiến chốt tháng, xu hướng theo tháng/thứ.' } },
@@ -3300,7 +3300,7 @@
         </div>`;
     })();
     return `
-      ${NOTE({ ja:'◆ 実際の日報フォーマットで入力→保存できます（履歴と本部集約に反映）', en:'◆ Enter in the real daily-report format; it saves to history & HQ', vi:'◆ Nhập theo mẫu báo cáo ngày thực tế; lưu vào lịch sử & HQ' })}
+      ${NOTE({ ja:'◆ 実際の総括表の項目で入力→保存できます（履歴と本部集約に反映）', en:'◆ Enter in the real daily-report format; it saves to history & HQ', vi:'◆ Nhập theo mẫu báo cáo ngày thực tế; lưu vào lịch sử & HQ' })}
       ${skTabSeg}
       ${head}
       ${skTab !== 'input' ? '' : (() => { const skCum0 = skCumBase(vis[0], today); return `<div class="card" id="skForm">
@@ -3308,7 +3308,7 @@
         ${/* ★提出済みの日を開いているときに出す案内（2026-09-03 ユンさんのご要望＝後から直したい）。
               中身は画面を作ったあとに入れる（その日の日報があるかは日付を変えても変わるため） */''}
         <p class="hint" id="sk_editnote" style="display:none;margin:-2px 0 8px;color:#8a6d3b"></p>
-        ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの日報から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
+        ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの総括表から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
         ${skDraft._t ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ レジクローズの日計レポート写真から読み取った数字（売上・客数・現金・カード）が入っています。確認して、違うところは直してから提出してください。', en:'Sales, guests, cash and card were read from the register-close photo. Check and correct before submitting.', vi:'Doanh thu, khách, tiền mặt, thẻ đọc từ ảnh đóng ca. Kiểm tra trước khi gửi.' })}（${timeAgo(skDraft._t)}）</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
@@ -3372,6 +3372,33 @@
           <div class="stat"><div class="n" id="sk_laborauto">—</div><div class="k">${L({ja:'人件費率（自動計算）',en:'Labor % (auto)',vi:'% nhân sự (tự động)'})}</div></div>
         </div>
         <label class="fld"><span>${L({ ja:'所感（今日の感想）', en:'Notes on the day', vi:'Cảm nhận hôm nay' })}</span><textarea id="sk_memo" placeholder="${L({ja:'客足・ランチ／ディナー・運営面など',en:'traffic, lunch/dinner, operations …',vi:'khách, trưa/tối, vận hành …'})}"></textarea></label>
+
+        ${vis[0] !== '牛カツ世桜 長堀橋店' ? '' : `
+        ${/* ★日報の項目（2026-09-05 秋定さんのご要望＝日報は総括表へ一本化・長堀橋トライアル）。
+             別の提出物は作らない＝この総括表1本にすべて入れる（神田さんのご指示・2026-09-06）。
+             昼売上＝「昼のみ売上」の欄・夜売上＝当日売上−昼＝再入力なしで昼夜の人時生産性を出す */''}
+        <div class="idlabel" style="margin-top:14px">${L({ ja:'日報の項目（長堀橋店）', en:'Daily-report items (Nagahoribashi)', vi:'Mục nhật báo (Nagahoribashi)' })}</div>
+        <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'店舗の日報フォーマットの項目です。人数と時間を入れると、昼・夜の人時生産性が自動で出ます（昼売上＝昼のみ売上、夜売上＝当日売上−昼）。', en:'Items from the store’s daily-report format. Lunch/night productivity is calculated automatically.', vi:'Các mục theo mẫu nhật báo của cửa hàng. Năng suất trưa/tối được tính tự động.' })}</p>
+        <div class="sk-grid">
+          <label class="fld"><span>${L({ja:'昼の人数',en:'Lunch staff',vi:'NV ca trưa'})}</span><input type="text" inputmode="numeric" id="sk_lstaff" placeholder="3"></label>
+          <label class="fld"><span>${L({ja:'昼の稼働時間（1人・h）',en:'Lunch hours/person',vi:'Giờ/người (trưa)'})}</span><input type="text" inputmode="decimal" id="sk_lhours" placeholder="4"></label>
+          <label class="fld"><span>${L({ja:'夜の人数',en:'Night staff',vi:'NV ca tối'})}</span><input type="text" inputmode="numeric" id="sk_nstaff" placeholder="3"></label>
+          <label class="fld"><span>${L({ja:'夜の稼働時間（1人・h）',en:'Night hours/person',vi:'Giờ/người (tối)'})}</span><input type="text" inputmode="decimal" id="sk_nhours" placeholder="5"></label>
+        </div>
+        <div class="stat-row" style="margin:2px 0 10px">
+          <div class="stat"><div class="n" id="sk_lprod">—</div><div class="k">${L({ja:'人時生産性・昼（自動計算）',en:'Lunch ¥/hour (auto)',vi:'DT/giờ trưa (tự động)'})}</div></div>
+          <div class="stat"><div class="n" id="sk_nprod">—</div><div class="k">${L({ja:'人時生産性・夜（自動計算）',en:'Night ¥/hour (auto)',vi:'DT/giờ tối (tự động)'})}</div></div>
+          <div class="stat"><div class="n" id="sk_rvrate">—</div><div class="k">${L({ja:'口コミ獲得率（自動計算）',en:'Review rate (auto)',vi:'Tỷ lệ review (tự động)'})}</div></div>
+        </div>
+        <p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 昼・夜の人数と時間を入れると「総労働時間」も自動で入ります（違うときは直せます）。口コミ獲得率＝当日口コミ÷客数。', en:'Total work hours is filled from these automatically (editable). Review rate = today’s reviews ÷ guests.', vi:'Tổng giờ làm tự điền từ các ô này (sửa được). Tỷ lệ review = review hôm nay ÷ khách.' })}</p>
+        <div class="sk-grid">
+          <label class="fld"><span>${L({ja:'牛カツサンド販売個数',en:'Gyukatsu sandwiches sold',vi:'Số bánh mì đã bán'})}</span><input type="text" inputmode="numeric" id="sk_sand" placeholder="0"></label>
+        </div>
+        <label class="fld"><span>${L({ ja:'ロスの内容（対象・量・原因）', en:'Loss details (item, amount, cause)', vi:'Chi tiết hao hụt (mục, lượng, lý do)' })}</span><textarea id="sk_lossnote" placeholder="${esc(L({ja:'例）⑤キャベツ／外葉300g／仕込みが多かった（1行に1件）',en:'e.g. cabbage / 300g / over-prepped (one per line)',vi:'vd: bắp cải / 300g / sơ chế dư (mỗi dòng 1 mục)'}))}"></textarea></label>
+        <label class="fld"><span>${L({ ja:'今日うまくいかなかったこと・課題', en:'Issues today', vi:'Vấn đề hôm nay' })}</span><textarea id="sk_bad"></textarea></label>
+        <label class="fld"><span>${L({ ja:'明日からの改善・アクション', en:'Improvements from tomorrow', vi:'Cải thiện từ ngày mai' })}</span><textarea id="sk_action"></textarea></label>
+        <label class="fld"><span>${L({ ja:'引き継ぎ（朝・昼 → 夜）', en:'Handover (day → night)', vi:'Bàn giao (ngày → tối)' })}</span><textarea id="sk_hikin"></textarea></label>
+        <label class="fld"><span>${L({ ja:'引き継ぎ（夜 → 翌朝・昼）', en:'Handover (night → next morning)', vi:'Bàn giao (tối → sáng hôm sau)' })}</span><textarea id="sk_hikim"></textarea></label>`}
 
         <div class="idlabel" style="margin-top:14px">${L({ ja:'お客様の内訳（国別・組数／人数）', en:'Guests by country (groups / people)', vi:'Khách theo quốc gia (nhóm / người)' })}</div>
         <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'総括表と同じ区分です。分かるものだけで大丈夫です（空欄は0として扱いません）。', en:'Same categories as the summary sheet. Fill only what you know.', vi:'Cùng phân loại với bảng tổng kết. Chỉ điền phần bạn biết.' })}</p>
@@ -3516,7 +3543,7 @@
           ${cols}
         </div>
         <div class="colaxis"><span>${esc(mdLabel(days[0]))}</span><span>${esc(mdLabel(days[Math.floor(days.length / 2)]))}</span><span>${esc(mdLabel(days[days.length - 1]))}</span></div>
-        ${opt.store ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の日報（全項目）が開きます', en:'Tap a bar to open that day\'s full report', vi:'Chạm vào cột để mở báo cáo ngày đó' })}</div>` : ''}
+        ${opt.store ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の総括表（全項目）が開きます', en:'Tap a bar to open that day\'s full report', vi:'Chạm vào cột để mở báo cáo ngày đó' })}</div>` : ''}
       </div>`;
   }
   // 横棒（曜日別など・タップなし）
@@ -3750,7 +3777,19 @@
     { k:'hours',     t:{ ja:'総労働時間（h）', en:'Total work hours', vi:'Tổng giờ làm (h)' }, f:'num' },
     { k:'laborcost', t:{ ja:'人件費（当日）', en:'Labor cost (day)', vi:'Chi phí NS (ngày)' }, f:'yen' },
     { k:'loss',      t:{ ja:'ロス金額', en:'Loss amount', vi:'Tiền hao hụt' },                f:'yen' },
-    { k:'memo',      t:{ ja:'所感（今日の感想）', en:'Notes on the day', vi:'Cảm nhận hôm nay' }, f:'txt' }
+    { k:'memo',      t:{ ja:'所感（今日の感想）', en:'Notes on the day', vi:'Cảm nhận hôm nay' }, f:'txt' },
+    /* 日報の項目（2026-09-05 秋定さんのご要望＝日報は総括表へ一本化・長堀橋トライアル）。
+       opt＝値の入っている日報でだけ表示する（他店の詳細表示を変えない） */
+    { k:'lstaff',   t:{ ja:'昼の人数', en:'Lunch staff', vi:'NV ca trưa' },                    f:'num', opt:true },
+    { k:'lhours',   t:{ ja:'昼の稼働時間（1人・h）', en:'Lunch hours/person', vi:'Giờ/người (trưa)' }, f:'num', opt:true },
+    { k:'nstaff',   t:{ ja:'夜の人数', en:'Night staff', vi:'NV ca tối' },                     f:'num', opt:true },
+    { k:'nhours',   t:{ ja:'夜の稼働時間（1人・h）', en:'Night hours/person', vi:'Giờ/người (tối)' }, f:'num', opt:true },
+    { k:'sand',     t:{ ja:'牛カツサンド販売個数', en:'Sandwiches sold', vi:'Bánh mì đã bán' }, f:'num', opt:true },
+    { k:'lossnote', t:{ ja:'ロスの内容', en:'Loss details', vi:'Chi tiết hao hụt' },           f:'txt', opt:true },
+    { k:'bad',      t:{ ja:'課題', en:'Issues', vi:'Vấn đề' },                                 f:'txt', opt:true },
+    { k:'action',   t:{ ja:'明日からの改善', en:'Improvements', vi:'Cải thiện' },              f:'txt', opt:true },
+    { k:'hikin',    t:{ ja:'引き継ぎ（朝・昼→夜）', en:'Handover (→night)', vi:'Bàn giao (→tối)' }, f:'txt', opt:true },
+    { k:'hikim',    t:{ ja:'引き継ぎ（夜→翌朝・昼）', en:'Handover (→morning)', vi:'Bàn giao (→sáng)' }, f:'txt', opt:true }
   ];
   /* 顧客情報＝国別の組数・人数（総括表 Ver.2.6 の「顧客情報」欄）。
      サーベイの来店国と並べて見られるようにするため、シートと同じ区分にそろえている。 */
@@ -3785,8 +3824,8 @@
   const skFmtVal = (f, v) => f === 'yen' ? yen(numOr0(v)) : f === 'pct' ? (numOr0(v).toFixed(1) + '%') : f === 'num' ? numOr0(v).toLocaleString('en-US') : esc(String(v));
   // 日報1件の全項目（未入力は「—」＝アップされたら自動で埋まる）
   function skFieldGrid(r) {
-    // legacy＝旧形式の項目（点数・手入力の原価率）。値が入っている古い日報でだけ表示する
-    const flds = SK_FIELDS.filter(f => !f.legacy || hasVal(r[f.k]));
+    // legacy＝旧形式の項目・opt＝店舗トライアルの項目。どちらも値が入っている日報でだけ表示する
+    const flds = SK_FIELDS.filter(f => (!f.legacy && !f.opt) || hasVal(r[f.k]));
     const filled = flds.filter(f => hasVal(r[f.k])).length;
     const per = numOr0(r.guests) ? Math.round(numOr0(r.sales) / numOr0(r.guests)) : 0;
     const fl = hasVal(r.food) ? (numOr0(r.food) + numOr0(r.labor)).toFixed(1) + '%' : '';
@@ -3829,7 +3868,7 @@
       ${r ? skFieldGrid(r) : `<p class="muted">${L({ ja:'この日はまだ総括表が提出されていません。', en:'No daily report submitted for this day yet.', vi:'Chưa có báo cáo cho ngày này.' })}</p>`}
       ${/* ★提出した日報を後から直せるように（2026-09-03 ユンさんのご要望）。
             入力画面をこの日の内容で開き直す＝出し直すと最新の内容に置き換わる */''}
-      ${(r && visibleStores().includes(store)) ? `<button class="btn-primary" data-skedit="${esc(store + '||' + date)}" style="margin-top:14px">${L({ ja:'この日報を直す', en:'Edit this report', vi:'Sửa báo cáo này' })}</button>` : ''}
+      ${(r && visibleStores().includes(store)) ? `<button class="btn-primary" data-skedit="${esc(store + '||' + date)}" style="margin-top:14px">${L({ ja:'この総括表を直す', en:'Edit this report', vi:'Sửa báo cáo này' })}</button>` : ''}
       <button class="btn-primary" data-close="1" style="margin-top:14px">${L({ ja:'閉じる', en:'Close', vi:'Đóng' })}</button>
     </div></div>`);
     mask.addEventListener('click', (e) => { if (e.target === mask || (e.target.closest && e.target.closest('[data-close]'))) mask.remove(); });
@@ -3873,7 +3912,7 @@
           <div class="ico">${svg('table')}</div>
           <div><h1>${esc(storeLabel(store))}</h1><p>${esc(store)}${storeGyotai(store) ? '　/　' + esc(gyotaiLabel(storeGyotai(store))) : ''}</p></div>
         </div>
-        ${NOTE({ ja:'◆ 総括表（日報）に入力された内容を、この店舗ぶんだけまとめています', en:'◆ Everything submitted in this store\'s daily reports, in one place', vi:'◆ Tổng hợp báo cáo ngày của cửa hàng này' })}
+        ${NOTE({ ja:'◆ 総括表に入力された内容を、この店舗ぶんだけまとめています', en:'◆ Everything submitted in this store\'s daily reports, in one place', vi:'◆ Tổng hợp báo cáo ngày của cửa hàng này' })}
         <div class="card">
           <div class="mnav">
             <button class="chip" data-go="${esc(nav(-1))}">‹</button>
@@ -3903,8 +3942,8 @@
             : `<div class="muted">${L({ ja:'この月はまだ入力がありません', en:'No entries this month', vi:'Chưa có dữ liệu tháng này' })}</div>`}
         </div>
         <div class="card">
-          <h3>${L({ ja:'最新の日報（全項目）', en:'Latest daily report (all fields)', vi:'Báo cáo mới nhất (tất cả)' })}${latest ? `　<span class="muted">${esc(mdLabel(latest.date))}</span>` : ''}</h3>
-          ${latest ? skFieldGrid(latest) : `<p class="muted">${L({ ja:'この月の日報がまだありません。提出されると、売上・客数のほか、口コミ・ヒアリング・仕入・チップ・発注など全項目がここに表示されます。', en:'No report yet this month. Once submitted, all fields appear here.', vi:'Chưa có báo cáo tháng này.' })}</p>`}
+          <h3>${L({ ja:'最新の総括表（全項目）', en:'Latest daily report (all fields)', vi:'Báo cáo mới nhất (tất cả)' })}${latest ? `　<span class="muted">${esc(mdLabel(latest.date))}</span>` : ''}</h3>
+          ${latest ? skFieldGrid(latest) : `<p class="muted">${L({ ja:'この月の総括表がまだありません。提出されると、売上・客数のほか、口コミ・ヒアリング・仕入・チップ・発注など全項目がここに表示されます。', en:'No report yet this month. Once submitted, all fields appear here.', vi:'Chưa có báo cáo tháng này.' })}</p>`}
         </div>
         <div class="card">
           <h3>${L({ ja:'この店舗の他のデータ', en:'Other data for this store', vi:'Dữ liệu khác' })}</h3>
@@ -3999,7 +4038,7 @@
       <main class="screen skp">
         <div class="appbar no-print"><button class="back" data-go="/store?s=${encodeURIComponent(store)}&ym=${ym}">${svg('back')}${L({ ja:'個店カルテへ', en:'Back to store', vi:'Về cửa hàng' })}</button></div>
         <div class="card no-print">
-          ${NOTE({ ja:'◆ アプリに入力された日報を、総括表と同じ並びで1か月分まとめました。印刷して紙で保管できます（A4横）。', en:'◆ One month of app-entered reports in the summary-sheet layout. Print on A4 landscape for paper filing.', vi:'◆ Một tháng báo cáo theo bố cục bảng tổng kết. In A4 ngang để lưu giấy.' })}
+          ${NOTE({ ja:'◆ アプリに入力された内容を、総括表と同じ並びで1か月分まとめました。印刷して紙で保管できます（A4横）。', en:'◆ One month of app-entered reports in the summary-sheet layout. Print on A4 landscape for paper filing.', vi:'◆ Một tháng báo cáo theo bố cục bảng tổng kết. In A4 ngang để lưu giấy.' })}
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn-primary" id="skpPrint" style="flex:1">${L({ ja:'印刷する', en:'Print', vi:'In' })}</button>
             <button class="btn-primary" id="skpCsv" style="flex:1">${L({ ja:'CSVで保存', en:'Save CSV', vi:'Lưu CSV' })}</button>
@@ -4027,7 +4066,7 @@
             <span>${L({ ja:'人件費率（自動計算）', en:'Labor % (auto)', vi:'% nhân sự (auto)' })}：${tot.laborcost ? tot.laborRate.toFixed(1) + '%' : '—'}</span>
             <span>${L({ ja:'人時生産性（自動計算）', en:'Sales/hour (auto)', vi:'DT/giờ (auto)' })}：${tot.prodh ? '¥' + tot.prodh.toLocaleString('en-US') + '/h' : '—'}</span>
           </div>
-          <p class="hint skp-note">${L({ ja:'※ 「自動計算」と書かれた数字（客単価・仕入率・人件費率・人時生産性）は、入力された元の数字（売上・客数・仕入・人件費・労働時間）から自動で計算されます。仕入率は在庫を見ない速報値で、在庫込みの原価率は月締めの「数値・原価率」で計算します。入力は要りません。空欄の日は未入力です。＊印の昼のみ売上は、その日の中間報告から自動で拾った数字です（日報に入力があればそちらが優先されます）。', en:'Values marked (auto) are calculated automatically from entered base numbers; no input needed. Blank days have no entry. Lunch values marked ＊ are taken automatically from that day’s midday report (a value entered in the daily report takes priority).', vi:'Các số ghi (tự động) được tính tự động từ số gốc đã nhập. Ngày trống là chưa nhập. Số có dấu ＊ lấy tự động từ báo cáo giữa ngày.' })}</p>
+          <p class="hint skp-note">${L({ ja:'※ 「自動計算」と書かれた数字（客単価・仕入率・人件費率・人時生産性）は、入力された元の数字（売上・客数・仕入・人件費・労働時間）から自動で計算されます。仕入率は在庫を見ない速報値で、在庫込みの原価率は月締めの「数値・原価率」で計算します。入力は要りません。空欄の日は未入力です。＊印の昼のみ売上は、その日の中間報告から自動で拾った数字です（総括表に入力があればそちらが優先されます）。', en:'Values marked (auto) are calculated automatically from entered base numbers; no input needed. Blank days have no entry. Lunch values marked ＊ are taken automatically from that day’s midday report (a value entered in the daily report takes priority).', vi:'Các số ghi (tự động) được tính tự động từ số gốc đã nhập. Ngày trống là chưa nhập. Số có dấu ＊ lấy tự động từ báo cáo giữa ngày.' })}</p>
         </div>
       </main>`;
   }
@@ -4583,7 +4622,7 @@
     { v:'promo',   t:{ ja:'販促物・制作物', en:'Promotional items', vi:'Vật phẩm quảng bá' },
                    s:{ ja:'POP・印刷物・撮影の依頼', en:'POP, printing, and photo requests', vi:'POP, in ấn, chụp ảnh' } },
     { v:'submit',  t:{ ja:'提出物・報告', en:'Submissions & reports', vi:'Nộp bài & báo cáo' },
-                   s:{ ja:'日報・月次・LINEでの報告の出し方', en:'Daily/monthly reports and LINE reporting', vi:'Báo cáo ngày/tháng và báo cáo qua LINE' } },
+                   s:{ ja:'総括表・月次・LINEでの報告の出し方', en:'Daily/monthly reports and LINE reporting', vi:'Báo cáo ngày/tháng và báo cáo qua LINE' } },
     { v:'staff',   t:{ ja:'採用・シフト・スタッフ', en:'Hiring, shifts & staff', vi:'Tuyển dụng, ca làm & nhân viên' },
                    s:{ ja:'募集・面接・勤怠・キャリアアップ', en:'Recruiting, interviews, attendance, career path', vi:'Tuyển dụng, phỏng vấn, chấm công, thăng tiến' } },
     { v:'trouble', t:{ ja:'トラブル・緊急時', en:'Trouble & emergencies', vi:'Sự cố & khẩn cấp' },
@@ -5025,7 +5064,7 @@
         how:{ja:'締めで数えた現金売上を撮影して提出してください（中間報告の画面からも開けます）',en:'Photograph the counted cash sales and submit',vi:'Chụp tiền mặt đã đếm khi chốt ca và nộp'} },
       { id:'tip_photo',    name:{ja:'チップの写真',en:'Tips photo',vi:'Ảnh tiền tip'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'その日のチップを撮影して提出してください（中間報告の画面からも開けます）',en:'Photograph the day’s tips and submit',vi:'Chụp tiền tip trong ngày và nộp'} },
-      { id:'nippou',     name:{ja:'日報（総括表）',en:'Daily report',vi:'Báo cáo ngày'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
+      { id:'nippou',     name:{ja:'総括表',en:'Summary sheet',vi:'Bảng tổng kết'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
       /* ★気づきの報告を、1日の最後に置く（2026-08-12 神田さんのご指摘）。
          これまで日報の中に「清掃・特記事項」という自由入力があり、
          「気づきの報告」と同じことを2か所で書く形になっていた。日報側を外し、こちらに一本化する。
@@ -5411,7 +5450,7 @@
       <div class="card">
         <h3>${L({ ja:'日次・必須の提出状況（店舗別・直近7日）', en:'Daily required submissions (last 7 days)', vi:'Mục bắt buộc hằng ngày (7 ngày)' })}</h3>
         <div class="hint" style="display:block;margin:2px 0 8px">${L({
-          ja:'必須の日次提出物だけを数えています（任意（店舗運用）と週次・月次は分母に入れません。週次・月次は下のカード、任意の提出は提出履歴で見られます）。●=全部提出（日報もアプリ入力）／○=全部提出（日報はシートからの取込）／数字=提出できた数（緑系=日報は取込）／✗=ゼロ／休=定休日。右の率は今日を除いた6日ぶんです。',
+          ja:'必須の日次提出物だけを数えています（任意（店舗運用）と週次・月次は分母に入れません。週次・月次は下のカード、任意の提出は提出履歴で見られます）。●=全部提出（総括表もアプリ入力）／○=全部提出（総括表はシートからの取込）／数字=提出できた数（緑系=総括表は取込）／✗=ゼロ／休=定休日。右の率は今日を除いた6日ぶんです。',
           en:'Required daily items only (optional/weekly/monthly are not in the denominator). ●=all (report via app) / ○=all (report imported from sheet) / number=partial / ✗=none / –=holiday. Rate excludes today.',
           vi:'Chỉ mục bắt buộc hằng ngày. ●=đủ (app) / ○=đủ (nhập từ bảng) / số=một phần / ✗=không / –=nghỉ.' })}</div>
         <div style="display:flex;align-items:center;gap:2px;padding:4px 0 6px;border-bottom:1px solid #eee">
@@ -5814,6 +5853,7 @@
      iPhoneのホーム画面版（standalone）では prompt/alert/confirm が表示されず undefined が返り、
      後続の .trim() が落ちて挙動が壊れていた。ダイアログはアプリ内では使わない。 */
   let inboxMemoKey = '';   // メモ欄を開いている報告のキー
+  let inboxFullKey = '';   // 全文を開いている報告のキー（2026-09-05 神田さんの実機報告＝切れて返答が書けない）
   function ackKey(kind, t, store) { return `${kind}|${t}|${store || ''}`; }
   function getAckMap() {
     const map = {};
@@ -5851,12 +5891,14 @@
       getKz().filter(r => vis.includes(r.store)).forEach(r => add('kizuki', { ja:'気づき', en:'Insight', vi:'Ghi nhận' }, r.t, r.store, kzCatLabel(r.cat), r.note, r.photos));
       getReports().filter(r => (r.kind === 'a' || r.kind === 'b') && vis.includes(r.store)).forEach(r => add('waste', { ja:'食べ残し', en:'Waste', vi:'Đồ thừa' }, r.t, r.store, r.item, L(r.note) || '', r.photos));
       getFP().filter(r => vis.includes(r.store)).forEach(r => add('firstphoto', { ja:'1食目写真', en:'First-plate', vi:'Ảnh món đầu' }, r.t, r.store, r.item || '', '', r.photos));
-      getReports().filter(r => r.kind === 'svfb' && vis.includes(r.store)).forEach(r => add('svfb', { ja:'巡回FB', en:'Visit FB', vi:'Phản hồi' }, r.t, r.store, r.item || '', String(r.note || '').slice(0, 60), r.photos));
-      // 中間報告（長堀橋トライアル）＝組客数・総売上の要約と営業内容を1行で
+      /* ★detail はここで切らない（2026-09-05 神田さんの実機報告＝気づき・コメントの全文が見えず、
+         返答が書けない）。一覧の見た目は受信箱側が90字で折り、「全文を見る」でその場で開く */
+      getReports().filter(r => r.kind === 'svfb' && vis.includes(r.store)).forEach(r => add('svfb', { ja:'巡回FB', en:'Visit FB', vi:'Phản hồi' }, r.t, r.store, r.item || '', String(r.note || ''), r.photos));
+      // 中間報告（長堀橋トライアル）＝組客数・総売上の要約と営業内容
       getReports().filter(r => r.kind === 'chukan' && vis.includes(r.store)).forEach(r => {
         const p = parseNote(r.note);
         add('chukan', { ja:'中間報告', en:'Midday report', vi:'Báo cáo giữa ngày' }, r.t, r.store, chTypeLabel(p.rtype),
-          chSummary(p) + (p.memo ? '／' + String(p.memo).slice(0, 40) : ''), r.photos);
+          chSummary(p) + (p.memo ? '\n' + String(p.memo) : ''), r.photos);
       });
       /* ★提出物マスタは1回だけ引く（2026-09-03）。以前は写真提出の行ごとに getMasters() を
          呼んでおり、その中で保存データを何度も読み直していた＝件数が増えるほど二乗で重くなっていた。 */
@@ -5878,7 +5920,7 @@
     // 公開すると pending でなくなり、この一覧から自然に消える（「対応済み」では消さない）。
     try {
       getComm().filter(p => commState(p) === 'pending' && vis.includes(p.store)).forEach(p => {
-        add('commpend', { ja:'公開待ちの投稿', en:'Pending post', vi:'Bài chờ duyệt' }, p.t, p.store, commCatLabel(p.cat), String(p.body || '').slice(0, 60), p.photos);
+        add('commpend', { ja:'公開待ちの投稿', en:'Pending post', vi:'Bài chờ duyệt' }, p.t, p.store, commCatLabel(p.cat), String(p.body || ''), p.photos);
         const last = items[items.length - 1];
         last.ckey = commKey(p); last.state = '';
       });
@@ -5933,7 +5975,17 @@
       return `<div class="rep" style="align-items:flex-start">${ph}<div class="body">
         <div class="l1">${esc(L(i.label))}${i.title?` ・${esc(i.title)}`:''}</div>
         <div class="l2">${esc(storeShort(i.store))} ・ ${timeAgo(i.t)}</div>
-        ${i.detail?`<div class="l2" style="color:var(--sumi)">${esc(String(i.detail).slice(0,90))}</div>`:''}
+        ${(() => {
+          /* ★全文をその場で見られるように（2026-09-05 神田さんの実機報告＝
+             気づき・コメントが途中で切れ、何と返答すればよいか分からない）。
+             一覧は従来どおり90字。長いもの・改行のあるものは「全文を見る」で開く（改行も残す） */
+          const dfull = String(i.detail || '');
+          if (!dfull) return '';
+          const exp = inboxFullKey === i.key;
+          const long = dfull.length > 90 || dfull.indexOf('\n') !== -1;
+          const btn = long ? ` <button class="mini" data-ackfull="${esc(i.key)}">${exp ? L({ja:'たたむ',en:'Collapse',vi:'Thu gọn'}) : L({ja:'全文を見る',en:'Show all',vi:'Xem đầy đủ'})}</button>` : '';
+          return `<div class="l2" style="color:var(--sumi)${exp ? ';white-space:pre-wrap' : ''}">${esc(exp ? dfull : (long ? dfull.slice(0, 90).replace(/\n/g, '／') + '…' : dfull))}${btn}</div>`;
+        })()}
         ${st}</div></div>`;
     };
     // 種類の絞り込みチップ（未対応の件数つき）。押すと同じ位置のまま切り替わる
@@ -5970,7 +6022,7 @@
         ${list.length ? rowsHtml : `<div class="muted">${L({ja:'ありません',en:'None',vi:'Không có'})}</div>`}
         ${!showDone ? `<p class="hint" style="display:block;margin-top:8px">${L({ja:'※ 未対応はすべて表示しています（古いものは下にあります）。対応済みは上のチェックで表示できます。',en:'All unhandled items are shown (older ones below). Toggle above to include done.',vi:'Hiển thị tất cả mục chưa xử lý.'})}</p>` : ''}
       </div>
-      <p class="hint" style="display:block">${L({ja:'※ 提出物（1食目写真・日報など）の提出状況は「加盟店・提出物管理」でご確認ください。',en:'For submission status, see “Submissions”.',vi:'Xem trạng thái nộp tại “Nộp tài liệu”.'})}</p>`;
+      <p class="hint" style="display:block">${L({ja:'※ 提出物（1食目写真・総括表など）の提出状況は「加盟店・提出物管理」でご確認ください。',en:'For submission status, see “Submissions”.',vi:'Xem trạng thái nộp tại “Nộp tài liệu”.'})}</p>`;
   };
 
   /* ---------- 本部：バックエンド設定（専用の保存先へ切り替える） ---------- */
@@ -6083,7 +6135,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -6115,6 +6167,8 @@
         return;
       }
       if (t.dataset.ackmemocancel) { inboxMemoKey = ''; render(true); return; }
+      // 全文を見る／たたむ（同じ行をもう一度押すと閉じる）
+      if (t.dataset.ackfull) { inboxFullKey = inboxFullKey === t.dataset.ackfull ? '' : t.dataset.ackfull; render(true); return; }
       if (t.dataset.ackmemosave) {
         const inp = document.getElementById('ack_memo_input');
         setAck(t.dataset.ackmemosave, 'done', ((inp && inp.value) || '').trim());
@@ -8038,10 +8092,29 @@
         const b = (skCumBase(store, dk).buym || 0) + num('sk_buy');
         put('sk_buyrate', (m && b) ? ((b / m * 100).toFixed(1) + '%') : '—');
       }
+      /* ★日報の項目（長堀橋トライアル・2026-09-06）＝昼・夜の人時生産性と口コミ獲得率。
+         昼売上＝「昼のみ売上」の欄・夜売上＝当日売上−昼。式は店舗の日報フォーマットと同じ 売上÷(人数×時間) */
+      if (byId('sk_lprod')) {
+        const lu = num('sk_lunch'), night = Math.max(0, s - lu);
+        const lph = num('sk_lstaff') * num('sk_lhours'), nph = num('sk_nstaff') * num('sk_nhours');
+        put('sk_lprod', (lu && lph) ? ('¥' + Math.round(lu / lph).toLocaleString('en-US') + '/h') : '—');
+        put('sk_nprod', (night && nph) ? ('¥' + Math.round(night / nph).toLocaleString('en-US') + '/h') : '—');
+        put('sk_rvrate', (g && num('sk_rvt')) ? ((num('sk_rvt') / g * 100).toFixed(1) + '%') : '—');
+      }
     };
     if (skSales) {
-      ['sk_sales', 'sk_guests', 'sk_foodamt', 'sk_drinkamt', 'sk_mtd', 'sk_goal', 'sk_hours', 'sk_laborcost', 'sk_buy']
+      ['sk_sales', 'sk_guests', 'sk_foodamt', 'sk_drinkamt', 'sk_mtd', 'sk_goal', 'sk_hours', 'sk_laborcost', 'sk_buy', 'sk_lunch']
         .forEach(id => { const el = byId(id); if (el) el.addEventListener('input', skAuto_); });
+      /* 昼・夜の人数×時間から「総労働時間」を自動で入れる（手で直せる）＝同じ数字を2回打たない */
+      if (byId('sk_lstaff')) {
+        const shiftUpd = () => {
+          const n = (id) => Number((byId(id) && byId(id).value) || 0) || 0;
+          const th = n('sk_lstaff') * n('sk_lhours') + n('sk_nstaff') * n('sk_nhours');
+          if (th && byId('sk_hours')) byId('sk_hours').value = String(Math.round(th * 100) / 100);
+          skAuto_();
+        };
+        ['sk_lstaff', 'sk_lhours', 'sk_nstaff', 'sk_nhours'].forEach(id => { const el = byId(id); if (el) el.addEventListener('input', shiftUpd); });
+      }
       skAuto_();
     }
     /* ★累計の自動足し上げ（2026-09-02 ユンさんのご提案）。
@@ -8123,6 +8196,10 @@
         // 日報一本化（2026-08-26 決定）で足した項目＝元の数字だけ。率は計算で出す
         staffct: v('sk_staffct'), hours: v('sk_hours'), laborcost: v('sk_laborcost'),
         loss: v('sk_loss'), memo: v('sk_memo'),
+        // 日報の項目（2026-09-05 秋定さんのご要望＝日報は総括表へ一本化・長堀橋トライアル）
+        lstaff: v('sk_lstaff'), lhours: v('sk_lhours'), nstaff: v('sk_nstaff'), nhours: v('sk_nhours'),
+        sand: v('sk_sand'), lossnote: v('sk_lossnote'), bad: v('sk_bad'), action: v('sk_action'),
+        hikin: v('sk_hikin'), hikim: v('sk_hikim'),
         // 国別の組数・人数（入力のあるものだけ残す＝空欄は保存しない）
         cty: SK_COUNTRIES.concat(SK_VISITKIND).reduce((o, cn) => {
           const g = v(`sk_cty_${cn.k}_g`), p = v(`sk_cty_${cn.k}_p`);
