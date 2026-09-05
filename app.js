@@ -3267,6 +3267,20 @@
        日報は前日分を翌朝に出すことがあるため、今日と昨日の下書きを対象にする
        （どちらの場合も「最新のクローズ写真＝これから出す日報の日」になる） */
     const skDraft = nikkeiDraft(vis[0], 'skdraft', [dateKeyFor(vis[0], Date.now()), dateKeyFor(vis[0], Date.now() - 864e5)]) || {};
+    /* ★写真はあるのに読み取れなかった夜を、黙って「何も出ない」にしない（2026-09-06 神田さんの実機報告＝
+       前夜にレジクローズ写真が提出されているのに、読み取りの注記が見当たらない）。
+       封筒やメモがレポートの数字の行を覆っていると、OCRは読めず下書きを作らない（0で埋めない決めごと）。
+       その状態を画面に出す＝「届いているが読めなかった＝手入力」と分かるようにする */
+    const skOcrMiss = (() => {
+      if (skDraft._t) return false;
+      try {
+        const dks = [dateKeyFor(vis[0], Date.now()), dateKeyFor(vis[0], Date.now() - 864e5)];
+        return subRows(SUB_KINDS.open).some(r => {
+          const parts = String(r.item || '').split('|');
+          return r.store === vis[0] && parts[0] === 'nikkei_close' && dks.includes(parts[1] || '');
+        });
+      } catch (e) { return false; }
+    })();
     /* ★タブ化（2026-08-31 神田さんのご指示＝役割・項目が違うものは縦に積まずタブで分ける。
        「スクロールは結構見なくなる」）。入力／今月の推移（複数店は店舗の状況）／最近の総括表 の3タブ */
     const SKT = [
@@ -3310,6 +3324,7 @@
         <p class="hint" id="sk_editnote" style="display:none;margin:-2px 0 8px;color:#8a6d3b"></p>
         ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの総括表から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
         ${skDraft._t ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ レジクローズの日計レポート写真から読み取った数字（売上・客数・現金・カード）が入っています。確認して、違うところは直してから提出してください。', en:'Sales, guests, cash and card were read from the register-close photo. Check and correct before submitting.', vi:'Doanh thu, khách, tiền mặt, thẻ đọc từ ảnh đóng ca. Kiểm tra trước khi gửi.' })}（${timeAgo(skDraft._t)}）</p>` : ''}
+        ${skOcrMiss ? `<p class="hint" style="display:block;margin:-2px 0 8px;color:#a23b3b">${L({ ja:'※ 日計レポートの写真は届いていますが、数字を読み取れませんでした（封筒やメモで数字の行が隠れていると読めません）。お手数ですが手入力をお願いします。次回は、レポートの数字が全部見えるように撮っていただくと自動で入ります。', en:'The register-close photo arrived but the numbers could not be read (rows may be covered by the envelope or a note). Please enter them manually; next time keep all numbers visible in the photo.', vi:'Đã nhận ảnh đóng ca nhưng không đọc được số (có thể bị phong bì/ghi chú che). Vui lòng nhập tay; lần sau chụp sao cho thấy rõ các con số.' })}</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
           <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || today}" max="${today}"></label>
@@ -5057,7 +5072,7 @@
         how:{ja:'記入した在庫チェック表（食材①②・ドリンク・消耗品）を撮影して提出してください',en:'Photograph the filled stock check sheets (ingredients, drinks, supplies)',vi:'Chụp các bảng kiểm kho đã điền (nguyên liệu, đồ uống, vật tư)'} },
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
       { id:'nikkei_close', name:{ja:'日計レポート（レジクローズ）',en:'Daily sales report (register close)',vi:'Báo cáo doanh thu (đóng ca)'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
-        how:{ja:'レジクローズ時に日計レポートを出力し、現金売上の封筒と合わせて撮影・提出してください',en:'Print the daily report at register close and submit it with the cash envelope',vi:'In báo cáo lúc đóng ca và nộp ảnh cùng phong bì tiền mặt'} },
+        how:{ja:'レジクローズ時に日計レポートを出力し、現金売上の封筒と合わせて撮影・提出してください（★封筒やメモでレポートの数字を隠さないでください＝写真から数字を自動で読み取り、総括表の入力に入れます）',en:'Print the daily report at register close and submit it with the cash envelope (keep all numbers visible — they are read automatically into the summary sheet)',vi:'In báo cáo lúc đóng ca và nộp ảnh cùng phong bì tiền mặt (không che các con số — số sẽ được đọc tự động vào bảng tổng kết)'} },
       /* ★現金売上・チップの写真（2026-09-02 常山さん経由・m.taigaさんのご要望）。
          これまでオープン写真の欄に相乗りで上げられていた＝専用の項目を用意し、中間報告の画面からも飛べるようにする */
       { id:'genkin_photo', name:{ja:'現金売上の写真',en:'Cash sales photo',vi:'Ảnh tiền mặt'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
