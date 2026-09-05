@@ -4028,6 +4028,38 @@ console.log('== 日報は総括表へ一本化＝長堀橋の日報項目を総�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 写真はあるのに読めなかった夜を、黙って「何も出ない」にしない（2026-09-06 神田さんの実機報告）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const tk = new Date().toLocaleDateString('en-CA');
+  const noonT = new Date(tk + 'T12:00:00').getTime();
+  // ① クローズ写真の提出はあるが、下書き（skdraft）が無い＝読めなかった旨が入力画面に出る
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'subrec', store:S, item:`nikkei_close|${tk}`, note:'{}', photos:['p1'], t: noonT }
+    ]));
+  });
+  location.hash = '#/app/soukatsu?tab=input';
+  let h = registry.app.innerHTML;
+  ok(/数字を読み取れませんでした/.test(h), '写真はあるのに読めなかった夜は、その旨が入力画面に出る');
+  // ② 下書きがあれば、読めなかった注記は出さず、読み取りの注記だけが出る
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'subrec', store:S, item:`nikkei_close|${tk}`, note:'{}', photos:['p1'], t: noonT },
+      { kind:'skdraft', store:S, item: tk, note: JSON.stringify({ src:'ocr', total: 211300, kyaku: 31 }), photos: [], t: noonT + 1000 }
+    ]));
+  });
+  location.hash = '#/app/soukatsu?tab=input';
+  h = registry.app.innerHTML;
+  ok(!/数字を読み取れませんでした/.test(h) && /写真から読み取った数字/.test(h), '下書きがある夜は従来どおり読み取りの注記だけが出る');
+  // ③ クローズ写真の無い店舗には何も出ない
+  h = renderView('soukatsu', 'staff', '日本料理世桜本店', 'ja');
+  ok(!/数字を読み取れませんでした/.test(h), '写真の無い店舗には出ない');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 受信箱＝気づき・コメントの全文が見られる（2026-09-05 神田さんの実機報告＝切れて返答が書けない）==');
 {
   const S = '牛カツ世桜 長堀橋店';
