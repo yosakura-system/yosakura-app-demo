@@ -4060,6 +4060,32 @@ console.log('== 写真はあるのに読めなかった夜を、黙って「何�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 月累計売上＝当月のΣ当日売上で毎回計算し直す（2026-09-05 ユンさんの実機報告＝壊れた累計が引き継がれ続ける）==');
+{
+  const S = '日本料理世桜本店';
+  const dOff = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toLocaleDateString('en-CA'); };
+  const today5 = dOff(0), d1 = dOff(3), d2 = dOff(2), d3 = dOff(1);
+  // 月初1〜3日は「当月の過去3日」が作れないため飛ばす（日付またぎで落とさない）
+  if ([d1, d2, d3].every(d => d.slice(0, 7) === today5.slice(0, 7))) {
+    run(() => {
+      setLS('manager', S, 'ja');
+      localStorage.setItem('yosakura_soukatsu_tab', 'input');
+      localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+        { store: S, date: d1, sales: 100000, mtd: 100000, tipa: 5000, t: Date.now() - 3 * 86400e3 },
+        // ★不具合期間（〜v197）に保存された「壊れたmtd」＝当日分だけ。以前はこれが起点として引き継がれ続けた
+        { store: S, date: d2, sales: 120000, mtd: 120000, tipa: 8000, t: Date.now() - 2 * 86400e3 },
+        // シート取込だけの日（売上・客数のみ）
+        { store: S, date: d3, sales: 90000, src: 'drive', t: Date.now() - 86400e3 }
+      ]));
+    });
+    location.hash = '#/app/soukatsu?x=heal';
+    const h = registry.app.innerHTML;
+    ok(/id="sk_mtd"[^>]*value="310000"/.test(h), '月累計売上＝Σ当日売上（10+12+9万）で入る＝壊れたmtd(12万)を引き継がない');
+    ok(/id="sk_tipa"[^>]*value="8000"/.test(h), 'チップ累計は従来どおり前回の欄から引き継ぐ（壊れていないため）');
+    run(() => { setLS('hq', 'all', 'ja'); });
+  }
+}
+
 console.log('== Google口コミ件数の自動取得＝「口コミ 当日」へ下書き（2026-09-06 神田さんご承認）==');
 {
   const S = '牛カツ世桜 長堀橋店';
