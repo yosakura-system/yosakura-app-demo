@@ -3798,6 +3798,22 @@
     } catch (e) {}
     return Object.values(byD).sort((a, b) => a._d < b._d ? -1 : 1);   // 同じ日は新しい行が正・日付順
   }
+  /* 代表的な口コミ5件（2026-09-06 神田さんのご指示＝数字だけでは質素なので本文も見せる）。
+     ★Googleが選んだ「よく読まれている口コミ」＝新着順ではない。誤解しないよう必ずその旨を添える */
+  const gReviewList = (latest) => {
+    const revs = (latest && Array.isArray(latest.reviews)) ? latest.reviews : [];
+    if (!revs.length) return '';
+    return `
+      <div class="idlabel" style="margin-top:12px">${L({ ja:'代表的な口コミ', en:'Featured reviews', vi:'Đánh giá tiêu biểu' })}</div>
+      ${revs.map(v => `<div class="rep">
+        <span class="amt">${v.star != null ? '★' + Number(v.star) : '—'}</span>
+        <div class="body">
+          <div class="l1">${esc(String(v.txt || ''))}</div>
+          <div class="l2">${esc(String(v.by || ''))}${v.at ? ' ・ ' + esc(String(v.at)) : ''}${L({ ja:' ・ Googleマップより', en:' ・ from Google Maps', vi:' ・ từ Google Maps' })}</div>
+        </div>
+      </div>`).join('')}
+      <p class="hint" style="display:block">${L({ ja:'※ Googleが選んだ「よく読まれている口コミ」です（新着順ではありません）。全件はGoogleマップでご覧いただけます。', en:'Reviews selected by Google (not newest-first). See Google Maps for all reviews.', vi:'Do Google chọn (không theo mới nhất). Xem tất cả trên Google Maps.' })}</p>`;
+  };
   APP_VIEWS.greview = () => {
     const vis = visibleStores();
     const ym = todayYm();
@@ -3827,6 +3843,7 @@
             <div class="stat"><div class="n">${r.gain > 0 ? '+' + r.gain : r.gain}</div><div class="k">${L({ ja:'今月の獲得数', en:'Gained this month', vi:'Tăng trong tháng' })}</div></div>
           </div>
           ${colChart(daysOfYm(ym), (d) => (r.byDate[d] && typeof r.byDate[d].gained === 'number') ? Math.max(0, r.byDate[d].gained) : 0, { store: r.s, title:{ ja:'日別の獲得数', en:'Daily gained', vi:'Tăng theo ngày' } })}
+          ${gReviewList(r.latest)}
           <button class="btn-primary" data-storelink="${esc(r.s)}" style="margin-top:12px">${L({ ja:'この店舗の詳細（カルテ）を見る', en:'Open this store\'s detail', vi:'Xem chi tiết cửa hàng' })}</button>
         </div>`;
     }
@@ -4064,6 +4081,7 @@
             <div class="stat"><div class="n">${gGainYm > 0 ? '+' + gGainYm : gGainYm}</div><div class="k">${L({ ja:'この月の獲得数', en:'Gained this month', vi:'Tăng trong tháng' })}</div></div>
           </div>
           ${colChart(days, (d) => (gByDate[d] && typeof gByDate[d].gained === 'number') ? Math.max(0, gByDate[d].gained) : 0, { store, title:{ ja:'日別の獲得数', en:'Daily gained', vi:'Tăng theo ngày' } })}
+          ${gReviewList(gLatest)}
           <p class="hint" style="display:block">${L({ ja:'※ 毎晩、Googleマップの口コミ件数を自動で記録しています（獲得数＝前日との差。削除があった日はマイナスになり、月の合計に反映されます）。総括表の「口コミ 当日」にも同じ数字が自動で入ります。', en:'Review counts are recorded automatically every night (gained = day-over-day; deletions count as minus). The same number pre-fills the daily report.', vi:'Số review được ghi tự động mỗi tối (tăng = so với hôm trước). Số này cũng tự điền vào báo cáo ngày.' })}</p>
         </div>` : ''}
         <div class="card">
