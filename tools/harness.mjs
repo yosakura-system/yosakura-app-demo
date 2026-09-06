@@ -4130,6 +4130,56 @@ await new Promise(r=>setTimeout(r, 50));
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== Google口コミ集計＝サーベイ集計の横＋個店カルテのカード（2026-09-06 神田さんのご指示）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const S2 = '日本料理世桜本店';
+  const tk = new Date().toLocaleDateString('en-CA');
+  const seedG = () => run(() => {
+    setLS('hq', 'all', 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'gsnap', store:S, item: tk, note: JSON.stringify({ src:'places', total: 1980, rating: 5, gained: 3 }), photos: [], t: Date.now() },
+      { kind:'gsnap', store:S2, item: tk, note: JSON.stringify({ src:'places', total: 2322, rating: 4.9, gained: 7 }), photos: [], t: Date.now() }
+    ]));
+  });
+  // ① 本部（全店）＝店舗一覧が今月の獲得が多い順で並ぶ
+  seedG();
+  location.hash = '#/app/greview';
+  let h = registry.app.innerHTML;
+  ok(/Google口コミ集計/.test(h) && /2,322/.test(h) && /1,980/.test(h), '集計画面に全店の総口コミ数が出る');
+  ok(/★4\.9/.test(h) && /★5\.0/.test(h), '星の平均が出る');
+  ok(h.indexOf('日本料理世桜本店') < h.indexOf('長堀橋'), '今月の獲得が多い店舗（本店+7）が上に並ぶ');
+  // ② 店舗スタッフ＝自店だけの詳細（日別グラフつき）
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'gsnap', store:S, item: tk, note: JSON.stringify({ src:'places', total: 1980, rating: 5, gained: 3 }), photos: [], t: Date.now() },
+      { kind:'gsnap', store:S2, item: tk, note: JSON.stringify({ src:'places', total: 2322, rating: 4.9, gained: 7 }), photos: [], t: Date.now() }
+    ]));
+  });
+  location.hash = '#/app/greview';
+  h = registry.app.innerHTML;
+  ok(/1,980/.test(h) && /日別の獲得数/.test(h) && !/2,322/.test(h), 'スタッフは自店の詳細だけ（他店の数字は出ない）');
+  // ③ データが無いときは案内だけ（毎晩の自動記録の説明）
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); });
+  location.hash = '#/app/greview';
+  ok(/まだ記録がありません/.test(registry.app.innerHTML), '取得開始前は案内が出る');
+  // ④ 個店カルテにもGoogle口コミカード（総数・星・日別）が出る／データの無い店舗には出ない
+  seedG();
+  location.hash = '#/store?s=' + encodeURIComponent(S);
+  h = registry.app.innerHTML;
+  ok(/Google口コミ/.test(h) && /1,980/.test(h) && /★5\.0/.test(h), 'カルテにGoogle口コミカードが出る');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); });
+  location.hash = '#/store?s=' + encodeURIComponent(S);
+  ok(!/Google口コミ/.test(registry.app.innerHTML), 'データの無い店舗のカルテにはカードが出ない');
+  // ⑤ 報告タブ（店舗運営）＝サーベイ集計の横に入口がある
+  run(() => { setLS('manager', S, 'ja'); });
+  location.hash = '#/home?tab=genba';
+  h = registry.app.innerHTML;
+  ok(/サーベイ・集計/.test(h) && /Google口コミ集計/.test(h), '店舗運営の一覧にサーベイと並んで入口が出る');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 受信箱＝気づき・コメントの全文が見られる（2026-09-05 神田さんの実機報告＝切れて返答が書けない）==');
 {
   const S = '牛カツ世桜 長堀橋店';
