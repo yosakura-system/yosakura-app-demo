@@ -12,7 +12,9 @@
  *   ・読めなかった店舗は入れない（0で埋めない）
  *   ・初回は前回値が無いため「総数」だけ記録し、獲得数は翌日から入る
  *   ・口コミが削除されると獲得数がマイナスになる日がある（そのまま記録する。アプリ側は自動では入れず手入力に譲る）
- *   ・費用＝この用途のSKUは月1,000リクエストまで無料。5店舗×1日1回≒月150回＝無料枠内。
+ *   ・代表的な口コミ5件（本文）も一緒に記録する（2026-09-06 神田さんのご指示）。
+ *     ★Googleが選んだ「よく読まれている5件」であり、新着順ではない（全件・新着順はビジネスプロフィールAPIが必要）
+ *   ・費用＝この用途のSKU（口コミ本文つき）は月1,000リクエストまで無料。10店舗×1日1回＝月300回＝無料枠内。
  *     ★毎時にはしない（枠を超えて課金される）
  *
  * ■ 初回セットアップ（神田さんの作業）
@@ -56,6 +58,7 @@ function reviewFetchDaily() {
       var note = { total: r.total, src: 'places' };
       if (r.rating !== undefined) note.rating = r.rating;
       if (baseN !== undefined) note.gained = r.total - baseN;
+      if (r.reviews && r.reviews.length) note.reviews = r.reviews;   // 代表的な口コミ5件（本文は300字まで）
       sh.appendRow([Utilities.getUuid(), Date.now(), REVIEW_KIND, store, today, '', JSON.stringify(note), '[]']);
       last[store] = { d: today, n: r.total, base: baseN };  // 初日は base=undefined のまま＝獲得数は翌日から
     } catch (e) {
@@ -70,7 +73,7 @@ function reviewFetchOne_(placeId) {
   var key = PropertiesService.getScriptProperties().getProperty('PLACES_API_KEY');
   if (!key) throw new Error('PLACES_API_KEY が未設定です');
   var res = UrlFetchApp.fetch('https://places.googleapis.com/v1/places/' + encodeURIComponent(placeId) + '?languageCode=ja', {
-    headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'userRatingCount,rating' },
+    headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'userRatingCount,rating,reviews' },
     muteHttpExceptions: true
   });
   if (res.getResponseCode() !== 200) {
@@ -81,6 +84,20 @@ function reviewFetchOne_(placeId) {
   var out = {};
   if (typeof j.userRatingCount === 'number') out.total = j.userRatingCount;
   if (typeof j.rating === 'number') out.rating = j.rating;
+  /* 代表的な口コミ5件＝星・本文（300字まで）・投稿者名・投稿日。読めない欄は入れない */
+  if (j.reviews && j.reviews.length) {
+    out.reviews = [];
+    for (var i = 0; i < j.reviews.length && i < 5; i++) {
+      var v = j.reviews[i];
+      var txt = (v.text && v.text.text) || (v.originalText && v.originalText.text) || '';
+      out.reviews.push({
+        star: (typeof v.rating === 'number') ? v.rating : null,
+        by: (v.authorAttribution && v.authorAttribution.displayName) || '',
+        at: String(v.publishTime || '').slice(0, 10),
+        txt: String(txt).slice(0, 300)
+      });
+    }
+  }
   return out;
 }
 

@@ -4149,17 +4149,20 @@ console.log('== Google口コミ集計＝サーベイ集計の横＋個店カル�
   ok(/Google口コミ集計/.test(h) && /2,322/.test(h) && /1,980/.test(h), '集計画面に全店の総口コミ数が出る');
   ok(/★4\.9/.test(h) && /★5\.0/.test(h), '星の平均が出る');
   ok(h.indexOf('日本料理世桜本店') < h.indexOf('長堀橋'), '今月の獲得が多い店舗（本店+7）が上に並ぶ');
-  // ② 店舗スタッフ＝自店だけの詳細（日別グラフつき）
+  // ② 店舗スタッフ＝自店だけの詳細（日別グラフ＋代表的な口コミ）
   run(() => {
     setLS('staff', S, 'ja');
     localStorage.setItem('yosakura_demo_reports', JSON.stringify([
-      { kind:'gsnap', store:S, item: tk, note: JSON.stringify({ src:'places', total: 1980, rating: 5, gained: 3 }), photos: [], t: Date.now() },
+      { kind:'gsnap', store:S, item: tk, note: JSON.stringify({ src:'places', total: 1980, rating: 5, gained: 3,
+        reviews: [{ star: 5, by: 'Takekokoketa', at: '2026-03-30', txt: '2階席に案内していただき、並ぶことなく入店できました。' }] }), photos: [], t: Date.now() },
       { kind:'gsnap', store:S2, item: tk, note: JSON.stringify({ src:'places', total: 2322, rating: 4.9, gained: 7 }), photos: [], t: Date.now() }
     ]));
   });
   location.hash = '#/app/greview';
   h = registry.app.innerHTML;
   ok(/1,980/.test(h) && /日別の獲得数/.test(h) && !/2,322/.test(h), 'スタッフは自店の詳細だけ（他店の数字は出ない）');
+  ok(/代表的な口コミ/.test(h) && /並ぶことなく入店できました/.test(h) && /Googleマップより/.test(h), '代表的な口コミ（本文・出典つき）が出る');
+  ok(/新着順ではありません/.test(h), '「Google選出＝新着順ではない」の説明が出る');
   // ③ データが無いときは案内だけ（毎晩の自動記録の説明）
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); });
   location.hash = '#/app/greview';
