@@ -314,6 +314,10 @@
     { id:'survey', group:'storeops', icon:'star', roles:['staff','manager','owner','hq'],
       name:{ ja:'サーベイ・集計', en:'Survey & Results', vi:'Khảo sát & Kết quả' },
       desc:{ ja:'お客様アンケートの運用と結果集計（満足度・来店経路・月別）', en:'Run survey & view results', vi:'Vận hành & xem kết quả' } },
+    /* Google口コミ集計（2026-09-06 神田さんのご指示＝サーベイ集計の横に）。毎晩の自動取得（gsnap）を見る画面 */
+    { id:'greview', group:'storeops', icon:'star', roles:['staff','manager','owner','hq'],
+      name:{ ja:'Google口コミ集計', en:'Google Reviews', vi:'Đánh giá Google' },
+      desc:{ ja:'口コミ数・星・獲得数（毎晩自動で記録）', en:'Review counts, ratings and daily gains', vi:'Số review, sao, mức tăng' } },
     /* ★2026-08-27 神田さんのご要望＝店舗管理チェック（見本アプリ・原本）へ本部画面から飛べる入口。
        アプリの中に採点画面は作り込まない（9/1前に新機能を足さない）＝URLで飛ぶ入口だけ。
        URLは「資料リンクの管理」（大項目＝店舗運営チェック）で本部が登録する＝登録すれば再配信なしで出る */
@@ -3778,6 +3782,75 @@
       </div>` : ''}`;
   }
 
+  /* ---------- Google口コミ集計（2026-09-06 神田さんのご指示＝報告する→店舗運営、サーベイ集計の横に置く）----------
+     毎晩の自動取得（backend/Google口コミ取得.gs）が貯めた gsnap（総数・星・前日比）を見る画面。
+     門番＝visibleStores（スタッフ・店長は自店のみ／本部・複数店オーナーは横断） */
+  function gsnapsOf(store) {
+    const byD = {};
+    try {
+      getReports().forEach(r => {
+        if (r.kind !== 'gsnap' || r.store !== store) return;
+        const p = parseNote(r.note);
+        if (!p || p.src !== 'places') return;
+        const d = String(r.item || '');
+        if (!byD[d] || r.t > byD[d]._t) byD[d] = Object.assign({ _t: r.t, _d: d }, p);
+      });
+    } catch (e) {}
+    return Object.values(byD).sort((a, b) => a._d < b._d ? -1 : 1);   // 同じ日は新しい行が正・日付順
+  }
+  APP_VIEWS.greview = () => {
+    const vis = visibleStores();
+    const ym = todayYm();
+    const rows = vis.map(s => {
+      const arr = gsnapsOf(s);
+      const latest = arr[arr.length - 1] || null;
+      const inYm = arr.filter(x => String(x._d).slice(0, 7) === ym);
+      const gain = inYm.reduce((t, x) => t + (typeof x.gained === 'number' ? x.gained : 0), 0);
+      const byDate = {}; inYm.forEach(x => { byDate[x._d] = x; });
+      return { s, latest, gain, byDate };
+    }).filter(r => r.latest);
+    const head = NOTE({ ja:'◆ Googleマップの口コミ件数を毎晩自動で記録しています（獲得数＝前日との差）', en:'◆ Google review counts are recorded automatically every night', vi:'◆ Số review Google được ghi tự động mỗi tối' });
+    if (!rows.length) return `${head}
+      <div class="card">
+        <h3>${L({ ja:'Google口コミ集計', en:'Google review summary', vi:'Tổng hợp đánh giá Google' })}</h3>
+        <p class="muted">${L({ ja:'まだ記録がありません。毎晩22時台に自動で記録され、店舗ごとの総口コミ数・星の平均・日々の獲得数がここに並びます（初日は総数のみ・獲得数は2日目から）。', en:'No records yet. Counts are recorded nightly; totals, ratings and daily gains will appear here.', vi:'Chưa có dữ liệu. Số liệu được ghi mỗi tối và sẽ hiển thị tại đây.' })}</p>
+      </div>`;
+    // 1店舗＝その店の詳細（総数・星・今月獲得＋日別グラフ）／複数店＝店舗の一覧（今月の獲得が多い順）
+    if (rows.length === 1) {
+      const r = rows[0];
+      return `${head}
+        <div class="card">
+          <h3>${L({ ja:'Google口コミ', en:'Google reviews', vi:'Đánh giá Google' })} — ${esc(storeShort(r.s))}　<span class="muted">${esc(mdLabel(r.latest._d))}${L({ ja:'時点', en:'', vi:'' })}</span></h3>
+          <div class="stat-row">
+            <div class="stat"><div class="n">${(Number(r.latest.total) || 0).toLocaleString('en-US')}</div><div class="k">${L({ ja:'総口コミ数', en:'Total reviews', vi:'Tổng review' })}</div></div>
+            <div class="stat"><div class="n">${r.latest.rating != null ? '★' + Number(r.latest.rating).toFixed(1) : '—'}</div><div class="k">${L({ ja:'星の平均', en:'Rating', vi:'Sao TB' })}</div></div>
+            <div class="stat"><div class="n">${r.gain > 0 ? '+' + r.gain : r.gain}</div><div class="k">${L({ ja:'今月の獲得数', en:'Gained this month', vi:'Tăng trong tháng' })}</div></div>
+          </div>
+          ${colChart(daysOfYm(ym), (d) => (r.byDate[d] && typeof r.byDate[d].gained === 'number') ? Math.max(0, r.byDate[d].gained) : 0, { store: r.s, title:{ ja:'日別の獲得数', en:'Daily gained', vi:'Tăng theo ngày' } })}
+          <button class="btn-primary" data-storelink="${esc(r.s)}" style="margin-top:12px">${L({ ja:'この店舗の詳細（カルテ）を見る', en:'Open this store\'s detail', vi:'Xem chi tiết cửa hàng' })}</button>
+        </div>`;
+    }
+    const sorted = rows.slice().sort((a, b) => b.gain - a.gain || (Number(b.latest.total) || 0) - (Number(a.latest.total) || 0));
+    const totalGain = rows.reduce((t, r) => t + r.gain, 0);
+    return `${head}
+      <div class="card">
+        <h3>${L({ ja:'Google口コミ集計', en:'Google review summary', vi:'Tổng hợp đánh giá Google' })}　<span class="muted">${esc(ymLabel(ym))}</span></h3>
+        <div class="stat-row">
+          <div class="stat"><div class="n">${rows.length}</div><div class="k">${L({ ja:'記録中の店舗', en:'Stores tracked', vi:'Cửa hàng theo dõi' })}</div></div>
+          <div class="stat"><div class="n">${totalGain > 0 ? '+' + totalGain : totalGain}</div><div class="k">${L({ ja:'今月の獲得数（全店）', en:'Gained this month (all)', vi:'Tăng trong tháng (tất cả)' })}</div></div>
+        </div>
+        ${sorted.map(r => `
+        <div class="rep tapable" data-go="/store?s=${encodeURIComponent(r.s)}" role="button" tabindex="0">
+          <span class="amt">${r.latest.rating != null ? '★' + Number(r.latest.rating).toFixed(1) : '—'}</span>
+          <div class="body">
+            <div class="l1">${esc(storeShort(r.s))} ・ ${(Number(r.latest.total) || 0).toLocaleString('en-US')}${L({ ja:'件', en:'', vi:'' })}</div>
+            <div class="l2">${L({ ja:'今月の獲得', en:'Gained this month', vi:'Tăng tháng này' })} ${r.gain > 0 ? '+' + r.gain : r.gain}${L({ ja:'件', en:'', vi:'' })} ・ ${esc(mdLabel(r.latest._d))}${L({ ja:'時点', en:'', vi:'' })}</div>
+          </div>
+        </div>`).join('')}
+        <p class="hint" style="display:block">${L({ ja:'※ 並び順＝今月の獲得数が多い順。行をタップすると個店カルテ（日別のグラフつき）が開きます。一覧に無い店舗は取得対象に未登録です。', en:'Sorted by monthly gains. Tap a row for the store detail. Missing stores are not registered yet.', vi:'Sắp xếp theo mức tăng trong tháng. Chạm để xem chi tiết.' })}</p>
+      </div>`;
+  };
+
   /* --- 個店カルテ（#/store?s=店舗&ym=YYYY-MM）--- */
   const SK_FIELDS = [
     { k:'sales',   t:{ ja:'当日売上', en:'Sales', vi:'Doanh thu' },              f:'yen' },
@@ -3945,6 +4018,13 @@
     const fdN = getReports().filter(r => (r.kind === 'a' || r.kind === 'b') && r.store === store && inYm(r.t)).length;
     const nav = (n) => `/store?s=${encodeURIComponent(store)}&ym=${addMonth(ym, n)}`;
     const canNext = ym < todayYm();
+    /* ★Google口コミ（gsnap・2026-09-06 神田さんのご指示＝過去の口コミをアプリで見られる場所を作る）。
+       データの無い店舗（取得対象外・取得開始前）にはカードごと出さない */
+    const gsnaps = gsnapsOf(store);
+    const gLatest = gsnaps[gsnaps.length - 1] || null;
+    const gInYm = gsnaps.filter(x => String(x._d).slice(0, 7) === ym);
+    const gGainYm = gInYm.reduce((s, x) => s + (typeof x.gained === 'number' ? x.gained : 0), 0);
+    const gByDate = {}; gInYm.forEach(x => { gByDate[x._d] = x; });
     const inner = `
       <main class="screen">
         <div class="appbar"><button class="back" data-go="/app/soukatsu">${svg('back')}${L({ ja:'総括表', en:'Daily reports', vi:'Báo cáo' })}</button></div>
@@ -3976,6 +4056,16 @@
         </div>
         ${skMovement([store], '/store')}
         ${skOutlook([store])}
+        ${gLatest ? `<div class="card">
+          <h3>${L({ ja:'Google口コミ', en:'Google reviews', vi:'Đánh giá Google' })}　<span class="muted">${esc(mdLabel(gLatest._d))}${L({ ja:'時点', en:'', vi:'' })}</span></h3>
+          <div class="stat-row">
+            <div class="stat"><div class="n">${(Number(gLatest.total) || 0).toLocaleString('en-US')}</div><div class="k">${L({ ja:'総口コミ数', en:'Total reviews', vi:'Tổng review' })}</div></div>
+            <div class="stat"><div class="n">${gLatest.rating != null ? '★' + Number(gLatest.rating).toFixed(1) : '—'}</div><div class="k">${L({ ja:'星の平均', en:'Rating', vi:'Sao TB' })}</div></div>
+            <div class="stat"><div class="n">${gGainYm > 0 ? '+' + gGainYm : gGainYm}</div><div class="k">${L({ ja:'この月の獲得数', en:'Gained this month', vi:'Tăng trong tháng' })}</div></div>
+          </div>
+          ${colChart(days, (d) => (gByDate[d] && typeof gByDate[d].gained === 'number') ? Math.max(0, gByDate[d].gained) : 0, { store, title:{ ja:'日別の獲得数', en:'Daily gained', vi:'Tăng theo ngày' } })}
+          <p class="hint" style="display:block">${L({ ja:'※ 毎晩、Googleマップの口コミ件数を自動で記録しています（獲得数＝前日との差。削除があった日はマイナスになり、月の合計に反映されます）。総括表の「口コミ 当日」にも同じ数字が自動で入ります。', en:'Review counts are recorded automatically every night (gained = day-over-day; deletions count as minus). The same number pre-fills the daily report.', vi:'Số review được ghi tự động mỗi tối (tăng = so với hôm trước). Số này cũng tự điền vào báo cáo ngày.' })}</p>
+        </div>` : ''}
         <div class="card">
           <h3>${L({ ja:'曜日別の平均売上', en:'Average sales by weekday', vi:'Doanh thu TB theo thứ' })}</h3>
           ${st.days ? wd.map(x => hBar(L(x.w), { n: x.avg, txt: x.avg ? yenShort(x.avg) : '—' }, wdMax, x.n ? `（${x.n}${L({ ja:'日', en:'d', vi:'n' })}）` : '')).join('')
