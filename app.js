@@ -8411,7 +8411,7 @@
         //   （長堀橋店「中間報告を出したのに履歴に無い→もう一度提出した」＝m.taigaさんの実機報告で発覚。
         //     hqack/appfb（2026-08-31）と同じ取りこぼしの3回目。kind追加は distribute＋KEEP＋テストの3点セットを守る）
         // ★2026-09-06 追加＝gsnap（Google口コミ件数の1日1回スナップショット）。3点セット（distribute＋KEEP判断＋テスト）
-        //   KEEP判断＝90日で消えてよい（獲得数は総括表の「口コミ 当日」に確定して残るため）
+        //   KEEP判断＝恒久保存（2026-09-07 神田さんのご指示＝口コミ集計の推移を90日で切らない。Code.gsのPURGE_KEEP_KINDSに追加済み）
         case 'chukan': case 'chukandraft': case 'skdraft': case 'gsnap':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
