@@ -3762,7 +3762,7 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   const src2 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/closeDetail:Array\.isArray\(p\.closeDetail\)/.test(src2), '同期（distribute）がcloseDetailを運ぶ');
   const gsrc2 = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
-  ok(/'monthly'\]/.test(gsrc2.match(/PURGE_KEEP_KINDS\s*=\s*\[[^\]]*\]/)[0]), 'GAS＝monthlyが90日削除から守られる（要貼り替え）');
+  ok(/'monthly'/.test(gsrc2.match(/PURGE_KEEP_KINDS\s*=\s*\[[^\]]*\]/)[0]), 'GAS＝monthlyが90日削除から守られる（要貼り替え）');
   // 後始末
   run(() => { setLS('hq', 'all', 'ja'); });
 }
@@ -4126,6 +4126,9 @@ console.log('== gsnap が同期で消えない（kind追加の3点セット）==
 await new Promise(r=>setTimeout(r, 50));
 {
   ok(JSON.parse(localStorage.getItem('yosakura_demo_reports')||'[]').some(r => r.kind==='gsnap'), 'gsnap が同期で残る（＝下書きが働く）');
+  // ★90日削除からの保護（2026-09-07 神田さんのご指示＝口コミ集計の推移を切らない・恒久保存）
+  const gsrcK = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
+  ok(/'gsnap'/.test(gsrcK.match(/PURGE_KEEP_KINDS\s*=\s*\[[^\]]*\]/)[0]), 'GAS＝gsnapが90日削除から守られる（要貼り替え）');
   FETCH_ROWS = { ok:false };
   run(() => { setLS('hq', 'all', 'ja'); });
 }

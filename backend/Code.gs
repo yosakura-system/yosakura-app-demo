@@ -45,8 +45,10 @@ function autoPurgeOn_()    { return getSetting_('ENABLE_AUTO_PURGE', true) === t
    purgeOldPhotos 側で削除対象から外す（samplePhotoIds_）。行が守られても写真が消えたら意味がない。 */
 /* ★2026-09-01 追加＝monthly（月次数値＋棚卸の品目内訳 closeDetail）。
    90日で消すと過去月の原価率の推移・前年比較が出せなくなる。soukatsu と同じ理由で守る。 */
+/* ★2026-09-07 追加＝gsnap（Google口コミの毎晩スナップショット＝総数・星・獲得数・代表口コミ）。
+   90日で消すと「Google口コミ集計」の推移が3か月で切れる。1日10行ほどの軽量な行なので恒久保存（神田さんのご指示）。 */
 var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide',
-                         'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu', 'phsample', 'monthly'];
+                         'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu', 'phsample', 'monthly', 'gsnap'];
 
 // スクリプトプロパティから設定を読む（無ければ既定値）。管理画面や手動で変更できる。
 function getSetting_(key, def) {
@@ -247,6 +249,9 @@ function validateBackendConfiguration() {
   var tokenMax = 0; try { tokenMax = AUTH_TOKEN_MAX; } catch (e) {}
   ck('同時ログイン端末の上限', tokenMax >= 10, 'AUTH_TOKEN_MAX=' + tokenMax + (tokenMax >= 10 ? '' : '（認証.gs を貼り替えると10になります）'));
   ck('90日削除から守るkindにmonthlyがある', PURGE_KEEP_KINDS.indexOf('monthly') !== -1, PURGE_KEEP_KINDS.join(','));
+  /* ★2026-09-07 の貼り替えぶん＝外から ?action=validate で「済んだか」を確認できるようにする */
+  ck('90日削除から守るkindにgsnap（Google口コミ記録）がある', PURGE_KEEP_KINDS.indexOf('gsnap') !== -1,
+     PURGE_KEEP_KINDS.indexOf('gsnap') !== -1 ? '口コミ推移は恒久保存' : '未貼付：Code.gs を貼り替えてください');
 
   var ng = checks.filter(function (c) { return !c.ok; });
   var out = { allOk: ng.length === 0, ngCount: ng.length, checks: checks };
