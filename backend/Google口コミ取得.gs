@@ -59,7 +59,10 @@ function reviewFetchDaily() {
       if (r.rating !== undefined) note.rating = r.rating;
       if (baseN !== undefined) note.gained = r.total - baseN;
       if (r.reviews && r.reviews.length) note.reviews = r.reviews;   // 代表的な口コミ5件（本文は300字まで）
-      sh.appendRow([Utilities.getUuid(), Date.now(), REVIEW_KIND, store, today, '', JSON.stringify(note), '[]']);
+      /* ★日付は先頭アポストロフィ付きで書く＝シートが日付セルへ自動変換し、読み出しがDate型（ISO文字列）に
+         化けるのを防ぐ（2026-09-08 実機で発症＝口コミ集計のグラフが「データなし」・時点表示が1日ずれた）。
+         アプリ側も読み方で吸収済みだが、書く側も直しておく */
+      sh.appendRow([Utilities.getUuid(), Date.now(), REVIEW_KIND, store, "'" + today, '', JSON.stringify(note), '[]']);
       last[store] = { d: today, n: r.total, base: baseN };  // 初日は base=undefined のまま＝獲得数は翌日から
     } catch (e) {
       try { Logger.log('reviewFetchDaily ' + store + ': ' + e); } catch (_) {}
