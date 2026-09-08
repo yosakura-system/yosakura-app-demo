@@ -3284,6 +3284,16 @@
         ${otherRows.length ? `<p class="hint" style="display:block;margin-top:2px">${L({ ja:'「その他」の内訳', en:'Breakdown of “Other”', vi:'Chi tiết “Khác”' })}：${otherRows.map(([k, c]) => esc(k) + ' ' + c).join(' ／ ')}</p>` : ''}
         ${countryRows.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'来店国', en:'Country', vi:'Quốc gia' })}</div>${countryRows.map(([c, ct]) => barRow(c, ct, n, '', `data-svcountry="${esc(c)}"`)).join('')}` : ''}
         ${months.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'月別（回答数・平均満足度）', en:'By month (responses & avg)', vi:'Theo tháng (PH & TB)' })}</div>${months.map(m => barRow(`${m}　★${mavg(m).toFixed(1)}`, mc[m], Math.max(...months.map(x => mc[x])), '', `data-svmonth="${m}"`)).join('')}` : ''}
+        ${(() => {
+          /* ★日別の回答数（2026-09-08 神田さんのご要望＝日別の集計状況を確認したい）。
+             今月の回答数を日別のグラフに。棒をタップするとその日の回答（★・コメント）が開く */
+          const ym = todayYm();
+          const dOf = (t) => new Date(Number(t) || 0).toLocaleDateString('en-CA');
+          const byDay = {};
+          rows.forEach(r => { const k = dOf(r.t); if (k.slice(0, 7) === ym) byDay[k] = (byDay[k] || 0) + 1; });
+          return `<div class="idlabel" style="margin-top:12px">${L({ ja:'日別（今月の回答数）', en:'By day (this month)', vi:'Theo ngày (tháng này)' })}</div>
+          ${colChart(daysOfYm(ym), (d) => byDay[d] || 0, { svday: 1, fmt: (v) => v + L({ ja:'件', en:'', vi:'' }), title:{ ja:'日別の回答数', en:'Daily responses', vi:'PH theo ngày' } })}`;
+        })()}
       </div>
       ${(issueN || noneN) ? `<div class="card">
         <h3>${L({ ja:'いただいたご指摘', en:'Reported issues', vi:'Điểm được góp ý' })}</h3>
@@ -3672,7 +3682,9 @@
       const v = vals[i];
       const h = v > 0 ? Math.max(4, Math.round(v / max * 100)) : 0;
       // grday＝Google口コミの日別グラフ（棒タップでその日の件数ポップアップ・2026-09-08 神田さんのご要望）
-      const tap = opt.grday ? ` data-grday="${esc(opt.grday + '||' + d)}"` : (opt.store ? ` data-skday="${esc(opt.store + '||' + d)}"` : '');
+      // svday＝サーベイの日別グラフ（棒タップでその日の回答一覧・2026-09-08 神田さんのご要望）
+      const tap = opt.svday ? ` data-svday="${esc(d)}"`
+        : opt.grday ? ` data-grday="${esc(opt.grday + '||' + d)}"` : (opt.store ? ` data-skday="${esc(opt.store + '||' + d)}"` : '');
       return `<button class="col${v > 0 ? '' : ' none'}${i === topI ? ' top' : ''}" style="--h:${h}%"${tap} title="${esc(mdLabel(d))}｜${v > 0 ? esc(fmt(v)) : '—'}" aria-label="${esc(mdLabel(d))} ${v > 0 ? esc(fmt(v)) : ''}"><span class="cb"></span></button>`;
     }).join('');
     return `
@@ -3685,7 +3697,8 @@
           ${cols}
         </div>
         <div class="colaxis"><span>${esc(mdLabel(days[0]))}</span><span>${esc(mdLabel(days[Math.floor(days.length / 2)]))}</span><span>${esc(mdLabel(days[days.length - 1]))}</span></div>
-        ${opt.grday ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の口コミ件数が見られます', en:'Tap a bar to see that day\'s review counts', vi:'Chạm vào cột để xem số review ngày đó' })}</div>`
+        ${opt.svday ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の回答（★・コメント）が見られます', en:'Tap a bar to see that day\'s answers', vi:'Chạm vào cột để xem phản hồi ngày đó' })}</div>`
+          : opt.grday ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の口コミ件数が見られます', en:'Tap a bar to see that day\'s review counts', vi:'Chạm vào cột để xem số review ngày đó' })}</div>`
           : opt.store ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の総括表（全項目）が開きます', en:'Tap a bar to open that day\'s full report', vi:'Chạm vào cột để mở báo cáo ngày đó' })}</div>` : ''}
       </div>`;
   }
@@ -7621,6 +7634,11 @@
     document.querySelectorAll('[data-grday]').forEach(b => b.onclick = () => {
       const v = String(b.dataset.grday || ''); const i = v.indexOf('||');
       if (i > 0) openGreviewDaySheet(v.slice(0, i), v.slice(i + 2));
+    });
+    // サーベイの日別グラフの棒タップ＝その日の回答一覧（2026-09-08 神田さんのご要望）
+    document.querySelectorAll('[data-svday]').forEach(b => b.onclick = () => {
+      const d = String(b.dataset.svday || '');
+      if (d) openSurveyListSheet(esc(mdLabel(d)) + svNoKai(), (r) => new Date(Number(r.t) || 0).toLocaleDateString('en-CA') === d);
     });
     // 総括表の月次出力：印刷（そのままA4横で紙になる）とCSV保存
     if (byId('skpPrint')) byId('skpPrint').onclick = () => window.print();
