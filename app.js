@@ -3141,17 +3141,34 @@
   APP_VIEWS.survey = () => {
     const vis = visibleStores();
     const rows = getSurvey().filter(r => vis.includes(r.store));
-    const n = rows.length;
-    const avg = n ? (rows.reduce((s, r) => s + (Number(r.sat) || 0), 0) / n) : 0;
-    return `
-      ${NOTE({ ja:'◆ サーベイはサーベイ（iPadの本番フォーム）で運用します。このアプリは入口と運用メモの役割です。', en:'◆ Surveys are run in the live iPad form. This app provides the entry point and operating notes.', vi:'◆ Khảo sát chạy trên form iPad thật. Ứng dụng chỉ là lối vào và ghi chú vận hành.' })}
+    const opsCard = `
       <div class="card">
         <h3>${L({ ja:'お客様アンケート（本番）', en:'Guest survey (live)', vi:'Khảo sát khách (thật)' })}</h3>
         <button class="btn-primary" id="surveyOpen" data-url="${SURVEY_URL}">${L({ ja:'本番サーベイを開く（お客様のiPad用）', en:'Open live survey (for guests)', vi:'Mở khảo sát thật (cho khách)' })}</button>
         <div class="hint">${L({ ja:'声かけは短く：「お時間がありましたら、アンケートにご協力をお願いいたします。」／回答は誘導せず、満足度を最優先に。', en:'Keep it short; never lead the answer; prioritize the guest.', vi:'Nói ngắn gọn; không gợi ý câu trả lời.' })}</div>
         <div class="hint">${L({ ja:'※「大変満足／満足」の時だけ、控えめに口コミQRをご案内（断られたらすぐ引く）。', en:'Only when highly satisfied, gently offer the review QR.', vi:'Chỉ khi rất hài lòng mới mời đánh giá.' })}</div>
-      </div>
-      ${['manager','owner','hq'].includes(getRole()) ? surveySheets() + surveyAgg(rows, vis) : ''}`;
+      </div>`;
+    const head = NOTE({ ja:'◆ サーベイはサーベイ（iPadの本番フォーム）で運用します。このアプリは入口と運用メモの役割です。', en:'◆ Surveys are run in the live iPad form. This app provides the entry point and operating notes.', vi:'◆ Khảo sát chạy trên form iPad thật. Ứng dụng chỉ là lối vào và ghi chú vận hành.' });
+    // スタッフ（店舗iPad）＝従来どおり運用カードのみ（集計は店長・オーナー・本部）
+    if (!['manager','owner','hq'].includes(getRole())) return `${head}${opsCard}`;
+    /* ★タブ化（2026-09-08 神田さんのご指摘＝集計が縦に長く、スクロールしないと見えない。
+       「タブで分ける、縦に積まない」の方針どおり項目別に分ける。既定＝概要 */
+    const SVT = [
+      { v:'sum',    t:{ ja:'概要', en:'Summary', vi:'Tổng quan' } },
+      { v:'route',  t:{ ja:'来店', en:'Arrival', vi:'Nguồn khách' } },
+      { v:'trend',  t:{ ja:'推移', en:'Trend', vi:'Xu hướng' } },
+      { v:'voice',  t:{ ja:'お声', en:'Voices', vi:'Góp ý' } }
+    ].concat(vis.length > 1 ? [{ v:'stores', t:{ ja:'店舗別', en:'Stores', vi:'Theo CH' } }] : [])
+     .concat([{ v:'ops', t:{ ja:'運用', en:'Operation', vi:'Vận hành' } }]);
+    const urlSvTab = currentRoute().params.get('tab');
+    // 'all'＝全セクションを縦に並べる（検査・印刷用。タブのボタンには出さない）
+    const svTab = (urlSvTab === 'all' || SVT.some(o => o.v === urlSvTab)) ? urlSvTab
+      : SVT.some(o => o.v === localStorage.getItem('yosakura_survey_tab')) ? localStorage.getItem('yosakura_survey_tab') : 'sum';
+    const seg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="svtab">${SVT.map(o => `<button type="button" data-svtab="${o.v}" class="${o.v === svTab ? 'on' : ''}">${L(o.t)}</button>`).join('')}</div></div>`;
+    const content = svTab === 'ops' ? opsCard + surveySheets()
+      : svTab === 'all' ? opsCard + surveySheets() + surveyAgg(rows, vis, 'all')
+      : surveyAgg(rows, vis, svTab);
+    return `${head}${seg}${content}`;
   };
   /* 集約シート（回答の生データ）への入口。
      8/7 増田さんご要望。二重管理を避けるため、URLは既存の「資料リンク」で持つ
@@ -3198,8 +3215,9 @@
       </div>`;
   };
 
-  // サーベイ集計（本部・オーナー・店長向け）：満足度分布／低評価／来店経路／月別推移／店舗別
-  function surveyAgg(rows, vis) {
+  // サーベイ集計（本部・オーナー・店長向け）：タブごとに出し分け（sum＝概要／route＝来店／trend＝推移／voice＝お声／stores＝店舗別）
+  function surveyAgg(rows, vis, tab) {
+    if (tab === 'all') return ['sum', 'route', 'trend', 'voice', 'stores'].map(tb => surveyAgg(rows, vis, tb)).join('');
     const n = rows.length;
     if (!n) return `
       <div class="card">
@@ -3268,22 +3286,23 @@
         ${noAnswer ? `<p class="hint" style="display:block">${L({ ja:'※ 回答がまだ無い店舗が' + noAnswer + '店あります。サーベイのご案内が現場で回っているか、あわせてご確認いただけますと助かります。', en:noAnswer + ' store(s) have no responses yet. Please check the survey is being offered on site.', vi:'Có ' + noAnswer + ' cửa hàng chưa có phản hồi.' })}</p>` : ''}
       </div>`;
     })() : '';
-    return `
+    const tapHint = `<p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 行をタップすると、回答の中身（直近10件）が見られます。', en:'Tap a row to see the answers behind it (latest 10).', vi:'Chạm vào dòng để xem nội dung (10 gần nhất).' })}</p>`;
+    const srcHint = `<p class="hint" style="display:block">${L({ ja:'※ サーベイ回答（本番フォーム）から集計しています。来店国はデータがある場合に表示します。来店経路は、お客様が回答された言語（韓国語・中国語・ベトナム語など）の値をアプリの区分へ寄せて集計しています。', en:'Aggregated from live survey responses. Country appears when available. Arrival routes answered in other languages are mapped to these categories.', vi:'Tổng hợp từ phản hồi khảo sát. Nguồn khách trả lời bằng ngôn ngữ khác được quy về các nhóm này.' })}</p>`;
+    // ── 概要（回答数・平均・低評価・満足度の分布）──
+    if (tab === 'route') return `
       <div class="card">
-        <h3>${L({ ja:'サーベイ集計', en:'Survey summary', vi:'Tổng hợp khảo sát' })}</h3>
-        <div class="stat-row">
-          <div class="stat"><div class="n">${n}</div><div class="k">${L({ ja:'回答数', en:'Responses', vi:'Phản hồi' })}</div></div>
-          <div class="stat"><div class="n">${avg.toFixed(1)}</div><div class="k">${L({ ja:'平均満足度', en:'Avg.', vi:'TB' })}</div></div>
-          <div class="stat${low ? ' tapable' : ''}"${low ? ' data-svsat="low" role="button" tabindex="0"' : ''}><div class="n" style="${low?'color:#a23b3b':''}">${low}</div><div class="k">${L({ ja:'低評価(1-2)', en:'Low (1-2)', vi:'Thấp' })}</div></div>
-        </div>
-        <div class="idlabel" style="margin-top:12px">${L({ ja:'満足度の分布', en:'Rating distribution', vi:'Phân bố đánh giá' })}</div>
-        <p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ ★・来店経路・来店国・月別・ご指摘の行をタップすると、回答の中身（直近10件）が見られます。', en:'Tap a ★ / route / country row to see the answers behind it (latest 10).', vi:'Chạm vào dòng ★ / nguồn khách / quốc gia để xem nội dung (10 gần nhất).' })}</p>
-        ${dist.map(d => barRow('★' + d.s, d.c, n, d.s <= 2 ? 'bar-low' : '', `data-svsat="${d.s}"`)).join('')}
-        <div class="idlabel" style="margin-top:12px">${L({ ja:'来店経路', en:'Arrival route', vi:'Nguồn khách' })}</div>
+        <h3>${L({ ja:'来店経路・来店国', en:'Arrival & country', vi:'Nguồn khách & quốc gia' })}</h3>
+        ${tapHint}
+        <div class="idlabel">${L({ ja:'来店経路', en:'Arrival route', vi:'Nguồn khách' })}</div>
         ${ROUTES.map(r => barRow(L(r.t), rc[r.v], n, '', `data-svroute="${r.v}"`)).join('')}
         ${otherRows.length ? `<p class="hint" style="display:block;margin-top:2px">${L({ ja:'「その他」の内訳', en:'Breakdown of “Other”', vi:'Chi tiết “Khác”' })}：${otherRows.map(([k, c]) => esc(k) + ' ' + c).join(' ／ ')}</p>` : ''}
         ${countryRows.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'来店国', en:'Country', vi:'Quốc gia' })}</div>${countryRows.map(([c, ct]) => barRow(c, ct, n, '', `data-svcountry="${esc(c)}"`)).join('')}` : ''}
-        ${months.length ? `<div class="idlabel" style="margin-top:12px">${L({ ja:'月別（回答数・平均満足度）', en:'By month (responses & avg)', vi:'Theo tháng (PH & TB)' })}</div>${months.map(m => barRow(`${m}　★${mavg(m).toFixed(1)}`, mc[m], Math.max(...months.map(x => mc[x])), '', `data-svmonth="${m}"`)).join('')}` : ''}
+      </div>${srcHint}`;
+    if (tab === 'trend') return `
+      <div class="card">
+        <h3>${L({ ja:'推移（月別・日別）', en:'Trend (monthly & daily)', vi:'Xu hướng (tháng & ngày)' })}</h3>
+        ${tapHint}
+        ${months.length ? `<div class="idlabel">${L({ ja:'月別（回答数・平均満足度）', en:'By month (responses & avg)', vi:'Theo tháng (PH & TB)' })}</div>${months.map(m => barRow(`${m}　★${mavg(m).toFixed(1)}`, mc[m], Math.max(...months.map(x => mc[x])), '', `data-svmonth="${m}"`)).join('')}` : ''}
         ${(() => {
           /* ★日別の回答数（2026-09-08 神田さんのご要望＝日別の集計状況を確認したい）。
              今月の回答数を日別のグラフに。棒をタップするとその日の回答（★・コメント）が開く */
@@ -3294,22 +3313,36 @@
           return `<div class="idlabel" style="margin-top:12px">${L({ ja:'日別（今月の回答数）', en:'By day (this month)', vi:'Theo ngày (tháng này)' })}</div>
           ${colChart(daysOfYm(ym), (d) => byDay[d] || 0, { svday: 1, fmt: (v) => v + L({ ja:'件', en:'', vi:'' }), title:{ ja:'日別の回答数', en:'Daily responses', vi:'PH theo ngày' } })}`;
         })()}
-      </div>
+      </div>${srcHint}`;
+    if (tab === 'voice') return `
       ${(issueN || noneN) ? `<div class="card">
         <h3>${L({ ja:'いただいたご指摘', en:'Reported issues', vi:'Điểm được góp ý' })}</h3>
+        ${tapHint}
         ${issueRows.length
           ? `${issueRows.map(x => barRow(L(x.t), ic[x.v], Math.max(1, issueN), 'bar-low', `data-svissue="${x.v}"`)).join('')}
              <p class="hint" style="display:block">${L({ ja:'※ ご指摘があった回答は' + issueN + '件です（1件で複数のご指摘をいただく場合があるため、合計は一致しません）。', en:'Responses containing an issue: ' + issueN + ' (one response can raise several).', vi:'Phản hồi có góp ý: ' + issueN + '.' })}</p>`
           : `<p class="muted">${L({ ja:'ご指摘のあった回答はまだありません。', en:'No issues reported yet.', vi:'Chưa có góp ý.' })}</p>`}
         ${noneN ? `<div class="rep tapable" data-svissue="none" role="button" tabindex="0"><span class="amt">${noneN}</span><div class="body"><div class="l1">${L({ ja:'特にご指摘なし', en:'No particular issue', vi:'Không có vấn đề' })}</div><div class="l2">${L({ ja:'回答全体の', en:'of all responses', vi:'trên tổng số' })} ${Math.round(noneN / n * 100)}%</div></div></div>` : ''}
-      </div>` : ''}
+      </div>` : `<div class="card"><p class="muted">${L({ ja:'ご指摘のあった回答はまだありません。', en:'No issues reported yet.', vi:'Chưa có góp ý.' })}</p></div>`}
       ${voices.length ? `<div class="card">
         <h3>${L({ ja:'お客様の声', en:'Guest comments', vi:'Ý kiến khách' })}</h3>
         <p class="hint" style="display:block;margin-top:-4px">${L({ ja:'評価の低い順に表示しています（改善の手がかりになるため）。原文のまま表示します。', en:'Lowest ratings first, shown in the original language.', vi:'Đánh giá thấp trước, giữ nguyên văn.' })}</p>
         ${voices.map(({ r, c }) => `<div class="rep"><span class="amt" style="${(Number(r.sat)||0) <= 3 ? 'color:#a23b3b' : ''}">★${Number(r.sat) || '—'}</span><div class="body"><div class="l1">${esc(c)}</div><div class="l2">${esc(storeShort(r.store))}${r.country ? ' ・ ' + esc(r.country) : ''} ・ ${timeAgo(r.t)}</div></div></div>`).join('')}
-      </div>` : ''}
-      ${byStore}
-      <p class="hint" style="display:block">${L({ ja:'※ サーベイ回答（本番フォーム）から集計しています。来店国はデータがある場合に表示します。来店経路は、お客様が回答された言語（韓国語・中国語・ベトナム語など）の値をアプリの区分へ寄せて集計しています。', en:'Aggregated from live survey responses. Country appears when available. Arrival routes answered in other languages are mapped to these categories.', vi:'Tổng hợp từ phản hồi khảo sát. Nguồn khách trả lời bằng ngôn ngữ khác được quy về các nhóm này.' })}</p>`;
+      </div>` : ''}${srcHint}`;
+    if (tab === 'stores') return `${byStore || ''}${srcHint}`;
+    // 既定＝概要
+    return `
+      <div class="card">
+        <h3>${L({ ja:'サーベイ集計', en:'Survey summary', vi:'Tổng hợp khảo sát' })}</h3>
+        <div class="stat-row">
+          <div class="stat"><div class="n">${n}</div><div class="k">${L({ ja:'回答数', en:'Responses', vi:'Phản hồi' })}</div></div>
+          <div class="stat"><div class="n">${avg.toFixed(1)}</div><div class="k">${L({ ja:'平均満足度', en:'Avg.', vi:'TB' })}</div></div>
+          <div class="stat${low ? ' tapable' : ''}"${low ? ' data-svsat="low" role="button" tabindex="0"' : ''}><div class="n" style="${low?'color:#a23b3b':''}">${low}</div><div class="k">${L({ ja:'低評価(1-2)', en:'Low (1-2)', vi:'Thấp' })}</div></div>
+        </div>
+        <div class="idlabel" style="margin-top:12px">${L({ ja:'満足度の分布', en:'Rating distribution', vi:'Phân bố đánh giá' })}</div>
+        ${tapHint}
+        ${dist.map(d => barRow('★' + d.s, d.c, n, d.s <= 2 ? 'bar-low' : '', `data-svsat="${d.s}"`)).join('')}
+      </div>${srcHint}`;
   }
 
   /* ---------- サーベイ：集計の行タップで回答の中身シート（2026-08-27 神田さんのご要望）----------
@@ -6428,7 +6461,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -6445,6 +6478,8 @@
       if (t.dataset.sktab) { skEditClear_(); localStorage.setItem('yosakura_soukatsu_tab', t.dataset.sktab); go('/app/soukatsu?tab=' + t.dataset.sktab); return; }
       // お知らせのタブ（一覧／投稿・本部のみ）＝2026-09-08 神田さんのご指摘で分離
       if (t.dataset.nwtab) { localStorage.setItem('yosakura_news_tab', t.dataset.nwtab); go('/app/news?tab=' + t.dataset.nwtab); return; }
+      // サーベイ集計のタブ（概要／来店／推移／お声／店舗別／運用）＝2026-09-08 神田さんのご指摘で分離
+      if (t.dataset.svtab) { localStorage.setItem('yosakura_survey_tab', t.dataset.svtab); go('/app/survey?tab=' + t.dataset.svtab); return; }
       // 「この日報を直す」＝その日の内容を入れた状態で入力画面を開く（2026-09-03 ユンさんのご要望）
       if (t.dataset.skedit) {
         document.querySelectorAll('.sheet-mask').forEach(m => m.remove());

@@ -347,7 +347,7 @@ await new Promise(r=>setTimeout(r, 50));
   ok(sv.length===2 && sv.some(r=>r.country==='Korea') && sv.some(r=>r.country==='Japan'), 'survey country restored from note JSON');
   ok(!sv.some(r=>String(r.country).startsWith('TEST_')), 'TEST_ 接頭辞のサーベイ行は集計から除外');
   ok(sv.some(r=>String(r.note).includes('good')), 'survey feedback restored from note.f');
-  location.hash = '#/app/survey';
+  location.hash = '#/app/survey?tab=all';
   const hq = registry.app.innerHTML;
   ok(/来店国/.test(hq) && /Korea/.test(hq), 'hq survey agg shows 来店国 (Korea)');
 
@@ -456,7 +456,7 @@ console.log('== サーベイ：手順書と「回答の集約シート」を取�
 }
 await new Promise(r=>setTimeout(r, 50));
 {
-  location.hash = '#/app/survey';
+  location.hash = '#/app/survey?tab=all';
   const html = registry.app.innerHTML;
   const i = html.indexOf('回答の集約シート');
   const block = i >= 0 ? html.slice(i, i + 1200) : '';
@@ -478,7 +478,7 @@ await new Promise(r=>setTimeout(r, 50));
 }
 await new Promise(r=>setTimeout(r, 50));
 {
-  location.hash = '#/app/survey';
+  location.hash = '#/app/survey?tab=all';
   ok(!/全店舗サーベイ集約表/.test(registry.app.innerHTML), '★店長には全店の集約表を出さない');
 }
 FETCH_ROWS = { ok:false };
@@ -771,7 +771,7 @@ console.log('== サーベイの来店きっかけ：各国語の回答をアプ�
   ]};
   try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ route normalize threw: '+e.message); }
   await new Promise(r=>setTimeout(r, 50));
-  location.hash = '#/app/survey';
+  location.hash = '#/app/survey?tab=all';
   const html = registry.app.innerHTML;
   const barOf = (label) => { const i = html.indexOf('>'+label+'<'); return i < 0 ? '' : html.slice(i, i + 200); };
   ok(/<b>3<\/b>/.test(barOf('Google（マップ/検索）')), '구글・グーグル・Google が Google に寄る');
@@ -795,7 +795,7 @@ console.log('== サーベイの改善点：多言語の【…】を区分へ寄�
   ]};
   try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ issue parse threw: '+e.message); }
   await new Promise(r=>setTimeout(r, 50));
-  location.hash = '#/app/survey';
+  location.hash = '#/app/survey?tab=all';
   const html = registry.app.innerHTML;
   const barOf = (label) => { const i = html.indexOf('>'+label+'<'); return i < 0 ? '' : html.slice(i, i + 200); };
   ok(/いただいたご指摘/.test(html), '「いただいたご指摘」の集計が出る');
@@ -823,7 +823,7 @@ console.log('== 実データにあった回答で、分類の取りこぼしが�
   ]};
   try { run(()=> setLS('manager', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ real data threw: '+e.message); }
   await new Promise(r=>setTimeout(r, 50));
-  location.hash = '#/app/survey';
+  location.hash = '#/app/survey?tab=all';
   const html = registry.app.innerHTML;
   // 「その他」は来店経路のバーにもあるため、セクションを分けて探す
   const routeSec = html.slice(html.indexOf('来店経路'), html.indexOf('いただいたご指摘'));
@@ -850,7 +850,7 @@ console.log('== 店舗別：どの店で何が起きているかが分かる／�
   ]};
   try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ by-store threw: '+e.message); }
   await new Promise(r=>setTimeout(r, 50));
-  location.hash = '#/app/survey';
+  location.hash = '#/app/survey?tab=all';
   const html = registry.app.innerHTML;
   const cardOf = (name) => { const i = html.indexOf(name); return i < 0 ? '' : html.slice(i, i + 400); };
   ok(/主なご指摘/.test(html), '店舗ごとに「主なご指摘」が出る');
@@ -1021,7 +1021,7 @@ console.log('== 店舗名を本部の正式名称に合わせる（過去のデ�
   const st = registry.app.innerHTML;
   ok(/250,000|25万/.test(st), '旧表記で入っている総括表が、正式名称の店舗として集計される');
 
-  location.hash = '#/app/survey';
+  location.hash = '#/app/survey?tab=all';
   const sv = registry.app.innerHTML;
   ok(/日本料理世桜本店|本店/.test(sv), 'サーベイも正式名称の店舗に寄る');
 
@@ -1538,7 +1538,7 @@ console.log('== 旧表記のサーベイが、件数として落ちずに合算�
   FETCH_ROWS = { ok:true, reports };
   try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ threw: '+e.message); }
   await new Promise(r=>setTimeout(r, 50));
-  location.hash = '#/app/survey';
+  location.hash = '#/app/survey?tab=all';
   const html = registry.app.innerHTML;
   const m = html.match(/<div class="n">(\d+)<\/div><div class="k">回答数/);
   const shown = m ? Number(m[1]) : -1;
@@ -1561,7 +1561,7 @@ console.log('== 端末に旧表記が残っていても、起動時に正式名�
       localStorage.setItem('yosakura_demo_raw', '[]'); // 前回の同期結果は入っている状態
     });
   } catch(e){ FAIL++; console.log('  ✗ migrate threw: '+e.message); }
-  location.hash = '#/app/survey';
+  location.hash = '#/app/survey?tab=all';
   const html = registry.app.innerHTML;
   const m = html.match(/<div class="n">(\d+)<\/div><div class="k">回答数/);
   const shown2 = m ? Number(m[1]) : -1;
@@ -2467,7 +2467,7 @@ console.log('== 体験版（配る版）は、どう操作しても本物の記�
   ok(svStores.length >= 8, `複数の店舗にまたがっている（${svStores.length}店舗）`);
   for (const st of ['日本鰻世桜 浅草橋店', '日本鰻世桜 富士山店', '和牛世桜 広島店']) {
     runTaiken(() => setLS('manager', st, 'ja'));
-    location.hash = '#/app/survey';
+    location.hash = '#/app/survey?tab=all';
     const h = registry.app.innerHTML;
     ok(/[0-9]\.[0-9]/.test(h), `${st}：平均満足度が出る`);
     ok(/いただいたご指摘/.test(h), `${st}：いただいたご指摘が出る`);
@@ -4285,7 +4285,7 @@ console.log('== サーベイに日別の回答数グラフ（2026-09-08 神田�
       { store:S, sat:4, route:'instagram', note:'', country:'Korea', t: noonT + 1000 }
     ]));
   });
-  location.hash = '#/app/survey';
+  location.hash = '#/app/survey?tab=all';
   const h = registry.app.innerHTML;
   ok(/日別（今月の回答数）/.test(h), 'サーベイ集計に「日別（今月の回答数）」が出る');
   ok(new RegExp('data-svday="' + tk + '"').test(h), '今日の棒にタップの目印（data-svday）が付く');
