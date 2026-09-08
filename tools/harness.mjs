@@ -4273,15 +4273,65 @@ console.log('== お知らせ＝本部は「一覧」と「投稿」をタブで�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
-console.log('== 金種別入力の写真＝長堀橋トライアルに追加（2026-09-08 秋定さんのご要望）==');
+console.log('== 金種別入力＝レジと同じフォームで記録（2026-09-08 秋定さんのご要望。旧レジ画面の置き換え）==');
 {
   const S = '牛カツ世桜 長堀橋店';
-  let h = renderView('openphoto', 'staff', S, 'ja');
-  ok(/data-phtarget="kinshu_photo"|金種別入力の写真/.test(h), '長堀橋の写真提出に「金種別入力の写真」の切替が出る');
-  h = renderView('kyou', 'staff', S, 'ja');
-  ok(/金種別入力の写真/.test(h), '今日出すものに出る（店舗運用・任意）');
-  h = renderView('openphoto', 'staff', '日本料理世桜本店', 'ja');
-  ok(!/金種別入力の写真/.test(h), '他店には出ない（長堀橋限定）');
+  // ① 今日出すものに出る（長堀橋限定）
+  let h = renderView('kyou', 'staff', S, 'ja');
+  ok(/金種別入力（レジクローズ）/.test(h), '今日出すものに出る（店舗運用）');
+  h = renderView('kyou', 'staff', '日本料理世桜本店', 'ja');
+  ok(!/金種別入力（レジクローズ）/.test(h), '他店には出ない（長堀橋限定）');
+  // ② フォーム＝レジのクローズ画面と同じ金種の行
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); });
+  location.hash = '#/app/kinshu';
+  h = registry.app.innerHTML;
+  ok(/1万円/.test(h) && /5千円/.test(h) && /2千円/.test(h) && /500円/.test(h) && /1円/.test(h), '金種10種の行がある（レジ画面と同じ）');
+  ok(/想定レジ内現金/.test(h) && /差異（自動計算）/.test(h) && /レジ内現金（自動計算）/.test(h), '想定レジ内現金・合計・差異の欄がある');
+  // ③ 提出＝合計と差異が自動計算で保存される（実物写真の例＝レジ内現金¥70,900・差異0）
+  doc.getElementById('kc_10000').value = '3'; doc.getElementById('kc_5000').value = '2';
+  doc.getElementById('kc_1000').value = '25'; doc.getElementById('kc_100').value = '55';
+  doc.getElementById('kc_50').value = '3'; doc.getElementById('kc_10').value = '24'; doc.getElementById('kc_5').value = '2';
+  doc.getElementById('kc_expect').value = '70900';
+  doc.getElementById('kc_by').value = '秋定';
+  doc.getElementById('submitKc').onclick();
+  const reps = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]');
+  const kc = reps.find(r => r.kind === 'kinshu');
+  ok(!!kc, 'kind:kinshu で保存される');
+  const p = kc ? JSON.parse(kc.note) : {};
+  ok(p.total === 70900 && p.diff === 0 && p.counts && p.counts['10000'] === 3 && p.by === '秋定',
+     '合計¥70,900・差異0・枚数・名前が保存される（レジ画面の例と一致）');
+  // ④ 提出すると「今日出すもの」で提出済みになる（detect:'kinshu'）
+  location.hash = '#/app/kyou';
+  const kcRowOf = (html, label) => { const i = html.indexOf(label); return i < 0 ? '' : html.slice(Math.max(0, i - 300), i + 300); };
+  ok(/提出済/.test(kcRowOf(registry.app.innerHTML, '金種別入力')), '提出すると「提出済」になる');
+  // ⑤ 差異が総括表の「レジ誤差」へ下書きされる（OCR・gsnapと同じ型）
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'kinshu', store:S, item: new Date(Date.now() + 9*3600e3).toISOString().slice(0,10),
+        note: JSON.stringify({ counts:{ 10000:3 }, total:70900, expect:71000, diff:-100, memo:'', by:'秋定' }), photos: [], t: Date.now() }
+    ]));
+  });
+  location.hash = '#/app/soukatsu';
+  h = registry.app.innerHTML;
+  ok(/id="sk_err"[^>]*value="-100"/.test(h), '総括表の「レジ誤差」に差異が自動で入る');
+  ok(/金種別入力（レジクローズ）の差異から自動で入っています/.test(h), '下書きの注記が出る（違うときは直せる）');
+  // ⑥ 自動計算の配線と行内書き換え（画面を作り直さない）
+  const srcKc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/kc_' \+ d\.v[\s\S]{0,200}oninput = kcCalc/.test(srcKc) && /kca_' \+ d\.v/.test(srcKc), '枚数の入力で金額・合計を行内で書き換える（renderしない）');
+  ok(/case 'chukan'[^\n]*\n[^\n]*case 'kinshu':/.test(srcKc) || /case 'newscmt': case 'kinshu':/.test(srcKc), '同期の振り分けに kinshu が入っている（＝ローカルから消えない）');
+  run(() => { setLS('hq', 'all', 'ja'); });
+  // ⑦ 本部の受信箱に要約（レジ内現金・差異）が出る
+  run(() => {
+    setLS('hq', 'all', 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'kinshu', store:S, item: new Date(Date.now() + 9*3600e3).toISOString().slice(0,10),
+        note: JSON.stringify({ counts:{ 10000:3 }, total:70900, expect:71000, diff:-100, memo:'両替の記録漏れかも', by:'秋定' }), photos: [], t: Date.now() }
+    ]));
+  });
+  location.hash = '#/app/inbox';
+  h = registry.app.innerHTML;
+  ok(/金種別入力/.test(h) && /70,900/.test(h) && /-100/.test(h) && /両替の記録漏れかも/.test(h), '受信箱にレジ内現金・差異・メモが出る');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
