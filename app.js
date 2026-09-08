@@ -3671,7 +3671,8 @@
     const cols = days.map((d, i) => {
       const v = vals[i];
       const h = v > 0 ? Math.max(4, Math.round(v / max * 100)) : 0;
-      const tap = opt.store ? ` data-skday="${esc(opt.store + '||' + d)}"` : '';
+      // grday＝Google口コミの日別グラフ（棒タップでその日の件数ポップアップ・2026-09-08 神田さんのご要望）
+      const tap = opt.grday ? ` data-grday="${esc(opt.grday + '||' + d)}"` : (opt.store ? ` data-skday="${esc(opt.store + '||' + d)}"` : '');
       return `<button class="col${v > 0 ? '' : ' none'}${i === topI ? ' top' : ''}" style="--h:${h}%"${tap} title="${esc(mdLabel(d))}｜${v > 0 ? esc(fmt(v)) : '—'}" aria-label="${esc(mdLabel(d))} ${v > 0 ? esc(fmt(v)) : ''}"><span class="cb"></span></button>`;
     }).join('');
     return `
@@ -3684,7 +3685,8 @@
           ${cols}
         </div>
         <div class="colaxis"><span>${esc(mdLabel(days[0]))}</span><span>${esc(mdLabel(days[Math.floor(days.length / 2)]))}</span><span>${esc(mdLabel(days[days.length - 1]))}</span></div>
-        ${opt.store ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の総括表（全項目）が開きます', en:'Tap a bar to open that day\'s full report', vi:'Chạm vào cột để mở báo cáo ngày đó' })}</div>` : ''}
+        ${opt.grday ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の口コミ件数が見られます', en:'Tap a bar to see that day\'s review counts', vi:'Chạm vào cột để xem số review ngày đó' })}</div>`
+          : opt.store ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の総括表（全項目）が開きます', en:'Tap a bar to open that day\'s full report', vi:'Chạm vào cột để mở báo cáo ngày đó' })}</div>` : ''}
       </div>`;
   }
   // 横棒（曜日別など・タップなし）
@@ -3939,7 +3941,7 @@
             <div class="stat"><div class="n">${r.latest.rating != null ? '★' + Number(r.latest.rating).toFixed(1) : '—'}</div><div class="k">${L({ ja:'星の平均', en:'Rating', vi:'Sao TB' })}</div></div>
             <div class="stat"><div class="n">${r.gain > 0 ? '+' + r.gain : r.gain}</div><div class="k">${L({ ja:'今月の獲得数', en:'Gained this month', vi:'Tăng trong tháng' })}</div></div>
           </div>
-          ${colChart(daysOfYm(ym), (d) => (r.byDate[d] && typeof r.byDate[d].gained === 'number') ? Math.max(0, r.byDate[d].gained) : 0, { store: r.s, title:{ ja:'日別の獲得数', en:'Daily gained', vi:'Tăng theo ngày' } })}
+          ${colChart(daysOfYm(ym), (d) => (r.byDate[d] && typeof r.byDate[d].gained === 'number') ? Math.max(0, r.byDate[d].gained) : 0, { grday: r.s, fmt: (v) => v + L({ ja:'件', en:'', vi:'' }), title:{ ja:'日別の獲得数', en:'Daily gained', vi:'Tăng theo ngày' } })}
           ${gReviewList(r.latest)}
           <button class="btn-primary" data-storelink="${esc(r.s)}" style="margin-top:12px">${L({ ja:'この店舗の詳細（カルテ）を見る', en:'Open this store\'s detail', vi:'Xem chi tiết cửa hàng' })}</button>
         </div>`;
@@ -3964,6 +3966,28 @@
         <p class="hint" style="display:block">${L({ ja:'※ 並び順＝今月の獲得数が多い順。行をタップすると個店カルテ（日別のグラフつき）が開きます。一覧に無い店舗は取得対象に未登録です。', en:'Sorted by monthly gains. Tap a row for the store detail. Missing stores are not registered yet.', vi:'Sắp xếp theo mức tăng trong tháng. Chạm để xem chi tiết.' })}</p>
       </div>`;
   };
+
+  /* 口コミグラフの棒タップ＝その日の件数をポップアップで（2026-09-08 神田さんのご要望）。
+     出すのは記録している3つ＝その日の獲得数・その時点の総口コミ数・星の平均 */
+  function openGreviewDaySheet(store, d) {
+    const x = gsnapsOf(store).find(v => v._d === d) || null;
+    const num = (v) => (Number(v) || 0).toLocaleString('en-US');
+    const mask = el(`<div class="sheet-mask"><div class="sheet">
+      <div class="grip"></div>
+      <h3>${esc(storeShort(store))}　${esc(mdLabel(d))}${L({ ja:'のGoogle口コミ', en:' Google reviews', vi:' đánh giá Google' })}</h3>
+      ${x ? `
+      <div class="stat-row">
+        <div class="stat"><div class="n">${typeof x.gained === 'number' ? (x.gained > 0 ? '+' + x.gained : String(x.gained)) : '—'}</div><div class="k">${L({ ja:'この日の獲得数', en:'Gained this day', vi:'Tăng trong ngày' })}</div></div>
+        <div class="stat"><div class="n">${num(x.total)}</div><div class="k">${L({ ja:'総口コミ数（この日時点）', en:'Total (as of this day)', vi:'Tổng (tại ngày này)' })}</div></div>
+        <div class="stat"><div class="n">${x.rating != null ? '★' + Number(x.rating).toFixed(1) : '—'}</div><div class="k">${L({ ja:'星の平均', en:'Rating', vi:'Sao TB' })}</div></div>
+      </div>
+      ${typeof x.gained !== 'number' ? `<p class="hint" style="display:block">${L({ ja:'※ この日は記録を始めた初日のため、獲得数（前日との差）はありません。', en:'First recorded day — no day-over-day gain yet.', vi:'Ngày đầu ghi nhận — chưa có mức tăng.' })}</p>` : ''}`
+      : `<p class="muted">${L({ ja:'この日の記録はありません（記録開始前の日か、取得できなかった日です）。', en:'No record for this day.', vi:'Không có dữ liệu ngày này.' })}</p>`}
+      <button class="btn-primary" data-close="1" style="margin-top:12px">${L({ ja:'閉じる', en:'Close', vi:'Đóng' })}</button>
+    </div></div>`);
+    mask.addEventListener('click', (e) => { if (e.target === mask || e.target.closest('[data-close]')) mask.remove(); });
+    document.body.appendChild(mask);
+  }
 
   /* --- 個店カルテ（#/store?s=店舗&ym=YYYY-MM）--- */
   const SK_FIELDS = [
@@ -4177,7 +4201,7 @@
             <div class="stat"><div class="n">${gLatest.rating != null ? '★' + Number(gLatest.rating).toFixed(1) : '—'}</div><div class="k">${L({ ja:'星の平均', en:'Rating', vi:'Sao TB' })}</div></div>
             <div class="stat"><div class="n">${gGainYm > 0 ? '+' + gGainYm : gGainYm}</div><div class="k">${L({ ja:'この月の獲得数', en:'Gained this month', vi:'Tăng trong tháng' })}</div></div>
           </div>
-          ${colChart(days, (d) => (gByDate[d] && typeof gByDate[d].gained === 'number') ? Math.max(0, gByDate[d].gained) : 0, { store, title:{ ja:'日別の獲得数', en:'Daily gained', vi:'Tăng theo ngày' } })}
+          ${colChart(days, (d) => (gByDate[d] && typeof gByDate[d].gained === 'number') ? Math.max(0, gByDate[d].gained) : 0, { grday: store, fmt: (v) => v + L({ ja:'件', en:'', vi:'' }), title:{ ja:'日別の獲得数', en:'Daily gained', vi:'Tăng theo ngày' } })}
           ${gReviewList(gLatest)}
           <p class="hint" style="display:block">${L({ ja:'※ 毎晩、Googleマップの口コミ件数を自動で記録しています（獲得数＝前日との差。削除があった日はマイナスになり、月の合計に反映されます）。総括表の「口コミ 当日」にも同じ数字が自動で入ります。', en:'Review counts are recorded automatically every night (gained = day-over-day; deletions count as minus). The same number pre-fills the daily report.', vi:'Số review được ghi tự động mỗi tối (tăng = so với hôm trước). Số này cũng tự điền vào báo cáo ngày.' })}</p>
         </div>` : ''}
@@ -7487,6 +7511,11 @@
     document.querySelectorAll('[data-gysel]').forEach(b => b.onclick = () => { gySelState = b.dataset.gysel; render(); });
     document.querySelectorAll('[data-storelink]').forEach(b => b.onclick = () => go(`/store?s=${encodeURIComponent(b.dataset.storelink)}`));
     document.querySelectorAll('[data-skday]').forEach(b => b.onclick = () => openSkDay(b.dataset.skday));
+    // 口コミグラフの棒タップ＝その日の件数ポップアップ（2026-09-08 神田さんのご要望）
+    document.querySelectorAll('[data-grday]').forEach(b => b.onclick = () => {
+      const v = String(b.dataset.grday || ''); const i = v.indexOf('||');
+      if (i > 0) openGreviewDaySheet(v.slice(0, i), v.slice(i + 2));
+    });
     // 総括表の月次出力：印刷（そのままA4横で紙になる）とCSV保存
     if (byId('skpPrint')) byId('skpPrint').onclick = () => window.print();
     if (byId('skpCsv')) byId('skpCsv').onclick = () => {
