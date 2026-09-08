@@ -47,8 +47,11 @@ function autoPurgeOn_()    { return getSetting_('ENABLE_AUTO_PURGE', true) === t
    90日で消すと過去月の原価率の推移・前年比較が出せなくなる。soukatsu と同じ理由で守る。 */
 /* ★2026-09-07 追加＝gsnap（Google口コミの毎晩スナップショット＝総数・星・獲得数・代表口コミ）。
    90日で消すと「Google口コミ集計」の推移が3か月で切れる。1日10行ほどの軽量な行なので恒久保存（神田さんのご指示）。 */
+/* ★2026-09-08 追加＝newslike/newsread/newscmt（お知らせへのいいね・確認・コメント）。
+   お知らせ本体（news）が恒久保存のため、反応だけ90日で消えると「誰が確認したか」の記録に穴があく。 */
 var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide',
-                         'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu', 'phsample', 'monthly', 'gsnap'];
+                         'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu', 'phsample', 'monthly', 'gsnap',
+                         'newslike', 'newsread', 'newscmt'];
 
 // スクリプトプロパティから設定を読む（無ければ既定値）。管理画面や手動で変更できる。
 function getSetting_(key, def) {

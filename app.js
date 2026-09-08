@@ -6415,7 +6415,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -6480,6 +6480,54 @@
           if (f) f.style.display = opening ? '' : 'none';
           t.textContent = opening ? L({ja:'たたむ',en:'Collapse',vi:'Thu gọn'}) : L({ja:'全文を見る',en:'Show all',vi:'Xem đầy đủ'});
         } else render(true);
+        return;
+      }
+      // お知らせへの反応（いいね・確認・コメント）＝押した行の中だけ書き換え（2026-09-08 神田さんのご要望）
+      if (t.dataset.nwlike) {
+        const key = t.dataset.nwlike;
+        if (lsMap_(NEWS_LIKED_LS)[key]) return;   // この端末では1回だけ
+        lsMapAdd_(NEWS_LIKED_LS, key);
+        const rep = { kind:'newslike', store: getRole() === 'hq' ? '*' : (visibleStores()[0] || '*'), item: key, note: JSON.stringify({ by: getUserName() || '' }), photos: [], t: Date.now() };
+        try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (err) {}
+        lastSync = rep.t;
+        const nEl = t.querySelector('.nwlike-n'); if (nEl) nEl.textContent = String((Number(nEl.textContent) || 0) + 1);
+        t.disabled = true;
+        postReport(rep);
+        return;
+      }
+      if (t.dataset.nwread) {
+        const key = t.dataset.nwread;
+        lsMapAdd_(NEWS_READ_LS, key);
+        const rep = { kind:'newsread', store: getRole() === 'hq' ? '*' : (visibleStores()[0] || '*'), item: key, note: JSON.stringify({ by: getUserName() || '' }), photos: [], t: Date.now() };
+        try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (err) {}
+        lastSync = rep.t;
+        t.insertAdjacentHTML('afterend', `<span class="muted" style="margin-left:8px">✓ ${L({ ja:'確認済み', en:'Confirmed', vi:'Đã xem' })}</span>`);
+        t.remove();
+        toast(L({ ja:'確認を記録しました', en:'Confirmed.', vi:'Đã ghi nhận.' }));
+        postReport(rep);
+        return;
+      }
+      if (t.dataset.nwcmt) {
+        const bodyEl = t.closest('.body'); const f = bodyEl && bodyEl.querySelector('.nwcmtform');
+        if (f) { const opening = f.style.display === 'none'; f.style.display = opening ? '' : 'none'; if (opening) { const inp = f.querySelector('.nwcmt-input'); if (inp) inp.focus(); } }
+        return;
+      }
+      if (t.dataset.nwcmtsend) {
+        const key = t.dataset.nwcmtsend;
+        const bodyEl = t.closest('.body'); const f = bodyEl && bodyEl.querySelector('.nwcmtform');
+        const inp = f && f.querySelector('.nwcmt-input'); const byEl = f && f.querySelector('.nwcmt-by');
+        const text = String((inp && inp.value) || '').trim();
+        if (!text) { toast(L({ ja:'コメントを入力してください', en:'Please write a comment', vi:'Vui lòng nhập bình luận' })); return; }
+        const by = String((byEl && byEl.value) || '').trim(); if (by) setUserName(by);
+        const rep = { kind:'newscmt', store: getRole() === 'hq' ? '*' : (visibleStores()[0] || '*'), item: key, note: JSON.stringify({ body: text, by }), photos: [], t: Date.now() };
+        try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (err) {}
+        lastSync = rep.t;
+        const list = bodyEl && bodyEl.querySelector('.nwcmts');
+        if (list) list.insertAdjacentHTML('beforeend', newsCmtLine({ store: rep.store, by, body: text, t: rep.t }));
+        if (inp) inp.value = '';
+        if (f) f.style.display = 'none';
+        toast(L({ ja:'コメントを送りました', en:'Comment sent.', vi:'Đã gửi bình luận.' }));
+        postReport(rep);
         return;
       }
       // 引き継ぎの「確認しました」（店内伝言板・2026-09-08）＝確認行を追記（本文は消さず履歴に残る）
@@ -6974,7 +7022,38 @@
   const newsBadge = (lv) => lv === 'important'
     ? `<span class="kind a">${L({ ja:'重要', en:'Important', vi:'Quan trọng' })}</span>`
     : `<span class="kind b">${L({ ja:'お知らせ', en:'News', vi:'Thông báo' })}</span>`;
-  const newsRow = (n) => `
+  /* ---------- お知らせへの反応（2026-09-08 神田さんのご要望＝コメント・いいね・誰が確認したか）----------
+     ・いいね＝みんなの投稿の拍手と同じ「この端末で1回」方式。件数は全端末で合算
+     ・確認しました＝伝言板と同じ明示ボタン。名前つきで記録され、本部には確認済みの一覧が出る
+     ・コメント＝行内フォーム（全画面を作り直さない）。仕組み上、店舗のコメントは自店＋本部にだけ届き、
+       本部の返信（store='*'）は全店に見える＝店舗同士の質問は混線しない
+     kind＝newslike／newsread／newscmt（3点セット＝distribute・KEEP（お知らせ本体と同じく恒久）・テスト） */
+  const NEWS_LIKED_LS = 'yosakura_news_liked';
+  const NEWS_READ_LS = 'yosakura_news_readed';
+  const lsMap_ = (k) => { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } };
+  const lsMapAdd_ = (k, id) => { try { const m = lsMap_(k); m[id] = 1; localStorage.setItem(k, JSON.stringify(m)); } catch (e) {} };
+  function newsFb(key) {
+    let likeN = 0; const reads = []; const cmts = [];
+    try {
+      getReports().forEach(r => {
+        if (String(r.item || '') !== key) return;
+        if (r.kind === 'newslike') likeN++;
+        else if (r.kind === 'newsread') { const p = parseNote(r.note); reads.push({ store: r.store || '', by: (p && p.by) || '', t: r.t }); }
+        else if (r.kind === 'newscmt') { const p = parseNote(r.note); if (p && p.body) cmts.push({ store: r.store || '', by: (p && p.by) || '', body: p.body, t: r.t }); }
+      });
+    } catch (e) {}
+    cmts.sort((a, b) => a.t - b.t);
+    // 確認済みは「店舗×名前」で1件に（同じ人が別端末で押しても増やさない）
+    const seen = {}; const uniqReads = reads.filter(x => { const k2 = x.store + '|' + x.by; if (seen[k2]) return false; seen[k2] = 1; return true; });
+    return { likeN, reads: uniqReads, cmts };
+  }
+  const newsCmtLine = (c) => `<div class="l2" style="display:block;white-space:pre-wrap;margin-top:4px">💬 ${esc(c.body)}　<span class="muted">${esc(c.by || L({ ja:'名前なし', en:'(no name)', vi:'(không tên)' }))}${c.store && c.store !== '*' ? ' ・ ' + esc(storeShort(c.store)) : ' ・ ' + L({ ja:'本部', en:'HQ', vi:'HQ' })} ・ ${timeAgo(c.t)}</span></div>`;
+  const newsRow = (n) => {
+    const key = String(n.t);
+    const fb = newsFb(key);
+    const liked = !!lsMap_(NEWS_LIKED_LS)[key];
+    const readed = !!lsMap_(NEWS_READ_LS)[key];
+    return `
     <div class="rep news-item">
       ${newsBadge(n.level)}
       <div class="body">
@@ -6983,8 +7062,21 @@
         ${(n.photos && n.photos.length) ? `<div class="rep-photos">${n.photos.map(p => `<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="" loading="lazy">`).join('')}</div>` : ''}
         ${n.video ? `<a class="news-video" href="${esc(n.video)}" target="_blank" rel="noopener">▶ ${L({ ja:'動画を見る', en:'Watch video', vi:'Xem video' })}</a>` : ''}
         <div class="l2">${esc(newsTargetLabel(n.target))} ・ ${timeAgo(n.t)}</div>
+        <div class="l2" style="display:block;margin-top:6px">
+          <button class="mini" data-nwlike="${esc(key)}"${liked ? ' disabled' : ''}>👍 ${L({ ja:'いいね', en:'Like', vi:'Thích' })} <span class="nwlike-n">${fb.likeN}</span></button>
+          ${readed ? `<span class="muted" style="margin-left:8px">✓ ${L({ ja:'確認済み', en:'Confirmed', vi:'Đã xem' })}</span>` : `<button class="mini" data-nwread="${esc(key)}" style="margin-left:8px">${L({ ja:'確認しました', en:'Confirm', vi:'Đã xem' })}</button>`}
+          <button class="mini" data-nwcmt="${esc(key)}" style="margin-left:8px">💬 ${L({ ja:'コメント', en:'Comment', vi:'Bình luận' })}${fb.cmts.length ? ` ${fb.cmts.length}` : ''}</button>
+        </div>
+        ${getRole() === 'hq' ? `<div class="l2" style="display:block;margin-top:4px">${L({ ja:'確認済み', en:'Confirmed by', vi:'Đã xem' })}（${fb.reads.length}）：${fb.reads.length ? esc(fb.reads.map(x => `${x.store && x.store !== '*' ? storeShort(x.store) : L({ ja:'本部', en:'HQ', vi:'HQ' })}${x.by ? '・' + x.by : ''}`).join(' ／ ')) : L({ ja:'まだいません', en:'none yet', vi:'chưa có' })}</div>` : ''}
+        <div class="nwcmts">${fb.cmts.map(newsCmtLine).join('')}</div>
+        <div class="nwcmtform" style="display:none;margin-top:6px">
+          <textarea class="nwcmt-input" rows="2" style="width:100%;box-sizing:border-box" placeholder="${esc(L({ ja:'コメントを入力（本部に届きます）', en:'Write a comment (goes to HQ)', vi:'Viết bình luận (gửi HQ)' }))}"></textarea>
+          <input class="nwcmt-by" type="text" placeholder="${esc(L({ ja:'名前', en:'Your name', vi:'Tên' }))}" value="${esc(getUserName() || '')}" style="margin-top:4px">
+          <div style="margin-top:4px"><button class="mini" data-nwcmtsend="${esc(key)}">${L({ ja:'コメントを送る', en:'Send', vi:'Gửi' })}</button></div>
+        </div>
       </div>
     </div>`;
+  };
   APP_VIEWS.news = () => {
     const list = newsVisible(getNews()).sort((a, b) => b.t - a.t);
     const isHq = getRole() === 'hq';
@@ -8631,7 +8723,9 @@
         // ★2026-09-06 追加＝gsnap（Google口コミ件数の1日1回スナップショット）。3点セット（distribute＋KEEP判断＋テスト）
         //   KEEP判断＝恒久保存（2026-09-07 神田さんのご指示＝口コミ集計の推移を90日で切らない。Code.gsのPURGE_KEEP_KINDSに追加済み）
         // ★2026-09-08 追加＝handover（店内の引き継ぎボード）。KEEP判断＝90日で消えてよい（短命の連絡）
+        // ★2026-09-08 追加＝newslike/newsread/newscmt（お知らせへの反応）。KEEP判断＝お知らせ本体と同じく恒久（Code.gsに追加）
         case 'chukan': case 'chukandraft': case 'skdraft': case 'gsnap': case 'handover':
+        case 'newslike': case 'newsread': case 'newscmt':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
         case 'route': route.push({ store, route:r.item, t, id }); break;
