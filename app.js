@@ -6086,6 +6086,16 @@
      後続の .trim() が落ちて挙動が壊れていた。ダイアログはアプリ内では使わない。 */
   let inboxMemoKey = '';   // メモ欄を開いている報告のキー
   let inboxFullKey = '';   // 全文を開いている報告のキー（2026-09-05 神田さんの実機報告＝切れて返答が書けない）
+  /* ★受信箱の操作は「押した行の中だけ」を書き換える（2026-09-08 神田さんの実機報告＝
+     ボタンを押すたびに全画面を作り直すと、写真の読み直しで画面がプツプツ途切れる）。
+     全画面のrenderはタブ・絞り込み・表示切替のときだけ。未対応の件数バッジは次の描画で追いつく
+     （数字の即時性より操作の滑らかさを優先。上のstate変数は描画をまたいだ復元用に残す） */
+  const inboxStBtns = (key) => `<button class="mini" data-ackdone="${esc(key)}">${L({ja:'対応済みにする',en:'Mark done',vi:'Đã xử lý'})}</button> <button class="mini" data-ackmemo="${esc(key)}">${L({ja:'メモを付けて完了',en:'Done with note',vi:'Xong kèm ghi chú'})}</button>`;
+  const inboxMemoForm = (key) => `
+             <textarea id="ack_memo_input" rows="2" style="width:100%;box-sizing:border-box" placeholder="${esc(L({ja:'対応した内容（任意）', en:'What you did (optional)', vi:'Nội dung xử lý (tùy chọn)'}))}"></textarea>
+             <div style="margin-top:6px"><button class="mini" data-ackmemosave="${esc(key)}">${L({ja:'この内容で完了',en:'Done with this note',vi:'Hoàn tất với ghi chú'})}</button>
+             <button class="mini" data-ackmemocancel="${esc(key)}" style="margin-left:8px">${L({ja:'やめる',en:'Cancel',vi:'Hủy'})}</button></div>`;
+  const inboxDoneHTML = (by, memo) => `<span style="color:#2a7">${L({ja:'対応済み',en:'Done',vi:'Đã xử lý'})}${by?` ・${esc(by)}`:''}${memo?` ・${esc(memo)}`:''}</span>`;
   function ackKey(kind, t, store) { return `${kind}|${t}|${store || ''}`; }
   function getAckMap() {
     const map = {};
@@ -6196,14 +6206,8 @@
       const st = i.kind === 'commpend'
         ? `<div class="l2"><button class="mini" data-commpub="${esc(i.ckey)}">${L({ja:'公開する',en:'Publish',vi:'Duyệt'})}</button> <button class="mini" data-commhide="${esc(i.ckey)}">${L({ja:'公開しない',en:'Do not publish',vi:'Không duyệt'})}</button></div>`
         : i.state === 'done'
-        ? `<div class="l2" style="color:#2a7">${L({ja:'対応済み',en:'Done',vi:'Đã xử lý'})}${i.by?` ・${esc(i.by)}`:''}${i.memo?` ・${esc(i.memo)}`:''}</div>`
-        : inboxMemoKey === i.key
-        ? `<div class="l2" style="display:block;margin-top:6px">
-             <textarea id="ack_memo_input" rows="2" style="width:100%;box-sizing:border-box" placeholder="${esc(L({ja:'対応した内容（任意）', en:'What you did (optional)', vi:'Nội dung xử lý (tùy chọn)'}))}"></textarea>
-             <div style="margin-top:6px"><button class="mini" data-ackmemosave="${esc(i.key)}">${L({ja:'この内容で完了',en:'Done with this note',vi:'Hoàn tất với ghi chú'})}</button>
-             <button class="mini" data-ackmemocancel="1" style="margin-left:8px">${L({ja:'やめる',en:'Cancel',vi:'Hủy'})}</button></div>
-           </div>`
-        : `<div class="l2"><button class="mini" data-ackdone="${esc(i.key)}">${L({ja:'対応済みにする',en:'Mark done',vi:'Đã xử lý'})}</button> <button class="mini" data-ackmemo="${esc(i.key)}">${L({ja:'メモを付けて完了',en:'Done with note',vi:'Xong kèm ghi chú'})}</button></div>`;
+        ? `<div class="l2 ackst" style="display:block;margin-top:6px">${inboxDoneHTML(i.by, i.memo)}</div>`
+        : `<div class="l2 ackst" style="display:block;margin-top:6px">${inboxMemoKey === i.key ? inboxMemoForm(i.key) : inboxStBtns(i.key)}</div>`;
       return `<div class="rep" style="align-items:flex-start">${ph}<div class="body">
         <div class="l1">${esc(L(i.label))}${i.title?` ・${esc(i.title)}`:''}</div>
         <div class="l2">${esc(storeShort(i.store))} ・ ${timeAgo(i.t)}</div>
@@ -6215,8 +6219,10 @@
           if (!dfull) return '';
           const exp = inboxFullKey === i.key;
           const long = dfull.length > 90 || dfull.indexOf('\n') !== -1;
+          /* 短い版と全文の両方を最初から持ち、表示だけを切り替える＝開閉で全画面を作り直さない */
           const btn = long ? ` <button class="mini" data-ackfull="${esc(i.key)}">${exp ? L({ja:'たたむ',en:'Collapse',vi:'Thu gọn'}) : L({ja:'全文を見る',en:'Show all',vi:'Xem đầy đủ'})}</button>` : '';
-          return `<div class="l2" style="color:var(--sumi)${exp ? ';white-space:pre-wrap' : ''}">${esc(exp ? dfull : (long ? dfull.slice(0, 90).replace(/\n/g, '／') + '…' : dfull))}${btn}</div>`;
+          const shortTxt = long ? dfull.slice(0, 90).replace(/\n/g, '／') + '…' : dfull;
+          return `<div class="l2 ackdetail" style="color:var(--sumi)"><span class="dshort"${exp ? ' style="display:none"' : ''}>${esc(shortTxt)}</span><span class="dfull" style="white-space:pre-wrap${exp ? '' : ';display:none'}">${esc(dfull)}</span>${btn}</div>`;
         })()}
         ${st}</div></div>`;
     };
@@ -6243,6 +6249,11 @@
     }).join('');
     return `
       ${storeFilterNote}
+      ${/* 同期で新しい報告が届いたときに表示だけそっと出す帯（描き直しは押したときだけ＝プツプツさせない） */''}
+      <div id="inboxFresh" class="card" style="display:none;border:1px solid #d8b56a;background:#fdf6e7">
+        <div class="l1" style="font-weight:600">${L({ja:'新しい報告が届きました',en:'New reports arrived',vi:'Có báo cáo mới'})}</div>
+        <button class="mini" data-inboxrefresh="1" style="margin-top:6px">${L({ja:'表示を更新する',en:'Refresh the list',vi:'Cập nhật danh sách'})}</button>
+      </div>
       <div class="card">
         <h3>${L({ja:'未対応の報告',en:'Needs response',vi:'Chưa xử lý'})} <small style="color:#8a8">${open.length}</small></h3>
         <p class="hint" style="display:block">${L({ja:'現場からの報告のうち、本部がまだ対応していないものです。対応したら「対応済みにする」を押してください（全端末で共有されます）。',en:'Reports not yet handled by HQ. Mark done after you respond (shared across devices).',vi:'Báo cáo HQ chưa xử lý. Bấm đã xử lý sau khi phản hồi (chia sẻ mọi máy).'})}</p>
@@ -6367,10 +6378,11 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
+      if (t.dataset.inboxrefresh) { render(true); return; }  // 「新しい報告が届きました」＝押したときだけ描き直す
       if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(true); return; }
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
@@ -6391,16 +6403,46 @@
       }
       if (t.dataset.pltab) { localStorage.setItem('yosakura_pl_tab', t.dataset.pltab); go('/app/pl?tab=' + t.dataset.pltab); return; }
       if (t.dataset.gdtab) { localStorage.setItem('yosakura_guide_tab', t.dataset.gdtab); render(true); return; }
-      if (t.dataset.ackdone) { setAck(t.dataset.ackdone, 'done', ''); toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(true); return; }
-      if (t.dataset.ackmemo) {
-        // ★ブラウザのダイアログは使わない（iPhoneのホーム画面版では表示されない）＝その場にメモ欄を開く
-        inboxMemoKey = t.dataset.ackmemo; render(true);
-        setTimeout(() => { const inp = document.getElementById('ack_memo_input'); if (inp) inp.focus(); }, 60);
+      /* ★受信箱の4操作＝押した行の中だけを書き換える（2026-09-08 神田さんの実機報告＝
+         renderのたびに写真が読み直されて画面がプツプツ途切れる）。行が見つからないときだけ従来のrenderに退避 */
+      if (t.dataset.ackdone) {
+        setAck(t.dataset.ackdone, 'done', '');
+        const st = t.closest('.ackst');
+        if (st) st.innerHTML = inboxDoneHTML(L(ROLES[getRole()].label), '');
+        else render(true);
+        toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'}));
         return;
       }
-      if (t.dataset.ackmemocancel) { inboxMemoKey = ''; render(true); return; }
-      // 全文を見る／たたむ（同じ行をもう一度押すと閉じる）
-      if (t.dataset.ackfull) { inboxFullKey = inboxFullKey === t.dataset.ackfull ? '' : t.dataset.ackfull; render(true); return; }
+      if (t.dataset.ackmemo) {
+        // ★ブラウザのダイアログは使わない（iPhoneのホーム画面版では表示されない）＝その場にメモ欄を開く
+        inboxMemoKey = t.dataset.ackmemo;
+        const st = t.closest('.ackst');
+        if (st) { st.innerHTML = inboxMemoForm(inboxMemoKey); const inp = st.querySelector('#ack_memo_input'); if (inp) inp.focus(); }
+        else { render(true); setTimeout(() => { const inp = document.getElementById('ack_memo_input'); if (inp) inp.focus(); }, 60); }
+        return;
+      }
+      if (t.dataset.ackmemocancel) {
+        const key = t.dataset.ackmemocancel !== '1' ? t.dataset.ackmemocancel : inboxMemoKey;
+        inboxMemoKey = '';
+        const st = t.closest('.ackst');
+        if (st && key) st.innerHTML = inboxStBtns(key);
+        else render(true);
+        return;
+      }
+      // 全文を見る／たたむ＝あらかじめ持っている全文の表示だけを切り替える（同じ行をもう一度押すと閉じる）
+      if (t.dataset.ackfull) {
+        const key = t.dataset.ackfull;
+        const opening = inboxFullKey !== key;
+        inboxFullKey = opening ? key : '';
+        const wrap = t.closest('.ackdetail');
+        if (wrap) {
+          const s = wrap.querySelector('.dshort'), f = wrap.querySelector('.dfull');
+          if (s) s.style.display = opening ? 'none' : '';
+          if (f) f.style.display = opening ? '' : 'none';
+          t.textContent = opening ? L({ja:'たたむ',en:'Collapse',vi:'Thu gọn'}) : L({ja:'全文を見る',en:'Show all',vi:'Xem đầy đủ'});
+        } else render(true);
+        return;
+      }
       // 引き継ぎの「確認しました」（店内伝言板・2026-09-08）＝確認行を追記（本文は消さず履歴に残る）
       if (t.dataset.hodone) {
         const key = t.dataset.hodone;
@@ -6414,10 +6456,15 @@
         return;
       }
       if (t.dataset.ackmemosave) {
-        const inp = document.getElementById('ack_memo_input');
-        setAck(t.dataset.ackmemosave, 'done', ((inp && inp.value) || '').trim());
+        const st = t.closest('.ackst');
+        const inp = (st && st.querySelector('#ack_memo_input')) || document.getElementById('ack_memo_input');
+        const memo = ((inp && inp.value) || '').trim();
+        setAck(t.dataset.ackmemosave, 'done', memo);
         inboxMemoKey = '';
-        toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'})); render(true); return;
+        if (st) st.innerHTML = inboxDoneHTML(L(ROLES[getRole()].label), memo);
+        else render(true);
+        toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'}));
+        return;
       }
       if (t.dataset.fbsend) {
         const noteEl = document.getElementById('fb_note');
@@ -8619,7 +8666,14 @@
           distribute(d.reports);
           // ★写真の作業中は描き直さない（貼った写真と選択中の入力欄が消えるため）。取り込み自体は済んでいる
           // ★同期の描き直しでは位置を保つ（2026-08-31 ユンさんの報告＝チェックのたびに同期→再描画で先頭へ戻っていた）
-          if (画面を作り直してよい_()) render(true);
+          if (!画面を作り直してよい_()) { /* 何もしない＝次の自然な描き直しで追いつく */ }
+          else if (String(location.hash || '').indexOf('/app/inbox') !== -1) {
+            /* ★受信箱は同期で描き直さない（2026-09-08 神田さんの実機報告＝処理中に画面がプツプツ途切れる。
+               対応ボタンの直後にも同期→全画面の作り直しが走り、写真が読み直されていた）。
+               取り込みは済ませたうえで、上部の「表示を更新」の帯だけをそっと出す（押したときだけ描き直す） */
+            try { const n = document.getElementById('inboxFresh'); if (n) n.style.display = ''; } catch (e) {}
+          }
+          else render(true);
         }
       }
     } catch (_) { /* オフライン時はローカル（既存データ）を使用 */ }
