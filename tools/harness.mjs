@@ -2803,8 +2803,8 @@ console.log('== 写真の添付：貼れないときに黙って捨てない（2
      スマホは写真を選ぶあいだアプリが背面へ回る。その数秒で同期の通信が終わると render() が走り、
      貼り付け先も選択中の <input type=file> も別物に差し替わって、選んだ写真がどこにも入らない。
      PCではファイル選択がすぐ終わるので起きない＝現場のスマホでだけ起きる形。 */
-  ok(/if \(画面を作り直してよい_\(\)\) render\(true\);/.test(code),
-     '★自動同期は、作り直してよいときだけ画面を描き直す（位置も保つ＝2026-08-31 ユンさんの報告）');
+  ok(/if \(!画面を作り直してよい_\(\)\)/.test(code) && /else render\(true\);/.test(code),
+     '★自動同期は、作り直してよいときだけ画面を描き直す（位置も保つ＝2026-08-31 ユンさんの報告。受信箱は帯のみ＝2026-09-08）');
   ok(!/distribute\(d\.reports\);\s*render\(\);/.test(code),
      '★無条件に render() する形へ戻っていない（これが元の不具合）');
   ok(/fi\.addEventListener\('click', \(\) => \{[\s\S]{0,400}写真の操作を始める_\(\);/.test(code),
@@ -3409,7 +3409,7 @@ console.log('== ユンさんの3件（2026-08-31）＝同期で先頭へ戻ら�
 {
   const S = '牛カツ世桜 長堀橋店';
   // ① 同期の描き直しは位置を保つ（チェックのたびに先頭へ戻っていた）
-  ok(/画面を作り直してよい_\(\)\) render\(true\)/.test(code), '同期の再描画は render(true)＝チェック中に先頭へ戻らない');
+  ok(/画面を作り直してよい_/.test(code) && /else render\(true\);/.test(code), '同期の再描画は render(true)＝チェック中に先頭へ戻らない');
   // ② アプリ画面の下にも戻るバーがある
   run(() => setLS('manager', S, 'ja'));
   location.hash = '#/app/checklist';
@@ -4186,6 +4186,32 @@ console.log('== Google口コミ集計＝サーベイ集計の横＋個店カル�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 受信箱の操作＝押した行だけ書き換え（2026-09-08 神田さんの実機報告＝押すたび画面がプツプツ途切れる）==');
+{
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  // ① 4操作とも「行の中だけ」を書き換える配線（renderは行が見つからないときの退避だけ）
+  ok(/dataset\.ackdone\) \{[\s\S]{0,300}closest\('\.ackst'\)/.test(src), '対応済みにする＝行内の書き換え');
+  ok(/dataset\.ackmemo\) \{[\s\S]{0,400}closest\('\.ackst'\)/.test(src), 'メモを付けて完了＝行内でメモ欄を開く');
+  ok(/dataset\.ackmemosave\) \{[\s\S]{0,400}closest\('\.ackst'\)/.test(src), 'この内容で完了＝行内で対応済み表示に');
+  ok(/dataset\.ackfull\) \{[\s\S]{0,600}closest\('\.ackdetail'\)/.test(src), '全文を見る＝表示の切替だけ（作り直さない）');
+  // ② 同期は受信箱を描き直さず、「表示を更新」の帯をそっと出す
+  ok(/app\\\/inbox|\/app\/inbox/.test(src.match(/else if \(String\(location\.hash[\s\S]{0,300}/)[0]) && /inboxFresh/.test(src),
+     '同期中の受信箱は描き直さない（帯を出して、押したときだけ更新）');
+  run(() => {
+    setLS('hq', 'all', 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'kizuki', store:'牛カツ世桜 長堀橋店', item:'facility', note:'テスト', photos: [], t: Date.now() }
+    ]));
+    localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([
+      { store:'牛カツ世桜 長堀橋店', cat:'facility', note:'テスト', photos: [], t: Date.now() }
+    ]));
+  });
+  location.hash = '#/app/inbox';
+  const h = registry.app.innerHTML;
+  ok(/id="inboxFresh"[^>]*display:none/.test(h) && /data-inboxrefresh/.test(h), '「新しい報告が届きました」の帯が隠れた状態で用意されている');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 店内の引き継ぎボード＝出勤したらホームのいちばん上（2026-09-08 田中さん・増田さんのご要望→神田さんのご指示）==');
 {
   const S = '牛カツ世桜 長堀橋店';
@@ -4272,7 +4298,9 @@ console.log('== 受信箱＝気づき・コメントの全文が見られる（2
   location.hash = '#/app/inbox';
   const h = registry.app.innerHTML;
   ok(/全文を見る/.test(h) && /data-ackfull=/.test(h), '長い気づきに「全文を見る」ボタンが出る');
-  ok(!h.includes('チェック項目にも追加した方がよい'), '一覧では90字で省略される（全部は並べない）');
+  // ★2026-09-08から全文は「畳んだ状態（display:none）」で最初から持つ＝開閉で全画面を作り直さない
+  ok(/class="dfull" style="white-space:pre-wrap;display:none">[^<]*チェック項目にも追加した方がよい/.test(h),
+     '全文は畳まれた状態で持ち、開くときに全画面を作り直さない');
   ok(/新人の動きも良いです/.test(h), '中間報告のコメントが40字で切られない（以前はここで切れていた）');
   const src7 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/dataset\.ackfull/.test(src7) && /inboxFullKey/.test(src7), '「全文を見る」の開閉が配線されている（押すと同じ行で開く）');
