@@ -4273,6 +4273,28 @@ console.log('== お知らせ＝本部は「一覧」と「投稿」をタブで�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== サーベイに日別の回答数グラフ（2026-09-08 神田さんのご要望＝日別の集計状況を確認したい）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const tk = new Date().toLocaleDateString('en-CA');
+  const noonT = new Date(tk + 'T12:00:00').getTime();
+  run(() => {
+    setLS('manager', S, 'ja');
+    localStorage.setItem('yosakura_demo_survey', JSON.stringify([
+      { store:S, sat:5, route:'google', note:'よかった', country:'Japan', t: noonT },
+      { store:S, sat:4, route:'instagram', note:'', country:'Korea', t: noonT + 1000 }
+    ]));
+  });
+  location.hash = '#/app/survey';
+  const h = registry.app.innerHTML;
+  ok(/日別（今月の回答数）/.test(h), 'サーベイ集計に「日別（今月の回答数）」が出る');
+  ok(new RegExp('data-svday="' + tk + '"').test(h), '今日の棒にタップの目印（data-svday）が付く');
+  ok(/その日の回答（★・コメント）が見られます/.test(h), '棒タップの案内文が出る');
+  const srcSV = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/data-svday\]'\)/.test(srcSV) && /openSurveyListSheet\(esc\(mdLabel\(d\)\)/.test(srcSV), '棒タップ→その日の回答一覧が配線されている');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== お知らせにコメント・いいね・確認（2026-09-08 神田さんのご要望＝誰が見たかも分かる）==');
 {
   const S = '牛カツ世桜 長堀橋店';
