@@ -4273,6 +4273,18 @@ console.log('== お知らせ＝本部は「一覧」と「投稿」をタブで�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 金種別入力の写真＝長堀橋トライアルに追加（2026-09-08 秋定さんのご要望）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  let h = renderView('openphoto', 'staff', S, 'ja');
+  ok(/data-phtarget="kinshu_photo"|金種別入力の写真/.test(h), '長堀橋の写真提出に「金種別入力の写真」の切替が出る');
+  h = renderView('kyou', 'staff', S, 'ja');
+  ok(/金種別入力の写真/.test(h), '今日出すものに出る（店舗運用・任意）');
+  h = renderView('openphoto', 'staff', '日本料理世桜本店', 'ja');
+  ok(!/金種別入力の写真/.test(h), '他店には出ない（長堀橋限定）');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== サーベイに日別の回答数グラフ（2026-09-08 神田さんのご要望＝日別の集計状況を確認したい）==');
 {
   const S = '牛カツ世桜 長堀橋店';

@@ -5379,6 +5379,10 @@
         how:{ja:'締めで数えた現金売上を撮影して提出してください（中間報告の画面からも開けます）',en:'Photograph the counted cash sales and submit',vi:'Chụp tiền mặt đã đếm khi chốt ca và nộp'} },
       { id:'tip_photo',    name:{ja:'チップの写真',en:'Tips photo',vi:'Ảnh tiền tip'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'その日のチップを撮影して提出してください（中間報告の画面からも開けます）',en:'Photograph the day’s tips and submit',vi:'Chụp tiền tip trong ngày và nộp'} },
+      /* ★金種別入力の写真（2026-09-08 秋定さんのご要望・長堀橋トライアル追加7項目め）。
+         レジクローズ時の金種別（お札・硬貨の内訳）の記録を写真で提出する専用の置き場 */
+      { id:'kinshu_photo', name:{ja:'金種別入力の写真（レジクローズ）',en:'Cash denomination photo',vi:'Ảnh kiểm đếm mệnh giá'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
+        how:{ja:'レジクローズ時の金種別入力（お札・硬貨の内訳）を撮影して提出してください',en:'Photograph the cash denomination count at register close',vi:'Chụp bảng kiểm đếm mệnh giá lúc đóng ca'} },
       { id:'nippou',     name:{ja:'総括表',en:'Summary sheet',vi:'Bảng tổng kết'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
       /* ★気づきの報告を、1日の最後に置く（2026-08-12 神田さんのご指摘）。
          これまで日報の中に「清掃・特記事項」という自由入力があり、
