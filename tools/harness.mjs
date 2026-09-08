@@ -4203,6 +4203,12 @@ console.log('== シートの日付セル化（ISO文字列）でも突き合わ�
   let h = registry.app.innerHTML;
   ok(/最高/.test(h) && !/データなし/.test(h), 'ISO化した日付でも日別グラフに棒が立つ（データなしにならない）');
   ok(/1,291/.test(h) && /\+6/.test(h), '総数・今月の獲得数も従来どおり出る');
+  // 棒タップ＝その日の件数ポップアップ（2026-09-08 神田さんのご要望）
+  ok(new RegExp('data-grday="' + S + '\\|\\|' + tk + '"').test(h), '口コミグラフの棒にタップの目印（data-grday）が付く');
+  ok(/その日の口コミ件数が見られます/.test(h) && !/その日の総括表（全項目）が開きます/.test(h), '案内文が口コミ用に変わる（総括表用の文は出ない）');
+  const srcG = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/function openGreviewDaySheet/.test(srcG) && /data-grday\]'\)/.test(srcG), '棒タップ→件数ポップアップが配線されている');
+  ok(/この日の獲得数/.test(srcG) && /総口コミ数（この日時点）/.test(srcG), 'ポップアップに獲得数・総数・星が出る');
   location.hash = '#/app/soukatsu?tab=input';
   h = registry.app.innerHTML;
   ok(/id="sk_rvt"[^>]*value="6"/.test(h), 'ISO化した日付でも「口コミ 当日」に自動で入る');
