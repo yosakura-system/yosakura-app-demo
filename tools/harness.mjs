@@ -4186,6 +4186,74 @@ console.log('== Google口コミ集計＝サーベイ集計の横＋個店カル�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 店内の引き継ぎボード＝出勤したらホームのいちばん上（2026-09-08 田中さん・増田さんのご要望→神田さんのご指示）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  // ① 伝言板画面から投稿できる
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); });
+  location.hash = '#/app/handover';
+  let h = registry.app.innerHTML;
+  ok(/引き継ぎを書く/.test(h) && /伝言板に載せる/.test(h), '伝言板の投稿フォームがある');
+  doc.getElementById('ho_body').value = 'おしぼり残り1パック。発注済み・木曜に届きます';
+  doc.getElementById('ho_by').value = '田中';
+  doc.getElementById('submitHo').onclick();
+  const reps = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]');
+  const hoNote = reps.find(r => r.kind === 'handover' && r.item === '');
+  ok(!!hoNote && JSON.parse(hoNote.note).body.indexOf('おしぼり') === 0, 'kind:handover で保存される（本文・名前つき）');
+  // ② ホームのいちばん上に未確認として出る
+  location.hash = '#/home';
+  h = registry.app.innerHTML;
+  ok(/引き継ぎがあります（未確認）/.test(h) && /おしぼり残り1パック/.test(h) && /確認しました/.test(h), 'ホームのトップに未確認の引き継ぎが出る');
+  ok(h.indexOf('引き継ぎがあります') < h.indexOf('日次業務'), '日次業務より上＝出勤して開いた最初に見える');
+  // ③ 「確認しました」で未確認から消え、履歴に「誰が確認したか」つきで残る
+  const t0 = Date.now() - 3600e3;
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'handover', store:S, item:'', note: JSON.stringify({ body:'おしぼり残り1パック', by:'田中' }), photos: [], t: t0 },
+      { kind:'handover', store:S, item:'done', note: JSON.stringify({ key: `${t0}|${S}`, by:'秋定' }), photos: [], t: Date.now() }
+    ]));
+  });
+  location.hash = '#/home';
+  h = registry.app.innerHTML;
+  ok(!/引き継ぎがあります（未確認）/.test(h) && /未確認の引き継ぎはありません/.test(h), '確認済みになるとホームは「未確認なし」に戻る');
+  location.hash = '#/app/handover';
+  h = registry.app.innerHTML;
+  ok(/確認済/.test(h) && /おしぼり残り1パック/.test(h) && /確認：秋定/.test(h), '履歴に本文と「誰が確認したか」が残る（言った言ってない対策）');
+  // ④ 他店・本部のホームには出ない（店舗の中で閉じる）
+  run(() => {
+    setLS('staff', '日本料理世桜本店', 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'handover', store:S, item:'', note: JSON.stringify({ body:'おしぼり残り1パック', by:'田中' }), photos: [], t: Date.now() }
+    ]));
+  });
+  location.hash = '#/home';
+  ok(!/おしぼり残り1パック/.test(registry.app.innerHTML), '他店のホームには出ない');
+  run(() => { setLS('hq', 'all', 'ja'); });
+  location.hash = '#/home';
+  ok(!/引き継ぎ（店内伝言板）/.test(registry.app.innerHTML), '本部のホームには出さない');
+  // ⑤ 「確認しました」の配線（委譲クリック）がある
+  const srcHo = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/dataset\.hodone/.test(srcHo) && /\[data-hodone\]/.test(srcHo), '「確認しました」の押下が配線されている');
+}
+
+console.log('== handover が同期で消えない（kind追加の3点セット）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'handover', store:S, item:'', note: JSON.stringify({ body:'同期テストの引き継ぎ', by:'テスト' }), t: Date.now() - 1000, id:'h1' }
+  ]};
+  try { run(() => { setLS('staff', S, 'ja'); }); } catch(e){ FAIL++; console.log('  ✗ load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  ok(JSON.parse(localStorage.getItem('yosakura_demo_reports')||'[]').some(r => r.kind==='handover'), 'handover が同期で残る（＝別の端末で書いた引き継ぎが届く）');
+  location.hash = '#/home';
+  ok(/同期テストの引き継ぎ/.test(registry.app.innerHTML), '別の端末で書いた引き継ぎがホームに出る');
+  FETCH_ROWS = { ok:false };
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 受信箱＝気づき・コメントの全文が見られる（2026-09-05 神田さんの実機報告＝切れて返答が書けない）==');
 {
   const S = '牛カツ世桜 長堀橋店';
