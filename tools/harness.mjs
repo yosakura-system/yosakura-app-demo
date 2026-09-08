@@ -4273,6 +4273,45 @@ console.log('== お知らせ＝本部は「一覧」と「投稿」をタブで�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== お知らせにコメント・いいね・確認（2026-09-08 神田さんのご要望＝誰が見たかも分かる）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const nt = Date.now() - 3600e3;
+  const seedNews = (role, store) => run(() => {
+    setLS(role, store, 'ja');
+    localStorage.setItem('yosakura_demo_news', JSON.stringify([
+      { title:'テストのお知らせ', body:'本文', level:'normal', target:'all', video:'', photos:[], t: nt }
+    ]));
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'newslike', store:S, item:String(nt), note: JSON.stringify({ by:'ユン' }), photos:[], t: nt+1 },
+      { kind:'newslike', store:'*', item:String(nt), note: JSON.stringify({ by:'本部' }), photos:[], t: nt+2 },
+      { kind:'newsread', store:S, item:String(nt), note: JSON.stringify({ by:'秋定' }), photos:[], t: nt+3 },
+      { kind:'newscmt', store:S, item:String(nt), note: JSON.stringify({ by:'ユン', body:'伝言板いいですね。使います！' }), photos:[], t: nt+4 }
+    ]));
+  });
+  // ① 店舗側＝いいね数（合算）・確認ボタン・コメントが見える
+  seedNews('staff', S);
+  location.hash = '#/app/news';
+  let h = registry.app.innerHTML;
+  ok(/data-nwlike=/.test(h) && /class="nwlike-n">2</.test(h), 'いいねボタンと件数（全端末の合算）が出る');
+  ok(/data-nwread=/.test(h), '「確認しました」ボタンが出る');
+  ok(/伝言板いいですね/.test(h) && /data-nwcmtsend=/.test(h), 'コメントの表示と入力フォームがある');
+  // ② 本部＝お知らせごとに確認済みの一覧（店舗・名前）が出る
+  seedNews('hq', 'all');
+  location.hash = '#/app/news';
+  h = registry.app.innerHTML;
+  ok(/確認済み（1）/.test(h) && /長堀橋/.test(h) && /秋定/.test(h), '本部には確認済み一覧（店舗・名前つき）が出る');
+  // ③ 配線＝3操作とも行内の書き換え（全画面を作り直さない）
+  const srcNW = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/dataset\.nwlike/.test(srcNW) && /dataset\.nwread/.test(srcNW) && /dataset\.nwcmt\)/.test(srcNW) && /dataset\.nwcmtsend/.test(srcNW), 'いいね・確認・コメントが配線されている');
+  ok(/dataset\.nwcmtsend\)[\s\S]{0,1200}insertAdjacentHTML/.test(srcNW), 'コメント送信は行内に追記する（renderしない）');
+  // ④ 同期とKEEP（kind追加の3点セット）
+  ok(/case 'newslike': case 'newsread': case 'newscmt':/.test(srcNW), '同期の振り分けに3種が入っている（＝ローカルから消えない）');
+  const gsK = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
+  ok(/'newslike', 'newsread', 'newscmt'/.test(gsK.match(/PURGE_KEEP_KINDS\s*=\s*\[[^\]]*\]/)[0]), 'GAS＝反応3種が90日削除から守られる（要貼り替え）');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 店内の引き継ぎボード＝出勤したらホームのいちばん上（2026-09-08 田中さん・増田さんのご要望→神田さんのご指示）==');
 {
   const S = '牛カツ世桜 長堀橋店';
