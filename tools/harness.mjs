@@ -4186,6 +4186,39 @@ console.log('== Google口コミ集計＝サーベイ集計の横＋個店カル�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== シートの日付セル化（ISO文字列）でも突き合わせが外れない（2026-09-08 実機＝口コミグラフがデータなし・時点が1日ずれる）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const tk = new Date().toLocaleDateString('en-CA');
+  const iso = new Date(tk + 'T00:00:00+09:00').toISOString();   // 日付セルが返す形＝JSTの0時（前日15時Z）
+  const noonT = new Date(tk + 'T12:00:00').getTime();
+  // ① gsnap＝ISO形式でも、口コミ集計のグラフと「口コミ 当日」の自動入力が効く
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'gsnap', store:S, item: iso, note: JSON.stringify({ src:'places', total: 1291, rating: 4.9, gained: 6 }), photos: [], t: noonT }
+    ]));
+  });
+  location.hash = '#/app/greview';
+  let h = registry.app.innerHTML;
+  ok(/最高/.test(h) && !/データなし/.test(h), 'ISO化した日付でも日別グラフに棒が立つ（データなしにならない）');
+  ok(/1,291/.test(h) && /\+6/.test(h), '総数・今月の獲得数も従来どおり出る');
+  location.hash = '#/app/soukatsu?tab=input';
+  h = registry.app.innerHTML;
+  ok(/id="sk_rvt"[^>]*value="6"/.test(h), 'ISO化した日付でも「口コミ 当日」に自動で入る');
+  // ② skdraft＝ISO形式でも総括表のプレフィルが効く（OCRの下書きが実機で効かない説明＝同じ罠）
+  run(() => {
+    setLS('staff', S, 'ja');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'skdraft', store:S, item: iso, note: JSON.stringify({ src:'ocr', total: 143800, kyaku: 26, cash: 44700, card: 99100 }), photos: [], t: noonT }
+    ]));
+  });
+  location.hash = '#/app/soukatsu?tab=input';
+  h = registry.app.innerHTML;
+  ok(/id="sk_sales"[^>]*value="143800"/.test(h) && /写真から読み取った数字/.test(h), 'ISO化した日付でもOCRの下書きが総括表に入る');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 受信箱の操作＝押した行だけ書き換え（2026-09-08 神田さんの実機報告＝押すたび画面がプツプツ途切れる）==');
 {
   const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');

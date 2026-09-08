@@ -88,7 +88,9 @@ function nikkei_ocr_hook_(data, photoIds) {
     merged.src = 'ocr';
 
     var sh = getSheet();
-    sh.appendRow([Utilities.getUuid(), Date.now(), draftKind, String(data.store || ''), dateKey, '', JSON.stringify(merged), '[]']);
+    /* ★日付は先頭アポストロフィ付きで書く＝シートの日付セル化（読み出しがISO文字列に化けて
+       アプリの突き合わせが外れる）を防ぐ（2026-09-08 発覚・アプリ側も読み方で吸収済み） */
+    sh.appendRow([Utilities.getUuid(), Date.now(), draftKind, String(data.store || ''), "'" + dateKey, '', JSON.stringify(merged), '[]']);
   } catch (e) {
     try { Logger.log('nikkei_ocr_hook_: ' + e); } catch (_) {}
   }

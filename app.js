@@ -1715,11 +1715,24 @@
      GAS（日計OCR.gs）が写真をOCRし、chukandraft（アイドル分）／skdraft（クローズ分）の行を作る。
      ここでは「今日の・この店舗の・最新の」下書きを拾ってフォームに自動で入れる。
      ★送信は必ず人が押す＝読み取りが間違っていても、目で見て直せる形を守る */
+  /* ★シートの日付セルの罠（2026-09-08 実機＝口コミ集計のグラフだけ「データなし」・時点表示が1日ずれる）。
+     GASが appendRow で書いた 'YYYY-MM-DD' はシート側が日付セルへ自動変換し、doGet の getValues() が
+     Date型で返す＝JSON化でISO文字列（例 2026-09-06T15:00:00.000Z ＝JSTの9/7 0時）になり、
+     日付キーの完全一致がすべて外れる。総括表取り込みで踏んだのと同じ罠
+     （skdraft/chukandraft のプレフィルが実機で効かない説明にもなる）。読む側で吸収する＝JST(+9h)の日付キーへ戻す */
+  const dateKeyOfItem = (item) => {
+    const s = String(item || '');
+    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+      const t = Date.parse(s);
+      if (!isNaN(t)) return new Date(t + 9 * 3600e3).toISOString().slice(0, 10);
+    }
+    return s;
+  };
   function nikkeiDraft(store, kind, dks) {
     let best = null;
     try {
       getReports().forEach(r => {
-        if (r.kind !== kind || r.store !== store || dks.indexOf(String(r.item || '')) === -1) return;
+        if (r.kind !== kind || r.store !== store || dks.indexOf(dateKeyOfItem(r.item)) === -1) return;
         if (!best || r.t > best.t) best = r;
       });
     } catch (e) {}
@@ -3384,14 +3397,14 @@
       try {
         const dks = [dateKeyFor(vis[0], Date.now()), dateKeyFor(vis[0], Date.now() - 864e5)];
         getReports().forEach(r => {
-          if (r.kind !== 'gsnap' || r.store !== vis[0] || dks.indexOf(String(r.item || '')) === -1) return;
+          if (r.kind !== 'gsnap' || r.store !== vis[0] || dks.indexOf(dateKeyOfItem(r.item)) === -1) return;
           if (!best || r.t > best.t) best = r;
         });
       } catch (e) {}
       if (!best) return null;
       const p = parseNote(best.note);
       return (p && p.src === 'places' && typeof p.gained === 'number' && p.gained >= 0)
-        ? Object.assign({ _t: best.t, _d: best.item }, p) : null;
+        ? Object.assign({ _t: best.t, _d: dateKeyOfItem(best.item) }, p) : null;
     })();
     /* ★タブ化（2026-08-31 神田さんのご指示＝役割・項目が違うものは縦に積まずタブで分ける。
        「スクロールは結構見なくなる」）。入力／今月の推移（複数店は店舗の状況）／最近の総括表 の3タブ */
@@ -3876,7 +3889,7 @@
         if (r.kind !== 'gsnap' || r.store !== store) return;
         const p = parseNote(r.note);
         if (!p || p.src !== 'places') return;
-        const d = String(r.item || '');
+        const d = dateKeyOfItem(r.item);   // 日付セル化（ISO文字列）された行もJSTの日付キーへ戻す
         if (!byD[d] || r.t > byD[d]._t) byD[d] = Object.assign({ _t: r.t, _d: d }, p);
       });
     } catch (e) {}
