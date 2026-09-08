@@ -258,6 +258,10 @@
     { id:'handover', group:'genba', icon:'chat', tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'引き継ぎ（店内伝言板）', en:'Handover Board', vi:'Bảng bàn giao' },
       desc:{ ja:'出勤したら最初に確認。「確認しました」を押すまで残ります', en:'Check on arrival; stays until confirmed', vi:'Xem khi vào ca; còn đến khi xác nhận' } },
+    /* 金種別入力＝長堀橋トライアル（2026-09-08 秋定さんのご要望）。「今日出すもの」の行から開く */
+    { id:'kinshu', group:'genba', icon:'yen', tabHide:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'金種別入力（レジクローズ）', en:'Cash Denomination Count', vi:'Kiểm đếm mệnh giá' },
+      desc:{ ja:'お札・硬貨の枚数を入力→合計と差異を自動計算', en:'Enter counts; totals auto-calculated', vi:'Nhập số lượng; tự tính tổng' } },
     /* 中間報告＝長堀橋トライアル（2026-09-01）。タブには出さず「今日出すもの」の行から開く
        （hide だと画面ごと開けなくなるので tabHide。対象店舗の判定は提出物マスタ側の stores で行う） */
     { id:'chukan', group:'genba', icon:'report', tabHide:true, roles:['staff','manager','owner','hq'],
@@ -1866,6 +1870,81 @@
       </div>`;
   };
 
+  /* ---------- 金種別入力（レジクローズ・2026-09-08 秋定さんのご要望・長堀橋トライアル）----------
+     レジ（USEN）のレジクローズ「現金入力」画面と同じ形：
+     枚数を入れると金額と合計（レジ内現金）を自動計算し、レジ画面の「想定レジ内現金」を写せば差異も自動で出る。
+     記録は kind 'kinshu'（3点セット済み・KEEP＝90日で可。差異は総括表のレジ誤差へ下書きされ恒久に残る） */
+  const KC_DENOMS = [
+    { v:10000, label:'1万円' }, { v:5000, label:'5千円' }, { v:2000, label:'2千円' }, { v:1000, label:'1千円' },
+    { v:500, label:'500円' }, { v:100, label:'100円' }, { v:50, label:'50円' }, { v:10, label:'10円' },
+    { v:5, label:'5円' }, { v:1, label:'1円' }
+  ];
+  const getKinshu = () => { try { return getReports().filter(r => r.kind === 'kinshu'); } catch (e) { return []; } };
+  APP_VIEWS.kinshu = () => {
+    const vis = visibleStores();
+    const recent = getKinshu().filter(r => vis.includes(r.store)).sort((a, b) => b.t - a.t).slice(0, 5);
+    const denomRow = (d) => `
+      <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+        <span style="width:52px;flex:none">${d.label}</span>
+        <input type="number" inputmode="numeric" min="0" id="kc_${d.v}" placeholder="0" style="flex:1;text-align:right;min-width:0">
+        <span class="muted" style="flex:none;font-size:13px">${L({ ja:'枚', en:'', vi:'' })}</span>
+        <b id="kca_${d.v}" style="width:88px;flex:none;text-align:right">¥0</b>
+      </div>`;
+    const kRow = (r) => {
+      const p = parseNote(r.note);
+      const diff = (p && typeof p.diff === 'number') ? p.diff : null;
+      return `
+      <div class="rep">
+        <span class="kind ${diff ? 'a' : 'b'}">${esc(mdLabel(dateKeyOfItem(r.item)))}</span>
+        <div class="body">
+          <div class="l1">${L({ ja:'レジ内現金', en:'Cash in drawer', vi:'Tiền trong két' })} ${yen(p && p.total)}${diff !== null ? `　${L({ ja:'差異', en:'Diff', vi:'Chênh' })} ${diff > 0 ? '+' : ''}${diff.toLocaleString('en-US')}${L({ ja:'円', en:'', vi:'' })}` : ''}</div>
+          ${p && p.memo ? `<div class="l2">${esc(p.memo)}</div>` : ''}
+          <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}${p && p.by ? ` ・ ${esc(p.by)}` : ''}</div>
+          ${hqAckLine('kinshu', r.t, r.store)}
+        </div>
+      </div>`;
+    };
+    return `
+      ${NOTE({ ja:'◆ レジクローズ時の現金の数えを、レジと同じ形で記録します（合計と差異は自動計算）', en:'◆ Record the cash count at close, just like the register screen', vi:'◆ Ghi lại kiểm đếm tiền lúc đóng ca như màn hình máy tính tiền' })}
+      <div class="card">
+        <h3>${L({ ja:'金種別入力', en:'Cash denomination count', vi:'Kiểm đếm mệnh giá' })}</h3>
+        <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
+          <select id="kc_store">${vis.map(s => `<option>${esc(s)}</option>`).join('')}</select></label>
+        <div class="idlabel">${L({ ja:'現金入力（枚数）', en:'Counts', vi:'Số lượng' })}</div>
+        ${KC_DENOMS.map(denomRow).join('')}
+        <div class="stat-row" style="margin:8px 0 10px">
+          <div class="stat"><div class="n" id="kc_total">¥0</div><div class="k">${L({ ja:'レジ内現金（自動計算）', en:'Cash in drawer (auto)', vi:'Tiền trong két (tự động)' })}</div></div>
+          <div class="stat"><div class="n" id="kc_diff">—</div><div class="k">${L({ ja:'差異（自動計算）', en:'Difference (auto)', vi:'Chênh lệch (tự động)' })}</div></div>
+        </div>
+        <label class="fld"><span>${L({ ja:'想定レジ内現金（レジ画面の金額）', en:'Expected cash (from register)', vi:'Tiền dự kiến (từ máy)' })}</span>
+          <input type="number" inputmode="numeric" min="0" id="kc_expect" placeholder="70900"></label>
+        <label class="fld"><span>${L({ ja:'メモ（差異があるときの原因など・任意）', en:'Memo (optional)', vi:'Ghi chú (tùy chọn)' })}</span>
+          <input type="text" id="kc_memo"></label>
+        <label class="fld"><span>${L({ ja:'名前', en:'Your name', vi:'Tên bạn' })}</span>
+          <input type="text" id="kc_by" value="${esc(getUserName() || '')}"></label>
+        <button class="btn-primary" id="submitKc">${L({ ja:'確定して提出する', en:'Submit', vi:'Xác nhận & gửi' })}</button>
+        <div class="hint">${L({ ja:'※ 提出すると本部に届き、差異は総括表の「レジ誤差」に自動で入ります（違うときは直せます）。', en:'Sent to HQ; the difference pre-fills the daily report’s register-error field.', vi:'Gửi đến HQ; chênh lệch tự điền vào báo cáo ngày.' })}</div>
+      </div>
+      <div class="card">
+        <h3>${L({ ja:'最近の記録', en:'Recent records', vi:'Bản ghi gần đây' })}</h3>
+        ${recent.length ? recent.map(kRow).join('') : `<div class="muted">${L({ ja:'まだありません', en:'None yet', vi:'Chưa có' })}</div>`}
+      </div>`;
+  };
+  /* 今日（または昨日）の金種別入力＝総括表の「レジ誤差」への下書きに使う（前日分を翌朝出す運用に合わせ2日窓） */
+  function kinshuLatest(store) {
+    let best = null;
+    try {
+      const dks = [dateKeyFor(store, Date.now()), dateKeyFor(store, Date.now() - 864e5)];
+      getKinshu().forEach(r => {
+        if (r.store !== store || dks.indexOf(dateKeyOfItem(r.item)) === -1) return;
+        if (!best || r.t > best.t) best = r;
+      });
+    } catch (e) {}
+    if (!best) return null;
+    const p = parseNote(best.note);
+    return p ? Object.assign({ _t: best.t }, p) : null;
+  }
+
   /* 来店経路の記録（まな＝記入減少→ワンタップで記録）*/
   const getRoute = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_route')) || []; } catch { return []; } };
   const saveRoute = (a) => localStorage.setItem('yosakura_demo_route', JSON.stringify(a));
@@ -3449,6 +3528,12 @@
       return (p && p.src === 'places' && typeof p.gained === 'number' && p.gained >= 0)
         ? Object.assign({ _t: best.t, _d: dateKeyOfItem(best.item) }, p) : null;
     })();
+    /* ★金種別入力からの下書き（2026-09-08 秋定さんのご要望）＝レジクローズの金種カウントで出た差異を
+       「レジ誤差」へ入れる（確定は人が提出＝OCR・gsnapと同じ型）。差異が計算できた日だけ入れる */
+    const kcDraft = (() => {
+      const p = kinshuLatest(vis[0]);
+      return (p && typeof p.diff === 'number') ? p : null;
+    })();
     /* ★タブ化（2026-08-31 神田さんのご指示＝役割・項目が違うものは縦に積まずタブで分ける。
        「スクロールは結構見なくなる」）。入力／今月の推移（複数店は店舗の状況）／最近の総括表 の3タブ */
     const SKT = [
@@ -3494,6 +3579,7 @@
         ${skDraft._t ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ レジクローズの日計レポート写真から読み取った数字（売上・客数・現金・カード）が入っています。確認して、違うところは直してから提出してください。', en:'Sales, guests, cash and card were read from the register-close photo. Check and correct before submitting.', vi:'Doanh thu, khách, tiền mặt, thẻ đọc từ ảnh đóng ca. Kiểm tra trước khi gửi.' })}（${timeAgo(skDraft._t)}）</p>` : ''}
         ${skOcrMiss ? `<p class="hint" style="display:block;margin:-2px 0 8px;color:#a23b3b">${L({ ja:'※ 日計レポートの写真は届いていますが、数字を読み取れませんでした（封筒やメモで数字の行が隠れていると読めません）。お手数ですが手入力をお願いします。次回は、レポートの数字が全部見えるように撮っていただくと自動で入ります。', en:'The register-close photo arrived but the numbers could not be read (rows may be covered by the envelope or a note). Please enter them manually; next time keep all numbers visible in the photo.', vi:'Đã nhận ảnh đóng ca nhưng không đọc được số (có thể bị phong bì/ghi chú che). Vui lòng nhập tay; lần sau chụp sao cho thấy rõ các con số.' })}</p>` : ''}
         ${gsnap ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:`※ 「口コミ 当日」は、Googleの口コミ件数（前日との差）から自動で入っています（対象日 ${gsnap._d}・現在の総数 ${gsnap.total}件）。違うときは直してから提出してください。`, en:`Reviews today was filled from the Google review count (day-over-day, as of ${gsnap._d}, total ${gsnap.total}). Correct if needed.`, vi:`Ô đánh giá hôm nay được điền từ số review Google (so với hôm trước, ${gsnap._d}, tổng ${gsnap.total}). Sửa nếu sai.` })}</p>` : ''}
+        ${kcDraft ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:`※ 「レジ誤差」は、金種別入力（レジクローズ）の差異から自動で入っています（レジ内現金 ¥${(Number(kcDraft.total) || 0).toLocaleString('en-US')}）。違うときは直してから提出してください。`, en:`Register error was filled from the cash denomination count (drawer total ¥${(Number(kcDraft.total) || 0).toLocaleString('en-US')}). Correct if needed.`, vi:`Ô sai lệch quầy được điền từ kiểm đếm mệnh giá. Sửa nếu sai.` })}</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
           <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || today}" max="${today}"></label>
@@ -3506,7 +3592,7 @@
         </div>
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'純売上',en:'Net sales',vi:'Doanh thu thuần'})}</span><input type="text" inputmode="numeric" id="sk_net" placeholder="129136"></label>
-          <label class="fld"><span>${L({ja:'レジ誤差',en:'Register error',vi:'Sai lệch quầy'})}</span><input type="text" inputmode="numeric" id="sk_err" placeholder="0"></label>
+          <label class="fld"><span>${L({ja:'レジ誤差',en:'Register error',vi:'Sai lệch quầy'})}</span><input type="text" inputmode="numeric" id="sk_err" placeholder="0"${kcDraft ? ` value="${kcDraft.diff}"` : ''}></label>
           <label class="fld"><span>${L({ja:'月累計売上（自動計算）',en:'Month-to-date (auto)',vi:'Lũy kế tháng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_mtd" placeholder="2146145" value="${skCum0.mtd || ''}"></label>
           <label class="fld"><span>${L({ja:'売上目標（月）',en:'Monthly goal',vi:'Mục tiêu tháng'})}</span><input type="text" inputmode="numeric" id="sk_goal" placeholder="3000000"></label>
           <label class="fld"><span>${L({ja:'フード金額',en:'Food sales (¥)',vi:'Tiền món ăn'})}</span><input type="text" inputmode="numeric" id="sk_foodamt" placeholder="88400"></label>
@@ -5379,10 +5465,11 @@
         how:{ja:'締めで数えた現金売上を撮影して提出してください（中間報告の画面からも開けます）',en:'Photograph the counted cash sales and submit',vi:'Chụp tiền mặt đã đếm khi chốt ca và nộp'} },
       { id:'tip_photo',    name:{ja:'チップの写真',en:'Tips photo',vi:'Ảnh tiền tip'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'その日のチップを撮影して提出してください（中間報告の画面からも開けます）',en:'Photograph the day’s tips and submit',vi:'Chụp tiền tip trong ngày và nộp'} },
-      /* ★金種別入力の写真（2026-09-08 秋定さんのご要望・長堀橋トライアル追加7項目め）。
-         レジクローズ時の金種別（お札・硬貨の内訳）の記録を写真で提出する専用の置き場 */
-      { id:'kinshu_photo', name:{ja:'金種別入力の写真（レジクローズ）',en:'Cash denomination photo',vi:'Ảnh kiểm đếm mệnh giá'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
-        how:{ja:'レジクローズ時の金種別入力（お札・硬貨の内訳）を撮影して提出してください',en:'Photograph the cash denomination count at register close',vi:'Chụp bảng kiểm đếm mệnh giá lúc đóng ca'} },
+      /* ★金種別入力（2026-09-08 秋定さんのご要望・長堀橋トライアル追加7項目め）。
+         レジ（USEN）のレジクローズ画面と同じ形＝枚数を入れると金額・合計・差異を自動計算するフォーム。
+         （最初は写真置き場で作ったが、実物のレジ画面を見て「入力そのものの置き換え」と判明→フォームに変更） */
+      { id:'kinshu', name:{ja:'金種別入力（レジクローズ）',en:'Cash denomination count',vi:'Kiểm đếm mệnh giá'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'kinshu', linkApp:'kinshu',
+        how:{ja:'レジクローズ時に、お札・硬貨の枚数を入力してください（合計と差異は自動で計算されます）',en:'Enter bill and coin counts at register close (totals auto-calculated)',vi:'Nhập số tờ/đồng lúc đóng ca (tự tính tổng)'} },
       { id:'nippou',     name:{ja:'総括表',en:'Summary sheet',vi:'Bảng tổng kết'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
       /* ★気づきの報告を、1日の最後に置く（2026-08-12 神田さんのご指摘）。
          これまで日報の中に「清掃・特記事項」という自由入力があり、
@@ -5589,6 +5676,8 @@
       if (m.detect === 'kizuki') return getKz().some(r => r.store === store && inScope(r.t)); // 対象日で判定（翌朝提出でも前日分として数える）
       // 中間報告も同様＝朝食報告・中間報告のどちらか1件でもあれば提出済み
       if (m.detect === 'chukan') return getReports().some(r => r.kind === 'chukan' && r.store === store && inScope(r.t));
+      // 金種別入力（レジクローズ）＝当日の kinshu 記録が1件でもあれば提出済み
+      if (m.detect === 'kinshu') return getReports().some(r => r.kind === 'kinshu' && r.store === store && inScope(r.t));
       if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
       /* アプリのチェックリスト＝★その日の項目が「全部」終わったときだけ提出済みとする。
          2026-08-12 神田さんのご指摘で修正。以前は1つでもチェックすれば実施とみなしていたため、
@@ -6228,6 +6317,15 @@
         const p = parseNote(r.note);
         add('chukan', { ja:'中間報告', en:'Midday report', vi:'Báo cáo giữa ngày' }, r.t, r.store, chTypeLabel(p.rtype),
           chSummary(p) + (p.memo ? '\n' + String(p.memo) : ''), r.photos);
+      });
+      // 金種別入力（レジクローズ・長堀橋トライアル）＝レジ内現金と差異の要約
+      getReports().filter(r => r.kind === 'kinshu' && vis.includes(r.store)).forEach(r => {
+        const p = parseNote(r.note);
+        const diff = (p && typeof p.diff === 'number') ? p.diff : null;
+        const line = L({ ja:'レジ内現金', en:'Cash in drawer', vi:'Tiền trong két' }) + ' ' + yen(p && p.total)
+          + (diff !== null ? `　${L({ ja:'差異', en:'Diff', vi:'Chênh' })} ${diff > 0 ? '+' : ''}${diff.toLocaleString('en-US')}${L({ ja:'円', en:'', vi:'' })}` : '')
+          + (p && p.memo ? '\n' + String(p.memo) : '');
+        add('kinshu', { ja:'金種別入力', en:'Cash count', vi:'Kiểm đếm tiền' }, r.t, r.store, mdLabel(dateKeyOfItem(r.item)), line, r.photos);
       });
       /* ★提出物マスタは1回だけ引く（2026-09-03）。以前は写真提出の行ごとに getMasters() を
          呼んでおり、その中で保存データを何度も読み直していた＝件数が増えるほど二乗で重くなっていた。 */
@@ -8175,6 +8273,60 @@
       postReport(rep);
     };
 
+    /* 金種別入力（レジクローズ・2026-09-08 秋定さんのご要望）：
+       レジのクローズ画面と同じく、枚数を打つそばから金額・合計・差異を自動計算する。
+       計算は行内の書き換えだけ（画面は作り直さない＝入力中のカーソルを飛ばさない） */
+    const kcCalc = () => {
+      const totalEl = document.getElementById('kc_total');
+      if (!totalEl) return 0;
+      let total = 0;
+      KC_DENOMS.forEach(d => {
+        const n = Math.max(0, Number((document.getElementById('kc_' + d.v) || {}).value) || 0);
+        const amt = n * d.v; total += amt;
+        const a = document.getElementById('kca_' + d.v); if (a) a.textContent = yen(amt);
+      });
+      totalEl.textContent = yen(total);
+      const expRaw = String((document.getElementById('kc_expect') || {}).value || '').trim();
+      const diffEl = document.getElementById('kc_diff');
+      if (diffEl) {
+        if (expRaw === '') { diffEl.textContent = '—'; diffEl.style.color = ''; }
+        else {
+          const diff = total - (Number(expRaw) || 0);
+          diffEl.textContent = (diff > 0 ? '+' : '') + diff.toLocaleString('en-US') + L({ ja:'円', en:'', vi:'' });
+          diffEl.style.color = diff === 0 ? '' : '#c62828';
+        }
+      }
+      return total;
+    };
+    if (document.getElementById('kc_total')) {
+      KC_DENOMS.forEach(d => { const el = document.getElementById('kc_' + d.v); if (el) el.oninput = kcCalc; });
+      const kx = document.getElementById('kc_expect'); if (kx) kx.oninput = kcCalc;
+      kcCalc();
+    }
+    const subKc = document.getElementById('submitKc');
+    if (subKc) subKc.onclick = () => {
+      const store = (document.getElementById('kc_store') || {}).value || visibleStores()[0];
+      const counts = {}; let total = 0;
+      KC_DENOMS.forEach(d => {
+        const n = Math.max(0, Number((document.getElementById('kc_' + d.v) || {}).value) || 0);
+        if (n) counts[d.v] = n; total += n * d.v;
+      });
+      const expRaw = String((document.getElementById('kc_expect') || {}).value || '').trim();
+      const expect = expRaw === '' ? null : (Number(expRaw) || 0);
+      if (!total && expect === null) { toast(L({ ja:'お札・硬貨の枚数を入力してください', en:'Enter bill and coin counts', vi:'Nhập số tờ/đồng' })); return; }
+      const memo = String((document.getElementById('kc_memo') || {}).value || '').trim();
+      const by = String((document.getElementById('kc_by') || {}).value || '').trim();
+      if (by) setUserName(by);
+      const t = Date.now();
+      const payload = { counts, total, expect, diff: expect === null ? null : total - expect, memo, by: by || submitterLabel() };
+      const rep = { kind:'kinshu', store, item: dateKeyFor(store, t), note: JSON.stringify(payload), photos: [], t };
+      try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
+      lastSync = t; // 直後の重複同期を抑止（postReportがforce同期）
+      toast(L({ ja:'金種別入力を提出しました。差異は総括表の「レジ誤差」に自動で入ります。', en:'Submitted. The difference pre-fills the daily report.', vi:'Đã gửi. Chênh lệch tự điền vào báo cáo ngày.' }));
+      go('/app/kyou');
+      postReport(rep);
+    };
+
     // みんなの投稿：投稿（本部承認後に公開）
     const subComm = document.getElementById('submitComm');
     if (subComm) subComm.onclick = () => {
@@ -8781,8 +8933,9 @@
         //   KEEP判断＝恒久保存（2026-09-07 神田さんのご指示＝口コミ集計の推移を90日で切らない。Code.gsのPURGE_KEEP_KINDSに追加済み）
         // ★2026-09-08 追加＝handover（店内の引き継ぎボード）。KEEP判断＝90日で消えてよい（短命の連絡）
         // ★2026-09-08 追加＝newslike/newsread/newscmt（お知らせへの反応）。KEEP判断＝お知らせ本体と同じく恒久（Code.gsに追加）
+        // ★2026-09-08 追加＝kinshu（金種別入力・レジクローズ）。KEEP判断＝90日で消えてよい（差異は総括表のレジ誤差に恒久で残る）
         case 'chukan': case 'chukandraft': case 'skdraft': case 'gsnap': case 'handover':
-        case 'newslike': case 'newsread': case 'newscmt':
+        case 'newslike': case 'newsread': case 'newscmt': case 'kinshu':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
         case 'route': route.push({ store, route:r.item, t, id }); break;
