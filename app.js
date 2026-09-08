@@ -252,6 +252,12 @@
     { id:'kizuki', group:'genba', icon:'idea', tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'気づきの報告', en:'Daily Insights', vi:'Ghi nhận cuối ca' },
       desc:{ ja:'クローズ後の気づきを本部へ共有', en:'Share end-of-shift insights', vi:'Chia sẻ ghi nhận sau ca' } },
+    /* 店内の引き継ぎボード（2026-09-08 田中さん・増田さんのご要望→神田さんのご指示）。
+       個人スマホにアプリを入れない前提＝店舗の共用iPadで、出勤して開いた最初に未確認の引き継ぎが見える。
+       ホームのトップカードから開く（タブには重ねない） */
+    { id:'handover', group:'genba', icon:'chat', tabHide:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'引き継ぎ（店内伝言板）', en:'Handover Board', vi:'Bảng bàn giao' },
+      desc:{ ja:'出勤したら最初に確認。「確認しました」を押すまで残ります', en:'Check on arrival; stays until confirmed', vi:'Xem khi vào ca; còn đến khi xác nhận' } },
     /* 中間報告＝長堀橋トライアル（2026-09-01）。タブには出さず「今日出すもの」の行から開く
        （hide だと画面ごと開けなくなるので tabHide。対象店舗の判定は提出物マスタ側の stores で行う） */
     { id:'chukan', group:'genba', icon:'report', tabHide:true, roles:['staff','manager','owner','hq'],
@@ -1238,6 +1244,30 @@
       <main class="screen">
         <div class="brandhead"><img class="brandhead__logo" src="${IMG_LOGO}" alt="日本料理 世桜 -yosakura-"></div>
         ${installCardHTML()}
+        ${(() => {
+          /* ★店内の引き継ぎ＝ホームのいちばん上（2026-09-08 神田さんのご指示＝出勤して開いた最初に見える）。
+             1店舗の画面のときだけ出す（本部・複数店オーナーのホームには出さない＝店舗の中で閉じる情報） */
+          if (!isStoreSide || visibleStores().length !== 1) return '';
+          const ho = handoverOf(visibleStores()[0]);
+          if (!ho.open.length) return `
+          <button class="card news-card news-card--btn" data-open="handover">
+            <div class="news-h"><span class="news-ic">${svg('chat')}</span><b>${L({ ja:'引き継ぎ（店内伝言板）', en:'Handover board', vi:'Bảng bàn giao' })}</b></div>
+            <p class="news-body">${L({ ja:'未確認の引き継ぎはありません。次の人への伝言はここから書けます。', en:'Nothing unread. Tap to write a note for the next shift.', vi:'Không có mục chưa đọc. Chạm để viết cho ca sau.' })}</p>
+          </button>`;
+          return `
+          <div class="card news-card news-card--imp">
+            <div class="news-h"><span class="news-ic">${svg('chat')}</span><b>${L({ ja:'引き継ぎがあります（未確認）', en:'Handover notes (unread)', vi:'Có bàn giao (chưa đọc)' })}</b><span class="news-ago">${ho.open.length}${L({ ja:'件', en:'', vi:'' })}</span></div>
+            ${ho.open.slice(0, 5).map(n => `
+            <div class="rep" style="align-items:flex-start">
+              <div class="body">
+                <div class="l1" style="white-space:pre-wrap">${esc(n.body)}</div>
+                <div class="l2">${esc(n.by || L({ ja:'名前なし', en:'(no name)', vi:'(không tên)' }))} ・ ${timeAgo(n.t)}　<button class="mini" data-hodone="${esc(n.key)}">${L({ ja:'確認しました', en:'Confirm', vi:'Đã xác nhận' })}</button></div>
+              </div>
+            </div>`).join('')}
+            ${ho.open.length > 5 ? `<p class="hint" style="display:block">${L({ ja:'ほか', en:'+', vi:'+' })}${ho.open.length - 5}${L({ ja:'件は「すべて見る」から。', en:' more in the board.', vi:' mục nữa.' })}</p>` : ''}
+            <button class="mini" data-open="handover" style="margin-top:6px">${L({ ja:'すべて見る・引き継ぎを書く', en:'Open board / write', vi:'Xem tất cả / viết' })}</button>
+          </div>`;
+        })()}
         ${remind}
         ${isStoreSide ? dutySection + newsSection : newsSection + dutySection}
         ${sec({ ja:'よく使う', en:'Quick access', vi:'Hay dùng' })}
@@ -1767,6 +1797,60 @@
         ${hqAckLine('chukan', r.t, r.store)}
       </div>
     </div>`;
+  };
+
+  /* ---------- 店内の引き継ぎボード（2026-09-08 田中さん・増田さんのご要望→神田さんのご指示で実装）----------
+     設計＝シンプル・イズ・ベスト：
+     ・書く＝名前とひとことだけ／読む＝ホームのいちばん上（出勤して共用iPadを開いた最初に見える）
+     ・「確認しました」を押すまで残る＝拾い漏れを作らない。確認済みは履歴に残る（「言った言ってない」対策）
+     ・店舗の中で閉じる情報（個人スマホ前提にしない・他店には見えない＝門番visibleStoresの内側）
+     kind 'handover'＝本文行（item=''・note={body,by}）と確認行（item='done'・note={key,by}）の2形。
+     KEEP判断＝90日で消えてよい（引き継ぎは短命の連絡。恒久記録は総括表・気づきが受け持つ） */
+  const getHandover = () => { try { return getReports().filter(r => r.kind === 'handover'); } catch (e) { return []; } };
+  function handoverOf(store) {
+    const notes = []; const done = {};
+    getHandover().forEach(r => {
+      if (r.store !== store) return;
+      const p = parseNote(r.note);
+      if (r.item === 'done') { if (p && p.key) done[p.key] = p.by || ''; return; }
+      if (p && p.body) notes.push({ key: `${r.t}|${r.store}`, body: String(p.body), by: String(p.by || ''), t: r.t });
+    });
+    notes.sort((a, b) => b.t - a.t);
+    return { open: notes.filter(n => done[n.key] === undefined), all: notes, done };
+  }
+  const hoRow = (n, doneBy) => `
+    <div class="rep" style="align-items:flex-start">
+      <span class="kind ${doneBy === undefined ? 'a' : 'b'}">${doneBy === undefined ? L({ ja:'未確認', en:'Unread', vi:'Chưa đọc' }) : L({ ja:'確認済', en:'Done', vi:'Đã đọc' })}</span>
+      <div class="body">
+        <div class="l1" style="white-space:pre-wrap">${esc(n.body)}</div>
+        <div class="l2">${esc(n.by || L({ ja:'名前なし', en:'(no name)', vi:'(không tên)' }))} ・ ${timeAgo(n.t)}${doneBy ? ` ・ ${L({ ja:'確認：', en:'by ', vi:'bởi ' })}${esc(doneBy)}` : ''}</div>
+        ${doneBy === undefined ? `<div class="l2" style="margin-top:4px"><button class="mini" data-hodone="${esc(n.key)}">${L({ ja:'確認しました', en:'Confirm', vi:'Đã xác nhận' })}</button></div>` : ''}
+      </div>
+    </div>`;
+  APP_VIEWS.handover = () => {
+    const vis = visibleStores();
+    const ho = handoverOf(vis[0]);
+    return `
+      ${NOTE({ ja:'◆ 出勤したら最初に確認する伝言板です。「確認しました」を押すまでホームに残ります', en:'◆ Check this board on arrival; notes stay on Home until confirmed', vi:'◆ Xem bảng này khi vào ca; tin còn trên Trang chủ đến khi xác nhận' })}
+      <div class="card">
+        <h3>${L({ ja:'引き継ぎを書く', en:'Write a handover', vi:'Viết bàn giao' })}</h3>
+        <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
+          <select id="ho_store">${vis.map(s => `<option>${esc(s)}</option>`).join('')}</select></label>
+        <label class="fld"><span>${L({ ja:'内容', en:'Note', vi:'Nội dung' })}</span>
+          <textarea id="ho_body" rows="3" placeholder="${esc(L({ ja:'例）おしぼりの在庫が残り1パックです。発注済み・木曜に届きます', en:'e.g. Only 1 pack of towels left; ordered, arrives Thursday', vi:'vd: Khăn còn 1 gói; đã đặt, thứ Năm tới' }))}"></textarea></label>
+        <label class="fld"><span>${L({ ja:'名前', en:'Your name', vi:'Tên bạn' })}</span>
+          <input type="text" id="ho_by" value="${esc(getUserName() || '')}" placeholder="${esc(L({ ja:'例）田中', en:'e.g. Tanaka', vi:'vd: Tanaka' }))}"></label>
+        <button class="btn-primary" id="submitHo">${L({ ja:'伝言板に載せる', en:'Post to the board', vi:'Đăng lên bảng' })}</button>
+        <div class="hint">${L({ ja:'※ この店舗のホーム画面のいちばん上に表示され、誰かが「確認しました」を押すまで残ります。', en:'Shown at the top of this store’s Home until someone confirms it.', vi:'Hiển thị đầu Trang chủ của cửa hàng đến khi có người xác nhận.' })}</div>
+      </div>
+      <div class="card">
+        <h3>${L({ ja:'未確認', en:'Unread', vi:'Chưa đọc' })} <small style="color:#8a8">${ho.open.length}</small></h3>
+        ${ho.open.length ? ho.open.map(n => hoRow(n, undefined)).join('') : `<div class="muted">${L({ ja:'未確認の引き継ぎはありません', en:'Nothing unread', vi:'Không có mục chưa đọc' })}</div>`}
+      </div>
+      <div class="card">
+        <h3>${L({ ja:'履歴（確認済みも残ります）', en:'History', vi:'Lịch sử' })}</h3>
+        ${ho.all.length ? ho.all.slice(0, 20).map(n => hoRow(n, ho.done[n.key])).join('') : `<div class="muted">${L({ ja:'まだありません', en:'None yet', vi:'Chưa có' })}</div>`}
+      </div>`;
   };
 
   /* 来店経路の記録（まな＝記入減少→ワンタップで記録）*/
@@ -6283,7 +6367,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -6317,6 +6401,18 @@
       if (t.dataset.ackmemocancel) { inboxMemoKey = ''; render(true); return; }
       // 全文を見る／たたむ（同じ行をもう一度押すと閉じる）
       if (t.dataset.ackfull) { inboxFullKey = inboxFullKey === t.dataset.ackfull ? '' : t.dataset.ackfull; render(true); return; }
+      // 引き継ぎの「確認しました」（店内伝言板・2026-09-08）＝確認行を追記（本文は消さず履歴に残る）
+      if (t.dataset.hodone) {
+        const key = t.dataset.hodone;
+        const store = key.slice(key.indexOf('|') + 1) || visibleStores()[0];
+        const rep = { kind:'handover', store, item:'done', note: JSON.stringify({ key, by: getUserName() || '' }), photos: [], t: Date.now() };
+        try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (err) {}
+        lastSync = rep.t;
+        toast(L({ ja:'確認を記録しました', en:'Confirmed.', vi:'Đã ghi xác nhận.' }));
+        render(true);
+        postReport(rep);
+        return;
+      }
       if (t.dataset.ackmemosave) {
         const inp = document.getElementById('ack_memo_input');
         setAck(t.dataset.ackmemosave, 'done', ((inp && inp.value) || '').trim());
@@ -7808,6 +7904,23 @@
       postReport(rep);
     };
 
+    // 店内の引き継ぎボード：投稿（2026-09-08）。名前は次回のために端末へ覚える
+    const subHo = document.getElementById('submitHo');
+    if (subHo) subHo.onclick = () => {
+      const store = (document.getElementById('ho_store') || {}).value || visibleStores()[0];
+      const body = String((document.getElementById('ho_body') || {}).value || '').trim();
+      if (!body) { toast(L({ ja:'内容を入力してください', en:'Please enter a note', vi:'Vui lòng nhập nội dung' })); return; }
+      const by = String((document.getElementById('ho_by') || {}).value || '').trim();
+      if (by) setUserName(by);
+      const t = Date.now();
+      const rep = { kind:'handover', store, item:'', note: JSON.stringify({ body, by }), photos: [], t };
+      try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
+      lastSync = t; // 直後の重複同期を抑止（postReportがforce同期）
+      toast(L({ ja:'伝言板に載せました。ホームのいちばん上に表示されます。', en:'Posted. It appears at the top of Home.', vi:'Đã đăng. Hiển thị đầu Trang chủ.' }));
+      render();
+      postReport(rep);
+    };
+
     // みんなの投稿：投稿（本部承認後に公開）
     const subComm = document.getElementById('submitComm');
     if (subComm) subComm.onclick = () => {
@@ -8412,7 +8525,8 @@
         //     hqack/appfb（2026-08-31）と同じ取りこぼしの3回目。kind追加は distribute＋KEEP＋テストの3点セットを守る）
         // ★2026-09-06 追加＝gsnap（Google口コミ件数の1日1回スナップショット）。3点セット（distribute＋KEEP判断＋テスト）
         //   KEEP判断＝恒久保存（2026-09-07 神田さんのご指示＝口コミ集計の推移を90日で切らない。Code.gsのPURGE_KEEP_KINDSに追加済み）
-        case 'chukan': case 'chukandraft': case 'skdraft': case 'gsnap':
+        // ★2026-09-08 追加＝handover（店内の引き継ぎボード）。KEEP判断＝90日で消えてよい（短命の連絡）
+        case 'chukan': case 'chukandraft': case 'skdraft': case 'gsnap': case 'handover':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
         case 'route': route.push({ store, route:r.item, t, id }); break;
