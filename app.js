@@ -6415,7 +6415,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -6430,6 +6430,8 @@
       // 受信箱の「全店の報告を表示する」＝店舗の絞り込みを全店へ戻す（2026-09-03）
       if (t.dataset.inboxallstores) { setStoreSel('all'); toast(L({ ja:'全店の表示に切り替えました', en:'Showing all stores', vi:'Đã chuyển sang tất cả cửa hàng' })); render(true); return; }
       if (t.dataset.sktab) { skEditClear_(); localStorage.setItem('yosakura_soukatsu_tab', t.dataset.sktab); go('/app/soukatsu?tab=' + t.dataset.sktab); return; }
+      // お知らせのタブ（一覧／投稿・本部のみ）＝2026-09-08 神田さんのご指摘で分離
+      if (t.dataset.nwtab) { localStorage.setItem('yosakura_news_tab', t.dataset.nwtab); go('/app/news?tab=' + t.dataset.nwtab); return; }
       // 「この日報を直す」＝その日の内容を入れた状態で入力画面を開く（2026-09-03 ユンさんのご要望）
       if (t.dataset.skedit) {
         document.querySelectorAll('.sheet-mask').forEach(m => m.remove());
@@ -6986,7 +6988,18 @@
   APP_VIEWS.news = () => {
     const list = newsVisible(getNews()).sort((a, b) => b.t - a.t);
     const isHq = getRole() === 'hq';
-    const form = isHq ? `
+    /* ★本部はタブで分ける（2026-09-08 神田さんの実機報告＝お知らせを読みに来たのに投稿フォームが先に出て、
+       スクロールしないと一覧が見えない）。開いたら「一覧」が最初・投稿は別タブ。店舗側は従来どおり一覧のみ */
+    const NWT = [
+      { v:'list', t:{ ja:'お知らせ一覧', en:'Announcements', vi:'Danh sách' } },
+      { v:'post', t:{ ja:'投稿する', en:'Post', vi:'Đăng' } }
+    ];
+    const urlNwTab = currentRoute().params.get('tab');
+    const nwTab = !isHq ? 'list'
+      : NWT.some(o => o.v === urlNwTab) ? urlNwTab
+      : NWT.some(o => o.v === localStorage.getItem('yosakura_news_tab')) ? localStorage.getItem('yosakura_news_tab') : 'list';
+    const nwTabSeg = isHq ? `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="nwtab">${NWT.map(o => `<button type="button" data-nwtab="${o.v}" class="${o.v === nwTab ? 'on' : ''}">${L(o.t)}</button>`).join('')}</div></div>` : '';
+    const form = (isHq && nwTab === 'post') ? `
       <div class="card" id="newsForm">
         <h3>${L({ ja:'お知らせを投稿', en:'Post an announcement', vi:'Đăng thông báo' })}</h3>
         <label class="fld"><span>${L({ ja:'タイトル', en:'Title', vi:'Tiêu đề' })}</span>
@@ -7006,10 +7019,11 @@
       </div>` : '';
     return `
       ${NOTE({ ja:'◆ 本部からのお知らせ・世桜ニュース', en:'◆ News and notices from HQ', vi:'◆ Thông báo & tin tức từ HQ' })}
+      ${nwTabSeg}
       ${form}
-      <div class="card"><h3>${L({ ja:'お知らせ一覧', en:'Announcements', vi:'Danh sách thông báo' })}</h3>
+      ${nwTab !== 'list' ? '' : `<div class="card"><h3>${L({ ja:'お知らせ一覧', en:'Announcements', vi:'Danh sách thông báo' })}</h3>
         ${list.length ? list.map(newsRow).join('') : `<div class="muted">${L({ ja:'まだお知らせはありません', en:'No announcements yet', vi:'Chưa có thông báo' })}</div>`}
-      </div>`;
+      </div>`}`;
   };
 
   /* ---------- 勉強会（8/7 増田さんご要望）----------
@@ -7719,7 +7733,9 @@
       try { saveNews(arr.slice(-100)); } catch (e) { saveNews(arr.slice(-40)); }
       lastSync = t;
       toast(L({ ja:'お知らせを配信しました', en:'Announcement published', vi:'Đã đăng thông báo' }));
-      render();
+      // 配信したら「一覧」タブへ＝配信結果がすぐ確かめられる（2026-09-08 タブ分離とセット）
+      localStorage.setItem('yosakura_news_tab', 'list');
+      go('/app/news?tab=list');
       postReport({ kind:'news', store:'', note: JSON.stringify({ title, body, level, target, video }), photos, t });
     };
 
