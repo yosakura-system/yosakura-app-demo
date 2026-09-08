@@ -18,7 +18,11 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; padding: 0; }
+/* ★ページ（body）はスクロールさせない（2026-09-08 常山さんの動画＝店舗iPadで下バーが
+   スクロール中に画面の途中へ置き去りになる。fixed→sticky（2026-09-04）でも再発＝
+   この機種はページスクロール中の貼り付き描画そのものが追従しない）。
+   スクロールは中身（.appmain）だけで行う＝バーはスクロールの外にあるので物理的に動けない */
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 body {
   font-family: var(--sans);
   color: var(--sumi);
@@ -31,13 +35,21 @@ body {
 #app {
   max-width: var(--maxw);
   margin: 0 auto;
-  min-height: 100vh;
+  height: 100%;
   background: var(--kinari);
   position: relative;
   box-shadow: 0 0 60px rgba(0,0,0,.08);
-  /* ボトムナビは fixed でなく sticky（下の .tabbar 参照）＝flex縦積みで最下部へ押し下げる。
-     以前の padding-bottom(76px) は fixed バーの重なり避け＝sticky ではバー自身が場所を取るので不要 */
+  /* ヘッダー・体験版帯・中身（.appmain）・ボトムナビの縦積み。スクロールは .appmain の中だけ。
+     overflow-y:auto はシェルの無い画面（ログイン・総括表の月次出力）用の予備＝
+     シェルがある画面では中身が .appmain に収まるため #app 自体はあふれない */
   display: flex; flex-direction: column;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+/* シェルの中身＝唯一のスクロール領域。バー（ヘッダー・タブ）はこの外で静止している */
+.appmain {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 /* ===== スプラッシュ ===== */
@@ -54,7 +66,7 @@ body {
 
 /* ===== ヘッダー ===== */
 .hdr {
-  position: -webkit-sticky; position: sticky; top: 0; z-index: 20; /* -webkit-＝古いiPadのSafari向け */
+  flex-shrink: 0; z-index: 20; /* スクロールの外（#app直下）に静止＝sticky不要になった（2026-09-08） */
   display: flex; align-items: center; gap: 10px;
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
   background: rgba(255,255,255,.85);
@@ -300,13 +312,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .stag.st-done { background: #EEEBE6; color: #8A817A; }
 
 /* ===== ボトムナビ =====
-   ★fixed＋transform をやめて sticky に（2026-09-04 店舗iPadの実機報告＝スクロール中に
-   バーがページと一緒に動いて画面の途中に現れる。古いiPadのSafariは fixed の描画が
-   スクロールに追従しない既知の症状がある。ヘッダーと同じ sticky なら起きない）。
-   margin-top:auto ＝内容が短い画面でも（#app の flex 縦積みで）画面の最下部へ押し下げる */
+   ★経緯：fixed（〜9/4）→ sticky（9/4）でも店舗iPadでスクロール中の置き去りが再発（2026-09-08 常山さんの動画）。
+   ＝この機種はページスクロール中の貼り付き描画そのものが追従しない。
+   最終形＝ページをスクロールさせず中身（.appmain）だけスクロール。バーはただの通常配置＝動けない */
 .tabbar {
-  position: -webkit-sticky; position: sticky; bottom: 0; z-index: 30;
-  margin-top: auto;
+  flex-shrink: 0; z-index: 30;
   width: 100%;
   display: flex; justify-content: space-around;
   background: rgba(255,255,255,.9); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
@@ -483,7 +493,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 /* 体験版の帯（2026-08-12）。勉強会のあとに加盟店の皆さまへお配りする版でだけ出る。
    ヘッダーの直下に固定で置き、どの画面へ移っても「触っても大丈夫」が視界に残るようにする。 */
 .taiken-band {
-  position: sticky; top: 0; z-index: 8;
+  flex-shrink: 0; z-index: 8; /* スクロールの外（ヘッダー直下）に静止（2026-09-08） */
   background: #8E354A; color: #fff;
   font-size: 12px; line-height: 1.5; font-weight: 700;
   padding: 7px 14px; text-align: center;
@@ -514,10 +524,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
+  /* ★紙ではスクロール箱をすべて解除して文書の流れに戻す（2026-09-08 の中身スクロール化に伴う）。
+     これが無いと、あふれた分が2枚目以降に出ず1画面分で切れる */
+  html, body { height: auto; overflow: visible; }
   body { background: #fff; }
   /* アプリはスマホ幅の柱で描いているが、紙では柱を外して紙幅いっぱいに使う。
      ★これが無いと、表が柱からはみ出した部分の背後に地色（灰色）が印刷される */
-  #app { max-width: none; box-shadow: none; padding-bottom: 0; }
+  #app { max-width: none; box-shadow: none; padding-bottom: 0; height: auto; overflow: visible; display: block; }
+  .appmain { overflow: visible; height: auto; }
   /* 画面に重なるもの（設定シート・ガイド・写真拡大・起動画面・トースト）は紙に写さない。
      ★「はじめの設定」が開いたまま印刷すると、灰色の幕ごと紙に出ていた（2026-08-27 検品で発見） */
   .no-print, .hdr, .tabbar, .taiken-band, .sheet-mask, .tour-mask, .lightbox, .splash, .toast { display: none !important; }

@@ -1080,7 +1080,7 @@
         ja:'体験版｜どこを押しても大丈夫です。入力はこの端末の中だけに残り、お店の記録には送られません。',
         en:'Trial version — tap anything. Entries stay on this device and are never sent to store records.',
         vi:'Bản dùng thử — cứ chạm thoải mái. Dữ liệu chỉ lưu trên máy này, không gửi tới hồ sơ cửa hàng.' })}</div>` : ''}
-      ${inner}
+      <main class="appmain" id="appmain">${inner}</main>
       <nav class="tabbar">
         ${tabs.map(([k, lbl, ic]) => `<button data-tab="${k}" class="${activeTab===k?'on':''}">${svg(ic)}${L(lbl)}</button>`).join('')}
       </nav>`;
@@ -7713,10 +7713,18 @@
     if (byId('au_back')) byId('au_back').onclick = () => { setAuth(null); render(); };
   }
 
+  /* ★スクロールは中身（#appmain）で行う（2026-09-08 常山さんの動画＝店舗iPadは fixed でも sticky でも
+     ページスクロール中のバー描画が追従しない→ページはスクロールさせない構造に変更）。
+     シェルの無い画面（ログイン・総括表の月次出力）は #app 自体が受ける */
+  const scrollBox_ = () => document.getElementById('appmain') || $app;
+  const setScrollY_ = (y) => {
+    try { scrollBox_().scrollTop = y; } catch (e) {}
+    try { window.scrollTo(0, 0); } catch (e) {} // 念のためページ側は常に先頭（キーボード等でずれた時の戻し）
+  };
   function render(keepScroll) {
     // ★ログインの門（体験版・未接続・ログイン不要の配信先では一切出ない）
-    if (認証画面が要る_()) { $app.innerHTML = authScreenHTML_(); window.scrollTo(0, 0); bindAuthScreen_(); return; }
-    const y = keepScroll ? (window.scrollY || window.pageYOffset || 0) : 0;
+    if (認証画面が要る_()) { $app.innerHTML = authScreenHTML_(); setScrollY_(0); bindAuthScreen_(); return; }
+    const y = keepScroll ? (scrollBox_().scrollTop || 0) : 0;
     const { path, params } = currentRoute();
     let html;
     // 描画のあいだは保存が起きない＝保存データの読み直しを1回で済ませる（[[lsJson]]の印）
@@ -7729,11 +7737,11 @@
       else html = viewHome('home');
     } finally { _rendering = false; }
     $app.innerHTML = devViewBanner() + html;   // 開発者ビュー中は戻るバナーを全画面の先頭に出す
-    window.scrollTo(0, y);
+    setScrollY_(y);
     /* ★別の画面へ移ったのに、前の画面で読んでいた位置のまま始まることがあった（2026-08-12 神田さんのご指摘）。
-       中身を入れ替えた直後は高さがまだ決まっておらず、一度の scrollTo では戻りきらないため、
+       中身を入れ替えた直後は高さがまだ決まっておらず、一度の指定では戻りきらないため、
        描き直しが終わったあとにもう一度いちばん上へ送る。位置を保つとき（keepScroll）はそのまま。 */
-    if (!keepScroll && typeof requestAnimationFrame === 'function') requestAnimationFrame(() => window.scrollTo(0, 0));
+    if (!keepScroll && typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setScrollY_(0));
     bind();
   }
 
@@ -8004,7 +8012,7 @@
     // 編集：フォームへ読み込む（画面の上へ戻す）
     document.querySelectorAll('[data-studyedit]').forEach(b => b.onclick = () => {
       setStudyEdit(b.dataset.studyedit); render();
-      try { window.scrollTo(0, 0); } catch (e) {}
+      setScrollY_(0);
     });
     if (byId('studyCancel')) byId('studyCancel').onclick = () => { setStudyEdit(''); render(); };
     // 削除：必ず確認してから（ボタンひとつで消えないように）
