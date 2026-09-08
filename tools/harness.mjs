@@ -4251,6 +4251,28 @@ console.log('== 受信箱の操作＝押した行だけ書き換え（2026-09-08
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== お知らせ＝本部は「一覧」と「投稿」をタブで分離（2026-09-08 神田さんの実機報告＝読みに来たのに投稿フォームが先）==');
+{
+  // ① 本部で開くと「一覧」が既定＝投稿フォームは出ない
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_news_tab'); });
+  location.hash = '#/app/news';
+  let h = registry.app.innerHTML;
+  ok(/data-nwtab="list"/.test(h) && /data-nwtab="post"/.test(h), '本部にはタブ（一覧／投稿）が出る');
+  ok(/お知らせ一覧/.test(h) && !/id="newsPost"/.test(h), '開いた最初は一覧＝投稿フォームは出ない');
+  // ② 投稿タブ＝フォームだけ（一覧は出ない）
+  run(() => { setLS('hq', 'all', 'ja'); });
+  location.hash = '#/app/news?tab=post';
+  h = registry.app.innerHTML;
+  ok(/id="newsPost"/.test(h) && !/<h3>お知らせ一覧/.test(h), '投稿タブはフォームだけ（一覧カードは出ない）');
+  // ③ 配信すると一覧タブへ戻る（配線）
+  const srcN = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/yosakura_news_tab', 'list'\);\s*\n\s*go\('\/app\/news\?tab=list'\)/.test(srcN), '配信後は一覧タブに切り替わる');
+  // ④ 店舗側は従来どおり一覧のみ（タブなし）
+  h = renderView('news', 'staff', '牛カツ世桜 長堀橋店', 'ja');
+  ok(/お知らせ一覧/.test(h) && !/data-nwtab=/.test(h) && !/id="newsPost"/.test(h), '店舗側はタブ無しで一覧のみ');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 店内の引き継ぎボード＝出勤したらホームのいちばん上（2026-09-08 田中さん・増田さんのご要望→神田さんのご指示）==');
 {
   const S = '牛カツ世桜 長堀橋店';
