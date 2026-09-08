@@ -4335,6 +4335,23 @@ console.log('== 金種別入力＝レジと同じフォームで記録（2026-09
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 下バーはスクロールの外＝店舗iPadで置き去りにならない（2026-09-08 常山さんの動画・fixed→stickyでも再発）==');
+{
+  const h = renderView('kyou', 'staff', '牛カツ世桜 長堀橋店', 'ja');
+  ok(/<main class="appmain" id="appmain">/.test(h), '中身は .appmain（唯一のスクロール領域）に入る');
+  ok(h.indexOf('</main>') < h.indexOf('class="tabbar"') && h.indexOf('class="tabbar"') > 0, 'タブバーは .appmain の外（スクロールしない側）にある');
+  ok(h.indexOf('class="hdr"') < h.indexOf('id="appmain"'), 'ヘッダーも .appmain の外にある');
+  const cssSc = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  ok(/html, body \{[^}]*overflow: hidden/.test(cssSc), 'ページ（body）はスクロールしない＝バーが置き去りになる余地がない');
+  const tbSc = cssSc.match(/\.tabbar \{[^}]*\}/);
+  ok(!!tbSc && !/fixed|sticky/.test(tbSc[0]), 'タブバーに fixed・sticky を使っていない（置き去りの原因を再導入しない）');
+  const prSc = cssSc.slice(cssSc.indexOf('@media print'));
+  ok(/html, body \{ height: auto; overflow: visible; \}/.test(prSc) && /\.appmain \{ overflow: visible/.test(prSc), '印刷ではスクロール箱を解除（総括表の月次出力が1画面分で切れない）');
+  const srcSc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/scrollBox_\(\)\.scrollTop \|\| 0/.test(srcSc) && !/window\.scrollY \|\| window\.pageYOffset/.test(srcSc), 'スクロール位置の保存・復元（7日/28日切替など）は .appmain 基準に移してある');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== サーベイに日別の回答数グラフ（2026-09-08 神田さんのご要望＝日別の集計状況を確認したい）==');
 {
   const S = '牛カツ世桜 長堀橋店';
