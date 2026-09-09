@@ -8869,6 +8869,29 @@
           return;
         }
         const set = (id, v) => { const el = byId(id); if (el) el.value = (v == null ? '' : String(v)); };
+        /* ★シート取込の行（src:'drive'＝売上・客数だけの保険データ）は「提出済みの日報」扱いにしない
+           （2026-09-09 ユンさんの実機報告＝開いた瞬間に売上・客数が勝手に入っていて、累計が空。
+           正体＝日中にスプシへ入れた数字が毎時取込でアプリに入り、この画面が「この日は提出済み」と
+           誤解して全欄を取込行で上書き→取込行に無い累計・下書きまで空に消していた）。
+           取込行のときは売上・客数だけを下書きとして入れ、累計の自動入力・他の欄はそのまま生かす */
+        if (rec.src === 'drive') {
+          if (空にしてよい) {
+            SK_FIELDS.map(f => f.k).concat(['cancelt', 'order', 'note']).forEach(k => { const el = byId('sk_' + k); if (el) el.value = ''; });
+            SK_COUNTRIES.concat(SK_VISITKIND).forEach(cn => {
+              ['g', 'p'].forEach(x => { const el = byId('sk_cty_' + cn.k + '_' + x); if (el) el.value = ''; });
+            });
+          }
+          set('sk_sales', rec.sales); set('sk_guests', rec.guests);
+          if (note) {
+            note.textContent = L({
+              ja:'※ 売上と客数は、総括表スプレッドシートに入力された数字から自動で入っています（アプリからの提出はまだありません）。残りの項目を入れて提出してください。',
+              en:'Sales and guests were auto-filled from the summary spreadsheet (no app submission yet). Fill in the rest and submit.',
+              vi:'Doanh thu và số khách tự điền từ bảng tính tổng kết (chưa có bản nộp từ ứng dụng). Điền phần còn lại và gửi.' });
+            note.style.display = 'block';
+          }
+          cumUpd();   // 累計＝自動入力を入れ直す（取込の売上も足し上がる）
+          return;
+        }
         set('sk_date', rec.date); if (rec.store) sEl.value = rec.store;   // どの日・どの店舗を直しているかを欄にも出す
         SK_FIELDS.map(f => f.k).concat(['cancelt', 'order', 'note']).forEach(k => set('sk_' + k, rec[k]));
         SK_COUNTRIES.concat(SK_VISITKIND).forEach(cn => {
