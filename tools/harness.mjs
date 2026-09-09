@@ -4501,6 +4501,17 @@ await new Promise(r=>setTimeout(r, 50));
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 貼った写真をその場で回転できる（2026-09-09 神田さんのご要望＝縦横バラバラの写真が届く）==');
+{
+  const srcR = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/className = 'pt-r'/.test(srcR) && /rotatePt_\(wrap\)/.test(srcR), '取り込んだ写真に回転ボタン（⟳）が付く');
+  ok(/function rotateThumb_/.test(srcR) && /rotate\(Math\.PI \/ 2\)/.test(srcR) && /c\.width = h; c\.height = w;/.test(srcR), '90度回転＝幅と高さを入れ替えて描き直す');
+  ok(/wrap\.dataset\.thumb = d;/.test(srcR), '回した向きが提出データ（dataset.thumb）に反映される＝そのまま提出される');
+  ok(/#photoThumbs \.pt-r/.test(srcR), '作り直し後の回転ボタンも配線される（委譲）');
+  const cssR = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  ok(/\.pt-r \{/.test(cssR), '回転ボタンの見た目（×と対の左上）が定義されている');
+}
+
 console.log('== 受信箱＝気づき・コメントの全文が見られる（2026-09-05 神田さんの実機報告＝切れて返答が書けない）==');
 {
   const S = '牛カツ世桜 長堀橋店';

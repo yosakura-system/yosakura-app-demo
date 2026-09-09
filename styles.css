@@ -230,6 +230,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .pt img { width: 64px; height: 64px; border-radius: 11px; object-fit: cover; display: block; border: 1px solid var(--line); }
 .pt-x { position: absolute; top: -7px; right: -7px; width: 21px; height: 21px; border-radius: 50%; border: 2px solid var(--paper);
   background: var(--sumi); color: #fff; font-size: 12px; line-height: 1; cursor: pointer; padding: 0; box-shadow: var(--shadow-s); }
+/* 回転（縦横直し）＝×と対の左上。2026-09-09 神田さんのご要望 */
+.pt-r { position: absolute; top: -7px; left: -7px; width: 21px; height: 21px; border-radius: 50%; border: 2px solid var(--paper);
+  background: var(--gold); color: #fff; font-size: 13px; line-height: 1; cursor: pointer; padding: 0; box-shadow: var(--shadow-s); }
 
 .btn-primary {
   width: 100%; padding: 15px; border: none; border-radius: 14px; background: var(--suou); color: #fff;

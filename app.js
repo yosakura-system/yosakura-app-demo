@@ -839,6 +839,35 @@
     c.getContext('2d').drawImage(img, 0, 0, w, h);
     try { return c.toDataURL('image/jpeg', q || 0.6); } catch { return ''; }
   }
+  /* ★貼った写真をその場で90度回す（2026-09-09 神田さんのご要望＝縦横バラバラの写真が届く。
+     投稿する側が「見やすい向き」に直してから出せるようにする）。回した向きのまま提出される */
+  function rotateThumb_(dataUrl) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          const c = document.createElement('canvas');
+          c.width = h; c.height = w;
+          const g = c.getContext('2d');
+          g.translate(h / 2, w / 2); g.rotate(Math.PI / 2);
+          g.drawImage(img, -w / 2, -h / 2);
+          resolve(c.toDataURL('image/jpeg', 0.85));
+        } catch (e) { resolve(''); }
+      };
+      img.onerror = () => resolve('');
+      img.src = dataUrl;
+    });
+  }
+  function rotatePt_(wrap) {
+    const cur = (wrap && wrap.dataset) ? (wrap.dataset.thumb || '') : '';
+    if (!isDataUrl(cur)) { toast(L({ ja:'この写真はここでは回せません', en:'This photo cannot be rotated here', vi:'Không xoay được ảnh này' })); return; }
+    rotateThumb_(cur).then(d => {
+      if (!d) { toast(L({ ja:'回せませんでした。もう一度お試しください', en:'Could not rotate. Please retry.', vi:'Không xoay được. Thử lại.' })); return; }
+      wrap.dataset.thumb = d;
+      const im = wrap.querySelector('img'); if (im) im.src = d;
+    });
+  }
   function openLightbox(src) {
     const m = el(`<div class="lightbox"><img src="${src}" alt=""></div>`);
     m.onclick = () => m.remove();
@@ -8134,7 +8163,10 @@
             const img = new Image(); img.alt = ''; img.src = data;
             const x = document.createElement('button'); x.type = 'button'; x.className = 'pt-x'; x.textContent = '×';
             x.onclick = (e) => { e.stopPropagation(); wrap.remove(); };
-            wrap.appendChild(img); wrap.appendChild(x); thumbs.appendChild(wrap);
+            // ★回転ボタン＝縦横が逆に取り込まれた写真を、その場で見やすい向きに直せる
+            const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'pt-r'; rb.textContent = '⟳';
+            rb.onclick = (e) => { e.stopPropagation(); rotatePt_(wrap); };
+            wrap.appendChild(img); wrap.appendChild(x); wrap.appendChild(rb); thumbs.appendChild(wrap);
           });
           if (失敗) {
             setStat(L({
@@ -8634,6 +8666,7 @@
     };
     // 編集中に出す既存のお手本写真の「×」（汎用の写真取り込みが作るサムネと同じ形）
     document.querySelectorAll('#photoThumbs .pt-x').forEach(x => { if (!x.onclick) x.onclick = (e) => { e.stopPropagation(); x.parentElement.remove(); }; });
+    document.querySelectorAll('#photoThumbs .pt-r').forEach(b => { if (!b.onclick) b.onclick = (e) => { e.stopPropagation(); rotatePt_(b.parentElement); }; });
     if (byId('phsMemoEdit')) byId('phsMemoEdit').onclick = () => { phMemoEditOpen = true; render(true); };
     if (byId('phsMemoCancel')) byId('phsMemoCancel').onclick = () => { phMemoEditOpen = false; render(true); };
     if (byId('phsMemoSave')) byId('phsMemoSave').onclick = () => {
