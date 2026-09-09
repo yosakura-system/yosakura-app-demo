@@ -4501,6 +4501,29 @@ await new Promise(r=>setTimeout(r, 50));
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== シート取込の行を「提出済みの日報」扱いにしない（2026-09-09 ユンさんの実機報告＝売上が勝手に入り累計が空）==');
+{
+  const S = '日本料理世桜本店';
+  const today = new Date().toLocaleDateString('en-CA');
+  const ym = today.slice(0, 7);
+  const prev = ym + '-01' === today ? null : (today.slice(0, 8) + String(Number(today.slice(8, 10)) - 1).padStart(2, '0'));
+  const rows = [
+    // 今日の分＝スプシ取込（売上・客数のみ）。日中にスプシへ入れた数字が毎時取込で入った状態
+    { store:S, date: today, sales: 106182, guests: 7, src: 'drive', t: Date.now() - 60000 }
+  ];
+  if (prev) rows.push({ store:S, date: prev, sales: 2000000, guests: 100, mtd: 2000000, rva: 50, tipa: 3000, cancel: 1, t: Date.now() - 864e5 });
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows)); });
+  location.hash = '#/app/soukatsu';
+  const val = (id) => { const el = doc.getElementById(id); return el ? String(el.value || '') : null; };
+  ok(val('sk_sales') === '106182' && val('sk_guests') === '7', '取込の売上・客数は下書きとして入る（打ち直し不要）');
+  ok(val('sk_net') === '' && val('sk_err') === '', '取込行に無い欄は空のまま＝全欄が取込行で上書きされない');
+  if (prev) ok(val('sk_mtd') === String(2000000 + 106182), '月累計の自動入力が消えない（前日まで＋取込の当日売上）');
+  const noteEl = doc.getElementById('sk_editnote');
+  ok(!!noteEl && /スプレッドシートに入力された数字/.test(String(noteEl.textContent || '')), '「スプシから自動で入った・提出はまだ」の案内が出る（提出済みと誤解させない）');
+  ok(!/この日の総括表はすでに提出されています/.test(String(noteEl && noteEl.textContent || '')), '「提出済み」の文言は出さない');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 貼った写真をその場で回転できる（2026-09-09 神田さんのご要望＝縦横バラバラの写真が届く）==');
 {
   const srcR = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
