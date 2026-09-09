@@ -4481,6 +4481,26 @@ await new Promise(r=>setTimeout(r, 50));
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 同期の変更検知は目印一覧＝サーバー応答の全文コピーを保存しない（2026-09-09 神田さんの実機報告＝受信箱が昨日で凍る）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'kizuki', store:S, item:'service', note:'凍結テストの気づき', photos:[], t: Date.now() - 500, id:'z1' }
+  ]};
+  try { run(() => { setLS('hq', 'all', 'ja'); }); } catch (e) { FAIL++; console.log('  ✗ threw: ' + e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  ok(localStorage.getItem('yosakura_demo_raw') === null, '全文コピー（yosakura_demo_raw）を保存しない＝端末の保存領域を数MB食わない');
+  ok(String(localStorage.getItem('yosakura_demo_rawkeys') || '').indexOf('kizuki|') === 0, '代わりの目印一覧（rawkeys）で変更を検知する');
+  ok(JSON.parse(localStorage.getItem('yosakura_demo_kizuki') || '[]').some(r => r.note === '凍結テストの気づき'), '取り込み自体は従来どおり動く');
+  const srcQ = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/distribute\(d\.reports\);\s*\n\s*try \{ localStorage\.setItem\('yosakura_demo_rawkeys'/.test(srcQ), '振り分けが先・目印の保存が後＝途中で失敗したら次の同期で自動でやり直される');
+  ok(/removeItem\('yosakura_demo_raw'\)/.test(srcQ) && /_lsFull = true/.test(srcQ), '保存に失敗したら旧コピーを捨ててやり直し、それでも駄目なら受信箱に注意を出す（黙って凍らない）');
+  FETCH_ROWS = { ok:false };
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 受信箱＝気づき・コメントの全文が見られる（2026-09-05 神田さんの実機報告＝切れて返答が書けない）==');
 {
   const S = '牛カツ世桜 長堀橋店';

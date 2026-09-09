@@ -85,6 +85,7 @@
     return cur;
   }
   let lastSync = 0;
+  let _lsFull = false; // 端末の保存領域いっぱい＝同期の取り込みに失敗した印（受信箱に注意を出す）
   /* ★自動同期による「画面の作り直し」を、写真の作業中だけ止める（2026-08-25 実機で発生）
      スマホは写真を選ぶあいだアプリが背面へ回る。その数秒で同期の通信が終わると render() が走り、
      貼り付け先（photoThumbs）も選択中の <input type=file> も別物に差し替わる。
@@ -6439,6 +6440,7 @@
         <div class="l1" style="font-weight:600">${L({ja:'新しい報告が届きました',en:'New reports arrived',vi:'Có báo cáo mới'})}</div>
         <button class="mini" data-inboxrefresh="1" style="margin-top:6px">${L({ja:'表示を更新する',en:'Refresh the list',vi:'Cập nhật danh sách'})}</button>
       </div>
+      ${_lsFull ? `<p class="hint" style="display:block;color:#a23b3b">${L({ ja:'⚠ この端末の保存領域がいっぱいで、最新の報告を取り込めていない可能性があります。表示が古いときはお知らせください。', en:'⚠ Device storage is full; the list may be outdated.', vi:'⚠ Bộ nhớ máy đầy; danh sách có thể cũ.' })}</p>` : ''}
       <div class="card">
         <h3>${L({ja:'未対応の報告',en:'Needs response',vi:'Chưa xử lý'})} <small style="color:#8a8">${open.length}</small></h3>
         <p class="hint" style="display:block">${L({ja:'現場からの報告のうち、本部がまだ対応していないものです。対応したら「対応済みにする」を押してください（全端末で共有されます）。',en:'Reports not yet handled by HQ. Mark done after you respond (shared across devices).',vi:'Báo cáo HQ chưa xử lý. Bấm đã xử lý sau khi phản hồi (chia sẻ mọi máy).'})}</p>
@@ -8977,7 +8979,14 @@
         case 'faqset': { const p=pj(r.note); if (Array.isArray(p) && (faqsetT==null || t>=faqsetT)) { faqset=p; faqsetT=t; } } break; // よくある質問（本部追加分）は最新版が正
       }
     });
-    const set = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a)); } catch (_) {} };
+    /* ★保存に失敗したら、容量を食っていた旧キー（サーバー応答の全文コピー）を捨てて1回だけやり直す。
+       それでも入らなければ「容量いっぱい」を覚えて受信箱に注意を出す（黙って古いまま、を作らない） */
+    const set = (k, a) => {
+      const s = JSON.stringify(a);
+      try { localStorage.setItem(k, s); return; } catch (_) {}
+      try { localStorage.removeItem('yosakura_demo_raw'); } catch (_) {}
+      try { localStorage.setItem(k, s); } catch (_) { _lsFull = true; }
+    };
     set(LS.reports, food.concat(subs)); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
     set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
@@ -9030,10 +9039,17 @@
       const d = await res.json();
       if (d && d.needLogin) { onNeedLogin_(); return; }   // ★ログインが要る配信先＝ログイン画面へ（トークン切れも含む）
       if (d && d.ok && Array.isArray(d.reports)) {
-        const nextRaw = JSON.stringify(d.reports);
-        if (nextRaw !== (localStorage.getItem('yosakura_demo_raw') || '')) {
-          localStorage.setItem('yosakura_demo_raw', nextRaw);
+        /* ★変更の検知は「行の目印一覧」で行う（2026-09-09 神田さんの実機報告＝受信箱が昨日で止まったまま）。
+           以前はサーバー応答の全文コピー（yosakura_demo_raw）を丸ごと保存して比較していたが、
+           このコピーが端末の保存領域を数MB単位で食い、いっぱいになると以後の保存が全て黙って失敗
+           ＝新しい提出が届いているのに画面が古いまま凍る（保存失敗を握りつぶす型の再発）。
+           目印一覧（種類|店舗|項目|時刻）なら1/10以下の大きさで、同じ変更検知と再送防止（alreadySent_）ができる。
+           ★振り分けを先に行う＝途中で失敗したら目印を残さず、次の同期で自動的にやり直される */
+        const nextKeys = d.reports.map(repKey_).join('\n');
+        if (nextKeys !== (localStorage.getItem('yosakura_demo_rawkeys') || '')) {
           distribute(d.reports);
+          try { localStorage.setItem('yosakura_demo_rawkeys', nextKeys); } catch (e) {}
+          try { localStorage.removeItem('yosakura_demo_raw'); } catch (e) {} // 旧の全文コピーを消して容量を空ける
           // ★写真の作業中は描き直さない（貼った写真と選択中の入力欄が消えるため）。取り込み自体は済んでいる
           // ★同期の描き直しでは位置を保つ（2026-08-31 ユンさんの報告＝チェックのたびに同期→再描画で先頭へ戻っていた）
           if (!画面を作り直してよい_()) { /* 何もしない＝次の自然な描き直しで追いつく */ }
@@ -9068,10 +9084,9 @@
      直前に取り込んだサーバーの内容に同じ提出があれば、送らずに保留箱から外す。 */
   function alreadySent_(rep) {
     try {
-      const raw = localStorage.getItem('yosakura_demo_raw');
-      if (!raw) return false;
-      const key = repKey_(rep);
-      return (JSON.parse(raw) || []).some(r => repKey_(r) === key);
+      const keys = localStorage.getItem('yosakura_demo_rawkeys');
+      if (!keys) return false;
+      return keys.split('\n').indexOf(repKey_(rep)) !== -1;
     } catch (e) { return false; }
   }
   let _flushing = null;   // 同時に走らせない（同時に走ると同じ保留分を二重に送ってしまう）
