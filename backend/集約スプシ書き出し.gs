@@ -73,10 +73,18 @@ function aggDate_(v) { // 日付セル化（Dateオブジェクト）でも文�
   if (v && v.getTime) return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy-MM-dd');
   var m = String(v || '').match(/^(\d{4}-\d{2}-\d{2})/); return m ? m[1] : String(v || '');
 }
+/* ---------- 世桜ブランドの配色（アプリと同じ和モダン＝墨×白×生成り） ---------- */
+var AGG_INK = '#201D1C';    // 墨（見出し・タブ）
+var AGG_PAPER = '#FFFFFF';  // 白
+var AGG_KINARI = '#F7F5F1'; // 生成り（縞）
+var AGG_GRAY = '#7C736D';   // 副次文字
+var AGG_GOLD = '#8F8170';   // 差し色（グレージュ）
+
 function aggWrite_(ss, name, header, data) {
   var sh = ss.getSheetByName(name) || ss.insertSheet(name);
   var oldF = sh.getFilter(); if (oldF) oldF.remove(); // 書き換え前に既存フィルターを外す（残すと範囲がずれる）
-  sh.clearContents();
+  sh.getBandings().forEach(function (b) { b.remove(); }); // 縞も張り直す
+  sh.clear();
   var w = header.length;
   var all = [header].concat(data.map(function (row) {
     var r = row.slice(0, w); while (r.length < w) r.push('');
@@ -84,9 +92,90 @@ function aggWrite_(ss, name, header, data) {
   }));
   sh.getRange(1, 1, all.length, w).setValues(all);
   sh.setFrozenRows(1);
-  sh.getRange(1, 1, 1, w).setFontWeight('bold');
-  // ★全タブに検索用フィルター（2026-09-09 神田さんのご要望＝どの列でも絞り込み・並べ替えできるように）
+  // ★見出し＝墨に白抜き（世桜トーン）
+  sh.getRange(1, 1, 1, w).setFontWeight('bold').setBackground(AGG_INK).setFontColor(AGG_PAPER)
+    .setVerticalAlignment('middle');
+  sh.setRowHeight(1, 34);
+  // ★交互の縞（白×生成り）＝行を目で追いやすく
+  if (all.length > 1) {
+    var band = sh.getRange(2, 1, all.length - 1, w).applyRowBanding();
+    band.setHeaderRowColor(null).setFirstRowColor(AGG_PAPER).setSecondRowColor(AGG_KINARI);
+  }
+  // ★金額・数の列は表示形式を整える（見出しの言葉から判定）
+  if (all.length > 1) {
+    for (var c = 0; c < w; c++) {
+      var h = String(header[c]);
+      if (/売上|金額|現金|カード|チップ|目標|誤差|仕入|値引|単価|費額|総売上|総件数/.test(h)) {
+        sh.getRange(2, c + 1, all.length - 1, 1).setNumberFormat('¥#,##0');
+      } else if (/客数|組数|人数|件数/.test(h)) {
+        sh.getRange(2, c + 1, all.length - 1, 1).setNumberFormat('#,##0');
+      }
+    }
+  }
+  // ★列幅＝自動調整（長文の列だけ上限を設ける）
+  try {
+    sh.autoResizeColumns(1, w);
+    for (var c2 = 1; c2 <= w; c2++) { if (sh.getColumnWidth(c2) > 320) sh.setColumnWidth(c2, 320); }
+  } catch (e) {}
+  // ★全タブに検索用フィルター（どの列でも絞り込み・並べ替えできる）
   if (all.length > 1) sh.getRange(1, 1, all.length, w).createFilter();
+  sh.setTabColor(AGG_INK);
+}
+
+/* ---------- 表紙タブ「世桜データの全体像」＝保管箱でなく“何が詰まっているか”が一目で伝わる目次 ---------- */
+function aggCover_(ss) {
+  var name = '世桜データの全体像';
+  var sh = ss.getSheetByName(name) || ss.insertSheet(name, 0);
+  sh.clear();
+  sh.getBandings().forEach(function (b) { b.remove(); });
+  var upd = aggFmtT_(Date.now());
+  var rows = [
+    ['世　桜', '', '', ''],
+    ['YOSAKURA APP ｜ アプリ集約データ', '', '', ''],
+    ['全店舗の毎日の記録が、ここに集まっています。', '', '', ''],
+    ['毎朝6時に自動更新（最終更新 ' + upd + '）', '', '', ''],
+    ['', '', '', ''],
+    ['見たいもの', 'タブ', '件数', 'ひとこと'],
+    ['全店の日次数値（売上・客数・目標・チップ…）', '総括表_日別', '', 'アプリ入力とスプシ取込を店舗×日付で1行に。同じ日はアプリ入力を優先'],
+    ['お客様の国別内訳（組数・人数）', '総括表_国別内訳', '', '総括表の「お客様の内訳」。1国1行でピボットしやすい形'],
+    ['お客様アンケートの生の声', 'サーベイ', '', '満足度・来店経路・来店国・コメント'],
+    ['現場からの気づき・提案', '気づき', '', '店舗スタッフの声を全文そのまま'],
+    ['営業中の中間報告', '中間報告', '', '組数・売上の途中経過と営業の様子'],
+    ['Google口コミの毎日の推移', 'Google口コミ', '', '店舗×日付の総件数・前日比・星（自動取得）'],
+    ['どの店がいつ何を出したか', '提出ログ', '', '写真提出・報告の時系列ログ'],
+    ['どの店が何をどれだけ使っているか', '店舗別サマリ', '', '店舗×機能の利用件数と最終利用日時'],
+    ['', '', '', ''],
+    ['使い方', '', '', ''],
+    ['・各タブの見出し行のフィルターで、どの列でも絞り込み・並べ替えができます', '', '', ''],
+    ['・このスプシは毎日上書きされます。加工はコピーを取るか、IMPORTRANGE で別シートへ', '', '', ''],
+    ['・元データは世桜アプリ。この表を直しても元データは変わりません', '', '', '']
+  ];
+  sh.getRange(1, 1, rows.length, 4).setValues(rows);
+  // 件数＝自動計算（開いたときの実数が常に出る）
+  var tabs = ['総括表_日別', '総括表_国別内訳', 'サーベイ', '気づき', '中間報告', 'Google口コミ', '提出ログ', '店舗別サマリ'];
+  for (var i = 0; i < tabs.length; i++) {
+    sh.getRange(7 + i, 3).setFormula("=COUNTA('" + tabs[i] + "'!A2:A)&\" 件\"");
+  }
+  // 装いを整える（墨×白×生成り・HPと同じ和モダンのトーン）
+  sh.setHiddenGridlines(true);
+  sh.getRange(1, 1, rows.length + 10, 6).setBackground(AGG_PAPER);
+  sh.getRange(1, 1, 1, 4).merge().setFontSize(30).setFontWeight('bold').setFontColor(AGG_INK)
+    .setFontFamily('Shippori Mincho').setHorizontalAlignment('left');
+  sh.getRange(2, 1, 1, 4).merge().setFontSize(11).setFontColor(AGG_GOLD).setFontWeight('bold');
+  sh.getRange(3, 1, 1, 4).merge().setFontSize(12).setFontColor(AGG_INK);
+  sh.getRange(4, 1, 1, 4).merge().setFontSize(10).setFontColor(AGG_GRAY);
+  sh.getRange(6, 1, 1, 4).setFontWeight('bold').setBackground(AGG_INK).setFontColor(AGG_PAPER).setVerticalAlignment('middle');
+  sh.setRowHeight(6, 34);
+  var band = sh.getRange(7, 1, tabs.length, 4).applyRowBanding();
+  band.setHeaderRowColor(null).setFirstRowColor(AGG_PAPER).setSecondRowColor(AGG_KINARI);
+  sh.getRange(7, 2, tabs.length, 1).setFontWeight('bold');
+  sh.getRange(7, 3, tabs.length, 1).setHorizontalAlignment('right');
+  sh.getRange(16, 1).setFontWeight('bold').setFontColor(AGG_GOLD);
+  sh.getRange(17, 1, 3, 1).setFontColor(AGG_GRAY).setFontSize(10);
+  sh.setColumnWidth(1, 340); sh.setColumnWidth(2, 150); sh.setColumnWidth(3, 90); sh.setColumnWidth(4, 420);
+  sh.setTabColor(AGG_GOLD);
+  // 表紙をいちばん左へ
+  ss.setActiveSheet(sh); ss.moveActiveSheet(1);
 }
 
 /* ---------- 本体：reports を読み、タブごとに書き出す ---------- */
@@ -210,20 +299,12 @@ function aggRebuild() {
   });
   aggWrite_(ss, '店舗別サマリ', ['店舗', '種類', '件数', '最終利用日時'], sumRows);
 
-  /* --- ⑨ 説明タブ --- */
-  aggWrite_(ss, '_この表について', ['項目', '説明'], [
-    ['更新', '毎日 朝6時に自動で全面書き換え（手動更新＝GASの aggRebuild 実行）。最終更新: ' + aggFmtT_(Date.now())],
-    ['注意', 'このスプシは毎日上書きされます。直接編集せず、加工はコピーを取るか IMPORTRANGE で別シートへ'],
-    ['総括表_日別', '店舗×日付で1行。「経路」＝アプリ入力／スプシ取込（取込は売上・客数のみ）。同じ日はアプリ入力を優先'],
-    ['総括表_国別内訳', '総括表の「お客様の内訳」。入力のある日だけ・1国1行（新規/リピートは同じお客様の別の数え方）'],
-    ['サーベイ', '店頭QRのお客様アンケート（満足度・来店経路・来店国・コメント）'],
-    ['提出ログ', '写真等の提出・中間報告・気づきなど、店舗の提出をそのまま時系列で'],
-    ['店舗別サマリ', '店舗×種類ごとの件数と最終利用日時。ピボットで「どの店が何を使っているか」を一覧化できます'],
-    ['保存期間', '元データの方針に従います（総括表・月次・Google口コミ等は恒久。写真等の提出記録は90日）'],
-    ['元データ', '世桜アプリのバックエンドから自動生成。この表を直しても元データは変わりません']
-  ]);
+  /* --- ⑨ 表紙（世桜データの全体像）＝説明・件数・使い方をブランドの装いでまとめる --- */
+  aggCover_(ss);
 
-  /* 初期タブ「シート1」が残っていれば消す */
-  var s1 = ss.getSheetByName('シート1') || ss.getSheetByName('Sheet1');
-  if (s1 && ss.getSheets().length > 1) ss.deleteSheet(s1);
+  /* 初期タブ「シート1」と旧説明タブが残っていれば消す */
+  ['シート1', 'Sheet1', '_この表について'].forEach(function (n) {
+    var s1 = ss.getSheetByName(n);
+    if (s1 && ss.getSheets().length > 1) ss.deleteSheet(s1);
+  });
 }
