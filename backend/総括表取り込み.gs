@@ -289,7 +289,7 @@ function sk_canon_(p) {
   return JSON.stringify(o);
 }
 
-/* いまアプリに入っている「店×日付→最新の取込内容」を作る */
+/* いまアプリに入っている「店×日付→最新の取込内容」を作る（p＝中身も持つ＝詳細の引き継ぎに使う） */
 function sk_既存の値_() {
   var sh = getSheet();
   var last = sh.getLastRow();
@@ -302,7 +302,7 @@ function sk_既存の値_() {
     var p; try { p = JSON.parse(vals[i][6] || '{}'); } catch (e) { continue; }
     if (!p.date) continue;
     var k = String(vals[i][3]) + '|' + p.date;
-    if (!map[k] || t >= map[k].t) map[k] = { t: t, canon: sk_canon_(p), src: p.src || '' };
+    if (!map[k] || t >= map[k].t) map[k] = { t: t, canon: sk_canon_(p), src: p.src || '', p: p };
   }
   return map;
 }
@@ -340,15 +340,23 @@ function sk_実行_(書き込む, 全期間, 予算ms) {
           /* ★日別タブの詳細は「直近3日」だけ毎時読む（31タブ×全店を毎時読むと時間切れになるため）。
              全期間の取り込みでは全日読む＝過去日の項目もこの1回で埋まる */
           var 経過日 = Math.floor((今日ms - new Date(d.date + 'T00:00:00+09:00').getTime()) / 864e5);
+          var k = src.store + '|' + d.date;
+          var cur = 既存[k];
           if (全期間 || (経過日 >= 0 && 経過日 < SK_DAILY_RECENT_DAYS)) {
             var extra = sk_日別を読む_(ss, d.day);
-            Object.keys(extra).forEach(function (k) { if (d[k] == null) d[k] = extra[k]; });
+            Object.keys(extra).forEach(function (kk) { if (d[kk] == null) d[kk] = extra[kk]; });
+          } else if (cur && cur.src && cur.p) {
+            /* ★日別タブを読まなかった日は、既存の取込行が持つ詳細（口コミ・チップ・国別・感想など）を
+               引き継ぐ。これが無いと、台帳だけの軽い行が毎時「最新」として詳細を上書きして剥がしてしまう
+               （2026-09-10 実データで発症を確認＝全期間で入れた9/7の詳細が同日の毎時実行で消えた） */
+            SK_PAYLOAD_KEYS.forEach(function (kk) {
+              if (kk === 'date' || kk === 'src') return;
+              if (d[kk] == null && cur.p[kk] != null) d[kk] = cur.p[kk];
+            });
           }
           delete d.day;
           var payload = sk_payload_(d);
           var canon = sk_canon_(payload);
-          var k = src.store + '|' + d.date;
-          var cur = 既存[k];
           /* 同値スキップ＝全項目で比較。ただし既存がアプリ入力（src無し）の日は、
              アプリが正なので取込行は足さない（足しても負けるだけ＝行数の無駄） */
           if (cur && !cur.src) { stat.変わらず++; return; }
@@ -356,7 +364,7 @@ function sk_実行_(書き込む, 全期間, 予算ms) {
           if (cur) stat.更新++; else stat.新規++;
           if (書き込む) {
             追記.push([Utilities.getUuid(), Date.now(), 'soukatsu', src.store, '', '', JSON.stringify(payload), '[]']);
-            既存[k] = { t: Date.now(), canon: canon, src: SK_SRC_TAG };
+            既存[k] = { t: Date.now(), canon: canon, src: SK_SRC_TAG, p: payload };
           }
         });
       });
