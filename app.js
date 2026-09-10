@@ -2795,7 +2795,9 @@
        ★分類は日本語の見出し文字列で持つ（c.g）＝グループの並び替えに耐える。
          見出しが変わって一致しなくなった項目は、従来どおり「この店舗の追加項目」枠に出る（消えない）。 */
     const grpJa = (gr) => (gr.g && gr.g.ja) || String(gr.g);
-    const customRow = (c) => `<div class="check ${done[c.id]?'done':''}" data-ck="${c.id}"><span class="box">${svg('tick')}</span><span class="lbl"${editable && canRemove ? ' style="padding-right:26px"' : ''}>${esc(c.label)}</span>${editable && canRemove ? `<button class="ck-del" data-ckdel="${c.id}" aria-label="delete">×</button>` : ''}</div>`;
+    /* ★追加項目は「分類」を後から付け替えられる（2026-09-10 神田さんのご要望＝
+       まとめて貼り付けた項目を、あとからホール・キッチン等へ自由に振り分けたい） */
+    const customRow = (c) => `<div class="check ${done[c.id]?'done':''}" data-ck="${c.id}"><span class="box">${svg('tick')}</span><span class="lbl"${editable && canRemove ? ' style="padding-right:26px"' : ''}>${esc(c.label)}${editable && canRemove ? `<small style="display:block;margin-top:4px"><button class="mini" data-ckgrp="${esc(c.id)}" style="font-size:10.5px;padding:2px 10px">${c.g ? esc(L({ ja:'分類：', en:'Section: ', vi:'Mục: ' }) + c.g) + ' ▾' : esc(L({ ja:'分類を選ぶ', en:'Set section', vi:'Chọn phân mục' })) + ' ▾'}</button></small>` : ''}</span>${editable && canRemove ? `<button class="ck-del" data-ckdel="${c.id}" aria-label="delete">×</button>` : ''}</div>`;
     const groupsHTML = groups.map((gr, gi) => {
       const rows = gr.items.map((it, ii) => {
         const id = `${idBase}-c-${gi}-${ii}`;
@@ -8623,7 +8625,7 @@
     });
     // チェックのON/OFF（店舗×モード×当日で保存）
     document.querySelectorAll('[data-ck]').forEach(row => row.onclick = (e) => {
-      if (e.target.closest('[data-ckdel]') || e.target.closest('[data-ckhide]')) return; // 削除・非表示ボタンは別処理
+      if (e.target.closest('[data-ckdel]') || e.target.closest('[data-ckhide]') || e.target.closest('[data-ckgrp]')) return; // 削除・非表示・分類ボタンは別処理
       const store = visibleStores()[0], mode = getCkMode(), key = ckDoneKey(store, mode), id = row.dataset.ck;
       const map = getCkDone(); const day = map[key] || {}; day[id] = !day[id]; map[key] = day;
       // 古い日付のチェックは肥大化防止のため間引く（直近14日分のみ保持）
@@ -8725,6 +8727,42 @@
       toast(labels.length + L({ ja:'件を追加しました', en:' item(s) added', vi:' mục đã thêm' })); render(true);
       postReport({ kind:'ckitem', store, note: JSON.stringify({ mode: mk, items: list }), t });
     };
+    /* 店舗独自項目：分類の付け替え（2026-09-10 神田さんのご要望＝まとめて貼り付けた項目を
+       あとからホール・キッチン等へ自由に振り分けられるように）。
+       押すと分類の選択シートが開き、選ぶとそのグループの末尾へ移る（「分類なし」で追加項目の枠へ戻る） */
+    document.querySelectorAll('[data-ckgrp]').forEach(b => b.onclick = (e) => {
+      e.stopPropagation();
+      const id = b.dataset.ckgrp;
+      const { store, key, mk, mode: md2, day: dy2 } = ckEditCtx();
+      const groups2 = ckGroupsOf(md2, dy2, store);
+      const gJa = (gr) => (gr.g && gr.g.ja) || String(gr.g);
+      const all2 = getCkItems(); const list2 = (all2[key] || []).slice();
+      const item2 = list2.find(x => x.id === id);
+      if (!item2) return;
+      const opts = [{ v: '', t: L({ ja: '分類なし（追加項目の枠）', en: 'No section', vi: 'Không phân mục' }) }]
+        .concat(groups2.map(gr => ({ v: gJa(gr), t: L(gr.g) })));
+      const mask = el(`<div class="sheet-mask"><div class="sheet">
+        <div class="grip"></div>
+        <h3>${L({ ja: '分類を選ぶ', en: 'Choose a section', vi: 'Chọn phân mục' })}</h3>
+        <div class="sub">${esc(item2.label)}</div>
+        ${opts.map(o => `<button class="role-opt ${String(item2.g || '') === o.v ? 'on' : ''}" data-g="${esc(o.v)}"><span class="ri"><b>${esc(o.t)}</b></span></button>`).join('')}
+      </div></div>`);
+      mask.addEventListener('click', (ev) => {
+        if (ev.target === mask) { mask.remove(); return; }
+        const btn = ev.target.closest('[data-g]');
+        if (!btn) return;
+        const g2 = btn.dataset.g;
+        if (g2) item2.g = g2; else delete item2.g;
+        all2[key] = list2; saveCkItems(all2);
+        const t2 = Date.now(); lastSync = t2;
+        mask.remove();
+        toast(g2 ? L({ ja: '「' + g2 + '」へ移しました', en: 'Moved to ' + g2, vi: 'Đã chuyển' })
+                 : L({ ja: '分類を外しました', en: 'Section cleared', vi: 'Đã bỏ phân mục' }));
+        render(true);
+        postReport({ kind: 'ckitem', store, note: JSON.stringify({ mode: mk, items: list2 }), t: t2 });
+      });
+      document.body.appendChild(mask);
+    });
     // 店舗独自項目：削除
     document.querySelectorAll('[data-ckdel]').forEach(b => b.onclick = (e) => {
       e.stopPropagation();
