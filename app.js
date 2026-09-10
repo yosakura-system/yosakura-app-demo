@@ -6348,6 +6348,22 @@
         add('chukan', { ja:'中間報告', en:'Midday report', vi:'Báo cáo giữa ngày' }, r.t, r.store, chTypeLabel(p.rtype),
           chSummary(p) + (p.memo ? '\n' + String(p.memo) : ''), r.photos);
       });
+      /* 総括表の特記（2026-09-10 神田さんのご指摘＝清掃・特記事項などの文章が個店カルテの奥に埋もれ、
+         本部が確認できない）。アプリ入力の総括表に文章欄の記入があれば、受信箱へ1日1枚のカードで出す。
+         対象は本部が読むべき欄だけ＝清掃・特記事項／課題／改善アクション／ロスの内容／過不足理由。
+         店内で完結する欄（引き継ぎ・翌日の発注）は出さない（9/9 MTGの店舗内完結の方針） */
+      getSk().filter(r => !r.src && vis.includes(r.store)).forEach(r => {
+        const parts = [];
+        const addP = (lbl, v) => { const s = String(v == null ? '' : v).trim(); if (s) parts.push(L(lbl) + '：' + s); };
+        addP({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' }, r.note);
+        addP({ ja:'課題', en:'Issues', vi:'Vấn đề' }, r.bad);
+        addP({ ja:'改善アクション', en:'Improvements', vi:'Cải thiện' }, r.action);
+        addP({ ja:'ロスの内容', en:'Loss details', vi:'Chi tiết hao hụt' }, r.lossnote);
+        addP({ ja:'過不足（現金）の理由', en:'Cash difference reason', vi:'Lý do chênh lệch tiền' }, r.errnote);
+        if (!parts.length) return;
+        add('sknote', { ja:'総括表の特記', en:'Report notes', vi:'Ghi chú báo cáo' },
+          Number(r.t) || 0, r.store, mdLabel(r.date), parts.join('\n'), []);
+      });
       // 金種別入力（レジクローズ・長堀橋トライアル）＝レジ内現金と差異の要約
       getReports().filter(r => r.kind === 'kinshu' && vis.includes(r.store)).forEach(r => {
         const p = parseNote(r.note);
