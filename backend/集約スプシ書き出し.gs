@@ -105,9 +105,9 @@ function aggWrite_(ss, name, header, data) {
   if (all.length > 1) {
     for (var c = 0; c < w; c++) {
       var h = String(header[c]);
-      if (/売上|金額|現金|カード|チップ|目標|誤差|仕入|値引|単価|費額|総売上|総件数/.test(h)) {
+      if (/売上|金額|現金|カード|チップ|目標|誤差|仕入|値引|単価|費額/.test(h)) {
         sh.getRange(2, c + 1, all.length - 1, 1).setNumberFormat('¥#,##0');
-      } else if (/客数|組数|人数|件数/.test(h)) {
+      } else if (/客数|組数|人数|件数|総件数|前日比/.test(h)) {
         sh.getRange(2, c + 1, all.length - 1, 1).setNumberFormat('#,##0');
       }
     }
