@@ -4524,6 +4524,26 @@ console.log('== シート取込の行を「提出済みの日報」扱いにし�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== サーベイQR＝1回の読み取りで回答→Google口コミまで完結（2026-09-11 神田さんのご指示）==');
+{
+  // 店舗ページのある店＝QRと案内が出る
+  let h = renderView('surveyqr', 'staff', '牛カツ世桜 長堀橋店', 'ja');
+  ok(/<svg/.test(h) && /yskなし|ご来店アンケートにご協力ください/.test(h), 'QR（埋め込みSVG）と声かけ文が出る');
+  ok(/Google口コミ画面へご案内されます/.test(h) && /星の点数に関係なく/.test(h), '仕組みの説明（全員同じ案内＝ポリシー準拠）が書いてある');
+  // ページ未整備の店＝準備中（QRの声かけ文が出ない）
+  h = renderView('surveyqr', 'staff', '手巻き寿司世桜 難波店', 'ja');
+  ok(!/Scan me!/.test(h) && /準備中/.test(h), 'ページの無い店舗は「準備中」と出る（間違ったQRを見せない）');
+  // 本部＝店舗を切り替えられる
+  h = renderView('surveyqr', 'hq', 'all', 'ja');
+  ok(/svqrStore/.test(h), '本部は店舗の切り替えができる');
+  // 全店ぶんのQRが正しいURLを指している（アプリ本体にURLが埋まっている）
+  const srcQ2 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ['index.html','store2.html','store3.html','store5.html','store6.html','store7.html','store8.html','store9.html'].forEach(p => {
+    ok(srcQ2.includes('yosakura-survey/' + p), 'QRの先＝' + p + ' が埋め込まれている');
+  });
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 追加項目の分類を後から付け替えられる（2026-09-10 神田さんのご要望＝貼り付けた項目をホール等へ）==');
 {
   const S = '日本鰻世桜 富士山店';
