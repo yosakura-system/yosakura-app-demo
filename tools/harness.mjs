@@ -4524,6 +4524,25 @@ console.log('== シート取込の行を「提出済みの日報」扱いにし�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 追加項目の分類を後から付け替えられる（2026-09-10 神田さんのご要望＝貼り付けた項目をホール等へ）==');
+{
+  const S = '日本鰻世桜 富士山店';
+  run(() => {
+    setLS('manager', S, 'ja');
+    localStorage.setItem('yosakura_demo_ckitem', JSON.stringify({
+      [`${S}||open`]: [ { id:'open-x-t1', label:'ポットを98℃に設定する' }, { id:'open-x-t2', label:'カウンターを拭く', g:'ホール' } ]
+    }));
+  });
+  location.hash = '#/app/checklist';
+  const h = registry.app.innerHTML;
+  ok(/data-ckgrp="open-x-t1"/.test(h) && /分類を選ぶ/.test(h), '分類なしの追加項目に「分類を選ぶ」ボタンが出る');
+  ok(/data-ckgrp="open-x-t2"/.test(h) && /分類：ホール/.test(h), '分類済みの項目には現在の分類が表示される（押して変更できる）');
+  const srcG = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/closest\('\[data-ckgrp\]'\)\) return;/.test(srcG), '分類ボタンを押してもチェックのON/OFFが動かない（除外済み）');
+  ok(/data-ckgrp[\s\S]{0,2000}postReport\(\{ kind: 'ckitem'/.test(srcG), '付け替えは全端末へ同期される（ckitemで保存）');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 総括表の特記が受信箱に出る（2026-09-10 神田さんのご指摘＝清掃・特記事項が埋もれて確認できない）==');
 {
   const S = '日本料理世桜本店';
