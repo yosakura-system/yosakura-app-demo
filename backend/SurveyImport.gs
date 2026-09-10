@@ -205,6 +205,11 @@ function readSurveySource_(src) {
 /* ---------- 本体：取り込み ----------
    dryRun = true のときは書き込まず、件数だけ返す。 */
 function importSurveys(dryRun) {
+  /* ★2026-09-11 修正＝時間トリガーは関数へ「イベント情報」を引数で渡すため、
+     それが dryRun（確認のみ）として真になり、自動取り込みが毎回「書き込みなし」で
+     空回りしていた（8/26の手動実行を最後に、8/30以降の回答が入っていなかった原因）。
+     dryRun は「明示的に true のときだけ」確認モードにする。トリガーは importSurveysTrigger を指すこと */
+  dryRun = (dryRun === true);
   var srcs;
   try { srcs = surveySources_(); }
   catch (e) { return logSurvey_({ ok: false, error: String(e.message || e) }); }
@@ -256,16 +261,24 @@ function importSurveys(dryRun) {
 /* 取り込まずに件数だけ確認する（安全。まずこれを実行してください） */
 function surveyImportDryRun() { return importSurveys(true); }
 
-/* ---------- 自動取り込みのトリガー（1時間ごと）---------- */
+/* トリガー専用の入り口＝イベント引数を受け取っても dryRun にならない */
+function importSurveysTrigger() { return importSurveys(false); }
+
+/* ---------- 自動取り込みのトリガー（1時間ごと）----------
+   ★旧トリガー（importSurveys 直指し＝空回りの原因）が残っていれば外し、正しい入り口へ張り替える */
 function setupSurveyImportTrigger() {
+  var 旧 = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'importSurveys') { ScriptApp.deleteTrigger(t); 旧++; }
+  });
   var exists = ScriptApp.getProjectTriggers().filter(function (t) {
-    return t.getHandlerFunction() === 'importSurveys';
+    return t.getHandlerFunction() === 'importSurveysTrigger';
   });
   if (exists.length) {
-    return logSurvey_({ ok: true, 結果: '既に設定済み', 件数: exists.length });
+    return logSurvey_({ ok: true, 結果: '既に設定済み', 旧トリガーの張り替え: 旧 + '件' });
   }
-  ScriptApp.newTrigger('importSurveys').timeBased().everyHours(1).create();
-  return logSurvey_({ ok: true, 結果: '設定しました', 内容: '1時間ごとに importSurveys を実行' });
+  ScriptApp.newTrigger('importSurveysTrigger').timeBased().everyHours(1).create();
+  return logSurvey_({ ok: true, 結果: '設定しました（1時間ごと）', 旧トリガーの張り替え: 旧 + '件' });
 }
 
 /* 自動取り込みを止める（設定はそのまま残ります） */
