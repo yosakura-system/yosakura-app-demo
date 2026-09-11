@@ -3139,9 +3139,15 @@
     const myGy = getRole() === 'hq' && getStoreSel() === 'all' ? null : storeGyotai(store);
     /* ★業態の一覧は GYOTAI（＝店舗の業態）から作る。分類から作ると、まだ専用分類の無い
        「手巻き寿司」が出てこない（13-5 定期清掃シートは手巻きだけの資料）。 */
-    const codes = GYOTAI.map(g => g.code);
+    /* ★2026-09-11 レシピ・マニュアル整理MTG（増田さん）決定＝店舗には自分の業態だけを見せる。
+       牛カツの店長が寿司・日本料理のレシピまで見える必要はない（探しにくくなるだけ）。
+       本部は全業態を切り替えられる。複数店オーナーは持ち店の業態ぶんだけ。
+       元データはドライブで一元管理・見せる範囲はアプリで制御、が正式方針。 */
+    const allCodes = GYOTAI.map(g => g.code);
+    const codesOwn = role === 'hq' ? allCodes : allCodes.filter(c => visibleStores().some(s => storeGyotai(s) === c));
+    const codes = codesOwn.length ? codesOwn : allCodes;
     const sel = codes.includes(gySelState) ? gySelState : (codes.includes(myGy) ? myGy : codes[0]);
-    const seg = `<div class="seg" style="flex-wrap:wrap">${codes.map(c => `<button class="${c === sel ? 'on' : ''}" data-gysel="${esc(c)}">${esc(gyotaiLabel(c))}</button>`).join('')}</div>`;
+    const seg = codes.length > 1 ? `<div class="seg" style="flex-wrap:wrap">${codes.map(c => `<button class="${c === sel ? 'on' : ''}" data-gysel="${esc(c)}">${esc(gyotaiLabel(c))}</button>`).join('')}</div>` : '';
     /* ① この業態のための分類（レシピ等・本部がこれから登録する枠） */
     const own = MANUAL_CATALOG.filter(m => m.gyotai === sel && manualVisibleRole(m, role));
     /* ② 共通の分類の中にある、この業態だけの資料（本部の目次の業態欄でこの業態に入っているもの）。
