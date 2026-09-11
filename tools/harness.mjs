@@ -241,6 +241,33 @@ console.log('== マニュアル＝大項目の折りたたみ＋業態別の分�
   try { run(()=> setLS('hq','all','ja')); } catch(e){}
 }
 
+console.log('== 単品レシピカード＝タイトルの【レシピ・業態】で業態別に振り分け（2026-09-11 神田さんご指示）==');
+{
+  const RECIPE_LINKS = JSON.stringify([
+    { id:'tr1', title:'【レシピ・和牛】和牛ひつまぶし　レギュラー.docx', url:'https://drive.google.com/file/d/tr1/view', mcat:'recipe', desc:'' },
+    { id:'tr2', title:'【レシピ・日本鰻】鰻ひつまぶし　上', url:'https://drive.google.com/file/d/tr2/view', mcat:'recipe', desc:'' },
+    { id:'tr3', title:'【仕込み・牛カツ】Gyukatsu Sandwich', url:'https://drive.google.com/file/d/tr3/view', mcat:'recipe', desc:'' },
+    { id:'tr4', title:'【レシピ】いくらご飯', url:'https://drive.google.com/file/d/tr4/view', mcat:'recipe', desc:'' },
+  ]);
+  const gyView = (store) => {
+    try { run(()=> { setLS('staff', store, 'ja');
+      localStorage.setItem('yosakura_demo_links', RECIPE_LINKS);
+      localStorage.setItem('yosakura_demo_seed_ver:links', 'dev');
+    }); } catch(e){ FAIL++; console.log('  ✗ recipe links threw: '+e.message); return ''; }
+    location.hash = '#/app/gyotaiman';
+    return registry.app.innerHTML;
+  };
+  const wa = gyView('和牛世桜 広島店');
+  ok(/【レシピ・和牛】/.test(wa), '和牛の店には【レシピ・和牛】が出る');
+  ok(!/【レシピ・日本鰻】/.test(wa), '和牛の店に鰻のレシピは出ない');
+  ok(/【レシピ】いくらご飯/.test(wa), '業態タグの無い共通レシピはどの業態にも出る');
+  const un = gyView('日本鰻世桜 浅草橋店');
+  ok(/【レシピ・日本鰻】/.test(un), '鰻の店には【レシピ・日本鰻】が出る');
+  ok(!/【レシピ・和牛】/.test(un), '鰻の店に和牛のレシピは出ない');
+  const gk = gyView('牛カツ世桜 長堀橋店');
+  ok(/【仕込み・牛カツ】/.test(gk), '仕込みカードも業態で振り分けられる');
+}
+
 console.log('== 店舗運営チェック：全スタッフに出る入口（2026-08-28 構築MTG＝本部と加盟店で分けない）==');
 {
   // ① タイル＝本部にだけ出る

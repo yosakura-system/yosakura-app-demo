@@ -3009,13 +3009,25 @@
     '【世桜】牛カツ盛り付けPOP': ['gyukatsu'],
     '【世桜】和牛盛り付けPOP':  ['wagyu']
   };
+  /* ★単品レシピカードの業態＝タイトルの【レシピ・○○】【仕込み・○○】から引く（2026-09-11 神田さんご指示）。
+     田中さんのレシピカード（例「【レシピ・和牛】和牛ひつまぶし　レギュラー.docx」）を
+     「業態別マニュアル・レシピ」に業態ごとで出すため。表記はドライブの実ファイル名に合わせている。
+     ・【レシピ】だけ（業態なし・例「【レシピ】いくらご飯」）＝複数業態で使う共通レシピ＝null
+       （レシピ・早見表は gyOnly なので、共通はどの業態にも出る＝行き場は失わない）
+     ・MANUAL_GYOTAI に同じタイトルの手書き対応があれば、そちらが正（目次が正の原則のまま） */
+  const RECIPE_GYOTAI = { '和牛': ['wagyu'], '日本鰻': ['unagi'], '鰻': ['unagi'], '牛カツ': ['gyukatsu'],
+                          '寿司': ['sushi'], '手巻き寿司': ['temaki'], '手巻き': ['temaki'], '日本料理': ['washoku'] };
+  const recipeTitleGyotai = (title) => {
+    const m = title.match(/^【(?:レシピ|仕込み)[・･]\s*([^】]+?)\s*】/);
+    return (m && RECIPE_GYOTAI[m[1]]) || null;
+  };
   /* 資料のタイトル先頭の番号（例「13-5 定期清掃シート…」）から業態を引く。
      番号が無いものは、タイトルそのもので引く（目次のレシピ表がこれ）。
-     どちらにも当たらない＝null＝全業態共通。 */
+     それも無ければ【レシピ・○○】の業態タグで引く。どれにも当たらない＝null＝全業態共通。 */
   const linkGyotai = (l) => {
     const title = String((l && l.title) || '').trim();
     const m = title.match(/^(\d{2}-\d{1,2}|U-\d{1,2})/);
-    return (m && MANUAL_GYOTAI[m[1]]) || MANUAL_GYOTAI[title] || null;
+    return (m && MANUAL_GYOTAI[m[1]]) || MANUAL_GYOTAI[title] || recipeTitleGyotai(title) || null;
   };
   /* マニュアルの分類の中に置く「アプリの中で読めるもの」。
      ★いまは空＝マニュアルに並ぶのは本部が登録した資料だけ（2026-08-17 神田さんのご判断）。
