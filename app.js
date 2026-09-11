@@ -2000,9 +2000,11 @@
           <p style="font-size:16px;font-weight:800;margin:8px 0 2px">${L({ ja:'ご来店アンケートにご協力ください', en:'Please scan for our guest survey', vi:'Vui lòng quét mã để làm khảo sát' })}</p>
           <p class="muted" style="font-size:12px;letter-spacing:.04em">Scan me!　·　스캔해 주세요　·　请扫码</p>
           <div class="hint" style="display:block;text-align:left;margin-top:12px">${L({
-            ja:'※ 回答が終わると、自動でこの店舗のGoogle口コミ画面へご案内されます（星の点数に関係なく全員同じご案内）。お客様へのお願いの声かけは、この1回だけで済みます。',
-            en:'After answering, guests are taken straight to this store’s Google review page (same for everyone, regardless of rating). One ask covers both.',
-            vi:'Sau khi trả lời, khách được đưa thẳng đến trang đánh giá Google của cửa hàng (giống nhau với mọi khách). Chỉ cần nhờ khách một lần.' })}</div>
+            ja:'※ 回答の最後に、この店舗のGoogle口コミのボタンが表示されます（星の点数に関係なく全員同じご案内）。自動では進まないので、完了画面が見えたら青いボタンを指さして、あと押しをお願いします。',
+            en:'At the end of the survey, a Google review button for this store appears (same for everyone, regardless of rating). It does not open automatically — when you see the finish screen, point to the blue button.',
+            vi:'Cuối khảo sát sẽ hiện nút đánh giá Google của cửa hàng (giống nhau với mọi khách). Nút không tự mở — khi thấy màn hình hoàn tất, hãy chỉ vào nút màu xanh.' })}</div>
+          <!-- ★お声かけの例文＝QRを出す瞬間に手元で開ける（2026-09-11 神田さんのご指示＝マニュアルの奥に入れると探せない） -->
+          <button class="mini" data-openurl="https://yosakura-system.github.io/yosakura-survey/talk-script.pdf" style="margin-top:12px">${L({ ja:'お声かけの例文を開く（韓・英・中＋読みがな）', en:'Open phrase sheet (KO/EN/ZH with reading aid)', vi:'Mở mẫu câu chào khách (Hàn/Anh/Trung)' })}</button>
         ` : `<p class="muted" style="padding:14px 0">${L({ ja:'この店舗のサーベイページは準備中です（本部までご連絡ください）', en:'This store’s survey page is being prepared.', vi:'Trang khảo sát của cửa hàng đang chuẩn bị.' })}</p>`}
       </div>`;
   };
