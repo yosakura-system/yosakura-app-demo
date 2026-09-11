@@ -4556,7 +4556,10 @@ console.log('== サーベイQR＝1回の読み取りで回答→Google口コミ�
   // 店舗ページのある店＝QRと案内が出る
   let h = renderView('surveyqr', 'staff', '牛カツ世桜 長堀橋店', 'ja');
   ok(/<svg/.test(h) && /yskなし|ご来店アンケートにご協力ください/.test(h), 'QR（埋め込みSVG）と声かけ文が出る');
-  ok(/Google口コミ画面へご案内されます/.test(h) && /星の点数に関係なく/.test(h), '仕組みの説明（全員同じ案内＝ポリシー準拠）が書いてある');
+  ok(/Google口コミのボタンが表示されます/.test(h) && /星の点数に関係なく/.test(h), '仕組みの説明（全員同じ案内＝ポリシー準拠）が書いてある');
+  ok(/自動では進まない/.test(h) && /青いボタンを指さして/.test(h), '自動移動なし＝指さしのあと押し、が書いてある（2026-09-11 v3導線に一致）');
+  ok(/data-openurl="https:\/\/yosakura-system\.github\.io\/yosakura-survey\/talk-script\.pdf"/.test(h) && /お声かけの例文を開く/.test(h),
+     'お声かけ例文PDFをQR画面から開ける（マニュアルの奥に埋めない）');
   // ページ未整備の店＝準備中（QRの声かけ文が出ない）
   h = renderView('surveyqr', 'staff', '手巻き寿司世桜 難波店', 'ja');
   ok(!/Scan me!/.test(h) && /準備中/.test(h), 'ページの無い店舗は「準備中」と出る（間違ったQRを見せない）');
