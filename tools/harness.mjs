@@ -229,9 +229,11 @@ console.log('== マニュアル＝大項目の折りたたみ＋業態別の分�
   ok(!/鰻の焼成・タレ/.test(mv), 'マニュアル画面に業態別（鰻の焼成・タレ）は出ない＝共通のみ');
   ok(/業態別マニュアル・レシピ/.test(mv), '業態別への導線がある');
   // ② 業態別窓口＝広島店（和牛）の店員には和牛が最初から選ばれる
+  //    ★2026-09-11 整理MTG決定＝店舗には自業態だけを見せる（切替ボタンも出さない）
   const gv = renderView('gyotaiman', 'staff', S_HIROSHIMA, 'ja');
   ok(/和牛の扱い/.test(gv), '広島店では「和牛の扱い」が出る');
-  ok(/data-gysel/.test(gv), '業態の切り替えボタンがある');
+  ok(!/data-gysel="unagi"/.test(gv) && !/data-gysel="sushi"/.test(gv), '店舗には他業態の切り替えを出さない（自業態のみ＝2026-09-11整理MTG）');
+  ok(!/鰻の焼成・タレ/.test(gv), '広島店（和牛）に鰻の分類は出ない');
   // ③ 本部・全店表示では全業態が選べる
   let hv = '';
   try { run(()=> setLS('hq','all','ja')); hv = renderView('gyotaiman','hq','all','ja'); }
