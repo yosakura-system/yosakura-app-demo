@@ -6405,15 +6405,30 @@
       /* 総括表の特記（2026-09-10 神田さんのご指摘＝清掃・特記事項などの文章が個店カルテの奥に埋もれ、
          本部が確認できない）。アプリ入力の総括表に文章欄の記入があれば、受信箱へ1日1枚のカードで出す。
          対象は本部が読むべき欄だけ＝清掃・特記事項／課題／改善アクション／ロスの内容／過不足理由。
-         店内で完結する欄（引き継ぎ・翌日の発注）は出さない（9/9 MTGの店舗内完結の方針） */
-      getSk().filter(r => !r.src && vis.includes(r.store)).forEach(r => {
+         店内で完結する欄（引き継ぎ・翌日の発注）は出さない（9/9 MTGの店舗内完結の方針）。
+         ★2026-09-12 追加＝ドライブ取り込み分（src:drive）の総括の文章も出す。
+         　取り込み分の文章はnote1本にまとまっており、日報テンプレの空見出し
+         　（本日の口コミレビュー：ランチ売上： 夜売上：）だけの日が大半のため、
+         　見出しを取り除いて中身が残る日だけカード化する。過去分の一括流入で
+         　受信箱が埋まらないよう、取り込み分は直近14日の日付のみ対象。 */
+      const skDriveCut = (() => { const d = new Date(Date.now() - 14 * 86400000); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+      const skDriveClean = (s) => String(s == null ? '' : s)
+        .replace(/本日の口コミレビュー：?/g, '').replace(/ランチ売上：?/g, '').replace(/夜売上：?/g, '')
+        .split('\n').map(x => x.trim()).filter(x => x.replace(/[\s:：]/g, '')).join('\n').trim();
+      getSk().filter(r => vis.includes(r.store)).forEach(r => {
         const parts = [];
-        const addP = (lbl, v) => { const s = String(v == null ? '' : v).trim(); if (s) parts.push(L(lbl) + '：' + s); };
-        addP({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' }, r.note);
-        addP({ ja:'課題', en:'Issues', vi:'Vấn đề' }, r.bad);
-        addP({ ja:'改善アクション', en:'Improvements', vi:'Cải thiện' }, r.action);
-        addP({ ja:'ロスの内容', en:'Loss details', vi:'Chi tiết hao hụt' }, r.lossnote);
-        addP({ ja:'過不足（現金）の理由', en:'Cash difference reason', vi:'Lý do chênh lệch tiền' }, r.errnote);
+        if (r.src) {
+          if (String(r.date || '') < skDriveCut) return;
+          const cleaned = skDriveClean(r.note);
+          if (cleaned) parts.push(cleaned);
+        } else {
+          const addP = (lbl, v) => { const s = String(v == null ? '' : v).trim(); if (s) parts.push(L(lbl) + '：' + s); };
+          addP({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' }, r.note);
+          addP({ ja:'課題', en:'Issues', vi:'Vấn đề' }, r.bad);
+          addP({ ja:'改善アクション', en:'Improvements', vi:'Cải thiện' }, r.action);
+          addP({ ja:'ロスの内容', en:'Loss details', vi:'Chi tiết hao hụt' }, r.lossnote);
+          addP({ ja:'過不足（現金）の理由', en:'Cash difference reason', vi:'Lý do chênh lệch tiền' }, r.errnote);
+        }
         if (!parts.length) return;
         add('sknote', { ja:'総括表の特記', en:'Report notes', vi:'Ghi chú báo cáo' },
           Number(r.t) || 0, r.store, mdLabel(r.date), parts.join('\n'), []);

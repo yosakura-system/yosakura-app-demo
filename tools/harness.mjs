@@ -4599,6 +4599,7 @@ console.log('== 総括表の特記が受信箱に出る（2026-09-10 神田さ�
 {
   const S = '日本料理世桜本店';
   const today = new Date().toLocaleDateString('en-CA');
+  const oldDay = new Date(Date.now() - 20 * 86400000).toLocaleDateString('en-CA');
   run(() => {
     setLS('hq', 'all', 'ja');
     localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
@@ -4608,7 +4609,16 @@ console.log('== 総括表の特記が受信箱に出る（2026-09-10 神田さ�
       // 取込行（文章なし）→ 出さない
       { store:'寿司世桜 心斎橋店', date: today, sales: 200000, guests: 20, src:'drive', t: Date.now() - 4000 },
       // アプリ入力でも文章欄が全部空 → 出さない
-      { store:'牛カツ世桜 長堀橋店', date: today, sales: 300000, guests: 30, t: Date.now() - 3000 }
+      { store:'牛カツ世桜 長堀橋店', date: today, sales: 300000, guests: 30, t: Date.now() - 3000 },
+      // ★取込行でも中身のある文章 → 出す（2026-09-12 神田さんのご心配＝取込分のコメントが見えていなかった）
+      { store:'寿司世桜 心斎橋店', date: today, sales: 210000, guests: 21, src:'drive', t: Date.now() - 2500,
+        note:'客足：夜が少なかった\n運営面：衛生面、仕込面でお客様から指摘\n本日の口コミレビュー：ランチ売上： 夜売上：' },
+      // 取込行＝テンプレの空見出しだけ → 出さない
+      { store:'和牛世桜 広島店', date: today, sales: 90000, guests: 12, src:'drive', t: Date.now() - 2000,
+        note:'本日の口コミレビュー：ランチ売上： 夜売上：' },
+      // 取込行＝中身はあるが14日より前 → 出さない（過去分の一括流入で受信箱を埋めない）
+      { store:'日本鰻世桜 浅草橋店', date: oldDay, sales: 80000, guests: 9, src:'drive', t: Date.now() - 1500,
+        note:'客足：昔のコメントです' }
     ]));
   });
   location.hash = '#/app/inbox';
@@ -4618,8 +4628,13 @@ console.log('== 総括表の特記が受信箱に出る（2026-09-10 神田さ�
   ok(!/store内の引き継ぎ文/.test(h) && !/豆乳6本/.test(h), '店内で完結する欄（引き継ぎ・翌日の発注）は出さない');
   // 対応キー（sknote|時刻|店舗名）で数える＝文章の無い日報・取込行の店舗はキー自体が作られない
   ok(/sknote\|\d+\|日本料理世桜本店/.test(h), '本店の特記カードに対応キーがある（対応済みにできる）');
-  ok(!/sknote\|\d+\|寿司世桜 心斎橋店/.test(h) && !/sknote\|\d+\|牛カツ世桜 長堀橋店/.test(h),
-     '文章の無い日報・取込行はカードにならない');
+  ok(!/sknote\|\d+\|牛カツ世桜 長堀橋店/.test(h), '文章の無い日報はカードにならない');
+  // ★取込分（src:drive）の文章
+  ok(/sknote\|\d+\|寿司世桜 心斎橋店/.test(h), '取込行でも中身のある文章はカードになる');
+  ok(/客足：夜が少なかった/.test(h) && /運営面：衛生面、仕込面でお客様から指摘/.test(h), '取込分の本文が読める');
+  ok(!/本日の口コミレビュー/.test(h), 'テンプレの空見出し（本日の口コミレビュー等）は取り除かれる');
+  ok(!/sknote\|\d+\|和牛世桜 広島店/.test(h), 'テンプレ見出しだけの取込行はカードにならない');
+  ok(!/昔のコメントです/.test(h), '14日より前の取込分は出さない（受信箱を過去分で埋めない）');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
