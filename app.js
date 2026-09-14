@@ -7520,6 +7520,22 @@
   const getLiked = () => { try { return JSON.parse(localStorage.getItem('yosakura_comm_liked')) || []; } catch { return []; } };
   const commState = (p) => (getCommMod()[commKey(p)] || {}).state || 'pending';
   const commLikeN = (p) => Number(getCommLike()[commKey(p)] || 0);
+  /* ★みんなの投稿へのコメント（2026-09-15 神田さんのご要望＝第三者もコメントできるように）。
+     お知らせのコメント（自店＋本部だけに届く）と違い、コミュニティは横のやり取りが目的なので
+     全店に公開される。kind='commcmt'（3点セット＝distribute・サーバーの全店公開リスト・テスト） */
+  const commCmts = (key) => {
+    const out = [];
+    try {
+      getReports().forEach(r => {
+        if (r.kind !== 'commcmt' || String(r.item || '') !== key) return;
+        const p = parseNote(r.note);
+        if (p && p.body) out.push({ store: r.store || '', by: p.by || '', body: p.body, t: r.t });
+      });
+    } catch (e) {}
+    out.sort((a, b) => a.t - b.t);
+    return out;
+  };
+  const commCmtLine = (c) => `<div class="l2" style="display:block;white-space:pre-wrap;margin-top:4px">💬 ${esc(c.body)}　<span class="muted">${esc(c.by || L({ ja:'名前なし', en:'(no name)', vi:'(không tên)' }))}${c.store && c.store !== '*' ? ' ・ ' + esc(storeShort(c.store)) : ' ・ ' + L({ ja:'本部', en:'HQ', vi:'HQ' })} ・ ${timeAgo(c.t)}</span></div>`;
   // 全店コミュニティ＝店舗で絞らない。非本部は公開済みのみ、本部は保留も見える。
   function commForView(list) {
     if (getRole() === 'hq') return list.slice();
@@ -7605,6 +7621,17 @@
               : L({ ja:'うちでもやってみます', en:'We will try this', vi:'Chúng tôi sẽ thử' })}</button>`;
           })() : ''}</div>
         ${tryN ? `<div class="l2" style="margin-top:4px">${L({ ja:'取り入れた店舗', en:'Stores adopting', vi:'Cửa hàng áp dụng' })}：${tryN}　<span class="hint">${esc(commTryStores(p).map(storeShort).join('・'))}</span></div>` : ''}
+        ${st === 'published' ? (() => {
+          const cmts = commCmts(key);
+          return `
+        <div class="l2" style="display:block;margin-top:6px"><button class="mini" data-ccmt="${esc(key)}">💬 ${L({ ja:'コメント', en:'Comment', vi:'Bình luận' })}${cmts.length ? ` ${cmts.length}` : ''}</button></div>
+        <div class="ccmts">${cmts.map(commCmtLine).join('')}</div>
+        <div class="ccmtform" style="display:none;margin-top:6px">
+          <textarea class="ccmt-input" rows="2" style="width:100%;box-sizing:border-box" placeholder="${esc(L({ ja:'コメントを入力（全店舗に公開されます）', en:'Write a comment (visible to all stores)', vi:'Viết bình luận (hiển thị với tất cả cửa hàng)' }))}"></textarea>
+          <input class="ccmt-by" type="text" placeholder="${esc(L({ ja:'名前', en:'Your name', vi:'Tên' }))}" value="${esc(getUserName() || '')}" style="margin-top:4px">
+          <div style="margin-top:4px"><button class="mini" data-ccmtsend="${esc(key)}">${L({ ja:'コメントを送る', en:'Send', vi:'Gửi' })}</button></div>
+        </div>` ;
+        })() : ''}
         ${mod}
       </div>
     </div>`;
@@ -8542,6 +8569,28 @@
     });
     // 本部：公開／非公開
     document.querySelectorAll('[data-commpub]').forEach(b => b.onclick = () => setCommState(b.dataset.commpub, 'published'));
+    // みんなの投稿へのコメント（全店に公開）＝お知らせのコメントと同じ行内フォーム方式
+    document.querySelectorAll('[data-ccmt]').forEach(b => b.onclick = () => {
+      const bodyEl = b.closest('.body'); const f = bodyEl && bodyEl.querySelector('.ccmtform');
+      if (f) { const opening = f.style.display === 'none'; f.style.display = opening ? '' : 'none'; if (opening) { const inp = f.querySelector('.ccmt-input'); if (inp) inp.focus(); } }
+    });
+    document.querySelectorAll('[data-ccmtsend]').forEach(b => b.onclick = () => {
+      const key = b.dataset.ccmtsend;
+      const bodyEl = b.closest('.body'); const f = bodyEl && bodyEl.querySelector('.ccmtform');
+      const inp = f && f.querySelector('.ccmt-input'); const byEl = f && f.querySelector('.ccmt-by');
+      const text = String((inp && inp.value) || '').trim();
+      if (!text) { toast(L({ ja:'コメントを入力してください', en:'Please write a comment', vi:'Vui lòng nhập bình luận' })); return; }
+      const by = String((byEl && byEl.value) || '').trim(); if (by) setUserName(by);
+      const rep = { kind:'commcmt', store: getRole() === 'hq' ? '*' : (visibleStores()[0] || '*'), item: key, note: JSON.stringify({ body: text, by }), photos: [], t: Date.now() };
+      try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (err) {}
+      lastSync = rep.t;
+      const list = bodyEl && bodyEl.querySelector('.ccmts');
+      if (list) list.insertAdjacentHTML('beforeend', commCmtLine({ store: rep.store, by, body: text, t: rep.t }));
+      if (inp) inp.value = '';
+      if (f) f.style.display = 'none';
+      toast(L({ ja:'コメントを送りました（全店舗に公開されます）', en:'Comment sent (visible to all stores).', vi:'Đã gửi bình luận (hiển thị toàn bộ).' }));
+      postReport(rep);
+    });
     document.querySelectorAll('[data-commhide]').forEach(b => b.onclick = () => setCommState(b.dataset.commhide, 'hidden'));
 
     // 資料・学習リンク：本部が追加／削除（全端末同期）・誰でもタップで開く
@@ -9169,7 +9218,7 @@
         // ★2026-09-08 追加＝newslike/newsread/newscmt（お知らせへの反応）。KEEP判断＝お知らせ本体と同じく恒久（Code.gsに追加）
         // ★2026-09-08 追加＝kinshu（金種別入力・レジクローズ）。KEEP判断＝90日で消えてよい（差異は総括表のレジ誤差に恒久で残る）
         case 'chukan': case 'chukandraft': case 'skdraft': case 'gsnap': case 'handover':
-        case 'newslike': case 'newsread': case 'newscmt': case 'kinshu':
+        case 'newslike': case 'newsread': case 'newscmt': case 'kinshu': case 'commcmt':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
         case 'route': route.push({ store, route:r.item, t, id }); break;

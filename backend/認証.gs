@@ -37,7 +37,7 @@ var AUTH_ROLES = ['staff', 'manager', 'owner', 'hq'];
 
 /* 全員に配る性質のkind（店舗で絞らない）。
    news はアプリ側が target で出し分ける／community は「全店に公開」が仕様 */
-var AUTH_PUBLIC_KINDS = ['community', 'commlike', 'commmod', 'commroll', 'commtry',
+var AUTH_PUBLIC_KINDS = ['community', 'commlike', 'commmod', 'commroll', 'commtry', 'commcmt',
                          'news', 'study', 'linkset', 'faqset', 'submaster', 'subholiday'];
 /* 本部だけが読めるkind（★公益通報は店舗端末に返さない＝通報者を守る） */
 var AUTH_HQ_READ_KINDS = ['whistle', 'appfb'];

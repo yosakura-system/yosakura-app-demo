@@ -190,6 +190,34 @@ await new Promise(r=>setTimeout(r, 50));
 }
 FETCH_ROWS = { ok:false };
 
+console.log('== みんなの投稿へのコメント＝第三者も書けて全店に見える（2026-09-15 神田さんのご要望）==');
+{
+  const now = Date.now();
+  const key = `${now}|牛カツ世桜 長堀橋店`;
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'community', store:'牛カツ世桜 長堀橋店', item:'other', note: JSON.stringify({ body:'鈴が鳴ったら全員でいらっしゃいませ', by:'キサキ' }), t: now, id:'cc1' },
+    { kind:'commmod', store:'牛カツ世桜 長堀橋店', item:key, note: JSON.stringify({ state:'published' }), t: now+1, id:'cm1' },
+    // ★別の店舗からのコメント（第三者）＝これが全店で見えるのが目的
+    { kind:'commcmt', store:'和牛世桜 広島店', item:key, note: JSON.stringify({ body:'広島でも今日からやります！', by:'クラタニ' }), t: now+2, id:'cd1' },
+  ]};
+  try { run(()=> setLS('staff', S_HIROSHIMA, 'ja')); } catch(e){ FAIL++; console.log('  ✗ load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  location.hash = '#/app/community';
+  const html = registry.app.innerHTML;
+  ok(/鈴が鳴ったら全員でいらっしゃいませ/.test(html), '公開済みの投稿が第三者（広島の店員）にも見える');
+  ok(/data-ccmt=/.test(html), '公開済みの投稿にコメントボタンがある');
+  ok(/広島でも今日からやります！/.test(html) && /クラタニ/.test(html), '他店舗からのコメントが本文つきで見える');
+  ok(/全店舗に公開されます/.test(html), 'コメント欄に「全店舗に公開される」ことを明示（お知らせのコメントとの違い）');
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/case 'commcmt':/.test(src), 'distributeにcommcmtのcaseがある（3点セット①）');
+  const auth = fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8');
+  ok(/AUTH_PUBLIC_KINDS = \[[^\]]*'commcmt'/.test(auth), 'サーバーの全店公開リストにcommcmtがある（3点セット②・要GAS貼り替え）');
+  try { run(()=> setLS('hq','all','ja')); } catch(e){}
+}
+FETCH_ROWS = { ok:false };
+
 console.log('== 口コミQR は「その他」タブの導線から外れている（議事録12-4/23）==');
 {
   let html = '';
