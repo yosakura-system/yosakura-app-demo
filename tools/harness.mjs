@@ -2899,8 +2899,8 @@ console.log('== 電波が無いときの提出を、黙って失わない（2026
      店舗のWi-Fiが一瞬切れるだけで「出したのに出ていない」が黙って起きる形。 */
   ok(!/\.catch\(\(\) => \{\}\);/.test(code.slice(code.indexOf('function postReport'), code.indexOf('function postReport') + 800)),
      '★postReport の失敗を空の catch で握りつぶす形へ戻っていない');
-  ok(/const q = getPending_\(\); q\.push\(rep\); savePending_\(q\);/.test(code),
-     '送れなかった提出は保留箱に入れる');
+  ok(/const q = getPending_\(\); q\.push\(rep\);\s*if \(!savePending_\(q\)\)/.test(code.replace(/\r\n/g, '\n')),
+     '送れなかった提出は保留箱に入れる（保存できたかも確かめる＝2026-09-14強化）');
   ok(/この提出はいったん端末に保留しました/.test(code) && /Saved on this device/.test(code) && /sẽ tự gửi lại/.test(code),
      '保留したことを、その場で3言語で伝える（「提出しました」のまま黙らない）');
   ok(/await flushPending_\(\);[\s\S]{0,300}const res = await fetch\(getApiUrl\(\) \+ \(authToken\(\)/.test(code),
@@ -2971,8 +2971,8 @@ console.log('== ログイン：役割と店舗を、サーバーの返答で固�
   ok(/data-logout="1"/.test(code), 'ログアウトの入口がある');
   ok(/if \(d && d\.needLogin\) \{ onNeedLogin_\(\); return; \}/.test(code),
      '同期が needLogin を受けたらログイン画面へ');
-  ok(/const q = getPending_\(\); q\.push\(rep\); savePending_\(q\);\s*onNeedLogin_\(\);/.test(code.replace(/\r\n/g, '\n')),
-     '★needLogin で弾かれた提出は保留箱に残る＝ログイン後に自動で再送される');
+  ok(/const q = getPending_\(\); q\.push\(rep\);\s*if \(!savePending_\(q\)\) toast[\s\S]{0,500}onNeedLogin_\(\); return;/.test(code.replace(/\r\n/g, '\n')),
+     '★needLogin で弾かれた提出は保留箱に残る＝ログイン後に自動で再送される（保存確認つき）');
   ok(/const files = Array\.from\(fi\.files \|\| \[\]\);\s*if \(!files\.length\) return false;\s*取り込み中 = true;\s*fi\.value = '';/.test(code),
      '取り込み時に fi.value を消す＝changeと拾い直しが両方来ても二重にならない');
 }
@@ -4861,12 +4861,26 @@ console.log('== ログインの保存は確かめてから進む（2026-09-14 �
   ok(/c\.token === a\.token/.test(srcA), '保存後に読み返してトークンを突き合わせる（書けたつもりを作らない）');
   ok(/if \(!ensureAuthSaved_\(d\.auth\)\)/.test(srcA), 'ログイン成功時はensureAuthSaved_を通ってから先へ進む');
   ok(/保存領域がいっぱいで、ログイン状態を保存できません/.test(srcA), '保存できないときは黙らず理由と対処を画面に出す');
-  // 空きを作る順番＝旧の全文コピー→同期で作り直せる控え（サーバーが正のものだけ消す）
-  ok(/drops = \['yosakura_demo_raw', 'yosakura_demo_rawkeys', 'yosakura_demo_reports'/.test(srcA),
+  // 空きを作る対象＝同期で作り直せる控えだけ（サーバーが正のもの）
+  ok(/REBUILDABLE_KEYS = \['yosakura_demo_raw', 'yosakura_demo_reports'/.test(srcA),
      '空き作りは「作り直せる控え」だけを消す（提出の保留箱・チェック実施は消さない）');
-  ok(!/drops[^\]]*yosakura_pending_posts/.test(srcA) && !/drops[^\]]*yosakura_demo_ckdone/.test(srcA),
+  ok(!/REBUILDABLE_KEYS[^\]]*yosakura_pending_posts/.test(srcA) && !/REBUILDABLE_KEYS[^\]]*yosakura_demo_ckdone/.test(srcA),
      '保留箱（未送信の提出）と実施状況は空き作りの対象にしない');
+  ok(/'yosakura_demo_storevideo', 'yosakura_demo_rawkeys'\]/.test(srcA),
+     'rawkeys（届いた提出の目印）は最後の手段＝消すと重複送信の窓が開くため末尾');
   ok(/起動時に旧の全文コピーを掃除/.test(srcA), '起動のたびに旧キー（yosakura_demo_raw）を掃除して容量を空ける');
+}
+
+console.log('== 容量いっぱいへの先回り（2026-09-14 神田さんご指示＝先読みして対策）==');
+{
+  const srcB = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/function trySetWithCleanup_\(key, val\)/.test(srcB), '「空きを作りながら保存」を共通部品にした（ログイン・保留箱で共用）');
+  ok(/function storageCanary_\(\)/.test(srcB) && /yosakura_canary/.test(srcB),
+     '起動時に小さな書き込みを試し、入らない端末はその場で空きを作って回復させる');
+  ok(/const savePending_ = \(a\) => \{\s*[\s\S]{0,200}trySetWithCleanup_\(LS_PENDING/.test(srcB),
+     '保留箱の保存も空catchをやめ、確かめて保存する');
+  ok(/保留できませんでした/.test(srcB) && /もう一度この提出を送信してください/.test(srcB),
+     '保留もできないときは「保留しました」と嘘をつかず、再送をお願いする表示を出す');
 }
 
 console.log('== 受信箱＝店舗の絞り込みで「全部消えた」ように見せない（2026-09-03 神田さんの実機報告）==');

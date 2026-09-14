@@ -449,23 +449,35 @@
      v216で書き込みはやめたが、古い端末には数MBの旧キーが残ったままで、
      保存領域を圧迫し続ける。もう読まないキーなので毎回消してよい。 */
   try { localStorage.removeItem('yosakura_demo_raw'); } catch (e) {}
-  /* ★ログインの保存を確実にする（2026-09-14 本店iPadの実機障害＝保存領域がいっぱいだと
-     setAuthが黙って失敗し、サーバーはログイン成功なのに画面はログインに戻り続けていた）。
-     保存できたか読み返して確かめ、駄目なら「同期で作り直せる控え」から順に消して空きを作り、やり直す。 */
-  function ensureAuthSaved_(a) {
-    const saved = () => { const c = getAuth(); return !!(c && c.token === a.token); };
-    setAuth(a);
-    if (saved()) return true;
-    const drops = ['yosakura_demo_raw', 'yosakura_demo_rawkeys', 'yosakura_demo_reports',
-                   'yosakura_demo_soukatsu', 'yosakura_demo_survey', 'yosakura_demo_kizuki',
-                   'yosakura_demo_news', 'yosakura_demo_storevideo'];
-    for (let i = 0; i < drops.length; i++) {
-      try { localStorage.removeItem(drops[i]); } catch (e) {}
-      setAuth(a);
-      if (saved()) return true;
+  /* ★容量が足りないときに消してよい控え（2026-09-14）＝すべて次の同期でサーバーから作り直せるもの。
+     保留箱（未送信の提出）と実施状況（ckdone）は絶対に入れない。
+     rawkeys は「もう届いた提出の目印」＝消すと保留分の重複送信の窓が開くため、最後の手段として末尾。 */
+  const REBUILDABLE_KEYS = ['yosakura_demo_raw', 'yosakura_demo_reports',
+                            'yosakura_demo_soukatsu', 'yosakura_demo_survey', 'yosakura_demo_kizuki',
+                            'yosakura_demo_news', 'yosakura_demo_storevideo', 'yosakura_demo_rawkeys'];
+  /* 保存を試し、駄目なら控えを1つずつ消して空きを作りながらやり直す。戻り値＝保存できたか */
+  function trySetWithCleanup_(key, val) {
+    try { localStorage.setItem(key, val); return true; } catch (e) {}
+    for (let i = 0; i < REBUILDABLE_KEYS.length; i++) {
+      try { localStorage.removeItem(REBUILDABLE_KEYS[i]); } catch (e) {}
+      try { localStorage.setItem(key, val); return true; } catch (e) {}
     }
     return false;
   }
+  /* ★ログインの保存を確実にする（2026-09-14 本店iPadの実機障害＝保存領域がいっぱいだと
+     setAuthが黙って失敗し、サーバーはログイン成功なのに画面はログインに戻り続けていた）。
+     保存できたか読み返して確かめる（書けたつもりを作らない）。 */
+  function ensureAuthSaved_(a) {
+    trySetWithCleanup_(LS_AUTH, JSON.stringify(a));
+    const c = getAuth(); return !!(c && c.token === a.token);
+  }
+  /* ★起動時の容量みまわり（2026-09-14 先回り対策）：小さな書き込みを試し、入らない端末は
+     その場で控えを消して空きを作る。壊れてから直すのではなく、開いた時点で回復させる。 */
+  (function storageCanary_() {
+    if (TAIKEN) return;
+    if (trySetWithCleanup_('yosakura_canary', '1')) { try { localStorage.removeItem('yosakura_canary'); } catch (e) {} return; }
+    _lsFull = true; // それでも書けない＝受信箱・提出画面の注意表示につなげる
+  })();
   const authRequired = () => !TAIKEN && localStorage.getItem(LS_AUTH_REQ) === '1';
   const markAuthRequired = (on) => { try { if (on) localStorage.setItem(LS_AUTH_REQ, '1'); else localStorage.removeItem(LS_AUTH_REQ); } catch (e) {} };
   // ログイン成功時：役割・店舗をサーバーの返答どおりに合わせる（以後この端末の表示が確定する）
@@ -9284,7 +9296,14 @@
      → 失敗したらこの保留箱に入れ、次の同期の前に必ず再送する。利用者にもその場で伝える。 */
   const LS_PENDING = 'yosakura_pending_posts';
   const getPending_ = () => { try { return JSON.parse(localStorage.getItem(LS_PENDING)) || []; } catch (e) { return []; } };
-  const savePending_ = (a) => { try { localStorage.setItem(LS_PENDING, JSON.stringify(a)); } catch (e) {} };
+  /* ★保留箱の保存も確かめる（2026-09-14 先回り対策）。空catchのままだと、容量いっぱいの端末で
+     電波が切れたとき「保留しました」と言いながら実は保存できておらず、提出が黙って消える。
+     入らなければ控えを消して空きを作り、それでも駄目なら false＝呼び出し側が利用者に正直に伝える。 */
+  const savePending_ = (a) => {
+    const ok = trySetWithCleanup_(LS_PENDING, JSON.stringify(a));
+    if (!ok) _lsFull = true;
+    return ok;
+  };
   /* ★同じ提出の目印（2026-09-03）。写真のIDは送り直すたびに変わる（保存先で新しく作られる）ため、
      目印には入れない。種類・店舗・項目・提出時刻がすべて同じなら、同じ提出とみなす。 */
   const repKey_ = (r) => [r && r.kind, r && r.store, r && r.item, Number(r && r.t) || 0].join('|');
@@ -9339,14 +9358,23 @@
       .then((d) => {
         if (d && d.needLogin) {
           // ★提出は保留箱へ残してからログインへ（ログイン後の同期で自動再送される＝提出は失われない）
-          const q = getPending_(); q.push(rep); savePending_(q);
+          const q = getPending_(); q.push(rep);
+          if (!savePending_(q)) toast(L({ ja:'⚠ 端末の保存領域がいっぱいで、この提出を保留できませんでした。ログイン後にもう一度送信してください',
+                                          en:'⚠ Device storage is full; this submission could not be kept. Please resend after signing in.',
+                                          vi:'⚠ Bộ nhớ máy đầy, không giữ được mục này. Vui lòng gửi lại sau khi đăng nhập.' }));
           onNeedLogin_(); return;
         }
         return syncReports(true);
       })
       .catch(() => {
       // ★黙って捨てない＝保留箱に入れて、その場で伝える（元の t を保つので、後から送っても時系列は崩れない）
-      const q = getPending_(); q.push(rep); savePending_(q);
+      const q = getPending_(); q.push(rep);
+      if (!savePending_(q)) {
+        toast(L({ ja:'⚠ 電波が無いうえ、端末の保存領域がいっぱいで保留もできませんでした。電波のあるところで、もう一度この提出を送信してください',
+                  en:'⚠ No connection and device storage is full — could not keep this submission. Please resend when back online.',
+                  vi:'⚠ Mất kết nối và bộ nhớ máy đầy — không giữ được. Vui lòng gửi lại khi có mạng.' }));
+        return;
+      }
       toast(L({ ja:'電波が無いため、この提出はいったん端末に保留しました。つながったら自動で送信します',
                 en:'No connection. Saved on this device and will send automatically.',
                 vi:'Mất kết nối. Đã lưu trên máy và sẽ tự gửi lại.' }));
