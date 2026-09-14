@@ -445,6 +445,27 @@
   const getAuth = () => { if (TAIKEN) return null; try { return JSON.parse(localStorage.getItem(LS_AUTH)) || null; } catch (e) { return null; } };
   const setAuth = (a) => { try { if (a) localStorage.setItem(LS_AUTH, JSON.stringify(a)); else localStorage.removeItem(LS_AUTH); } catch (e) {} };
   const authToken = () => { const a = getAuth(); return a && a.token ? a.token : ''; };
+  /* ★起動時に旧の全文コピーを掃除（2026-09-14 本店iPadの実機障害）。
+     v216で書き込みはやめたが、古い端末には数MBの旧キーが残ったままで、
+     保存領域を圧迫し続ける。もう読まないキーなので毎回消してよい。 */
+  try { localStorage.removeItem('yosakura_demo_raw'); } catch (e) {}
+  /* ★ログインの保存を確実にする（2026-09-14 本店iPadの実機障害＝保存領域がいっぱいだと
+     setAuthが黙って失敗し、サーバーはログイン成功なのに画面はログインに戻り続けていた）。
+     保存できたか読み返して確かめ、駄目なら「同期で作り直せる控え」から順に消して空きを作り、やり直す。 */
+  function ensureAuthSaved_(a) {
+    const saved = () => { const c = getAuth(); return !!(c && c.token === a.token); };
+    setAuth(a);
+    if (saved()) return true;
+    const drops = ['yosakura_demo_raw', 'yosakura_demo_rawkeys', 'yosakura_demo_reports',
+                   'yosakura_demo_soukatsu', 'yosakura_demo_survey', 'yosakura_demo_kizuki',
+                   'yosakura_demo_news', 'yosakura_demo_storevideo'];
+    for (let i = 0; i < drops.length; i++) {
+      try { localStorage.removeItem(drops[i]); } catch (e) {}
+      setAuth(a);
+      if (saved()) return true;
+    }
+    return false;
+  }
   const authRequired = () => !TAIKEN && localStorage.getItem(LS_AUTH_REQ) === '1';
   const markAuthRequired = (on) => { try { if (on) localStorage.setItem(LS_AUTH_REQ, '1'); else localStorage.removeItem(LS_AUTH_REQ); } catch (e) {} };
   // ログイン成功時：役割・店舗をサーバーの返答どおりに合わせる（以後この端末の表示が確定する）
@@ -7797,7 +7818,19 @@
       if (!uid || !pw) { showErr(L({ ja:'IDとパスワードを入力してください', en:'Enter ID and password.', vi:'Nhập ID và mật khẩu.' })); return; }
       byId('au_login').disabled = true;
       post({ action: 'login', uid: uid, pw: pw }).then(d => {
-        if (d && d.ok && d.auth) { applyAuth_(d.auth); render(); return; }
+        if (d && d.ok && d.auth) {
+          /* ★保存を確かめてから先へ進む（2026-09-14 本店iPad＝保存領域いっぱいで
+             ログイン成功なのに保存できず、無言でログイン画面に戻り続けた） */
+          if (!ensureAuthSaved_(d.auth)) {
+            byId('au_login').disabled = false;
+            showErr(L({
+              ja:'ログインは確認できましたが、この端末の保存領域がいっぱいで、ログイン状態を保存できません。iPadを一度再起動してからもう一度お試しください。直らない場合は、端末の写真や使っていないアプリを削除して空きを作るか、本部までご連絡ください。',
+              en:'Sign-in succeeded, but this device is out of storage and cannot keep you signed in. Restart the iPad and try again. If it persists, free up space (photos/unused apps) or contact HQ.',
+              vi:'Đăng nhập thành công nhưng bộ nhớ máy đã đầy nên không lưu được. Hãy khởi động lại iPad và thử lại. Nếu vẫn lỗi, hãy xóa bớt ảnh/ứng dụng hoặc liên hệ HQ.' }));
+            return;
+          }
+          applyAuth_(d.auth); render(); return;
+        }
         byId('au_login').disabled = false;
         showErr(L({ ja:'IDまたはパスワードが違います', en:'Wrong ID or password.', vi:'Sai ID hoặc mật khẩu.' }));
       }).catch(() => {

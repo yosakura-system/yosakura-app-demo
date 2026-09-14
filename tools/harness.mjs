@@ -4854,6 +4854,21 @@ console.log('== ログインが外れたときは理由を出す（2026-09-03 �
   ok(/var AUTH_TOKEN_MAX = 10;/.test(auth), '同時に使える端末の上限を10へ（要GAS貼り替え）');
 }
 
+console.log('== ログインの保存は確かめてから進む（2026-09-14 本店iPad＝保存領域いっぱいで無言でログイン画面に戻り続けた）==');
+{
+  const srcA = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/function ensureAuthSaved_\(a\)/.test(srcA), '保存確認つきのログイン保存（ensureAuthSaved_）がある');
+  ok(/c\.token === a\.token/.test(srcA), '保存後に読み返してトークンを突き合わせる（書けたつもりを作らない）');
+  ok(/if \(!ensureAuthSaved_\(d\.auth\)\)/.test(srcA), 'ログイン成功時はensureAuthSaved_を通ってから先へ進む');
+  ok(/保存領域がいっぱいで、ログイン状態を保存できません/.test(srcA), '保存できないときは黙らず理由と対処を画面に出す');
+  // 空きを作る順番＝旧の全文コピー→同期で作り直せる控え（サーバーが正のものだけ消す）
+  ok(/drops = \['yosakura_demo_raw', 'yosakura_demo_rawkeys', 'yosakura_demo_reports'/.test(srcA),
+     '空き作りは「作り直せる控え」だけを消す（提出の保留箱・チェック実施は消さない）');
+  ok(!/drops[^\]]*yosakura_pending_posts/.test(srcA) && !/drops[^\]]*yosakura_demo_ckdone/.test(srcA),
+     '保留箱（未送信の提出）と実施状況は空き作りの対象にしない');
+  ok(/起動時に旧の全文コピーを掃除/.test(srcA), '起動のたびに旧キー（yosakura_demo_raw）を掃除して容量を空ける');
+}
+
 console.log('== 受信箱＝店舗の絞り込みで「全部消えた」ように見せない（2026-09-03 神田さんの実機報告）==');
 {
   /* 右上の店舗切替が「本店」のままだと受信箱はその店だけになり、報告の少ない店では0件
