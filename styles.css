@@ -552,3 +552,18 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
   .skp-foot { margin-top: 6px; font-size: 10px; }
   .skp-note { margin-top: 3px; font-size: 8.5px; line-height: 1.5; }
 }
+
+/* タスク（試行・2026-09-15）のレ点＝完了／未完了／保留。絵文字を使わず線で描く */
+.tkmk{display:inline-flex;align-items:center;gap:5px}
+.tkmk .bx{width:14px;height:14px;flex:none}
+.tkmk .bx rect{fill:none;stroke:currentColor;stroke-width:1.4;opacity:.55}
+.tkmk .bx path{fill:none;stroke:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.tkmk[aria-pressed="true"]{font-weight:700;border-color:currentColor}
+.tkmk[aria-pressed="true"] .bx rect{opacity:1}
+.tkmk[aria-pressed="true"] .bx path{stroke:currentColor}
+.tkmk[data-tkmark="open"][aria-pressed="true"] .bx path{stroke:none}
+.tkmk[data-tkmark="done"][aria-pressed="true"]{color:#3f6b3a;background:#e6f0e3}
+.tkmk[data-tkmark="hold"][aria-pressed="true"]{color:#8a7f72;background:#efeae2}
+.tkmk[data-tkmark="open"][aria-pressed="true"]{color:#8E354A;background:#f6e4e8}
+.tk-done .l1{text-decoration:line-through;opacity:.65}
+.tk-hold .l1{text-decoration:line-through;text-decoration-style:dotted;opacity:.8}

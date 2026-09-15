@@ -5011,5 +5011,60 @@ console.log('== 日報の累計＝シート取込と同じ日がぶつかって�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== タスク（試行・神田さんのIDだけ）2026-09-15 神田さんのご要望＝まず自分で体感してから共有 ==');
+{
+  const seedAuth = (uid, viewRole) => run(() => {
+    setLS(viewRole || 'hq', 'all', 'ja');
+    localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid, name:'テスト', role:'hq', stores:['*'] }));
+  });
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'hqtask', store:'', item:'kanda', note: JSON.stringify([
+      { id:'tk1', title:'集約スプシを共有する', memo:'金曜MTGで報告', state:'open', t:1 },
+      { id:'tk2', title:'トング確認LINE', memo:'', state:'hold', t:2 },
+      { id:'tk3', title:'ユンさんへ返信', memo:'', state:'done', t:3 } ]), t: 5000, id:'h1' },
+    { kind:'hqtask', store:'', item:'masuda', note: JSON.stringify([{ id:'tkX', title:'他人のタスク', state:'open', t:1 }]), t: 5001, id:'h2' },
+  ]};
+  // ① 神田さんのID＝本部メニューにタイルが出て、画面が開く
+  seedAuth('kanda');
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/home?tab=hq';
+  ok(/タスク（試行）/.test(registry.app.innerHTML), '神田さんのIDでは本部メニューに「タスク（試行）」が出る');
+  location.hash = '#/app/tasks';
+  const h = registry.app.innerHTML;
+  ok(/集約スプシを共有する/.test(h) && /トング確認LINE/.test(h) && /ユンさんへ返信/.test(h), '自分のタスクが3件出る（未完了・保留・完了）');
+  ok(!/他人のタスク/.test(h), '★他のIDのタスク行が混ざっても画面に出さない');
+  ok(/id="tkAdd"/.test(h) && /id="tk_title"/.test(h), '追加の入力欄がある');
+  ok(/data-tkmark="done"[^>]*data-tkid="tk1"/.test(h) && /data-tkmark="hold"[^>]*data-tkid="tk1"/.test(h), '各タスクに 完了／未完了／保留 のレ点が付く');
+  ok(/data-tkmark="hold"[^>]*data-tkid="tk2"[^>]*aria-pressed="true"/.test(h), '保留のものは「保留」のレ点が入っている');
+  ok(/data-tkmark="done"[^>]*data-tkid="tk3"[^>]*aria-pressed="true"/.test(h), '完了のものは「完了」のレ点が入っている');
+  ok(!/☑|☐/.test(h), 'レ点は絵文字を使わない（游ゴシックのトーフ対策）');
+  ok(/tk_title/.test(h) && !/data-faqfold/.test(h), 'よくある質問の画面と混ざらない');
+  // ② 他の本部の方（増田さん）＝メニューに出ない・直接開いてもホームへ戻る
+  seedAuth('masuda');
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/home?tab=hq';
+  ok(!/タスク（試行）/.test(registry.app.innerHTML), '★他の本部の方の本部メニューには出ない');
+  location.hash = '#/app/tasks';
+  ok(!/id="tkAdd"/.test(registry.app.innerHTML), '★他の本部の方がURLで直接開いても画面は出ない（ホームへ）');
+  // ③ 神田さんでも開発者ビュー（店舗側の見え方）のあいだは出ない
+  seedAuth('kanda', 'manager');
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/tasks';
+  ok(!/id="tkAdd"/.test(registry.app.innerHTML), '開発者ビュー（店舗側の見え方）のあいだは出ない');
+  // ④ 空のとき
+  FETCH_ROWS = { ok:true, reports:[] };
+  seedAuth('kanda');
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/tasks';
+  ok(/まだタスクがありません/.test(registry.app.innerHTML), 'タスクが無いときは案内が出る');
+  // ⑤ 作りの保証（app.js の本文で固定）
+  const srcT = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/const TASK_TRIAL_UIDS = \['kanda'\];/.test(srcT), '対象は kanda のIDだけ（増やすときはここに足す）');
+  ok(/kind:'hqtask', store:'', item: String\(\(a && a\.uid\) \|\| ''\)/.test(srcT), '保存の行には持ち主のuid（item）が入る＝バックエンドが本人にしか返さない鍵');
+  ok(/if \(hqtask !== null\) set\('yosakura_demo_hqtask', hqtask\);/.test(srcT), 'hqtaskが無い同期では端末のタスクを消さない（黙って消えない）');
+  FETCH_ROWS = { ok:false };
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

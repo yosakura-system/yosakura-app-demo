@@ -376,9 +376,12 @@
     { id:'dashboard', group:'hq', icon:'gauge', roles:['hq'],
       name:{ ja:'本部ダッシュボード', en:'HQ Dashboard', vi:'Bảng điều khiển' },
       desc:{ ja:'全店の報告を自動集約', en:'Auto-aggregate all reports', vi:'Tổng hợp báo cáo tự động' } },
-    { id:'tasks', group:'hq', icon:'task', hide:true, roles:['hq'], // 8/4: 課題管理は増田さんのGoogle一元管理表が正・二重管理しない
-      name:{ ja:'課題・タスク管理', en:'Task Management', vi:'Quản lý công việc' },
-      desc:{ ja:'本部の全課題を担当・状況で管理', en:'All HQ tasks by owner & status', vi:'Công việc theo phụ trách & trạng thái' } },
+    /* 8/4: 課題管理は増田さんのGoogle一元管理表が正・二重管理しない＝hide のまま。
+       ★2026-09-15 神田さんのご要望＝「本部側のアプリ内でタスク管理を。まず自分で使って体感してから共有する」
+       → hide は残し、appHidden() で神田さんのIDにだけ例外的に開く（他の本部の方には出さない） */
+    { id:'tasks', group:'hq', icon:'task', hide:true, roles:['hq'],
+      name:{ ja:'タスク（試行）', en:'Tasks (trial)', vi:'Công việc (thử)' },
+      desc:{ ja:'自分のタスクを 完了／未完了／保留 で管理', en:'Your tasks: done / open / on hold', vi:'Công việc của bạn: xong / chưa / tạm dừng' } },
     { id:'invoice', group:'hq', icon:'invoice', soon:true, hide:true, roles:['hq'], // 8/4: 請求関係は初期ダッシュから外す
       name:{ ja:'請求・支払管理', en:'Billing & Payment', vi:'Hóa đơn & Thanh toán' },
       desc:{ ja:'取引先ごとの請求方法・締日', en:'Vendor billing method & cutoff', vi:'Cách & kỳ hạn thanh toán' } },
@@ -394,6 +397,11 @@
   ];
   const appById = (id) => APPS.find(a => a.id === id);
   const canOpen = (app, role) => role === 'hq' || app.roles.includes(role);
+  /* ★神田さんのIDでログインしたときだけ開ける機能（2026-09-15）。本部の他の方には出さない＝
+     一元管理表（増田さん）との二重管理にならない範囲で試す。開発者ビュー（店舗側の見え方）のときも出さない */
+  const TASK_TRIAL_UIDS = ['kanda'];
+  const taskTrialAllowed = () => { const a = getAuth(); return !!a && a.role === 'hq' && TASK_TRIAL_UIDS.includes(String(a.uid || '')) && getRole() === 'hq'; };
+  const appHidden = (a) => a.id === 'tasks' ? !taskTrialAllowed() : !!a.hide;
 
   /* ---------- 状態 ---------- */
   const LS = { role:'yosakura_demo_role', store:'yosakura_demo_store', reports:'yosakura_demo_reports', checks:'yosakura_demo_checks', uname:'yosakura_demo_uname' };
@@ -1165,7 +1173,7 @@
   // よく使うの設定シート（この端末のみ）
   function openPinSheet() {
     const role = getRole();
-    const apps = APPS.filter(a => !a.hide && canOpen(a, role));
+    const apps = APPS.filter(a => !appHidden(a) && canOpen(a, role));
     const build = () => {
       const pins = getPins();
       return `<div class="sheet">
@@ -1200,7 +1208,7 @@
       </div>`;
   }
   function homeInner(role) {
-    const tiles = (ids) => ids.map(appById).filter(a => a && !a.hide && canOpen(a, role)).map(a => tileHTML(a, role)).join('');
+    const tiles = (ids) => ids.map(appById).filter(a => a && !appHidden(a) && canOpen(a, role)).map(a => tileHTML(a, role)).join('');
     const primary = tiles(getPins());
     /* ★2026-08-18 神田さんのご判断：公益通報・コンプラ窓口はホームから外し、「その他」へ移した。
        ホームの目立つ位置に置くと、加盟店・オーナー様には受け取り方が重くなるため
@@ -1362,7 +1370,7 @@
     let sections = '';
     for (const gid of gids) {
       // tabHide＝機能は生きているが、タブの一覧には出さない（日次業務など別の入口へ集約したもの）
-      let apps = APPS.filter(a => a.group === gid && !a.hide && !a.tabHide && canOpen(a, role));
+      let apps = APPS.filter(a => a.group === gid && !appHidden(a) && !a.tabHide && canOpen(a, role));
       /* ★複数店を持つオーナーには「加盟店・提出物管理」を店舗運営に出す
          （2026-09-03 増田さんのご要望＝オーナーも自店の未提出を見て提出を促せる。1店だけなら「今日出すもの」で足りるため出さない） */
       if (gid === 'storeops' && role === 'owner' && ownerStores_().length > 1) apps = apps.concat([appById('teishutsu')]);
@@ -1407,7 +1415,7 @@
   /* ---------- アプリ詳細 ---------- */
   function viewApp(id) {
     const a = appById(id);
-    if (!a || a.hide) return viewHome('home'); // 初期リリースで外した機能は開かない
+    if (!a || appHidden(a)) return viewHome('home'); // 初期リリースで外した機能は開かない（タスクは神田さんのIDだけ例外）
     if (!canOpen(a, getRole())) { toast(L({ ja:'この機能を開く権限がありません', en:'You do not have permission for this', vi:'Bạn không có quyền mở mục này' })); return viewHome('home'); }
     const body = APP_VIEWS[id] ? APP_VIEWS[id](a) : mockGeneric(a);
     const inner = `
@@ -3110,7 +3118,7 @@
     /* アプリの中で読めるものを、資料リンクより先に並べる。
        ★資料が1件も登録されていない分類でも、これがあれば「準備中」にはならない。 */
     const builtins = m.gid
-      ? MANUAL_BUILTIN.filter(b => b.gid === m.gid).map(b => appById(b.app)).filter(a => a && !a.hide && canOpen(a, getRole()))
+      ? MANUAL_BUILTIN.filter(b => b.gid === m.gid).map(b => appById(b.app)).filter(a => a && !appHidden(a) && canOpen(a, getRole()))
       : [];
     const total = builtins.length + mats.length;
     /* ★2026-08-28 増田さんのご要望＝最初は大項目だけを出し、タップで中身を開く
@@ -5251,6 +5259,37 @@
         <button class="btn" id="faqAdd" style="margin-top:8px">${esc(L({ ja:'追加する', en:'Add', vi:'Thêm' }))}</button>
         <p class="hint">${esc(L({ ja:'※ 追加・編集・削除は全店の端末に反映されます。会議で決まったルールも修正できます（元の出典は残ります）。', en:'Adds, edits and deletes sync to all devices. Rules decided in meetings can also be edited (the source note remains).', vi:'Thêm, sửa, xoá sẽ đồng bộ mọi máy. Quy định từ cuộc họp cũng có thể sửa (vẫn giữ ghi chú nguồn).' }))}</p>
       </div>` : ''}`;
+  };
+
+  /* ---------- タスク（試行・神田さんのIDだけ）2026-09-15 ----------
+     保存＝kind:hqtask（item=本人のuid・note=一覧を丸ごと・最新版が正＝faqset と同じ型）。
+     バックエンドも本人のuidにしか返さない（認証.gs auth_row_ok_）。90日削除の対象外（PURGE_KEEP_KINDS）。
+     レ点は絵文字（☑）を使わず線で描く＝游ゴシックに無い字はトーフ（□）になるため。 */
+  const getTasks = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_hqtask')) || []; } catch { return []; } };
+  const saveTasks = (a) => { try { localStorage.setItem('yosakura_demo_hqtask', JSON.stringify(a)); } catch (e) {} };
+  const TASK_STATE = { open:{ ja:'未完了', en:'Open', vi:'Chưa xong' }, done:{ ja:'完了', en:'Done', vi:'Xong' }, hold:{ ja:'保留', en:'On hold', vi:'Tạm dừng' } };
+  const TASK_MARKS = ['done', 'open', 'hold'];   // ボタンの並び＝完了／未完了／保留（神田さん指定）
+  const TASK_BOX = '<svg class="bx" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2"></rect><path d="M4.6 8.2 6.9 10.6 11.5 5.7"></path></svg>';
+  APP_VIEWS.tasks = () => {
+    const list = getTasks().filter(x => x && x.id);
+    const item = (t) => `<div class="rep tk tk-${esc(t.state || 'open')}" style="display:block;padding:10px 2px">
+        <div class="l1" style="font-weight:600">${esc(t.title || '')}</div>
+        ${t.memo ? `<div class="l2" style="white-space:pre-wrap;margin-top:4px">${esc(t.memo)}</div>` : ''}
+        <div class="tkmarks" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+          ${TASK_MARKS.map(k => `<button class="btn sm tkmk" data-tkmark="${k}" data-tkid="${esc(t.id)}" aria-pressed="${(t.state || 'open') === k}">${TASK_BOX}${esc(L(TASK_STATE[k]))}</button>`).join('')}
+          <button class="btn sm" data-tkdel="${esc(t.id)}" style="margin-left:auto">${esc(L({ ja:'削除', en:'Delete', vi:'Xoá' }))}</button>
+        </div></div>`;
+    const sec = (st, ttl) => { const g = list.filter(t => (t.state || 'open') === st); if (!g.length) return '';
+      return `<div class="card"><h3>${esc(L(ttl))}　<small style="color:#8a8">${g.length}</small></h3>${g.map(item).join('')}</div>`; };
+    return `
+      ${NOTE({ ja:'◆ 試行中（神田さんのIDだけに表示）。レ点を押すだけで 完了／未完了／保留 に仕分けできます。保留は消えません', en:'◆ Trial (visible to Kanda only). Tap to mark done / open / on hold.', vi:'◆ Thử nghiệm (chỉ Kanda thấy). Chạm để đánh dấu xong / chưa / tạm dừng.' })}
+      <div class="card"><h3>${esc(L({ ja:'タスクを追加', en:'Add a task', vi:'Thêm công việc' }))}</h3>
+        <input id="tk_title" type="text" placeholder="${esc(L({ ja:'例）集約スプシのURLを各チームへ共有', en:'e.g. Share the summary sheet URL', vi:'VD: Chia sẻ URL bảng tổng hợp' }))}">
+        <textarea id="tk_memo" rows="2" placeholder="${esc(L({ ja:'メモ（任意）', en:'Memo (optional)', vi:'Ghi chú (tuỳ chọn)' }))}"></textarea>
+        <button class="btn" id="tkAdd" style="margin-top:8px">${esc(L({ ja:'追加する', en:'Add', vi:'Thêm' }))}</button>
+      </div>
+      ${sec('open', TASK_STATE.open)}${sec('hold', TASK_STATE.hold)}${sec('done', TASK_STATE.done)}
+      ${list.length ? '' : `<div class="card"><div class="muted">${esc(L({ ja:'まだタスクがありません。上の欄から追加してください。', en:'No tasks yet.', vi:'Chưa có công việc.' }))}</div></div>`}`;
   };
 
   /* 棚卸・在庫入力 */
@@ -8657,6 +8696,29 @@
       faqEditId = null; faqPush(list.filter(f => f.id !== id));
     });
 
+    // タスク（試行・神田さんのIDだけ）＝一覧を丸ごと保存し最新版が正（faqset と同じ型）
+    const tkPush = (list) => {
+      saveTasks(list); const t = Date.now(); lastSync = t; render(true);
+      const a = getAuth(); postReport({ kind:'hqtask', store:'', item: String((a && a.uid) || ''), note: JSON.stringify(list), t });
+    };
+    const tkAdd = byId('tkAdd');
+    if (tkAdd) tkAdd.onclick = () => {
+      const title = ((byId('tk_title') || {}).value || '').trim();
+      const memo = ((byId('tk_memo') || {}).value || '').trim();
+      if (!title) { toast(L({ ja:'タスク名を入力してください', en:'Enter a task name', vi:'Nhập tên công việc' })); return; }
+      const list = getTasks(); list.unshift({ id:'tk' + Date.now(), title, memo, state:'open', t: Date.now() });
+      toast(L({ ja:'追加しました', en:'Added', vi:'Đã thêm' })); tkPush(list);
+    };
+    document.querySelectorAll('[data-tkmark]').forEach(b => b.onclick = () => {
+      const list = getTasks(); const i = list.findIndex(x => x && x.id === b.dataset.tkid);
+      if (i < 0) return;
+      list[i] = Object.assign({}, list[i], { state: b.dataset.tkmark, u: Date.now() }); tkPush(list);
+    });
+    document.querySelectorAll('[data-tkdel]').forEach(b => b.onclick = () => {
+      if (!confirm(L({ ja:'このタスクを削除しますか？（消さずに残すなら「保留」にしてください）', en:'Delete this task? (Use On hold to keep it.)', vi:'Xoá công việc này? (Dùng Tạm dừng để giữ lại.)' }))) return;
+      tkPush(getTasks().filter(x => x && x.id !== b.dataset.tkdel));
+    });
+
     document.querySelectorAll('[data-openurl]').forEach(b => b.onclick = () => {
       const u = b.dataset.openurl;
       if (!isHttp(u)) { toast(L({ ja:'この資料はまだ登録されていません', en:'This document is not registered yet', vi:'Tài liệu này chưa được đăng ký' })); return; }
@@ -9183,7 +9245,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null;
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null;
     /* ★同じ提出が何行にもなっているとき、1件にまとめて見せる（2026-09-03 実機で発覚）。
        受け取り側は1回のPOSTごとに1行を足す作りのため、返事が届かずに送り直されると
        中身が同じ行が並ぶ（長堀橋店の日計レポートが同じ写真で8行）。
@@ -9250,6 +9312,8 @@
           if (commtryT[kk] == null || t >= commtryT[kk]) { commtryT[kk]=t; commtryOn[kk]=!(p2 && p2.on === false); } } break;
         case 'linkset': { const p=pj(r.note); if (Array.isArray(p) && (linksetT==null || t>=linksetT)) { linkset=p; linksetT=t; } } break; // 資料リンク一覧は最新版が正
         case 'faqset': { const p=pj(r.note); if (Array.isArray(p) && (faqsetT==null || t>=faqsetT)) { faqset=p; faqsetT=t; } } break; // よくある質問（本部追加分）は最新版が正
+        // タスク（試行）＝本人のuidの行だけ・最新版が正（バックエンドも本人にしか返さないが、端末側でも念のため絞る）
+        case 'hqtask': { const a0 = getAuth(); if (!a0 || String(r.item || '') !== String(a0.uid || '')) break; const p=pj(r.note); if (Array.isArray(p) && (hqtaskT==null || t>=hqtaskT)) { hqtask=p; hqtaskT=t; } } break;
       }
     });
     /* ★保存に失敗したら、容量を食っていた旧キー（サーバー応答の全文コピー）を捨てて1回だけやり直す。
@@ -9301,6 +9365,7 @@
     set('yosakura_demo_commroll', commroll); set('yosakura_demo_commtry', commtry);
     if (linkset !== null) set('yosakura_demo_links', linkset); // linksetが無い同期では既存の資料リンクを保持
     if (faqset !== null) set('yosakura_demo_faq', faqset); // faqsetが無い同期では既存のよくある質問を保持
+    if (hqtask !== null) set('yosakura_demo_hqtask', hqtask); // hqtaskが無い同期では端末のタスクを保持（黙って消さない）
   }
   async function syncReports(force) {
     if (!useBackend()) return;

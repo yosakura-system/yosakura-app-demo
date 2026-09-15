@@ -53,7 +53,8 @@ var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide',
                          'newslike', 'newsread', 'newscmt',
                          /* ★2026-09-15 神田さん判断＝みんなの投稿・いいね・コメントは90日で消さない
                             （「1店舗への指摘が全店舗の教育になる」9/14決定＝古い投稿も教材として残す） */
-                         'community', 'commlike', 'commcmt'];
+                         'community', 'commlike', 'commcmt',
+                         'hqtask'];   // 本部の個人タスク（試行・2026-09-15）＝消えると困るもの
 
 // スクリプトプロパティから設定を読む（無ければ既定値）。管理画面や手動で変更できる。
 function getSetting_(key, def) {
