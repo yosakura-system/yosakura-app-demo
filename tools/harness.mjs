@@ -5031,12 +5031,22 @@ console.log('== タスク（試行・神田さんのIDだけ）2026-09-15 神田
   ok(/タスク（試行）/.test(registry.app.innerHTML), '神田さんのIDでは本部メニューに「タスク（試行）」が出る');
   location.hash = '#/app/tasks';
   const h = registry.app.innerHTML;
-  ok(/集約スプシを共有する/.test(h) && /トング確認LINE/.test(h) && /ユンさんへ返信/.test(h), '自分のタスクが3件出る（未完了・保留・完了）');
+  ok(/集約スプシを共有する/.test(h) && !/トング確認LINE/.test(h) && !/ユンさんへ返信/.test(h), '未完了タブには未完了だけが出る（保留・完了は別タブ＝縦に積まない）');
+  ok(/data-tktab="open"[^>]*>未完了 1</.test(h) && /data-tktab="hold"[^>]*>保留 1</.test(h) && /data-tktab="done"[^>]*>完了 1</.test(h), 'タブに件数が出る（未完了1／保留1／完了1）');
+  ok(/id="tk_q"/.test(h), 'ことばで絞り込む欄がある');
   ok(!/他人のタスク/.test(h), '★他のIDのタスク行が混ざっても画面に出さない');
   ok(/id="tkAdd"/.test(h) && /id="tk_title"/.test(h), '追加の入力欄がある');
   ok(/data-tkmark="done"[^>]*data-tkid="tk1"/.test(h) && /data-tkmark="hold"[^>]*data-tkid="tk1"/.test(h), '各タスクに 完了／未完了／保留 のレ点が付く');
-  ok(/data-tkmark="hold"[^>]*data-tkid="tk2"[^>]*aria-pressed="true"/.test(h), '保留のものは「保留」のレ点が入っている');
-  ok(/data-tkmark="done"[^>]*data-tkid="tk3"[^>]*aria-pressed="true"/.test(h), '完了のものは「完了」のレ点が入っている');
+  location.hash = '#/app/tasks?tab=hold';
+  const h2 = registry.app.innerHTML;
+  ok(/トング確認LINE/.test(h2) && !/集約スプシを共有する/.test(h2), '保留タブには保留だけが出る');
+  ok(/data-tkmark="hold"[^>]*data-tkid="tk2"[^>]*aria-pressed="true"/.test(h2), '保留のものは「保留」のレ点が入っている');
+  ok(!/id="tkAdd"/.test(h2), '追加の欄は未完了タブだけ（他のタブでは出さない）');
+  location.hash = '#/app/tasks?tab=done';
+  const h3 = registry.app.innerHTML;
+  ok(/ユンさんへ返信/.test(h3) && /data-tkmark="done"[^>]*data-tkid="tk3"[^>]*aria-pressed="true"/.test(h3), '完了タブには完了だけ・「完了」のレ点が入っている');
+  location.hash = '#/app/tasks?tab=nanika';
+  ok(/集約スプシを共有する/.test(registry.app.innerHTML), '知らないタブ名なら未完了タブになる');
   ok(!/☑|☐/.test(h), 'レ点は絵文字を使わない（游ゴシックのトーフ対策）');
   ok(/tk_title/.test(h) && !/data-faqfold/.test(h), 'よくある質問の画面と混ざらない');
   // ② 他の本部の方（増田さん）＝メニューに出ない・直接開いてもホームへ戻る
@@ -5056,7 +5066,7 @@ console.log('== タスク（試行・神田さんのIDだけ）2026-09-15 神田
   seedAuth('kanda');
   await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/tasks';
-  ok(/まだタスクがありません/.test(registry.app.innerHTML), 'タスクが無いときは案内が出る');
+  ok(/この一覧は空です/.test(registry.app.innerHTML), 'タスクが無いときは案内が出る');
   // ⑤ 作りの保証（app.js の本文で固定）
   const srcT = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/const TASK_TRIAL_UIDS = \['kanda'\];/.test(srcT), '対象は kanda のIDだけ（増やすときはここに足す）');
