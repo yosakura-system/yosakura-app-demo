@@ -115,6 +115,7 @@ function データを入れる(env) {
   /* ★本部の個人タスク（試行・2026-09-15）＝item に持ち主のuid。本人にしか返さない */
   sh.appendRow(['r9',  t, 'hqtask', '', 'honbu',  '', '[]', '[]']);
   sh.appendRow(['r10', t, 'hqtask', '', 'honbu2', '', '[]', '[]']);
+  sh.appendRow(['r11', t, 'svcheck', '本部', '和牛世桜 広島店|2026-09-17|47', '', '{}', '[]']);   // 巡回チェック＝本部の評価
 }
 
 console.log('\n===== ① フラグOFF（既定）＝挙動が変わらない =====\n');
@@ -122,7 +123,7 @@ console.log('\n===== ① フラグOFF（既定）＝挙動が変わらない ===
   const env = 偽環境を作る({});
   データを入れる(env);
   const d = GET(env, {});
-  確認('トークン無しで全行が返る（従来どおり）', d.ok && d.reports.length === 10, d.reports && d.reports.length);
+  確認('トークン無しで全行が返る（従来どおり）', d.ok && d.reports.length === 11, d.reports && d.reports.length);
   const p = POST(env, { kind: 'kizuki', store: '和牛世桜 広島店', item: 'x', note: '', photos: [], t: Date.now() });
   確認('トークン無しで提出できる（従来どおり）', p.ok === true, p);
   確認('ENABLE_AUTH は未設定＝既定でOFF', 実行(env, 'authOn_()') === false);
@@ -185,7 +186,8 @@ console.log('\n===== ⑤ 読みの絞り込み（フラグON） =====\n');
   確認('★他店の提出（r2）は返らない', !ids.includes('r2'), ids);
   確認('★公益通報（r6）は自店のぶんでも返らない＝通報者を守る', !ids.includes('r6'), ids);
   const 本 = GET(env, { token: hq });
-  確認('本部＝全部返る（公益通報も含む）', 本.reports.length === 9, 本.reports.length);
+  確認('本部＝全部返る（公益通報も含む）', 本.reports.length === 10, 本.reports.length);
+  確認('★巡回チェック（svcheck）は本部にだけ返る＝店舗端末には返さない', 本.reports.map(r => r.id).includes('r11') && !ids.includes('r11'), ids);
   const 本ids = 本.reports.map(r => r.id);
   確認('★本部でも、個人タスクは自分のぶん（r9）だけ＝他の本部の方のぶん（r10）は返らない', 本ids.includes('r9') && !本ids.includes('r10'), 本ids);
   確認('★店舗端末には個人タスクを一切返さない', !ids.includes('r9') && !ids.includes('r10'), ids);

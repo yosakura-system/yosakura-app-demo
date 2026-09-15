@@ -127,6 +127,7 @@
   }
   function 画面を作り直してよい_() {
     if (写真の操作中) return false;
+    try { const ae = document.activeElement; if (ae && ae.tagName && /^(TEXTAREA|INPUT)$/.test(ae.tagName) && String(location.hash || '').indexOf('/app/hqcheck') !== -1) return false; } catch (e) {} // 巡回チェックでメモ入力中は描き直さない
     try {
       const t = document.getElementById('photoThumbs');
       if (t && t.querySelector && t.querySelector('.pt')) return false; // 貼った写真がある＝消さない
@@ -340,7 +341,7 @@
        アルバイトを含む全スタッフが操作・閲覧できる（実施者の記録で本部チェックかセルフかを判別する）。 */
     { id:'hqcheck', group:'storeops', icon:'check', roles:['staff','manager','owner','hq'],
       name:{ ja:'店舗運営チェック', en:'Store Operations Check', vi:'Kiểm tra vận hành' },
-      desc:{ ja:'店舗運営チェック（セルフチェック・見本）を開く', en:'Open the store operations check (self-check)', vi:'Mở kiểm tra vận hành cửa hàng' } },
+      desc:{ ja:'巡回チェック（本部）・見本と原本', en:'Store visit check (HQ) / sample & master', vi:'Kiểm tra khi đi cửa hàng (HQ)' } },
     { id:'guide', group:'other', icon:'play', roles:['staff','manager','owner','hq'],
       name:{ ja:'使い方ガイド', en:'How to use', vi:'Hướng dẫn' },
       desc:{ ja:'このアプリの使い方（1分）', en:'Quick app guide (1 min)', vi:'Hướng dẫn nhanh (1 phút)' } },
@@ -3403,20 +3404,193 @@
      ★アプリの中に採点画面は作り込まない（9/1前に新機能を足さない）。
      ★URLはコードに書かない＝「資料リンクの管理」（大項目＝本部チェック）で本部が登録する。
        登録すれば再配信なしでここに並ぶ（サーベイの集約シートと同じ作り）。 */
+  /* ---------- 巡回チェック（本部・2026-09-16） ----------
+     ★神田さんのご要望＝紙でなくアプリで。2人が同じ画面を見ながら別々の端末で入力し、1つの結果（レポート）にしてLINEで共有する。
+     項目＝正本「店舗運営管理（確認項目）」111項目からの抜粋39（番号・配点は原本のまま＝新しいシートを立てない）
+          ＋お客様体験（満足・不満足マップ71接点）から5接点（配点なし・参考）。
+     保存＝kind:svcheck。1項目1行（item=店舗|日付|No・最新が正）＝2人が別の項目を同時に入れても上書きし合わない。
+          store は「本部」＝店舗端末には返さない（本部の評価を店舗iPadへ流さない）。90日削除の対象外。
+     採点方式は本部で未確定＝○×＋メモを正とし、点数は「参考スコア」（対象外を除いた配点の合計が分母）。 */
+  const SV_PHASES = [
+    ['gaikan',   { ja:'外観',        en:'Outside',   vi:'Bên ngoài' }],
+    ['deai',     { ja:'お出迎え',    en:'Welcome',   vi:'Đón khách' }],
+    ['order',    { ja:'ご注文',      en:'Order',     vi:'Gọi món' }],
+    ['jisshoku', { ja:'実食',        en:'Tasting',   vi:'Thử món' }],
+    ['hall',     { ja:'お食事中',    en:'Dining',    vi:'Dùng bữa' }],
+    ['kaikei',   { ja:'会計・見送り', en:'Checkout',  vi:'Thanh toán' }],
+    ['kitchen',  { ja:'キッチン',    en:'Kitchen',   vi:'Bếp' }],
+    ['anzen',    { ja:'安全',        en:'Safety',    vi:'An toàn' }],
+    ['shikumi',  { ja:'人・仕組み',  en:'People',    vi:'Con người' }],
+  ];
+  /* no＝原本のNo（数字）／'T'付き＝お客様体験の接点No（配点なし）。pt＝原本の配点。tag＝該当店のみ等 */
+  const SV_ITEMS = [
+    { no:3,   pt:1, ph:'gaikan',   t:'暖簾が汚くないか' },
+    { no:8,   pt:2, ph:'gaikan',   t:'看板の電気がついているか' },
+    { no:'T9',  pt:0, ph:'deai',   t:'最初の一声「いらっしゃいませ」（体験）', tag:'体験' },
+    { no:22,  pt:2, ph:'deai',     t:'お客様の顔を見て明るく感じのいい接客ができているか' },
+    { no:23,  pt:2, ph:'deai',     t:'挨拶・声掛けができているか' },
+    { no:30,  pt:2, ph:'order',    t:'メニュー説明・おすすめの提案はしているか' },
+    { no:'T23', pt:0, ph:'order',  t:'アレルギーの確認（体験）', tag:'体験' },
+    { no:'T24', pt:0, ph:'order',  t:'オーダーの復唱（体験）', tag:'体験' },
+    { no:31,  pt:2, ph:'order',    t:'食べ方POPをお食事提供までに渡せているか', tag:'世桜らしさ' },
+    { no:32,  pt:2, ph:'order',    t:'世桜BOOKを状況に応じてお客様に渡せているか', tag:'世桜らしさ' },
+    { no:28,  pt:2, ph:'jisshoku', t:'商品注文してから何分で提供されているか（アラカルト10分以内→○／業態により微調整あり）', tag:'時刻を記入' },
+    { no:47,  pt:3, ph:'jisshoku', t:'料理の温度と状態、味は問題ないか' },
+    { no:85,  pt:5, ph:'jisshoku', t:'食材の配置・盛付けがマニュアルの写真・図と一致している' },
+    { no:39,  pt:2, ph:'jisshoku', t:'配膳前に盛り付けや配置の確認ができているか（wチェック）' },
+    { no:43,  pt:2, ph:'jisshoku', t:'商品の説明がされているか（配膳時）' },
+    { no:36,  pt:1, ph:'jisshoku', t:'牛カツ着火剤の確認ができるか', tag:'牛カツ店のみ' },
+    { no:41,  pt:2, ph:'jisshoku', t:'カットするスタッフのレベルは合格レベルか（演出）', tag:'該当店のみ' },
+    { no:42,  pt:2, ph:'jisshoku', t:'撮影のお声がけができているか', tag:'世桜らしさ' },
+    { no:13,  pt:2, ph:'hall',     t:'テーブル・椅子・床に汚れやゴミが放置されていないか' },
+    { no:16,  pt:3, ph:'hall',     t:'トイレの便器に汚れはないか' },
+    { no:18,  pt:3, ph:'hall',     t:'トイレ裏のコードに埃が溜まっていないか' },
+    { no:29,  pt:3, ph:'hall',     t:'事前ケア・中間ケアは実施されているか' },
+    { no:48,  pt:3, ph:'hall',     t:'お冷が半分になってから即時対応できているか（3分以上→×）' },
+    { no:'T42', pt:0, ph:'hall',   t:'感想のヒアリング（体験）', tag:'体験' },
+    { no:50,  pt:5, ph:'kaikei',   t:'サプライズ＝マニュアル通りの流れで行い、全員で盛り上がれているか', tag:'該当時のみ' },
+    { no:51,  pt:5, ph:'kaikei',   t:'サプライズ＝適切な演出ができているか（ライト等のタイミング）', tag:'該当時のみ' },
+    { no:49,  pt:2, ph:'kaikei',   t:'チェキの提供ができているか', tag:'導入店舗のみ' },
+    { no:'T53', pt:0, ph:'kaikei', t:'Google口コミのご案内（体験）', tag:'体験' },
+    { no:56,  pt:5, ph:'kaikei',   t:'お帰りの挨拶ができているか（外までお見送り）' },
+    { no:70,  pt:3, ph:'kitchen',  t:'ダスターは用途に分けて使用しているか' },
+    { no:71,  pt:3, ph:'kitchen',  t:'不衛生な行動がないか（鼻・髪・スマホに触れた後そのまま作業など）' },
+    { no:87,  pt:3, ph:'kitchen',  t:'冷凍・冷蔵庫の庫内温度は適切か（冷蔵5℃以下・冷凍−18℃以下）' },
+    { no:88,  pt:3, ph:'kitchen',  t:'食品の賞味期限管理として期限シールを貼れているか' },
+    { no:91,  pt:3, ph:'kitchen',  t:'賞味期限切れの食材がないか' },
+    { no:92,  pt:3, ph:'kitchen',  t:'破損した機材や保存容器・什器などはないか' },
+    { no:94,  pt:3, ph:'kitchen',  t:'オーダー票と相違がないか（配膳前）' },
+    { no:107, pt:3, ph:'anzen',    t:'火器・刃物の扱いが適切か' },
+    { no:108, pt:3, ph:'anzen',    t:'床の水・油による転倒リスクがないか' },
+    { no:111, pt:3, ph:'anzen',    t:'消火器の期限が切れていないか' },
+    { no:62,  pt:2, ph:'shikumi',  t:'制服の着こなしが規定通りであるか' },
+    { no:99,  pt:3, ph:'shikumi',  t:'外部への情報漏えい防止（調理方法などを口外しない）' },
+    { no:101, pt:3, ph:'shikumi',  t:'秘密保持の契約をしているスタッフのみを雇用しているか（日雇い含む）', tag:'オーナー確認' },
+    { no:105, pt:2, ph:'shikumi',  t:'桜チェックリストが活用されているか', tag:'世桜の仕組み' },
+    { no:102, pt:2, ph:'shikumi',  t:'定期清掃リストを活用されているか' },
+  ];
+  const getSv = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_svcheck')) || {}; } catch { return {}; } };
+  const saveSv = (o) => { try { localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(o)); } catch (e) {} };
+  const svTodayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  let svState = { store:'', date:'', tab:'' };   // 画面の選択（端末の中だけ）
+  const svKey = (no) => `${svState.store}|${svState.date}|${no}`;
+  const svAns = (no) => getSv()[svKey(no)] || null;
+  const svMeta = () => getSv()[svKey('meta')] || {};
+  /* 参考スコア＝対象外を除いた配点の合計が分母（見本アプリと同じ考え方）。体験（pt=0）は数えない */
+  function svScore() {
+    let num = 0, den = 0, ok = 0, ng = 0, na = 0, ans = 0, expOk = 0, expN = 0;
+    SV_ITEMS.forEach(it => {
+      const a = svAns(it.no); if (!a || !a.v) return;
+      ans++;
+      if (it.pt === 0) { expN++; if (a.v === 'ok') expOk++; return; }
+      if (a.v === 'na') { na++; return; }
+      den += it.pt; if (a.v === 'ok') { ok++; num += it.pt; } else ng++;
+    });
+    return { num, den, pct: den ? Math.round(num / den * 100) : null, ok, ng, na, ans, expOk, expN, total: SV_ITEMS.length };
+  }
+  const svWd = (d) => { try { return ['日','月','火','水','木','金','土'][new Date(d + 'T00:00:00').getDay()]; } catch (e) { return ''; } };
+  /* LINEに貼る文面＝レポート。番号は原本のNo（結果を原本のシートへ転記できる） */
+  function svReportText() {
+    const sc = svScore(), m = svMeta();
+    const d = svState.date.replace(/-/g, '/');
+    const L1 = [`【世桜 巡回チェック】${svState.store}　${d}（${svWd(svState.date)}）`];
+    const who = [...new Set(SV_ITEMS.map(it => (svAns(it.no) || {}).by).filter(Boolean))].join('・');
+    L1.push(`確認者：${who || '本部'}　方法：③現地入り` + (m.menu ? `　実食：${m.menu}` : '') + (m.orderAt && m.servedAt ? `（注文${m.orderAt}→提供${m.servedAt}）` : ''));
+    L1.push(`結果：原本項目 ○${sc.ok}／×${sc.ng}／対象外${sc.na}` + (sc.pct != null ? `　参考スコア ${sc.pct}%` : '') + (sc.expN ? `　体験 ○${sc.expOk}/${sc.expN}` : ''));
+    const good = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ok' && (a.memo || '').trim(); });
+    const bad  = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ng'; });
+    if (good.length) { L1.push('■ 良かった点'); good.forEach(it => L1.push(`・${it.t.split('（')[0]}：${svAns(it.no).memo.trim()}`)); }
+    if (bad.length)  { L1.push('■ 気になる点（×）'); bad.forEach(it => { const a = svAns(it.no); L1.push(`・${typeof it.no === 'number' ? 'No.' + it.no + ' ' : ''}${it.t.split('（')[0]}` + ((a.memo || '').trim() ? `：${a.memo.trim()}` : '')); }); }
+    if ((m.summary || '').trim()) { L1.push('■ 総評'); L1.push(m.summary.trim()); }
+    L1.push('※ 番号は【世桜】店舗管理チェックシート_原本のNo。採点方式は本部で確定待ちのため点数は参考です');
+    return L1.join('\n');
+  }
   APP_VIEWS.hqcheck = () => {
+    const role = getRole(), isHQ = role === 'hq';
     const mats = getLinks().filter(l => l.mcat === 'hqcheck' && isHttp(l.url));
-    return `
-      ${NOTE({ ja:'◆ 本部専用：店舗を見る基準（店舗管理チェックシート）の見本アプリと原本への入口です。', en:'◆ HQ only: entry to the store-check sample app and the master sheet.', vi:'◆ Chỉ HQ: lối vào bản mẫu kiểm tra cửa hàng và bảng gốc.' })}
+    const links = `
       <div class="card">
         <h3>${L({ ja:'チェックの見本・原本', en:'Sample & master', vi:'Bản mẫu & bản gốc' })}</h3>
         ${mats.length ? `
           <div class="homelinks">
             ${mats.map(l => `<button class="homelink" data-openurl="${esc(openUrlFor(l.url))}"><span class="hl-ic">${svg('check')}</span><span class="hl-t">${esc(l.title)}</span><span class="hl-c">${svg('chev')}</span></button>`).join('')}
           </div>`
-        : `<p class="muted">${L({ ja:'まだ登録されていません。「資料リンクの管理」で大項目を「店舗運営チェック」にして登録すると、ここから開けるようになります（見本アプリのURL・原本のスプレッドシートなど）。', en:'Not registered yet. Add links in “Manage material links” under “HQ check” (sample-app URL, master sheet, etc.).', vi:'Chưa đăng ký. Thêm ở “Quản lý liên kết” với nhóm “Kiểm tra HQ”.' })}</p>
+        : `<p class="muted">${L({ ja:'まだ登録されていません。「資料リンクの管理」で大項目を「店舗運営チェック」にして登録すると、ここから開けるようになります。', en:'Nothing registered yet. Register links under "Store operations check" in Material links.', vi:'Chưa có liên kết. Đăng ký trong Quản lý liên kết.' })}</p>
            <button class="mini" data-open="materials">${L({ ja:'資料リンクの管理を開く', en:'Open material links', vi:'Mở quản lý liên kết' })}</button>`}
-        <div class="hint">${L({ ja:'※ 点数の正は原本のスプレッドシートです。見本アプリの入力は端末の中だけに残り、どこにも送られません。', en:'The master sheet is the source of truth. Sample-app input stays on this device only.', vi:'Bảng gốc là chuẩn. Nhập ở bản mẫu chỉ lưu trên máy này.' })}</div>
+        <div class="hint">${L({ ja:'※ 点数の正は原本のスプレッドシートです。', en:'The master sheet is the source of truth for scores.', vi:'Bảng gốc là nguồn điểm chính thức.' })}</div>
       </div>`;
+    if (!isHQ) return `${NOTE({ ja:'◆ 店舗を見る基準（店舗管理チェックシート）の見本と原本への入口です。', en:'◆ Entry to the store-check sample and master sheet.', vi:'◆ Lối vào bản mẫu và bản gốc.' })}${links}`;
+
+    /* 本部＝巡回チェック本体 */
+    const stores = visibleStores();
+    if (!svState.store || !stores.includes(svState.store)) svState.store = (getStoreSel() !== 'all' && stores.includes(getStoreSel())) ? getStoreSel() : (stores[0] || '');
+    if (!svState.date) svState.date = svTodayStr();
+    if (!svState.tab) svState.tab = SV_PHASES[0][0];
+    const sc = svScore(); const m = svMeta();
+    const cnt = (ph) => { const its = SV_ITEMS.filter(i => i.ph === ph); return [its.filter(i => { const a = svAns(i.no); return a && a.v; }).length, its.length]; };
+    const tabs = SV_PHASES.map(([k, l]) => { const [d, n] = cnt(k); return `<button data-vctab="${k}" class="vctab ${svState.tab === k ? 'on' : ''} ${d === n ? 'done' : ''}">${esc(L(l))}<small>${d}/${n}</small></button>`; }).join('')
+      + `<button data-vctab="report" class="vctab rep ${svState.tab === 'report' ? 'on' : ''}">${esc(L({ ja:'結果', en:'Report', vi:'Kết quả' }))}</button>`;
+    const item = (it) => {
+      const a = svAns(it.no) || {};
+      const showMemo = a.v === 'ng' || (a.memo || '').trim() || a.v === 'ok';
+      return `<div class="svit ${a.v ? 'v-' + a.v : ''}" data-svno="${esc(String(it.no))}">
+        <div class="svit-h"><span class="svit-no">${typeof it.no === 'number' ? 'No.' + it.no : '体験'}</span>${it.pt ? `<span class="svit-pt pt${it.pt}">${it.pt}点</span>` : ''}${it.tag ? `<span class="svit-tag">${esc(it.tag)}</span>` : ''}${a.by ? `<span class="svit-by">${esc(a.by)}</span>` : ''}</div>
+        <div class="svit-t">${esc(it.t)}</div>
+        <div class="svjudge">
+          <button data-svv="ok" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'ok'}">○</button>
+          <button data-svv="ng" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'ng'}">×</button>
+          <button data-svv="na" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'na'}">${esc(L({ ja:'対象外', en:'N/A', vi:'Không áp dụng' }))}</button>
+        </div>
+        ${showMemo ? `<textarea class="svmemo" data-svmemo="${esc(String(it.no))}" rows="2" placeholder="${esc(a.v === 'ok' ? L({ ja:'良かった点があればひと言（レポートに載ります）', en:'Note a good point (optional)', vi:'Điểm tốt (tuỳ chọn)' }) : L({ ja:'何が・どこが（レポートに載ります）', en:'What / where', vi:'Điều gì / ở đâu' }))}">${esc(a.memo || '')}</textarea>` : ''}
+      </div>`;
+    };
+    let body;
+    if (svState.tab === 'report') {
+      const txt = svReportText();
+      body = `
+        <div class="card svreport">
+          <div class="svscore"><b>${sc.pct != null ? sc.pct + '%' : '—'}</b><span>${esc(L({ ja:'参考スコア（対象外を除く）', en:'Reference score', vi:'Điểm tham khảo' }))}</span></div>
+          <div class="svcounts">○ ${sc.ok}　× ${sc.ng}　${esc(L({ ja:'対象外', en:'N/A', vi:'K/AD' }))} ${sc.na}　／　${esc(L({ ja:'未入力', en:'Blank', vi:'Trống' }))} ${sc.total - sc.ans}</div>
+          <label class="fl">${esc(L({ ja:'総評（良かった点 → 気になる点 の順で）', en:'Summary', vi:'Tổng kết' }))}</label>
+          <textarea id="sv_summary" rows="4">${esc(m.summary || '')}</textarea>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn-primary" id="svShare" style="flex:1">${esc(L({ ja:'LINEで共有（テキスト）', en:'Share (text)', vi:'Chia sẻ (văn bản)' }))}</button>
+            <button class="btn" id="svCopy">${esc(L({ ja:'コピー', en:'Copy', vi:'Sao chép' }))}</button>
+          </div>
+          <pre class="svpre" id="svText">${esc(txt)}</pre>
+          <div class="hint">${esc(L({ ja:'※ 共有ボタンでLINEを選ぶと、この文面がそのまま送れます（写真は次の版で）。番号は原本のNoなので、原本のシートへ転記できます。', en:'Choose LINE in the share sheet to send this text.', vi:'Chọn LINE trong bảng chia sẻ để gửi văn bản này.' }))}</div>
+        </div>`;
+    } else {
+      const its = SV_ITEMS.filter(i => i.ph === svState.tab);
+      const idx = SV_PHASES.findIndex(p => p[0] === svState.tab);
+      const prev = idx > 0 ? SV_PHASES[idx - 1][0] : null, next = idx < SV_PHASES.length - 1 ? SV_PHASES[idx + 1][0] : 'report';
+      body = `
+        ${svState.tab === 'jisshoku' ? `<div class="card svmeta">
+          <label class="fl">${esc(L({ ja:'実食メニュー／注文時刻→提供時刻', en:'Dish / ordered → served', vi:'Món / gọi → phục vụ' }))}</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <input id="sv_menu" type="text" placeholder="${esc(L({ ja:'例）牛カツ定食', en:'e.g. Gyukatsu set', vi:'VD: Set Gyukatsu' }))}" value="${esc(m.menu || '')}" style="flex:2;min-width:120px">
+            <input id="sv_orderAt" type="time" value="${esc(m.orderAt || '')}" style="flex:1;min-width:90px">
+            <input id="sv_servedAt" type="time" value="${esc(m.servedAt || '')}" style="flex:1;min-width:90px">
+          </div></div>` : ''}
+        <div class="card svlist">${its.map(item).join('')}</div>
+        <div class="svnav">
+          ${prev ? `<button class="btn" data-vctab="${prev}">◀ ${esc(L(SV_PHASES[idx - 1][1]))}</button>` : '<span></span>'}
+          <button class="btn-primary" data-vctab="${next}">${next === 'report' ? esc(L({ ja:'結果へ ▶', en:'Report ▶', vi:'Kết quả ▶' })) : esc(L(SV_PHASES[idx + 1][1])) + ' ▶'}</button>
+        </div>`;
+    }
+    return `
+      ${NOTE({ ja:'◆ 本部専用：巡回チェック（正本39項目の抜粋＋お客様体験5接点）。2人で別々の端末から入力しても1つの結果になります（約10秒ごとに合流）。', en:'◆ HQ only: store visit check. Two people can enter from separate devices; results merge.', vi:'◆ Chỉ HQ: kiểm tra khi đi cửa hàng. Hai người nhập từ hai máy, kết quả gộp chung.' })}
+      <div class="card svhead">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <select id="sv_store" style="flex:2;min-width:150px">${stores.map(st => `<option${st === svState.store ? ' selected' : ''}>${esc(st)}</option>`).join('')}</select>
+          <input id="sv_date" type="date" value="${esc(svState.date)}" style="flex:1;min-width:130px">
+        </div>
+        <div class="svbar"><div class="svbar-in" style="width:${Math.round(sc.ans / sc.total * 100)}%"></div></div>
+        <div class="svbar-t"><span>${esc(L({ ja:'入力', en:'Done', vi:'Đã nhập' }))} ${sc.ans}/${sc.total}</span><span>${sc.pct != null ? esc(L({ ja:'参考スコア', en:'Score', vi:'Điểm' })) + ' ' + sc.pct + '%' : ''}</span></div>
+      </div>
+      <div class="vctabs">${tabs}</div>
+      ${body}
+      ${links}`;
   };
 
   // サーベイ集計（本部・オーナー・店長向け）：タブごとに出し分け（sum＝概要／route＝来店／trend＝推移／voice＝お声／stores＝店舗別）
@@ -8664,6 +8838,53 @@
       saveLinks(links); const t = Date.now(); lastSync = t; render(true);
       postReport({ kind:'linkset', store:'', note: JSON.stringify(links), t });
     });
+    // 巡回チェック（本部）＝1項目1行で保存。2人同時入力のため、この画面のあいだは約10秒ごとに合流する
+    const svPush = (no, patch) => {
+      const all = getSv(); const k = svKey(no); const a = getAuth();
+      const cur = Object.assign({}, all[k] || {}, patch, { by: (a && a.name) || '本部', t: Date.now() });
+      all[k] = cur; saveSv(all);
+      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(cur), t: cur.t });
+      return cur;
+    };
+    document.querySelectorAll('[data-vctab]').forEach(b => b.onclick = () => { svState.tab = b.dataset.vctab; render(); });   // ※data-svtab はサーベイのタブで使用済み
+    const svStore = byId('sv_store'); if (svStore) svStore.onchange = () => { svState.store = svStore.value; render(true); };
+    const svDate = byId('sv_date'); if (svDate) svDate.onchange = () => { svState.date = svDate.value || svTodayStr(); render(true); };
+    document.querySelectorAll('[data-svv]').forEach(b => b.onclick = () => {
+      const no = b.dataset.svno; const it = SV_ITEMS.find(i => String(i.no) === no); if (!it) return;
+      const cur = svAns(it.no) || {};
+      svPush(it.no, { v: cur.v === b.dataset.svv ? '' : b.dataset.svv });   // 同じ印をもう一度＝取り消し
+      render(true);
+    });
+    document.querySelectorAll('[data-svmemo]').forEach(ta => {
+      ta.onchange = () => { const it = SV_ITEMS.find(i => String(i.no) === ta.dataset.svmemo); if (it) svPush(it.no, { memo: ta.value }); };
+    });
+    ['sv_menu', 'sv_orderAt', 'sv_servedAt', 'sv_summary'].forEach(id => {
+      const el = byId(id); if (!el) return;
+      el.onchange = () => { const key = id.replace('sv_', ''); svPush('meta', { [key]: el.value }); if (id === 'sv_summary') { const p = byId('svText'); if (p) p.textContent = svReportText(); } };
+    });
+    const svShare = byId('svShare');
+    if (svShare) svShare.onclick = async () => {
+      const text = svReportText();
+      try {
+        if (navigator.share) { await navigator.share({ title: '世桜 巡回チェック', text }); return; }
+      } catch (e) { if (e && e.name === 'AbortError') return; }
+      try { await navigator.clipboard.writeText(text); toast(L({ ja:'共有シートが使えないため、文面をコピーしました。LINEに貼り付けてください', en:'Copied. Paste into LINE.', vi:'Đã sao chép. Dán vào LINE.' })); }
+      catch (e) { toast(L({ ja:'コピーできませんでした。下の文面を長押しでコピーしてください', en:'Could not copy. Long-press the text below.', vi:'Không sao chép được. Nhấn giữ văn bản bên dưới.' })); }
+    };
+    const svCopy = byId('svCopy');
+    if (svCopy) svCopy.onclick = async () => {
+      try { await navigator.clipboard.writeText(svReportText()); toast(L({ ja:'コピーしました', en:'Copied', vi:'Đã sao chép' })); }
+      catch (e) { toast(L({ ja:'コピーできませんでした。下の文面を長押しでコピーしてください', en:'Could not copy.', vi:'Không sao chép được.' })); }
+    };
+    /* この画面にいるあいだだけ、約10秒ごとに合流（相手の入力を取り込む）。画面を離れたら止める */
+    if (typeof setInterval === 'function') {
+      if (window._svPoll) { clearInterval(window._svPoll); window._svPoll = null; }
+      if (byId('sv_store') && useBackend()) window._svPoll = setInterval(() => {
+        if (String(location.hash || '').indexOf('/app/hqcheck') === -1) { clearInterval(window._svPoll); window._svPoll = null; return; }
+        syncReports(true);
+      }, 10000);
+    }
+
     // よくある質問（ルール集）：本部が項目を追加・削除→全端末同期（faqset＝配列を丸ごと保存し最新版が正）
     const faqAdd = document.getElementById('faqAdd');
     if (faqAdd) faqAdd.onclick = () => {
@@ -9269,7 +9490,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null;
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null; const svc={}, svcT={};
     /* ★同じ提出が何行にもなっているとき、1件にまとめて見せる（2026-09-03 実機で発覚）。
        受け取り側は1回のPOSTごとに1行を足す作りのため、返事が届かずに送り直されると
        中身が同じ行が並ぶ（長堀橋店の日計レポートが同じ写真で8行）。
@@ -9336,6 +9557,8 @@
           if (commtryT[kk] == null || t >= commtryT[kk]) { commtryT[kk]=t; commtryOn[kk]=!(p2 && p2.on === false); } } break;
         case 'linkset': { const p=pj(r.note); if (Array.isArray(p) && (linksetT==null || t>=linksetT)) { linkset=p; linksetT=t; } } break; // 資料リンク一覧は最新版が正
         case 'faqset': { const p=pj(r.note); if (Array.isArray(p) && (faqsetT==null || t>=faqsetT)) { faqset=p; faqsetT=t; } } break; // よくある質問（本部追加分）は最新版が正
+        // 巡回チェック（本部）＝店舗|日付|No ごとに最新が正（2人同時入力の合流）
+        case 'svcheck': { const p=pj(r.note); const k=r.item; if (!k) break; if (svcT[k]==null || t>=svcT[k]) { svc[k]=p||{}; svcT[k]=t; } } break;
         // タスク（試行）＝本人のuidの行だけ・最新版が正（バックエンドも本人にしか返さないが、端末側でも念のため絞る）
         case 'hqtask': { const a0 = getAuth(); if (!a0 || String(r.item || '') !== String(a0.uid || '')) break; const p=pj(r.note); if (Array.isArray(p) && (hqtaskT==null || t>=hqtaskT)) { hqtask=p; hqtaskT=t; } } break;
       }
@@ -9390,6 +9613,7 @@
     if (linkset !== null) set('yosakura_demo_links', linkset); // linksetが無い同期では既存の資料リンクを保持
     if (faqset !== null) set('yosakura_demo_faq', faqset); // faqsetが無い同期では既存のよくある質問を保持
     if (hqtask !== null) set('yosakura_demo_hqtask', hqtask); // hqtaskが無い同期では端末のタスクを保持（黙って消さない）
+    if (Object.keys(svc).length) mergeMap('yosakura_demo_svcheck', svc); // 巡回チェック＝届いたキーだけ差し替え
   }
   async function syncReports(force) {
     if (!useBackend()) return;

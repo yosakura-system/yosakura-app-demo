@@ -5076,5 +5076,51 @@ console.log('== タスク（試行・神田さんのIDだけ）2026-09-15 神田
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要望＝紙でなくアプリ・2人同時入力・LINE共有 ==');
+{
+  const seedAuth = (uid, role) => run(() => {
+    setLS(role, 'all', 'ja');
+    localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid, name: uid === 'kanda' ? '神田' : '常山', role, stores:['*'] }));
+  });
+  const S = '牛カツ世桜 長堀橋店', D = '2026-09-17';
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'svcheck', store:'本部', item:`${S}|${D}|47`, note: JSON.stringify({ v:'ok', memo:'衣がサクサク', by:'神田', t:1 }), t: 5000, id:'s1' },
+    { kind:'svcheck', store:'本部', item:`${S}|${D}|16`, note: JSON.stringify({ v:'ng', memo:'便座の裏', by:'常山', t:2 }), t: 5001, id:'s2' },
+    { kind:'svcheck', store:'本部', item:`${S}|${D}|36`, note: JSON.stringify({ v:'na', by:'神田', t:3 }), t: 5002, id:'s3' },
+    { kind:'svcheck', store:'本部', item:`${S}|${D}|meta`, note: JSON.stringify({ menu:'牛カツ定食', orderAt:'13:35', servedAt:'13:47', summary:'全体に良い', by:'神田', t:4 }), t: 5003, id:'s4' },
+  ]};
+  // ① 本部＝巡回チェックが出る。段階タブ・○×対象外・原本Noと配点
+  seedAuth('kanda', 'hq');
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/hqcheck';
+  let h = registry.app.innerHTML;
+  ok(/id="sv_store"/.test(h) && /data-vctab="jisshoku"/.test(h) && /data-vctab="report"/.test(h), '本部には巡回チェック（段階タブ＋結果）が出る');
+  ok(/No\.3<\/span>/.test(h) && /暖簾が汚くないか/.test(h), '最初の段階＝外観に原本No.3が出る（番号・文言は原本のまま）');
+  ok(/data-svv="ok"[^>]*data-svno="3"/.test(h) && /data-svv="ng"[^>]*data-svno="3"/.test(h) && /data-svv="na"[^>]*data-svno="3"/.test(h), '各項目に ○・×・対象外 の3つ');
+  ok(/チェックの見本・原本/.test(h), '従来の見本・原本リンクも残る');
+  // ② 実食の段階＝同期で届いた○×が反映（2人の入力が1つに）・メニュー欄
+  location.hash = '#/app/hqcheck';
+  const srcH = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/case 'svcheck':[^\n]*svcT\[k\]==null \|\| t>=svcT\[k\]/.test(srcH), '同期＝店舗|日付|No ごとに最新が正（別の端末の入力を上書きし合わない）');
+  ok(/mergeMap\('yosakura_demo_svcheck', svc\)/.test(srcH), '届いたキーだけ差し替える（端末側の入力を消さない）');
+  ok(/kind:'svcheck', store:'本部'/.test(srcH), '★保存の行は store=本部＝店舗端末には返らない（本部の評価を店舗iPadへ流さない）');
+  // ③ 店舗の方には巡回チェックを出さない（従来どおりリンクだけ）
+  seedAuth('ipad', 'staff');
+  await new Promise(r=>setTimeout(r, 50));
+  location.hash = '#/app/hqcheck';
+  h = registry.app.innerHTML;
+  ok(!/id="sv_store"/.test(h) && !/data-vctab=/.test(h), '★店舗の方には巡回チェックが出ない');
+  ok(/チェックの見本・原本/.test(h), '店舗の方には従来の見本・原本の入口だけ');
+  // ④ 作りの保証
+  ok(/'T9'|'T23'|'T24'|'T42'|'T53'/.test(srcH), 'お客様体験（71接点）から5接点を配点なしで入れている');
+  ok(/navigator\.share\(\{ title: '世桜 巡回チェック', text \}\)/.test(srcH), 'LINE共有＝共有シート（navigator.share）。使えない端末はコピーに落ちる');
+  ok(/番号は【世桜】店舗管理チェックシート_原本のNo/.test(srcH), 'レポートの文面に「番号は原本のNo」と入る（原本へ転記できる）');
+  ok(/ae\.tagName && \/\^\(TEXTAREA\|INPUT\)\$\/\.test\(ae\.tagName\)/.test(srcH), 'メモ入力中は合流の描き直しをしない（書きかけが消えない）');
+  const svN = (srcH.match(/\{ no:(?:\d+|'T\d+'),\s+pt:\d, ph:'/g) || []).length;
+  ok(svN === 44, '項目は 39（原本）＋5（体験）＝44（実際 ' + svN + '）');
+  FETCH_ROWS = { ok:false };
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
