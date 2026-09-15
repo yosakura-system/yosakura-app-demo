@@ -5270,26 +5270,33 @@
   const TASK_STATE = { open:{ ja:'未完了', en:'Open', vi:'Chưa xong' }, done:{ ja:'完了', en:'Done', vi:'Xong' }, hold:{ ja:'保留', en:'On hold', vi:'Tạm dừng' } };
   const TASK_MARKS = ['done', 'open', 'hold'];   // ボタンの並び＝完了／未完了／保留（神田さん指定）
   const TASK_BOX = '<svg class="bx" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2"></rect><path d="M4.6 8.2 6.9 10.6 11.5 5.7"></path></svg>';
+  let tasksUndo = null;   // 直前の操作（押し間違い用）＝1回だけ戻せる。下までスクロールして探さなくて済む
+  let tasksQ = '';        // 絞り込みのことば（描き直しても消えない）
   APP_VIEWS.tasks = () => {
     const list = getTasks().filter(x => x && x.id);
-    const item = (t) => `<div class="rep tk tk-${esc(t.state || 'open')}" style="display:block;padding:10px 2px">
-        <div class="l1" style="font-weight:600">${esc(t.title || '')}</div>
+    /* ★タブ分け（2026-09-15 神田さんのご指摘＝縦に積むとふらふらして見にくい・押し間違えると下へ行ってしまう）。
+       タブはURL（?tab=）に持つ＝戻るで戻れる・描き直しても同じタブに留まる */
+    const tab = (() => { const t = currentRoute().params.get('tab'); return TASK_STATE[t] ? t : 'open'; })();
+    const cnt = (st) => list.filter(t => (t.state || 'open') === st).length;
+    const g = list.filter(t => (t.state || 'open') === tab);
+    const item = (t) => `<div class="rep tk tk-${esc(t.state || 'open')}" data-tktext="${esc(((t.title || '') + ' ' + (t.memo || '')).toLowerCase())}" style="display:block;padding:10px 2px">
+        <div class="l1" style="font-weight:600;line-height:1.45">${esc(t.title || '')}</div>
         ${t.memo ? `<div class="l2" style="white-space:pre-wrap;margin-top:4px">${esc(t.memo)}</div>` : ''}
         <div class="tkmarks" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
           ${TASK_MARKS.map(k => `<button class="btn sm tkmk" data-tkmark="${k}" data-tkid="${esc(t.id)}" aria-pressed="${(t.state || 'open') === k}">${TASK_BOX}${esc(L(TASK_STATE[k]))}</button>`).join('')}
           <button class="btn sm" data-tkdel="${esc(t.id)}" style="margin-left:auto">${esc(L({ ja:'削除', en:'Delete', vi:'Xoá' }))}</button>
         </div></div>`;
-    const sec = (st, ttl) => { const g = list.filter(t => (t.state || 'open') === st); if (!g.length) return '';
-      return `<div class="card"><h3>${esc(L(ttl))}　<small style="color:#8a8">${g.length}</small></h3>${g.map(item).join('')}</div>`; };
     return `
-      ${NOTE({ ja:'◆ 試行中（神田さんのIDだけに表示）。レ点を押すだけで 完了／未完了／保留 に仕分けできます。保留は消えません', en:'◆ Trial (visible to Kanda only). Tap to mark done / open / on hold.', vi:'◆ Thử nghiệm (chỉ Kanda thấy). Chạm để đánh dấu xong / chưa / tạm dừng.' })}
-      <div class="card"><h3>${esc(L({ ja:'タスクを追加', en:'Add a task', vi:'Thêm công việc' }))}</h3>
-        <input id="tk_title" type="text" placeholder="${esc(L({ ja:'例）集約スプシのURLを各チームへ共有', en:'e.g. Share the summary sheet URL', vi:'VD: Chia sẻ URL bảng tổng hợp' }))}">
+      ${NOTE({ ja:'◆ 試行中（神田さんのIDだけに表示）。レ点を押すと、そのタスクは押した先のタブへ移ります。押し間違えたら上の「戻す」で', en:'◆ Trial (Kanda only). Tap a mark to move the task to that tab. Use Undo if you tapped wrong.', vi:'◆ Thử nghiệm (chỉ Kanda). Chạm để chuyển sang tab tương ứng. Nhấn Hoàn tác nếu nhầm.' })}
+      <div class="seg tktabs" style="margin-bottom:10px">${['open','hold','done'].map(k => `<button data-tktab="${k}" class="${tab === k ? 'on' : ''}">${esc(L(TASK_STATE[k]))} ${cnt(k)}</button>`).join('')}</div>
+      ${tasksUndo ? `<div class="card" style="padding:8px 12px;display:flex;align-items:center;gap:8px"><span class="l2" style="flex:1">${esc(L({ ja:'直前：', en:'Last: ', vi:'Vừa rồi: ' }))}「${esc(String(tasksUndo.title || '').slice(0, 24))}」→ ${esc(L(TASK_STATE[tasksUndo.to] || TASK_STATE.open))}</span><button class="btn sm" data-tkundo="1">${esc(L({ ja:'戻す', en:'Undo', vi:'Hoàn tác' }))}</button></div>` : ''}
+      <input id="tk_q" type="search" placeholder="${esc(L({ ja:'ことばで絞り込む（例：長田・スプシ）', en:'Filter by word', vi:'Lọc theo từ' }))}" style="margin-bottom:8px">
+      ${tab === 'open' ? `<details class="card" style="padding:8px 12px"><summary style="cursor:pointer;font-weight:600">＋ ${esc(L({ ja:'タスクを追加', en:'Add a task', vi:'Thêm công việc' }))}</summary>
+        <input id="tk_title" type="text" style="margin-top:8px" placeholder="${esc(L({ ja:'例）集約スプシのURLを各チームへ共有', en:'e.g. Share the summary sheet URL', vi:'VD: Chia sẻ URL bảng tổng hợp' }))}">
         <textarea id="tk_memo" rows="2" placeholder="${esc(L({ ja:'メモ（任意）', en:'Memo (optional)', vi:'Ghi chú (tuỳ chọn)' }))}"></textarea>
         <button class="btn" id="tkAdd" style="margin-top:8px">${esc(L({ ja:'追加する', en:'Add', vi:'Thêm' }))}</button>
-      </div>
-      ${sec('open', TASK_STATE.open)}${sec('hold', TASK_STATE.hold)}${sec('done', TASK_STATE.done)}
-      ${list.length ? '' : `<div class="card"><div class="muted">${esc(L({ ja:'まだタスクがありません。上の欄から追加してください。', en:'No tasks yet.', vi:'Chưa có công việc.' }))}</div></div>`}`;
+      </details>` : ''}
+      <div class="card" id="tk_list">${g.length ? g.map(item).join('') : `<div class="muted">${esc(L({ ja:'この一覧は空です。', en:'Nothing here.', vi:'Trống.' }))}</div>`}</div>`;
   };
 
   /* 棚卸・在庫入力 */
@@ -8698,25 +8705,42 @@
 
     // タスク（試行・神田さんのIDだけ）＝一覧を丸ごと保存し最新版が正（faqset と同じ型）
     const tkPush = (list) => {
-      saveTasks(list); const t = Date.now(); lastSync = t; render(true);
+      saveTasks(list); const t = Date.now(); lastSync = t; render(true);   // ★同じタブ・同じ位置のまま描き直す（ふらふらしない）
       const a = getAuth(); postReport({ kind:'hqtask', store:'', item: String((a && a.uid) || ''), note: JSON.stringify(list), t });
     };
+    document.querySelectorAll('[data-tktab]').forEach(b => b.onclick = () => { location.hash = '#/app/tasks?tab=' + b.dataset.tktab; });
+    const tkQ = byId('tk_q');
+    if (tkQ) {   // 絞り込み＝描き直さずに表示だけ切り替える（1文字ごとに画面を作り直すと入力が途切れる）
+      tkQ.value = tasksQ;
+      const applyQ = () => { const q = (tkQ.value || '').trim().toLowerCase(); tasksQ = q;
+        document.querySelectorAll('.tk[data-tktext]').forEach(el => { el.style.display = (q && !(el.dataset.tktext || '').includes(q)) ? 'none' : 'block'; }); };
+      tkQ.oninput = applyQ; applyQ();
+    }
     const tkAdd = byId('tkAdd');
     if (tkAdd) tkAdd.onclick = () => {
       const title = ((byId('tk_title') || {}).value || '').trim();
       const memo = ((byId('tk_memo') || {}).value || '').trim();
       if (!title) { toast(L({ ja:'タスク名を入力してください', en:'Enter a task name', vi:'Nhập tên công việc' })); return; }
       const list = getTasks(); list.unshift({ id:'tk' + Date.now(), title, memo, state:'open', t: Date.now() });
-      toast(L({ ja:'追加しました', en:'Added', vi:'Đã thêm' })); tkPush(list);
+      tasksUndo = null; toast(L({ ja:'追加しました', en:'Added', vi:'Đã thêm' })); tkPush(list);
     };
     document.querySelectorAll('[data-tkmark]').forEach(b => b.onclick = () => {
       const list = getTasks(); const i = list.findIndex(x => x && x.id === b.dataset.tkid);
       if (i < 0) return;
-      list[i] = Object.assign({}, list[i], { state: b.dataset.tkmark, u: Date.now() }); tkPush(list);
+      const from = list[i].state || 'open', to = b.dataset.tkmark;
+      if (from === to) return;
+      tasksUndo = { id: list[i].id, title: list[i].title, from, to };   // 押し間違い用に直前を覚える
+      list[i] = Object.assign({}, list[i], { state: to, u: Date.now() }); tkPush(list);
+    });
+    document.querySelectorAll('[data-tkundo]').forEach(b => b.onclick = () => {
+      if (!tasksUndo) return;
+      const list = getTasks(); const i = list.findIndex(x => x && x.id === tasksUndo.id);
+      if (i >= 0) list[i] = Object.assign({}, list[i], { state: tasksUndo.from, u: Date.now() });
+      tasksUndo = null; tkPush(list);
     });
     document.querySelectorAll('[data-tkdel]').forEach(b => b.onclick = () => {
       if (!confirm(L({ ja:'このタスクを削除しますか？（消さずに残すなら「保留」にしてください）', en:'Delete this task? (Use On hold to keep it.)', vi:'Xoá công việc này? (Dùng Tạm dừng để giữ lại.)' }))) return;
-      tkPush(getTasks().filter(x => x && x.id !== b.dataset.tkdel));
+      tasksUndo = null; tkPush(getTasks().filter(x => x && x.id !== b.dataset.tkdel));
     });
 
     document.querySelectorAll('[data-openurl]').forEach(b => b.onclick = () => {
