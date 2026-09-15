@@ -567,3 +567,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .tkmk[data-tkmark="open"][aria-pressed="true"]{color:#8E354A;background:#f6e4e8}
 .tk-done .l1{text-decoration:line-through;opacity:.65}
 .tk-hold .l1{text-decoration:line-through;text-decoration-style:dotted;opacity:.8}
+/* ★2026-09-15 タスク（試行）が「フラフラする」＝メモにURL・長いパス（折り返せない文字列）が入ると
+   カードが画面より横に広がり、触るたびに左右へ揺れていた。どんな文字列でも枠の中で折り返す */
+#tk_list, .tk { max-width: 100%; overflow: hidden; }
+#tk_list { overscroll-behavior: contain; }
+.tk .l1, .tk .l2 { overflow-wrap: anywhere; word-break: break-word; }
+.tk .l2 { font-size: 12px; color: var(--soft, #6B6459); }
+.tktabs button { flex: 1 1 0; min-width: 0; }
+
