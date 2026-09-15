@@ -112,6 +112,9 @@ function データを入れる(env) {
   sh.appendRow(['r7', t, 'emg', '和牛世桜 広島店', '', '', '{}', '[]']);
   /* ★v228＝みんなの投稿へのコメント。投稿と同じく全店に届かないと会話が成り立たない（2026-09-15） */
   sh.appendRow(['r8', t, 'commcmt', '寿司世桜 心斎橋店', 'community|1|寿司世桜 心斎橋店', '', '{}', '[]']);
+  /* ★本部の個人タスク（試行・2026-09-15）＝item に持ち主のuid。本人にしか返さない */
+  sh.appendRow(['r9',  t, 'hqtask', '', 'honbu',  '', '[]', '[]']);
+  sh.appendRow(['r10', t, 'hqtask', '', 'honbu2', '', '[]', '[]']);
 }
 
 console.log('\n===== ① フラグOFF（既定）＝挙動が変わらない =====\n');
@@ -119,7 +122,7 @@ console.log('\n===== ① フラグOFF（既定）＝挙動が変わらない ===
   const env = 偽環境を作る({});
   データを入れる(env);
   const d = GET(env, {});
-  確認('トークン無しで全行が返る（従来どおり）', d.ok && d.reports.length === 8, d.reports && d.reports.length);
+  確認('トークン無しで全行が返る（従来どおり）', d.ok && d.reports.length === 10, d.reports && d.reports.length);
   const p = POST(env, { kind: 'kizuki', store: '和牛世桜 広島店', item: 'x', note: '', photos: [], t: Date.now() });
   確認('トークン無しで提出できる（従来どおり）', p.ok === true, p);
   確認('ENABLE_AUTH は未設定＝既定でOFF', 実行(env, 'authOn_()') === false);
@@ -169,6 +172,7 @@ console.log('\n===== ⑤ 読みの絞り込み（フラグON） =====\n');
   データを入れる(env);
   実行(env, `認証_利用者を登録('hiroshima-ipad', '広島 iPad', 'staff', '和牛世桜 広島店', 'sakura01')`);
   実行(env, `認証_利用者を登録('honbu', '本部', 'hq', '', 'sakura99')`);
+  実行(env, `認証_利用者を登録('honbu2', '本部2', 'hq', '', 'sakura98')`);
   const 拒否 = GET(env, {});
   確認('★トークン無しでは何も返さない', 拒否.ok === false && 拒否.needLogin === true, 拒否);
   const st = POST(env, { action: 'login', uid: 'hiroshima-ipad', pw: 'sakura01' }).auth.token;
@@ -181,7 +185,13 @@ console.log('\n===== ⑤ 読みの絞り込み（フラグON） =====\n');
   確認('★他店の提出（r2）は返らない', !ids.includes('r2'), ids);
   確認('★公益通報（r6）は自店のぶんでも返らない＝通報者を守る', !ids.includes('r6'), ids);
   const 本 = GET(env, { token: hq });
-  確認('本部＝全部返る（公益通報も含む）', 本.reports.length === 8, 本.reports.length);
+  確認('本部＝全部返る（公益通報も含む）', 本.reports.length === 9, 本.reports.length);
+  const 本ids = 本.reports.map(r => r.id);
+  確認('★本部でも、個人タスクは自分のぶん（r9）だけ＝他の本部の方のぶん（r10）は返らない', 本ids.includes('r9') && !本ids.includes('r10'), 本ids);
+  確認('★店舗端末には個人タスクを一切返さない', !ids.includes('r9') && !ids.includes('r10'), ids);
+  const hq2 = POST(env, { action: 'login', uid: 'honbu2', pw: 'sakura98' }).auth.token;
+  const 本2 = GET(env, { token: hq2 }).reports.map(r => r.id);
+  確認('もう一人の本部には、その人のぶん（r10）だけ', 本2.includes('r10') && !本2.includes('r9'), 本2);
   const 偽t = GET(env, { token: 'uuid-nise' });
   確認('でたらめなトークンは弾く', 偽t.ok === false && 偽t.needLogin === true, 偽t);
 }
@@ -201,6 +211,12 @@ console.log('\n===== ⑥ 書きの門番（フラグON） =====\n');
   確認('★他店への提出は弾く', 他.ok === false && 他.error === 'STORE_NOT_ALLOWED', 他);
   const 配 = POST(env, { token: st, kind: 'linkset', store: '', item: '', note: '[]', photos: [], t: Date.now() });
   確認('★店舗端末から本部専用kind（資料リンク等）へは書けない', 配.ok === false && 配.error === 'HQ_ONLY', 配);
+  const 他人 = POST(env, { token: hq, kind: 'hqtask', store: '', item: 'dareka', note: '[]', photos: [], t: Date.now() });
+  確認('★本部でも、他人のuidの個人タスクは書けない', 他人.ok === false && 他人.error === 'HQ_ONLY', 他人);
+  const 自分 = POST(env, { token: hq, kind: 'hqtask', store: '', item: 'honbu', note: '[]', photos: [], t: Date.now() });
+  確認('自分のuidの個人タスクは書ける', 自分.ok === true, 自分);
+  const 店タ = POST(env, { token: st, kind: 'hqtask', store: '', item: 'hiroshima-ipad', note: '[]', photos: [], t: Date.now() });
+  確認('店舗端末は個人タスクを書けない', 店タ.ok === false, 店タ);
   const 本 = POST(env, { token: hq, kind: 'linkset', store: '', item: '', note: '[]', photos: [], t: Date.now() });
   確認('本部は書ける', 本.ok === true, 本);
 }

@@ -40,9 +40,9 @@ var AUTH_ROLES = ['staff', 'manager', 'owner', 'hq'];
 var AUTH_PUBLIC_KINDS = ['community', 'commlike', 'commmod', 'commroll', 'commtry', 'commcmt',
                          'news', 'study', 'linkset', 'faqset', 'submaster', 'subholiday'];
 /* 本部だけが読めるkind（★公益通報は店舗端末に返さない＝通報者を守る） */
-var AUTH_HQ_READ_KINDS = ['whistle', 'appfb'];
+var AUTH_HQ_READ_KINDS = ['whistle', 'appfb', 'hqtask'];   // hqtask＝本部の個人タスク（試行）。さらに本人のuidにしか返さない（auth_row_ok_）
 /* 本部だけが書けるkind（設定・判定・配信もの） */
-var AUTH_HQ_WRITE_KINDS = ['submaster', 'substat', 'subholiday', 'news', 'linkset', 'faqset', 'study', 'commmod', 'commroll'];
+var AUTH_HQ_WRITE_KINDS = ['submaster', 'substat', 'subholiday', 'news', 'linkset', 'faqset', 'study', 'commmod', 'commroll', 'hqtask'];
 
 function authOn_() { return getSetting_('ENABLE_AUTH', false) === true; }
 
@@ -190,6 +190,9 @@ function auth_gate_get_(e) {
 }
 /* その行を、この利用者に返してよいか */
 function auth_row_ok_(u, kind, store, item) {
+  /* ★本部の個人タスク（試行・2026-09-15 神田さんのご要望）＝item に持ち主のuid。本人にしか返さない
+     （本部の他の方にも出さない＝一元管理表との二重管理にならない範囲で本人が試す） */
+  if (kind === 'hqtask') return !!u && u.role === 'hq' && String(item || '') === String(u.uid || '');
   if (!u || u.role === 'hq') return true;
   if (AUTH_HQ_READ_KINDS.indexOf(kind) !== -1) return false;      // ★公益通報・ご意見は本部のみ
   if (AUTH_PUBLIC_KINDS.indexOf(kind) !== -1) return true;
@@ -211,6 +214,8 @@ function auth_gate_post_(data) {
   var u = auth_verify_(data && data.token);
   if (!u) return { ok: false, error: 'AUTH_REQUIRED' };
   var kind = String(data.kind || '');
+  /* ★個人タスクは本人（item=自分のuid）しか書けない。本部でも他人のぶんは書けない */
+  if (kind === 'hqtask' && (u.role !== 'hq' || String(data.item || '') !== String(u.uid || ''))) return { ok: false, error: 'HQ_ONLY' };
   if (u.role !== 'hq') {
     if (AUTH_HQ_WRITE_KINDS.indexOf(kind) !== -1) return { ok: false, error: 'HQ_ONLY' };
     var store = String(data.store || '');
