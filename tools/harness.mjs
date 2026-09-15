@@ -5102,7 +5102,7 @@ console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要�
   location.hash = '#/app/hqcheck';
   const srcH = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/case 'svcheck':[^\n]*svcT\[k\]==null \|\| t>=svcT\[k\]/.test(srcH), '同期＝店舗|日付|No ごとに最新が正（別の端末の入力を上書きし合わない）');
-  ok(/mergeMap\('yosakura_demo_svcheck', svc\)/.test(srcH), '届いたキーだけ差し替える（端末側の入力を消さない）');
+  ok(/set\('yosakura_demo_svcheck', curS\)/.test(srcH), '届いたキーだけ差し替える（端末側の入力を消さない）');
   ok(/kind:'svcheck', store:'本部'/.test(srcH), '★保存の行は store=本部＝店舗端末には返らない（本部の評価を店舗iPadへ流さない）');
   // ③ 店舗の方には巡回チェックを出さない（従来どおりリンクだけ）
   seedAuth('ipad', 'staff');
@@ -5114,6 +5114,12 @@ console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要�
   // ④ 作りの保証
   ok(/'T9'|'T23'|'T24'|'T42'|'T53'/.test(srcH), 'お客様体験（71接点）から5接点を配点なしで入れている');
   ok(/navigator\.share\(\{ title: '世桜 巡回チェック', text \}\)/.test(srcH), 'LINE共有＝共有シート（navigator.share）。使えない端末はコピーに落ちる');
+  ok(/function svJpegsToPdf_\(jpegs\)/.test(srcH) && /\/Filter \/DCTDecode/.test(srcH), 'A4のPDF（1〜2枚・写真つき）を外部ライブラリなしで作る');
+  ok(/navigator\.canShare\(\{ files \}\)/.test(srcH), 'PDF・画像は共有シートに添付して送る（LINEを選べる）');
+  ok(/action=photo&id=/.test(srcH), 'レポートの写真はサーバー経由で取る（画像URL直読みは書き出せない）');
+  ok(/const lt = Number\(\(curS\[k\] \|\| \{\}\)\.t\) \|\| 0; if \(lt > \(svcT\[k\] \|\| 0\)\) return;/.test(srcH), '★合流＝端末のほうが新しい入力は古い行で巻き戻さない（×が元に戻る不具合の再発防止）');
+  ok(/indexOf\('\/app\/hqcheck'\) !== -1\) \{ try \{ svApplyDom\(\); \}/.test(srcH), '合流のときは画面を作り直さず項目だけ差し替える（プツプツ対策）');
+  ok(/data-svphoto=/.test(srcH) && /\.slice\(0, 5\); phs\.push\(d\)/.test(srcH), '写真は項目ごとに複数（最大6枚・1回1枚）');
   ok(/番号は【世桜】店舗管理チェックシート_原本のNo/.test(srcH), 'レポートの文面に「番号は原本のNo」と入る（原本へ転記できる）');
   ok(/ae\.tagName && \/\^\(TEXTAREA\|INPUT\)\$\/\.test\(ae\.tagName\)/.test(srcH), 'メモ入力中は合流の描き直しをしない（書きかけが消えない）');
   const svN = (srcH.match(/\{ no:(?:\d+|'T\d+'),\s+pt:\d, ph:'/g) || []).length;

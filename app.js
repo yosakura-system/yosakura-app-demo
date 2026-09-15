@@ -3505,6 +3505,256 @@
     L1.push('※ 番号は【世桜】店舗管理チェックシート_原本のNo。採点方式は本部で確定待ちのため点数は参考です');
     return L1.join('\n');
   }
+  /* 1項目の見た目（状態・メモ・写真）。sig＝中身の目印。合流のときは sig が変わった項目だけ差し替える＝画面がプツプツしない */
+  const svSig = (a) => JSON.stringify([a.v || '', a.memo || '', (a.photos || []).map(p => isDataUrl(p) ? p.length : p), a.by || '']);
+  function svItemHtml(it) {
+    const a = svAns(it.no) || {};
+    const showMemo = a.v === 'ng' || (a.memo || '').trim() || a.v === 'ok' || (a.photos || []).length;
+    const phs = Array.isArray(a.photos) ? a.photos.filter(Boolean) : [];
+    return `<div class="svit ${a.v ? 'v-' + a.v : ''}" data-svno="${esc(String(it.no))}" data-sig="${esc(svSig(a))}">
+        <div class="svit-h"><span class="svit-no">${typeof it.no === 'number' ? 'No.' + it.no : '体験'}</span>${it.pt ? `<span class="svit-pt pt${it.pt}">${it.pt}点</span>` : ''}${it.tag ? `<span class="svit-tag">${esc(it.tag)}</span>` : ''}${a.by ? `<span class="svit-by">${esc(a.by)}</span>` : ''}</div>
+        <div class="svit-t">${esc(it.t)}</div>
+        <div class="svjudge">
+          <button data-svv="ok" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'ok'}">○</button>
+          <button data-svv="ng" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'ng'}">×</button>
+          <button data-svv="na" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'na'}">${esc(L({ ja:'対象外', en:'N/A', vi:'Không áp dụng' }))}</button>
+        </div>
+        ${showMemo ? `<textarea class="svmemo" data-svmemo="${esc(String(it.no))}" rows="2" placeholder="${esc(a.v === 'ok' ? L({ ja:'良かった点があればひと言（レポートに載ります）', en:'Note a good point (optional)', vi:'Điểm tốt (tuỳ chọn)' }) : L({ ja:'何が・どこが（レポートに載ります）', en:'What / where', vi:'Điều gì / ở đâu' }))}">${esc(a.memo || '')}</textarea>
+        <div class="svphotos">
+          ${phs.map((p, i) => `<span class="svph"><img src="${esc(photoThumb(p))}" alt=""><button type="button" data-svphdel="${esc(String(it.no))}" data-svphi="${i}" aria-label="delete">×</button></span>`).join('')}
+          ${phs.length < 6 ? `<label class="svph-add">${svg('camera')}<span>${esc(L({ ja:'写真', en:'Photo', vi:'Ảnh' }))}</span><input type="file" accept="image/*" data-svphoto="${esc(String(it.no))}"></label>` : ''}
+        </div>` : ''}
+      </div>`;
+  }
+  /* 画面を作り直さずに反映する（プツプツ対策）＝変わった項目だけ差し替え、上の進捗とタブの件数を書き換える。
+     入力中の項目（メモにカーソルがある）は触らない */
+  /* 巡回チェックの項目の操作（画面を作り直さず、その項目だけ差し替える） */
+  function bindSvItems_() {
+    const byId = (id) => document.getElementById(id);
+    const svPushLocal = (no, patch) => {
+      const all = getSv(); const k = svKey(no); const a = getAuth();
+      const cur = Object.assign({}, all[k] || {}, patch, { by: (a && a.name) || '本部', t: Date.now() });
+      all[k] = cur; saveSv(all);
+      /* 写真は行と一緒に送り直す（IDならサーバーはそのまま返す）＝状態だけ変えた行で写真が消えない */
+      const phs = Array.isArray(cur.photos) ? cur.photos.filter(Boolean) : [];
+      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, cur, { photos: undefined, nph: phs.length })), photos: phs, t: cur.t });
+      return cur;
+    };
+    document.querySelectorAll('[data-svv]').forEach(b => b.onclick = () => {
+      const it = SV_ITEMS.find(i => String(i.no) === b.dataset.svno); if (!it) return;
+      const cur = svAns(it.no) || {};
+      svPushLocal(it.no, { v: cur.v === b.dataset.svv ? '' : b.dataset.svv });   // 同じ印をもう一度＝取り消し
+      svApplyDom();
+    });
+    document.querySelectorAll('[data-svmemo]').forEach(ta => {
+      ta.onchange = () => { const it = SV_ITEMS.find(i => String(i.no) === ta.dataset.svmemo); if (it) { svPushLocal(it.no, { memo: ta.value }); const el = ta.closest('.svit'); if (el) el.dataset.sig = svSig(svAns(it.no) || {}); const pre = byId('svText'); if (pre) pre.textContent = svReportText(); } };
+    });
+    /* 写真＝1回に1枚（iPhoneの複数選択は届かないことがある＝2026-08-25）。押すたびに足せる・最大6枚。
+       写真そのものはこの行と一緒に送り、サーバーが保存したIDに置き換わる（端末にはサムネイル用の縮小版だけ残す） */
+    document.querySelectorAll('input[data-svphoto]').forEach(fi => fi.onchange = async () => {
+      const it = SV_ITEMS.find(i => String(i.no) === fi.dataset.svphoto); if (!it) return;
+      const file = fi.files && fi.files[0]; if (!file) return;
+      写真の操作中 = true;
+      toast(L({ ja:'写真を読み込んでいます…', en:'Loading photo…', vi:'Đang tải ảnh…' }));
+      const d = await 写真をデータにする_(file);
+      写真の操作中 = false;
+      if (!d) { toast(L({ ja:'写真を読めませんでした。もう一度お試しください', en:'Could not read the photo.', vi:'Không đọc được ảnh.' })); return; }
+      const cur = svAns(it.no) || {}; const phs = (cur.photos || []).filter(Boolean).slice(0, 5); phs.push(d);
+      /* 行には写真をIDで持たせたい＝サーバーへは photos として送り、note には入れない（保存領域も食わない） */
+      const all = getSv(); const k = svKey(it.no); const a = getAuth();
+      const next = Object.assign({}, cur, { photos: phs, by: (a && a.name) || '本部', t: Date.now() });
+      all[k] = next; saveSv(all);
+      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phs.length })), photos: phs, t: next.t });
+      svApplyDom();
+    });
+    document.querySelectorAll('[data-svphdel]').forEach(b => b.onclick = () => {
+      const it = SV_ITEMS.find(i => String(i.no) === b.dataset.svphdel); if (!it) return;
+      const cur = svAns(it.no) || {}; const phs = (cur.photos || []).filter(Boolean); phs.splice(Number(b.dataset.svphi), 1);
+      const all = getSv(); const k = svKey(it.no); const a = getAuth();
+      const next = Object.assign({}, cur, { photos: phs, by: (a && a.name) || '本部', t: Date.now() });
+      all[k] = next; saveSv(all);
+      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phs.length })), photos: phs, t: next.t });
+      svApplyDom();
+    });
+  }
+  function svApplyDom() {
+    try {
+      if (String(location.hash || '').indexOf('/app/hqcheck') === -1) return;
+      const ae = document.activeElement;
+      document.querySelectorAll('.svit[data-svno]').forEach(el => {
+        const it = SV_ITEMS.find(i => String(i.no) === el.dataset.svno); if (!it) return;
+        const a = svAns(it.no) || {};
+        if (el.dataset.sig === svSig(a)) return;
+        if (ae && el.contains(ae)) return;
+        const tmp = document.createElement('div'); tmp.innerHTML = svItemHtml(it);
+        el.replaceWith(tmp.firstElementChild);
+      });
+      const sc = svScore();
+      const bar = document.querySelector('.svbar-in'); if (bar) bar.style.width = Math.round(sc.ans / sc.total * 100) + '%';
+      const bt = document.querySelector('.svbar-t');
+      if (bt) bt.innerHTML = `<span>${esc(L({ ja:'入力', en:'Done', vi:'Đã nhập' }))} ${sc.ans}/${sc.total}</span><span>${sc.pct != null ? esc(L({ ja:'参考スコア', en:'Score', vi:'Điểm' })) + ' ' + sc.pct + '%' : ''}</span>`;
+      document.querySelectorAll('.vctab[data-vctab]').forEach(b => {
+        const k = b.dataset.vctab; if (k === 'report') return;
+        const its = SV_ITEMS.filter(i => i.ph === k); const d = its.filter(i => { const x = svAns(i.no); return x && x.v; }).length;
+        const sm = b.querySelector('small'); if (sm) sm.textContent = d + '/' + its.length;
+        b.classList.toggle('done', d === its.length);
+      });
+      const pre = document.getElementById('svText'); if (pre) pre.textContent = svReportText();
+      const scb = document.querySelector('.svscore b'); if (scb) scb.textContent = sc.pct != null ? sc.pct + '%' : '—';
+      bindSvItems_();
+    } catch (e) {}
+  }
+  /* ---------- レポート（A4・写真つき）＝canvasに描いてJPEGにし、1〜2ページのPDFにまとめて共有する ---------- */
+  const SV_PAGE_W = 1240, SV_PAGE_H = 1754;   // A4 150dpi 相当
+  function svLoadImage_(p) {
+    /* dataURL はそのまま。Driveの写真はサーバー経由でbase64で取る（画像URL直読みは canvas に描くと汚染されて書き出せない） */
+    return new Promise((resolve) => {
+      const done = (src) => { if (!src) return resolve(null); const im = new Image(); im.onload = () => resolve(im); im.onerror = () => resolve(null); im.src = src; };
+      if (isDataUrl(p)) return done(p);
+      if (!useBackend()) return resolve(null);
+      fetch(getApiUrl() + '?action=photo&id=' + encodeURIComponent(p) + (authToken() ? '&token=' + encodeURIComponent(authToken()) : ''))
+        .then(r => r.json()).then(d => done(d && d.ok && d.data ? 'data:' + (d.mime || 'image/jpeg') + ';base64,' + d.data : ''))
+        .catch(() => resolve(null));
+    });
+  }
+  function svWrap_(g, text, maxW) {
+    const out = []; let line = '';
+    for (const ch of String(text || '')) {
+      if (ch === '\n') { out.push(line); line = ''; continue; }
+      if (g.measureText(line + ch).width > maxW && line) { out.push(line); line = ch; } else line += ch;
+    }
+    if (line) out.push(line);
+    return out;
+  }
+  async function svBuildPages_() {
+    const sc = svScore(), m = svMeta();
+    const F = '"Yu Gothic","Hiragino Sans","Noto Sans JP",sans-serif';
+    const pages = []; let c, g, y;
+    const M = 70, W = SV_PAGE_W - M * 2;
+    const newPage = () => {
+      c = document.createElement('canvas'); c.width = SV_PAGE_W; c.height = SV_PAGE_H; g = c.getContext('2d');
+      g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, SV_PAGE_W, SV_PAGE_H);
+      g.fillStyle = '#8E354A'; g.fillRect(0, 0, SV_PAGE_W, 14);
+      g.fillStyle = '#6B635A'; g.font = `22px ${F}`; g.textBaseline = 'top';
+      g.fillText(`世桜 巡回チェック レポート　${svState.store}　${svState.date.replace(/-/g, '/')}（${svWd(svState.date)}）`, M, 34);
+      g.fillStyle = '#D9D2C8'; g.fillRect(M, 68, W, 2);
+      pages.push(c); y = 90;
+    };
+    const ensure = (h) => { if (y + h > SV_PAGE_H - 60) newPage(); };
+    const text = (t, size, color, bold, lh) => {
+      g.font = `${bold ? 'bold ' : ''}${size}px ${F}`; g.fillStyle = color || '#1A1A1A';
+      const lines = svWrap_(g, t, W); lh = lh || Math.round(size * 1.55);
+      lines.forEach(ln => { ensure(lh); g.font = `${bold ? 'bold ' : ''}${size}px ${F}`; g.fillStyle = color || '#1A1A1A'; g.fillText(ln, M, y); y += lh; });
+    };
+    const band = (t) => { ensure(64); y += 10; g.fillStyle = '#8E354A'; g.fillRect(M, y, W, 40); g.fillStyle = '#FFFFFF'; g.font = `bold 24px ${F}`; g.fillText(t, M + 14, y + 7); y += 52; };
+    newPage();
+    // 表題と要約
+    g.fillStyle = '#1A1A1A'; g.font = `bold 40px ${F}`; g.fillText('巡回チェック レポート', M, y); y += 56;
+    const who = [...new Set(SV_ITEMS.map(it => (svAns(it.no) || {}).by).filter(Boolean))].join('・') || '本部';
+    text(`店舗：${svState.store}　　日付：${svState.date.replace(/-/g, '/')}（${svWd(svState.date)}）　　確認者：${who}　　方法：③現地入り`, 22, '#1A1A1A');
+    if (m.menu || m.orderAt) text(`実食：${m.menu || '—'}` + (m.orderAt && m.servedAt ? `（注文 ${m.orderAt} → 提供 ${m.servedAt}）` : ''), 22, '#1A1A1A');
+    y += 6;
+    // スコア枠
+    ensure(120);
+    g.fillStyle = '#F7F4EF'; g.fillRect(M, y, W, 104);
+    g.fillStyle = '#8E354A'; g.font = `bold 64px ${F}`; g.fillText(sc.pct != null ? sc.pct + '%' : '—', M + 24, y + 18);
+    g.fillStyle = '#6B635A'; g.font = `20px ${F}`; g.fillText('参考スコア（対象外を除いた配点が分母）', M + 24, y + 78);
+    g.fillStyle = '#1A1A1A'; g.font = `bold 26px ${F}`;
+    g.fillText(`○ ${sc.ok}　　× ${sc.ng}　　対象外 ${sc.na}　　未入力 ${sc.total - sc.ans}` + (sc.expN ? `　　体験 ○${sc.expOk}/${sc.expN}` : ''), M + 330, y + 22);
+    g.font = `20px ${F}`; g.fillStyle = '#6B635A';
+    const ngPh = SV_PHASES.map(([k, l]) => { const n = SV_ITEMS.filter(i => i.ph === k && (svAns(i.no) || {}).v === 'ng').length; return n ? `${L(l)} ${n}` : ''; }).filter(Boolean).join('　');
+    g.fillText(ngPh ? `× の内訳：${ngPh}` : '× はありません', M + 330, y + 62);
+    y += 120;
+    // 良かった点
+    const good = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ok' && ((a.memo || '').trim() || (a.photos || []).length); });
+    if (good.length) {
+      band('良かった点');
+      for (const it of good) { const a = svAns(it.no); text(`・${it.t.split('（')[0]}` + ((a.memo || '').trim() ? `：${a.memo.trim()}` : ''), 22); }
+    }
+    // 気になる点（×）＋写真
+    const bad = SV_ITEMS.filter(it => (svAns(it.no) || {}).v === 'ng');
+    band(bad.length ? `気になる点（× ${bad.length}件）` : '気になる点（×）');
+    if (!bad.length) text('× はありませんでした。', 22, '#6B635A');
+    for (const it of bad) {
+      const a = svAns(it.no) || {};
+      const phs = (a.photos || []).filter(Boolean).slice(0, 3);
+      const TH = phs.length ? 210 : 0;
+      ensure(40 + TH + 16);
+      g.fillStyle = '#FBF1F2'; g.fillRect(M, y, 6, 30);
+      text(`${typeof it.no === 'number' ? 'No.' + it.no + '　' : ''}${it.t}` + (it.pt ? `（${it.pt}点）` : ''), 23, '#8E354A', true);
+      if ((a.memo || '').trim()) text(`　${a.memo.trim()}`, 21, '#1A1A1A');
+      if (phs.length) {
+        ensure(TH + 10);
+        let x = M + 14; const bw = 300, bh = 200;
+        for (const p of phs) {
+          const im = await svLoadImage_(p);
+          g.fillStyle = '#EFEAE2'; g.fillRect(x, y, bw, bh);
+          if (im) {
+            const r = Math.max(bw / im.width, bh / im.height); const dw = im.width * r, dh = im.height * r;
+            g.save(); g.beginPath(); g.rect(x, y, bw, bh); g.clip(); g.drawImage(im, x + (bw - dw) / 2, y + (bh - dh) / 2, dw, dh); g.restore();
+          } else { g.fillStyle = '#6B635A'; g.font = `18px ${F}`; g.fillText('（写真を読めませんでした）', x + 20, y + 90); }
+          g.strokeStyle = '#D9D2C8'; g.lineWidth = 2; g.strokeRect(x, y, bw, bh);
+          x += bw + 14;
+        }
+        const more = (a.photos || []).filter(Boolean).length - phs.length;
+        if (more > 0) { g.fillStyle = '#6B635A'; g.font = `20px ${F}`; g.fillText(`+${more}枚`, x, y + 90); }
+        y += bh + 12;
+      }
+      y += 6;
+    }
+    // 総評
+    if ((m.summary || '').trim()) { band('総評'); text(m.summary.trim(), 22); }
+    // 注記・ページ番号
+    pages.forEach((pc, i) => {
+      const pg = pc.getContext('2d'); pg.fillStyle = '#6B635A'; pg.font = `16px ${F}`; pg.textBaseline = 'top';
+      pg.fillText('※ 番号は【世桜】店舗管理チェックシート_原本のNo。採点方式は本部で確定待ちのため点数は参考です。', M, SV_PAGE_H - 44);
+      pg.textAlign = 'right'; pg.fillText(`${i + 1} / ${pages.length}`, SV_PAGE_W - M, SV_PAGE_H - 44); pg.textAlign = 'left';
+    });
+    return pages;
+  }
+  /* JPEGのページを、外部ライブラリなしでPDF（A4）に束ねる */
+  function svJpegsToPdf_(jpegs) {
+    const enc = new TextEncoder();
+    const parts = []; let len = 0; const offs = [];
+    const push = (u8) => { parts.push(u8); len += u8.length; };
+    const str = (t) => push(enc.encode(t));
+    str('%PDF-1.4\n');
+    const n = jpegs.length; const objs = 2 + n * 3;
+    const off = (i) => { offs[i] = len; };
+    off(1); str('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+    off(2); str(`2 0 obj\n<< /Type /Pages /Kids [${jpegs.map((_, i) => `${3 + i * 3} 0 R`).join(' ')}] /Count ${n} >>\nendobj\n`);
+    jpegs.forEach((j, i) => {
+      const pid = 3 + i * 3, cid = pid + 1, xid = pid + 2;
+      const content = `q 595.28 0 0 841.89 0 0 cm /Im${i} Do Q`;
+      off(pid); str(`${pid} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents ${cid} 0 R /Resources << /XObject << /Im${i} ${xid} 0 R >> >> >>\nendobj\n`);
+      off(cid); str(`${cid} 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
+      off(xid); str(`${xid} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${j.w} /Height ${j.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${j.bytes.length} >>\nstream\n`);
+      push(j.bytes); str('\nendstream\nendobj\n');
+    });
+    const xref = len;
+    str(`xref\n0 ${objs + 1}\n0000000000 65535 f \n`);
+    for (let i = 1; i <= objs; i++) str(String(offs[i]).padStart(10, '0') + ' 00000 n \n');
+    str(`trailer\n<< /Size ${objs + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+    const out = new Uint8Array(len); let p = 0; parts.forEach(u => { out.set(u, p); p += u.length; });
+    return out;
+  }
+  const svDataUrlBytes_ = (d) => { const b = atob(d.split(',')[1]); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+  async function svShareReport(asImages) {
+    toast(L({ ja:'レポートを作っています…', en:'Building the report…', vi:'Đang tạo báo cáo…' }));
+    const pages = await svBuildPages_();
+    const jpegs = pages.map(c => ({ w: c.width, h: c.height, bytes: svDataUrlBytes_(c.toDataURL('image/jpeg', 0.86)) }));
+    const base = `世桜_巡回チェック_${svState.store}_${svState.date}`;
+    let files;
+    if (asImages) files = jpegs.map((j, i) => new File([j.bytes], `${base}_${i + 1}.jpg`, { type: 'image/jpeg' }));
+    else files = [new File([svJpegsToPdf_(jpegs)], `${base}.pdf`, { type: 'application/pdf' })];
+    const text = svReportText();
+    try {
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files }))) { await navigator.share({ files, title: '世桜 巡回チェック', text }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    /* 共有シートがファイルを受けない端末＝その場で開く（保存やLINEへの添付は開いた先から） */
+    try { const url = URL.createObjectURL(files[0]); window.open(url, '_blank'); toast(L({ ja:'共有シートが使えないため、レポートを別タブで開きました', en:'Opened the report in a new tab.', vi:'Đã mở báo cáo ở tab mới.' })); }
+    catch (e) { toast(L({ ja:'レポートを作れませんでした', en:'Could not build the report.', vi:'Không tạo được báo cáo.' })); }
+  }
   APP_VIEWS.hqcheck = () => {
     const role = getRole(), isHQ = role === 'hq';
     const mats = getLinks().filter(l => l.mcat === 'hqcheck' && isHttp(l.url));
@@ -3530,20 +3780,7 @@
     const cnt = (ph) => { const its = SV_ITEMS.filter(i => i.ph === ph); return [its.filter(i => { const a = svAns(i.no); return a && a.v; }).length, its.length]; };
     const tabs = SV_PHASES.map(([k, l]) => { const [d, n] = cnt(k); return `<button data-vctab="${k}" class="vctab ${svState.tab === k ? 'on' : ''} ${d === n ? 'done' : ''}">${esc(L(l))}<small>${d}/${n}</small></button>`; }).join('')
       + `<button data-vctab="report" class="vctab rep ${svState.tab === 'report' ? 'on' : ''}">${esc(L({ ja:'結果', en:'Report', vi:'Kết quả' }))}</button>`;
-    const item = (it) => {
-      const a = svAns(it.no) || {};
-      const showMemo = a.v === 'ng' || (a.memo || '').trim() || a.v === 'ok';
-      return `<div class="svit ${a.v ? 'v-' + a.v : ''}" data-svno="${esc(String(it.no))}">
-        <div class="svit-h"><span class="svit-no">${typeof it.no === 'number' ? 'No.' + it.no : '体験'}</span>${it.pt ? `<span class="svit-pt pt${it.pt}">${it.pt}点</span>` : ''}${it.tag ? `<span class="svit-tag">${esc(it.tag)}</span>` : ''}${a.by ? `<span class="svit-by">${esc(a.by)}</span>` : ''}</div>
-        <div class="svit-t">${esc(it.t)}</div>
-        <div class="svjudge">
-          <button data-svv="ok" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'ok'}">○</button>
-          <button data-svv="ng" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'ng'}">×</button>
-          <button data-svv="na" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'na'}">${esc(L({ ja:'対象外', en:'N/A', vi:'Không áp dụng' }))}</button>
-        </div>
-        ${showMemo ? `<textarea class="svmemo" data-svmemo="${esc(String(it.no))}" rows="2" placeholder="${esc(a.v === 'ok' ? L({ ja:'良かった点があればひと言（レポートに載ります）', en:'Note a good point (optional)', vi:'Điểm tốt (tuỳ chọn)' }) : L({ ja:'何が・どこが（レポートに載ります）', en:'What / where', vi:'Điều gì / ở đâu' }))}">${esc(a.memo || '')}</textarea>` : ''}
-      </div>`;
-    };
+    const item = (it) => svItemHtml(it);
     let body;
     if (svState.tab === 'report') {
       const txt = svReportText();
@@ -3554,11 +3791,13 @@
           <label class="fl">${esc(L({ ja:'総評（良かった点 → 気になる点 の順で）', en:'Summary', vi:'Tổng kết' }))}</label>
           <textarea id="sv_summary" rows="4">${esc(m.summary || '')}</textarea>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-            <button class="btn-primary" id="svShare" style="flex:1">${esc(L({ ja:'LINEで共有（テキスト）', en:'Share (text)', vi:'Chia sẻ (văn bản)' }))}</button>
+            <button class="btn-primary" id="svPdf" style="flex:1 1 100%">${esc(L({ ja:'レポート（A4・写真つきPDF）を共有', en:'Share A4 PDF report', vi:'Chia sẻ báo cáo PDF' }))}</button>
+            <button class="btn" id="svImg" style="flex:1">${esc(L({ ja:'画像で共有', en:'Share as images', vi:'Chia sẻ ảnh' }))}</button>
+            <button class="btn" id="svShare" style="flex:1">${esc(L({ ja:'テキストで共有', en:'Share text', vi:'Chia sẻ văn bản' }))}</button>
             <button class="btn" id="svCopy">${esc(L({ ja:'コピー', en:'Copy', vi:'Sao chép' }))}</button>
           </div>
           <pre class="svpre" id="svText">${esc(txt)}</pre>
-          <div class="hint">${esc(L({ ja:'※ 共有ボタンでLINEを選ぶと、この文面がそのまま送れます（写真は次の版で）。番号は原本のNoなので、原本のシートへ転記できます。', en:'Choose LINE in the share sheet to send this text.', vi:'Chọn LINE trong bảng chia sẻ để gửi văn bản này.' }))}</div>
+          <div class="hint">${esc(L({ ja:'※ PDF＝A4で1〜2枚（×の項目に写真つき）。共有シートでLINEを選ぶと添付されます。番号は原本のNoなので、原本のシートへ転記できます。', en:'Choose LINE in the share sheet to send this text.', vi:'Chọn LINE trong bảng chia sẻ để gửi văn bản này.' }))}</div>
         </div>`;
     } else {
       const its = SV_ITEMS.filter(i => i.ph === svState.tab);
@@ -8849,15 +9088,7 @@
     document.querySelectorAll('[data-vctab]').forEach(b => b.onclick = () => { svState.tab = b.dataset.vctab; render(); });   // ※data-svtab はサーベイのタブで使用済み
     const svStore = byId('sv_store'); if (svStore) svStore.onchange = () => { svState.store = svStore.value; render(true); };
     const svDate = byId('sv_date'); if (svDate) svDate.onchange = () => { svState.date = svDate.value || svTodayStr(); render(true); };
-    document.querySelectorAll('[data-svv]').forEach(b => b.onclick = () => {
-      const no = b.dataset.svno; const it = SV_ITEMS.find(i => String(i.no) === no); if (!it) return;
-      const cur = svAns(it.no) || {};
-      svPush(it.no, { v: cur.v === b.dataset.svv ? '' : b.dataset.svv });   // 同じ印をもう一度＝取り消し
-      render(true);
-    });
-    document.querySelectorAll('[data-svmemo]').forEach(ta => {
-      ta.onchange = () => { const it = SV_ITEMS.find(i => String(i.no) === ta.dataset.svmemo); if (it) svPush(it.no, { memo: ta.value }); };
-    });
+    bindSvItems_();
     ['sv_menu', 'sv_orderAt', 'sv_servedAt', 'sv_summary'].forEach(id => {
       const el = byId(id); if (!el) return;
       el.onchange = () => { const key = id.replace('sv_', ''); svPush('meta', { [key]: el.value }); if (id === 'sv_summary') { const p = byId('svText'); if (p) p.textContent = svReportText(); } };
@@ -8871,6 +9102,8 @@
       try { await navigator.clipboard.writeText(text); toast(L({ ja:'共有シートが使えないため、文面をコピーしました。LINEに貼り付けてください', en:'Copied. Paste into LINE.', vi:'Đã sao chép. Dán vào LINE.' })); }
       catch (e) { toast(L({ ja:'コピーできませんでした。下の文面を長押しでコピーしてください', en:'Could not copy. Long-press the text below.', vi:'Không sao chép được. Nhấn giữ văn bản bên dưới.' })); }
     };
+    const svPdf = byId('svPdf'); if (svPdf) svPdf.onclick = () => svShareReport(false);
+    const svImg = byId('svImg'); if (svImg) svImg.onclick = () => svShareReport(true);
     const svCopy = byId('svCopy');
     if (svCopy) svCopy.onclick = async () => {
       try { await navigator.clipboard.writeText(svReportText()); toast(L({ ja:'コピーしました', en:'Copied', vi:'Đã sao chép' })); }
@@ -9558,7 +9791,7 @@
         case 'linkset': { const p=pj(r.note); if (Array.isArray(p) && (linksetT==null || t>=linksetT)) { linkset=p; linksetT=t; } } break; // 資料リンク一覧は最新版が正
         case 'faqset': { const p=pj(r.note); if (Array.isArray(p) && (faqsetT==null || t>=faqsetT)) { faqset=p; faqsetT=t; } } break; // よくある質問（本部追加分）は最新版が正
         // 巡回チェック（本部）＝店舗|日付|No ごとに最新が正（2人同時入力の合流）
-        case 'svcheck': { const p=pj(r.note); const k=r.item; if (!k) break; if (svcT[k]==null || t>=svcT[k]) { svc[k]=p||{}; svcT[k]=t; } } break;
+        case 'svcheck': { const p=pj(r.note) || {}; const k=r.item; if (!k) break; if (svcT[k]==null || t>=svcT[k]) { if (Array.isArray(r.photos) && r.photos.length) p.photos = r.photos; svc[k]=p; svcT[k]=t; } } break;
         // タスク（試行）＝本人のuidの行だけ・最新版が正（バックエンドも本人にしか返さないが、端末側でも念のため絞る）
         case 'hqtask': { const a0 = getAuth(); if (!a0 || String(r.item || '') !== String(a0.uid || '')) break; const p=pj(r.note); if (Array.isArray(p) && (hqtaskT==null || t>=hqtaskT)) { hqtask=p; hqtaskT=t; } } break;
       }
@@ -9613,7 +9846,13 @@
     if (linkset !== null) set('yosakura_demo_links', linkset); // linksetが無い同期では既存の資料リンクを保持
     if (faqset !== null) set('yosakura_demo_faq', faqset); // faqsetが無い同期では既存のよくある質問を保持
     if (hqtask !== null) set('yosakura_demo_hqtask', hqtask); // hqtaskが無い同期では端末のタスクを保持（黙って消さない）
-    if (Object.keys(svc).length) mergeMap('yosakura_demo_svcheck', svc); // 巡回チェック＝届いたキーだけ差し替え
+    /* ★巡回チェック＝キーごとに「新しいほう」を残す（2026-09-16 神田さんの実機報告＝×にした直後の合流で元に戻る。
+       送った行がまだサーバーの応答に載っていない一瞬に、古い行で端末の入力を上書きしていた） */
+    if (Object.keys(svc).length) {
+      let curS = {}; try { curS = JSON.parse(localStorage.getItem('yosakura_demo_svcheck')) || {}; } catch (_) {}
+      Object.keys(svc).forEach(k => { const lt = Number((curS[k] || {}).t) || 0; if (lt > (svcT[k] || 0)) return; curS[k] = svc[k]; });
+      set('yosakura_demo_svcheck', curS);
+    }
   }
   async function syncReports(force) {
     if (!useBackend()) return;
@@ -9639,6 +9878,7 @@
           // ★写真の作業中は描き直さない（貼った写真と選択中の入力欄が消えるため）。取り込み自体は済んでいる
           // ★同期の描き直しでは位置を保つ（2026-08-31 ユンさんの報告＝チェックのたびに同期→再描画で先頭へ戻っていた）
           if (!画面を作り直してよい_()) { /* 何もしない＝次の自然な描き直しで追いつく */ }
+          else if (String(location.hash || '').indexOf('/app/hqcheck') !== -1) { try { svApplyDom(); } catch (e) {} }   // 巡回チェック＝項目だけ差し替え（プツプツ対策）
           else if (String(location.hash || '').indexOf('/app/inbox') !== -1) {
             /* ★受信箱は同期で描き直さない（2026-09-08 神田さんの実機報告＝処理中に画面がプツプツ途切れる。
                対応ボタンの直後にも同期→全画面の作り直しが走り、写真が読み直されていた）。

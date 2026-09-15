@@ -364,6 +364,19 @@ function doGet(e) {
        認証.gs を貼っていないプロジェクトでも壊れないよう、関数の有無を見てから呼ぶ。 */
     var gate = (typeof auth_gate_get_ === 'function') ? auth_gate_get_(e) : { ok: true, u: null };
     if (!gate.ok) return json({ ok: false, error: 'AUTH_REQUIRED', needLogin: true });
+    /* ★写真をbase64で返す（巡回チェックのレポート用・2026-09-16）。画像URLを直接 canvas に描くと書き出せないため、
+       ログイン済みの本部にだけ、写真フォルダのファイルを中身ごと返す（他のフォルダのファイルは返さない） */
+    if (e && e.parameter && e.parameter.action === 'photo') {
+      if (gate.u && gate.u.role !== 'hq') return json({ ok: false, error: 'HQ_ONLY' });
+      try {
+        var pf = DriveApp.getFileById(String(e.parameter.id || ''));
+        var inPhoto = false; var parents = pf.getParents(); var photoFolderId = getPhotoFolder().getId();
+        while (parents.hasNext()) { if (parents.next().getId() === photoFolderId) inPhoto = true; }
+        if (!inPhoto) return json({ ok: false, error: 'NOT_PHOTO' });
+        var pb = pf.getBlob();
+        return json({ ok: true, mime: pb.getContentType(), data: Utilities.base64Encode(pb.getBytes()) });
+      } catch (perr) { return json({ ok: false, error: String(perr) }); }
+    }
     var sh = getSheet();
     var lastRow = sh.getLastRow();
     var store = e && e.parameter ? e.parameter.store : '';
