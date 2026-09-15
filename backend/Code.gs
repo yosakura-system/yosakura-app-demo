@@ -50,7 +50,10 @@ function autoPurgeOn_()    { return getSetting_('ENABLE_AUTO_PURGE', true) === t
    お知らせ本体（news）が恒久保存のため、反応だけ90日で消えると「誰が確認したか」の記録に穴があく。 */
 var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide',
                          'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu', 'phsample', 'monthly', 'gsnap',
-                         'newslike', 'newsread', 'newscmt'];
+                         'newslike', 'newsread', 'newscmt',
+                         /* ★2026-09-15 神田さん判断＝みんなの投稿・いいね・コメントは90日で消さない
+                            （「1店舗への指摘が全店舗の教育になる」9/14決定＝古い投稿も教材として残す） */
+                         'community', 'commlike', 'commcmt'];
 
 // スクリプトプロパティから設定を読む（無ければ既定値）。管理画面や手動で変更できる。
 function getSetting_(key, def) {
@@ -262,6 +265,16 @@ function validateBackendConfiguration() {
   /* ★2026-09-07 の貼り替えぶん＝外から ?action=validate で「済んだか」を確認できるようにする */
   ck('90日削除から守るkindにgsnap（Google口コミ記録）がある', PURGE_KEEP_KINDS.indexOf('gsnap') !== -1,
      PURGE_KEEP_KINDS.indexOf('gsnap') !== -1 ? '口コミ推移は恒久保存' : '未貼付：Code.gs を貼り替えてください');
+
+  /* ★2026-09-15 の貼り替えぶん＝みんなの投稿のコメント（v228）が全店に届くか。
+     認証.gs を貼り替えて『デプロイを管理→既存の編集→新バージョン』まで済んだかを、外から ?action=validate で確かめられる。
+     ここがNGだと、店舗からのコメントが自店と本部にしか届かない（中途半端に動く＝一番危ない状態） */
+  var pubKinds = []; try { pubKinds = AUTH_PUBLIC_KINDS; } catch (e) {}
+  ck('コメント（commcmt）が全店公開のkindに入っている', pubKinds.indexOf('commcmt') !== -1,
+     pubKinds.indexOf('commcmt') !== -1 ? '貼付済み＝他店のコメントも全店に届く'
+       : '未貼付：認証.gs を貼り替えたあと「デプロイを管理→既存の編集→新バージョン」まで行ってください');
+  ck('みんなの投稿・コメントが90日削除から守られている', PURGE_KEEP_KINDS.indexOf('community') !== -1 && PURGE_KEEP_KINDS.indexOf('commcmt') !== -1,
+     (PURGE_KEEP_KINDS.indexOf('commcmt') !== -1) ? '貼付済み＝投稿とコメントは恒久保存' : '未貼付：Code.gs を貼り替えてください（投稿が90日で消えます）');
 
   var ng = checks.filter(function (c) { return !c.ok; });
   var out = { allOk: ng.length === 0, ngCount: ng.length, checks: checks };

@@ -110,6 +110,8 @@ function データを入れる(env) {
   sh.appendRow(['r5', t, 'community', '寿司世桜 心斎橋店', 'clean', '', '{}', '[]']);
   sh.appendRow(['r6', t, 'whistle', '和牛世桜 広島店', '', '', '{}', '[]']);
   sh.appendRow(['r7', t, 'emg', '和牛世桜 広島店', '', '', '{}', '[]']);
+  /* ★v228＝みんなの投稿へのコメント。投稿と同じく全店に届かないと会話が成り立たない（2026-09-15） */
+  sh.appendRow(['r8', t, 'commcmt', '寿司世桜 心斎橋店', 'community|1|寿司世桜 心斎橋店', '', '{}', '[]']);
 }
 
 console.log('\n===== ① フラグOFF（既定）＝挙動が変わらない =====\n');
@@ -117,7 +119,7 @@ console.log('\n===== ① フラグOFF（既定）＝挙動が変わらない ===
   const env = 偽環境を作る({});
   データを入れる(env);
   const d = GET(env, {});
-  確認('トークン無しで全行が返る（従来どおり）', d.ok && d.reports.length === 7, d.reports && d.reports.length);
+  確認('トークン無しで全行が返る（従来どおり）', d.ok && d.reports.length === 8, d.reports && d.reports.length);
   const p = POST(env, { kind: 'kizuki', store: '和牛世桜 広島店', item: 'x', note: '', photos: [], t: Date.now() });
   確認('トークン無しで提出できる（従来どおり）', p.ok === true, p);
   確認('ENABLE_AUTH は未設定＝既定でOFF', 実行(env, 'authOn_()') === false);
@@ -173,11 +175,13 @@ console.log('\n===== ⑤ 読みの絞り込み（フラグON） =====\n');
   const hq = POST(env, { action: 'login', uid: 'honbu', pw: 'sakura99' }).auth.token;
   const 店 = GET(env, { token: st });
   const ids = 店.reports.map(r => r.id).sort();
-  確認('店舗端末＝自店の提出・全体設定・みんなの投稿だけが返る', JSON.stringify(ids) === JSON.stringify(['r1', 'r3', 'r4', 'r5', 'r7']), ids);
+  確認('店舗端末＝自店の提出・全体設定・みんなの投稿だけが返る', JSON.stringify(ids) === JSON.stringify(['r1', 'r3', 'r4', 'r5', 'r7', 'r8']), ids);
+  確認('★他店の投稿に付いたコメント（r8）も店舗端末に届く＝コメントが会話になる',
+       ids.includes('r8'), ids);
   確認('★他店の提出（r2）は返らない', !ids.includes('r2'), ids);
   確認('★公益通報（r6）は自店のぶんでも返らない＝通報者を守る', !ids.includes('r6'), ids);
   const 本 = GET(env, { token: hq });
-  確認('本部＝全部返る（公益通報も含む）', 本.reports.length === 7, 本.reports.length);
+  確認('本部＝全部返る（公益通報も含む）', 本.reports.length === 8, 本.reports.length);
   const 偽t = GET(env, { token: 'uuid-nise' });
   確認('でたらめなトークンは弾く', 偽t.ok === false && 偽t.needLogin === true, 偽t);
 }
