@@ -3424,50 +3424,50 @@
   ];
   /* no＝原本のNo（数字）／'T'付き＝お客様体験の接点No（配点なし）。pt＝原本の配点。tag＝該当店のみ等 */
   const SV_ITEMS = [
-    { no:3,   pt:1, ph:'gaikan',   t:'暖簾が汚くないか' },
-    { no:8,   pt:2, ph:'gaikan',   t:'看板の電気がついているか' },
-    { no:'T9',  pt:0, ph:'deai',   t:'最初の一声「いらっしゃいませ」（体験）', tag:'体験' },
-    { no:22,  pt:2, ph:'deai',     t:'お客様の顔を見て明るく感じのいい接客ができているか' },
-    { no:23,  pt:2, ph:'deai',     t:'挨拶・声掛けができているか' },
-    { no:30,  pt:2, ph:'order',    t:'メニュー説明・おすすめの提案はしているか' },
-    { no:'T23', pt:0, ph:'order',  t:'アレルギーの確認（体験）', tag:'体験' },
-    { no:'T24', pt:0, ph:'order',  t:'オーダーの復唱（体験）', tag:'体験' },
-    { no:31,  pt:2, ph:'order',    t:'食べ方POPをお食事提供までに渡せているか', tag:'世桜らしさ' },
-    { no:32,  pt:2, ph:'order',    t:'世桜BOOKを状況に応じてお客様に渡せているか', tag:'世桜らしさ' },
-    { no:28,  pt:2, ph:'jisshoku', t:'商品注文してから何分で提供されているか（アラカルト10分以内→○／業態により微調整あり）', tag:'時刻を記入' },
-    { no:47,  pt:3, ph:'jisshoku', t:'料理の温度と状態、味は問題ないか' },
-    { no:85,  pt:5, ph:'jisshoku', t:'食材の配置・盛付けがマニュアルの写真・図と一致している' },
-    { no:39,  pt:2, ph:'jisshoku', t:'配膳前に盛り付けや配置の確認ができているか（wチェック）' },
-    { no:43,  pt:2, ph:'jisshoku', t:'商品の説明がされているか（配膳時）' },
-    { no:36,  pt:1, ph:'jisshoku', t:'牛カツ着火剤の確認ができるか', tag:'牛カツ店のみ' },
-    { no:41,  pt:2, ph:'jisshoku', t:'カットするスタッフのレベルは合格レベルか（演出）', tag:'該当店のみ' },
-    { no:42,  pt:2, ph:'jisshoku', t:'撮影のお声がけができているか', tag:'世桜らしさ' },
-    { no:13,  pt:2, ph:'hall',     t:'テーブル・椅子・床に汚れやゴミが放置されていないか' },
-    { no:16,  pt:3, ph:'hall',     t:'トイレの便器に汚れはないか' },
-    { no:18,  pt:3, ph:'hall',     t:'トイレ裏のコードに埃が溜まっていないか' },
-    { no:29,  pt:3, ph:'hall',     t:'事前ケア・中間ケアは実施されているか' },
-    { no:48,  pt:3, ph:'hall',     t:'お冷が半分になってから即時対応できているか（3分以上→×）' },
-    { no:'T42', pt:0, ph:'hall',   t:'感想のヒアリング（体験）', tag:'体験' },
-    { no:50,  pt:5, ph:'kaikei',   t:'サプライズ＝マニュアル通りの流れで行い、全員で盛り上がれているか', tag:'該当時のみ' },
-    { no:51,  pt:5, ph:'kaikei',   t:'サプライズ＝適切な演出ができているか（ライト等のタイミング）', tag:'該当時のみ' },
-    { no:49,  pt:2, ph:'kaikei',   t:'チェキの提供ができているか', tag:'導入店舗のみ' },
-    { no:'T53', pt:0, ph:'kaikei', t:'Google口コミのご案内（体験）', tag:'体験' },
-    { no:56,  pt:5, ph:'kaikei',   t:'お帰りの挨拶ができているか（外までお見送り）' },
-    { no:70,  pt:3, ph:'kitchen',  t:'ダスターは用途に分けて使用しているか' },
-    { no:71,  pt:3, ph:'kitchen',  t:'不衛生な行動がないか（鼻・髪・スマホに触れた後そのまま作業など）' },
-    { no:87,  pt:3, ph:'kitchen',  t:'冷凍・冷蔵庫の庫内温度は適切か（冷蔵5℃以下・冷凍−18℃以下）' },
-    { no:88,  pt:3, ph:'kitchen',  t:'食品の賞味期限管理として期限シールを貼れているか' },
-    { no:91,  pt:3, ph:'kitchen',  t:'賞味期限切れの食材がないか' },
-    { no:92,  pt:3, ph:'kitchen',  t:'破損した機材や保存容器・什器などはないか' },
-    { no:94,  pt:3, ph:'kitchen',  t:'オーダー票と相違がないか（配膳前）' },
-    { no:107, pt:3, ph:'anzen',    t:'火器・刃物の扱いが適切か' },
-    { no:108, pt:3, ph:'anzen',    t:'床の水・油による転倒リスクがないか' },
-    { no:111, pt:3, ph:'anzen',    t:'消火器の期限が切れていないか' },
-    { no:62,  pt:2, ph:'shikumi',  t:'制服の着こなしが規定通りであるか' },
-    { no:99,  pt:3, ph:'shikumi',  t:'外部への情報漏えい防止（調理方法などを口外しない）' },
-    { no:101, pt:3, ph:'shikumi',  t:'秘密保持の契約をしているスタッフのみを雇用しているか（日雇い含む）', tag:'オーナー確認' },
-    { no:105, pt:2, ph:'shikumi',  t:'桜チェックリストが活用されているか', tag:'世桜の仕組み' },
-    { no:102, pt:2, ph:'shikumi',  t:'定期清掃リストを活用されているか' },
+    { no:3,   pt:1, ph:'gaikan',   t:'暖簾が汚くないか', man:['mn049'] },
+    { no:8,   pt:2, ph:'gaikan',   t:'看板の電気がついているか', man:['mn049'] },
+    { no:'T9',  pt:0, ph:'deai',   t:'最初の一声「いらっしゃいませ」（体験）', tag:'体験', man:['mn018','mn020'] },
+    { no:22,  pt:2, ph:'deai',     t:'お客様の顔を見て明るく感じのいい接客ができているか', man:['mn016','mn018'] },
+    { no:23,  pt:2, ph:'deai',     t:'挨拶・声掛けができているか', man:['mn020','mn018'] },
+    { no:30,  pt:2, ph:'order',    t:'メニュー説明・おすすめの提案はしているか', man:['mn018','mn022'] },
+    { no:'T23', pt:0, ph:'order',  t:'アレルギーの確認（体験）', tag:'体験', man:['mn018'] },
+    { no:'T24', pt:0, ph:'order',  t:'オーダーの復唱（体験）', tag:'体験', man:['mn018'] },
+    { no:31,  pt:2, ph:'order',    t:'食べ方POPをお食事提供までに渡せているか', tag:'世桜らしさ', man:['mn018'] },
+    { no:32,  pt:2, ph:'order',    t:'世桜BOOKを状況に応じてお客様に渡せているか', tag:'世桜らしさ', man:['mn009','mn118'] },
+    { no:28,  pt:2, ph:'jisshoku', t:'商品注文してから何分で提供されているか（アラカルト10分以内→○／業態により微調整あり）', tag:'時刻を記入', man:['mn018'], std:'アラカルト10分以内→○／10分以上→×（コースは〇分＝原本で未記入）※業態により微調整あり' },
+    { no:47,  pt:3, ph:'jisshoku', t:'料理の温度と状態、味は問題ないか', man:['mn125','mn124','mn126'] },
+    { no:85,  pt:5, ph:'jisshoku', t:'食材の配置・盛付けがマニュアルの写真・図と一致している', man:['mn125','mn124','mn126'] },
+    { no:39,  pt:2, ph:'jisshoku', t:'配膳前に盛り付けや配置の確認ができているか（wチェック）', man:['mn018'] },
+    { no:43,  pt:2, ph:'jisshoku', t:'商品の説明がされているか（配膳時）', man:['mn022'] },
+    { no:36,  pt:1, ph:'jisshoku', t:'牛カツ着火剤の確認ができるか', tag:'牛カツ店のみ', man:['mn125'] },
+    { no:41,  pt:2, ph:'jisshoku', t:'カットするスタッフのレベルは合格レベルか（演出）', tag:'該当店のみ', man:['mn018'] },
+    { no:42,  pt:2, ph:'jisshoku', t:'撮影のお声がけができているか', tag:'世桜らしさ', man:['mn059','mn116'] },
+    { no:13,  pt:2, ph:'hall',     t:'テーブル・椅子・床に汚れやゴミが放置されていないか', man:['mn047'] },
+    { no:16,  pt:3, ph:'hall',     t:'トイレの便器に汚れはないか', man:['mn047','mn109'] },
+    { no:18,  pt:3, ph:'hall',     t:'トイレ裏のコードに埃が溜まっていないか', man:['mn047','mn109'] },
+    { no:29,  pt:3, ph:'hall',     t:'事前ケア・中間ケアは実施されているか', man:['mn023'] },
+    { no:48,  pt:3, ph:'hall',     t:'お冷が半分になってから即時対応できているか（3分以上→×）', man:['mn018'], std:'半分になってから即時対応→○／3分以上→×' },
+    { no:'T42', pt:0, ph:'hall',   t:'感想のヒアリング（体験）', tag:'体験', man:['mn016'] },
+    { no:50,  pt:5, ph:'kaikei',   t:'サプライズ＝マニュアル通りの流れで行い、全員で盛り上がれているか', tag:'該当時のみ', man:['mn027','mn028'] },
+    { no:51,  pt:5, ph:'kaikei',   t:'サプライズ＝適切な演出ができているか（ライト等のタイミング）', tag:'該当時のみ', man:['mn027','mn028'] },
+    { no:49,  pt:2, ph:'kaikei',   t:'チェキの提供ができているか', tag:'導入店舗のみ', man:['mn116','mn117'] },
+    { no:'T53', pt:0, ph:'kaikei', t:'Google口コミのご案内（体験）', tag:'体験', man:['mn030'] },
+    { no:56,  pt:5, ph:'kaikei',   t:'お帰りの挨拶ができているか（外までお見送り）', man:['mn018'] },
+    { no:70,  pt:3, ph:'kitchen',  t:'ダスターは用途に分けて使用しているか', man:['mn039','mn047'] },
+    { no:71,  pt:3, ph:'kitchen',  t:'不衛生な行動がないか（鼻・髪・スマホに触れた後そのまま作業など）', man:['mn036','mn035'] },
+    { no:87,  pt:3, ph:'kitchen',  t:'冷凍・冷蔵庫の庫内温度は適切か（冷蔵5℃以下・冷凍−18℃以下）', man:['mn038'], std:'冷蔵5℃以下・冷凍−18℃以下（原本1シート目は表記が入れ替わっている＝本部へお伝え済み）' },
+    { no:88,  pt:3, ph:'kitchen',  t:'食品の賞味期限管理として期限シールを貼れているか', man:['mn038','mn093'] },
+    { no:91,  pt:3, ph:'kitchen',  t:'賞味期限切れの食材がないか', man:['mn038'] },
+    { no:92,  pt:3, ph:'kitchen',  t:'破損した機材や保存容器・什器などはないか', man:['mn046'] },
+    { no:94,  pt:3, ph:'kitchen',  t:'オーダー票と相違がないか（配膳前）', man:['mn096'] },
+    { no:107, pt:3, ph:'anzen',    t:'火器・刃物の扱いが適切か', man:['mn060'] },
+    { no:108, pt:3, ph:'anzen',    t:'床の水・油による転倒リスクがないか', man:['mn047'] },
+    { no:111, pt:3, ph:'anzen',    t:'消火器の期限が切れていないか', man:['mn060'] },
+    { no:62,  pt:2, ph:'shikumi',  t:'制服の着こなしが規定通りであるか', man:['mn010','mn091'], std:'インナーは白または黒の無地（原本の文はここで切れている）' },
+    { no:99,  pt:3, ph:'shikumi',  t:'外部への情報漏えい防止（調理方法などを口外しない）', man:['mn011'] },
+    { no:101, pt:3, ph:'shikumi',  t:'秘密保持の契約をしているスタッフのみを雇用しているか（日雇い含む）', tag:'オーナー確認', man:['mn068'] },
+    { no:105, pt:2, ph:'shikumi',  t:'桜チェックリストが活用されているか', tag:'世桜の仕組み', man:['mn108'], std:'桜チェックリストを活用しているか（13-2 桜チェックシート）' },
+    { no:102, pt:2, ph:'shikumi',  t:'定期清掃リストを活用されているか', man:['mn109','mn110','mn111'], std:'定期清掃リストを活用し、実施できているか（清掃箇所確認）' },
   ];
   const getSv = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_svcheck')) || {}; } catch { return {}; } };
   const saveSv = (o) => { try { localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(o)); } catch (e) {} };
@@ -3505,13 +3505,39 @@
     L1.push('※ 番号は【世桜】店舗管理チェックシート_原本のNo。採点方式は本部で確定待ちのため点数は参考です');
     return L1.join('\n');
   }
+  /* ---------- 基準（あるべき姿）＝項目ごとに、原本の基準文＋関連マニュアル＋本部が貼ったスクショ・正解写真 ----------
+     2026-09-16 神田さんのご要望「各項目の出来栄え基準をマニュアルから探してスクショを貼れないか」。
+     文言は原本にあるものだけ（こちらで基準を作らない）。写真は本部がアプリから貼る（kind:svstd・No ごと最新が正・全店共通）。
+     9/9 MTG「正解写真＝あるべき姿をアプリに登録して以後はズレを指摘」の器としても使える。 */
+  const getSvStd = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_svstd')) || {}; } catch { return {}; } };
+  const saveSvStd = (o) => { try { localStorage.setItem('yosakura_demo_svstd', JSON.stringify(o)); } catch (e) {} };
+  const svStdOf = (no) => getSvStd()[String(no)] || {};
+  const svManLink = (id) => (getLinks().find(l => l.id === id) || (typeof MANUAL_BUILTIN !== 'undefined' ? MANUAL_BUILTIN.find(l => l.id === id) : null));
+  function svStdHtml(it) {
+    const st = svStdOf(it.no); const phs = (st.photos || []).filter(Boolean);
+    const mans = (it.man || []).map(svManLink).filter(l => l && isHttp(l.url));
+    const has = it.std || (st.text || '').trim() || phs.length;
+    return `<details class="svstd" data-svstd="${esc(String(it.no))}">
+        <summary>${esc(L({ ja:'基準（あるべき姿）', en:'Standard', vi:'Tiêu chuẩn' }))}${has ? '' : `<small>${esc(L({ ja:'未登録', en:'not set', vi:'chưa có' }))}</small>`}${phs.length ? `<small>${phs.length}枚</small>` : ''}</summary>
+        <div class="svstd-b">
+          ${it.std ? `<div class="svstd-t"><b>${esc(L({ ja:'原本の基準：', en:'Master: ', vi:'Bản gốc: ' }))}</b>${esc(it.std)}</div>` : ''}
+          ${(st.text || '').trim() ? `<div class="svstd-t">${esc(st.text)}</div>` : ''}
+          ${phs.length ? `<div class="svphotos">${phs.map((p, i) => `<span class="svph big"><img src="${esc(photoThumb(p))}" alt="" data-svstdview="${esc(photoFull(p))}"><button type="button" data-svstddel="${esc(String(it.no))}" data-svphi="${i}" aria-label="delete">×</button></span>`).join('')}</div>` : ''}
+          ${mans.length ? `<div class="svstd-m">${mans.map(l => `<button class="mini" data-openurl="${esc(openUrlFor(l.url))}">${esc(l.title)}</button>`).join('')}</div>` : ''}
+          <div class="svstd-e">
+            <textarea data-svstdtext="${esc(String(it.no))}" rows="2" placeholder="${esc(L({ ja:'基準をひと言（本部が書く・全店共通）', en:'Standard in one line (HQ)', vi:'Tiêu chuẩn (HQ)' }))}">${esc(st.text || '')}</textarea>
+            <label class="svph-add">${svg('camera')}<span>${esc(L({ ja:'スクショ／正解写真', en:'Add image', vi:'Thêm ảnh' }))}</span><input type="file" accept="image/*" data-svstdphoto="${esc(String(it.no))}"></label>
+          </div>
+        </div>
+      </details>`;
+  }
   /* 1項目の見た目（状態・メモ・写真）。sig＝中身の目印。合流のときは sig が変わった項目だけ差し替える＝画面がプツプツしない */
-  const svSig = (a) => JSON.stringify([a.v || '', a.memo || '', (a.photos || []).map(p => isDataUrl(p) ? p.length : p), a.by || '']);
+  const svSig = (a, st) => JSON.stringify([a.v || '', a.memo || '', (a.photos || []).map(p => isDataUrl(p) ? p.length : p), a.by || '', st ? [st.text || '', (st.photos || []).map(p => isDataUrl(p) ? p.length : p)] : null]);
   function svItemHtml(it) {
     const a = svAns(it.no) || {};
     const showMemo = a.v === 'ng' || (a.memo || '').trim() || a.v === 'ok' || (a.photos || []).length;
     const phs = Array.isArray(a.photos) ? a.photos.filter(Boolean) : [];
-    return `<div class="svit ${a.v ? 'v-' + a.v : ''}" data-svno="${esc(String(it.no))}" data-sig="${esc(svSig(a))}">
+    return `<div class="svit ${a.v ? 'v-' + a.v : ''}" data-svno="${esc(String(it.no))}" data-sig="${esc(svSig(a, svStdOf(it.no)))}">
         <div class="svit-h"><span class="svit-no">${typeof it.no === 'number' ? 'No.' + it.no : '体験'}</span>${it.pt ? `<span class="svit-pt pt${it.pt}">${it.pt}点</span>` : ''}${it.tag ? `<span class="svit-tag">${esc(it.tag)}</span>` : ''}${a.by ? `<span class="svit-by">${esc(a.by)}</span>` : ''}</div>
         <div class="svit-t">${esc(it.t)}</div>
         <div class="svjudge">
@@ -3519,6 +3545,7 @@
           <button data-svv="ng" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'ng'}">×</button>
           <button data-svv="na" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'na'}">${esc(L({ ja:'対象外', en:'N/A', vi:'Không áp dụng' }))}</button>
         </div>
+        ${svStdHtml(it)}
         ${showMemo ? `<textarea class="svmemo" data-svmemo="${esc(String(it.no))}" rows="2" placeholder="${esc(a.v === 'ok' ? L({ ja:'良かった点があればひと言（レポートに載ります）', en:'Note a good point (optional)', vi:'Điểm tốt (tuỳ chọn)' }) : L({ ja:'何が・どこが（レポートに載ります）', en:'What / where', vi:'Điều gì / ở đâu' }))}">${esc(a.memo || '')}</textarea>
         <div class="svphotos">
           ${phs.map((p, i) => `<span class="svph"><img src="${esc(photoThumb(p))}" alt=""><button type="button" data-svphdel="${esc(String(it.no))}" data-svphi="${i}" aria-label="delete">×</button></span>`).join('')}
@@ -3567,6 +3594,32 @@
       postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phs.length })), photos: phs, t: next.t });
       svApplyDom();
     });
+    /* 基準（あるべき姿）の登録＝本部共通。No ごとに1行（最新が正） */
+    const svStdPush = (no, patch, phs) => {
+      const all = getSvStd(); const a = getAuth();
+      const cur = Object.assign({}, all[String(no)] || {}, patch, { by: (a && a.name) || '本部', t: Date.now() });
+      if (phs) cur.photos = phs;
+      all[String(no)] = cur; saveSvStd(all);
+      const send = (cur.photos || []).filter(Boolean);
+      postReport({ kind:'svstd', store:'本部', item:String(no), note: JSON.stringify(Object.assign({}, cur, { photos: undefined, nph: send.length })), photos: send, t: cur.t });
+    };
+    document.querySelectorAll('[data-svstdtext]').forEach(ta => { ta.onchange = () => { svStdPush(ta.dataset.svstdtext, { text: ta.value }); }; });
+    document.querySelectorAll('input[data-svstdphoto]').forEach(fi => fi.onchange = async () => {
+      const no = fi.dataset.svstdphoto; const file = fi.files && fi.files[0]; if (!file) return;
+      写真の操作中 = true; toast(L({ ja:'画像を読み込んでいます…', en:'Loading…', vi:'Đang tải…' }));
+      const d = await 写真をデータにする_(file); 写真の操作中 = false;
+      if (!d) { toast(L({ ja:'画像を読めませんでした', en:'Could not read the image.', vi:'Không đọc được ảnh.' })); return; }
+      const phs = (svStdOf(no).photos || []).filter(Boolean).slice(0, 5); phs.push(d);
+      svStdPush(no, {}, phs); svApplyDom();
+      const d2 = document.querySelector(`details.svstd[data-svstd="${no}"]`); if (d2) d2.open = true;
+    });
+    document.querySelectorAll('[data-svstddel]').forEach(b => b.onclick = () => {
+      const no = b.dataset.svstddel; const phs = (svStdOf(no).photos || []).filter(Boolean); phs.splice(Number(b.dataset.svphi), 1);
+      svStdPush(no, {}, phs); svApplyDom();
+      const d2 = document.querySelector(`details.svstd[data-svstd="${no}"]`); if (d2) d2.open = true;
+    });
+    document.querySelectorAll('img[data-svstdview]').forEach(im => im.onclick = () => { try { window.open(im.dataset.svstdview, '_blank'); } catch (e) {} });
+    document.querySelectorAll('.svstd [data-openurl]').forEach(b => b.onclick = () => { try { window.open(b.dataset.openurl, '_blank'); } catch (e) {} });
     document.querySelectorAll('[data-svphdel]').forEach(b => b.onclick = () => {
       const it = SV_ITEMS.find(i => String(i.no) === b.dataset.svphdel); if (!it) return;
       const cur = svAns(it.no) || {}; const phs = (cur.photos || []).filter(Boolean); phs.splice(Number(b.dataset.svphi), 1);
@@ -3584,7 +3637,8 @@
       document.querySelectorAll('.svit[data-svno]').forEach(el => {
         const it = SV_ITEMS.find(i => String(i.no) === el.dataset.svno); if (!it) return;
         const a = svAns(it.no) || {};
-        if (el.dataset.sig === svSig(a)) return;
+        if (el.querySelector('details.svstd[open]')) return;   // 基準を開いて見ている項目は差し替えない
+        if (el.dataset.sig === svSig(a, svStdOf(it.no))) return;
         if (ae && el.contains(ae)) return;
         const tmp = document.createElement('div'); tmp.innerHTML = svItemHtml(it);
         el.replaceWith(tmp.firstElementChild);
@@ -9723,7 +9777,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null; const svc={}, svcT={};
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null; const svc={}, svcT={}; const svstd={}, svstdT={};
     /* ★同じ提出が何行にもなっているとき、1件にまとめて見せる（2026-09-03 実機で発覚）。
        受け取り側は1回のPOSTごとに1行を足す作りのため、返事が届かずに送り直されると
        中身が同じ行が並ぶ（長堀橋店の日計レポートが同じ写真で8行）。
@@ -9792,6 +9846,8 @@
         case 'faqset': { const p=pj(r.note); if (Array.isArray(p) && (faqsetT==null || t>=faqsetT)) { faqset=p; faqsetT=t; } } break; // よくある質問（本部追加分）は最新版が正
         // 巡回チェック（本部）＝店舗|日付|No ごとに最新が正（2人同時入力の合流）
         case 'svcheck': { const p=pj(r.note) || {}; const k=r.item; if (!k) break; if (svcT[k]==null || t>=svcT[k]) { if (Array.isArray(r.photos) && r.photos.length) p.photos = r.photos; svc[k]=p; svcT[k]=t; } } break;
+        // 基準（あるべき姿）＝項目No ごと最新が正（本部共通）
+        case 'svstd': { const p=pj(r.note) || {}; const k=String(r.item || ''); if (!k) break; if (svstdT[k]==null || t>=svstdT[k]) { if (Array.isArray(r.photos) && r.photos.length) p.photos = r.photos; svstd[k]=p; svstdT[k]=t; } } break;
         // タスク（試行）＝本人のuidの行だけ・最新版が正（バックエンドも本人にしか返さないが、端末側でも念のため絞る）
         case 'hqtask': { const a0 = getAuth(); if (!a0 || String(r.item || '') !== String(a0.uid || '')) break; const p=pj(r.note); if (Array.isArray(p) && (hqtaskT==null || t>=hqtaskT)) { hqtask=p; hqtaskT=t; } } break;
       }
@@ -9852,6 +9908,11 @@
       let curS = {}; try { curS = JSON.parse(localStorage.getItem('yosakura_demo_svcheck')) || {}; } catch (_) {}
       Object.keys(svc).forEach(k => { const lt = Number((curS[k] || {}).t) || 0; if (lt > (svcT[k] || 0)) return; curS[k] = svc[k]; });
       set('yosakura_demo_svcheck', curS);
+    }
+    if (Object.keys(svstd).length) {
+      let curT = {}; try { curT = JSON.parse(localStorage.getItem('yosakura_demo_svstd')) || {}; } catch (_) {}
+      Object.keys(svstd).forEach(k => { const lt = Number((curT[k] || {}).t) || 0; if (lt > (svstdT[k] || 0)) return; curT[k] = svstd[k]; });
+      set('yosakura_demo_svstd', curT);
     }
   }
   async function syncReports(force) {
