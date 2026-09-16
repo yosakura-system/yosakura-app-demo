@@ -5137,5 +5137,40 @@ console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== デザイン刷新（HP基準・テーマ層）2026-09-16 神田さん即採用 ==');
+{
+  const seedAuth = (role, theme) => run(() => {
+    setLS(role, role === 'hq' ? 'all' : '牛カツ世桜 長堀橋店', 'ja');
+    localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid: role === 'hq' ? 'kanda' : 'ipad', name:'テスト', role, stores:['*'] }));
+    if (theme) localStorage.setItem('yosakura_theme', theme);
+  });
+  // ① 本部＝未設定なら新デザイン（ホームにヒーロー）
+  seedAuth('hq');
+  location.hash = '#/home';
+  let h = registry.app.innerHTML;
+  ok(/class="hp-hero"/.test(h) && /一皿に、日本を詰めて。/.test(h) && /TODAY — /.test(h), '本部は未設定でも新デザイン＝ホームにヒーロー（写真＋日付＋コピー）');
+  ok(!/class="brandhead"/.test(h), '新デザインでは旧のロゴ枠を出さない');
+  // ② 店舗＝未設定なら旧のまま（段階導入）
+  seedAuth('staff');
+  location.hash = '#/home';
+  h = registry.app.innerHTML;
+  ok(/class="brandhead"/.test(h) && !/class="hp-hero"/.test(h), '★店舗は未設定なら旧デザインのまま（段階導入＝壊さない）');
+  // ③ 切替＝設定に「デザイン」があり、旧へ1タップで戻せる
+  seedAuth('hq', 'classic');
+  location.hash = '#/home';
+  ok(/class="brandhead"/.test(registry.app.innerHTML), '本部でも「旧」を選べば元に戻る（1行で戻せる）');
+  location.hash = '#/app/backend';
+  h = registry.app.innerHTML;
+  ok(/data-theme-set="hp"/.test(h) && /data-theme-set="classic"/.test(h), '設定画面に新／旧の切替がある');
+  // ④ 作りの保証＝動きは触っていない
+  const srcT = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  const cssT = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  ok(/html\[data-theme="hp"\] \{/.test(cssT) && /Zen Old Mincho/.test(cssT) && /EB Garamond/.test(cssT), '新デザインはテーマ層（html[data-theme=hp]）＝旧の定義は残る');
+  ok(/html\[data-theme="hp"\]\[lang="vi"\]/.test(cssT), 'ベトナム語は明朝を使わずゴシックへ逃がす');
+  ok(/const IMG_HERO = 'data:image\/jpeg;base64,/.test(srcT), 'ヒーロー写真は埋め込み（外部ファイルに依存しない）');
+  ok((cssT.match(/html\[data-theme="hp"\]/g) || []).length > 40, 'テーマ層の上書きは十分な範囲（' + (cssT.match(/html\[data-theme="hp"\]/g) || []).length + '箇所）');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
