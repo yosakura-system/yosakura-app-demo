@@ -5128,7 +5128,7 @@ console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要�
   ok(manN === 44, '44項目すべてに関連マニュアルが紐づく（実際 ' + manN + '）');
   ok(/std:'アラカルト10分以内→○/.test(srcH) && /std:'冷蔵5℃以下・冷凍−18℃以下/.test(srcH), '基準の文言は原本に書かれているものだけ（作らない）');
   ok(/case 'svstd':/.test(srcH) && /set\('yosakura_demo_svstd', curT\)/.test(srcH), '基準は本部共通で合流する（No ごと最新が正）');
-  ok(/素材：/.test(hS) && /drive\.google\.com\/drive\/folders\/1z8tLLwbJFVSRguRu7i-CFlWrMw2semcb/.test(hS), '基準欄から「07.世桜×MOTON」の素材フォルダ（料理写真・POP・看板）を開ける');
+  ok(/素材：/.test(hS) && /drive\.google\.com\/drive\/folders\/1CtU_lfi_VXqXv4uAAIFnGsadJrx4GnuK/.test(hS), '基準欄から「07.世桜×MOTON」の素材フォルダ（料理写真・POP・看板）を開ける');
   ok(/番号は【世桜】店舗管理チェックシート_原本のNo/.test(srcH), 'レポートの文面に「番号は原本のNo」と入る（原本へ転記できる）');
   ok(/ae\.tagName && \/\^\(TEXTAREA\|INPUT\)\$\/\.test\(ae\.tagName\)/.test(srcH), 'メモ入力中は合流の描き直しをしない（書きかけが消えない）');
   const svN = (srcH.match(/\{ no:(?:\d+|'T\d+'),\s+pt:\d, ph:'/g) || []).length;
