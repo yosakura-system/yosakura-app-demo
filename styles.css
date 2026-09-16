@@ -637,3 +637,87 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .svph.big { width: 120px; height: 90px; }
 
 .svmat { border-color: #5C6E58 !important; color: #3f6b3a !important; }
+
+/* =====================================================================
+   HP基準デザイン（yosakura.jp）＝テーマ層。html[data-theme="hp"] のときだけ効く。
+   2026-09-16 神田さん即採用。書体＝Zen Old Mincho＋EB Garamond／色＝白・#F8F8F8・墨#333・罫#cacaca・朱#8e3e3e一点／
+   角丸・影・カードをやめ、1pxの罫線と余白で区切る／写真は角版＋黒の被せ。動き（入力・保存・同期）は一切変えない。
+   ===================================================================== */
+html[data-theme="hp"] {
+  --suou: #333333; --suou-d: #202020; --suou-t: #F1F1F1; --sumi: #333333; --gray: #6E6A66;
+  --kinari: #FFFFFF; --paper: #FFFFFF; --line: #cacaca; --gold: #8e3e3e; --moegi: #333333;
+  --shadow: none; --shadow-s: none;
+  --serif: "Zen Old Mincho", "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif;
+  --sans: "Zen Old Mincho", "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif;
+  --en: "EB Garamond", Georgia, "Times New Roman", serif;
+}
+/* ベトナム語は明朝に字形が無い＝本文をゴシックへ（英字はEB Garamondが越語対応） */
+html[data-theme="hp"][lang="vi"] { --sans: -apple-system, "Noto Sans", "Segoe UI", "Hiragino Sans", sans-serif; --serif: -apple-system, "Noto Sans", "Segoe UI", sans-serif; }
+html[data-theme="hp"] body { background: #EDECEA; letter-spacing: .02em; }
+html[data-theme="hp"] .splash { background: #FFFFFF; gap: 18px; }
+html[data-theme="hp"] .splash__logo { width: 40%; max-width: 170px; }
+html[data-theme="hp"] .splash__tag { display: flex; flex-direction: column; align-items: center; gap: 12px; animation: logoIn 1.4s .4s ease both; }
+html[data-theme="hp"] .splash__en { font-family: var(--en); font-size: 12px; letter-spacing: .3em; color: #333333; }
+html[data-theme="hp"] .splash__rule { width: 28px; height: 1px; background: #cacaca; }
+html[data-theme="hp"] .splash__ja { font-family: var(--serif); font-size: 13px; letter-spacing: .1em; color: #393939; text-align: center; line-height: 2; }
+html[data-theme="hp"] .hdr { background: #FFFFFF; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 1px solid #cacaca; }
+html[data-theme="hp"] .hdr__logo { border-radius: 0; box-shadow: none; border: none; }
+html[data-theme="hp"] .hdr__brand { letter-spacing: .2em; }
+html[data-theme="hp"] .hdr__brand small { font-family: var(--en); letter-spacing: .3em; }
+html[data-theme="hp"] .role-chip { background: transparent; color: #333333; border: 1px solid #333333; border-radius: 0; box-shadow: none; font-weight: 500; letter-spacing: .08em; padding: 6px 12px; }
+html[data-theme="hp"] .role-chip .dot { background: #333333; }
+html[data-theme="hp"] .lang-chip { border-radius: 0; font-family: var(--en); font-weight: 600; letter-spacing: .15em; }
+html[data-theme="hp"] .screen { padding-top: 0; }
+/* ホームのヒーロー */
+html[data-theme="hp"] .hp-hero { position: relative; height: 300px; margin: 0 -16px 18px; overflow: hidden; background: #333333; }
+html[data-theme="hp"] .hp-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 45%; }
+html[data-theme="hp"] .hp-hero__sh { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,.12) 40%, rgba(0,0,0,.55) 100%); }
+html[data-theme="hp"] .hp-hero__b { position: absolute; left: 20px; right: 20px; bottom: 22px; display: flex; flex-direction: column; gap: 9px; color: #FFFFFF; }
+html[data-theme="hp"] .hp-en { font-family: var(--en); font-size: 12px; letter-spacing: .2em; color: rgba(255,255,255,.85); }
+html[data-theme="hp"] .hp-hero__t { font-family: var(--serif); font-size: 23px; line-height: 1.5; letter-spacing: .1em; text-wrap: pretty; }
+html[data-theme="hp"] .hp-hero__s { font-size: 12px; letter-spacing: .1em; color: rgba(255,255,255,.8); }
+/* 見出し＝縦棒をやめ、明朝＋罫線 */
+html[data-theme="hp"] .sec-h { margin: 24px 2px 10px; padding-bottom: 8px; border-bottom: 1px solid #333333; }
+html[data-theme="hp"] .sec-h .bar { display: none; }
+html[data-theme="hp"] .sec-h h2 { font-family: var(--serif); font-size: 15px; letter-spacing: .12em; font-weight: 500; }
+/* カード・タイル・リンク＝角丸と影をやめ、罫線に */
+html[data-theme="hp"] .card { border: none; border-bottom: 1px solid #cacaca; border-radius: 0; box-shadow: none; background: transparent; padding: 16px 2px; margin-bottom: 6px; }
+html[data-theme="hp"] .card h3 { font-family: var(--serif); font-weight: 500; letter-spacing: .1em; font-size: 14px; }
+html[data-theme="hp"] .tile { border-radius: 0; box-shadow: none; border: 1px solid #cacaca; background: #FFFFFF; }
+html[data-theme="hp"] .tile .ico { border-radius: 0; background: transparent; border: 1px solid #cacaca; color: #333333; }
+html[data-theme="hp"] .tile .nm { font-weight: 500; letter-spacing: .06em; }
+html[data-theme="hp"] .tile .live { border-radius: 0; background: #8e3e3e; font-family: var(--en); letter-spacing: .15em; }
+html[data-theme="hp"] .homelink { border-radius: 0; box-shadow: none; border: none; border-bottom: 1px solid #cacaca; background: transparent; padding: 14px 4px; }
+html[data-theme="hp"] .homelink .hl-ic { border-radius: 0; background: transparent; border: 1px solid #cacaca; color: #333333; }
+html[data-theme="hp"] .homelink .hl-t { font-weight: 500; letter-spacing: .06em; }
+html[data-theme="hp"] .news-card--imp { border-color: #cacaca; box-shadow: none; }
+html[data-theme="hp"] .news-card--imp .news-ic { background: transparent; color: #8e3e3e; border: 1px solid #8e3e3e; }
+html[data-theme="hp"] .news-ic { border-radius: 0; }
+html[data-theme="hp"] .news-more { color: #333333; font-weight: 500; letter-spacing: .1em; }
+html[data-theme="hp"] .news-more::before { content: "→ "; font-family: var(--en); }
+html[data-theme="hp"] .news-thumb { border-radius: 0; }
+/* ボタン・入力 */
+html[data-theme="hp"] .btn-primary { border-radius: 0; background: #333333; box-shadow: none; font-weight: 500; letter-spacing: .15em; padding: 15px; }
+html[data-theme="hp"] .btn, html[data-theme="hp"] .mini, html[data-theme="hp"] button.role-opt { border-radius: 0; }
+html[data-theme="hp"] .seg button { border-radius: 0; font-weight: 500; letter-spacing: .06em; }
+html[data-theme="hp"] .seg button.on { background: #333333; border-color: #333333; box-shadow: none; }
+html[data-theme="hp"] input[type="text"], html[data-theme="hp"] input[type="search"], html[data-theme="hp"] input[type="number"], html[data-theme="hp"] input[type="date"], html[data-theme="hp"] input[type="time"], html[data-theme="hp"] select, html[data-theme="hp"] textarea { border-radius: 0; border: 1px solid #cacaca; background: #FFFFFF; font-family: var(--sans); }
+html[data-theme="hp"] .rep .kind { border-radius: 0; font-weight: 500; letter-spacing: .08em; }
+html[data-theme="hp"] .rep .kind.b { box-shadow: inset 0 0 0 1px #cacaca; }
+html[data-theme="hp"] .sheet { border-radius: 0; }
+html[data-theme="hp"] .idlabel { font-family: var(--en); letter-spacing: .2em; font-weight: 500; }
+/* 下のバー */
+html[data-theme="hp"] .tabbar { background: #FFFFFF; backdrop-filter: none; -webkit-backdrop-filter: none; border-top: 1px solid #cacaca; }
+html[data-theme="hp"] .tabbar button { font-weight: 500; letter-spacing: .1em; color: #9a9a9a; }
+html[data-theme="hp"] .tabbar button.on { color: #333333; }
+/* 巡回チェック・タスク（今日足した画面）も同じ作法に */
+html[data-theme="hp"] .vctab, html[data-theme="hp"] .svjudge button, html[data-theme="hp"] .svph, html[data-theme="hp"] .svph-add, html[data-theme="hp"] .svstd, html[data-theme="hp"] .mk { border-radius: 0; }
+html[data-theme="hp"] .vctab.on { background: #333333; border-color: #333333; }
+html[data-theme="hp"] .svjudge button[aria-pressed="true"][data-svv="ng"] { border-color: #8e3e3e; color: #8e3e3e; background: #FFFFFF; }
+html[data-theme="hp"] .svjudge button[aria-pressed="true"][data-svv="ok"] { border-color: #333333; color: #333333; background: #FFFFFF; }
+html[data-theme="hp"] .svit-pt.pt3, html[data-theme="hp"] .svit-pt.pt5 { background: transparent; border: 1px solid #8e3e3e; color: #8e3e3e; border-radius: 0; }
+html[data-theme="hp"] .svit-tag, html[data-theme="hp"] .svit-pt { border-radius: 0; }
+html[data-theme="hp"] .svscore b { color: #333333; }
+html[data-theme="hp"] .svbar-in { background: #333333; }
+html[data-theme="hp"] .svpre { border-radius: 0; background: #F8F8F8; }
+html[data-theme="hp"] .toast { border-radius: 0; }
