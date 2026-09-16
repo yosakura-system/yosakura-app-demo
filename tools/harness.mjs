@@ -5260,6 +5260,8 @@ console.log('== 数字の要確認（本部）2026-09-17 神田さん「要確�
   rows.push(base(2, 101400, 21, { foodamt: '23', drinkamt: '8' }));            // 個数で入っている（9/16の実例）
   rows.push(base(1, 26100, 10, { foodamt: '42000', drinkamt: '1300' }));       // 合計が合わない・客単価2,610
   rows.push(base(0, 62700, 0, { foodamt: '', drinkamt: '', err: '500' }));      // 客数なし・レジ差
+  rows.push({ store: S, date: '2026-08-20', sales: 150000, guests: 30, foodamt: '40', drinkamt: '12', t: 1, src: '' });   // 9/2より前のアプリ入力（点数時代）＝拾わない
+  rows.push({ store: S, date: '2026-08-21', sales: 150000, guests: 30, foodamt: '40', drinkamt: '12', t: 1, src: 'drive' }); // 同じ日付でもシート取込は対象
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows)); localStorage.removeItem('yosakura_kyou_store'); localStorage.removeItem('yosakura_numcheck_ack'); });
   location.hash = '#/app/numcheck';
   let h = registry.app.innerHTML;
@@ -5271,6 +5273,7 @@ console.log('== 数字の要確認（本部）2026-09-17 神田さん「要確�
   ok(/class="kchips"/.test(h) && /data-numack="/.test(h) && /取込/.test(h), '店舗チップ・確認済みボタン・入力経路（取込／アプリ）が出る');
   const nOpen = Number((h.match(/<b>(\d+)<\/b>件 未確認/) || [])[1]);
   ok(nOpen >= 5, '未確認の件数が出る（' + nOpen + '件）');
+  ok(!/2026-08-20/.test(h) && /2026-08-21/.test(h), '9/2より前のアプリ入力は拾わない（シート取込は拾う）');
   location.hash = '#/home';
   ok(/数字の要確認があります/.test(registry.app.innerHTML) && /data-open="numcheck"/.test(registry.app.innerHTML), '本部ホームに「数字の要確認があります」が出て一覧へ飛べる');
   // 確認済みにすると未確認から消える（表示切替で戻る）
