@@ -5148,13 +5148,21 @@ console.log('== デザイン刷新（HP基準・テーマ層）2026-09-16 神田
   seedAuth('hq');
   location.hash = '#/home';
   let h = registry.app.innerHTML;
-  ok(/class="hp-hero"/.test(h) && /一皿に、日本を詰めて。/.test(h) && /TODAY — /.test(h), '本部は未設定でも新デザイン＝ホームにヒーロー（写真＋日付＋コピー）');
+  ok(/class="hp-hero"/.test(h) && /一皿に、日本を詰めて。/.test(h) && /TODAY — /.test(h), '本部＝ホームにヒーロー（写真＋日付＋コピー）');
   ok(!/class="brandhead"/.test(h), '新デザインでは旧のロゴ枠を出さない');
   // ② 店舗＝未設定なら旧のまま（段階導入）
   seedAuth('staff');
   location.hash = '#/home';
   h = registry.app.innerHTML;
-  ok(/class="brandhead"/.test(h) && !/class="hp-hero"/.test(h), '★店舗は未設定なら旧デザインのまま（段階導入＝壊さない）');
+  ok(/class="hp-hero"/.test(h) && !/class="brandhead"/.test(h), '★店舗も未設定なら新デザイン（全店統一＝2026-09-16 神田さん指示）');
+  location.hash = '#/home?tab=genba';
+  h = registry.app.innerHTML;
+  ok(/class="hp-tabhero"/.test(h) && /REPORT/.test(h) && /報告する/.test(h), '報告タブ＝写真のヒーロー（REPORT＋明朝の見出し）');
+  ok(/class="hp-en sec-en">ON-SITE</.test(h), 'グループ見出しに英字の小見出しが付く');
+  location.hash = '#/home?tab=learn';
+  ok(/LEARN/.test(registry.app.innerHTML) && /hp-tabhero/.test(registry.app.innerHTML), '学ぶタブ＝写真のヒーロー（LEARN）');
+  location.hash = '#/app/kizuki';
+  ok(/class="hp-en">[A-Z]/.test(registry.app.innerHTML), '機能画面の頭に英字の小見出し');
   // ③ 切替＝設定に「デザイン」があり、旧へ1タップで戻せる
   seedAuth('hq', 'classic');
   location.hash = '#/home';
