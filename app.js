@@ -6495,6 +6495,8 @@
         const lunch = numN_(r.lunch), err = numN_(r.err), cash = numN_(r.cash), card = numN_(r.card);
         const add = (code, vals) => out.push({ store: st, date: r.date, code, vals, src: r.src === 'drive' ? 'drive' : 'app' });
         if (!sales || sales <= 0) return;
+        // アプリ入力は 2026-09-02（フード・ドリンクを点数→金額に切替した日）より前を見ない（神田さん 2026-09-17）。シート取込は最初から金額なので対象
+        if (r.src !== 'drive' && r.date < '2026-09-02') return;
         if (food != null && drink != null && Math.abs((food + drink) - sales) > Math.max(1000, sales * 0.02)) add('sum', `フード${food.toLocaleString()}＋ドリンク${drink.toLocaleString()}＝${(food + drink).toLocaleString()}／売上${sales.toLocaleString()}`);
         if (food != null && food > 0 && food < sales * 0.2) add('count', `フード${food.toLocaleString()}・ドリンク${drink == null ? '—' : drink.toLocaleString()}／売上${sales.toLocaleString()}`);
         if (!guests) add('guest', `売上${sales.toLocaleString()}・客数なし`);
