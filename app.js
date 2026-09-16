@@ -6460,7 +6460,7 @@
 
   /* ---------- 店舗向け：今日出すもの（日次） ---------- */
   /* ---------- 本部：数字の要確認（2026-09-17 神田さん）----------
-     日報（総括表）の数字を、入力経路に関係なく（アプリ提出も毎時のシート取込も）同じ8つの検査にかける。
+     日報（総括表）の数字を、入力経路に関係なく（アプリ提出も毎時のシート取込も）同じ7つの検査にかける。
      きっかけ＝牛カツ長堀橋のフード・ドリンク金額が個数で入っている日が8月6日分・9月5日分あり、
      シートの「売上構成×」は付いていたが誰も見に行っていなかった。
      13条-6「目視しなくても重要なものが上がる」・12「判断が分かる数字」。新しい提出物は増やさない。 */
@@ -6470,7 +6470,6 @@
     count: { ja:'フードが小さすぎ（個数？）', en:'Food too small (count?)', vi:'Món ăn quá nhỏ (số lượng?)' },
     guest: { ja:'客数が空', en:'No guest count', vi:'Thiếu số khách' },
     unit:  { ja:'客単価が普段と違う', en:'Unit price off', vi:'Đơn giá bất thường' },
-    week:  { ja:'前週同曜日と大きく違う', en:'Far from same weekday last week', vi:'Khác nhiều so với tuần trước' },
     reg:   { ja:'レジ差が0でない', en:'Register diff ≠ 0', vi:'Lệch két' },
     lunch: { ja:'昼の売上＞合計', en:'Lunch > total', vi:'Trưa > tổng' },
     cc:    { ja:'現金＋カード≠売上', en:'Cash+card ≠ sales', vi:'Tiền mặt+thẻ ≠ doanh thu' }
@@ -6500,9 +6499,7 @@
         if (food != null && food > 0 && food < sales * 0.2) add('count', `フード${food.toLocaleString()}・ドリンク${drink == null ? '—' : drink.toLocaleString()}／売上${sales.toLocaleString()}`);
         if (!guests) add('guest', `売上${sales.toLocaleString()}・客数なし`);
         if (guests && med) { const u = sales / guests; if (u < med * 0.6 || u > med * 1.4) add('unit', `客単価${Math.round(u).toLocaleString()}円（普段${Math.round(med).toLocaleString()}円）`); }
-        const prev = byDate[new Date(new Date(r.date + 'T00:00:00').getTime() - 7 * 86400000).toISOString().slice(0, 10)];
-        const ps = prev ? numN_(prev.sales) : null;
-        if (ps && ps > 0) { const d = (sales - ps) / ps; if (Math.abs(d) > 0.5) add('week', `${sales.toLocaleString()}／前週${ps.toLocaleString()}（${d > 0 ? '+' : ''}${Math.round(d * 100)}%）`); }
+        // 前週同曜日との比較は外した（2026-09-17 神田さん＝インバウンドが中心で同じお客様が来るわけではない。売上の増減は異常ではない）
         if (err != null && err !== 0) add('reg', `レジ差${err.toLocaleString()}円`);
         if (lunch != null && lunch > sales) add('lunch', `昼${lunch.toLocaleString()}／合計${sales.toLocaleString()}`);
         if (cash != null && card != null && (cash + card) > 0 && Math.abs((cash + card) - sales) > Math.max(1000, sales * 0.02)) add('cc', `現金${cash.toLocaleString()}＋カード${card.toLocaleString()}／売上${sales.toLocaleString()}`);
@@ -6542,7 +6539,7 @@
           <span class="ksum-i ok"><b>${list.length - open.length}</b>${L({ ja:'件 確認済み', en:' checked', vi:' đã xác nhận' })}</span>
           <button type="button" class="mini" data-numall="${showAll ? '0' : '1'}">${showAll ? L({ ja:'未確認だけ表示', en:'Open only', vi:'Chỉ chưa xác nhận' }) : L({ ja:'確認済みも表示', en:'Show checked', vi:'Hiện cả đã xác nhận' })}</button>
         </div>
-        <p class="hint" style="display:block">${L({ ja:'※ 検査は8つ＝フード＋ドリンク≠売上／フードが小さすぎ（個数の疑い）／客数が空／客単価が普段（直近の中央値）の±40%外／前週同曜日と±50%以上の差／レジ差≠0／昼＞合計／現金＋カード≠売上。アプリ提出もシート取込も同じ基準です。「確認済み」はこの端末にだけ残ります。', en:'8 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'8 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
+        <p class="hint" style="display:block">${L({ ja:'※ 検査は7つ＝フード＋ドリンク≠売上／フードが小さすぎ（個数の疑い）／客数が空／客単価が普段（直近の中央値）の±40%外／レジ差≠0／昼＞合計／現金＋カード≠売上。売上の増減そのものは見ません（お客様は日によって違うため）。アプリ提出もシート取込も同じ基準です。「確認済み」はこの端末にだけ残ります。', en:'7 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'7 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
       </div>
       ${rows || `<div class="card"><p class="muted">${L({ ja:'要確認の数字はありません', en:'Nothing to check', vi:'Không có gì cần xác nhận' })}</p></div>`}`;
   };
