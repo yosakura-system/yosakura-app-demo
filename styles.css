@@ -797,3 +797,14 @@ html[data-theme="hp"] .krow .kbar i { background: #333333; }
 html[data-theme="hp"] .krow.ov .kbar i { background: #8e3e3e; }
 html[data-theme="hp"] .krow.ov .kov, html[data-theme="hp"] .ksum-i.ov b { color: #8e3e3e; }
 html[data-theme="hp"] .krow .kname { font-weight: 500; letter-spacing: .04em; }
+
+/* 数字の要確認（本部・2026-09-17） */
+.numrow { display: grid; grid-template-columns: 96px 1fr auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.numrow.done { opacity: .55; }
+.numrow-l b { font-size: 13px; }
+.numsrc { display: inline-block; font-size: 10px; color: var(--gray); border: 1px solid var(--line); padding: 1px 5px; margin-left: 4px; border-radius: 8px; }
+.numrow-m b { font-size: 13px; color: #a23b3b; }
+.numrow.done .numrow-m b { color: var(--gray); }
+.numrow-m small { font-size: 11px; color: var(--sumi); }
+html[data-theme="hp"] .numsrc { border-radius: 0; }
+html[data-theme="hp"] .numrow-m b { color: #8e3e3e; }
