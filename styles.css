@@ -635,3 +635,5 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .svstd-e { display: flex; gap: 6px; align-items: flex-start; margin-top: 6px; }
 .svstd-e textarea { flex: 1; font-size: 12px; }
 .svph.big { width: 120px; height: 90px; }
+
+.svmat { border-color: #5C6E58 !important; color: #3f6b3a !important; }
