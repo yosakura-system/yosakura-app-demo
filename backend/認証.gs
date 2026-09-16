@@ -40,9 +40,9 @@ var AUTH_ROLES = ['staff', 'manager', 'owner', 'hq'];
 var AUTH_PUBLIC_KINDS = ['community', 'commlike', 'commmod', 'commroll', 'commtry', 'commcmt',
                          'news', 'study', 'linkset', 'faqset', 'submaster', 'subholiday'];
 /* 本部だけが読めるkind（★公益通報は店舗端末に返さない＝通報者を守る） */
-var AUTH_HQ_READ_KINDS = ['whistle', 'appfb', 'hqtask', 'svcheck'];   // svcheck＝巡回チェック（本部の評価＝店舗端末には返さない）   // hqtask＝本部の個人タスク（試行）。さらに本人のuidにしか返さない（auth_row_ok_）
+var AUTH_HQ_READ_KINDS = ['whistle', 'appfb', 'hqtask', 'svcheck', 'svstd'];   // svcheck＝巡回チェック（本部の評価＝店舗端末には返さない）   // hqtask＝本部の個人タスク（試行）。さらに本人のuidにしか返さない（auth_row_ok_）
 /* 本部だけが書けるkind（設定・判定・配信もの） */
-var AUTH_HQ_WRITE_KINDS = ['submaster', 'substat', 'subholiday', 'news', 'linkset', 'faqset', 'study', 'commmod', 'commroll', 'hqtask', 'svcheck'];
+var AUTH_HQ_WRITE_KINDS = ['submaster', 'substat', 'subholiday', 'news', 'linkset', 'faqset', 'study', 'commmod', 'commroll', 'hqtask', 'svcheck', 'svstd'];
 
 function authOn_() { return getSetting_('ENABLE_AUTH', false) === true; }
 

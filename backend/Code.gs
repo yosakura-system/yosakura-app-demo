@@ -55,7 +55,8 @@ var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide',
                             （「1店舗への指摘が全店舗の教育になる」9/14決定＝古い投稿も教材として残す） */
                          'community', 'commlike', 'commcmt',
                          'hqtask',    // 本部の個人タスク（試行・2026-09-15）＝消えると困るもの
-                         'svcheck'];  // 巡回チェック（本部・2026-09-16）＝巡回の記録は消さない
+                         'svcheck',   // 巡回チェック（本部・2026-09-16）＝巡回の記録は消さない
+                         'svstd'];    // 巡回チェックの基準（あるべき姿・スクショ）＝恒久
 
 // スクリプトプロパティから設定を読む（無ければ既定値）。管理画面や手動で変更できる。
 function getSetting_(key, def) {

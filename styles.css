@@ -624,3 +624,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .svph-add { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 72px; height: 72px; border: 1.5px dashed var(--line, #DED8CE); border-radius: 6px; color: #6B6459; font-size: 11px; overflow: hidden; }
 .svph-add svg { width: 22px; height: 22px; }
 .svph-add input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; font-size: 40px; }   /* 透明な入力を重ねる＝iPhoneのホーム画面版でも開く */
+
+/* 巡回チェック＝基準（あるべき姿） */
+.svstd { margin-top: 8px; border: 1px dashed var(--line, #DED8CE); border-radius: 6px; padding: 4px 10px; background: #FBFAF7; }
+.svstd summary { cursor: pointer; font-size: 12px; color: #5C6E58; font-weight: 700; display: flex; gap: 8px; align-items: center; }
+.svstd summary small { font-weight: 400; color: #8a7f72; }
+.svstd-b { padding: 6px 0 4px; }
+.svstd-t { font-size: 13px; line-height: 1.6; margin-bottom: 6px; }
+.svstd-m { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.svstd-e { display: flex; gap: 6px; align-items: flex-start; margin-top: 6px; }
+.svstd-e textarea { flex: 1; font-size: 12px; }
+.svph.big { width: 120px; height: 90px; }
