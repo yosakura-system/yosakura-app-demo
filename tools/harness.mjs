@@ -5180,5 +5180,31 @@ console.log('== デザイン刷新（HP基準・テーマ層）2026-09-16 神田
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 今日・今週・月次で出すもの＝店舗を一発で選ぶ・全店を一枚で判断（2026-09-16 神田さんのご要望）==');
+{
+  const seed = (role, storeSel) => run(() => { setLS(role, storeSel, 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid: role === 'hq' ? 'kanda' : 'ipad', name:'テスト', role, stores:['*'] })); localStorage.removeItem('yosakura_kyou_store'); });
+  seed('hq', 'all');
+  for (const [route, ttl] of [['kyou', '今日出すもの'], ['shukan', '今週出すもの'], ['getsuji', '月末・月次で出すもの']]) {
+    location.hash = '#/app/' + route;
+    const h = registry.app.innerHTML;
+    ok(/class="kchips"/.test(h) && /data-kyou="all"/.test(h) && /data-kyou="牛カツ世桜 長堀橋店"/.test(h), route + '：本部＝店舗チップ（全店＋各店）が出る');
+    ok(new RegExp(ttl + '[^<]*— 全店').test(h) && /class="ksum"/.test(h) && /締切超過/.test(h) && /未提出あり/.test(h), route + '：全店＝店数の要約（超過／未提出／完了）が先頭に出る');
+    const n = (h.match(/class="krow /g) || []).length;
+    ok(n >= 5 && n === (h.match(/class="kchip /g) || []).length - 1, route + '：全店＝店舗ごとに1行（提出 k/n・超過・残）＝' + n + '店');
+  }
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_kyou_store', '牛カツ世桜 長堀橋店'); });
+  location.hash = '#/app/kyou';
+  let h = registry.app.innerHTML;
+  ok(/今日出すもの[^<]*— 長堀橋店/.test(h) && !/class="ksum"/.test(h), '店舗を選ぶ＝その店の一覧に切り替わる（一枚表は消える）');
+  ok(/class="kchip on" data-kyou="牛カツ世桜 長堀橋店"/.test(h), '選んだ店舗のチップが点灯');
+  location.hash = '#/app/getsuji';
+  ok(/月末・月次で出すもの[^<]*— 長堀橋店/.test(registry.app.innerHTML), '選んだ店舗は今日・今週・月次で共通');
+  for (const route of ['kyou', 'shukan', 'getsuji']) {
+    const h2 = renderView(route, 'staff', '牛カツ世桜 長堀橋店', 'ja');
+    ok(!/class="kchips"/.test(h2) && !/class="ksum"/.test(h2) && /— 長堀橋店/.test(h2), route + '：店舗の端末＝チップは出ず従来どおり自店の一覧');
+  }
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_kyou_store'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

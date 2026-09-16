@@ -770,3 +770,30 @@ html[data-theme="hp"] .hint { font-size: 12px; }
 html[data-theme="hp"] .muted { font-size: 13px; }
 /* 写真の上の白文字＝被せを濃くして可読性を担保（薄い写真でも読める） */
 html[data-theme="hp"] .hp-hero__sh { background: linear-gradient(180deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.18) 40%, rgba(0,0,0,.62) 100%); }
+
+/* 今日・今週・月次で出すもの＝店舗チップ＋全店の一枚表（2026-09-16） */
+.kchips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; -webkit-overflow-scrolling: touch; }
+.kchip { flex: none; font: inherit; font-size: 12px; padding: 8px 12px; border: 1px solid var(--line); background: #fff; border-radius: 16px; min-height: 36px; }
+.kchip.on { background: var(--suou); color: #fff; border-color: var(--suou); }
+.ksum { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 2px 0 10px; font-size: 12px; color: var(--gray); }
+.ksum-i b { font-size: 18px; margin-right: 3px; color: var(--sumi); }
+.ksum-i.ov b { color: #a23b3b; }
+.klist { display: flex; flex-direction: column; }
+.krow { display: grid; grid-template-columns: 1fr 72px 44px 58px; align-items: center; gap: 8px; width: 100%; min-height: 46px; padding: 6px 2px; border: 0; border-bottom: 1px solid var(--line); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.krow .kname { font-size: 14px; font-weight: 700; color: var(--sumi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.krow .kbar { height: 6px; background: #EFEAE2; border-radius: 3px; overflow: hidden; }
+.krow .kbar i { display: block; height: 100%; background: #5C6E58; }
+.krow.ov .kbar i { background: #a23b3b; }
+.krow.rem .kbar i { background: #8F8170; }
+.krow .kn { font-size: 12px; color: var(--gray); text-align: right; font-variant-numeric: tabular-nums; }
+.krow .kov { font-size: 12px; font-weight: 700; text-align: right; color: #5C6E58; }
+.krow.ov .kov { color: #a23b3b; }
+.krow.rem .kov { color: #8F8170; }
+.krow.hol .kov, .krow.hol .kname { color: #b7b0a6; }
+html[data-theme="hp"] .kchip { border-radius: 0; }
+html[data-theme="hp"] .kchip.on { background: #333333; border-color: #333333; }
+html[data-theme="hp"] .krow .kbar { border-radius: 0; background: #EFEFEF; }
+html[data-theme="hp"] .krow .kbar i { background: #333333; }
+html[data-theme="hp"] .krow.ov .kbar i { background: #8e3e3e; }
+html[data-theme="hp"] .krow.ov .kov, html[data-theme="hp"] .ksum-i.ov b { color: #8e3e3e; }
+html[data-theme="hp"] .krow .kname { font-weight: 500; letter-spacing: .04em; }

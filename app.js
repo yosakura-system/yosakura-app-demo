@@ -6448,52 +6448,100 @@
   };
 
   /* ---------- 店舗向け：今日出すもの（日次） ---------- */
-  APP_VIEWS.kyou = () => {
-    const store = visibleStores()[0];
-    const items = todayItemsFor(store).filter(it => it.m.freq === 'daily');
-    const dk = dateKeyFor(store, Date.now());
-    const holiday = isHoliday(store, dk);
-    const remain = items.filter(it => !it.manual && !it.submitted).length;
-    const rows = items.map(subItemRow).join('');
+  /* ---------- 店舗向け：今日／今週／月次・四半期で出すもの（共通の作り） ----------
+     2026-09-16 神田さん「個店を見たいなら店舗を一発で選べるように。本部として全店を見るなら瞬時に判断できるものを。
+     週次・月次・四半期も日次と同じ見え方に」。
+     複数店が見える人（本部・複数店オーナー）にだけ店舗チップを出す。選択はこの3画面だけの記憶（ヘッダーの店舗選択は変えない）。
+     全店＝店舗ごとに1行（提出 k/n・超過・残・定休日）。超過→未提出→完了の順＝重いものが上（13条-6・12） */
+  const KYOU_LS = 'yosakura_kyou_store';
+  const KYOU_KINDS = {
+    daily:   { pick: it => it.m.freq === 'daily', title: {ja:'今日出すもの',en:'Today to submit',vi:'Cần nộp hôm nay'} },
+    weekly:  { pick: it => it.m.freq === 'weekly', title: {ja:'今週出すもの',en:'This week to submit',vi:'Cần nộp tuần này'} },
+    monthly: { pick: it => it.m.freq === 'monthly' || it.m.freq === 'quarterly', title: {ja:'月末・月次で出すもの',en:'Monthly to submit',vi:'Cần nộp hàng tháng'} }
+  };
+  function kyouPick_() {
+    const stores = visibleStores();
+    if (stores.length <= 1) return { sel: stores[0] || '', stores, chips: '' };
+    let sel = ''; try { sel = localStorage.getItem(KYOU_LS) || ''; } catch (e) {}
+    if (sel !== 'all' && !stores.includes(sel)) sel = (getStoreSel() !== 'all' && stores.includes(getStoreSel())) ? getStoreSel() : 'all';
+    const chips = `<div class="kchips">
+      <button type="button" class="kchip ${sel === 'all' ? 'on' : ''}" data-kyou="all">${esc(L({ ja:'全店', en:'All', vi:'Tất cả' }))}</button>
+      ${stores.map(st => `<button type="button" class="kchip ${sel === st ? 'on' : ''}" data-kyou="${esc(st)}">${esc(storeLabel(st))}</button>`).join('')}
+    </div>`;
+    return { sel, stores, chips };
+  }
+  function kyouOverview_(stores, kind) {
+    const K = KYOU_KINDS[kind];
+    const rows = stores.map(st => {
+      const items = todayItemsFor(st).filter(it => K.pick(it) && !it.manual);
+      const holiday = kind === 'daily' && isHoliday(st, dateKeyFor(st, Date.now()));
+      const total = items.filter(it => !it.holiday).length;
+      const done = items.filter(it => !it.holiday && it.submitted).length;
+      const overdue = items.filter(it => it.overdue).length;
+      const remain = total - done;
+      return { st, holiday, total, done, overdue, remain, pct: total ? Math.round(done / total * 100) : 100 };
+    }).sort((x, y) => (y.overdue - x.overdue) || (y.remain - x.remain) || x.st.localeCompare(y.st));
+    const live = rows.filter(r => !r.holiday);
+    const nOv = live.filter(r => r.overdue).length, nRem = live.filter(r => !r.overdue && r.remain).length, nOk = live.filter(r => !r.remain).length, nHol = rows.length - live.length;
     return `
+      <div class="ksum">
+        <span class="ksum-i ov"><b>${nOv}</b>${esc(L({ ja:'店 締切超過', en:' overdue', vi:' quá hạn' }))}</span>
+        <span class="ksum-i rem"><b>${nRem}</b>${esc(L({ ja:'店 未提出あり', en:' pending', vi:' còn thiếu' }))}</span>
+        <span class="ksum-i ok"><b>${nOk}</b>${esc(L({ ja:'店 完了', en:' done', vi:' xong' }))}</span>
+        ${nHol ? `<span class="ksum-i hol"><b>${nHol}</b>${esc(L({ ja:'店 定休日', en:' closed', vi:' nghỉ' }))}</span>` : ''}
+      </div>
+      <div class="klist">
+        ${rows.map(r => `<button type="button" class="krow ${r.holiday ? 'hol' : r.overdue ? 'ov' : r.remain ? 'rem' : 'ok'}" data-kyou="${esc(r.st)}">
+          <span class="kname">${esc(storeLabel(r.st))}</span>
+          <span class="kbar"><i style="width:${r.holiday ? 0 : r.pct}%"></i></span>
+          <span class="kn">${r.holiday ? '—' : r.done + '/' + r.total}</span>
+          <span class="kov">${r.holiday ? esc(L({ ja:'定休日', en:'Closed', vi:'Nghỉ' })) : r.overdue ? esc(L({ ja:'超過', en:'Overdue', vi:'Quá hạn' })) + ' ' + r.overdue : r.remain ? esc(L({ ja:'残', en:'Left', vi:'Còn' })) + ' ' + r.remain : esc(L({ ja:'完了', en:'Done', vi:'Xong' }))}</span>
+        </button>`).join('')}
+      </div>
+      <p class="hint" style="display:block">${esc(L({ ja:'※ 数えるのは自動判定できる提出物。店舗名を押すと、その店の一覧が開きます。', en:'Auto-detected items only. Tap a store to open its list.', vi:'Chỉ mục tự nhận biết. Chạm cửa hàng để mở.' }))}</p>`;
+  }
+  function kyouView_(kind) {
+    const K = KYOU_KINDS[kind];
+    const pick = kyouPick_();
+    const now = Date.now();
+    const period = (st) => kind === 'daily' ? dateKeyFor(st, now) : kind === 'weekly' ? '' : new Date().toISOString().slice(0, 7);
+    if (pick.sel === 'all') {
+      const p = period(pick.stores[0]);
+      return `
+      ${pick.chips}
       <div class="card">
-        <h3>${L({ja:'今日出すもの',en:'Today to submit',vi:'Cần nộp hôm nay'})} — ${esc(storeShort(store))} <small style="color:#8a8">${dk}</small></h3>
-        ${holiday ? `<p class="hint" style="display:block">${L({ja:'本日は定休日として登録されています（未提出にはなりません）。',en:'Registered as a holiday today (not counted as missing).',vi:'Hôm nay là ngày nghỉ (không tính chưa nộp).'})}</p>` : `<p class="hint" style="display:block">${L({ja:'残り',en:'Remaining',vi:'Còn lại'})} ${remain} ${L({ja:'件（現地時間で判定）',en:'item(s) (store local time)',vi:'mục (giờ địa phương)'})}</p>`}
+        <h3>${L(K.title)} — ${esc(L({ ja:'全店', en:'All stores', vi:'Tất cả' }))}${p ? ` <small style="color:#8a8">${p}</small>` : ''}</h3>
+        ${kyouOverview_(pick.stores, kind)}
+      </div>`;
+    }
+    const store = pick.sel;
+    const items = todayItemsFor(store).filter(K.pick);
+    const p = period(store);
+    const holiday = kind === 'daily' && isHoliday(store, dateKeyFor(store, now));
+    const remain = items.filter(it => !it.manual && !it.submitted).length;
+    const empty = kind === 'weekly' ? L({ja:'今週の提出物はありません',en:'No weekly items',vi:'Không có mục tuần này'}) : L({ja:'今月の提出物はありません',en:'No monthly items',vi:'Không có mục tháng này'});
+    const rows = items.length ? items.map(subItemRow).join('') : (kind === 'daily' ? '' : `<div class="muted">${empty}</div>`);
+    const hint = kind === 'daily'
+      ? (holiday ? L({ja:'本日は定休日として登録されています（未提出にはなりません）。',en:'Registered as a holiday today (not counted as missing).',vi:'Hôm nay là ngày nghỉ (không tính chưa nộp).'})
+                 : `${L({ja:'残り',en:'Remaining',vi:'Còn lại'})} ${remain} ${L({ja:'件（現地時間で判定）',en:'item(s) (store local time)',vi:'mục (giờ địa phương)'})}`)
+      : kind === 'weekly' ? `${L({ja:'今週分の提出物です。残り',en:'This week. Remaining',vi:'Trong tuần. Còn lại'})} ${remain} ${L({ja:'件',en:'item(s)',vi:'mục'})}`
+      : `${L({ja:'今月分の提出物です。残り',en:'This month. Remaining',vi:'Trong tháng. Còn lại'})} ${remain} ${L({ja:'件',en:'item(s)',vi:'mục'})}`;
+    const foot = kind === 'daily'
+      ? L({ja:'※ 提出の有無は、実際の提出データ（全端末同期）から自動で判定しています。',en:'Status is auto-detected from real submitted data (synced).',vi:'Trạng thái tự nhận từ dữ liệu đã nộp (đồng bộ).'})
+      : kind === 'weekly' ? L({ja:'※ 週内に提出があれば自動で「提出済」になります。',en:'Marked done when submitted within the week.',vi:'Tự đánh dấu khi nộp trong tuần.'})
+      : L({ja:'※ 月内に提出があれば自動で「提出済」になります（月次数値は「数値・原価率」画面の入力で判定）。',en:'Marked done when submitted within the month (numbers via the Cost screen).',vi:'Tự đánh dấu khi nộp trong tháng.'});
+    return `
+      ${pick.chips}
+      <div class="card">
+        <h3>${L(K.title)} — ${esc(storeShort(store))}${p ? ` <small style="color:#8a8">${p}</small>` : ''}</h3>
+        <p class="hint" style="display:block">${hint}</p>
         ${rows}
       </div>
-      <p class="hint" style="display:block">${L({ja:'※ 提出の有無は、実際の提出データ（全端末同期）から自動で判定しています。',en:'Status is auto-detected from real submitted data (synced).',vi:'Trạng thái tự nhận từ dữ liệu đã nộp (đồng bộ).'})}</p>`;
-  };
-
-  /* ---------- 店舗向け：今週出すもの（週次） ---------- */
-  APP_VIEWS.shukan = () => {
-    const store = visibleStores()[0];
-    const items = todayItemsFor(store).filter(it => it.m.freq === 'weekly');
-    const remain = items.filter(it => !it.manual && !it.submitted).length;
-    const rows = items.length ? items.map(subItemRow).join('') : `<div class="muted">${L({ja:'今週の提出物はありません',en:'No weekly items',vi:'Không có mục tuần này'})}</div>`;
-    return `
-      <div class="card">
-        <h3>${L({ja:'今週出すもの',en:'This week to submit',vi:'Cần nộp tuần này'})} — ${esc(storeShort(store))}</h3>
-        <p class="hint" style="display:block">${L({ja:'今週分の提出物です。残り',en:'This week. Remaining',vi:'Trong tuần. Còn lại'})} ${remain} ${L({ja:'件',en:'item(s)',vi:'mục'})}</p>
-        ${rows}
-      </div>
-      <p class="hint" style="display:block">${L({ja:'※ 週内に提出があれば自動で「提出済」になります。',en:'Marked done when submitted within the week.',vi:'Tự đánh dấu khi nộp trong tuần.'})}</p>`;
-  };
-
-  /* ---------- 店舗向け：月末・月次で出すもの（月次） ---------- */
-  APP_VIEWS.getsuji = () => {
-    const store = visibleStores()[0];
-    const items = todayItemsFor(store).filter(it => it.m.freq === 'monthly' || it.m.freq === 'quarterly');
-    const ym = new Date().toISOString().slice(0, 7);
-    const remain = items.filter(it => !it.manual && !it.submitted).length;
-    const rows = items.length ? items.map(subItemRow).join('') : `<div class="muted">${L({ja:'今月の提出物はありません',en:'No monthly items',vi:'Không có mục tháng này'})}</div>`;
-    return `
-      <div class="card">
-        <h3>${L({ja:'月末・月次で出すもの',en:'Monthly to submit',vi:'Cần nộp hàng tháng'})} — ${esc(storeShort(store))} <small style="color:#8a8">${ym}</small></h3>
-        <p class="hint" style="display:block">${L({ja:'今月分の提出物です。残り',en:'This month. Remaining',vi:'Trong tháng. Còn lại'})} ${remain} ${L({ja:'件',en:'item(s)',vi:'mục'})}</p>
-        ${rows}
-      </div>
-      <p class="hint" style="display:block">${L({ja:'※ 月内に提出があれば自動で「提出済」になります（月次数値は「数値・原価率」画面の入力で判定）。',en:'Marked done when submitted within the month (numbers via the Cost screen).',vi:'Tự đánh dấu khi nộp trong tháng.'})}</p>`;
-  };
+      <p class="hint" style="display:block">${foot}</p>`;
+  }
+  APP_VIEWS.kyou = () => kyouView_('daily');
+  APP_VIEWS.shukan = () => kyouView_('weekly');
+  APP_VIEWS.getsuji = () => kyouView_('monthly');
 
   /* ---------- 本部向け：提出状況一覧・未提出抽出（実データ集約） ---------- */
   /* ★提出状況マトリクス（店舗×直近7日）＝2026-08-31 神田さんのご要望。
@@ -9218,6 +9266,7 @@
       catch (e) { toast(L({ ja:'コピーできませんでした。下の文面を長押しでコピーしてください', en:'Could not copy. Long-press the text below.', vi:'Không sao chép được. Nhấn giữ văn bản bên dưới.' })); }
     };
     document.querySelectorAll('[data-theme-set]').forEach(b => b.onclick = () => { setTheme(b.dataset.themeSet); render(); });
+    document.querySelectorAll('[data-kyou]').forEach(b => b.onclick = () => { try { localStorage.setItem(KYOU_LS, b.dataset.kyou); } catch (e) {} render(); });
     const svPdf = byId('svPdf'); if (svPdf) svPdf.onclick = () => svShareReport(false);
     const svImg = byId('svImg'); if (svImg) svImg.onclick = () => svShareReport(true);
     const svCopy = byId('svCopy');
