@@ -6463,7 +6463,7 @@
     const stores = visibleStores();
     if (stores.length <= 1) return { sel: stores[0] || '', stores, chips: '' };
     let sel = ''; try { sel = localStorage.getItem(KYOU_LS) || ''; } catch (e) {}
-    const q = currentRoute().params.get('store');   // ホームの通知・日次/週次/月次の行からは ?store=all で入る
+    const q = currentRoute().params.get('store') || currentRoute().params.get('s');   // ホームの通知・日次/週次/月次の行からは ?store=all、提出履歴は ?s=店舗 で入る
     if (q && (q === 'all' || stores.includes(q))) { sel = q; try { localStorage.setItem(KYOU_LS, q); } catch (e) {} }
     if (sel !== 'all' && !stores.includes(sel)) sel = (getStoreSel() !== 'all' && stores.includes(getStoreSel())) ? getStoreSel() : 'all';
     const chips = `<div class="kchips">
@@ -7292,9 +7292,13 @@
   /* ---------- 提出履歴（直近7日・実データ） ---------- */
   APP_VIEWS.history = () => {
     /* ★?s=店舗 で開けるように（2026-08-31）＝提出状況マトリクスの行タップから、その店の内訳へ */
-    const visH = visibleStores();
-    const spH = currentRoute().params.get('s');
-    const store = (spH && visH.includes(spH)) ? spH : visH[0];
+    /* ★店舗チップ（今日出すものと同じ）＝本部は一発で店舗を選ぶ／「全店」は7日間の提出状況一覧（2026-09-17 神田さん） */
+    const pick = kyouPick_();
+    if (pick.sel === 'all') {
+      return `${pick.chips}${subMatrixCard(pick.stores)}
+      <p class="hint" style="display:block">${L({ ja:'※ 店舗名を押すとその店の内訳（当日）が開きます。上のチップで店舗を選ぶと、日別の提出履歴に切り替わります。', en:'Tap a store for today’s detail. Pick a store chip for its daily history.', vi:'Chạm cửa hàng để xem chi tiết hôm nay. Chọn chip để xem lịch sử theo ngày.' })}</p>`;
+    }
+    const store = pick.sel;
     const masters = getMasters().filter(m => appliesToStore(m, store) && m.oblig !== 'off' && m.detect !== 'none');
     /* ★期間を選べるように（2026-08-31 神田さんのご指摘＝過去の提出状況が7日で埋もれる） */
     const dsel = [7, 14, 30].includes(Number(localStorage.getItem('yosakura_hist_days'))) ? Number(localStorage.getItem('yosakura_hist_days')) : 7;
@@ -7324,7 +7328,7 @@
       const who = [...new Set(masters.map(m => detectSubmitted(store, m, dk) ? submitterOf(store, m, dk) : '').filter(Boolean))];
       return `<div class="rep"><div class="body"><div class="l1">${dk}${isHoliday(store,dk)?` <small style="color:#8a8">(${L({ja:'定休日',en:'Holiday',vi:'Nghỉ'})})</small>`:''}</div>${chips || '<div class="l2">—</div>'}${who.length?`<div class="l2">${L({ja:'提出者',en:'Submitted by',vi:'Người nộp'})}：${esc(who.join('・'))}</div>`:''}</div></div>`;
     }).join('');
-    return `<div class="card"><h3>${L({ja:`提出履歴（直近${dsel}日）`,en:`History (last ${dsel} days)`,vi:`Lịch sử (${dsel} ngày)`})} — ${esc(storeShort(store))}</h3>
+    return `${pick.chips}<div class="card"><h3>${L({ja:`提出履歴（直近${dsel}日）`,en:`History (last ${dsel} days)`,vi:`Lịch sử (${dsel} ngày)`})} — ${esc(storeShort(store))}</h3>
       <div class="seg-chips" style="margin:6px 0 10px">${[7, 14, 30].map(n => `<button class="chip${dsel === n ? ' on' : ''}" data-histdays="${n}">${n}${L({ja:'日',en:'d',vi:'n'})}</button>`).join('')}</div>
       ${rows}
       <p class="hint" style="display:block">${L({ja:'※ 実際の提出データ（全端末同期）から表示しています。提出者は、お名前をご登録いただいた端末からの提出に記録されます。',en:'From real synced submission data. The submitter is recorded when a name is registered on the device.',vi:'Từ dữ liệu đã nộp (đồng bộ). Người nộp được ghi khi thiết bị đã đăng ký tên.'})}</p></div>`;
@@ -7337,7 +7341,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -7346,6 +7350,8 @@
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
+      // 今日出すもの／今週／月次／提出履歴の店舗チップ（2026-09-17＝画面ごとの登録でなく委譲に。どの画面でも効く）
+      if (t.dataset.kyou !== undefined) { try { localStorage.setItem(KYOU_LS, t.dataset.kyou); } catch (err) {} if (currentRoute().params.get('s') || currentRoute().params.get('store')) go(currentRoute().path); else render(true); return; }
       if (t.dataset.ttab) { localStorage.setItem('yosakura_teishutsu_tab', t.dataset.ttab); render(true); return; }
       // 店舗別サブタブ（日次・週次・月次・四半期）＝2026-09-03
       if (t.dataset.mtxfreq) { localStorage.setItem('yosakura_matrix_freq', t.dataset.mtxfreq); render(true); return; }
@@ -9270,7 +9276,6 @@
       catch (e) { toast(L({ ja:'コピーできませんでした。下の文面を長押しでコピーしてください', en:'Could not copy. Long-press the text below.', vi:'Không sao chép được. Nhấn giữ văn bản bên dưới.' })); }
     };
     document.querySelectorAll('[data-theme-set]').forEach(b => b.onclick = () => { setTheme(b.dataset.themeSet); render(); });
-    document.querySelectorAll('[data-kyou]').forEach(b => b.onclick = () => { try { localStorage.setItem(KYOU_LS, b.dataset.kyou); } catch (e) {} render(); });
     const svPdf = byId('svPdf'); if (svPdf) svPdf.onclick = () => svShareReport(false);
     const svImg = byId('svImg'); if (svImg) svImg.onclick = () => svShareReport(true);
     const svCopy = byId('svCopy');
