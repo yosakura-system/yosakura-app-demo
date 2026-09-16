@@ -1280,10 +1280,7 @@
        決定（7/30）＝未提出はアプリで自動通知し、それでも出なければLINE。ここはその前半。
        店舗側＝自店の超過件数／本部＝まだ出ていない店舗の数、と見せ方を変える。 */
     const overdueN = ditems.filter(it => it.overdue).length;
-    const hqMissingStores = role === 'hq'
-      ? STORES.filter(s => todayItemsFor(s).some(it =>
-          it.m.freq === 'daily' && it.m.oblig === 'required' && it.overdue)).length
-      : 0;
+    const hqMissingStores = role === 'hq' ? STORES.filter(s => kyouStoreStats_(s, 'daily').overdue > 0).length : 0;   // 一枚表の「超過」と同じ数え方
     const remind = (role !== 'hq' && overdueN > 0) ? `
       <button class="card news-card news-card--imp news-card--btn" data-open="kyou">
         <div class="news-h"><span class="news-ic">${svg('check')}</span><b>${L({ ja:'締切を過ぎている提出があります', en:'Overdue submissions', vi:'Có mục quá hạn' })}</b></div>
@@ -1294,7 +1291,7 @@
       <button class="card news-card news-card--imp news-card--btn" data-open="kyou?store=all">
         <div class="news-h"><span class="news-ic">${svg('inbox')}</span><b>${L({ ja:'締切を過ぎている店舗があります', en:'Stores with overdue items', vi:'Cửa hàng quá hạn' })}</b></div>
         <div class="news-title">${hqMissingStores} ${L({ ja:'店舗', en:'store(s)', vi:'cửa hàng' })}</div>
-        <p class="news-body">${L({ ja:'必須の提出物が、締切を過ぎても届いていません。', en:'Required submissions are past due.', vi:'Mục bắt buộc đã quá hạn.' })}</p>
+        <p class="news-body">${L({ ja:'締切を過ぎても届いていない提出物があります。', en:'Some submissions are past due.', vi:'Có mục nộp đã quá hạn.' })}</p>
         <span class="news-more">${L({ ja:'全店の提出状況を開く', en:'Open all-store status', vi:'Mở tình trạng toàn bộ' })} ${svg('chev')}</span>
       </button>` : '';
     const dutyBlock = `<div class="homelinks">
@@ -6475,17 +6472,19 @@
     </div>`;
     return { sel, stores, chips };
   }
-  function kyouOverview_(stores, kind) {
+  /* 1店分の数字（一枚表とホームの「締切を過ぎている店舗数」は必ずこの同じ数え方＝2026-09-16 神田さん「8店と9店で合わない」への対応） */
+  function kyouStoreStats_(st, kind) {
     const K = KYOU_KINDS[kind];
-    const rows = stores.map(st => {
-      const items = todayItemsFor(st).filter(it => K.pick(it) && !it.manual);
-      const holiday = kind === 'daily' && isHoliday(st, dateKeyFor(st, Date.now()));
-      const total = items.filter(it => !it.holiday).length;
-      const done = items.filter(it => !it.holiday && it.submitted).length;
-      const overdue = items.filter(it => it.overdue).length;
-      const remain = total - done;
-      return { st, holiday, total, done, overdue, remain, pct: total ? Math.round(done / total * 100) : 100 };
-    }).sort((x, y) => (y.overdue - x.overdue) || (y.remain - x.remain) || x.st.localeCompare(y.st));
+    const items = todayItemsFor(st).filter(it => K.pick(it) && !it.manual);
+    const holiday = kind === 'daily' && isHoliday(st, dateKeyFor(st, Date.now()));
+    const total = items.filter(it => !it.holiday).length;
+    const done = items.filter(it => !it.holiday && it.submitted).length;
+    const overdue = holiday ? 0 : items.filter(it => it.overdue).length;
+    const remain = total - done;
+    return { st, holiday, total, done, overdue, remain, pct: total ? Math.round(done / total * 100) : 100 };
+  }
+  function kyouOverview_(stores, kind) {
+    const rows = stores.map(st => kyouStoreStats_(st, kind)).sort((x, y) => (y.overdue - x.overdue) || (y.remain - x.remain) || x.st.localeCompare(y.st));
     const live = rows.filter(r => !r.holiday);
     const nOv = live.filter(r => r.overdue).length, nRem = live.filter(r => !r.overdue && r.remain).length, nOk = live.filter(r => !r.remain).length, nHol = rows.length - live.length;
     return `

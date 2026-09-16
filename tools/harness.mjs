@@ -5214,6 +5214,13 @@ console.log('== 今日・今週・月次で出すもの＝店舗を一発で選�
   location.hash = '#/app/kyou?store=all';
   h = registry.app.innerHTML;
   ok(/class="ksum"/.test(h) && localStorage.getItem('yosakura_kyou_store') === 'all', '店舗を選んでいても ?store=all で入れば全店の一枚表（選択も全店に戻る）');
+  {
+    const nIn = (h.match(/class="krow (ov|rem|ok|hol)"/g) || []).filter(x => / ov"/.test(x)).length;
+    location.hash = '#/home';
+    const home = registry.app.innerHTML;
+    const m = home.match(/締切を過ぎている店舗があります[\s\S]*?<div class="news-title">(\d+) 店舗/);
+    ok(m && Number(m[1]) === nIn, 'ホームの「締切を過ぎている店舗数」＝一枚表の超過の店数と一致（' + (m && m[1]) + '＝' + nIn + '）');
+  }
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_kyou_store'); });
 }
 
