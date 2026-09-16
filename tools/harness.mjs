@@ -343,7 +343,7 @@ for (const role of ['staff','manager','hq']) {
   catch(e){ FAIL++; console.log(`  ✗ home/${role} threw: `+e.message); }
   ok(html.length > 500, `home/${role} rendered`);
   ok(/みんなの投稿/.test(html) && /data-open="community"/.test(html), `home/${role} has community card`);
-  ok(/data-open="kyou"/.test(html) && /data-open="shukan"/.test(html) && /data-open="getsuji"/.test(html), `home/${role} に日次/週次/月次の窓口が出る`);
+  ok(/data-open="kyou(\?store=all)?"/.test(html) && /data-open="shukan(\?store=all)?"/.test(html) && /data-open="getsuji(\?store=all)?"/.test(html), `home/${role} に日次/週次/月次の窓口が出る`);
   ok(/id="pinEdit"/.test(html), `home/${role} によく使う追加ボタンが出る`);
   // 古い画面のまま動いていないか、誰でも自分で確かめて直せるように
   ok(/id="appUpdate"/.test(html), `home/${role} の画面下に「最新にする」が出る`);
@@ -5203,6 +5203,17 @@ console.log('== 今日・今週・月次で出すもの＝店舗を一発で選�
     const h2 = renderView(route, 'staff', '牛カツ世桜 長堀橋店', 'ja');
     ok(!/class="kchips"/.test(h2) && !/class="ksum"/.test(h2) && /— 長堀橋店/.test(h2), route + '：店舗の端末＝チップは出ず従来どおり自店の一覧');
   }
+  // ホームから入っても同じ形（2026-09-16 神田さん）＝通知・日次/週次/月次の行は ?store=all で全店の一枚表へ
+  seed('hq', 'all');
+  location.hash = '#/home';
+  h = registry.app.innerHTML;
+  ok(/data-open="kyou\?store=all"[\s\S]*締切を過ぎている店舗があります/.test(h), '本部ホームの通知＝「全店の提出状況」（今日出すもの・全店）へ');
+  ok(/data-open="shukan\?store=all"/.test(h) && /data-open="getsuji\?store=all"/.test(h), '本部ホームの日次/週次/月次の行も全店の一枚表へ');
+  ok(/<b style="color:#b23">\d+<\/b><small style="color:#8a8"> 店<\/small>/.test(h), '本部ホーム＝残りがある「店舗数」で出る');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_kyou_store', '牛カツ世桜 長堀橋店'); });
+  location.hash = '#/app/kyou?store=all';
+  h = registry.app.innerHTML;
+  ok(/class="ksum"/.test(h) && localStorage.getItem('yosakura_kyou_store') === 'all', '店舗を選んでいても ?store=all で入れば全店の一枚表（選択も全店に戻る）');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_kyou_store'); });
 }
 
