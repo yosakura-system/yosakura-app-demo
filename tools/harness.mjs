@@ -5207,7 +5207,11 @@ console.log('== 今日・今週・月次で出すもの＝店舗を一発で選�
   seed('hq', 'all');
   location.hash = '#/home';
   h = registry.app.innerHTML;
-  ok(/data-open="kyou\?store=all"[\s\S]*締切を過ぎている店舗があります/.test(h), '本部ホームの通知＝「全店の提出状況」（今日出すもの・全店）へ');
+  // ★時刻依存（朝は締切超過が0件で通知が出ない）＝一枚表の超過店数と突き合わせて判定する
+  location.hash = '#/app/kyou?store=all'; const nOvHome = (registry.app.innerHTML.match(/class="krow (ov|rem|ok|hol)"/g) || []).filter(x => / ov"/.test(x)).length;
+  location.hash = '#/home'; h = registry.app.innerHTML;
+  if (nOvHome > 0) ok(/data-open="kyou\?store=all"[\s\S]*締切を過ぎている店舗があります/.test(h), '本部ホームの通知＝「全店の提出状況」（今日出すもの・全店）へ');
+  else ok(!/締切を過ぎている店舗があります/.test(h), '本部ホーム＝超過0件のときは通知が出ない（一枚表と一致）');
   ok(/data-open="shukan\?store=all"/.test(h) && /data-open="getsuji\?store=all"/.test(h), '本部ホームの日次/週次/月次の行も全店の一枚表へ');
   ok(/<b style="color:#b23">\d+<\/b><small style="color:#8a8"> 店<\/small>/.test(h), '本部ホーム＝残りがある「店舗数」で出る');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_kyou_store', '牛カツ世桜 長堀橋店'); });
@@ -5219,7 +5223,29 @@ console.log('== 今日・今週・月次で出すもの＝店舗を一発で選�
     location.hash = '#/home';
     const home = registry.app.innerHTML;
     const m = home.match(/締切を過ぎている店舗があります[\s\S]*?<div class="news-title">(\d+) 店舗/);
-    ok(m && Number(m[1]) === nIn, 'ホームの「締切を過ぎている店舗数」＝一枚表の超過の店数と一致（' + (m && m[1]) + '＝' + nIn + '）');
+    ok(nIn === 0 ? !m : (m && Number(m[1]) === nIn), 'ホームの「締切を過ぎている店舗数」＝一枚表の超過の店数と一致（' + (m ? m[1] : 'なし') + '＝' + nIn + '）');
+  }
+  // 提出履歴にも同じ店舗チップ（2026-09-17）
+  seed('hq', 'all');
+  location.hash = '#/app/history';
+  h = registry.app.innerHTML;
+  ok(/class="kchips"/.test(h) && /data-kyou="all"/.test(h), '提出履歴：本部＝店舗チップが出る');
+  ok(/日次・必須の提出状況|提出状況/.test(h) && !/提出履歴（直近/.test(h), '提出履歴：全店＝7日間の提出状況一覧が出る（日別の履歴は出ない）');
+  location.hash = '#/app/history?s=牛カツ世桜 長堀橋店';
+  h = registry.app.innerHTML;
+  ok(/提出履歴（直近[^<]*— 長堀橋店/.test(h) && /class="kchip on" data-kyou="牛カツ世桜 長堀橋店"/.test(h), '提出履歴：?s=店舗 で入ると、その店の日別履歴＋チップ点灯');
+  ok(localStorage.getItem('yosakura_kyou_store') === '牛カツ世桜 長堀橋店', '提出履歴の ?s= が店舗の選択として記憶される');
+  location.hash = '#/app/kyou';
+  ok(/今日出すもの[^<]*— 長堀橋店/.test(registry.app.innerHTML), '提出履歴で選んだ店舗が、今日出すものにも引き継がれる');
+  {
+    const h3 = renderView('history', 'staff', '牛カツ世桜 長堀橋店', 'ja');
+    ok(!/class="kchips"/.test(h3) && /提出履歴（直近[^<]*— 長堀橋店/.test(h3), '提出履歴：店舗の端末＝チップなし・自店の履歴');
+  }
+  // 店舗チップの押下は委譲イベント（どの画面でも効く）＝ソースで固定
+  {
+    const src = code;
+    ok(/closest\('\[data-kyou\],/.test(src) && /t\.dataset\.kyou !== undefined/.test(src), '店舗チップの押下＝委譲イベントで処理（画面ごとの登録に依存しない）');
+    ok(!/querySelectorAll\('\[data-kyou\]'\)/.test(src), '画面ごとの onclick 登録（巡回チェック画面でしか効かなかった）は残っていない');
   }
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_kyou_store'); });
 }
