@@ -423,6 +423,9 @@
     { id:'pl', group:'storeops', icon:'yen', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'数値・原価率', en:'Numbers & Cost', vi:'Số liệu & Giá vốn' },
       desc:{ ja:'月次の売上・仕入・在庫から原価率を自動計算', en:'Monthly cost ratio from sales/stock', vi:'Tự tính giá vốn theo tháng' } },
+    { id:'numcheck', group:'hq', icon:'report', live:true, roles:['hq'],
+      name:{ ja:'数字の要確認', en:'Number checks', vi:'Số liệu cần xác nhận' },
+      desc:{ ja:'日報の数字で「変だな」を自動で拾う（アプリ入力・シート取込どちらも）', en:'Auto-flag suspicious daily-report numbers (app or sheet)', vi:'Tự phát hiện số liệu bất thường' } },
     { id:'dashboard', group:'hq', icon:'gauge', roles:['hq'],
       name:{ ja:'本部ダッシュボード', en:'HQ Dashboard', vi:'Bảng điều khiển' },
       desc:{ ja:'全店の報告を自動集約', en:'Auto-aggregate all reports', vi:'Tổng hợp báo cáo tự động' } },
@@ -1294,6 +1297,14 @@
         <p class="news-body">${L({ ja:'締切を過ぎても届いていない提出物があります。', en:'Some submissions are past due.', vi:'Có mục nộp đã quá hạn.' })}</p>
         <span class="news-more">${L({ ja:'全店の提出状況を開く', en:'Open all-store status', vi:'Mở tình trạng toàn bộ' })} ${svg('chev')}</span>
       </button>` : '';
+    const numOpenN = role === 'hq' ? numOpen_().length : 0;
+    const numCard = numOpenN > 0 ? `
+      <button class="card news-card news-card--btn" data-open="numcheck">
+        <div class="news-h"><span class="news-ic">${svg('report')}</span><b>${L({ ja:'数字の要確認があります', en:'Numbers to check', vi:'Có số liệu cần xác nhận' })}</b></div>
+        <div class="news-title">${numOpenN} ${L({ ja:'件', en:'item(s)', vi:'mục' })}</div>
+        <p class="news-body">${L({ ja:'日報の数字で「変だな」を自動で拾いました（個数で入っている・合計が合わない など）。', en:'Auto-flagged suspicious daily-report numbers.', vi:'Đã tự phát hiện số liệu bất thường trong báo cáo ngày.' })}</p>
+        <span class="news-more">${L({ ja:'一覧を開く', en:'Open list', vi:'Mở danh sách' })} ${svg('chev')}</span>
+      </button>` : '';
     const dutyBlock = `<div class="homelinks">
         ${dutyRow('kyou', { ja:'日次業務', en:'Daily tasks', vi:'Hàng ngày' }, remainOf(['daily']))}
         ${dutyRow('shukan', { ja:'週次業務', en:'Weekly tasks', vi:'Hàng tuần' }, remainOf(['weekly']))}
@@ -1399,7 +1410,7 @@
             <button class="mini" data-open="handover" style="margin-top:6px">${L({ ja:'すべて見る・引き継ぎを書く', en:'Open board / write', vi:'Xem tất cả / viết' })}</button>
           </div>`;
         })()}
-        ${remind}
+        ${remind}${numCard}
         ${isStoreSide ? dutySection + newsSection : newsSection + dutySection}
         ${sec({ ja:'よく使う', en:'Quick access', vi:'Hay dùng' })}
         ${primary ? `<div class="grid">${primary}</div>` : ''}
@@ -6448,6 +6459,94 @@
   };
 
   /* ---------- 店舗向け：今日出すもの（日次） ---------- */
+  /* ---------- 本部：数字の要確認（2026-09-17 神田さん）----------
+     日報（総括表）の数字を、入力経路に関係なく（アプリ提出も毎時のシート取込も）同じ8つの検査にかける。
+     きっかけ＝牛カツ長堀橋のフード・ドリンク金額が個数で入っている日が8月6日分・9月5日分あり、
+     シートの「売上構成×」は付いていたが誰も見に行っていなかった。
+     13条-6「目視しなくても重要なものが上がる」・12「判断が分かる数字」。新しい提出物は増やさない。 */
+  const NUM_ACK_LS = 'yosakura_numcheck_ack';
+  const NUM_CODES = {
+    sum:   { ja:'フード＋ドリンク≠売上', en:'Food+drink ≠ sales', vi:'Món+đồ uống ≠ doanh thu' },
+    count: { ja:'フードが小さすぎ（個数？）', en:'Food too small (count?)', vi:'Món ăn quá nhỏ (số lượng?)' },
+    guest: { ja:'客数が空', en:'No guest count', vi:'Thiếu số khách' },
+    unit:  { ja:'客単価が普段と違う', en:'Unit price off', vi:'Đơn giá bất thường' },
+    week:  { ja:'前週同曜日と大きく違う', en:'Far from same weekday last week', vi:'Khác nhiều so với tuần trước' },
+    reg:   { ja:'レジ差が0でない', en:'Register diff ≠ 0', vi:'Lệch két' },
+    lunch: { ja:'昼の売上＞合計', en:'Lunch > total', vi:'Trưa > tổng' },
+    cc:    { ja:'現金＋カード≠売上', en:'Cash+card ≠ sales', vi:'Tiền mặt+thẻ ≠ doanh thu' }
+  };
+  const numN_ = (v) => { const n = Number(String(v == null ? '' : v).replace(/[,円\s]/g, '')); return (v === '' || v == null || isNaN(n)) ? null : n; };
+  function getNumAck() { try { return JSON.parse(localStorage.getItem(NUM_ACK_LS) || '{}') || {}; } catch (e) { return {}; } }
+  function saveNumAck(o) { try { localStorage.setItem(NUM_ACK_LS, JSON.stringify(o)); } catch (e) {} }
+  /* 直近 days 日の日報を店舗ごとに検査して、要確認の一覧を返す */
+  function numCheck_(days) {
+    days = days || 60;
+    const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    const rows = getSk().filter(r => r && r.store && r.date && r.date >= since);
+    const byStore = {};
+    rows.forEach(r => { (byStore[r.store] = byStore[r.store] || []).push(r); });
+    const out = [];
+    Object.keys(byStore).forEach(st => {
+      const rs = byStore[st].slice().sort((a, b) => a.date < b.date ? -1 : 1);
+      const byDate = {}; rs.forEach(r => { byDate[r.date] = r; });
+      const units = rs.map(r => (numN_(r.sales) && numN_(r.guests)) ? numN_(r.sales) / numN_(r.guests) : null).filter(x => x && x > 0).sort((a, b) => a - b);
+      const med = units.length >= 5 ? units[Math.floor(units.length / 2)] : null;
+      rs.forEach(r => {
+        const sales = numN_(r.sales), guests = numN_(r.guests), food = numN_(r.foodamt), drink = numN_(r.drinkamt);
+        const lunch = numN_(r.lunch), err = numN_(r.err), cash = numN_(r.cash), card = numN_(r.card);
+        const add = (code, vals) => out.push({ store: st, date: r.date, code, vals, src: r.src === 'drive' ? 'drive' : 'app' });
+        if (!sales || sales <= 0) return;
+        if (food != null && drink != null && Math.abs((food + drink) - sales) > Math.max(1000, sales * 0.02)) add('sum', `フード${food.toLocaleString()}＋ドリンク${drink.toLocaleString()}＝${(food + drink).toLocaleString()}／売上${sales.toLocaleString()}`);
+        if (food != null && food > 0 && food < sales * 0.2) add('count', `フード${food.toLocaleString()}・ドリンク${drink == null ? '—' : drink.toLocaleString()}／売上${sales.toLocaleString()}`);
+        if (!guests) add('guest', `売上${sales.toLocaleString()}・客数なし`);
+        if (guests && med) { const u = sales / guests; if (u < med * 0.6 || u > med * 1.4) add('unit', `客単価${Math.round(u).toLocaleString()}円（普段${Math.round(med).toLocaleString()}円）`); }
+        const prev = byDate[new Date(new Date(r.date + 'T00:00:00').getTime() - 7 * 86400000).toISOString().slice(0, 10)];
+        const ps = prev ? numN_(prev.sales) : null;
+        if (ps && ps > 0) { const d = (sales - ps) / ps; if (Math.abs(d) > 0.5) add('week', `${sales.toLocaleString()}／前週${ps.toLocaleString()}（${d > 0 ? '+' : ''}${Math.round(d * 100)}%）`); }
+        if (err != null && err !== 0) add('reg', `レジ差${err.toLocaleString()}円`);
+        if (lunch != null && lunch > sales) add('lunch', `昼${lunch.toLocaleString()}／合計${sales.toLocaleString()}`);
+        if (cash != null && card != null && (cash + card) > 0 && Math.abs((cash + card) - sales) > Math.max(1000, sales * 0.02)) add('cc', `現金${cash.toLocaleString()}＋カード${card.toLocaleString()}／売上${sales.toLocaleString()}`);
+      });
+    });
+    return out.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : a.store.localeCompare(b.store));
+  }
+  const numKey_ = (x) => `${x.store}|${x.date}|${x.code}`;
+  function numOpen_() { const ack = getNumAck(); return numCheck_().filter(x => !ack[numKey_(x)]); }
+  APP_VIEWS.numcheck = () => {
+    if (getRole() !== 'hq') return `<div class="card"><p class="muted">${L({ ja:'本部の画面です', en:'HQ only', vi:'Chỉ dành cho HQ' })}</p></div>`;
+    const pick = kyouPick_();
+    const ack = getNumAck();
+    const showAll = localStorage.getItem('yosakura_numcheck_all') === '1';
+    let list = numCheck_();
+    if (pick.sel !== 'all') list = list.filter(x => x.store === pick.sel);
+    const open = list.filter(x => !ack[numKey_(x)]);
+    const shown = showAll ? list : open;
+    const byStore = {}; shown.forEach(x => { (byStore[x.store] = byStore[x.store] || []).push(x); });
+    const stores = Object.keys(byStore).sort((a, b) => byStore[b].length - byStore[a].length);
+    const rows = stores.map(st => `
+      <div class="card">
+        <h3>${esc(storeLabel(st))} <small style="color:#8a8">${byStore[st].length}${L({ ja:'件', en:'', vi:'' })}</small></h3>
+        ${byStore[st].map(x => { const k = numKey_(x); const done = !!ack[k]; return `
+        <div class="numrow ${done ? 'done' : ''}">
+          <div class="numrow-l"><b>${esc(x.date)}</b> <span class="numsrc">${x.src === 'drive' ? L({ ja:'取込', en:'sheet', vi:'sheet' }) : L({ ja:'アプリ', en:'app', vi:'app' })}</span></div>
+          <div class="numrow-m"><b>${esc(L(NUM_CODES[x.code]))}</b><br><small>${esc(x.vals)}</small></div>
+          <button type="button" class="mini" data-numack="${esc(k)}">${done ? L({ ja:'未確認に戻す', en:'Reopen', vi:'Mở lại' }) : L({ ja:'確認済みにする', en:'Mark checked', vi:'Đã xác nhận' })}</button>
+        </div>`; }).join('')}
+      </div>`).join('');
+    return `
+      ${pick.chips}
+      <div class="card">
+        <h3>${L({ ja:'数字の要確認', en:'Number checks', vi:'Số liệu cần xác nhận' })} <small style="color:#8a8">${L({ ja:'直近60日', en:'last 60 days', vi:'60 ngày' })}</small></h3>
+        <div class="ksum">
+          <span class="ksum-i ov"><b>${open.length}</b>${L({ ja:'件 未確認', en:' open', vi:' chưa xác nhận' })}</span>
+          <span class="ksum-i ok"><b>${list.length - open.length}</b>${L({ ja:'件 確認済み', en:' checked', vi:' đã xác nhận' })}</span>
+          <button type="button" class="mini" data-numall="${showAll ? '0' : '1'}">${showAll ? L({ ja:'未確認だけ表示', en:'Open only', vi:'Chỉ chưa xác nhận' }) : L({ ja:'確認済みも表示', en:'Show checked', vi:'Hiện cả đã xác nhận' })}</button>
+        </div>
+        <p class="hint" style="display:block">${L({ ja:'※ 検査は8つ＝フード＋ドリンク≠売上／フードが小さすぎ（個数の疑い）／客数が空／客単価が普段（直近の中央値）の±40%外／前週同曜日と±50%以上の差／レジ差≠0／昼＞合計／現金＋カード≠売上。アプリ提出もシート取込も同じ基準です。「確認済み」はこの端末にだけ残ります。', en:'8 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'8 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
+      </div>
+      ${rows || `<div class="card"><p class="muted">${L({ ja:'要確認の数字はありません', en:'Nothing to check', vi:'Không có gì cần xác nhận' })}</p></div>`}`;
+  };
+
   /* ---------- 店舗向け：今日／今週／月次・四半期で出すもの（共通の作り） ----------
      2026-09-16 神田さん「個店を見たいなら店舗を一発で選べるように。本部として全店を見るなら瞬時に判断できるものを。
      週次・月次・四半期も日次と同じ見え方に」。
@@ -7341,7 +7440,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -7350,6 +7449,9 @@
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
+      // 数字の要確認＝確認済みの切替／表示の切替（2026-09-17）
+      if (t.dataset.numack !== undefined) { const o = getNumAck(); if (o[t.dataset.numack]) delete o[t.dataset.numack]; else o[t.dataset.numack] = Date.now(); saveNumAck(o); render(true); return; }
+      if (t.dataset.numall !== undefined) { localStorage.setItem('yosakura_numcheck_all', t.dataset.numall); render(true); return; }
       // 今日出すもの／今週／月次／提出履歴の店舗チップ（2026-09-17＝画面ごとの登録でなく委譲に。どの画面でも効く）
       if (t.dataset.kyou !== undefined) { try { localStorage.setItem(KYOU_LS, t.dataset.kyou); } catch (err) {} if (currentRoute().params.get('s') || currentRoute().params.get('store')) go(currentRoute().path); else render(true); return; }
       if (t.dataset.ttab) { localStorage.setItem('yosakura_teishutsu_tab', t.dataset.ttab); render(true); return; }

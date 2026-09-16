@@ -5250,5 +5250,43 @@ console.log('== 今日・今週・月次で出すもの＝店舗を一発で選�
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_kyou_store'); });
 }
 
+console.log('== 数字の要確認（本部）2026-09-17 神田さん「要確認の数値をピックアップ」==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const d = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+  const base = (n, sales, guests, extra) => Object.assign({ store: S, date: d(n), sales, guests, foodamt: String(Math.round(sales * 0.92)), drinkamt: String(sales - Math.round(sales * 0.92)), t: Date.now() - n * 86400000, src: 'drive' }, extra || {});
+  const rows = [];
+  for (let n = 30; n >= 3; n--) rows.push(base(n, 200000 + (n % 5) * 10000, 40 + (n % 3)));
+  rows.push(base(2, 101400, 21, { foodamt: '23', drinkamt: '8' }));            // 個数で入っている（9/16の実例）
+  rows.push(base(1, 26100, 10, { foodamt: '42000', drinkamt: '1300' }));       // 合計が合わない・客単価2,610
+  rows.push(base(0, 62700, 0, { foodamt: '', drinkamt: '', err: '500' }));      // 客数なし・レジ差
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows)); localStorage.removeItem('yosakura_kyou_store'); localStorage.removeItem('yosakura_numcheck_ack'); });
+  location.hash = '#/app/numcheck';
+  let h = registry.app.innerHTML;
+  ok(/フードが小さすぎ（個数？）/.test(h) && /フード23・ドリンク8/.test(h), '個数で入っている日を拾う（フード23・ドリンク8）');
+  ok(/フード＋ドリンク≠売上/.test(h) && /42,000/.test(h), '合計が合わない日を拾う');
+  ok(/客単価が普段と違う/.test(h) && /2,610/.test(h), '客単価の外れ値を拾う（直近の中央値から±40%）');
+  ok(/客数が空/.test(h) && /レジ差が0でない/.test(h) && /レジ差500円/.test(h), '客数なし・レジ差≠0 を拾う');
+  ok(/前週同曜日と大きく違う/.test(h), '前週同曜日との大きな差を拾う');
+  ok(/class="kchips"/.test(h) && /data-numack="/.test(h) && /取込/.test(h), '店舗チップ・確認済みボタン・入力経路（取込／アプリ）が出る');
+  const nOpen = Number((h.match(/<b>(\d+)<\/b>件 未確認/) || [])[1]);
+  ok(nOpen >= 6, '未確認の件数が出る（' + nOpen + '件）');
+  location.hash = '#/home';
+  ok(/数字の要確認があります/.test(registry.app.innerHTML) && /data-open="numcheck"/.test(registry.app.innerHTML), '本部ホームに「数字の要確認があります」が出て一覧へ飛べる');
+  // 確認済みにすると未確認から消える（表示切替で戻る）
+  const k = (h.match(/data-numack="([^"]+)"/) || [])[1];
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows)); localStorage.setItem('yosakura_numcheck_ack', JSON.stringify({ [k.replace(/&quot;/g, '"')]: 1 })); });
+  location.hash = '#/app/numcheck';
+  const h2 = registry.app.innerHTML; const nOpen2 = Number((h2.match(/<b>(\d+)<\/b>件 未確認/) || [])[1]);
+  ok(nOpen2 === nOpen - 1 && /<b>1<\/b>件 確認済み/.test(h2), '確認済みにした1件が未確認から消える');
+  {
+    const h3 = renderView('numcheck', 'manager', S, 'ja');
+    ok(!/data-numack=/.test(h3) && !/件 未確認/.test(h3), '店舗の端末では一覧が出ない（本部専用の入口で止まる）');
+    const home = renderView('home', 'manager', S, 'ja');
+    ok(!/数字の要確認があります/.test(home), '店舗のホームには出ない');
+  }
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
