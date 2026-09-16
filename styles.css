@@ -753,3 +753,20 @@ html[data-theme="hp"] .lightbox img, html[data-theme="hp"] .pt img { border-radi
 html[data-theme="hp"] .photo-drop { border-radius: 0; border: 1px dashed #cacaca; }
 html[data-theme="hp"] .ph-ico { border-radius: 0; }
 html[data-theme="hp"] .live { border-radius: 0; }
+
+/* HP基準＝見やすさ・押しやすさの底上げ（2026-09-16 全画面巡回の結果）
+   ・英字の小見出し10px→11px（店舗iPadで細すぎる）
+   ・戻るボタン33px・小ボタン25px→44px/36px（指で押しにくい）
+   ・チェックリストの曜日・タグ10px→11px／金種入力の欄23px→40px */
+html[data-theme="hp"] .hp-en { font-size: 11px; }
+html[data-theme="hp"] .sec-h .sec-en, html[data-theme="hp"] .app-head .hp-en { font-size: 11px; }
+html[data-theme="hp"] .appbar .back, html[data-theme="hp"] .back { min-height: 44px; padding-top: 8px; padding-bottom: 8px; }
+html[data-theme="hp"] .mini { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
+html[data-theme="hp"] .dk, html[data-theme="hp"] .k, html[data-theme="hp"] small { font-size: 11px; }
+html[data-theme="hp"] .svit-h, html[data-theme="hp"] .svit-h span { font-size: 11px; }
+html[data-theme="hp"] input[type="number"], html[data-theme="hp"] input[inputmode="numeric"], html[data-theme="hp"] input[inputmode="decimal"] { min-height: 40px; font-size: 16px; }
+html[data-theme="hp"] .tabbar button { font-size: 11px; }
+html[data-theme="hp"] .hint { font-size: 12px; }
+html[data-theme="hp"] .muted { font-size: 13px; }
+/* 写真の上の白文字＝被せを濃くして可読性を担保（薄い写真でも読める） */
+html[data-theme="hp"] .hp-hero__sh { background: linear-gradient(180deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.18) 40%, rgba(0,0,0,.62) 100%); }
