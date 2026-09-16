@@ -3424,34 +3424,34 @@
   ];
   /* no＝原本のNo（数字）／'T'付き＝お客様体験の接点No（配点なし）。pt＝原本の配点。tag＝該当店のみ等 */
   const SV_ITEMS = [
-    { no:3,   pt:1, ph:'gaikan',   t:'暖簾が汚くないか', man:['mn049'] },
-    { no:8,   pt:2, ph:'gaikan',   t:'看板の電気がついているか', man:['mn049'] },
+    { no:3,   pt:1, ph:'gaikan',   t:'暖簾が汚くないか', man:['mn049'], mat:[{ t:'店舗の素材（07.世桜×MOTON）', u:'https://drive.google.com/drive/folders/1CtU_lfi_VXqXv4uAAIFnGsadJrx4GnuK' }] },
+    { no:8,   pt:2, ph:'gaikan',   t:'看板の電気がついているか', man:['mn049'], mat:[{ t:'牛カツ長堀 A看板', u:'https://drive.google.com/drive/folders/1kFyeFubhshUB96NS20VOPpGLd9lfddkX' }, { t:'店舗の素材（07.世桜×MOTON）', u:'https://drive.google.com/drive/folders/1CtU_lfi_VXqXv4uAAIFnGsadJrx4GnuK' }] },
     { no:'T9',  pt:0, ph:'deai',   t:'最初の一声「いらっしゃいませ」（体験）', tag:'体験', man:['mn018','mn020'] },
     { no:22,  pt:2, ph:'deai',     t:'お客様の顔を見て明るく感じのいい接客ができているか', man:['mn016','mn018'] },
     { no:23,  pt:2, ph:'deai',     t:'挨拶・声掛けができているか', man:['mn020','mn018'] },
-    { no:30,  pt:2, ph:'order',    t:'メニュー説明・おすすめの提案はしているか', man:['mn018','mn022'] },
+    { no:30,  pt:2, ph:'order',    t:'メニュー説明・おすすめの提案はしているか', man:['mn018','mn022'], mat:[{ t:'メニュー表（牛カツ長堀）', u:'https://drive.google.com/drive/folders/1mhvHAfD8quuuarV8pED-PPQTW8CxJSdg' }] },
     { no:'T23', pt:0, ph:'order',  t:'アレルギーの確認（体験）', tag:'体験', man:['mn018'] },
     { no:'T24', pt:0, ph:'order',  t:'オーダーの復唱（体験）', tag:'体験', man:['mn018'] },
-    { no:31,  pt:2, ph:'order',    t:'食べ方POPをお食事提供までに渡せているか', tag:'世桜らしさ', man:['mn018'] },
-    { no:32,  pt:2, ph:'order',    t:'世桜BOOKを状況に応じてお客様に渡せているか', tag:'世桜らしさ', man:['mn009','mn118'] },
+    { no:31,  pt:2, ph:'order',    t:'食べ方POPをお食事提供までに渡せているか', tag:'世桜らしさ', man:['mn018'], mat:[{ t:'食べ方POP', u:'https://drive.google.com/drive/folders/1JFmjyINjhvKXaJ7vFq6SBXU4kxtBnA9W' }] },
+    { no:32,  pt:2, ph:'order',    t:'世桜BOOKを状況に応じてお客様に渡せているか', tag:'世桜らしさ', man:['mn009','mn118'], mat:[{ t:'世桜BOOK', u:'https://drive.google.com/drive/folders/10gV8ZUqVTlCsQnWZUsTbdNAaZY9-sfYn' }] },
     { no:28,  pt:2, ph:'jisshoku', t:'商品注文してから何分で提供されているか（アラカルト10分以内→○／業態により微調整あり）', tag:'時刻を記入', man:['mn018'], std:'アラカルト10分以内→○／10分以上→×（コースは〇分＝原本で未記入）※業態により微調整あり' },
-    { no:47,  pt:3, ph:'jisshoku', t:'料理の温度と状態、味は問題ないか', man:['mn125','mn124','mn126'] },
-    { no:85,  pt:5, ph:'jisshoku', t:'食材の配置・盛付けがマニュアルの写真・図と一致している', man:['mn125','mn124','mn126'] },
+    { no:47,  pt:3, ph:'jisshoku', t:'料理の温度と状態、味は問題ないか', man:['mn125','mn124','mn126'], mat:[{ t:'料理写真（業態別）', u:'https://drive.google.com/drive/folders/1-sPEoe8m-Z0eyOudYpsMdGUzbxFmacFz' }, { t:'牛カツ_写真', u:'https://drive.google.com/drive/folders/1z8tLLwbJFVSRguRu7i-CFlWrMw2semcb' }] },
+    { no:85,  pt:5, ph:'jisshoku', t:'食材の配置・盛付けがマニュアルの写真・図と一致している', man:['mn125','mn124','mn126'], mat:[{ t:'料理写真（業態別）', u:'https://drive.google.com/drive/folders/1-sPEoe8m-Z0eyOudYpsMdGUzbxFmacFz' }, { t:'牛カツ_写真', u:'https://drive.google.com/drive/folders/1z8tLLwbJFVSRguRu7i-CFlWrMw2semcb' }] },
     { no:39,  pt:2, ph:'jisshoku', t:'配膳前に盛り付けや配置の確認ができているか（wチェック）', man:['mn018'] },
-    { no:43,  pt:2, ph:'jisshoku', t:'商品の説明がされているか（配膳時）', man:['mn022'] },
-    { no:36,  pt:1, ph:'jisshoku', t:'牛カツ着火剤の確認ができるか', tag:'牛カツ店のみ', man:['mn125'] },
+    { no:43,  pt:2, ph:'jisshoku', t:'商品の説明がされているか（配膳時）', man:['mn022'], mat:[{ t:'メニュー表（牛カツ長堀）', u:'https://drive.google.com/drive/folders/1mhvHAfD8quuuarV8pED-PPQTW8CxJSdg' }] },
+    { no:36,  pt:1, ph:'jisshoku', t:'牛カツ着火剤の確認ができるか', tag:'牛カツ店のみ', man:['mn125'], mat:[{ t:'牛カツ_写真', u:'https://drive.google.com/drive/folders/1z8tLLwbJFVSRguRu7i-CFlWrMw2semcb' }] },
     { no:41,  pt:2, ph:'jisshoku', t:'カットするスタッフのレベルは合格レベルか（演出）', tag:'該当店のみ', man:['mn018'] },
     { no:42,  pt:2, ph:'jisshoku', t:'撮影のお声がけができているか', tag:'世桜らしさ', man:['mn059','mn116'] },
-    { no:13,  pt:2, ph:'hall',     t:'テーブル・椅子・床に汚れやゴミが放置されていないか', man:['mn047'] },
+    { no:13,  pt:2, ph:'hall',     t:'テーブル・椅子・床に汚れやゴミが放置されていないか', man:['mn047'], mat:[{ t:'卓上POP（牛カツ長堀）', u:'https://drive.google.com/drive/folders/1-fAwHX-SWxedo6q3GcNg9tTaDfQe2l-V' }] },
     { no:16,  pt:3, ph:'hall',     t:'トイレの便器に汚れはないか', man:['mn047','mn109'] },
     { no:18,  pt:3, ph:'hall',     t:'トイレ裏のコードに埃が溜まっていないか', man:['mn047','mn109'] },
     { no:29,  pt:3, ph:'hall',     t:'事前ケア・中間ケアは実施されているか', man:['mn023'] },
     { no:48,  pt:3, ph:'hall',     t:'お冷が半分になってから即時対応できているか（3分以上→×）', man:['mn018'], std:'半分になってから即時対応→○／3分以上→×' },
     { no:'T42', pt:0, ph:'hall',   t:'感想のヒアリング（体験）', tag:'体験', man:['mn016'] },
-    { no:50,  pt:5, ph:'kaikei',   t:'サプライズ＝マニュアル通りの流れで行い、全員で盛り上がれているか', tag:'該当時のみ', man:['mn027','mn028'] },
-    { no:51,  pt:5, ph:'kaikei',   t:'サプライズ＝適切な演出ができているか（ライト等のタイミング）', tag:'該当時のみ', man:['mn027','mn028'] },
+    { no:50,  pt:5, ph:'kaikei',   t:'サプライズ＝マニュアル通りの流れで行い、全員で盛り上がれているか', tag:'該当時のみ', man:['mn027','mn028'], mat:[{ t:'BDカード', u:'https://drive.google.com/drive/folders/1zvicUe3stEI9dawLFJ_oXXoxQS9ZUJLG' }] },
+    { no:51,  pt:5, ph:'kaikei',   t:'サプライズ＝適切な演出ができているか（ライト等のタイミング）', tag:'該当時のみ', man:['mn027','mn028'], mat:[{ t:'BDカード', u:'https://drive.google.com/drive/folders/1zvicUe3stEI9dawLFJ_oXXoxQS9ZUJLG' }] },
     { no:49,  pt:2, ph:'kaikei',   t:'チェキの提供ができているか', tag:'導入店舗のみ', man:['mn116','mn117'] },
-    { no:'T53', pt:0, ph:'kaikei', t:'Google口コミのご案内（体験）', tag:'体験', man:['mn030'] },
+    { no:'T53', pt:0, ph:'kaikei', t:'Google口コミのご案内（体験）', tag:'体験', man:['mn030'], mat:[{ t:'QRコード', u:'https://drive.google.com/drive/folders/1jA6FqCytggoSw2K2Cefs77C-pNSiyZDY' }, { t:'口コミPOP（牛カツ長堀）', u:'https://drive.google.com/drive/folders/1ddPGvAViyuDpNsgn1RSms7wrA1MSUDql' }] },
     { no:56,  pt:5, ph:'kaikei',   t:'お帰りの挨拶ができているか（外までお見送り）', man:['mn018'] },
     { no:70,  pt:3, ph:'kitchen',  t:'ダスターは用途に分けて使用しているか', man:['mn039','mn047'] },
     { no:71,  pt:3, ph:'kitchen',  t:'不衛生な行動がないか（鼻・髪・スマホに触れた後そのまま作業など）', man:['mn036','mn035'] },
@@ -3516,6 +3516,7 @@
   function svStdHtml(it) {
     const st = svStdOf(it.no); const phs = (st.photos || []).filter(Boolean);
     const mans = (it.man || []).map(svManLink).filter(l => l && isHttp(l.url));
+    const mats = (it.mat || []);   // 07.世桜×MOTON（デザイン・販促素材）の該当フォルダ
     const has = it.std || (st.text || '').trim() || phs.length;
     return `<details class="svstd" data-svstd="${esc(String(it.no))}">
         <summary>${esc(L({ ja:'基準（あるべき姿）', en:'Standard', vi:'Tiêu chuẩn' }))}${has ? '' : `<small>${esc(L({ ja:'未登録', en:'not set', vi:'chưa có' }))}</small>`}${phs.length ? `<small>${phs.length}枚</small>` : ''}</summary>
@@ -3524,6 +3525,7 @@
           ${(st.text || '').trim() ? `<div class="svstd-t">${esc(st.text)}</div>` : ''}
           ${phs.length ? `<div class="svphotos">${phs.map((p, i) => `<span class="svph big"><img src="${esc(photoThumb(p))}" alt="" data-svstdview="${esc(photoFull(p))}"><button type="button" data-svstddel="${esc(String(it.no))}" data-svphi="${i}" aria-label="delete">×</button></span>`).join('')}</div>` : ''}
           ${mans.length ? `<div class="svstd-m">${mans.map(l => `<button class="mini" data-openurl="${esc(openUrlFor(l.url))}">${esc(l.title)}</button>`).join('')}</div>` : ''}
+          ${mats.length ? `<div class="svstd-m">${mats.map(l => `<button class="mini svmat" data-openurl="${esc(l.u)}">${esc(L({ ja:'素材：', en:'Assets: ', vi:'Tư liệu: ' }))}${esc(l.t)}</button>`).join('')}</div>` : ''}
           <div class="svstd-e">
             <textarea data-svstdtext="${esc(String(it.no))}" rows="2" placeholder="${esc(L({ ja:'基準をひと言（本部が書く・全店共通）', en:'Standard in one line (HQ)', vi:'Tiêu chuẩn (HQ)' }))}">${esc(st.text || '')}</textarea>
             <label class="svph-add">${svg('camera')}<span>${esc(L({ ja:'スクショ／正解写真', en:'Add image', vi:'Thêm ảnh' }))}</span><input type="file" accept="image/*" data-svstdphoto="${esc(String(it.no))}"></label>
