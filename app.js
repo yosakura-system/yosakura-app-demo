@@ -1269,10 +1269,13 @@
     // 提出・業務（日次／週次／月次）の残り件数
     const dstore = visibleStores()[0];
     const ditems = todayItemsFor(dstore);
-    const remainOf = (fs) => ditems.filter(it => fs.includes(it.m.freq) && !it.manual && !it.submitted && !it.holiday).length;
-    const dutyRow = (open, label, n) => `<button class="homelink" data-open="${open}">
+    /* 本部で全店を見ているとき＝「残りがある店舗数」を出し、押すと全店の一枚表（2026-09-16 神田さん「トップから入っても同じ形で」） */
+    const hqAll = role === 'hq' && getStoreSel() === 'all';
+    const remainIn = (its, fs) => its.filter(it => fs.includes(it.m.freq) && !it.manual && !it.submitted && !it.holiday).length;
+    const remainOf = (fs) => hqAll ? STORES.filter(s => remainIn(todayItemsFor(s), fs) > 0).length : remainIn(ditems, fs);
+    const dutyRow = (open, label, n) => `<button class="homelink" data-open="${hqAll ? open + '?store=all' : open}">
         <span class="hl-ic">${svg('check')}</span><span class="hl-t">${L(label)}</span>
-        <span class="hl-c">${n > 0 ? `<b style="color:#b23">${n}</b><small style="color:#8a8"> ${L({ ja:'件', en:'', vi:'' })}</small>` : `<small style="color:#2a7">${L({ ja:'完了', en:'Done', vi:'Xong' })}</small>`} ${svg('chev')}</span></button>`;
+        <span class="hl-c">${n > 0 ? `<b style="color:#b23">${n}</b><small style="color:#8a8"> ${hqAll ? L({ ja:'店', en:' stores', vi:' CH' }) : L({ ja:'件', en:'', vi:'' })}</small>` : `<small style="color:#2a7">${L({ ja:'完了', en:'Done', vi:'Xong' })}</small>`} ${svg('chev')}</span></button>`;
     /* 締切を過ぎた提出のお知らせ（アプリ内リマインド）。
        決定（7/30）＝未提出はアプリで自動通知し、それでも出なければLINE。ここはその前半。
        店舗側＝自店の超過件数／本部＝まだ出ていない店舗の数、と見せ方を変える。 */
@@ -1288,11 +1291,11 @@
         <p class="news-body">${L({ ja:'いま出せば、本部にはそのまま届きます。', en:'Submit now and it reaches HQ right away.', vi:'Nộp ngay, HQ sẽ nhận được.' })}</p>
         <span class="news-more">${L({ ja:'今日出すものを開く', en:'Open today’s list', vi:'Mở danh sách hôm nay' })} ${svg('chev')}</span>
       </button>` : (role === 'hq' && hqMissingStores > 0) ? `
-      <button class="card news-card news-card--imp news-card--btn" data-open="teishutsu">
+      <button class="card news-card news-card--imp news-card--btn" data-open="kyou?store=all">
         <div class="news-h"><span class="news-ic">${svg('inbox')}</span><b>${L({ ja:'締切を過ぎている店舗があります', en:'Stores with overdue items', vi:'Cửa hàng quá hạn' })}</b></div>
         <div class="news-title">${hqMissingStores} ${L({ ja:'店舗', en:'store(s)', vi:'cửa hàng' })}</div>
         <p class="news-body">${L({ ja:'必須の提出物が、締切を過ぎても届いていません。', en:'Required submissions are past due.', vi:'Mục bắt buộc đã quá hạn.' })}</p>
-        <span class="news-more">${L({ ja:'提出物管理を開く', en:'Open submissions', vi:'Mở quản lý nộp' })} ${svg('chev')}</span>
+        <span class="news-more">${L({ ja:'全店の提出状況を開く', en:'Open all-store status', vi:'Mở tình trạng toàn bộ' })} ${svg('chev')}</span>
       </button>` : '';
     const dutyBlock = `<div class="homelinks">
         ${dutyRow('kyou', { ja:'日次業務', en:'Daily tasks', vi:'Hàng ngày' }, remainOf(['daily']))}
@@ -6463,6 +6466,8 @@
     const stores = visibleStores();
     if (stores.length <= 1) return { sel: stores[0] || '', stores, chips: '' };
     let sel = ''; try { sel = localStorage.getItem(KYOU_LS) || ''; } catch (e) {}
+    const q = currentRoute().params.get('store');   // ホームの通知・日次/週次/月次の行からは ?store=all で入る
+    if (q && (q === 'all' || stores.includes(q))) { sel = q; try { localStorage.setItem(KYOU_LS, q); } catch (e) {} }
     if (sel !== 'all' && !stores.includes(sel)) sel = (getStoreSel() !== 'all' && stores.includes(getStoreSel())) ? getStoreSel() : 'all';
     const chips = `<div class="kchips">
       <button type="button" class="kchip ${sel === 'all' ? 'on' : ''}" data-kyou="all">${esc(L({ ja:'全店', en:'All', vi:'Tất cả' }))}</button>
