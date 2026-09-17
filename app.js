@@ -3532,7 +3532,10 @@
     { no:105, pt:2, ph:'shikumi',  t:'桜チェックリストが活用されているか', tag:'世桜の仕組み', man:['mn108'], std:'桜チェックリストを活用しているか（13-2 桜チェックシート）' },
     { no:102, pt:2, ph:'shikumi',  t:'定期清掃リストを活用されているか', man:['mn109','mn110','mn111'], std:'定期清掃リストを活用し、実施できているか（清掃箇所確認）' },
   ];
-  const getSv = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_svcheck')) || {}; } catch { return {}; } };
+  /* ★描画のたびに写真入りの保存データをJSON.parseし直していた（1項目ごとに何度も＝44項目×基準×スコア）→ 重い（2026-09-17 神田さん実機「めちゃくちゃ重たい」）。
+     文字列が同じなら前回の結果を返す（総括表の getSk と同じ考え方） */
+  let _svC = null;
+  const getSv = () => { let raw = null; try { raw = localStorage.getItem('yosakura_demo_svcheck'); } catch (e) { return {}; } if (_svC && _svC.raw === raw) return _svC.val; let val = {}; try { val = JSON.parse(raw) || {}; } catch (e) { val = {}; } _svC = { raw, val }; return val; };
   const saveSv = (o) => { try { localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(o)); } catch (e) {} };
   const svTodayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   let svState = { store:'', date:'', tab:'', axis:'all' };   // 画面の選択（端末の中だけ）
@@ -3647,7 +3650,8 @@
      2026-09-16 神田さんのご要望「各項目の出来栄え基準をマニュアルから探してスクショを貼れないか」。
      文言は原本にあるものだけ（こちらで基準を作らない）。写真は本部がアプリから貼る（kind:svstd・No ごと最新が正・全店共通）。
      9/9 MTG「正解写真＝あるべき姿をアプリに登録して以後はズレを指摘」の器としても使える。 */
-  const getSvStd = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_svstd')) || {}; } catch { return {}; } };
+  let _svStdC = null;
+  const getSvStd = () => { let raw = null; try { raw = localStorage.getItem('yosakura_demo_svstd'); } catch (e) { return {}; } if (_svStdC && _svStdC.raw === raw) return _svStdC.val; let val = {}; try { val = JSON.parse(raw) || {}; } catch (e) { val = {}; } _svStdC = { raw, val }; return val; };
   const saveSvStd = (o) => { try { localStorage.setItem('yosakura_demo_svstd', JSON.stringify(o)); } catch (e) {} };
   const svStdOf = (no) => getSvStd()[String(no)] || {};
   const svManLink = (id) => (getLinks().find(l => l.id === id) || (typeof MANUAL_BUILTIN !== 'undefined' ? MANUAL_BUILTIN.find(l => l.id === id) : null));
@@ -3657,7 +3661,7 @@
     const mats = (it.mat || []);   // 07.世桜×MOTON（デザイン・販促素材）の該当フォルダ
     const has = it.std || (st.text || '').trim() || phs.length;
     return `<details class="svstd" data-svstd="${esc(String(it.no))}">
-        <summary>${esc(L({ ja:'基準（あるべき姿）', en:'Standard', vi:'Tiêu chuẩn' }))}${has ? '' : `<small>${esc(L({ ja:'未登録', en:'not set', vi:'chưa có' }))}</small>`}${phs.length ? `<small>${phs.length}枚</small>` : ''}</summary>
+        <summary>${esc(L({ ja:'基準（あるべき姿・全店共通）', en:'Standard (all stores)', vi:'Tiêu chuẩn (toàn hệ thống)' }))}${has ? '' : `<small>${esc(L({ ja:'未登録', en:'not set', vi:'chưa có' }))}</small>`}${phs.length ? `<small>${phs.length}枚</small>` : ''}</summary>
         <div class="svstd-b">
           ${it.std ? `<div class="svstd-t"><b>${esc(L({ ja:'原本の基準：', en:'Master: ', vi:'Bản gốc: ' }))}</b>${esc(it.std)}</div>` : ''}
           ${(st.text || '').trim() ? `<div class="svstd-t">${esc(st.text)}</div>` : ''}
@@ -3665,8 +3669,8 @@
           ${mans.length ? `<div class="svstd-m">${mans.map(l => `<button class="mini" data-openurl="${esc(openUrlFor(l.url))}">${esc(l.title)}</button>`).join('')}</div>` : ''}
           ${mats.length ? `<div class="svstd-m">${mats.map(l => `<button class="mini svmat" data-openurl="${esc(l.u)}">${esc(L({ ja:'素材：', en:'Assets: ', vi:'Tư liệu: ' }))}${esc(l.t)}</button>`).join('')}</div>` : ''}
           <div class="svstd-e">
-            <textarea data-svstdtext="${esc(String(it.no))}" rows="2" placeholder="${esc(L({ ja:'基準をひと言（本部が書く・全店共通）', en:'Standard in one line (HQ)', vi:'Tiêu chuẩn (HQ)' }))}">${esc(st.text || '')}</textarea>
-            <label class="svph-add">${svg('camera')}<span>${esc(L({ ja:'スクショ／正解写真', en:'Add image', vi:'Thêm ảnh' }))}</span><input type="file" accept="image/*" data-svstdphoto="${esc(String(it.no))}"></label>
+            <textarea data-svstdtext="${esc(String(it.no))}" rows="2" placeholder="${esc(L({ ja:'基準をひと言（本部が書く・全店共通）。※今日の指摘はここでなく下の「メモ」へ', en:'Standard in one line (HQ, all stores). Findings go to the memo below', vi:'Tiêu chuẩn (HQ). Ghi chú hôm nay ở ô bên dưới' }))}">${esc(st.text || '')}</textarea>
+            <label class="svph-add">${svg('camera')}<span>${esc(L({ ja:'正解写真（全店共通）', en:'Reference photo', vi:'Ảnh chuẩn' }))}</span><input type="file" accept="image/*" data-svstdphoto="${esc(String(it.no))}"></label>
           </div>
         </div>
       </details>`;
@@ -3675,7 +3679,7 @@
   const svSig = (a, st) => JSON.stringify([a.v || '', a.memo || '', (a.photos || []).map(p => isDataUrl(p) ? p.length : p), a.by || '', st ? [st.text || '', (st.photos || []).map(p => isDataUrl(p) ? p.length : p)] : null]);
   function svItemHtml(it) {
     const a = svAns(it.no) || {};
-    const showMemo = a.v === 'ng' || (a.memo || '').trim() || a.v === 'ok' || (a.photos || []).length;
+    const showMemo = !!a.v || (a.memo || '').trim() || (a.photos || []).length;   // 対象外でもメモ可（2026-09-17）
     const phs = Array.isArray(a.photos) ? a.photos.filter(Boolean) : [];
     return `<div class="svit ${a.v ? 'v-' + a.v : ''}" data-svno="${esc(String(it.no))}" data-sig="${esc(svSig(a, svStdOf(it.no)))}">
         <div class="svit-h"><span class="svit-no">${typeof it.no === 'number' ? 'No.' + it.no : '体験'}</span>${it.pt ? `<span class="svit-pt pt${it.pt}">${it.pt}点</span>` : ''}${it.tag ? `<span class="svit-tag">${esc(it.tag)}</span>` : ''}${a.by ? `<span class="svit-by">${esc(a.by)}</span>` : ''}</div>
@@ -3686,11 +3690,11 @@
           <button data-svv="na" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'na'}">${esc(L({ ja:'対象外', en:'N/A', vi:'Không áp dụng' }))}</button>
         </div>
         ${svStdHtml(it)}
-        ${showMemo ? `<textarea class="svmemo" data-svmemo="${esc(String(it.no))}" rows="2" placeholder="${esc(a.v === 'ok' ? L({ ja:'良かった点があればひと言（レポートに載ります）', en:'Note a good point (optional)', vi:'Điểm tốt (tuỳ chọn)' }) : L({ ja:'何が・どこが（レポートに載ります）', en:'What / where', vi:'Điều gì / ở đâu' }))}">${esc(a.memo || '')}</textarea>
+        ${showMemo ? `<textarea class="svmemo" data-svmemo="${esc(String(it.no))}" rows="2" placeholder="${esc(a.v === 'ok' ? L({ ja:'良かった点があればひと言（レポートに載ります）', en:'Note a good point (optional)', vi:'Điểm tốt (tuỳ chọn)' }) : L({ ja:'何が・どこが（レポートに載ります）', en:'What / where', vi:'Điều gì / ở đâu' }))}">${esc(a.memo || '')}</textarea>` : ''}
         <div class="svphotos">
           ${phs.map((p, i) => `<span class="svph"><img src="${esc(photoThumb(p))}" alt=""><button type="button" data-svphdel="${esc(String(it.no))}" data-svphi="${i}" aria-label="delete">×</button></span>`).join('')}
-          ${phs.length < 6 ? `<label class="svph-add">${svg('camera')}<span>${esc(L({ ja:'写真', en:'Photo', vi:'Ảnh' }))}</span><input type="file" accept="image/*" data-svphoto="${esc(String(it.no))}"></label>` : ''}
-        </div>` : ''}
+          ${phs.length < 6 ? `<label class="svph-add">${svg('camera')}<span>${esc(L({ ja:'指摘・現場の写真', en:'Photo of finding', vi:'Ảnh hiện trường' }))}</span><input type="file" accept="image/*" data-svphoto="${esc(String(it.no))}"></label>` : ''}
+        </div>
       </div>`;
   }
   /* 画面を作り直さずに反映する（プツプツ対策）＝変わった項目だけ差し替え、上の進捗とタブの件数を書き換える。
@@ -3750,13 +3754,13 @@
       const d = await 写真をデータにする_(file); 写真の操作中 = false;
       if (!d) { toast(L({ ja:'画像を読めませんでした', en:'Could not read the image.', vi:'Không đọc được ảnh.' })); return; }
       const phs = (svStdOf(no).photos || []).filter(Boolean).slice(0, 5); phs.push(d);
-      svStdPush(no, {}, phs); svApplyDom();
-      const d2 = document.querySelector(`details.svstd[data-svstd="${no}"]`); if (d2) d2.open = true;
+      svStdPush(no, {}, phs);
+      svApplyDomFor_(no);   // 開いたままの基準欄でも反映（2026-09-17 神田さん「貼っても反映されない」）
+      toast(L({ ja:'正解写真を登録しました（全店共通）', en:'Reference photo saved', vi:'Đã lưu ảnh chuẩn' }));
     });
     document.querySelectorAll('[data-svstddel]').forEach(b => b.onclick = () => {
       const no = b.dataset.svstddel; const phs = (svStdOf(no).photos || []).filter(Boolean); phs.splice(Number(b.dataset.svphi), 1);
-      svStdPush(no, {}, phs); svApplyDom();
-      const d2 = document.querySelector(`details.svstd[data-svstd="${no}"]`); if (d2) d2.open = true;
+      svStdPush(no, {}, phs); svApplyDomFor_(no);
     });
     document.querySelectorAll('img[data-svstdview]').forEach(im => im.onclick = () => { try { window.open(im.dataset.svstdview, '_blank'); } catch (e) {} });
     document.querySelectorAll('.svstd [data-openurl]').forEach(b => b.onclick = () => { try { window.open(b.dataset.openurl, '_blank'); } catch (e) {} });
@@ -3769,6 +3773,15 @@
       postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phs.length })), photos: phs, t: next.t });
       svApplyDom();
     });
+  }
+  /* 1項目だけ強制的に差し替える（基準欄を開いたままでも）。差し替え後に基準欄は開いたままにする */
+  function svApplyDomFor_(no) {
+    const el = document.querySelector(`.svit[data-svno="${String(no)}"]`); const it = SV_ITEMS.find(i => String(i.no) === String(no)); if (!el || !it) return;
+    const wasOpen = !!el.querySelector('details.svstd[open]');
+    const tmp = document.createElement('div'); tmp.innerHTML = svItemHtml(it); const fresh = tmp.firstElementChild;
+    el.replaceWith(fresh);
+    if (wasOpen) { const d2 = fresh.querySelector('details.svstd'); if (d2) d2.open = true; }
+    bindSvItems_();
   }
   function svApplyDom() {
     try {
