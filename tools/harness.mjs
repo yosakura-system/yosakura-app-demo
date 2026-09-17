@@ -5364,5 +5364,13 @@ console.log('== 巡回チェック＝指摘の写真は判定前でも貼れる�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 巡回チェック＝タップが固まる（2026-09-17 神田さん実機）＝ソースで固定 ==');
+{
+  ok(/最後の入力時刻\) < 3000\) return false/.test(code), '入力中の保護は「直近3秒以内に入力があったとき」だけ（iPhoneでカーソルが残っても固まらない）');
+  ok(/document\.activeElement\.blur\(\); \} catch \(e\) \{\} 最後の入力時刻 = 0; render\(\);/.test(code), 'タブのタップ＝カーソルを外してから描き直す');
+  ok(!/写真の操作中 = true;\s*toast\(L\(\{ ja:'写真を読み込んでいます/.test(code) && (code.match(/finally \{ 写真の操作を終える_\(\); \}/g) || []).length >= 2, '巡回チェックの写真読み込み＝終える処理を finally で必ず通す（立ったまま固まらない）');
+  ok(/finally \{ try \{ bindSvItems_\(\); \} catch \(e\) \{\} \}/.test(code), 'svApplyDom＝例外が出てもボタンの処理を付け直す');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

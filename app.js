@@ -125,9 +125,13 @@
       vi: 'Ứng dụng đã tải lại khi chọn ảnh (bộ nhớ máy). Vui lòng chọn lại ảnh.'
     })), 600);
   }
+  /* ★巡回チェックで「メモにカーソルがある間は作り直さない」保護＝iPhoneではボタンを押してもカーソルが外れない（ボタンにフォーカスが移らない）ため、
+     タブや軸を押しても描き直されず「固まった」ように見えた（2026-09-17 神田さん実機）。→ 保護は直近3秒以内に入力があったときだけ */
+  let 最後の入力時刻 = 0;
+  try { document.addEventListener('input', () => { 最後の入力時刻 = Date.now(); }, true); document.addEventListener('keydown', () => { 最後の入力時刻 = Date.now(); }, true); } catch (e) {}
   function 画面を作り直してよい_() {
     if (写真の操作中) return false;
-    try { const ae = document.activeElement; if (ae && ae.tagName && /^(TEXTAREA|INPUT)$/.test(ae.tagName) && String(location.hash || '').indexOf('/app/hqcheck') !== -1) return false; } catch (e) {} // 巡回チェックでメモ入力中は描き直さない
+    try { const ae = document.activeElement; if (ae && ae.tagName && /^(TEXTAREA|INPUT)$/.test(ae.tagName) && String(location.hash || '').indexOf('/app/hqcheck') !== -1 && (Date.now() - 最後の入力時刻) < 3000) return false; } catch (e) {} // 巡回チェックでメモ入力中は描き直さない
     try {
       const t = document.getElementById('photoThumbs');
       if (t && t.querySelector && t.querySelector('.pt')) return false; // 貼った写真がある＝消さない
@@ -3725,10 +3729,10 @@
     document.querySelectorAll('input[data-svphoto]').forEach(fi => fi.onchange = async () => {
       const it = SV_ITEMS.find(i => String(i.no) === fi.dataset.svphoto); if (!it) return;
       const file = fi.files && fi.files[0]; if (!file) return;
-      写真の操作中 = true;
+      写真の操作を始める_();
       toast(L({ ja:'写真を読み込んでいます…', en:'Loading photo…', vi:'Đang tải ảnh…' }));
-      const d = await 写真をデータにする_(file);
-      写真の操作中 = false;
+      let d = null; try { d = await 写真をデータにする_(file); } catch (e) { d = null; } finally { 写真の操作を終える_(); }
+      try { fi.value = ''; } catch (e) {}
       if (!d) { toast(L({ ja:'写真を読めませんでした。もう一度お試しください', en:'Could not read the photo.', vi:'Không đọc được ảnh.' })); return; }
       const cur = svAns(it.no) || {}; const phs = (cur.photos || []).filter(Boolean).slice(0, 5); phs.push(d);
       /* 行には写真をIDで持たせたい＝サーバーへは photos として送り、note には入れない（保存領域も食わない） */
@@ -3750,8 +3754,9 @@
     document.querySelectorAll('[data-svstdtext]').forEach(ta => { ta.onchange = () => { svStdPush(ta.dataset.svstdtext, { text: ta.value }); }; });
     document.querySelectorAll('input[data-svstdphoto]').forEach(fi => fi.onchange = async () => {
       const no = fi.dataset.svstdphoto; const file = fi.files && fi.files[0]; if (!file) return;
-      写真の操作中 = true; toast(L({ ja:'画像を読み込んでいます…', en:'Loading…', vi:'Đang tải…' }));
-      const d = await 写真をデータにする_(file); 写真の操作中 = false;
+      写真の操作を始める_(); toast(L({ ja:'画像を読み込んでいます…', en:'Loading…', vi:'Đang tải…' }));
+      let d = null; try { d = await 写真をデータにする_(file); } catch (e) { d = null; } finally { 写真の操作を終える_(); }
+      try { fi.value = ''; } catch (e) {}
       if (!d) { toast(L({ ja:'画像を読めませんでした', en:'Could not read the image.', vi:'Không đọc được ảnh.' })); return; }
       const phs = (svStdOf(no).photos || []).filter(Boolean).slice(0, 5); phs.push(d);
       svStdPush(no, {}, phs);
@@ -3808,8 +3813,8 @@
       });
       const pre = document.getElementById('svText'); if (pre) pre.textContent = svReportText();
       const scb = document.querySelector('.svscore b'); if (scb) scb.textContent = sc.pct != null ? sc.pct + '%' : '—';
-      bindSvItems_();
     } catch (e) {}
+    finally { try { bindSvItems_(); } catch (e) {} }   // 途中で例外が出ても、差し替えた項目のボタンは必ず効くようにする
   }
   /* ---------- レポート（A4・写真つき）＝canvasに描いてJPEGにし、1〜2ページのPDFにまとめて共有する ---------- */
   const SV_PAGE_W = 1240, SV_PAGE_H = 1754;   // A4 150dpi 相当
@@ -7552,10 +7557,10 @@
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
       // 巡回チェック＝表示する軸（すべて／衛生・安全／お客様目線）2026-09-17
-      if (t.dataset.svaxis !== undefined) { svState.axis = t.dataset.svaxis; render(true); return; }
+      if (t.dataset.svaxis !== undefined) { svState.axis = t.dataset.svaxis; try { document.activeElement && document.activeElement.blur && document.activeElement.blur(); } catch (err) {} 最後の入力時刻 = 0; render(true); return; }
       // 巡回チェックの履歴＝店舗行を押す→その店の年間推移／訪問を押す→その日の結果（2026-09-17）
-      if (t.dataset.svhist !== undefined) { svState.store = t.dataset.svhist; svState.tab = 'hist'; render(true); return; }
-      if (t.dataset.svopen !== undefined) { svState.date = t.dataset.svopen; svState.tab = 'report'; render(true); return; }
+      if (t.dataset.svhist !== undefined) { svState.store = t.dataset.svhist; svState.tab = 'hist'; 最後の入力時刻 = 0; render(true); return; }
+      if (t.dataset.svopen !== undefined) { svState.date = t.dataset.svopen; svState.tab = 'report'; 最後の入力時刻 = 0; render(true); return; }
       // 数字の要確認＝確認済みの切替／表示の切替（2026-09-17）
       if (t.dataset.numack !== undefined) { const o = getNumAck(); if (o[t.dataset.numack]) delete o[t.dataset.numack]; else o[t.dataset.numack] = Date.now(); saveNumAck(o); render(true); return; }
       if (t.dataset.numall !== undefined) { localStorage.setItem('yosakura_numcheck_all', t.dataset.numall); render(true); return; }
@@ -9467,7 +9472,7 @@
       postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(cur), t: cur.t });
       return cur;
     };
-    document.querySelectorAll('[data-vctab]').forEach(b => b.onclick = () => { svState.tab = b.dataset.vctab; render(); });   // ※data-svtab はサーベイのタブで使用済み
+    document.querySelectorAll('[data-vctab]').forEach(b => b.onclick = () => { svState.tab = b.dataset.vctab; try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {} 最後の入力時刻 = 0; render(); });   // ※data-svtab はサーベイのタブで使用済み
     const svStore = byId('sv_store'); if (svStore) svStore.onchange = () => { svState.store = svStore.value; render(true); };
     const svDate = byId('sv_date'); if (svDate) svDate.onchange = () => { svState.date = svDate.value || svTodayStr(); render(true); };
     bindSvItems_();
