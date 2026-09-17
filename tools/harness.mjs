@@ -5394,5 +5394,12 @@ console.log('== A4レポート＝写真を全部載せる（2026-09-17 神田さ
   ok(/await Promise\.all\(all\.map\(p => svLoadImage_\(p\)\)\)/.test(code), '写真は先にまとめて読む');
 }
 
+console.log('== A4レポートの共有＝作ってから押した瞬間に共有シート（2026-09-17 神田さん）＝ソースで固定 ==');
+{
+  ok(/window\._svReady = \{ files, text, n: pages\.length/.test(code) && /id = 'svReadyPanel'/.test(code), 'レポートは作ってから「共有する」ボタンを出す');
+  ok(/t\.dataset\.svsharego !== undefined/.test(code) && /navigator\.share\(\{ files: r\.files, title: '世桜 巡回チェック', text: r\.text \}\)/.test(code), '共有は押した瞬間（クリックの中）に呼ぶ');
+  ok(/function svOpenReady_/.test(code) && /t\.dataset\.svshareopen !== undefined/.test(code), '共有シートが使えない端末は「開いて見る」で別タブへ');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
