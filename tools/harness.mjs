@@ -5372,5 +5372,18 @@ console.log('== 巡回チェック＝タップが固まる（2026-09-17 神田�
   ok(/finally \{ try \{ bindSvItems_\(\); \} catch \(e\) \{\} \}/.test(code), 'svApplyDom＝例外が出てもボタンの処理を付け直す');
 }
 
+console.log('== 巡回チェックの履歴＝その日の結果を選んで削除（2026-09-17 神田さん）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const sv = {}; [3, 8, 22].forEach(no => sv[`${S}|2026-09-10|${no}`] = { v:'ok', by:'神田', t:1 }); sv[`${S}|2026-09-10|meta`] = { summary:'テスト' };
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
+  location.hash = '#/app/hqcheck?tab=hist&store=' + encodeURIComponent(S);
+  const h = registry.app.innerHTML;
+  ok(/data-svdel="2026-09-10"/.test(h) && /3件入力/.test(h), '履歴の訪問に「削除」ボタンと入力件数が出る');
+  ok(/data-svdelgo/.test(code) && /本当に削除する/.test(code) && /data-svdelno/.test(code), '削除は2段階（本当に削除する／やめる）');
+  ok(/function svDeleteVisit_/.test(code) && /del: 1, by, t: now/.test(code) && /postReport\(\{ kind:'svcheck', store:'本部', item:k, note: JSON\.stringify\(Object\.assign\(\{\}, next, \{ photos: undefined \}\)\), photos: \[\], t: now \}\)/.test(code), '削除＝その日の全行を空で上書きして本部データへ送る（他端末の古い入力が戻らない）');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
