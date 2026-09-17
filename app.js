@@ -3588,6 +3588,21 @@
       return Object.assign({ store: v.store, date: v.date, summary: (m.summary || '').trim(), menu: m.menu || '', by }, sc);
     }).filter(v => v.ans > 0).sort((a, b) => a.date < b.date ? -1 : 1);
   }
+  /* その日の結果を消す＝店舗|日付|* の全行を「空（del:1）」で上書きして本部データへ送る。
+     行を消すのでなく空で上書きするのは、合流が「新しい方が勝つ」ため（消した後に他端末の古い入力が戻ってこない）。
+     履歴は回答のある訪問だけ数えるので、空になった日は一覧から消える。 */
+  function svDeleteVisit_(store, date) {
+    const all = getSv(); const a = getAuth(); const by = (a && a.name) || '本部'; const now = Date.now(); let n = 0;
+    Object.keys(all).forEach(k => {
+      if (k.indexOf(store + '|' + date + '|') !== 0) return;
+      const no = k.slice((store + '|' + date + '|').length);
+      const next = no === 'meta' ? { summary: '', time: '', method: '', menu: '', orderAt: '', servedAt: '', del: 1, by, t: now } : { v: '', memo: '', photos: [], nph: 0, del: 1, by, t: now };
+      all[k] = next; n++;
+      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined })), photos: [], t: now });
+    });
+    saveSv(all);
+    return n;
+  }
   const svMonths_ = (n) => { const out = []; const d = new Date(); d.setDate(1); for (let i = n - 1; i >= 0; i--) { const x = new Date(d.getFullYear(), d.getMonth() - i, 1); out.push(`${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}`); } return out; };
   const svPctClass_ = (p) => p == null ? '' : p >= 90 ? 'g' : p >= 70 ? 'y' : 'r';
   /* 年間の折れ線（SVG・ライブラリなし）＝横軸は直近12か月、点は訪問日。数字は参考スコア */
@@ -3622,19 +3637,24 @@
         <p class="hint" style="display:block">${esc(L({ ja:'※ 数字は参考スコア（対象外を除いた配点の達成率）。緑=90以上・黄=70〜89・赤=70未満。同じ月に2回以上あれば新しい方。店舗名を押すと下に年間の推移が出ます。', en:'Reference score. Green≥90, yellow 70–89, red<70. Tap a store for its yearly trend.', vi:'Điểm tham khảo. Xanh≥90, vàng 70–89, đỏ<70. Chạm cửa hàng để xem xu hướng.' }))}</p>
       </div>`;
     const vs = (byStore[svState.store] || []).slice().reverse();
-    const list = vs.length ? vs.map(v => `
+    const armed = svState.delArm || '';
+    const list = vs.length ? vs.map(v => { const key = svState.store + '|' + v.date; const arm = armed === key; return `
+        <div class="svh-vrow ${arm ? 'arm' : ''}">
         <button type="button" class="svh-visit" data-svopen="${esc(v.date)}">
           <span class="svh-vd"><b>${esc(v.date.replace(/-/g, '/'))}</b>（${svWd(v.date)}）${v.by ? `<small> ${esc(v.by)}</small>` : ''}</span>
           <span class="svh-vp ${svPctClass_(v.pct)}">${v.pct == null ? '—' : v.pct + '%'}</span>
-          <span class="svh-vc">○${v.ok}　×${v.ng}　${esc(L({ ja:'対象外', en:'N/A', vi:'K/AD' }))}${v.na}</span>
+          <span class="svh-vc">○${v.ok}　×${v.ng}　${esc(L({ ja:'対象外', en:'N/A', vi:'K/AD' }))}${v.na}${v.ans ? `　<small>${v.ans}${esc(L({ ja:'件入力', en:' entries', vi:' mục' }))}</small>` : ''}</span>
           ${v.summary ? `<span class="svh-vs">${esc(v.summary.split('\n')[0].slice(0, 60))}</span>` : ''}
-        </button>`).join('') : `<p class="muted">${esc(L({ ja:'この店舗の記録はまだありません', en:'No records yet', vi:'Chưa có bản ghi' }))}</p>`;
+        </button>
+        ${arm ? `<div class="svh-del2"><span>${esc(L({ ja:'この日の入力（' + v.ans + '件・写真・総評）をすべて消します。元に戻せません。', en:'Delete all entries for this day? Cannot be undone.', vi:'Xoá toàn bộ mục của ngày này? Không thể hoàn tác.' }))}</span><button type="button" class="mini svh-delgo" data-svdelgo="${esc(v.date)}">${esc(L({ ja:'本当に削除する', en:'Delete', vi:'Xoá' }))}</button><button type="button" class="mini" data-svdelno="1">${esc(L({ ja:'やめる', en:'Cancel', vi:'Huỷ' }))}</button></div>`
+              : `<button type="button" class="mini svh-del" data-svdel="${esc(v.date)}" aria-label="delete">${esc(L({ ja:'削除', en:'Delete', vi:'Xoá' }))}</button>`}
+        </div>`; }).join('') : `<p class="muted">${esc(L({ ja:'この店舗の記録はまだありません', en:'No records yet', vi:'Chưa có bản ghi' }))}</p>`;
     const chart = `
       <div class="card">
         <h3>${esc(storeLabel(svState.store))}　${esc(L({ ja:'年間の推移', en:'Yearly trend', vi:'Xu hướng năm' }))}</h3>
         ${svChart_(byStore[svState.store] || [])}
         <div class="svh-list">${list}</div>
-        <p class="hint" style="display:block">${esc(L({ ja:'※ 訪問を押すと、その日の結果（レポート）が開きます。', en:'Tap a visit to open its report.', vi:'Chạm để mở báo cáo ngày đó.' }))}</p>
+        <p class="hint" style="display:block">${esc(L({ ja:'※ 訪問を押すと、その日の結果（レポート）が開きます。途中まで・テストで付けた日は「削除」でその日の入力をまとめて消せます（2段階で確認）。', en:'Tap a visit to open its report. "Delete" removes all entries of that day (two-step).', vi:'Chạm để mở báo cáo. "Xoá" xoá toàn bộ mục của ngày đó (2 bước).' }))}</p>
       </div>`;
     return table + chart;
   }
@@ -7553,7 +7573,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -7562,6 +7582,10 @@
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
+      // 巡回チェックの履歴＝その日の結果を削除（2段階）2026-09-17
+      if (t.dataset.svdel !== undefined) { svState.delArm = svState.store + '|' + t.dataset.svdel; svState.tab = 'hist'; render(true); return; }
+      if (t.dataset.svdelno !== undefined) { svState.delArm = ''; render(true); return; }
+      if (t.dataset.svdelgo !== undefined) { const n = svDeleteVisit_(svState.store, t.dataset.svdelgo); svState.delArm = ''; svState.tab = 'hist'; toast(L({ ja:`${n}件を消しました`, en:`Deleted ${n}`, vi:`Đã xoá ${n}` })); render(true); return; }
       // 巡回チェック＝表示する軸（すべて／衛生・安全／お客様目線）2026-09-17
       if (t.dataset.svaxis !== undefined) { svState.axis = t.dataset.svaxis; try { document.activeElement && document.activeElement.blur && document.activeElement.blur(); } catch (err) {} 最後の入力時刻 = 0; render(true); return; }
       // 巡回チェックの履歴＝店舗行を押す→その店の年間推移／訪問を押す→その日の結果（2026-09-17）
