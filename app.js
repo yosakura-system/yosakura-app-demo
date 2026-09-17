@@ -3535,7 +3535,15 @@
   const getSv = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_svcheck')) || {}; } catch { return {}; } };
   const saveSv = (o) => { try { localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(o)); } catch (e) {} };
   const svTodayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-  let svState = { store:'', date:'', tab:'' };   // 画面の選択（端末の中だけ）
+  let svState = { store:'', date:'', tab:'', axis:'all' };   // 画面の選択（端末の中だけ）
+  /* 原本の2軸（本部チェックの見本アプリと同じ）＝①衛生・安全（満たして当たり前）／②お客様目線（積み上げ）。番号は原本のNo */
+  const SV_EISEI = new Set([16, 18, 29, 47, 48, 70, 71, 87, 88, 91, 92, 94, 99, 101, 107, 108, 111]);
+  const svAxis_ = (it) => SV_EISEI.has(it.no) ? 'eisei' : 'okyakusama';
+  const SV_AXES = [['all', { ja:'すべて', en:'All', vi:'Tất cả' }], ['eisei', { ja:'衛生・安全', en:'Hygiene & safety', vi:'Vệ sinh & an toàn' }], ['okyakusama', { ja:'お客様目線', en:'Guest view', vi:'Góc nhìn khách' }]];
+  const svItemsFor_ = (ph) => SV_ITEMS.filter(i => i.ph === ph && (svState.axis === 'all' || svAxis_(i) === svState.axis));
+  /* 確認方法＝原本の①〜③ */
+  const SV_METHODS = [['camera', { ja:'① 防犯カメラ', en:'1 Camera', vi:'1 Camera' }], ['video', { ja:'② ビデオ通話', en:'2 Video call', vi:'2 Gọi video' }], ['onsite', { ja:'③ 現地入り', en:'3 On site', vi:'3 Tại chỗ' }]];
+  const svMethodLabel_ = (k) => { const f = SV_METHODS.find(x => x[0] === (k || 'onsite')); return f ? L(f[1]).replace(/^[①②③123]\s*/, '') : ''; };
   const svKey = (no) => `${svState.store}|${svState.date}|${no}`;
   const svAns = (no) => getSv()[svKey(no)] || null;
   const svMeta = () => getSv()[svKey('meta')] || {};
@@ -3625,7 +3633,7 @@
     const d = svState.date.replace(/-/g, '/');
     const L1 = [`【世桜 巡回チェック】${svState.store}　${d}（${svWd(svState.date)}）`];
     const who = [...new Set(SV_ITEMS.map(it => (svAns(it.no) || {}).by).filter(Boolean))].join('・');
-    L1.push(`確認者：${who || '本部'}　方法：③現地入り` + (m.menu ? `　実食：${m.menu}` : '') + (m.orderAt && m.servedAt ? `（注文${m.orderAt}→提供${m.servedAt}）` : ''));
+    L1.push(`確認者：${who || '本部'}　方法：${svMethodLabel_(m.method)}` + (m.time ? `　実施：${m.time}` : '') + (m.menu ? `　実食：${m.menu}` : '') + (m.orderAt && m.servedAt ? `（注文${m.orderAt}→提供${m.servedAt}）` : ''));
     L1.push(`結果：原本項目 ○${sc.ok}／×${sc.ng}／対象外${sc.na}` + (sc.pct != null ? `　参考スコア ${sc.pct}%` : '') + (sc.expN ? `　体験 ○${sc.expOk}/${sc.expN}` : ''));
     const good = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ok' && (a.memo || '').trim(); });
     const bad  = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ng'; });
@@ -3959,12 +3967,12 @@
 
     /* 本部＝巡回チェック本体 */
     const stores = visibleStores();
-    { const q = currentRoute().params; const qs = q.get('store'), qt = q.get('tab'); if (qs && stores.includes(qs)) svState.store = qs; if (qt) svState.tab = qt; }
+    { const q = currentRoute().params; const qs = q.get('store'), qt = q.get('tab'), qa = q.get('axis'); if (qs && stores.includes(qs)) svState.store = qs; if (qt) svState.tab = qt; if (qa && SV_AXES.some(a => a[0] === qa)) svState.axis = qa; }
     if (!svState.store || !stores.includes(svState.store)) svState.store = (getStoreSel() !== 'all' && stores.includes(getStoreSel())) ? getStoreSel() : (stores[0] || '');
     if (!svState.date) svState.date = svTodayStr();
     if (!svState.tab) svState.tab = SV_PHASES[0][0];
     const sc = svScore(); const m = svMeta();
-    const cnt = (ph) => { const its = SV_ITEMS.filter(i => i.ph === ph); return [its.filter(i => { const a = svAns(i.no); return a && a.v; }).length, its.length]; };
+    const cnt = (ph) => { const its = svItemsFor_(ph); return [its.filter(i => { const a = svAns(i.no); return a && a.v; }).length, its.length]; };
     const tabs = SV_PHASES.map(([k, l]) => { const [d, n] = cnt(k); return `<button data-vctab="${k}" class="vctab ${svState.tab === k ? 'on' : ''} ${d === n ? 'done' : ''}">${esc(L(l))}<small>${d}/${n}</small></button>`; }).join('')
       + `<button data-vctab="report" class="vctab rep ${svState.tab === 'report' ? 'on' : ''}">${esc(L({ ja:'結果', en:'Report', vi:'Kết quả' }))}</button>`
       + `<button data-vctab="hist" class="vctab rep ${svState.tab === 'hist' ? 'on' : ''}">${esc(L({ ja:'履歴・比較', en:'History', vi:'Lịch sử' }))}</button>`;
@@ -3990,7 +3998,7 @@
           <div class="hint">${esc(L({ ja:'※ PDF＝A4で1〜2枚（×の項目に写真つき）。共有シートでLINEを選ぶと添付されます。番号は原本のNoなので、原本のシートへ転記できます。', en:'Choose LINE in the share sheet to send this text.', vi:'Chọn LINE trong bảng chia sẻ để gửi văn bản này.' }))}</div>
         </div>`;
     } else {
-      const its = SV_ITEMS.filter(i => i.ph === svState.tab);
+      const its = svItemsFor_(svState.tab);
       const idx = SV_PHASES.findIndex(p => p[0] === svState.tab);
       const prev = idx > 0 ? SV_PHASES[idx - 1][0] : null, next = idx < SV_PHASES.length - 1 ? SV_PHASES[idx + 1][0] : 'report';
       body = `
@@ -4013,6 +4021,14 @@
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <select id="sv_store" style="flex:2;min-width:150px">${stores.map(st => `<option${st === svState.store ? ' selected' : ''}>${esc(st)}</option>`).join('')}</select>
           <input id="sv_date" type="date" value="${esc(svState.date)}" style="flex:1;min-width:130px">
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
+          <label class="svhl">${esc(L({ ja:'実施時間', en:'Time', vi:'Giờ' }))}<input id="sv_time" type="time" value="${esc(m.time || '')}"></label>
+          <label class="svhl">${esc(L({ ja:'確認方法', en:'Method', vi:'Cách kiểm tra' }))}<select id="sv_method">${SV_METHODS.map(([k, l]) => `<option value="${k}"${(m.method || 'onsite') === k ? ' selected' : ''}>${esc(L(l))}</option>`).join('')}</select></label>
+        </div>
+        <div class="svaxis">
+          <span class="svhl-t">${esc(L({ ja:'表示する軸', en:'Show', vi:'Hiển thị' }))}</span>
+          ${SV_AXES.map(([k, l]) => `<button type="button" class="svax ${svState.axis === k ? 'on' : ''}" data-svaxis="${k}">${esc(L(l))}</button>`).join('')}
         </div>
         <div class="svbar"><div class="svbar-in" style="width:${Math.round(sc.ans / sc.total * 100)}%"></div></div>
         <div class="svbar-t"><span>${esc(L({ ja:'入力', en:'Done', vi:'Đã nhập' }))} ${sc.ans}/${sc.total}</span><span>${sc.pct != null ? esc(L({ ja:'参考スコア', en:'Score', vi:'Điểm' })) + ' ' + sc.pct + '%' : ''}</span></div>
@@ -7513,7 +7529,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -7522,6 +7538,8 @@
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
+      // 巡回チェック＝表示する軸（すべて／衛生・安全／お客様目線）2026-09-17
+      if (t.dataset.svaxis !== undefined) { svState.axis = t.dataset.svaxis; render(true); return; }
       // 巡回チェックの履歴＝店舗行を押す→その店の年間推移／訪問を押す→その日の結果（2026-09-17）
       if (t.dataset.svhist !== undefined) { svState.store = t.dataset.svhist; svState.tab = 'hist'; render(true); return; }
       if (t.dataset.svopen !== undefined) { svState.date = t.dataset.svopen; svState.tab = 'report'; render(true); return; }
@@ -9440,7 +9458,7 @@
     const svStore = byId('sv_store'); if (svStore) svStore.onchange = () => { svState.store = svStore.value; render(true); };
     const svDate = byId('sv_date'); if (svDate) svDate.onchange = () => { svState.date = svDate.value || svTodayStr(); render(true); };
     bindSvItems_();
-    ['sv_menu', 'sv_orderAt', 'sv_servedAt', 'sv_summary'].forEach(id => {
+    ['sv_menu', 'sv_orderAt', 'sv_servedAt', 'sv_summary', 'sv_time', 'sv_method'].forEach(id => {
       const el = byId(id); if (!el) return;
       el.onchange = () => { const key = id.replace('sv_', ''); svPush('meta', { [key]: el.value }); if (id === 'sv_summary') { const p = byId('svText'); if (p) p.textContent = svReportText(); } };
     });
