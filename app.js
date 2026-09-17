@@ -979,8 +979,39 @@
   }
   // 写真は base64(dataURL) か DriveファイルID。表示用URLに変換（IDはDriveのサムネイル配信）
   const isDataUrl = (p) => typeof p === 'string' && p.slice(0, 5) === 'data:';
-  const photoThumb = (p) => isDataUrl(p) ? p : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w400';
-  const photoFull  = (p) => isDataUrl(p) ? p : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w1600';
+  /* ★写真の中身は localStorage（5MB）に置かない＝IndexedDB へ（2026-09-17 神田さん「端末側の理由で止まるのはやめて」）。
+     行には 'idb:キー' だけ持つ。表示・レポートは photoMem から、送るときは中身に戻す。同期後は本部のIDに置き換わる。 */
+  const photoMem = {};   // 'idb:キー' → dataURL（起動時に IndexedDB から読み込む）
+  let _pdb = null;
+  function photoDb_() {
+    return new Promise((res) => {
+      if (_pdb) return res(_pdb);
+      try {
+        if (!window.indexedDB) return res(null);
+        const rq = indexedDB.open('yosakura_photos', 1);
+        rq.onupgradeneeded = () => { try { rq.result.createObjectStore('p'); } catch (e) {} };
+        rq.onsuccess = () => { _pdb = rq.result; res(_pdb); };
+        rq.onerror = () => res(null); rq.onblocked = () => res(null);
+      } catch (e) { res(null); }
+    });
+  }
+  async function photoLocalPut_(dataUrl) {
+    const key = 'idb:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    photoMem[key] = dataUrl;
+    try { const db = await photoDb_(); if (db) await new Promise((res) => { const tx = db.transaction('p', 'readwrite'); tx.objectStore('p').put(dataUrl, key); tx.oncomplete = res; tx.onerror = res; tx.onabort = res; }); } catch (e) {}
+    return key;
+  }
+  async function photoLocalLoadAll_() {
+    try {
+      const db = await photoDb_(); if (!db) return;
+      await new Promise((res) => { const tx = db.transaction('p', 'readonly'); const rq = tx.objectStore('p').openCursor(); rq.onsuccess = () => { const c = rq.result; if (c) { photoMem[c.key] = c.value; c.continue(); } else res(); }; rq.onerror = res; });
+    } catch (e) {}
+  }
+  const isLocalPhoto = (p) => typeof p === 'string' && p.slice(0, 4) === 'idb:';
+  const photoSrc_ = (p) => isLocalPhoto(p) ? (photoMem[p] || '') : p;
+  const photosForSend_ = (arr) => (arr || []).map(p => isLocalPhoto(p) ? photoMem[p] : p).filter(Boolean);
+  const photoThumb = (p) => (isDataUrl(p) || isLocalPhoto(p)) ? photoSrc_(p) : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w400';
+  const photoFull  = (p) => (isDataUrl(p) || isLocalPhoto(p)) ? photoSrc_(p) : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w1600';
 
   /* ---------- 使い方ガイド（アプリ内チュートリアル）---------- */
   /* 使い方＝役割ごとに分ける。
@@ -3547,7 +3578,6 @@
     try {
       Object.keys(o).forEach(k => { const r = o[k]; if (r && Array.isArray(r.photos)) r.photos = r.photos.filter(p => p && !isDataUrl(p)); });
       localStorage.setItem(key, JSON.stringify(o));
-      toast(L({ ja:'端末の保存領域がいっぱいのため、写真の縮小版を端末から外しました（本部データには送ってあります）', en:'Device storage full: local photo copies were dropped (already sent to HQ).', vi:'Bộ nhớ đầy: đã bỏ bản sao ảnh trên máy (đã gửi HQ).' }));
       return true;
     } catch (e) { toast(L({ ja:`保存できませんでした（${label}）。画面を更新してもう一度お試しください`, en:`Could not save (${label}).`, vi:`Không lưu được (${label}).` })); return false; }
   };
@@ -3755,7 +3785,7 @@
       all[k] = cur; saveSv(all);
       /* 写真は行と一緒に送り直す（IDならサーバーはそのまま返す）＝状態だけ変えた行で写真が消えない */
       const phs = Array.isArray(cur.photos) ? cur.photos.filter(Boolean) : [];
-      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, cur, { photos: undefined, nph: phs.length })), photos: phs, t: cur.t });
+      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, cur, { photos: undefined, nph: phs.length })), photos: photosForSend_(phs), t: cur.t });
       return cur;
     };
     document.querySelectorAll('[data-svv]').forEach(b => b.onclick = () => {
@@ -3777,13 +3807,14 @@
       let d = null; try { d = await 写真をデータにする_(file); } catch (e) { d = null; } finally { 写真の操作を終える_(); }
       try { fi.value = ''; } catch (e) {}
       if (!d) { toast(L({ ja:'写真を読めませんでした。もう一度お試しください', en:'Could not read the photo.', vi:'Không đọc được ảnh.' })); return; }
-      const cur = svAns(it.no) || {}; const phsSend = (cur.photos || []).filter(Boolean).slice(0, 5); phsSend.push(d);
-      const thumb = await 写真を縮小_(d, 480); const phsLocal = (cur.photos || []).filter(Boolean).slice(0, 5); phsLocal.push(thumb);
-      /* 行には写真をIDで持たせたい＝サーバーへは元サイズを photos として送り、端末には縮小版だけ残す（同期でIDに置き換わる） */
+      const cur = svAns(it.no) || {};
+      const key = await photoLocalPut_(d);   // 中身は IndexedDB へ。行には 'idb:キー' だけ
+      const phsLocal = (cur.photos || []).filter(Boolean).slice(0, 5); phsLocal.push(key);
+      /* サーバーへは中身（元サイズ）を photos として送る。同期でサーバーのIDに置き換わる */
       const all = getSv(); const k = svKey(it.no); const a = getAuth();
       const next = Object.assign({}, cur, { photos: phsLocal, by: (a && a.name) || '本部', t: Date.now() });
       all[k] = next; saveSv(all);
-      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phsSend.length })), photos: phsSend, t: next.t });
+      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phsLocal.length })), photos: photosForSend_(phsLocal), t: next.t });
       svApplyDom();
     });
     /* 基準（あるべき姿）の登録＝本部共通。No ごとに1行（最新が正） */
@@ -3792,7 +3823,7 @@
       const cur = Object.assign({}, all[String(no)] || {}, patch, { by: (a && a.name) || '本部', t: Date.now() });
       if (phs) cur.photos = phs;
       all[String(no)] = cur; saveSvStd(all);
-      const send = (phsSend || cur.photos || []).filter(Boolean);
+      const send = photosForSend_(phsSend || cur.photos || []);
       postReport({ kind:'svstd', store:'本部', item:String(no), note: JSON.stringify(Object.assign({}, cur, { photos: undefined, nph: send.length })), photos: send, t: cur.t });
     };
     document.querySelectorAll('[data-svstdtext]').forEach(ta => { ta.onchange = () => { svStdPush(ta.dataset.svstdtext, { text: ta.value }); }; });
@@ -3802,9 +3833,9 @@
       let d = null; try { d = await 写真をデータにする_(file); } catch (e) { d = null; } finally { 写真の操作を終える_(); }
       try { fi.value = ''; } catch (e) {}
       if (!d) { toast(L({ ja:'画像を読めませんでした', en:'Could not read the image.', vi:'Không đọc được ảnh.' })); return; }
-      const phsSend = (svStdOf(no).photos || []).filter(Boolean).slice(0, 5); phsSend.push(d);
-      const thumb = await 写真を縮小_(d, 480); const phsLocal = (svStdOf(no).photos || []).filter(Boolean).slice(0, 5); phsLocal.push(thumb);
-      svStdPush(no, {}, phsLocal, phsSend);
+      const key = await photoLocalPut_(d);
+      const phsLocal = (svStdOf(no).photos || []).filter(Boolean).slice(0, 5); phsLocal.push(key);
+      svStdPush(no, {}, phsLocal);
       svApplyDomFor_(no);   // 開いたままの基準欄でも反映（2026-09-17 神田さん「貼っても反映されない」）
       toast(L({ ja:'正解写真を登録しました（全店共通）', en:'Reference photo saved', vi:'Đã lưu ảnh chuẩn' }));
     });
@@ -3820,7 +3851,7 @@
       const all = getSv(); const k = svKey(it.no); const a = getAuth();
       const next = Object.assign({}, cur, { photos: phs, by: (a && a.name) || '本部', t: Date.now() });
       all[k] = next; saveSv(all);
-      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phs.length })), photos: phs, t: next.t });
+      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phs.length })), photos: photosForSend_(phs), t: next.t });
       svApplyDom();
     });
   }
@@ -3867,7 +3898,7 @@
     /* dataURL はそのまま。Driveの写真はサーバー経由でbase64で取る（画像URL直読みは canvas に描くと汚染されて書き出せない） */
     return new Promise((resolve) => {
       const done = (src) => { if (!src) return resolve(null); const im = new Image(); im.onload = () => resolve(im); im.onerror = () => resolve(null); im.src = src; };
-      if (isDataUrl(p)) return done(p);
+      if (isDataUrl(p) || isLocalPhoto(p)) return done(photoSrc_(p));
       if (!useBackend()) return resolve(null);
       fetch(getApiUrl() + '?action=photo&id=' + encodeURIComponent(p) + (authToken() ? '&token=' + encodeURIComponent(authToken()) : ''))
         .then(r => r.json()).then(d => done(d && d.ok && d.data ? 'data:' + (d.mime || 'image/jpeg') + ';base64,' + d.data : ''))
@@ -10530,6 +10561,7 @@
   // バックエンド接続時は全端末同期を使うためシードしない（＝実データのみ）。オフライン検証時のみ初期データを用意。
   if (!useBackend()) { seedSk(); seedMonthly(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); seedMaterials(); seedStudy(); }
   migrateStoreNames(); // 端末に残っている旧い店舗表記を、正式名称へ寄せ直す
+  photoLocalLoadAll_().then(() => { try { if (String(location.hash || '').indexOf('/app/hqcheck') !== -1) render(true); } catch (e) {} });   // 写真の中身（IndexedDB）を読み込んでから巡回チェックを描き直す
   写真選択中の再読み込みを報告_(); // ★前回、写真の選択中に再読み込みが起きていたら画面に出す（★render より先＝bindが印を読むため）
   render();
   syncReports(true);
