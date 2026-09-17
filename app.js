@@ -3863,20 +3863,20 @@
     // 表題と要約
     g.fillStyle = '#1A1A1A'; g.font = `bold 40px ${F}`; g.fillText('巡回チェック レポート', M, y); y += 56;
     const who = [...new Set(SV_ITEMS.map(it => (svAns(it.no) || {}).by).filter(Boolean))].join('・') || '本部';
-    text(`店舗：${svState.store}　　日付：${svState.date.replace(/-/g, '/')}（${svWd(svState.date)}）　　確認者：${who}　　方法：③現地入り`, 22, '#1A1A1A');
+    text(`店舗：${svState.store}　　日付：${svState.date.replace(/-/g, '/')}（${svWd(svState.date)}）　　確認者：${who}　　方法：${svMethodLabel_(m.method)}` + (m.time ? `　　実施：${m.time}` : ''), 22, '#1A1A1A');
     if (m.menu || m.orderAt) text(`実食：${m.menu || '—'}` + (m.orderAt && m.servedAt ? `（注文 ${m.orderAt} → 提供 ${m.servedAt}）` : ''), 22, '#1A1A1A');
     y += 6;
     // スコア枠
-    ensure(120);
-    g.fillStyle = '#F7F4EF'; g.fillRect(M, y, W, 104);
+    ensure(136);
+    g.fillStyle = '#F7F4EF'; g.fillRect(M, y, W, 120);
     g.fillStyle = '#8E354A'; g.font = `bold 64px ${F}`; g.fillText(sc.pct != null ? sc.pct + '%' : '—', M + 24, y + 18);
-    g.fillStyle = '#6B635A'; g.font = `20px ${F}`; g.fillText('参考スコア（対象外を除いた配点が分母）', M + 24, y + 78);
+    g.fillStyle = '#6B635A'; g.font = `20px ${F}`; g.fillText('参考スコア（対象外を除いた配点が分母）', M + 24, y + 92);   // 64pxの数字（y+18〜y+82）と重ならない位置（2026-09-17 神田さん実機）
     g.fillStyle = '#1A1A1A'; g.font = `bold 26px ${F}`;
     g.fillText(`○ ${sc.ok}　　× ${sc.ng}　　対象外 ${sc.na}　　未入力 ${sc.total - sc.ans}` + (sc.expN ? `　　体験 ○${sc.expOk}/${sc.expN}` : ''), M + 330, y + 22);
     g.font = `20px ${F}`; g.fillStyle = '#6B635A';
     const ngPh = SV_PHASES.map(([k, l]) => { const n = SV_ITEMS.filter(i => i.ph === k && (svAns(i.no) || {}).v === 'ng').length; return n ? `${L(l)} ${n}` : ''; }).filter(Boolean).join('　');
     g.fillText(ngPh ? `× の内訳：${ngPh}` : '× はありません', M + 330, y + 62);
-    y += 120;
+    y += 136;
     // 良かった点
     const good = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ok' && ((a.memo || '').trim() || (a.photos || []).length); });
     if (good.length) {
