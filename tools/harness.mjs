@@ -5122,7 +5122,7 @@ console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要�
   ok(/data-svphoto=/.test(srcH) && /\.slice\(0, 5\); phs\.push\(d\)/.test(srcH), '写真は項目ごとに複数（最大6枚・1回1枚）');
   seedAuth('kanda', 'hq'); await new Promise(r=>setTimeout(r, 50)); location.hash = '#/app/hqcheck';
   const hS = registry.app.innerHTML;
-  ok(/details class="svstd" data-svstd="3"/.test(hS) && /基準（あるべき姿）/.test(hS), '各項目に「基準（あるべき姿）」の欄がある');
+  ok(/details class="svstd" data-svstd="3"/.test(hS) && /基準（あるべき姿/.test(hS), '各項目に「基準（あるべき姿」の欄がある');
   ok(/data-svstdphoto="3"/.test(hS) && /data-svstdtext="3"/.test(hS), '本部がスクショ・正解写真と基準文を登録できる');
   const manN = (srcH.match(/, man:\['mn\d+'/g) || []).length;
   ok(manN === 44, '44項目すべてに関連マニュアルが紐づく（実際 ' + manN + '）');
@@ -5347,6 +5347,20 @@ console.log('== 巡回チェック＝実施時間・確認方法・表示する�
   location.hash = '#/app/hqcheck?tab=report&axis=all';
   h = registry.app.innerHTML;
   ok(/方法：ビデオ通話/.test(h) && /実施：13:35/.test(h), 'レポート文に「方法」と「実施時間」が入る');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 巡回チェック＝指摘の写真は判定前でも貼れる・基準欄と分ける（2026-09-17 神田さん実機）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const sv = {}; sv[`${S}|2026-09-17|8`] = { v:'na', by:'神田', t:1 };
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
+  location.hash = '#/app/hqcheck?tab=gaikan&store=' + encodeURIComponent(S);
+  const h = registry.app.innerHTML;
+  ok(/data-svphoto="3"/.test(h) && /指摘・現場の写真/.test(h), '判定前の項目（No.3）にも「指摘・現場の写真」ボタンが出る');
+  ok(/data-svmemo="8"/.test(h), '対象外にした項目（No.8）にもメモ欄が出る');
+  ok(/正解写真（全店共通）/.test(h) && /基準（あるべき姿・全店共通）/.test(h) && /今日の指摘はここでなく下の「メモ」へ/.test(h), '基準欄＝「全店共通」「正解写真」と分かる名前・案内');
+  ok(/function svApplyDomFor_/.test(code) && /svStdPush\(no, \{\}, phs\);\s*svApplyDomFor_\(no\)/.test(code), '基準欄の写真＝開いたままでも差し替えて反映する');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
