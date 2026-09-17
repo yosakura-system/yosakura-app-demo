@@ -423,7 +423,7 @@
     { id:'pl', group:'storeops', icon:'yen', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'数値・原価率', en:'Numbers & Cost', vi:'Số liệu & Giá vốn' },
       desc:{ ja:'月次の売上・仕入・在庫から原価率を自動計算', en:'Monthly cost ratio from sales/stock', vi:'Tự tính giá vốn theo tháng' } },
-    { id:'numcheck', group:'hq', icon:'report', live:true, roles:['hq'],
+    { id:'numcheck', group:'hq', icon:'report', live:true, roles:['manager','owner','hq'],   // 店長・オーナーは自店分だけ（増田さん 2026-09-17「店長が把握して直す項目」）
       name:{ ja:'数字の要確認', en:'Number checks', vi:'Số liệu cần xác nhận' },
       desc:{ ja:'日報の数字で「変だな」を自動で拾う（アプリ入力・シート取込どちらも）', en:'Auto-flag suspicious daily-report numbers (app or sheet)', vi:'Tự phát hiện số liệu bất thường' } },
     { id:'dashboard', group:'hq', icon:'gauge', roles:['hq'],
@@ -1297,12 +1297,12 @@
         <p class="news-body">${L({ ja:'締切を過ぎても届いていない提出物があります。', en:'Some submissions are past due.', vi:'Có mục nộp đã quá hạn.' })}</p>
         <span class="news-more">${L({ ja:'全店の提出状況を開く', en:'Open all-store status', vi:'Mở tình trạng toàn bộ' })} ${svg('chev')}</span>
       </button>` : '';
-    const numOpenN = role === 'hq' ? numOpen_().length : 0;
+    const numOpenN = ['hq', 'manager', 'owner'].includes(role) ? numOpen_(role === 'hq' ? null : visibleStores()).length : 0;
     const numCard = numOpenN > 0 ? `
       <button class="card news-card news-card--btn" data-open="numcheck">
         <div class="news-h"><span class="news-ic">${svg('report')}</span><b>${L({ ja:'数字の要確認があります', en:'Numbers to check', vi:'Có số liệu cần xác nhận' })}</b></div>
         <div class="news-title">${numOpenN} ${L({ ja:'件', en:'item(s)', vi:'mục' })}</div>
-        <p class="news-body">${L({ ja:'日報の数字で「変だな」を自動で拾いました（個数で入っている・合計が合わない など）。', en:'Auto-flagged suspicious daily-report numbers.', vi:'Đã tự phát hiện số liệu bất thường trong báo cáo ngày.' })}</p>
+        <p class="news-body">${L({ ja:'日報の数字で「変だな」を自動で拾いました（個数で入っている・合計が合わない など）。店長・オーナーは自店の分です。', en:'Auto-flagged suspicious daily-report numbers.', vi:'Đã tự phát hiện số liệu bất thường trong báo cáo ngày.' })}</p>
         <span class="news-more">${L({ ja:'一覧を開く', en:'Open list', vi:'Mở danh sách' })} ${svg('chev')}</span>
       </button>` : '';
     const dutyBlock = `<div class="homelinks">
@@ -6543,7 +6543,7 @@
     unit:  { ja:'客単価が普段と違う', en:'Unit price off', vi:'Đơn giá bất thường' },
     reg:   { ja:'レジ差が0でない', en:'Register diff ≠ 0', vi:'Lệch két' },
     lunch: { ja:'昼の売上＞合計', en:'Lunch > total', vi:'Trưa > tổng' },
-    cc:    { ja:'現金＋カード≠売上', en:'Cash+card ≠ sales', vi:'Tiền mặt+thẻ ≠ doanh thu' }
+    cc:    { ja:'現金＋カード＞売上', en:'Cash+card > sales', vi:'Tiền mặt+thẻ > doanh thu' }
   };
   const numN_ = (v) => { const n = Number(String(v == null ? '' : v).replace(/[,円\s]/g, '')); return (v === '' || v == null || isNaN(n)) ? null : n; };
   function getNumAck() { try { return JSON.parse(localStorage.getItem(NUM_ACK_LS) || '{}') || {}; } catch (e) { return {}; } }
@@ -6569,25 +6569,28 @@
         // アプリ入力は 2026-09-02（フード・ドリンクを点数→金額に切替した日）より前を見ない（神田さん 2026-09-17）。シート取込は最初から金額なので対象
         if (r.src !== 'drive' && r.date < '2026-09-02') return;
         if (food != null && drink != null && Math.abs((food + drink) - sales) > Math.max(1000, sales * 0.02)) add('sum', `フード${food.toLocaleString()}＋ドリンク${drink.toLocaleString()}＝${(food + drink).toLocaleString()}／売上${sales.toLocaleString()}`);
-        if (food != null && food > 0 && food < sales * 0.2) add('count', `フード${food.toLocaleString()}・ドリンク${drink == null ? '—' : drink.toLocaleString()}／売上${sales.toLocaleString()}`);
+        // 個数疑い＝1,000円未満だけ（増田さん 2026-09-17＝海外のお客様が多くキャッシュレス中心。フードが4桁の日もあるので4桁以上は拾わない）
+        if (food != null && food > 0 && food < 1000) add('count', `フード${food.toLocaleString()}・ドリンク${drink == null ? '—' : drink.toLocaleString()}／売上${sales.toLocaleString()}`);
         if (!guests) add('guest', `売上${sales.toLocaleString()}・客数なし`);
         if (guests && med) { const u = sales / guests; if (u < med * 0.6 || u > med * 1.4) add('unit', `客単価${Math.round(u).toLocaleString()}円（普段${Math.round(med).toLocaleString()}円）`); }
         // 前週同曜日との比較は外した（2026-09-17 神田さん＝インバウンドが中心で同じお客様が来るわけではない。売上の増減は異常ではない）
         if (err != null && err !== 0) add('reg', `レジ差${err.toLocaleString()}円`);
         if (lunch != null && lunch > sales) add('lunch', `昼${lunch.toLocaleString()}／合計${sales.toLocaleString()}`);
-        if (cash != null && card != null && (cash + card) > 0 && Math.abs((cash + card) - sales) > Math.max(1000, sales * 0.02)) add('cc', `現金${cash.toLocaleString()}＋カード${card.toLocaleString()}／売上${sales.toLocaleString()}`);
+        // 総括表に「コード決済」の行が無く、カードだけ入れている店は 現金＋カード＜売上 になる（増田さん 2026-09-17＝次月の総括表で行を足す）。それまでは「売上を超える」ときだけ拾う
+        if (cash != null && card != null && (cash + card) > 0 && (cash + card) - sales > Math.max(1000, sales * 0.02)) add('cc', `現金${cash.toLocaleString()}＋カード${card.toLocaleString()}／売上${sales.toLocaleString()}`);
       });
     });
     return out.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : a.store.localeCompare(b.store));
   }
   const numKey_ = (x) => `${x.store}|${x.date}|${x.code}`;
-  function numOpen_() { const ack = getNumAck(); return numCheck_().filter(x => !ack[numKey_(x)]); }
+  function numOpen_(stores) { const ack = getNumAck(); return numCheck_().filter(x => !ack[numKey_(x)] && (!stores || stores.includes(x.store))); }
   APP_VIEWS.numcheck = () => {
-    if (getRole() !== 'hq') return `<div class="card"><p class="muted">${L({ ja:'本部の画面です', en:'HQ only', vi:'Chỉ dành cho HQ' })}</p></div>`;
+    if (!['hq', 'manager', 'owner'].includes(getRole())) return `<div class="card"><p class="muted">${L({ ja:'店長・オーナー・本部の画面です', en:'Managers, owners and HQ only', vi:'Dành cho quản lý, chủ và HQ' })}</p></div>`;
     const pick = kyouPick_();
+    const mine = visibleStores();
     const ack = getNumAck();
     const showAll = localStorage.getItem('yosakura_numcheck_all') === '1';
-    let list = numCheck_();
+    let list = numCheck_().filter(x => mine.includes(x.store));   // 店長・オーナーは自店だけ
     if (pick.sel !== 'all') list = list.filter(x => x.store === pick.sel);
     const open = list.filter(x => !ack[numKey_(x)]);
     const shown = showAll ? list : open;
@@ -6612,7 +6615,7 @@
           <span class="ksum-i ok"><b>${list.length - open.length}</b>${L({ ja:'件 確認済み', en:' checked', vi:' đã xác nhận' })}</span>
           <button type="button" class="mini" data-numall="${showAll ? '0' : '1'}">${showAll ? L({ ja:'未確認だけ表示', en:'Open only', vi:'Chỉ chưa xác nhận' }) : L({ ja:'確認済みも表示', en:'Show checked', vi:'Hiện cả đã xác nhận' })}</button>
         </div>
-        <p class="hint" style="display:block">${L({ ja:'※ 検査は7つ＝フード＋ドリンク≠売上／フードが小さすぎ（個数の疑い）／客数が空／客単価が普段（直近の中央値）の±40%外／レジ差≠0／昼＞合計／現金＋カード≠売上。売上の増減そのものは見ません（お客様は日によって違うため）。アプリ提出もシート取込も同じ基準です。「確認済み」はこの端末にだけ残ります。', en:'7 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'7 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
+        <p class="hint" style="display:block">${L({ ja:'※ 検査は7つ＝フード＋ドリンク≠売上／フードが1,000円未満（個数の疑い）／客数が空／客単価が普段（直近の中央値）の±40%外／レジ差≠0／昼＞合計／現金＋カード＞売上（コード決済の行が総括表に無いため、少ない分は拾いません）。売上の増減そのものは見ません（お客様は日によって違うため）。アプリ提出もシート取込も同じ基準です。「確認済み」はこの端末にだけ残ります。店長・オーナーは自店の分だけが出ます。', en:'7 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'7 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
       </div>
       ${rows || `<div class="card"><p class="muted">${L({ ja:'要確認の数字はありません', en:'Nothing to check', vi:'Không có gì cần xác nhận' })}</p></div>`}`;
   };

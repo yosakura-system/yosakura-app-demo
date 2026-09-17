@@ -5259,7 +5259,8 @@ console.log('== 数字の要確認（本部）2026-09-17 神田さん「要確�
   for (let n = 30; n >= 3; n--) rows.push(base(n, 200000 + (n % 5) * 10000, 40 + (n % 3)));
   rows.push(base(2, 101400, 21, { foodamt: '23', drinkamt: '8' }));            // 個数で入っている（9/16の実例）
   rows.push(base(1, 26100, 10, { foodamt: '42000', drinkamt: '1300' }));       // 合計が合わない・客単価2,610
-  rows.push(base(0, 62700, 0, { foodamt: '', drinkamt: '', err: '500' }));      // 客数なし・レジ差
+  rows.push(base(0, 62700, 0, { foodamt: '', drinkamt: '', err: '500', cash: '30000', card: '20000' }));      // 客数なし・レジ差（現金＋カード＜売上＝拾わない）
+  rows.push(base(4, 180000, 35, { foodamt: '8000', drinkamt: '172000' }));   // フード4桁＝個数疑いにしない（合計は合う）
   // 9/2より前＝アプリ入力（点数時代）は拾わない／シート取込は対象（日付は base の範囲外・60日窓の中）
   rows.push({ store: S, date: '2026-08-01', sales: 150000, guests: 30, foodamt: '40', drinkamt: '12', t: 1, src: '' });
   rows.push({ store: S, date: '2026-08-02', sales: 150000, guests: 30, foodamt: '40', drinkamt: '12', t: 1, src: 'drive' });
@@ -5267,7 +5268,9 @@ console.log('== 数字の要確認（本部）2026-09-17 神田さん「要確�
   location.hash = '#/app/numcheck';
   let h = registry.app.innerHTML;
   ok(/フードが小さすぎ（個数？）/.test(h) && /フード23・ドリンク8/.test(h), '個数で入っている日を拾う（フード23・ドリンク8）');
+  ok(!/フード8,000・/.test(h), 'フードが4桁（8,000）の日は個数疑いにしない');
   ok(/フード＋ドリンク≠売上/.test(h) && /42,000/.test(h), '合計が合わない日を拾う');
+  ok(!/<b>現金＋カード＞売上<\/b>/.test(h), '現金＋カード＜売上は拾わない（コード決済の行が総括表に無いため）');
   ok(/客単価が普段と違う/.test(h) && /2,610/.test(h), '客単価の外れ値を拾う（直近の中央値から±40%）');
   ok(/客数が空/.test(h) && /レジ差が0でない/.test(h) && /レジ差500円/.test(h), '客数なし・レジ差≠0 を拾う');
   ok(!/前週同曜日/.test(h), '前週同曜日との比較は出さない（2026-09-17 神田さん＝売上の増減は異常ではない）');
@@ -5285,10 +5288,17 @@ console.log('== 数字の要確認（本部）2026-09-17 神田さん「要確�
   const h2 = registry.app.innerHTML; const nOpen2 = Number((h2.match(/<b>(\d+)<\/b>件 未確認/) || [])[1]);
   ok(nOpen2 === nOpen - 1 && /<b>1<\/b>件 確認済み/.test(h2), '確認済みにした1件が未確認から消える');
   {
-    const h3 = renderView('numcheck', 'manager', S, 'ja');
-    ok(!/data-numack=/.test(h3) && !/件 未確認/.test(h3), '店舗の端末では一覧が出ない（本部専用の入口で止まる）');
-    const home = renderView('home', 'manager', S, 'ja');
-    ok(!/数字の要確認があります/.test(home), '店舗のホームには出ない');
+    // 店長・オーナー＝自店の分だけ（増田さん 2026-09-17「店長が把握して直す項目」）
+    const rows2 = rows.concat([{ store: '日本料理世桜本店', date: d(1), sales: 300000, guests: 50, foodamt: '30', drinkamt: '5', t: Date.now(), src: 'drive' }]);
+    run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows2)); localStorage.removeItem('yosakura_numcheck_ack'); });
+    location.hash = '#/app/numcheck';
+    const h3 = registry.app.innerHTML;
+    ok(/data-numack=/.test(h3) && /フード23・ドリンク8/.test(h3), '店長＝自店の要確認が見える');
+    ok(!/日本料理世桜本店/.test(h3) && !/class="kchips"/.test(h3), '店長＝他店の分は出ない・店舗チップも出ない');
+    location.hash = '#/home';
+    ok(/数字の要確認があります/.test(registry.app.innerHTML), '店長のホームにも自店の件数カードが出る');
+    const h4 = renderView('numcheck', 'staff', S, 'ja');
+    ok(!/data-numack=/.test(h4), 'スタッフには出ない');
   }
   run(() => { setLS('hq', 'all', 'ja'); });
 }
