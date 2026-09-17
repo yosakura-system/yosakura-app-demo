@@ -3540,10 +3540,11 @@
   const svAns = (no) => getSv()[svKey(no)] || null;
   const svMeta = () => getSv()[svKey('meta')] || {};
   /* 参考スコア＝対象外を除いた配点の合計が分母（見本アプリと同じ考え方）。体験（pt=0）は数えない */
-  function svScore() {
+  function svScore() { return svScoreOf(svAns); }
+  function svScoreOf(getA) {
     let num = 0, den = 0, ok = 0, ng = 0, na = 0, ans = 0, expOk = 0, expN = 0;
     SV_ITEMS.forEach(it => {
-      const a = svAns(it.no); if (!a || !a.v) return;
+      const a = getA(it.no); if (!a || !a.v) return;
       ans++;
       if (it.pt === 0) { expN++; if (a.v === 'ok') expOk++; return; }
       if (a.v === 'na') { na++; return; }
@@ -3552,6 +3553,72 @@
     return { num, den, pct: den ? Math.round(num / den * 100) : null, ok, ng, na, ans, expOk, expN, total: SV_ITEMS.length };
   }
   const svWd = (d) => { try { return ['日','月','火','水','木','金','土'][new Date(d + 'T00:00:00').getDay()]; } catch (e) { return ''; } };
+  /* ---------- 履歴＝保存されている全回答（店舗|日付|No）を「訪問」ごとにまとめる（2026-09-17 神田さん）
+     結果はすでに1項目1行で本部データに残っている（svcheck・90日削除の保護あり）。ここではそれを店舗×日付に束ね、
+     月1回の巡回を年間の時系列で見る・店舗どうしを比べる、ための形にする。 */
+  function svVisits_() {
+    const all = getSv(); const g = {};
+    Object.keys(all).forEach(k => {
+      const p = k.split('|'); if (p.length < 3) return;
+      const st = p[0], d = p[1], no = p.slice(2).join('|');
+      const key = st + '|' + d; (g[key] = g[key] || { store: st, date: d, ans: {} }).ans[no] = all[k];
+    });
+    return Object.values(g).map(v => {
+      const sc = svScoreOf(no => v.ans[no] || null); const m = v.ans.meta || {};
+      const by = [...new Set(Object.keys(v.ans).filter(no => no !== 'meta').map(no => v.ans[no].by).filter(Boolean))].join('・');
+      return Object.assign({ store: v.store, date: v.date, summary: (m.summary || '').trim(), menu: m.menu || '', by }, sc);
+    }).filter(v => v.ans > 0).sort((a, b) => a.date < b.date ? -1 : 1);
+  }
+  const svMonths_ = (n) => { const out = []; const d = new Date(); d.setDate(1); for (let i = n - 1; i >= 0; i--) { const x = new Date(d.getFullYear(), d.getMonth() - i, 1); out.push(`${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}`); } return out; };
+  const svPctClass_ = (p) => p == null ? '' : p >= 90 ? 'g' : p >= 70 ? 'y' : 'r';
+  /* 年間の折れ線（SVG・ライブラリなし）＝横軸は直近12か月、点は訪問日。数字は参考スコア */
+  function svChart_(visits) {
+    const months = svMonths_(12); const W = 640, H = 200, L = 34, R = 12, T = 14, B = 26;
+    const x0 = new Date(months[0] + '-01T00:00:00').getTime(); const x1 = new Date(); x1.setMonth(x1.getMonth() + 1, 1); x1.setHours(0, 0, 0, 0);
+    const X = (d) => L + (new Date(d + 'T00:00:00').getTime() - x0) / (x1.getTime() - x0) * (W - L - R);
+    const Y = (p) => T + (100 - p) / 100 * (H - T - B);
+    const pts = visits.filter(v => v.pct != null && new Date(v.date + 'T00:00:00').getTime() >= x0);
+    const grid = [0, 50, 100].map(p => `<line x1="${L}" x2="${W - R}" y1="${Y(p)}" y2="${Y(p)}" class="svc-grid"/><text x="${L - 6}" y="${Y(p) + 4}" class="svc-ax" text-anchor="end">${p}</text>`).join('');
+    const mx = months.map((m, i) => { const x = L + i / 12 * (W - L - R); return `<text x="${x + (W - L - R) / 24}" y="${H - 8}" class="svc-ax" text-anchor="middle">${m.slice(5)}月</text>` + (i ? `<line x1="${x}" x2="${x}" y1="${T}" y2="${H - B}" class="svc-vgrid"/>` : ''); }).join('');
+    const line = pts.length > 1 ? `<polyline points="${pts.map(v => `${X(v.date).toFixed(1)},${Y(v.pct).toFixed(1)}`).join(' ')}" class="svc-line"/>` : '';
+    const dots = pts.map(v => `<circle cx="${X(v.date).toFixed(1)}" cy="${Y(v.pct).toFixed(1)}" r="5" class="svc-dot ${svPctClass_(v.pct)}"/><text x="${X(v.date).toFixed(1)}" y="${(Y(v.pct) - 9).toFixed(1)}" class="svc-lab" text-anchor="middle">${v.pct}</text>`).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" class="svchart" role="img" aria-label="score chart">${grid}${mx}${line}${dots}</svg>`;
+  }
+  /* 履歴・比較タブの中身（本部）＝上：店舗一覧（直近12か月の参考スコア）／下：選んだ店舗の年間グラフと訪問一覧 */
+  function svHistHtml_(stores) {
+    const visits = svVisits_(); const months = svMonths_(12);
+    const byStore = {}; visits.forEach(v => (byStore[v.store] = byStore[v.store] || []).push(v));
+    const rowsAll = stores.slice().sort((a, b) => (byStore[b] || []).length - (byStore[a] || []).length || a.localeCompare(b)).map(st => {
+      const vs = byStore[st] || []; const last = vs[vs.length - 1];
+      const cells = months.map(m => { const inM = vs.filter(v => v.date.slice(0, 7) === m && v.pct != null); const v = inM[inM.length - 1]; return `<td class="svh-c ${v ? svPctClass_(v.pct) : ''}">${v ? v.pct : ''}</td>`; }).join('');
+      const scored = vs.filter(v => v.pct != null); const avg = scored.length ? Math.round(scored.reduce((a, v) => a + v.pct, 0) / scored.length) : null;
+      return `<tr class="svh-row ${st === svState.store ? 'on' : ''}" data-svhist="${esc(st)}"><th class="svh-st">${esc(storeLabel(st))}</th>${cells}<td class="svh-n">${vs.length}</td><td class="svh-n">${avg == null ? '—' : avg}</td><td class="svh-n">${last ? esc(last.date.slice(5).replace('-', '/')) : '—'}</td></tr>`;
+    }).join('');
+    const table = `
+      <div class="card">
+        <h3>${esc(L({ ja:'店舗の比較（直近12か月・参考スコア）', en:'Store comparison (last 12 months)', vi:'So sánh cửa hàng (12 tháng)' }))}</h3>
+        <div class="svh-wrap"><table class="svh">
+          <thead><tr><th></th>${months.map(m => `<th>${m.slice(5)}月</th>`).join('')}<th>${esc(L({ ja:'回', en:'n', vi:'lần' }))}</th><th>${esc(L({ ja:'平均', en:'avg', vi:'TB' }))}</th><th>${esc(L({ ja:'最新', en:'last', vi:'mới' }))}</th></tr></thead>
+          <tbody>${rowsAll}</tbody></table></div>
+        <p class="hint" style="display:block">${esc(L({ ja:'※ 数字は参考スコア（対象外を除いた配点の達成率）。緑=90以上・黄=70〜89・赤=70未満。同じ月に2回以上あれば新しい方。店舗名を押すと下に年間の推移が出ます。', en:'Reference score. Green≥90, yellow 70–89, red<70. Tap a store for its yearly trend.', vi:'Điểm tham khảo. Xanh≥90, vàng 70–89, đỏ<70. Chạm cửa hàng để xem xu hướng.' }))}</p>
+      </div>`;
+    const vs = (byStore[svState.store] || []).slice().reverse();
+    const list = vs.length ? vs.map(v => `
+        <button type="button" class="svh-visit" data-svopen="${esc(v.date)}">
+          <span class="svh-vd"><b>${esc(v.date.replace(/-/g, '/'))}</b>（${svWd(v.date)}）${v.by ? `<small> ${esc(v.by)}</small>` : ''}</span>
+          <span class="svh-vp ${svPctClass_(v.pct)}">${v.pct == null ? '—' : v.pct + '%'}</span>
+          <span class="svh-vc">○${v.ok}　×${v.ng}　${esc(L({ ja:'対象外', en:'N/A', vi:'K/AD' }))}${v.na}</span>
+          ${v.summary ? `<span class="svh-vs">${esc(v.summary.split('\n')[0].slice(0, 60))}</span>` : ''}
+        </button>`).join('') : `<p class="muted">${esc(L({ ja:'この店舗の記録はまだありません', en:'No records yet', vi:'Chưa có bản ghi' }))}</p>`;
+    const chart = `
+      <div class="card">
+        <h3>${esc(storeLabel(svState.store))}　${esc(L({ ja:'年間の推移', en:'Yearly trend', vi:'Xu hướng năm' }))}</h3>
+        ${svChart_(byStore[svState.store] || [])}
+        <div class="svh-list">${list}</div>
+        <p class="hint" style="display:block">${esc(L({ ja:'※ 訪問を押すと、その日の結果（レポート）が開きます。', en:'Tap a visit to open its report.', vi:'Chạm để mở báo cáo ngày đó.' }))}</p>
+      </div>`;
+    return table + chart;
+  }
   /* LINEに貼る文面＝レポート。番号は原本のNo（結果を原本のシートへ転記できる） */
   function svReportText() {
     const sc = svScore(), m = svMeta();
@@ -3892,16 +3959,20 @@
 
     /* 本部＝巡回チェック本体 */
     const stores = visibleStores();
+    { const q = currentRoute().params; const qs = q.get('store'), qt = q.get('tab'); if (qs && stores.includes(qs)) svState.store = qs; if (qt) svState.tab = qt; }
     if (!svState.store || !stores.includes(svState.store)) svState.store = (getStoreSel() !== 'all' && stores.includes(getStoreSel())) ? getStoreSel() : (stores[0] || '');
     if (!svState.date) svState.date = svTodayStr();
     if (!svState.tab) svState.tab = SV_PHASES[0][0];
     const sc = svScore(); const m = svMeta();
     const cnt = (ph) => { const its = SV_ITEMS.filter(i => i.ph === ph); return [its.filter(i => { const a = svAns(i.no); return a && a.v; }).length, its.length]; };
     const tabs = SV_PHASES.map(([k, l]) => { const [d, n] = cnt(k); return `<button data-vctab="${k}" class="vctab ${svState.tab === k ? 'on' : ''} ${d === n ? 'done' : ''}">${esc(L(l))}<small>${d}/${n}</small></button>`; }).join('')
-      + `<button data-vctab="report" class="vctab rep ${svState.tab === 'report' ? 'on' : ''}">${esc(L({ ja:'結果', en:'Report', vi:'Kết quả' }))}</button>`;
+      + `<button data-vctab="report" class="vctab rep ${svState.tab === 'report' ? 'on' : ''}">${esc(L({ ja:'結果', en:'Report', vi:'Kết quả' }))}</button>`
+      + `<button data-vctab="hist" class="vctab rep ${svState.tab === 'hist' ? 'on' : ''}">${esc(L({ ja:'履歴・比較', en:'History', vi:'Lịch sử' }))}</button>`;
     const item = (it) => svItemHtml(it);
     let body;
-    if (svState.tab === 'report') {
+    if (svState.tab === 'hist') {
+      body = svHistHtml_(stores);
+    } else if (svState.tab === 'report') {
       const txt = svReportText();
       body = `
         <div class="card svreport">
@@ -7439,7 +7510,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -7448,6 +7519,9 @@
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
+      // 巡回チェックの履歴＝店舗行を押す→その店の年間推移／訪問を押す→その日の結果（2026-09-17）
+      if (t.dataset.svhist !== undefined) { svState.store = t.dataset.svhist; svState.tab = 'hist'; render(true); return; }
+      if (t.dataset.svopen !== undefined) { svState.date = t.dataset.svopen; svState.tab = 'report'; render(true); return; }
       // 数字の要確認＝確認済みの切替／表示の切替（2026-09-17）
       if (t.dataset.numack !== undefined) { const o = getNumAck(); if (o[t.dataset.numack]) delete o[t.dataset.numack]; else o[t.dataset.numack] = Date.now(); saveNumAck(o); render(true); return; }
       if (t.dataset.numall !== undefined) { localStorage.setItem('yosakura_numcheck_all', t.dataset.numall); render(true); return; }

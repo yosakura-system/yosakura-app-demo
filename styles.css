@@ -808,3 +808,28 @@ html[data-theme="hp"] .krow .kname { font-weight: 500; letter-spacing: .04em; }
 .numrow-m small { font-size: 11px; color: var(--sumi); }
 html[data-theme="hp"] .numsrc { border-radius: 0; }
 html[data-theme="hp"] .numrow-m b { color: #8e3e3e; }
+
+/* 巡回チェック＝履歴・比較（2026-09-17） */
+.svh-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.svh { border-collapse: collapse; font-size: 11px; min-width: 640px; }
+.svh th, .svh td { padding: 4px 3px; text-align: center; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.svh thead th { color: var(--gray); font-weight: 600; }
+.svh .svh-st { text-align: left; font-weight: 700; color: var(--sumi); position: sticky; left: 0; background: #fff; }
+.svh-row { cursor: pointer; }
+.svh-row.on .svh-st { color: var(--suou); }
+.svh-c { min-width: 30px; font-weight: 700; border-radius: 4px; }
+.svh-c.g { background: #E4EFE0; color: #2f5d2a; } .svh-c.y { background: #FBF0D5; color: #7a5a00; } .svh-c.r { background: #F8DCDC; color: #a23b3b; }
+.svh-n { color: var(--gray); }
+.svchart { width: 100%; height: auto; display: block; margin: 4px 0 8px; }
+.svc-grid { stroke: #E5E0D8; stroke-width: 1; } .svc-vgrid { stroke: #F1EDE6; stroke-width: 1; } .svc-ax { font-size: 10px; fill: #8a8; }
+.svc-line { fill: none; stroke: #8E354A; stroke-width: 2; } .svc-dot { fill: #8E354A; } .svc-dot.g { fill: #5C6E58; } .svc-dot.y { fill: #b8860b; } .svc-dot.r { fill: #a23b3b; }
+.svc-lab { font-size: 11px; fill: #1A1A1A; font-weight: 700; }
+.svh-list { display: flex; flex-direction: column; }
+.svh-visit { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; width: 100%; text-align: left; padding: 8px 2px; border: 0; border-bottom: 1px solid var(--line); background: transparent; font: inherit; cursor: pointer; }
+.svh-vd { font-size: 13px; } .svh-vd small { color: var(--gray); }
+.svh-vp { font-size: 16px; font-weight: 700; grid-row: span 2; align-self: center; }
+.svh-vp.g { color: #2f5d2a; } .svh-vp.y { color: #7a5a00; } .svh-vp.r { color: #a23b3b; }
+.svh-vc { font-size: 11px; color: var(--gray); }
+.svh-vs { grid-column: 1 / -1; font-size: 11px; color: var(--sumi); }
+html[data-theme="hp"] .svh-c { border-radius: 0; }
+html[data-theme="hp"] .svc-line { stroke: #333333; } html[data-theme="hp"] .svc-dot { fill: #333333; }

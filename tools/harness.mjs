@@ -5293,5 +5293,29 @@ console.log('== 数字の要確認（本部）2026-09-17 神田さん「要確�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 巡回チェックの履歴・比較（2026-09-17 神田さん「結果を残す・年間グラフ・店舗一覧で比較」）==');
+{
+  const S1 = '牛カツ世桜 長堀橋店', S2 = '日本料理世桜本店';
+  const ym = (n) => { const d = new Date(); d.setDate(15); d.setMonth(d.getMonth() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-15`; };
+  const mk = (st, d, oks, ngs) => { const o = {}; oks.forEach(no => o[`${st}|${d}|${no}`] = { v:'ok', by:'神田', t:1 }); ngs.forEach(no => o[`${st}|${d}|${no}`] = { v:'ng', memo:'要改善', by:'常山', t:1 }); o[`${st}|${d}|meta`] = { summary:'総評テスト' }; return o; };
+  const sv = Object.assign({}, mk(S1, ym(2), [3, 8, 22, 23, 30, 31], [16]), mk(S1, ym(1), [3, 8, 22, 23, 30, 31, 16], []), mk(S1, ym(0), [3, 8, 22], [16, 23, 30]), mk(S2, ym(0), [3, 8, 22, 23], [16]));
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
+  location.hash = '#/app/hqcheck?tab=hist&store=' + encodeURIComponent(S1);
+  const h = registry.app.innerHTML;
+  ok(/data-vctab="hist"/.test(h) && /店舗の比較（直近12か月/.test(h), '巡回チェックに「履歴・比較」タブがあり、店舗一覧が出る');
+  ok((h.match(/class="svh-row/g) || []).length >= 5, '店舗一覧＝全店が1行ずつ（月ごとの参考スコア）');
+  ok(/svh-c (g|y|r)">\d+<\/td>/.test(h), '月のセルに参考スコアが色つきで入る');
+  ok(/class="svchart"/.test(h) && (h.match(/svc-dot/g) || []).length >= 3 && /polyline/.test(h), '選んだ店舗の年間グラフ（SVG）に3回分の点と折れ線が出る');
+  ok((h.match(/data-svopen="/g) || []).length === 3 && /総評テスト/.test(h), '訪問一覧＝3回分（総評の1行目つき）');
+  ok(/data-svhist="日本料理世桜本店"/.test(h), '店舗行を押すとその店の推移に切り替えられる（data-svhist）');
+  {
+    const src = code;
+    ok(/t\.dataset\.svhist !== undefined/.test(src) && /t\.dataset\.svopen !== undefined/.test(src), '店舗行・訪問の押下は委譲イベント（どの画面でも効く）');
+  }
+  const h2 = renderView('hqcheck', 'manager', S1, 'ja');
+  ok(!/data-vctab="hist"/.test(h2), '店舗の端末には履歴・比較は出ない（本部専用のまま）');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
