@@ -5401,5 +5401,17 @@ console.log('== A4レポートの共有＝作ってから押した瞬間に共�
   ok(/function svOpenReady_/.test(code) && /t\.dataset\.svshareopen !== undefined/.test(code), '共有シートが使えない端末は「開いて見る」で別タブへ');
 }
 
+console.log('== 巡回チェック＝保存の失敗を黙らせない・端末は縮小版・レポートは更新（2026-09-17 神田さん）==');
+{
+  ok(/const svSaveSafely_ = \(key, o, label\)/.test(code) && /r\.photos = r\.photos\.filter\(p => p && !isDataUrl\(p\)\)/.test(code), '保存に失敗したら写真を落として保存し直し、画面に知らせる');
+  ok(/const thumb = await 写真を縮小_\(d, 480\)/.test(code) && (code.match(/写真を縮小_\(d, 480\)/g) || []).length === 2, '端末には縮小版（480px）だけ残し、送るのは元サイズ（指摘写真・基準写真）');
+  ok(/const saveSv = \(o\) => \{ _svC = null; svReadyClear_\(\);/.test(code), '内容が変わったら作成済みレポートを破棄');
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); });
+  location.hash = '#/app/hqcheck?tab=report&store=' + encodeURIComponent(S);
+  ok(/data-svrefresh="1"/.test(registry.app.innerHTML) && /最新の内容で更新/.test(registry.app.innerHTML), '結果タブに「最新の内容で更新」ボタン');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
