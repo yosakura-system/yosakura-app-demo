@@ -5385,5 +5385,14 @@ console.log('== 巡回チェックの履歴＝その日の結果を選んで削�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== A4レポート＝写真を全部載せる（2026-09-17 神田さん）＝ソースで固定 ==');
+{
+  ok(/const drawPhotos = \(phs\) => \{/.test(code) && /for \(let i = 0; i < phs\.length; i \+= 3\)/.test(code), '写真は3枚ずつ段にして全部描く（1項目3枚の制限なし）');
+  ok(!/\.filter\(Boolean\)\.slice\(0, 3\);\s*const TH/.test(code) && !/\+\$\{more\}枚/.test(code), '「+N枚」の省略は無くなった');
+  ok(/const good = SV_ITEMS\.filter[^\n]*\n[\s\S]{0,600}const phs = itemPhotos\(it\); if \(phs\.length\) \{ drawPhotos\(phs\); y \+= 4; \}/.test(code), '良かった点（○）の写真も載る');
+  ok(/その他の気づき（対象外・/.test(code) && /a\.v === 'na' && \(\(a\.memo \|\| ''\)\.trim\(\) \|\| \(a\.photos \|\| \[\]\)\.length\)/.test(code), '対象外でもメモ・写真のある項目は「その他の気づき」に載る');
+  ok(/await Promise\.all\(all\.map\(p => svLoadImage_\(p\)\)\)/.test(code), '写真は先にまとめて読む');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

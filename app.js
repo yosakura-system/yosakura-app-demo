@@ -3901,42 +3901,68 @@
     const ngPh = SV_PHASES.map(([k, l]) => { const n = SV_ITEMS.filter(i => i.ph === k && (svAns(i.no) || {}).v === 'ng').length; return n ? `${L(l)} ${n}` : ''; }).filter(Boolean).join('　');
     g.fillText(ngPh ? `× の内訳：${ngPh}` : '× はありません', M + 330, y + 62);
     y += 136;
-    // 良かった点
-    const good = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ok' && ((a.memo || '').trim() || (a.photos || []).length); });
-    if (good.length) {
-      band('良かった点');
-      for (const it of good) { const a = svAns(it.no); text(`・${it.t.split('（')[0]}` + ((a.memo || '').trim() ? `：${a.memo.trim()}` : ''), 22); }
+    /* 写真＝先に全部読んでおく（1枚ずつ待たない）。載せるのは ○・×・対象外を問わず写真のある項目すべて（2026-09-17 神田さん） */
+    const imgCache = {};
+    {
+      const all = []; SV_ITEMS.forEach(it => ((svAns(it.no) || {}).photos || []).filter(Boolean).forEach(p => { if (!(p in imgCache)) { imgCache[p] = null; all.push(p); } }));
+      const loaded = await Promise.all(all.map(p => svLoadImage_(p)));
+      all.forEach((p, i) => { imgCache[p] = loaded[i]; });
     }
-    // 気になる点（×）＋写真
-    const bad = SV_ITEMS.filter(it => (svAns(it.no) || {}).v === 'ng');
-    band(bad.length ? `気になる点（× ${bad.length}件）` : '気になる点（×）');
-    if (!bad.length) text('× はありませんでした。', 22, '#6B635A');
-    for (const it of bad) {
-      const a = svAns(it.no) || {};
-      const phs = (a.photos || []).filter(Boolean).slice(0, 3);
-      const TH = phs.length ? 210 : 0;
-      ensure(40 + TH + 16);
-      g.fillStyle = '#FBF1F2'; g.fillRect(M, y, 6, 30);
-      text(`${typeof it.no === 'number' ? 'No.' + it.no + '　' : ''}${it.t}` + (it.pt ? `（${it.pt}点）` : ''), 23, '#8E354A', true);
-      if ((a.memo || '').trim()) text(`　${a.memo.trim()}`, 21, '#1A1A1A');
-      if (phs.length) {
-        ensure(TH + 10);
-        let x = M + 14; const bw = 300, bh = 200;
-        for (const p of phs) {
-          const im = await svLoadImage_(p);
+    /* 写真を3枚ずつ段にして全部描く（段ごとにページを確かめる） */
+    const drawPhotos = (phs) => {
+      const bw = 300, bh = 200, gap = 14;
+      for (let i = 0; i < phs.length; i += 3) {
+        ensure(bh + 12);
+        let x = M + 14;
+        for (const p of phs.slice(i, i + 3)) {
+          const im = imgCache[p];
           g.fillStyle = '#EFEAE2'; g.fillRect(x, y, bw, bh);
           if (im) {
             const r = Math.max(bw / im.width, bh / im.height); const dw = im.width * r, dh = im.height * r;
             g.save(); g.beginPath(); g.rect(x, y, bw, bh); g.clip(); g.drawImage(im, x + (bw - dw) / 2, y + (bh - dh) / 2, dw, dh); g.restore();
           } else { g.fillStyle = '#6B635A'; g.font = `18px ${F}`; g.fillText('（写真を読めませんでした）', x + 20, y + 90); }
           g.strokeStyle = '#D9D2C8'; g.lineWidth = 2; g.strokeRect(x, y, bw, bh);
-          x += bw + 14;
+          x += bw + gap;
         }
-        const more = (a.photos || []).filter(Boolean).length - phs.length;
-        if (more > 0) { g.fillStyle = '#6B635A'; g.font = `20px ${F}`; g.fillText(`+${more}枚`, x, y + 90); }
         y += bh + 12;
       }
+    };
+    const itemPhotos = (it) => ((svAns(it.no) || {}).photos || []).filter(Boolean);
+    // 良かった点（メモか写真のある○）
+    const good = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ok' && ((a.memo || '').trim() || (a.photos || []).length); });
+    if (good.length) {
+      band('良かった点');
+      for (const it of good) {
+        const a = svAns(it.no);
+        text(`・${it.t.split('（')[0]}` + ((a.memo || '').trim() ? `：${a.memo.trim()}` : ''), 22);
+        const phs = itemPhotos(it); if (phs.length) { drawPhotos(phs); y += 4; }
+      }
+    }
+    // 気になる点（×）＋写真（全部）
+    const bad = SV_ITEMS.filter(it => (svAns(it.no) || {}).v === 'ng');
+    band(bad.length ? `気になる点（× ${bad.length}件）` : '気になる点（×）');
+    if (!bad.length) text('× はありませんでした。', 22, '#6B635A');
+    for (const it of bad) {
+      const a = svAns(it.no) || {};
+      ensure(56);
+      g.fillStyle = '#FBF1F2'; g.fillRect(M, y, 6, 30);
+      text(`${typeof it.no === 'number' ? 'No.' + it.no + '　' : ''}${it.t}` + (it.pt ? `（${it.pt}点）` : ''), 23, '#8E354A', true);
+      if ((a.memo || '').trim()) text(`　${a.memo.trim()}`, 21, '#1A1A1A');
+      const phs = itemPhotos(it); if (phs.length) drawPhotos(phs);
       y += 6;
+    }
+    // その他の気づき（対象外にしたが、メモか写真のある項目）＝扉の安全・A看板など、項目外の指摘がここに残る
+    const other = SV_ITEMS.filter(it => { const a = svAns(it.no) || {}; return a.v === 'na' && ((a.memo || '').trim() || (a.photos || []).length); });
+    if (other.length) {
+      band(`その他の気づき（対象外・${other.length}件）`);
+      for (const it of other) {
+        const a = svAns(it.no) || {};
+        ensure(56);
+        text(`${typeof it.no === 'number' ? 'No.' + it.no + '　' : ''}${it.t}`, 23, '#6B635A', true);
+        if ((a.memo || '').trim()) text(`　${a.memo.trim()}`, 21, '#1A1A1A');
+        const phs = itemPhotos(it); if (phs.length) drawPhotos(phs);
+        y += 6;
+      }
     }
     // 総評
     if ((m.summary || '').trim()) { band('総評'); text(m.summary.trim(), 22); }
