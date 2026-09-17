@@ -3540,7 +3540,26 @@
      文字列が同じなら前回の結果を返す（総括表の getSk と同じ考え方） */
   let _svC = null;
   const getSv = () => { let raw = null; try { raw = localStorage.getItem('yosakura_demo_svcheck'); } catch (e) { return {}; } if (_svC && _svC.raw === raw) return _svC.val; let val = {}; try { val = JSON.parse(raw) || {}; } catch (e) { val = {}; } _svC = { raw, val }; return val; };
-  const saveSv = (o) => { try { localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(o)); } catch (e) {} };
+  /* 保存に失敗したら（端末の保存領域いっぱい＝写真のbase64が原因）、端末側の写真を落として保存し直し、画面に知らせる。
+     写真そのものは本部データへ送ってあるので、同期でIDに置き換わって戻る（2026-09-17 神田さん「変更が反映されない」） */
+  const svSaveSafely_ = (key, o, label) => {
+    try { localStorage.setItem(key, JSON.stringify(o)); return true; } catch (e) {}
+    try {
+      Object.keys(o).forEach(k => { const r = o[k]; if (r && Array.isArray(r.photos)) r.photos = r.photos.filter(p => p && !isDataUrl(p)); });
+      localStorage.setItem(key, JSON.stringify(o));
+      toast(L({ ja:'端末の保存領域がいっぱいのため、写真の縮小版を端末から外しました（本部データには送ってあります）', en:'Device storage full: local photo copies were dropped (already sent to HQ).', vi:'Bộ nhớ đầy: đã bỏ bản sao ảnh trên máy (đã gửi HQ).' }));
+      return true;
+    } catch (e) { toast(L({ ja:`保存できませんでした（${label}）。画面を更新してもう一度お試しください`, en:`Could not save (${label}).`, vi:`Không lưu được (${label}).` })); return false; }
+  };
+  const saveSv = (o) => { _svC = null; svReadyClear_(); return svSaveSafely_('yosakura_demo_svcheck', o, '巡回チェック'); };
+  /* 作成済みのレポートは、内容が変わったら破棄（古いレポートを共有しない） */
+  function svReadyClear_() { try { window._svReady = null; const p = document.getElementById('svReadyPanel'); if (p) p.remove(); } catch (e) {} }
+  /* 端末に残す写真は縮小版（480px）。送るのは元サイズ */
+  function 写真を縮小_(dataUrl, max) {
+    return new Promise((resolve) => {
+      try { const img = new Image(); img.onload = () => { const d = downscale(img, max || 480, 0.7); resolve(d && d.length > 100 ? d : dataUrl); }; img.onerror = () => resolve(dataUrl); img.src = dataUrl; } catch (e) { resolve(dataUrl); }
+    });
+  }
   const svTodayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   let svState = { store:'', date:'', tab:'', axis:'all' };   // 画面の選択（端末の中だけ）
   /* ★店舗と日付は端末に覚える（2026-09-17 神田さん実機＝更新後に店舗の選択が先頭の店に戻り、入力が消えたように見えた）。中身は本部データにあるので消えていない */
@@ -3680,7 +3699,7 @@
      9/9 MTG「正解写真＝あるべき姿をアプリに登録して以後はズレを指摘」の器としても使える。 */
   let _svStdC = null;
   const getSvStd = () => { let raw = null; try { raw = localStorage.getItem('yosakura_demo_svstd'); } catch (e) { return {}; } if (_svStdC && _svStdC.raw === raw) return _svStdC.val; let val = {}; try { val = JSON.parse(raw) || {}; } catch (e) { val = {}; } _svStdC = { raw, val }; return val; };
-  const saveSvStd = (o) => { try { localStorage.setItem('yosakura_demo_svstd', JSON.stringify(o)); } catch (e) {} };
+  const saveSvStd = (o) => { _svStdC = null; return svSaveSafely_('yosakura_demo_svstd', o, '基準'); };
   const svStdOf = (no) => getSvStd()[String(no)] || {};
   const svManLink = (id) => (getLinks().find(l => l.id === id) || (typeof MANUAL_BUILTIN !== 'undefined' ? MANUAL_BUILTIN.find(l => l.id === id) : null));
   function svStdHtml(it) {
@@ -3758,21 +3777,22 @@
       let d = null; try { d = await 写真をデータにする_(file); } catch (e) { d = null; } finally { 写真の操作を終える_(); }
       try { fi.value = ''; } catch (e) {}
       if (!d) { toast(L({ ja:'写真を読めませんでした。もう一度お試しください', en:'Could not read the photo.', vi:'Không đọc được ảnh.' })); return; }
-      const cur = svAns(it.no) || {}; const phs = (cur.photos || []).filter(Boolean).slice(0, 5); phs.push(d);
-      /* 行には写真をIDで持たせたい＝サーバーへは photos として送り、note には入れない（保存領域も食わない） */
+      const cur = svAns(it.no) || {}; const phsSend = (cur.photos || []).filter(Boolean).slice(0, 5); phsSend.push(d);
+      const thumb = await 写真を縮小_(d, 480); const phsLocal = (cur.photos || []).filter(Boolean).slice(0, 5); phsLocal.push(thumb);
+      /* 行には写真をIDで持たせたい＝サーバーへは元サイズを photos として送り、端末には縮小版だけ残す（同期でIDに置き換わる） */
       const all = getSv(); const k = svKey(it.no); const a = getAuth();
-      const next = Object.assign({}, cur, { photos: phs, by: (a && a.name) || '本部', t: Date.now() });
+      const next = Object.assign({}, cur, { photos: phsLocal, by: (a && a.name) || '本部', t: Date.now() });
       all[k] = next; saveSv(all);
-      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phs.length })), photos: phs, t: next.t });
+      postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phsSend.length })), photos: phsSend, t: next.t });
       svApplyDom();
     });
     /* 基準（あるべき姿）の登録＝本部共通。No ごとに1行（最新が正） */
-    const svStdPush = (no, patch, phs) => {
+    const svStdPush = (no, patch, phs, phsSend) => {
       const all = getSvStd(); const a = getAuth();
       const cur = Object.assign({}, all[String(no)] || {}, patch, { by: (a && a.name) || '本部', t: Date.now() });
       if (phs) cur.photos = phs;
       all[String(no)] = cur; saveSvStd(all);
-      const send = (cur.photos || []).filter(Boolean);
+      const send = (phsSend || cur.photos || []).filter(Boolean);
       postReport({ kind:'svstd', store:'本部', item:String(no), note: JSON.stringify(Object.assign({}, cur, { photos: undefined, nph: send.length })), photos: send, t: cur.t });
     };
     document.querySelectorAll('[data-svstdtext]').forEach(ta => { ta.onchange = () => { svStdPush(ta.dataset.svstdtext, { text: ta.value }); }; });
@@ -3782,8 +3802,9 @@
       let d = null; try { d = await 写真をデータにする_(file); } catch (e) { d = null; } finally { 写真の操作を終える_(); }
       try { fi.value = ''; } catch (e) {}
       if (!d) { toast(L({ ja:'画像を読めませんでした', en:'Could not read the image.', vi:'Không đọc được ảnh.' })); return; }
-      const phs = (svStdOf(no).photos || []).filter(Boolean).slice(0, 5); phs.push(d);
-      svStdPush(no, {}, phs);
+      const phsSend = (svStdOf(no).photos || []).filter(Boolean).slice(0, 5); phsSend.push(d);
+      const thumb = await 写真を縮小_(d, 480); const phsLocal = (svStdOf(no).photos || []).filter(Boolean).slice(0, 5); phsLocal.push(thumb);
+      svStdPush(no, {}, phsLocal, phsSend);
       svApplyDomFor_(no);   // 開いたままの基準欄でも反映（2026-09-17 神田さん「貼っても反映されない」）
       toast(L({ ja:'正解写真を登録しました（全店共通）', en:'Reference photo saved', vi:'Đã lưu ảnh chuẩn' }));
     });
@@ -4077,6 +4098,7 @@
         <div class="card svreport">
           <div class="svscore"><b>${sc.pct != null ? sc.pct + '%' : '—'}</b><span>${esc(L({ ja:'参考スコア（対象外を除く）', en:'Reference score', vi:'Điểm tham khảo' }))}</span></div>
           <div class="svcounts">○ ${sc.ok}　× ${sc.ng}　${esc(L({ ja:'対象外', en:'N/A', vi:'K/AD' }))} ${sc.na}　／　${esc(L({ ja:'未入力', en:'Blank', vi:'Trống' }))} ${sc.total - sc.ans}</div>
+          <div style="display:flex;justify-content:flex-end;margin:-4px 0 4px"><button type="button" class="mini" data-svrefresh="1">${esc(L({ ja:'最新の内容で更新', en:'Refresh', vi:'Cập nhật' }))}</button></div>
           <label class="fl">${esc(L({ ja:'総評（良かった点 → 気になる点 の順で）', en:'Summary', vi:'Tổng kết' }))}</label>
           <textarea id="sv_summary" rows="4">${esc(m.summary || '')}</textarea>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
@@ -7620,7 +7642,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -7629,6 +7651,8 @@
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
+      // 結果タブ＝最新の内容で描き直す（作成済みレポートも破棄）2026-09-17
+      if (t.dataset.svrefresh !== undefined) { svReadyClear_(); _svC = null; 最後の入力時刻 = 0; try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (err) {} render(true); toast(L({ ja:'最新の内容に更新しました', en:'Refreshed', vi:'Đã cập nhật' })); return; }
       // A4レポートの共有＝押した瞬間に共有シート（2026-09-17）
       if (t.dataset.svsharego !== undefined) {
         const r = window._svReady; if (!r) { toast(L({ ja:'先に「レポートを共有」でレポートを作ってください', en:'Build the report first.', vi:'Hãy tạo báo cáo trước.' })); return; }
