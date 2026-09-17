@@ -5119,7 +5119,7 @@ console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要�
   ok(/action=photo&id=/.test(srcH), 'レポートの写真はサーバー経由で取る（画像URL直読みは書き出せない）');
   ok(/const lt = Number\(\(curS\[k\] \|\| \{\}\)\.t\) \|\| 0; if \(lt > \(svcT\[k\] \|\| 0\)\) return;/.test(srcH), '★合流＝端末のほうが新しい入力は古い行で巻き戻さない（×が元に戻る不具合の再発防止）');
   ok(/indexOf\('\/app\/hqcheck'\) !== -1\) \{ try \{ svApplyDom\(\); \}/.test(srcH), '合流のときは画面を作り直さず項目だけ差し替える（プツプツ対策）');
-  ok(/data-svphoto=/.test(srcH) && /\.slice\(0, 5\); phsSend\.push\(d\)/.test(srcH), '写真は項目ごとに複数（最大6枚・1回1枚）');
+  ok(/data-svphoto=/.test(srcH) && /\.slice\(0, 5\); phsLocal\.push\(key\)/.test(srcH), '写真は項目ごとに複数（最大6枚・1回1枚）');
   seedAuth('kanda', 'hq'); await new Promise(r=>setTimeout(r, 50)); location.hash = '#/app/hqcheck';
   const hS = registry.app.innerHTML;
   ok(/details class="svstd" data-svstd="3"/.test(hS) && /基準（あるべき姿/.test(hS), '各項目に「基準（あるべき姿」の欄がある');
@@ -5404,13 +5404,23 @@ console.log('== A4レポートの共有＝作ってから押した瞬間に共�
 console.log('== 巡回チェック＝保存の失敗を黙らせない・端末は縮小版・レポートは更新（2026-09-17 神田さん）==');
 {
   ok(/const svSaveSafely_ = \(key, o, label\)/.test(code) && /r\.photos = r\.photos\.filter\(p => p && !isDataUrl\(p\)\)/.test(code), '保存に失敗したら写真を落として保存し直し、画面に知らせる');
-  ok(/const thumb = await 写真を縮小_\(d, 480\)/.test(code) && (code.match(/写真を縮小_\(d, 480\)/g) || []).length === 2, '端末には縮小版（480px）だけ残し、送るのは元サイズ（指摘写真・基準写真）');
+  ok((code.match(/const key = await photoLocalPut_\(d\)/g) || []).length === 2, '端末の保存領域に写真を置かない（IndexedDBのキーだけ）＝指摘写真・基準写真');
   ok(/const saveSv = \(o\) => \{ _svC = null; svReadyClear_\(\);/.test(code), '内容が変わったら作成済みレポートを破棄');
   const S = '牛カツ世桜 長堀橋店';
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); });
   location.hash = '#/app/hqcheck?tab=report&store=' + encodeURIComponent(S);
   ok(/data-svrefresh="1"/.test(registry.app.innerHTML) && /最新の内容で更新/.test(registry.app.innerHTML), '結果タブに「最新の内容で更新」ボタン');
   run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 巡回チェックの写真＝localStorage に置かない（IndexedDB）2026-09-17 神田さん ==');
+{
+  ok(/indexedDB\.open\('yosakura_photos', 1\)/.test(code) && /async function photoLocalPut_/.test(code), '写真の中身は IndexedDB へ');
+  ok((code.match(/const key = await photoLocalPut_\(d\)/g) || []).length === 2 && !/写真を縮小_\(d, 480\)/.test(code), '指摘写真・基準写真とも行には idb:キー だけ持つ');
+  ok((code.match(/photos: photosForSend_\(/g) || []).length >= 3 && /const send = photosForSend_\(/.test(code), '送るときは中身に戻す（行の送り直し・追加・削除・基準）');
+  ok(/const photoThumb = \(p\) => \(isDataUrl\(p\) \|\| isLocalPhoto\(p\)\) \? photoSrc_\(p\)/.test(code) && /if \(isDataUrl\(p\) \|\| isLocalPhoto\(p\)\) return done\(photoSrc_\(p\)\);/.test(code), '表示・レポートは idb: を中身に解決する');
+  ok(!/端末の保存領域がいっぱいのため/.test(code), '「保存領域がいっぱい」の通知は出さない');
+  ok(/photoLocalLoadAll_\(\)\.then/.test(code), '起動時に IndexedDB から読み込む');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
