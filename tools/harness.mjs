@@ -5119,7 +5119,7 @@ console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要�
   ok(/action=photo&id=/.test(srcH), 'レポートの写真はサーバー経由で取る（画像URL直読みは書き出せない）');
   ok(/const lt = Number\(\(curS\[k\] \|\| \{\}\)\.t\) \|\| 0; if \(lt > \(svcT\[k\] \|\| 0\)\) return;/.test(srcH), '★合流＝端末のほうが新しい入力は古い行で巻き戻さない（×が元に戻る不具合の再発防止）');
   ok(/indexOf\('\/app\/hqcheck'\) !== -1\) \{ try \{ svApplyDom\(\); \}/.test(srcH), '合流のときは画面を作り直さず項目だけ差し替える（プツプツ対策）');
-  ok(/data-svphoto=/.test(srcH) && /\.slice\(0, 5\); phs\.push\(d\)/.test(srcH), '写真は項目ごとに複数（最大6枚・1回1枚）');
+  ok(/data-svphoto=/.test(srcH) && /\.slice\(0, 5\); phsSend\.push\(d\)/.test(srcH), '写真は項目ごとに複数（最大6枚・1回1枚）');
   seedAuth('kanda', 'hq'); await new Promise(r=>setTimeout(r, 50)); location.hash = '#/app/hqcheck';
   const hS = registry.app.innerHTML;
   ok(/details class="svstd" data-svstd="3"/.test(hS) && /基準（あるべき姿/.test(hS), '各項目に「基準（あるべき姿」の欄がある');
