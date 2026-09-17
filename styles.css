@@ -833,3 +833,13 @@ html[data-theme="hp"] .numrow-m b { color: #8e3e3e; }
 .svh-vs { grid-column: 1 / -1; font-size: 11px; color: var(--sumi); }
 html[data-theme="hp"] .svh-c { border-radius: 0; }
 html[data-theme="hp"] .svc-line { stroke: #333333; } html[data-theme="hp"] .svc-dot { fill: #333333; }
+
+/* 巡回チェック＝実施時間・確認方法・表示する軸（2026-09-17） */
+.svhl { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray); flex: 1; min-width: 150px; }
+.svhl input, .svhl select { flex: 1; min-height: 38px; font: inherit; font-size: 15px; }
+.svaxis { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.svhl-t { font-size: 12px; color: var(--gray); margin-right: 2px; }
+.svax { font: inherit; font-size: 12px; padding: 7px 12px; min-height: 36px; border: 1px solid var(--line); background: #fff; border-radius: 16px; }
+.svax.on { background: var(--suou); color: #fff; border-color: var(--suou); }
+html[data-theme="hp"] .svax { border-radius: 0; }
+html[data-theme="hp"] .svax.on { background: #333333; border-color: #333333; }

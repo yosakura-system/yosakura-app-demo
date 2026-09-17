@@ -5327,5 +5327,28 @@ console.log('== 巡回チェックの履歴・比較（2026-09-17 神田さん�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 巡回チェック＝実施時間・確認方法・表示する軸（2026-09-17 神田さん）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const sv = {}; sv[`${S}|2026-09-17|meta`] = { time:'13:35', method:'video', summary:'' }; sv[`${S}|2026-09-17|3`] = { v:'ok', by:'神田', t:1 };
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
+  location.hash = '#/app/hqcheck?tab=gaikan&store=' + encodeURIComponent(S);
+  let h = registry.app.innerHTML;
+  ok(/id="sv_time"[^>]*value="13:35"/.test(h), '実施時間の欄があり、保存した値が入る');
+  ok(/id="sv_method"/.test(h) && /<option value="video" selected>② ビデオ通話/.test(h) && /① 防犯カメラ/.test(h) && /③ 現地入り/.test(h), '確認方法＝原本の①〜③から選べる（保存した②が選択）');
+  ok(/data-svaxis="all"/.test(h) && /data-svaxis="eisei"/.test(h) && /data-svaxis="okyakusama"/.test(h), '表示する軸＝すべて／衛生・安全／お客様目線');
+  ok(/No\.3/.test(h) && /暖簾/.test(h), 'すべて＝外観の項目（No.3）が出る');
+  location.hash = '#/app/hqcheck?tab=gaikan&axis=eisei';
+  h = registry.app.innerHTML;
+  ok(!/暖簾/.test(h) && /data-vctab="gaikan"[^>]*>外観<small>0\/0<\/small>/.test(h), '衛生・安全の軸＝外観（お客様目線のみ）は0/0で項目が出ない');
+  location.hash = '#/app/hqcheck?tab=kitchen&axis=eisei';
+  h = registry.app.innerHTML;
+  ok(/No\.87/.test(h) && /庫内温度/.test(h), '衛生・安全の軸＝キッチンの項目（No.87 庫内温度）が出る');
+  location.hash = '#/app/hqcheck?tab=report&axis=all';
+  h = registry.app.innerHTML;
+  ok(/方法：ビデオ通話/.test(h) && /実施：13:35/.test(h), 'レポート文に「方法」と「実施時間」が入る');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
