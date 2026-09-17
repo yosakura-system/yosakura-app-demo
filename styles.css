@@ -850,3 +850,8 @@ html[data-theme="hp"] .svax.on { background: #333333; border-color: #333333; }
 .svh-del { color: var(--gray); }
 .svh-del2 { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 0 10px; font-size: 12px; color: #a23b3b; }
 .svh-delgo { background: #a23b3b; color: #fff; border-color: #a23b3b; }
+
+/* A4レポート＝できあがりの案内（2026-09-17） */
+.svready { border: 1px solid var(--suou); background: var(--usuaka, #FBF1F2); padding: 10px 12px; margin: 8px 0 10px; }
+.svready-t { font-weight: 700; margin-bottom: 8px; }
+html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }

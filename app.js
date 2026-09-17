@@ -4010,12 +4010,33 @@
     if (asImages) files = jpegs.map((j, i) => new File([j.bytes], `${base}_${i + 1}.jpg`, { type: 'image/jpeg' }));
     else files = [new File([svJpegsToPdf_(jpegs)], `${base}.pdf`, { type: 'application/pdf' })];
     const text = svReportText();
-    try {
-      if (navigator.share && (!navigator.canShare || navigator.canShare({ files }))) { await navigator.share({ files, title: '世桜 巡回チェック', text }); return; }
-    } catch (e) { if (e && e.name === 'AbortError') return; }
-    /* 共有シートがファイルを受けない端末＝その場で開く（保存やLINEへの添付は開いた先から） */
-    try { const url = URL.createObjectURL(files[0]); window.open(url, '_blank'); toast(L({ ja:'共有シートが使えないため、レポートを別タブで開きました', en:'Opened the report in a new tab.', vi:'Đã mở báo cáo ở tab mới.' })); }
-    catch (e) { toast(L({ ja:'レポートを作れませんでした', en:'Could not build the report.', vi:'Không tạo được báo cáo.' })); }
+    /* ★iOSは「ボタンを押した直後」しか共有シートを開けない。写真を全部読むと作成に数秒かかり、その制限に引っかかって
+       「共有シートが使えない」になっていた（2026-09-17 神田さん）。→ できあがったら「共有」ボタンを出し、押した瞬間に開く */
+    window._svReady = { files, text, n: pages.length, kind: asImages ? 'img' : 'pdf', at: Date.now() };
+    const size = Math.round(files.reduce((a, f) => a + f.size, 0) / 1024 / 1024 * 10) / 10;
+    const host = document.querySelector('.svreport');
+    if (host) {
+      let panel = document.getElementById('svReadyPanel');
+      if (!panel) { panel = document.createElement('div'); panel.id = 'svReadyPanel'; panel.className = 'svready'; host.insertBefore(panel, host.querySelector('#svPdf') ? host.querySelector('#svPdf').parentElement : host.firstChild); }
+      panel.innerHTML = `<div class="svready-t">${esc(L({ ja:`レポートができました（${pages.length}ページ・${size}MB）`, en:`Report ready (${pages.length} pages, ${size}MB)`, vi:`Báo cáo đã sẵn sàng (${pages.length} trang, ${size}MB)` }))}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn-primary" data-svsharego="1" style="flex:2">${esc(L({ ja:'共有する（LINEなど）', en:'Share (LINE etc.)', vi:'Chia sẻ (LINE…)' }))}</button>
+          <button type="button" class="btn" data-svshareopen="1" style="flex:1">${esc(L({ ja:'開いて見る', en:'Open', vi:'Mở' }))}</button>
+        </div>
+        <div class="hint">${esc(L({ ja:'※ 共有はこのボタンを押した瞬間に開きます（作成中は開けません）。LINEを選ぶと添付されます。', en:'Share opens on tap. Choose LINE to attach.', vi:'Chia sẻ mở ngay khi chạm. Chọn LINE để đính kèm.' }))}</div>`;
+      panel.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      toast(L({ ja:'レポートができました。「共有する」を押してください', en:'Report ready. Tap Share.', vi:'Báo cáo đã sẵn sàng. Chạm Chia sẻ.' }));
+      return;
+    }
+    // 画面が結果タブでないとき＝従来どおりその場で試す
+    try { if (navigator.share && (!navigator.canShare || navigator.canShare({ files }))) { await navigator.share({ files, title: '世桜 巡回チェック', text }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    svOpenReady_();
+  }
+  /* 作ってあるレポートを開く（共有シートが使えない端末の逃げ道） */
+  function svOpenReady_() {
+    const r = window._svReady; if (!r) return;
+    try { const url = URL.createObjectURL(r.files[0]); window.open(url, '_blank'); toast(L({ ja:'レポートを別タブで開きました（保存やLINEへの添付は開いた先から）', en:'Opened in a new tab.', vi:'Đã mở ở tab mới.' })); }
+    catch (e) { toast(L({ ja:'レポートを開けませんでした', en:'Could not open the report.', vi:'Không mở được báo cáo.' })); }
   }
   APP_VIEWS.hqcheck = () => {
     const role = getRole(), isHQ = role === 'hq';
@@ -7599,7 +7620,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -7608,6 +7629,15 @@
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
       if (t.dataset.histdays) { localStorage.setItem('yosakura_hist_days', t.dataset.histdays); render(true); return; }
+      // A4レポートの共有＝押した瞬間に共有シート（2026-09-17）
+      if (t.dataset.svsharego !== undefined) {
+        const r = window._svReady; if (!r) { toast(L({ ja:'先に「レポートを共有」でレポートを作ってください', en:'Build the report first.', vi:'Hãy tạo báo cáo trước.' })); return; }
+        try {
+          if (navigator.share && (!navigator.canShare || navigator.canShare({ files: r.files }))) { navigator.share({ files: r.files, title: '世桜 巡回チェック', text: r.text }).catch(err => { if (!(err && err.name === 'AbortError')) svOpenReady_(); }); return; }
+        } catch (err) {}
+        svOpenReady_(); return;
+      }
+      if (t.dataset.svshareopen !== undefined) { svOpenReady_(); return; }
       // 巡回チェックの履歴＝その日の結果を削除（2段階）2026-09-17
       if (t.dataset.svdel !== undefined) { svState.delArm = svState.store + '|' + t.dataset.svdel; svState.tab = 'hist'; render(true); return; }
       if (t.dataset.svdelno !== undefined) { svState.delArm = ''; render(true); return; }
