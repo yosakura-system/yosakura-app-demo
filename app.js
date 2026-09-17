@@ -3543,6 +3543,10 @@
   const saveSv = (o) => { try { localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(o)); } catch (e) {} };
   const svTodayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   let svState = { store:'', date:'', tab:'', axis:'all' };   // 画面の選択（端末の中だけ）
+  /* ★店舗と日付は端末に覚える（2026-09-17 神田さん実機＝更新後に店舗の選択が先頭の店に戻り、入力が消えたように見えた）。中身は本部データにあるので消えていない */
+  const SV_SEL_LS = 'yosakura_sv_sel';
+  const svSelLoad_ = () => { try { const o = JSON.parse(localStorage.getItem(SV_SEL_LS) || '{}') || {}; if (o.store) svState.store = o.store; if (o.date) svState.date = o.date; } catch (e) {} };
+  const svSelSave_ = () => { try { localStorage.setItem(SV_SEL_LS, JSON.stringify({ store: svState.store, date: svState.date })); } catch (e) {} };
   /* 原本の2軸（本部チェックの見本アプリと同じ）＝①衛生・安全（満たして当たり前）／②お客様目線（積み上げ）。番号は原本のNo */
   const SV_EISEI = new Set([16, 18, 29, 47, 48, 70, 71, 87, 88, 91, 92, 94, 99, 101, 107, 108, 111]);
   const svAxis_ = (it) => SV_EISEI.has(it.no) ? 'eisei' : 'okyakusama';
@@ -3987,7 +3991,9 @@
     const stores = visibleStores();
     { const q = currentRoute().params; const qs = q.get('store'), qt = q.get('tab'), qa = q.get('axis'); if (qs && stores.includes(qs)) svState.store = qs; if (qt) svState.tab = qt; if (qa && SV_AXES.some(a => a[0] === qa)) svState.axis = qa; }
     if (!svState.store || !stores.includes(svState.store)) svState.store = (getStoreSel() !== 'all' && stores.includes(getStoreSel())) ? getStoreSel() : (stores[0] || '');
+    if (!svState.store && !svState.date) svSelLoad_();
     if (!svState.date) svState.date = svTodayStr();
+    svSelSave_();
     if (!svState.tab) svState.tab = SV_PHASES[0][0];
     const sc = svScore(); const m = svMeta();
     const cnt = (ph) => { const its = svItemsFor_(ph); return [its.filter(i => { const a = svAns(i.no); return a && a.v; }).length, its.length]; };
@@ -9473,8 +9479,8 @@
       return cur;
     };
     document.querySelectorAll('[data-vctab]').forEach(b => b.onclick = () => { svState.tab = b.dataset.vctab; try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {} 最後の入力時刻 = 0; render(); });   // ※data-svtab はサーベイのタブで使用済み
-    const svStore = byId('sv_store'); if (svStore) svStore.onchange = () => { svState.store = svStore.value; render(true); };
-    const svDate = byId('sv_date'); if (svDate) svDate.onchange = () => { svState.date = svDate.value || svTodayStr(); render(true); };
+    const svStore = byId('sv_store'); if (svStore) svStore.onchange = () => { svState.store = svStore.value; svSelSave_(); render(true); };
+    const svDate = byId('sv_date'); if (svDate) svDate.onchange = () => { svState.date = svDate.value || svTodayStr(); svSelSave_(); render(true); };
     bindSvItems_();
     ['sv_menu', 'sv_orderAt', 'sv_servedAt', 'sv_summary', 'sv_time', 'sv_method'].forEach(id => {
       const el = byId(id); if (!el) return;
