@@ -868,3 +868,22 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 .kslot-n.over { color: #fff; background: var(--suou); }
 .kslot > .tsub, .kslot > .item, .kslot > div { margin: 0 8px 8px; }
 
+/* 在庫（数と発注）2026-09-18 */
+.zk-low { border: 2px solid var(--suou); background: #fbf1f2; }
+.zk-low h3 { color: var(--suou); }
+.zk-n { display: inline-block; min-width: 20px; padding: 1px 7px; border-radius: 10px; background: var(--suou); color: #fff; font-size: 12px; font-weight: 700; text-align: center; }
+.zk-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.zk-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.zk-row span { color: #a33; font-size: 13px; }
+.zk-in { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.zk-in label { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.zk-in label small { color: #8a8478; font-size: 11px; }
+.zk-in input { width: 92px; flex: none; text-align: right; padding: 10px 8px; }
+.zk-in.low input { border-color: var(--suou); background: #fbf1f2; }
+.zk-head, .zk-edit { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+.zk-head span { font-size: 11px; color: #8a8478; }
+.zk-head span:nth-child(1), .zk-edit input:nth-child(1) { flex: 1.4; min-width: 0; }
+.zk-head span:nth-child(2), .zk-edit input:nth-child(2) { flex: 0.6; min-width: 0; text-align: right; }
+.zk-head span:nth-child(3), .zk-edit input:nth-child(3) { flex: 0.5; min-width: 0; }
+.zk-edit input { padding: 10px 8px; }
+
