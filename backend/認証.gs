@@ -19,6 +19,8 @@
  *   認証_共有パスワードを設定('uid', 'パスワード')
  *     店舗の共有ID（店舗iPad＋スタッフのスマホで使い回す）用。初回変更の強制なし＝本部が決めたパスワードをそのまま全員で使う。
  *     実行すると全端末が強制ログアウト＝月1回の定期リセット・退職者が出た当日のリセットはこれ（2026-09-18 神田さん）
+ *   認証_月次リセットの予約()   … 毎月1日 9時に「店舗iPadのID（ipad-*）だけ」を自動リセットする予約を入れる（1回実行すればよい）
+ *   認証_店舗IDを月次リセット() … 予約から自動で走る本体。個人名義（店長・オーナー・本部）は触らない。新パスワードは本部のメールへ
  *   認証_一覧()   … 登録状況をログに出す（ハッシュは出さない）
  *   認証_削除('uid')
  *
@@ -122,6 +124,42 @@ function 認証_共有パスワードを設定(uid, pw) {
   auth_write_(rec);
   var out = { 結果: '共有パスワードを設定・全端末ログアウト', uid: uid, 名前: rec.name, 役割: rec.role, 店舗: rec.stores, 同時ログイン上限: AUTH_TOKEN_MAX };
   Logger.log(JSON.stringify(out)); return out;
+}
+/* ★2026-09-18 神田さん「個人名義のIDは除外して、店舗iPadのIDだけ月1回リセット」
+   対象＝uid が 'ipad-' で始まり、役割が staff のものだけ。店長・オーナー・本部の個人IDは一切触らない。
+   新しいパスワードは「店舗の略称-年月-数字4桁」（例 gyukatsu-2610-4821）で自動生成し、
+   シートには保存せず（ハッシュのみ）、本部のメール（Script Properties の AUTH_RESET_MAIL、無ければこのスクリプトの持ち主）へ送る。
+   実行のたびに対象IDの全端末が強制ログアウト＝店舗iPadも含めて新パスワードで入り直し。 */
+function 認証_店舗IDを月次リセット() {
+  var now = new Date(); var ym = Utilities.formatDate(now, 'Asia/Tokyo', 'yyMM');
+  var rows = auth_rows_().filter(function (r) { return String(r.uid).indexOf('ipad-') === 0 && String(r.role) === 'staff'; });
+  var lines = [], done = [];
+  rows.forEach(function (rec) {
+    var pw = String(rec.uid).replace(/^ipad-/, '') + '-' + ym + '-' + String(Math.floor(1000 + Math.random() * 9000));
+    rec.hash = auth_hash_(rec.uid, pw); rec.must_change = 'false'; rec.tokens = '[]'; rec.updated = now;
+    auth_write_(rec);
+    lines.push(rec.stores + '　ID: ' + rec.uid + '　新パスワード: ' + pw);
+    done.push({ uid: rec.uid, 店舗: rec.stores });
+  });
+  var to = getSetting_('AUTH_RESET_MAIL', '') || Session.getEffectiveUser().getEmail();
+  if (done.length) {
+    MailApp.sendEmail({ to: to, subject: '【世桜アプリ】店舗IDのパスワードを更新しました（' + Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy/MM/dd') + '）',
+      body: '店舗iPadのID（スタッフのスマホと共有）のパスワードを月次で更新しました。\n店長へ新しいパスワードを伝えてください（iPadも入り直しが必要です）。\n個人名義のID（店長・オーナー・本部）は変更していません。\n\n' + lines.join('\n') + '\n\n※このメールは自動送信です。パスワードはシートには保存されていません（このメールが控えです）。' });
+  }
+  var out = { 結果: '店舗IDを月次リセット', 件数: done.length, 対象: done, 通知先: to, 個人名義: '変更なし' };
+  Logger.log(JSON.stringify(out)); return out;
+}
+/* 予約＝毎月1日の9時（日本時間）。既に予約があれば増やさない。 */
+function 認証_月次リセットの予約() {
+  var exists = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === '認証_店舗IDを月次リセット'; });
+  if (exists.length) { Logger.log('予約済み（' + exists.length + '件）'); return { 結果: '予約済み' }; }
+  ScriptApp.newTrigger('認証_店舗IDを月次リセット').timeBased().onMonthDay(1).atHour(9).inTimezone('Asia/Tokyo').create();
+  Logger.log('予約しました：毎月1日 9時に店舗iPadのID（ipad-*）だけをリセット');
+  return { 結果: '予約しました', いつ: '毎月1日 9時', 対象: 'ipad-* のみ（個人名義は対象外）' };
+}
+function 認証_月次リセットの予約を解除() {
+  var n = 0; ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === '認証_店舗IDを月次リセット') { ScriptApp.deleteTrigger(t); n++; } });
+  Logger.log('解除: ' + n + '件'); return { 結果: '解除', 件数: n };
 }
 function 認証_一覧() {
   var out = auth_rows_().map(function (r) {

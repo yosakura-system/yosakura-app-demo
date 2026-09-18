@@ -4881,6 +4881,7 @@ console.log('== ログインが外れたときは理由を出す（2026-09-03 �
   const auth = fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8');
   ok(/var AUTH_TOKEN_MAX = 20;/.test(auth), '同時に使える端末の上限を20へ（店舗IDをスタッフのスマホで共有）（要GAS貼り替え）');
   ok(/function 認証_共有パスワードを設定\(uid, pw\)/.test(auth) && /rec.must_change = 'false'/.test(auth), '共有IDのパスワード設定＝初回変更なし・全端末ログアウト（要GAS貼り替え）');
+  ok(/function 認証_店舗IDを月次リセット\(\)/.test(auth) && /indexOf\('ipad-'\) === 0 && String\(r\.role\) === 'staff'/.test(auth) && /onMonthDay\(1\)/.test(auth), '月次リセット＝店舗iPadのID（ipad-*・staff）だけ・毎月1日（個人名義は対象外・要GAS貼り替え）');
 }
 
 console.log('== ログインの保存は確かめてから進む（2026-09-14 本店iPad＝保存領域いっぱいで無言でログイン画面に戻り続けた）==');
