@@ -5507,5 +5507,23 @@ console.log('== 月次数値・棚卸＝売上・仕入は総括表の月合計�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 総括表からの月次（棚卸）取込＝期首・仕入・期末だけの月でも原価率が出る（2026-09-18）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const ym = new Date().toISOString().slice(0, 7);
+  const sk = [{ store:S, date: ym + '-01', sales: 1000000, buy: 10, guests: 50, t: Date.now() - 86400e3 }];
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'history'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(sk)); localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store:S, ym, open: 478134, purchase: 2696096, close: 123199, src:'drive', t: Date.now() }])); });
+  location.hash = '#/app/pl';
+  const h = registry.app.innerHTML;
+  ok(/305\.1%|305\.1/.test(h), '取込の月（売上無し）でも日報の売上で原価率が出る＝(478,134+2,696,096−123,199)/1,000,000=305.1%');
+  {
+    const gs = fs.readFileSync(APP.replace(/app\.js$/, 'backend/総括表取り込み.gs'), 'utf8');
+    ok(/function sk_月次を読む_\(ss, ym\)/.test(gs) && /期首棚卸高/.test(gs) && /期末棚卸高/.test(gs), '総括表取り込み＝期首・仕入・期末棚卸高を読む（要GAS貼り替え）');
+    ok(/if \(mcur && !mcur\.src\) \{ 結果\.月次\.アプリ優先\+\+; \}/.test(gs), 'アプリで入力した月は取込で上書きしない');
+    ok(/if \(o\.open == null && o\.purchase == null && o\.close == null\) return null;/.test(gs), '空欄・0の月は取り込まない');
+  }
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

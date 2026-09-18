@@ -307,6 +307,63 @@ function sk_既存の値_() {
   return map;
 }
 
+/* ★2026-09-18 追加＝月次の棚卸（期首棚卸高・当月仕入高・期末棚卸高）も読む（神田さん「8月末の在庫高はドライブにある→アプリへ自動で」）
+   【総括表】タブの「期首棚卸高」「当月仕入高」「期末棚卸高」の行を文字で探し、「合計」列（無ければ行の右端の数字）を取る。
+   アプリ側の monthly（店舗×月・最新が正）へ、src:'drive' の印を付けて追記する。
+   ・アプリで入力した月（src無し）があればアプリが正＝取込は足さない
+   ・0や空欄は「未入力」として持たない（期首0のまま原価率が跳ねるのを防ぐ） */
+function sk_月次を読む_(ss, ym) {
+  var sheets = ss.getSheets();
+  for (var s = 0; s < sheets.length; s++) {
+    var sh = sheets[s];
+    var rows = Math.min(sh.getLastRow(), 60), cols = Math.min(sh.getLastColumn(), 20);
+    if (rows < 5 || cols < 3) continue;
+    var vals = sh.getRange(1, 1, rows, cols).getValues();
+    var rOpen = -1, rBuy = -1, rClose = -1, cLabel = -1;
+    for (var r = 0; r < rows; r++) for (var c = 0; c < Math.min(cols, 4); c++) {
+      var v = String(vals[r][c] || '');
+      if (v.indexOf('期首棚卸高') !== -1) { rOpen = r; cLabel = c; }
+      else if (v.indexOf('当月仕入高') !== -1) rBuy = r;
+      else if (v.indexOf('期末棚卸高') !== -1) rClose = r;
+    }
+    if (rOpen < 0 || rClose < 0) continue;
+    // 「合計」列＝見出し行（期首の上5行以内）で探す。無ければ行の右端の数字
+    var cTotal = -1;
+    for (var hr = Math.max(0, rOpen - 5); hr < rOpen && cTotal < 0; hr++) for (var hc = cLabel + 1; hc < cols; hc++) if (String(vals[hr][hc] || '').indexOf('合計') !== -1) { cTotal = hc; break; }
+    var pick = function (r) {
+      if (r < 0) return null;
+      if (cTotal >= 0) { var n = sk_num_(vals[r][cTotal]); if (n != null) return n; }
+      for (var c = cols - 1; c > cLabel; c--) { var m = sk_num_(vals[r][c]); if (m != null) return m; }
+      return null;
+    };
+    var o = { ym: ym.slice(0, 4) + '-' + ym.slice(4, 6), src: SK_SRC_TAG };
+    var open = pick(rOpen), buy = pick(rBuy), close = pick(rClose);
+    if (open != null && open > 0) o.open = Math.round(open);
+    if (buy != null && buy > 0) o.purchase = Math.round(buy);
+    if (close != null && close > 0) o.close = Math.round(close);
+    if (o.open == null && o.purchase == null && o.close == null) return null;   // 何も入っていない月
+    return o;
+  }
+  return null;
+}
+function sk_月次既存_() {
+  var sh = getSheet();
+  var last = sh.getLastRow();
+  var map = {};
+  if (last < 2) return map;
+  var vals = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i][2]) !== 'monthly') continue;
+    var t = Number(vals[i][1]) || 0;
+    var p; try { p = JSON.parse(vals[i][6] || '{}'); } catch (e) { continue; }
+    if (!p.ym) continue;
+    var k = String(vals[i][3]) + '|' + p.ym;
+    if (!map[k] || t >= map[k].t) map[k] = { t: t, p: p, src: p.src || '' };
+  }
+  return map;
+}
+function sk_月次canon_(p) { return JSON.stringify({ open: p.open == null ? null : p.open, purchase: p.purchase == null ? null : p.purchase, close: p.close == null ? null : p.close }); }
+
 var SK_TIME_BUDGET_MS = 4.5 * 60 * 1000;
 var SK_DONE_KEY = 'SK_ZENKIKAN_DONE';
 function sk_済み_() { try { return JSON.parse(getSetting_(SK_DONE_KEY, '[]')) || []; } catch (e) { return []; } }
@@ -316,8 +373,9 @@ function sk_実行_(書き込む, 全期間, 予算ms) {
   var 予算 = 予算ms || SK_TIME_BUDGET_MS;
   var list = sk_設定_();
   var 既存 = sk_既存の値_();
+  var 月次既存 = sk_月次既存_();
   var sh = 書き込む ? getSheet() : null;
-  var 結果 = { 新規: 0, 更新: 0, 変わらず: 0, 店舗: {}, エラー: [] };
+  var 結果 = { 新規: 0, 更新: 0, 変わらず: 0, 月次: { 新規: 0, 更新: 0, 変わらず: 0, アプリ優先: 0 }, 店舗: {}, エラー: [] };
   var 済み = (全期間 && 書き込む) ? sk_済み_() : [];
   var props = PropertiesService.getScriptProperties();
   var 今日ms = Date.now();
@@ -336,6 +394,19 @@ function sk_実行_(書き込む, 全期間, 予算ms) {
       if (!books.length) throw new Error((全期間 ? '（YYYYMM）の付いたブック' : '今月・前月のブック') + 'が見つかりません（フォルダ内の命名＝（YYYYMM）を確認）');
       books.forEach(function (b) {
         var ss = SpreadsheetApp.openById(b.id);
+        /* ★月次（棚卸）＝ブックごとに1件。アプリで入力済みの月はアプリが正 */
+        try {
+          var mo = sk_月次を読む_(ss, b.ym);
+          if (mo) {
+            var mk = src.store + '|' + mo.ym; var mcur = 月次既存[mk];
+            if (mcur && !mcur.src) { 結果.月次.アプリ優先++; }
+            else if (mcur && sk_月次canon_(mcur.p) === sk_月次canon_(mo)) { 結果.月次.変わらず++; }
+            else {
+              if (mcur) 結果.月次.更新++; else 結果.月次.新規++;
+              if (書き込む) { 追記.push([Utilities.getUuid(), Date.now(), 'monthly', src.store, '', '', JSON.stringify(mo), '[]']); 月次既存[mk] = { t: Date.now(), p: mo, src: SK_SRC_TAG }; }
+            }
+          }
+        } catch (e) { 結果.エラー.push({ 店舗: src.store, 理由: '月次（棚卸）: ' + String(e.message || e) }); }
         sk_台帳を読む_(ss, b.ym).forEach(function (d) {
           /* ★日別タブの詳細は「直近3日」だけ毎時読む（31タブ×全店を毎時読むと時間切れになるため）。
              全期間の取り込みでは全日読む＝過去日の項目もこの1回で埋まる */
