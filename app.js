@@ -1302,6 +1302,8 @@
         <button id="installBtn">${L({ ja:'追加', en:'Add', vi:'Thêm' })}</button>
       </div>`;
   }
+  const HOME_TAB_LS = 'yosakura_home_tab';
+  const homeTabSel_ = () => { try { const v = localStorage.getItem(HOME_TAB_LS) || ''; return ['today', 'news', 'menu'].includes(v) ? v : 'today'; } catch (e) { return 'today'; } };
   function homeInner(role) {
     const tiles = (ids) => ids.map(appById).filter(a => a && !appHidden(a) && canOpen(a, role)).map(a => tileHTML(a, role)).join('');
     const primary = tiles(getPins());
@@ -1422,11 +1424,10 @@
     const dutySection = sec({ ja:'提出・業務', en:'Tasks', vi:'Nhiệm vụ' }) + dutyBlock;
     const newsSection = hqReplyCard + news + communityCard;   // 返答はお知らせ欄の先頭（2026-08-31）
     const isStoreSide = role !== 'hq';
-    return `
-      <main class="screen">
-        ${isHp() ? hpHero_() : `<div class="brandhead"><img class="brandhead__logo" src="${IMG_LOGO}" alt="日本料理 世桜 -yosakura-"></div>`}
-        ${installCardHTML()}
-        ${(() => {
+    /* ★ホームは3タブ（2026-09-18 神田さん「スクロールする画面は全部タブに」）
+       きょう＝引き継ぎ・締切超過・数字の要確認・提出/業務／お知らせ＝返答・お知らせ・みんなの投稿／メニュー＝よく使う・緊急・入口
+       全部描いて hidden で切り替える（タブ切替で描き直さない・テストは中身を見られる） */
+    const handoverCard = (() => {
           /* ★店内の引き継ぎ＝ホームのいちばん上（2026-09-08 神田さんのご指示＝出勤して開いた最初に見える）。
              1店舗の画面のときだけ出す（本部・複数店オーナーのホームには出さない＝店舗の中で閉じる情報） */
           if (!isStoreSide || visibleStores().length !== 1) return '';
@@ -1449,15 +1450,36 @@
             ${ho.open.length > 5 ? `<p class="hint" style="display:block">${L({ ja:'ほか', en:'+', vi:'+' })}${ho.open.length - 5}${L({ ja:'件は「すべて見る」から。', en:' more in the board.', vi:' mục nữa.' })}</p>` : ''}
             <button class="mini" data-open="handover" style="margin-top:6px">${L({ ja:'すべて見る・引き継ぎを書く', en:'Open board / write', vi:'Xem tất cả / viết' })}</button>
           </div>`;
-        })()}
-        ${remind}${numCard}
-        ${isStoreSide ? dutySection + newsSection : newsSection + dutySection}
-        ${sec({ ja:'よく使う', en:'Quick access', vi:'Hay dùng' })}
-        ${primary ? `<div class="grid">${primary}</div>` : ''}
-        <button class="homelink" id="pinEdit"><span class="hl-ic" style="font-size:20px;text-align:center">＋</span><span class="hl-t">${primary ? L({ ja:'よく使うを編集', en:'Edit quick access', vi:'Sửa lối tắt' }) : L({ ja:'よく使う機能を追加', en:'Add quick access', vi:'Thêm lối tắt' })}</span><span class="hl-c">${svg('chev')}</span></button>
-        ${safety ? sec({ ja:'緊急', en:'Emergency', vi:'Khẩn cấp' }) + `<div class="grid">${safety}</div>` : ''}
-        ${sec({ ja:'メニュー', en:'Menu', vi:'Menu' })}
-        ${links}
+        })();
+    const handoverHot = /news-card--imp/.test(handoverCard);
+    const homeTab = homeTabSel_();
+    const hot = { today: !!remind || !!numCard || handoverHot, news: !!(latest && latest.level === 'important') };
+    const homeTabs = `<div class="home-tabs" role="tablist">
+      ${[['today', { ja:'きょう', en:'Today', vi:'Hôm nay' }], ['news', { ja:'お知らせ', en:'News', vi:'Thông báo' }], ['menu', { ja:'メニュー', en:'Menu', vi:'Menu' }]]
+        .map(([v, t]) => `<button type="button" class="htab${homeTab === v ? ' on' : ''}" data-htab="${v}">${esc(L(t))}${hot[v] ? '<span class="hdot"></span>' : ''}</button>`).join('')}
+    </div>`;
+    return `
+      <main class="screen">
+        ${isHp() ? hpHero_() : `<div class="brandhead"><img class="brandhead__logo" src="${IMG_LOGO}" alt="日本料理 世桜 -yosakura-"></div>`}
+        ${installCardHTML()}
+        ${homeTabs}
+        <section class="hpane" data-hpane="today"${homeTab === 'today' ? '' : ' hidden'}>
+          ${handoverCard}
+          ${remind}${numCard}
+          ${dutySection}
+          ${!remind && !numCard && !handoverHot ? `<p class="hint" style="display:block">${L({ ja:'いま急ぎの確認はありません。', en:'Nothing urgent right now.', vi:'Hiện không có việc gấp.' })}</p>` : ''}
+        </section>
+        <section class="hpane" data-hpane="news"${homeTab === 'news' ? '' : ' hidden'}>
+          ${newsSection || `<p class="hint" style="display:block">${L({ ja:'お知らせはまだありません。', en:'No news yet.', vi:'Chưa có thông báo.' })}</p>`}
+        </section>
+        <section class="hpane" data-hpane="menu"${homeTab === 'menu' ? '' : ' hidden'}>
+          ${sec({ ja:'よく使う', en:'Quick access', vi:'Hay dùng' })}
+          ${primary ? `<div class="grid">${primary}</div>` : ''}
+          <button class="homelink" id="pinEdit"><span class="hl-ic" style="font-size:20px;text-align:center">＋</span><span class="hl-t">${primary ? L({ ja:'よく使うを編集', en:'Edit quick access', vi:'Sửa mục hay dùng' }) : L({ ja:'よく使う機能を選ぶ', en:'Choose quick access', vi:'Chọn mục hay dùng' })}</span><span class="hl-c">${svg('chev')}</span></button>
+          ${safety ? sec({ ja:'緊急', en:'Emergency', vi:'Khẩn cấp' }) + `<div class="grid">${safety}</div>` : ''}
+          ${sec({ ja:'メニュー', en:'Menu', vi:'Menu' })}
+          ${links}
+        </section>
         <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}${buildNote()}</div>
       </main>`;
   }
@@ -2989,6 +3011,13 @@
       }).join('');
       return `<div class="card"><h3 style="font-size:13px">${esc(storeLabel(store))}</h3><div class="dgrid">${cells}</div></div>`;
     };
+    /* ★店舗が多いと縦に長い（本部＝12店×カード）→ 1店1行の表（2026-09-18 神田さん）。セル＝実施数/全体（未実施は赤・完了は緑） */
+    const trow = (store) => `<tr><th>${esc(storeShort(store))}</th>${CK_MODES.map(m => { const total = ckTotalOf(store, m.v) || 1; const n = ckDoneCountOf(store, m.v); const cls = n === 0 ? 'r' : (n >= total ? 'g' : 'y'); const meta = getCkMeta()[ckDoneKey(store, m.v)] || {}; return `<td class="${cls}">${n}/${total}${meta.by ? `<small>${esc(meta.by)}</small>` : ''}</td>`; }).join('')}</tr>`;
+    const table = `<div class="card ckov"><table><thead><tr><th>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</th>${CK_MODES.map(m => `<th>${esc(L(m.t))}</th>`).join('')}</tr></thead><tbody>${vis.map(trow).join('')}</tbody></table>
+      <div class="hint">${L({ ja:'赤＝未実施／黄＝途中／緑＝完了。だれが実施したかは店舗を選ぶと見られます（右上の店舗から）。', en:'Red = not started / yellow = partial / green = done.', vi:'Đỏ = chưa / vàng = dở / xanh = xong.' })}</div></div>`;
+    if (vis.length > 4) return `
+      ${NOTE({ ja:'◆ 各店の本日の点検状況（1店1行）。チェックは各店舗の画面で行います', en:'◆ Today\'s check status by store (one row per store).', vi:'◆ Tình trạng kiểm tra hôm nay theo cửa hàng.' })}
+      ${table}`;
     return `
       ${NOTE({ ja:'◆ 各店の本日の点検状況です。どなたが実施したかも表示します（チェックは各店舗の画面で行います）', en:'◆ Today\'s check status by store, including who did it', vi:'◆ Tình trạng kiểm tra hôm nay theo cửa hàng' })}
       ${vis.map(row).join('')}
@@ -5882,8 +5911,17 @@
     const isHQ = getRole() === 'hq' && getStoreSel() === 'all';
     const vis = visibleStores();
     const idx = isHQ ? MTG.map((_,i)=>i) : [...new Set(vis.map(s=>MTG_OF[s]).filter(i=>i!==undefined))];
-    const list = idx.map(i=>MTG[i]);
+    let list = idx.map(i=>MTG[i]);
+    /* ★本部＝6店のカードが縦に並ぶ → 店舗チップで1店ずつ（2026-09-18） */
+    let chips = '';
+    if (isHQ && idx.length > 1) {
+      let sel = ''; try { sel = localStorage.getItem('yosakura_mtg_sel') || ''; } catch (e) {}
+      if (!/^\d+$/.test(sel) || !idx.includes(Number(sel))) sel = String(idx[0]);
+      chips = `<div class="kchips">${idx.map(i => `<button type="button" class="kchip${String(i) === sel ? ' on' : ''}" data-mtgsel="${i}">${esc(L(MTG[i][0]))}</button>`).join('')}</div>`;
+      list = [MTG[Number(sel)]];
+    }
     return `
+      ${chips}
       ${NOTE(isHQ ? { ja:'◆ 全店の月例MTGと議題を一元管理（実データ反映）', en:'◆ All stores monthly meetings & agendas (live data)', vi:'◆ Họp & nội dung mọi cửa hàng (dữ liệu thật)' } : { ja:'◆ 自店の月例MTGと議題（実データ反映）', en:'◆ Your store monthly meeting & agenda (live data)', vi:'◆ Họp & nội dung cửa hàng của bạn (dữ liệu thật)' })}
       ${list.length ? list.map(([name,when,items])=>`
         <div class="card">
@@ -7851,7 +7889,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-htab],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -7880,6 +7918,14 @@
       // 巡回チェックの履歴＝店舗行を押す→その店の年間推移／訪問を押す→その日の結果（2026-09-17）
       if (t.dataset.svhist !== undefined) { svState.store = t.dataset.svhist; svState.tab = 'hist'; 最後の入力時刻 = 0; render(true); return; }
       if (t.dataset.svopen !== undefined) { svState.date = t.dataset.svopen; svState.tab = 'report'; 最後の入力時刻 = 0; render(true); return; }
+      if (t.dataset.htab !== undefined) {
+        const v = t.dataset.htab; try { localStorage.setItem(HOME_TAB_LS, v); } catch (e) {}
+        document.querySelectorAll('[data-htab]').forEach(b => b.classList.toggle('on', b.dataset.htab === v));
+        document.querySelectorAll('[data-hpane]').forEach(p => { p.hidden = p.dataset.hpane !== v; });
+        try { window.scrollTo(0, 0); } catch (e) {}
+        return;
+      }
+      if (t.dataset.mtgsel !== undefined) { try { localStorage.setItem('yosakura_mtg_sel', t.dataset.mtgsel); } catch (e) {} render(true); return; }
       if (t.dataset.zktab !== undefined) { try { localStorage.setItem(ZK_LS_TAB, t.dataset.zktab); } catch (e) {} render(true); return; }
       if (t.dataset.zkorder !== undefined) {
         if (!zkMgr()) return;

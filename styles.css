@@ -887,3 +887,15 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 .zk-head span:nth-child(3), .zk-edit input:nth-child(3) { flex: 0.5; min-width: 0; }
 .zk-edit input { padding: 10px 8px; }
 
+/* ホームの3タブ（2026-09-18） */
+.home-tabs { display: flex; gap: 6px; margin: 4px 0 12px; border-bottom: 1px solid var(--line); }
+.htab { position: relative; flex: 1; font: inherit; font-size: 14px; padding: 10px 6px; background: none; border: 0; border-bottom: 3px solid transparent; color: var(--gray); min-height: 44px; }
+.htab.on { color: var(--suou); border-bottom-color: var(--suou); font-weight: 700; }
+.htab .hdot { position: absolute; top: 8px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: #c0392b; }
+.hpane[hidden] { display: none; }
+/* 本部の点検一覧＝1店1行 */
+.ckov table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ckov th, .ckov td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
+.ckov tbody th { text-align: left; font-weight: 600; }
+.ckov td.r { color: #a23b3b; background: #fbf1f2; } .ckov td.y { color: #8a6d00; background: #fff9e6; } .ckov td.g { color: #2a7; background: #eef7f0; }
+.ckov td small { display: block; font-size: 10px; color: var(--gray); white-space: normal; }
