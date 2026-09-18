@@ -2167,7 +2167,7 @@
     const m = zkMaster(store), l = zkLatest(store), low = zkLow(store), ord = zkOrdered(store);
     const today = dateKeyFor(store, Date.now());
     const tabs = [['in', { ja:'在庫数を入力', en:'Enter counts', vi:'Nhập tồn' }], ['order', { ja:'発注リスト', en:'Order list', vi:'Đặt hàng' }]].concat(zkMgr() ? [['items', { ja:'品目・基準在庫', en:'Items & minimums', vi:'Mặt hàng & định mức' }]] : []);
-    const tabBar = `<div class="segs">${tabs.map(([v, t]) => `<button type="button" class="seg ${tab === v ? 'on' : ''}" data-zktab="${v}">${esc(L(t))}${v === 'order' && low.length ? ` <span class="zk-n">${low.length}</span>` : ''}</button>`).join('')}</div>`;
+    const tabBar = `<div class="seg" style="margin-bottom:10px">${tabs.map(([v, t]) => `<button type="button" class="${tab === v ? 'on' : ''}" data-zktab="${v}">${esc(L(t))}${v === 'order' && low.length ? ` <span class="zk-n">${low.length}</span>` : ''}</button>`).join('')}</div>`;
     const storeSel = vis.length > 1 ? `<label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="zk_store">${vis.map(x => `<option${x === store ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : '';
     let body = '';
     if (tab === 'in') {
@@ -2196,7 +2196,7 @@
       body = `
         <div class="hint" style="display:block">${L({ ja:'在庫チェック表と同じ順で品目を入れてください。基準在庫＝これを下回ったら発注する数。単位は「本」「袋」「kg」など。', en:'List items in the same order as the stock sheet. Minimum = order when below this.', vi:'Nhập mặt hàng theo thứ tự bảng kiểm kho. Định mức = đặt hàng khi thấp hơn.' })}</div>
         <div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span></div>
-        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="idlabel" style="margin-top:${i ? 12 : 2}px">${esc(r.g)}</div>` : ''}<div class="zk-edit"><input type="hidden" id="zk_g${i}" value="${esc(r.g || '')}"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="0"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'本', en:'pcs', vi:'cái' })}"></div>`).join('')}
+        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="idlabel" style="margin-top:${i ? 12 : 2}px">${esc(r.g)}</div>` : ''}<input type="hidden" id="zk_g${i}" value="${esc(r.g || '')}"><div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="0"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'本', en:'pcs', vi:'cái' })}"></div>`).join('')}
         <div style="margin:6px 0 10px"><button class="mini" id="zkFromTana">${L({ ja:'月次棚卸の品目を取り込む', en:'Import stocktake items', vi:'Nhập mặt hàng từ kiểm kê' })}${(() => { const n = zkTanaNames(store).length; return n ? `（${n}）` : ''; })()}</button>
           <span class="muted" style="font-size:12px">${L({ ja:'棚卸と同じ品目名にそろえると、月末の棚卸がそのまま使えます', en:'Use the same names as the stocktake', vi:'Dùng cùng tên với kiểm kê' })}</span></div>
         <button class="btn-primary" id="saveZkMaster">${L({ ja:'品目と基準在庫を保存する', en:'Save items', vi:'Lưu mặt hàng' })}</button>
