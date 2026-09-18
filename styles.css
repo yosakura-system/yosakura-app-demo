@@ -206,7 +206,8 @@ input[type=text], input[type=password], input[type=date], select, textarea {
 /* iOSのdate入力は固有の最小幅を持ち列からはみ出るため、ネイティブ装飾を外して列内に収める */
 input[type=date] { -webkit-appearance: none; appearance: none; min-width: 0; text-align: left; }
 /* 総括表など多項目フォームの2カラム配置 */
-.sk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.sk-grid { display: grid; grid-template-columns: 1fr; gap: 0 12px; }   /* 入力欄は縦1列（2026-09-18 神田さん「横に広がって入力しにくい」）。広い画面（PC）だけ2列 */
+@media (min-width: 900px) { .sk-grid { grid-template-columns: 1fr 1fr; } }
 .sk-grid { min-width: 0; }
 .sk-grid .fld { min-width: 0; }
 .sk-grid .fld input, .sk-grid .fld select { min-width: 0; }

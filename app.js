@@ -1964,7 +1964,7 @@
         <label class="fld"><span>${L({ ja:'報告の種類', en:'Type', vi:'Loại' })}</span>
           <div class="seg" data-seg="chtype">${CH_TYPES.map((c, i) => `<button type="button" data-v="${c.v}" class="${i === 0 ? 'on' : ''}">${L(c.t)}</button>`).join('')}</div></label>
         ${draft._t ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 日計レポートの写真から読み取った数字が入っています。確認して、違うところは直してから送信してください。', en:'Numbers were read from the daily-report photo. Check and correct before submitting.', vi:'Số liệu đọc từ ảnh báo cáo. Kiểm tra và sửa trước khi gửi.' })}（${timeAgo(draft._t)}）</p>` : ''}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+        <div class="sk-grid">
           ${numFld('ch_kumi', { ja:'組数', en:'Groups', vi:'Số nhóm' }, { ja:'組', en:'groups', vi:'nhóm' }, draft.kumi)}
           ${numFld('ch_kyaku', { ja:'客数', en:'Guests', vi:'Số khách' }, { ja:'名', en:'guests', vi:'khách' }, draft.kyaku)}
           ${numFld('ch_cash', { ja:'現金', en:'Cash', vi:'Tiền mặt' }, { ja:'円', en:'yen', vi:'yên' }, draft.cash)}
