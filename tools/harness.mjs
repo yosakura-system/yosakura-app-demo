@@ -3602,14 +3602,14 @@ console.log('== 牛カツ長堀橋店トライアル：LINEアルバムの提出
   ok(/予約状況の共有/.test(h), '今日出すものに「予約状況の共有」が出る');
   ok(/日計レポート（アイドルクローズ）/.test(h), '今日出すものに「日計レポート（アイドルクローズ）」が出る');
   ok(/納品書の写真/.test(h), '今日出すものに「納品書の写真」が出る');
-  ok(/在庫チェック表の写真/.test(h), '今日出すものに「在庫チェック表の写真」が出る');
+  ok(!/在庫チェック表の写真/.test(h) && /在庫数の入力（締め）/.test(h), '今日出すもの＝在庫チェック表の写真は無く、在庫数の入力に置き換わっている（2026-09-18）');
   ok(/日計レポート（レジクローズ）/.test(h), '今日出すものに「日計レポート（レジクローズ）」が出る');
   // ② トライアル対象でない店舗には出ない（全店に広げるかは本部と相談してから）
   h = renderView('kyou', 'staff', '日本料理世桜本店', 'ja');
   ok(!/納品書の写真/.test(h) && !/日計レポート/.test(h) && !/予約状況の共有/.test(h), '他の店舗の「今日出すもの」には出ない');
   // ③ 写真提出画面の切替ボタンも、その店舗に当てはまる項目だけ
   h = renderView('openphoto', 'staff', S, 'ja');
-  ok(/data-phtarget="nouhin"/.test(h) && /data-phtarget="zaiko_photo"/.test(h), '長堀橋の写真画面に切替ボタンが出る');
+  ok(/data-phtarget="nouhin"/.test(h) && !/data-phtarget="zaiko_photo"/.test(h), '長堀橋の写真画面に切替ボタンが出る（在庫チェック表の写真は外れている）');
   h = renderView('openphoto', 'staff', '日本料理世桜本店', 'ja');
   ok(!/data-phtarget="nouhin"/.test(h), '他の店舗の写真画面には切替ボタンが出ない');
   // ④ 受信箱＝新しい項目は項目名で出る（全部「オープン写真」と表示されない）。従来の3種は従来どおり
@@ -5549,6 +5549,23 @@ console.log('== ホーム＝3タブ（きょう／お知らせ／メニュー）
   ok(/class="card ckov"/.test(ck) && (ck.match(/<tr><th>/g) || []).length >= 10 && (ck.match(/<div class="card"><h3 style="font-size:13px">/g) || []).length === 0, '本部の点検一覧＝1店1行の表（カードを積まない）');
   const mt = renderView('mtg', 'hq', 'all', 'ja');
   ok((mt.match(/data-mtgsel="/g) || []).length === 6 && (mt.match(/class="mtg-h"/g) || []).length === 1, '月例MTG（本部）＝店舗チップで1店ずつ');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 在庫＝長堀橋の品目は最初から入っている・写真の提出は不要（2026-09-18 神田さん）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('staff', S, 'ja'); localStorage.removeItem('yosakura_zk_tab'); });
+  location.hash = '#/app/zaiko';
+  const h = registry.app.innerHTML;
+  ok(/data-zkname="白だし"/.test(h) && /data-zkname="ビール（瓶）"/.test(h) && /data-zkname="焼肉のタレ"/.test(h), '品目が登録なしでも入っている（在庫チェック表の転記）');
+  ok(/食材管理①（毎日）/.test(h) && /食材管理②（月・木に確認）/.test(h) && /ドリンク管理（毎日）/.test(h), '紙と同じ3つの区分の見出し');
+  ok(/id="submitZk"/.test(h) && /在庫チェック表から写してあります/.test(h), 'スタッフはそのまま数を入れて提出できる');
+  ok((h.match(/data-zkname="/g) || []).length >= 40, `品目が40以上ある（${(h.match(/data-zkname="/g) || []).length}）`);
+  const kyou = renderView('kyou', 'manager', S, 'ja');
+  ok(!/在庫チェック表の写真/.test(kyou) && /在庫数の入力（締め）/.test(kyou), '今日出すもの＝写真の項目は消え、在庫数の入力だけ');
+  const other = renderView('zaiko', 'staff', '日本料理世桜本店', 'ja');
+  ok(/品目がまだ登録されていません/.test(other), '既定の無い店は従来どおり（店長が登録）');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
