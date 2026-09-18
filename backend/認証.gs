@@ -16,6 +16,9 @@
  *   認証_利用者を登録('uid', '名前', '役割', '店舗1／店舗2', '仮パスワード')
  *     役割 = staff / manager / owner / hq（staffは店舗iPad用の共用アカウント）
  *     既存uidに実行すると上書き＝パスワード再発行を兼ねる（忘れたときはこれ）
+ *   認証_共有パスワードを設定('uid', 'パスワード')
+ *     店舗の共有ID（店舗iPad＋スタッフのスマホで使い回す）用。初回変更の強制なし＝本部が決めたパスワードをそのまま全員で使う。
+ *     実行すると全端末が強制ログアウト＝月1回の定期リセット・退職者が出た当日のリセットはこれ（2026-09-18 神田さん）
  *   認証_一覧()   … 登録状況をログに出す（ハッシュは出さない）
  *   認証_削除('uid')
  *
@@ -32,7 +35,7 @@ var AUTH_HEADERS = ['uid', 'name', 'role', 'stores', 'hash', 'must_change', 'tok
    2026-09-03＝5→10へ（神田さんの実機で「急にログイン画面になった」＝
    検証で同じIDを複数の端末・ブラウザで使い、上限を超えて古い端末が押し出されていた）。
    ⚠️ 上限を無くさない＝退職者の端末が残り続けないようにするための歯止め。 */
-var AUTH_TOKEN_MAX = 10;         // 1アカウントで同時に有効なトークン数（店舗iPad＋スマホ等）
+var AUTH_TOKEN_MAX = 20;         // 1アカウントで同時に有効なトークン数（店舗iPad＋スタッフのスマホ）。2026-09-18＝10→20（店舗IDをスタッフのスマホでも共有する運用のため）
 var AUTH_ROLES = ['staff', 'manager', 'owner', 'hq'];
 
 /* 全員に配る性質のkind（店舗で絞らない）。
@@ -100,6 +103,24 @@ function 認証_利用者を登録(uid, name, role, storesSlash, tempPw) {
   rec.updated = new Date();
   auth_write_(rec);
   var out = { 結果: (rec._row ? '上書き（再発行）' : '新規登録'), uid: uid, 名前: rec.name, 役割: role, 店舗: rec.stores };
+  Logger.log(JSON.stringify(out)); return out;
+}
+/* ★2026-09-18 店舗IDをスタッフのスマホでも共有する運用（神田さん）。
+   認証_利用者を登録 は「仮パスワード＋初回に変更を強制」＝共有IDだと最初の1人が変えて他が入れなくなる。
+   共有IDは本部が決めたパスワードをそのまま使う（must_change=false）。
+   実行のたびに全端末が強制ログアウト＝新しいパスワードを知っている人だけがまた入れる（退職者はここで外れる）。
+   例：認証_共有パスワードを設定('ipad-gyukatsu', 'gk2026-10') */
+function 認証_共有パスワードを設定(uid, pw) {
+  uid = String(uid || '').trim();
+  var rec = auth_find_(uid);
+  if (!rec) throw new Error('見つかりません: ' + uid + '（先に 認証_利用者を登録 で作ってください）');
+  if (!pw || String(pw).length < 6) throw new Error('共有パスワードは6文字以上にしてください');
+  rec.hash = auth_hash_(uid, pw);
+  rec.must_change = 'false';       // 共有ID＝初回変更を強制しない
+  rec.tokens = '[]';               // 全端末からログアウト（新パスワードで入り直す）
+  rec.updated = new Date();
+  auth_write_(rec);
+  var out = { 結果: '共有パスワードを設定・全端末ログアウト', uid: uid, 名前: rec.name, 役割: rec.role, 店舗: rec.stores, 同時ログイン上限: AUTH_TOKEN_MAX };
   Logger.log(JSON.stringify(out)); return out;
 }
 function 認証_一覧() {
