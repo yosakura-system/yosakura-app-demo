@@ -3587,7 +3587,7 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   ok(!/開発者ビュー/.test(registry.app.innerHTML), '対象でないアカウントにはバナーを出さない');
   // ④ ソース＝対象は許可リストのみ・ログイン済みの役割切替は開発者ビューだけ例外
   const dsrc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/const DEV_VIEW_UIDS = \['kanda', 'masuda'\];/.test(dsrc), '対象は許可リスト（kanda・masuda）だけ');
+  ok(/const DEV_VIEW_UIDS = \['kanda', 'masuda', 'yosakura-fc'\];/.test(dsrc), '対象は許可リスト（kanda・masuda・本部共有ID）だけ');
   ok(/if \(getAuth\(\) && !devViewAllowed\(\)\) return;/.test(dsrc), 'ログイン済みの役割切替は開発者ビューだけ例外');
   ok(/data-devexit/.test(dsrc) && /setRole\('hq'\); setStoreSel\('all'\);/.test(dsrc), 'バナーを押すと本部の表示（全店）へ戻る');
   // 後始末＝以後のテストにログイン状態を残さない
@@ -5331,8 +5331,8 @@ console.log('== 巡回チェック＝実施時間・確認方法・表示する�
 {
   const S = '牛カツ世桜 長堀橋店';
   const sv = {}; sv[`${S}|2026-09-17|meta`] = { time:'13:35', method:'video', summary:'' }; sv[`${S}|2026-09-17|3`] = { v:'ok', by:'神田', t:1 };
-  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
-  location.hash = '#/app/hqcheck?tab=gaikan&store=' + encodeURIComponent(S);
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_sv_sel', JSON.stringify({ store:S, date:'2026-09-17', tab:'gaikan', axis:'all' })); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
+  location.hash = '#/app/hqcheck?tab=gaikan&date=2026-09-17&store=' + encodeURIComponent(S);
   let h = registry.app.innerHTML;
   ok(/id="sv_time"[^>]*value="13:35"/.test(h), '実施時間の欄があり、保存した値が入る');
   ok(/id="sv_method"/.test(h) && /<option value="video" selected>② ビデオ通話/.test(h) && /① 防犯カメラ/.test(h) && /③ 現地入り/.test(h), '確認方法＝原本の①〜③から選べる（保存した②が選択）');
@@ -5355,7 +5355,7 @@ console.log('== 巡回チェック＝指摘の写真は判定前でも貼れる�
   const S = '牛カツ世桜 長堀橋店';
   const sv = {}; sv[`${S}|2026-09-17|8`] = { v:'na', by:'神田', t:1 };
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
-  location.hash = '#/app/hqcheck?tab=gaikan&store=' + encodeURIComponent(S);
+  location.hash = '#/app/hqcheck?tab=gaikan&date=2026-09-17&store=' + encodeURIComponent(S);
   const h = registry.app.innerHTML;
   ok(/data-svphoto="3"/.test(h) && /指摘・現場の写真/.test(h), '判定前の項目（No.3）にも「指摘・現場の写真」ボタンが出る');
   ok(/data-svmemo="8"/.test(h), '対象外にした項目（No.8）にもメモ欄が出る');

@@ -469,7 +469,7 @@
   const roleKeys = () => TAIKEN ? ['staff', 'manager', 'owner'] : ROLE_KEYS_ALL;
   /* 開発者ビューの対象（2026-09-01 神田さんのご要望・2026-09-03 増田さんを追加）＝本部のこのアカウントだけ、
      端末で選んだ役割を「見え方」として使える。ログイン・権限・保存は本部のまま。 */
-  const DEV_VIEW_UIDS = ['kanda', 'masuda'];
+  const DEV_VIEW_UIDS = ['kanda', 'masuda', 'yosakura-fc'];   // 2026-09-18 増田さん「まだできてない」＝本部共有ID（yosakura-fc）でログインしている可能性→同じ扱いに
   const getRole = () => {
     const a = getAuth();
     if (a && a.role) {
@@ -4108,7 +4108,7 @@
 
     /* 本部＝巡回チェック本体 */
     const stores = visibleStores();
-    { const q = currentRoute().params; const qs = q.get('store'), qt = q.get('tab'), qa = q.get('axis'); if (qs && stores.includes(qs)) svState.store = qs; if (qt) svState.tab = qt; if (qa && SV_AXES.some(a => a[0] === qa)) svState.axis = qa; }
+    { const q = currentRoute().params; const qs = q.get('store'), qt = q.get('tab'), qa = q.get('axis'), qd = q.get('date'); if (qs && stores.includes(qs)) svState.store = qs; if (qt) svState.tab = qt; if (qd && /^\d{4}-\d{2}-\d{2}$/.test(qd)) svState.date = qd; /* ?date= で日付も指定できる（履歴からの導線・テスト用） */ if (qa && SV_AXES.some(a => a[0] === qa)) svState.axis = qa; }
     if (!svState.store || !stores.includes(svState.store)) svState.store = (getStoreSel() !== 'all' && stores.includes(getStoreSel())) ? getStoreSel() : (stores[0] || '');
     if (!svState.store && !svState.date) svSelLoad_();
     if (!svState.date) svState.date = svTodayStr();
