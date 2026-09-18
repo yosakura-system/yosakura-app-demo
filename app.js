@@ -5508,8 +5508,6 @@
   const saveMonthly = (a) => { try { localStorage.setItem('yosakura_demo_monthly', JSON.stringify(a)); } catch (e) {} };
   const plCalc = (m) => { const sales = Number(m.sales) || 0; const cost = (Number(m.open) || 0) + (Number(m.purchase) || 0) - (Number(m.close) || 0); const costRate = sales ? cost / sales * 100 : 0; const gross = sales - cost; const grossRate = sales ? gross / sales * 100 : 0; return { sales, cost, costRate, gross, grossRate }; };
   const prevYm = (ym) => { const [y, m] = (ym || '').split('-').map(Number); if (!y) return ''; const d = new Date(y, m - 2, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
-  const plMonthsOf = (store) => getMonthly().filter(r => r.store === store).sort((a, b) => a.ym < b.ym ? 1 : -1);
-  const plPrevClose = (store, ym) => { const r = getMonthly().find(x => x.store === store && x.ym === prevYm(ym)); return r ? r.close : ''; };
   /* ★売上・仕入の自動＝総括表（日報）の月合計から（2026-09-18 神田さん「棚卸が自動で反映するように」）。
      月次数値に手で入れた値があればそれが優先。無ければ日報の合計を出す＝棚卸を保存すれば原価率まで自動で出る */
   function plAutoFrom(store, ym) {
@@ -5522,6 +5520,10 @@
     if ((r.open == null || r.open === '') && plPrevClose(store, ym) !== '') r.open = plPrevClose(store, ym);
     return r;
   };
+  /* 表示用＝売上・仕入が無い月（総括表からの取込＝期首・仕入・期末だけ）は日報の合計で埋めて原価率を出す（保存はしない） */
+  const plMonthsOf = (store) => getMonthly().filter(r => r.store === store).sort((a, b) => a.ym < b.ym ? 1 : -1).map(r => (r.sales == null || r.sales === '' || r.open == null || r.open === '') ? plFill(store, r.ym, r) : r);
+  const plPrevClose = (store, ym) => { const r = getMonthly().find(x => x.store === store && x.ym === prevYm(ym)); return r ? r.close : ''; };
+
   const pct = (v) => (Number(v) || 0).toFixed(1) + '%';
   /* ── 月別の推移グラフ（2026-08-13 神田さんのご要望）──────────────────
      売上（棒）と原価率（折れ線）を、別々のグラフとして描く。
@@ -10529,7 +10531,7 @@
         case 'ckdone': { const p=pj(r.note); const k=`${store}||${r.item}`; if (ckdoneT[k]==null || t>=ckdoneT[k]) { ckdone[k]=p.done||{}; ckmeta[k]={ by:p.by||'', t }; ckdoneT[k]=t; } } break;
         // 勉強会＝IDごと最新が正。削除は deleted:true の行で表す（追記式のため）
         case 'study': { const p=pj(r.note); const k=r.item || (p && p.id); if (!k) break; if (studyT[k]==null || t>=studyT[k]) { study[k]=p; studyT[k]=t; } } break;
-        case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, goal:p.goal, closeDetail:Array.isArray(p.closeDetail)?p.closeDetail:undefined, by:p.by||'', t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正（closeDetail=棚卸の品目内訳・2026-09-01）
+        case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, goal:p.goal, closeDetail:Array.isArray(p.closeDetail)?p.closeDetail:undefined, by:p.by||'', src:p.src||'', t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正（closeDetail=棚卸の品目内訳・2026-09-01）
         case 'community': { const p=pj(r.note); comm.push({ store, cat:r.item, body:p.body||'', by:p.by||'', photos:r.photos||[], t, id }); } break;
         case 'commmod': { const p=pj(r.note); const k=r.item; if (commmodT[k]==null || t>=commmodT[k]) { commmod[k]={ state:p.state||'published', t }; commmodT[k]=t; } } break; // 投稿キーごと最新の公開状態が正
         // 拍手は件数を合算。取り消し（off）は -1 として数える（追記式なので行は消せない）
