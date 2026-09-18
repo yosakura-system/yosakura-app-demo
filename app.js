@@ -6974,12 +6974,16 @@
      ・時間帯＝提出物マスタの slot（asa/hiru/yoru/shime）。無ければチェックリストの種類・締切時刻から自動で決める
      ・いまの時間帯（店舗の現地時間）だけ開き、ほかは畳む。畳んだ帯にも残り件数と締切超過の数を出す＝隠して漏らさない
      ・項目そのものは減らさない・増やさない（画面は同じ1本のまま） */
+  /* ★名前は世桜のチェックシート（OPEN業務／中間業務／CLOSE業務）に合わせる（2026-09-18 神田さん）。
+     基本は3つ。牛カツ長堀橋だけ、中間業務の紙が lunch後・dinner前 の2枚＝4つに分ける */
   const KYOU_SLOTS = [
-    ['asa',   { ja:'朝（開店前）',   en:'Morning (before open)', vi:'Sáng (trước mở cửa)' }],
-    ['hiru',  { ja:'昼（アイドル）', en:'Midday (idle)',         vi:'Trưa (giữa ca)' }],
-    ['yoru',  { ja:'夜（営業中）',   en:'Evening (in service)',  vi:'Tối (trong ca)' }],
-    ['shime', { ja:'締め（閉店後）', en:'Close (after service)', vi:'Chốt ca (sau đóng cửa)' }],
+    ['asa',   { ja:'OPEN業務（開店前）',        en:'OPEN (before service)',     vi:'OPEN (trước mở cửa)' }],
+    ['hiru',  { ja:'中間業務（lunch後）',       en:'Midday (after lunch)',      vi:'Giữa ca (sau trưa)' }],
+    ['yoru',  { ja:'中間業務（dinner前）',      en:'Midday (before dinner)',    vi:'Giữa ca (trước tối)' }],
+    ['shime', { ja:'CLOSE業務（閉店後）',       en:'CLOSE (after service)',     vi:'CLOSE (sau đóng cửa)' }],
   ];
+  const KYOU_MID = { ja:'中間業務（アイドルタイム）', en:'Midday (idle time)', vi:'Giữa ca (idle)' };
+  const KYOU_SPLIT_MID = ['牛カツ世桜 長堀橋店'];   // 中間業務を lunch後／dinner前 に分ける店
   const kyouSlotOf = (m) => {
     if (m.slot && KYOU_SLOTS.some(x => x[0] === m.slot)) return m.slot;
     if (m.dueNextDay) return 'shime';
@@ -6992,9 +6996,12 @@
   };
   const kyouSlotNow = (store) => { const h = Number(String(nowHMFor(store)).slice(0, 2)); return h < 14 ? 'asa' : h < 17 ? 'hiru' : h < 21 ? 'yoru' : 'shime'; };
   function kyouSlotRows_(store, items) {
-    const now = kyouSlotNow(store);
-    return KYOU_SLOTS.map(([key, name]) => {
-      const its = items.filter(it => kyouSlotOf(it.m) === key);
+    let now = kyouSlotNow(store);
+    const split = KYOU_SPLIT_MID.includes(store);
+    const slots = split ? KYOU_SLOTS : [KYOU_SLOTS[0], ['mid', KYOU_MID], KYOU_SLOTS[3]];
+    if (!split && (now === 'hiru' || now === 'yoru')) now = 'mid';
+    return slots.map(([key, name]) => {
+      const its = items.filter(it => { const k = kyouSlotOf(it.m); return key === 'mid' ? (k === 'hiru' || k === 'yoru') : k === key; });
       if (!its.length) return '';
       const remain = its.filter(it => !it.manual && !it.submitted && !it.holiday).length;
       const over = its.filter(it => it.overdue).length;
