@@ -5482,5 +5482,30 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+function plCalcOf(m) { const sales = Number(m.sales) || 0; const cost = (Number(m.open) || 0) + (Number(m.purchase) || 0) - (Number(m.close) || 0); return { sales, cost, costRate: sales ? cost / sales * 100 : 0 }; }
+console.log('== 月次数値・棚卸＝売上・仕入は総括表の月合計から自動（2026-09-18 神田さん「自動で反映」）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const ym = new Date().toISOString().slice(0, 7);
+  const pv = (() => { const d = new Date(); d.setDate(15); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); })();
+  const sk = [{ store:S, date: ym + '-01', sales: 300000, buy: 90000, guests: 50, t: Date.now() - 86400e3 }, { store:S, date: ym + '-02', sales: 200000, buy: 60000, guests: 40, t: Date.now() - 43200e3 }];
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'input'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(sk)); localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store:S, ym: pv, close: 40000, t: Date.now() - 30 * 86400e3 }])); });
+  location.hash = '#/app/pl';
+  let h = registry.app.innerHTML;
+  ok(/id="pl_sales"[^>]*value="500000"/.test(h) && /id="pl_purchase"[^>]*value="150000"/.test(h), '月次数値＝売上・仕入が日報の月合計で自動で入る（500,000／150,000）');
+  ok(/id="pl_open"[^>]*value="40000"/.test(h), '月初在庫＝前月の棚卸（40,000）');
+  ok(/総括表（日報）の月合計から自動で入っています/.test(h), '自動で入っている旨の注記が出る');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(sk)); localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store:S, ym: pv, close: 40000, t: Date.now() - 30 * 86400e3 }])); });
+  location.hash = '#/app/pl';
+  doc.getElementById('tn_f0_n').value = '牛肉'; doc.getElementById('tn_f0_u').value = '4000'; doc.getElementById('tn_f0_q').value = '5';
+  doc.getElementById('tn_ym').value = ym;
+  doc.getElementById('tnSave').onclick();
+  const mon = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ym);
+  ok(!!mon && mon.close === 20000 && mon.sales === 500000 && mon.purchase === 150000 && mon.open === 40000, '棚卸を保存すると売上・仕入・月初も自動で埋まる');
+  const c = plCalcOf(mon);
+  ok(Math.abs(c.costRate - 34) < 0.01, '原価率＝(40,000＋150,000−20,000)÷500,000＝34.0%');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

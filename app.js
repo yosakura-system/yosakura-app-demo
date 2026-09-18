@@ -5510,6 +5510,18 @@
   const prevYm = (ym) => { const [y, m] = (ym || '').split('-').map(Number); if (!y) return ''; const d = new Date(y, m - 2, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   const plMonthsOf = (store) => getMonthly().filter(r => r.store === store).sort((a, b) => a.ym < b.ym ? 1 : -1);
   const plPrevClose = (store, ym) => { const r = getMonthly().find(x => x.store === store && x.ym === prevYm(ym)); return r ? r.close : ''; };
+  /* ★売上・仕入の自動＝総括表（日報）の月合計から（2026-09-18 神田さん「棚卸が自動で反映するように」）。
+     月次数値に手で入れた値があればそれが優先。無ければ日報の合計を出す＝棚卸を保存すれば原価率まで自動で出る */
+  function plAutoFrom(store, ym) {
+    try { const t = skMonthData(store, ym).tot || {}; return { sales: t.sales || 0, purchase: t.buy || 0, days: t.entered || 0 }; } catch (e) { return { sales: 0, purchase: 0, days: 0 }; }
+  }
+  const plFill = (store, ym, rec) => {  // 欠けている欄だけ自動で埋める（保存する前に呼ぶ）
+    const a = plAutoFrom(store, ym); const r = Object.assign({}, rec);
+    if ((r.sales == null || r.sales === '' || r.sales === 0) && a.sales) r.sales = a.sales;
+    if ((r.purchase == null || r.purchase === '' || r.purchase === 0) && a.purchase) r.purchase = a.purchase;
+    if ((r.open == null || r.open === '') && plPrevClose(store, ym) !== '') r.open = plPrevClose(store, ym);
+    return r;
+  };
   const pct = (v) => (Number(v) || 0).toFixed(1) + '%';
   /* ── 月別の推移グラフ（2026-08-13 神田さんのご要望）──────────────────
      売上（棒）と原価率（折れ線）を、別々のグラフとして描く。
@@ -5671,6 +5683,10 @@
     const nowYm = new Date().toISOString().slice(0, 7);
     const cur = rows.find(r => r.ym === nowYm) || {};
     const openDef = cur.open != null && cur.open !== '' ? cur.open : plPrevClose(store, nowYm);
+    const autoNow = plAutoFrom(store, nowYm);
+    const salesDef = cur.sales != null && cur.sales !== '' ? cur.sales : (autoNow.sales || '');
+    const purchaseDef = cur.purchase != null && cur.purchase !== '' ? cur.purchase : (autoNow.purchase || '');
+    const autoUsed = (cur.sales == null || cur.sales === '') && !!autoNow.sales;
 
     /* ★スタッフ（店舗iPad）は読むだけ。入力欄は出さない（2026-08-12 アクション8-③）。
        店舗iPadは共用のため、月次の数値を誰でも書き換えられる状態にしない。
@@ -5711,12 +5727,13 @@
         <h3>${L({ ja:'月次数値の入力', en:'Monthly numbers', vi:'Số liệu tháng' })} — ${esc(storeShort(store))}</h3>
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'対象月', en:'Month', vi:'Tháng' })}</span><input type="month" id="pl_ym" value="${esc(nowYm)}"></label>
-          <label class="fld"><span>${L({ ja:'売上（税抜・月合計）', en:'Sales (monthly)', vi:'Doanh thu tháng' })}</span><input type="text" inputmode="numeric" id="pl_sales" value="${esc(cur.sales||'')}" placeholder="0"></label>
-          <label class="fld"><span>${L({ ja:'当月仕入（合計）', en:'Purchases', vi:'Nhập hàng' })}</span><input type="text" inputmode="numeric" id="pl_purchase" value="${esc(cur.purchase||'')}" placeholder="0"></label>
+          <label class="fld"><span>${L({ ja:'売上（税抜・月合計）', en:'Sales (monthly)', vi:'Doanh thu tháng' })}</span><input type="text" inputmode="numeric" id="pl_sales" value="${esc(salesDef||'')}" placeholder="0"></label>
+          <label class="fld"><span>${L({ ja:'当月仕入（合計）', en:'Purchases', vi:'Nhập hàng' })}</span><input type="text" inputmode="numeric" id="pl_purchase" value="${esc(purchaseDef||'')}" placeholder="0"></label>
           <label class="fld"><span>${L({ ja:'月初在庫', en:'Opening stock', vi:'Tồn đầu kỳ' })}</span><input type="text" inputmode="numeric" id="pl_open" value="${esc(openDef||'')}" placeholder="0"></label>
           <label class="fld"><span>${L({ ja:'月末在庫（棚卸）', en:'Closing stock', vi:'Tồn cuối kỳ' })}</span><input type="text" inputmode="numeric" id="pl_close" value="${esc(cur.close||'')}" placeholder="0"></label>
           <label class="fld"><span>${L({ ja:'今月の売上目標', en:'Monthly sales goal', vi:'Mục tiêu doanh thu' })}</span><input type="text" inputmode="numeric" id="pl_goal" value="${esc(cur.goal||'')}" placeholder="3000000"></label>
         </div>
+        ${autoUsed ? `<p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 売上・仕入は総括表（日報）の月合計から自動で入っています（違うときは直せます）。月初在庫は前月の棚卸から。', en:'Sales and purchases are pre-filled from the daily reports (editable). Opening stock from last month’s stocktake.', vi:'Doanh thu & nhập hàng tự điền từ báo cáo ngày (có thể sửa). Tồn đầu kỳ từ kiểm kê tháng trước.' })}</p>` : ''}
         <p class="hint" style="display:block;margin:2px 0 8px">${L({ ja:'※ 売上目標は本部・オーナー・店長が設定します。設定すると各店の画面に「目標到達」と進捗バーが出ます。', en:'The sales goal is set by HQ/owner/manager and appears as progress on each store screen.', vi:'Mục tiêu do HQ/chủ/quản lý đặt; hiển thị tiến độ trên màn hình cửa hàng.' })}</p>
         <div class="stat-row" style="margin-top:8px">
           <div class="stat"><div class="n" id="pl_cost">¥0</div><div class="k">${L({ ja:'当月原価', en:'Cost', vi:'Giá vốn' })}</div></div>
@@ -9202,8 +9219,9 @@
       if (byId('pl_ym')) byId('pl_ym').onchange = () => {
         const store = visibleStores()[0], ym = byId('pl_ym').value;
         const ex = getMonthly().find(r => r.store === store && r.ym === ym);
-        if (byId('pl_sales')) byId('pl_sales').value = ex && ex.sales != null ? ex.sales : '';
-        if (byId('pl_purchase')) byId('pl_purchase').value = ex && ex.purchase != null ? ex.purchase : '';
+        const au = plAutoFrom(store, ym);
+        if (byId('pl_sales')) byId('pl_sales').value = ex && ex.sales != null && ex.sales !== '' ? ex.sales : (au.sales || '');
+        if (byId('pl_purchase')) byId('pl_purchase').value = ex && ex.purchase != null && ex.purchase !== '' ? ex.purchase : (au.purchase || '');
         if (byId('pl_close')) byId('pl_close').value = ex && ex.close != null ? ex.close : '';
         if (byId('pl_goal')) byId('pl_goal').value = ex && ex.goal ? ex.goal : '';
         if (byId('pl_open')) byId('pl_open').value = (ex && ex.open != null && ex.open !== '') ? ex.open : plPrevClose(store, ym); // 前月末在庫→月初へ
@@ -9297,13 +9315,13 @@
         if (!detail.length) { toast(L({ ja:'品目を1つ以上入力してください', en:'Enter at least one item', vi:'Nhập ít nhất 1 mặt hàng' })); return; }
         const total = detail.reduce((s, d) => s + d.a, 0);
         const ex = getMonthly().find(r => r.store === store && r.ym === ym) || {};
-        const rec = Object.assign({}, ex, { store, ym, close: total, closeDetail: detail, by: submitterLabel(), t: Date.now() });
+        const rec = plFill(store, ym, Object.assign({}, ex, { store, ym, close: total, closeDetail: detail, by: submitterLabel(), t: Date.now() }));
         const arr = getMonthly().filter(r => !(r.store === store && r.ym === ym)); arr.push(rec);
         try { saveMonthly(arr.slice(-300)); } catch (e) { saveMonthly(arr.slice(-120)); }
         lastSync = rec.t;
         /* 貼り付けの下書きは保存で役目を終える（残すと保存済みの内容より優先されてしまう） */
         try { const dr = getTnDrafts(); delete dr[tnDraftKey(store, ym)]; localStorage.setItem('yosakura_tn_draft', JSON.stringify(dr)); } catch (e) {}
-        toast(L({ ja:'棚卸を保存しました（月末在庫へ反映済み）', en:'Stocktake saved (closing stock updated)', vi:'Đã lưu kiểm kê' }));
+        { const c = plCalc(rec); toast(c.sales ? `${L({ ja:'棚卸を保存しました。原価率', en:'Stocktake saved. Cost ratio', vi:'Đã lưu kiểm kê. Giá vốn' })} ${c.costRate.toFixed(1)}%` : L({ ja:'棚卸を保存しました（月末在庫へ反映済み）', en:'Stocktake saved (closing stock updated)', vi:'Đã lưu kiểm kê' })); }
         render();
         postReport({ kind:'monthly', store, note: JSON.stringify({ ym, sales: rec.sales, purchase: rec.purchase, open: rec.open, close: rec.close, goal: rec.goal, closeDetail: detail, by: rec.by }), t: rec.t });
       };
