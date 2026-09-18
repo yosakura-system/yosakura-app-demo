@@ -5425,5 +5425,20 @@ console.log('== 巡回チェックの写真＝localStorage に置かない（Ind
   ok(/photoLocalLoadAll_\(\)\.then/.test(code), '起動時に IndexedDB から読み込む');
 }
 
+console.log('== 今日出すもの＝時間帯（朝／昼／夜／締め）で分ける（2026-09-17 長堀橋の現場の声）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const h = renderView('kyou', 'manager', S, 'ja');
+  ok(/data-kslot="asa"/.test(h) && /data-kslot="hiru"/.test(h) && /data-kslot="yoru"/.test(h) && /data-kslot="shime"/.test(h), '4つの時間帯の帯が出る');
+  ok((h.match(/<details class="kslot"[^>]* open>/g) || []).length === 1, 'いまの時間帯だけが開いている（ほかは畳む）');
+  const pos = (re) => { const m = re.exec(h); return m ? m.index : -1; };
+  ok(pos(/data-kslot="asa"/) < pos(/オープン写真/) && pos(/オープン写真/) < pos(/data-kslot="hiru"/), 'オープン写真は「朝」の帯に入る');
+  ok(pos(/data-kslot="shime"/) < pos(/クローズチェックリスト/) && pos(/data-kslot="shime"/) < pos(/総括表/), 'クローズチェックリスト・総括表は「締め」の帯に入る');
+  ok(pos(/data-kslot="hiru"/) < pos(/アイドルタイムチェックリスト/) && pos(/アイドルタイムチェックリスト/) < pos(/data-kslot="yoru"/), 'アイドルタイムは「昼」の帯に入る');
+  ok(/kslot-n/.test(h), '畳んだ帯にも残り件数が見える（隠して漏らさない）');
+  const w = renderView('shukan', 'manager', S, 'ja');
+  ok(!/data-kslot=/.test(w), '週次には時間帯の帯を出さない');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

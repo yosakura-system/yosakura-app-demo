@@ -855,3 +855,16 @@ html[data-theme="hp"] .svax.on { background: #333333; border-color: #333333; }
 .svready { border: 1px solid var(--suou); background: var(--usuaka, #FBF1F2); padding: 10px 12px; margin: 8px 0 10px; }
 .svready-t { font-weight: 700; margin-bottom: 8px; }
 html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
+
+/* 今日出すもの＝時間帯の帯（2026-09-18） */
+.kslot { border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; background: #fff; }
+.kslot > summary { list-style: none; cursor: pointer; padding: 10px 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.kslot > summary::-webkit-details-marker { display: none; }
+.kslot > summary::before { content: '▸'; color: var(--suou); }
+.kslot[open] > summary::before { content: '▾'; }
+.kslot > summary small { color: var(--suou); font-weight: 400; }
+.kslot-n { margin-left: auto; font-size: 12px; font-weight: 400; color: #a33; background: #fbf1f2; border-radius: 12px; padding: 2px 8px; }
+.kslot-n.done { color: #4a7; background: #eef7f0; }
+.kslot-n.over { color: #fff; background: var(--suou); }
+.kslot > .tsub, .kslot > .item, .kslot > div { margin: 0 8px 8px; }
+
