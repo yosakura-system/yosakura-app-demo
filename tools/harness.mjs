@@ -945,8 +945,8 @@ console.log('== 8/7 増田さんご要望：入口の整理 ==');
   ok(staffHome.indexOf('提出・業務') < staffHome.indexOf('本部からのお知らせ'),
      '店舗iPadは「提出・業務」がお知らせより上にある（Zの法則）');
   const hqHome = renderView('home','hq','all','ja');
-  ok(hqHome.indexOf('本部からのお知らせ') < hqHome.indexOf('提出・業務'),
-     '本部は従来どおりお知らせが先');
+  ok(/data-hpane="news"/.test(hqHome) && hqHome.split('data-hpane="news"')[1].indexOf('本部からのお知らせ') >= 0 && hqHome.split('data-hpane="news"')[0].indexOf('提出・業務') >= 0,
+     '本部＝お知らせは「お知らせ」タブ、提出・業務は「きょう」タブ（2026-09-18 タブ化）');
 
   // 「学ぶ」タブの中身を固定する（お知らせはホームのカードへ統合済み）
   for (const role of ['staff','manager','hq']) {
@@ -5526,6 +5526,29 @@ console.log('== 総括表からの月次（棚卸）取込＝期首・仕入・�
     ok(/if \(mcur && !mcur\.src\) \{ 結果\.月次\.アプリ優先\+\+; \}/.test(gs), 'アプリで入力した月は取込で上書きしない');
     ok(/if \(o\.open == null && o\.purchase == null && o\.close == null\) return null;/.test(gs), '空欄・0の月は取り込まない');
   }
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== ホーム＝3タブ（きょう／お知らせ／メニュー）・本部の点検一覧は表・月例MTGは店舗チップ（2026-09-18 神田さん）==');
+{
+  for (const role of ['hq', 'manager', 'staff']) {
+    const st = role === 'hq' ? 'all' : '牛カツ世桜 長堀橋店';
+    run(() => { setLS(role, st, 'ja'); });
+    location.hash = '#/home';
+    const h = registry.app.innerHTML;
+    ok(/data-htab="today"/.test(h) && /data-htab="news"/.test(h) && /data-htab="menu"/.test(h), `${role}: ホームに3つのタブ`);
+    ok(/data-hpane="today">/.test(h) && /data-hpane="news" hidden/.test(h) && /data-hpane="menu" hidden/.test(h), `${role}: 既定は「きょう」だけ表示（他は hidden）`);
+    ok(/data-open="kyou/.test(h.split('data-hpane="news"')[0]), `${role}: 提出・業務は「きょう」の中`);
+    ok(/id="pinEdit"/.test(h.split('data-hpane="menu"')[1] || ''), `${role}: よく使う・メニューは「メニュー」の中`);
+    run(() => { setLS(role, st, 'ja'); localStorage.setItem('yosakura_home_tab', 'news'); });
+    location.hash = '#/home';
+    const h2 = registry.app.innerHTML;
+    ok(/data-hpane="news">/.test(h2) && /data-hpane="today" hidden/.test(h2), `${role}: 端末に覚えたタブが開く`);
+  }
+  const ck = renderView('checklist', 'hq', 'all', 'ja');
+  ok(/class="card ckov"/.test(ck) && (ck.match(/<tr><th>/g) || []).length >= 10 && (ck.match(/<div class="card"><h3 style="font-size:13px">/g) || []).length === 0, '本部の点検一覧＝1店1行の表（カードを積まない）');
+  const mt = renderView('mtg', 'hq', 'all', 'ja');
+  ok((mt.match(/data-mtgsel="/g) || []).length === 6 && (mt.match(/class="mtg-h"/g) || []).length === 1, '月例MTG（本部）＝店舗チップで1店ずつ');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
