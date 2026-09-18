@@ -6836,6 +6836,43 @@
       </div>
       <p class="hint" style="display:block">${esc(L({ ja:'※ 数えるのは自動判定できる提出物。店舗名を押すと、その店の一覧が開きます。', en:'Auto-detected items only. Tap a store to open its list.', vi:'Chỉ mục tự nhận biết. Chạm cửa hàng để mở.' }))}</p>`;
   }
+  /* ★今日出すものを時間帯で分ける（2026-09-17 牛カツ長堀橋の現場の声＝朝・昼・夜・締めで出勤する人が違うのに、
+     全部が1本の一覧に並んで「関係ない項目まで出てくる」）。
+     ・時間帯＝提出物マスタの slot（asa/hiru/yoru/shime）。無ければチェックリストの種類・締切時刻から自動で決める
+     ・いまの時間帯（店舗の現地時間）だけ開き、ほかは畳む。畳んだ帯にも残り件数と締切超過の数を出す＝隠して漏らさない
+     ・項目そのものは減らさない・増やさない（画面は同じ1本のまま） */
+  const KYOU_SLOTS = [
+    ['asa',   { ja:'朝（開店前）',   en:'Morning (before open)', vi:'Sáng (trước mở cửa)' }],
+    ['hiru',  { ja:'昼（アイドル）', en:'Midday (idle)',         vi:'Trưa (giữa ca)' }],
+    ['yoru',  { ja:'夜（営業中）',   en:'Evening (in service)',  vi:'Tối (trong ca)' }],
+    ['shime', { ja:'締め（閉店後）', en:'Close (after service)', vi:'Chốt ca (sau đóng cửa)' }],
+  ];
+  const kyouSlotOf = (m) => {
+    if (m.slot && KYOU_SLOTS.some(x => x[0] === m.slot)) return m.slot;
+    if (m.dueNextDay) return 'shime';
+    const ck = { open:'asa', idle:'hiru', sakura:'yoru', hygiene:'yoru', close:'shime' };
+    if (m.ckMode && ck[m.ckMode]) return ck[m.ckMode];
+    const byId = { openphoto:'asa', chukan:'hiru', nikkei_idle:'hiru', nikkei_close:'shime', genkin_photo:'shime', tip_photo:'shime', kinshu:'shime', kizuki:'shime' };
+    if (byId[m.id]) return byId[m.id];
+    const due = String(m.due || '23:59');
+    return due <= '12:00' ? 'asa' : due <= '17:00' ? 'hiru' : 'yoru';
+  };
+  const kyouSlotNow = (store) => { const h = Number(String(nowHMFor(store)).slice(0, 2)); return h < 14 ? 'asa' : h < 17 ? 'hiru' : h < 21 ? 'yoru' : 'shime'; };
+  function kyouSlotRows_(store, items) {
+    const now = kyouSlotNow(store);
+    return KYOU_SLOTS.map(([key, name]) => {
+      const its = items.filter(it => kyouSlotOf(it.m) === key);
+      if (!its.length) return '';
+      const remain = its.filter(it => !it.manual && !it.submitted && !it.holiday).length;
+      const over = its.filter(it => it.overdue).length;
+      const badge = remain ? `<span class="kslot-n${over ? ' over' : ''}">${L({ ja:'残り', en:'left', vi:'còn' })} ${remain}${over ? `・${L({ ja:'超過', en:'overdue', vi:'quá hạn' })} ${over}` : ''}</span>`
+                           : `<span class="kslot-n done">${L({ ja:'完了', en:'done', vi:'xong' })}</span>`;
+      return `<details class="kslot" data-kslot="${key}"${key === now ? ' open' : ''}>
+        <summary>${esc(L(name))}${key === now ? ` <small>${L({ ja:'いま', en:'now', vi:'bây giờ' })}</small>` : ''}${badge}</summary>
+        ${its.map(subItemRow).join('')}
+      </details>`;
+    }).join('');
+  }
   function kyouView_(kind) {
     const K = KYOU_KINDS[kind];
     const pick = kyouPick_();
@@ -6856,10 +6893,10 @@
     const holiday = kind === 'daily' && isHoliday(store, dateKeyFor(store, now));
     const remain = items.filter(it => !it.manual && !it.submitted).length;
     const empty = kind === 'weekly' ? L({ja:'今週の提出物はありません',en:'No weekly items',vi:'Không có mục tuần này'}) : L({ja:'今月の提出物はありません',en:'No monthly items',vi:'Không có mục tháng này'});
-    const rows = items.length ? items.map(subItemRow).join('') : (kind === 'daily' ? '' : `<div class="muted">${empty}</div>`);
+    const rows = items.length ? (kind === 'daily' ? kyouSlotRows_(store, items) : items.map(subItemRow).join('')) : (kind === 'daily' ? '' : `<div class="muted">${empty}</div>`);
     const hint = kind === 'daily'
       ? (holiday ? L({ja:'本日は定休日として登録されています（未提出にはなりません）。',en:'Registered as a holiday today (not counted as missing).',vi:'Hôm nay là ngày nghỉ (không tính chưa nộp).'})
-                 : `${L({ja:'残り',en:'Remaining',vi:'Còn lại'})} ${remain} ${L({ja:'件（現地時間で判定）',en:'item(s) (store local time)',vi:'mục (giờ địa phương)'})}`)
+                 : `${L({ja:'残り',en:'Remaining',vi:'Còn lại'})} ${remain} ${L({ja:'件（現地時間で判定）',en:'item(s) (store local time)',vi:'mục (giờ địa phương)'})}${items.length ? L({ ja:'。いまの時間帯だけ開いています（ほかの帯は見出しをタップ）', en:'. Only the current time slot is open (tap a heading for others).', vi:'. Chỉ khung giờ hiện tại đang mở (chạm tiêu đề để xem khác).' }) : ''}`)
       : kind === 'weekly' ? `${L({ja:'今週分の提出物です。残り',en:'This week. Remaining',vi:'Trong tuần. Còn lại'})} ${remain} ${L({ja:'件',en:'item(s)',vi:'mục'})}`
       : `${L({ja:'今月分の提出物です。残り',en:'This month. Remaining',vi:'Trong tháng. Còn lại'})} ${remain} ${L({ja:'件',en:'item(s)',vi:'mục'})}`;
     const foot = kind === 'daily'
