@@ -5476,9 +5476,9 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
     ok(/'zaikomaster'/.test(gs.split('PURGE_KEEP_KINDS')[1] || ''), '品目・基準在庫は90日削除から守る（要GAS貼り替え）');
   }
   const fg = renderView('kyou', 'manager', '牛カツ世桜 富士山店', 'ja');
-  ok(/在庫数の入力（締め）/.test(fg), '牛カツ富士山店にも出る（牛カツ業態で試す）');
+  ok(/在庫数の入力（締め）/.test(fg), '牛カツ富士山店にも出る');
   const wg = renderView('kyou', 'manager', '和牛世桜 広島店', 'ja');
-  ok(!/在庫数の入力/.test(wg), '対象外の店舗（広島）には出ない');
+  ok(/在庫数の入力（締め）/.test(wg), '全店に出る（9/18 全店から希望＝広島にも）');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 

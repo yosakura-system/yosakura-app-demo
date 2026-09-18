@@ -6489,7 +6489,7 @@
       { id:'hygiene_d',  name:{ja:'定期衛生管理（本日の曜日の箇所）',en:'Periodic hygiene (today\'s spots)',vi:'Vệ sinh định kỳ (hôm nay)'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'hygiene', linkApp:'checklist' },
       /* ★在庫数の入力（2026-09-18 長堀橋の現場の声）＝写真の代わりに数を入れる。写真の項目は当面残す（並行して様子を見る）。
          autoAdd＝本部が提出物マスタを保存済みでも、この項目だけは既定から足す（無いと長堀橋の画面に出ない） */
-      { id:'zaiko', name:{ja:'在庫数の入力（締め）',en:'Stock counts (close)',vi:'Nhập tồn kho (chốt ca)'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店', '牛カツ世桜 富士山店'], hqReview:'none', detect:'zaiko', linkApp:'zaiko', slot:'shime', autoAdd:true,
+      { id:'zaiko', name:{ja:'在庫数の入力（締め）',en:'Stock counts (close)',vi:'Nhập tồn kho (chốt ca)'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'zaiko', linkApp:'zaiko', slot:'shime', autoAdd:true,   // 2026-09-18 全店から希望→全店へ（当初は牛カツ業態のみ）
         how:{ja:'締めの時点の在庫数を品目ごとに入力してください（基準を下回った品目は発注リストに出ます）',en:'Enter stock counts per item at close (low items go to the order list)',vi:'Nhập tồn kho từng mặt hàng lúc chốt ca (hàng thấp vào danh sách đặt)'} },
       { id:'zaiko_photo', name:{ja:'在庫チェック表の写真',en:'Stock check sheet photos',vi:'Ảnh bảng kiểm kho'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'記入した在庫チェック表（食材①②・ドリンク・消耗品）を撮影して提出してください',en:'Photograph the filled stock check sheets (ingredients, drinks, supplies)',vi:'Chụp các bảng kiểm kho đã điền (nguyên liệu, đồ uống, vật tư)'} },
