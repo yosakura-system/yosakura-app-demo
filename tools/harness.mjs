@@ -5429,7 +5429,11 @@ console.log('== 今日出すもの＝時間帯（朝／昼／夜／締め）で�
 {
   const S = '牛カツ世桜 長堀橋店';
   const h = renderView('kyou', 'manager', S, 'ja');
-  ok(/data-kslot="asa"/.test(h) && /data-kslot="hiru"/.test(h) && /data-kslot="yoru"/.test(h) && /data-kslot="shime"/.test(h), '4つの時間帯の帯が出る');
+  ok(/data-kslot="asa"/.test(h) && /data-kslot="hiru"/.test(h) && /data-kslot="yoru"/.test(h) && /data-kslot="shime"/.test(h), '長堀橋＝4つの帯（OPEN／中間 lunch後／中間 dinner前／CLOSE）');
+  ok(/OPEN業務（開店前）/.test(h) && /中間業務（lunch後）/.test(h) && /中間業務（dinner前）/.test(h) && /CLOSE業務（閉店後）/.test(h), '名前＝世桜のチェックシート（OPEN業務／中間業務／CLOSE業務）');
+  const h3 = renderView('kyou', 'manager', '日本料理世桜本店', 'ja');
+  ok(/data-kslot="asa"/.test(h3) && /data-kslot="mid"/.test(h3) && /data-kslot="shime"/.test(h3) && !/data-kslot="hiru"/.test(h3) && !/data-kslot="yoru"/.test(h3), '他の店＝3つの帯（中間業務は1つ）');
+  ok(/中間業務（アイドルタイム）/.test(h3) && (h3.match(/<details class="kslot"[^>]* open>/g) || []).length === 1, '本店の中間業務＝アイドルタイム・いまの帯だけ開く');
   ok((h.match(/<details class="kslot"[^>]* open>/g) || []).length === 1, 'いまの時間帯だけが開いている（ほかは畳む）');
   const pos = (re) => { const m = re.exec(h); return m ? m.index : -1; };
   ok(pos(/data-kslot="asa"/) < pos(/オープン写真/) && pos(/オープン写真/) < pos(/data-kslot="hiru"/), 'オープン写真は「朝」の帯に入る');
