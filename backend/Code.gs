@@ -48,7 +48,7 @@ function autoPurgeOn_()    { return getSetting_('ENABLE_AUTO_PURGE', true) === t
    90日で消すと「Google口コミ集計」の推移が3か月で切れる。1日10行ほどの軽量な行なので恒久保存（神田さんのご指示）。 */
 /* ★2026-09-08 追加＝newslike/newsread/newscmt（お知らせへのいいね・確認・コメント）。
    お知らせ本体（news）が恒久保存のため、反応だけ90日で消えると「誰が確認したか」の記録に穴があく。 */
-var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide',
+var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide', 'zaikomaster',   // zaikomaster＝在庫の品目・基準在庫（2026-09-18）
                          'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu', 'phsample', 'monthly', 'gsnap',
                          'newslike', 'newsread', 'newscmt',
                          /* ★2026-09-15 神田さん判断＝みんなの投稿・いいね・コメントは90日で消さない

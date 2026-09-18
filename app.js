@@ -321,6 +321,11 @@
     { id:'kinshu', group:'genba', icon:'yen', tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'金種別入力（レジクローズ）', en:'Cash Denomination Count', vi:'Kiểm đếm mệnh giá' },
       desc:{ ja:'お札・硬貨の枚数を入力→合計と差異を自動計算', en:'Enter counts; totals auto-calculated', vi:'Nhập số lượng; tự tính tổng' } },
+    /* 在庫（2026-09-18 長堀橋の現場の声）＝在庫チェック表の写真の代わりに数を入れる。基準を下回った品目は発注リストへ。
+       入力＝店舗iPad（スタッフ）・発注の印と品目登録＝店長。長堀橋から試す（提出物マスタ側の stores で対象を決める） */
+    { id:'zaiko', group:'genba', icon:'box', tabHide:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'在庫（数と発注）', en:'Stock (counts & orders)', vi:'Tồn kho (đếm & đặt hàng)' },
+      desc:{ ja:'締めに在庫数を入力→基準を下回った品目が発注リストに出る', en:'Enter counts at close; low items go to the order list', vi:'Nhập tồn kho lúc chốt ca; hàng thấp vào danh sách đặt' } },
     /* 中間報告＝長堀橋トライアル（2026-09-01）。タブには出さず「今日出すもの」の行から開く
        （hide だと画面ごと開けなくなるので tabHide。対象店舗の判定は提出物マスタ側の stores で行う） */
     { id:'chukan', group:'genba', icon:'report', tabHide:true, roles:['staff','manager','owner','hq'],
@@ -2054,6 +2059,108 @@
     { v:5, label:'5円' }, { v:1, label:'1円' }
   ];
   const getKinshu = () => { try { return getReports().filter(r => r.kind === 'kinshu'); } catch (e) { return []; } };
+
+  /* ---------- 在庫（数と発注）2026-09-18 長堀橋の現場の声 ----------
+     ・品目と基準在庫（zaikomaster）＝店舗ごと最新が正。店長が登録
+     ・在庫数（zaiko）＝1日1件（締め）。店舗iPadのスタッフが入力。最新の1件を「いまの在庫」とする
+     ・発注済みの印（zaikoorder）＝品目ごと。在庫入力より新しい印があれば発注リストから外す（次の入力でまた判定）
+     ・アラート＝基準を下回った品目を「今日出すもの」の先頭と発注タブに赤で出す（通知は「開いたら見える」形） */
+  const ZK_LS_TAB = 'yosakura_zk_tab', ZK_LS_STORE = 'yosakura_zk_store', ZK_SLOTS = 24;
+  const getZk = (kind) => { try { return getReports().filter(r => r.kind === kind); } catch (e) { return []; } };
+  const zkMgr = () => ['manager', 'owner', 'hq'].includes(getRole());
+  function zkStore() {
+    const vis = visibleStores(); if (vis.length <= 1) return vis[0] || '';
+    let s = ''; try { s = localStorage.getItem(ZK_LS_STORE) || ''; } catch (e) {}
+    if (!vis.includes(s)) s = (getStoreSel() !== 'all' && vis.includes(getStoreSel())) ? getStoreSel() : vis[0];
+    return s;
+  }
+  function zkMaster(store) {
+    const rows = getZk('zaikomaster').filter(r => r.store === store).sort((a, b) => b.t - a.t);
+    const p = rows.length ? parseNote(rows[0].note) : null;
+    return (p && Array.isArray(p.items)) ? p.items.filter(it => it && it.n) : [];
+  }
+  function zkLatest(store) {
+    const rows = getZk('zaiko').filter(r => r.store === store).sort((a, b) => b.t - a.t);
+    if (!rows.length) return null;
+    const p = parseNote(rows[0].note) || {};
+    return { q: p.q || {}, by: p.by || '', t: rows[0].t, dk: dateKeyOfItem(rows[0].item) };
+  }
+  function zkOrdered(store) {
+    const o = {};
+    getZk('zaikoorder').filter(r => r.store === store).forEach(r => { const p = parseNote(r.note) || {}; (p.items || []).forEach(n => { if (!o[n] || r.t > o[n]) o[n] = r.t; }); });
+    return o;
+  }
+  function zkLow(store) {
+    const m = zkMaster(store); const l = zkLatest(store); if (!m.length || !l) return [];
+    const ord = zkOrdered(store);
+    return m.filter(it => it.std != null && it.std !== '' && l.q[it.n] != null && l.q[it.n] !== '' && Number(l.q[it.n]) < Number(it.std) && !(ord[it.n] && ord[it.n] > l.t))
+            .map(it => ({ n: it.n, u: it.u || '', q: Number(l.q[it.n]), std: Number(it.std) }));
+  }
+  /* 月次棚卸（kind:'monthly' の closeDetail）に載っている品目名＝在庫の品目にそろえる材料（最新の月から） */
+  function zkTanaNames(store) {
+    try {
+      const recs = getMonthly().filter(r => r.store === store && Array.isArray(r.closeDetail) && r.closeDetail.length).sort((a, b) => String(b.ym).localeCompare(String(a.ym)));
+      if (!recs.length) return [];
+      const seen = {}; return recs[0].closeDetail.map(d => String(d.n || '').trim()).filter(n => n && !seen[n] && (seen[n] = true));
+    } catch (e) { return []; }
+  }
+  /* 「今日出すもの」の先頭に出す赤い箱（基準を下回った品目があるときだけ） */
+  function zkAlertCard(store) {
+    const low = zkLow(store); if (!low.length) return '';
+    return `<div class="card zk-low">
+      <h3>${L({ ja:'発注が必要な品目', en:'Items to order', vi:'Hàng cần đặt' })} <span class="zk-n">${low.length}</span></h3>
+      <div class="zk-list">${low.map(x => `<div class="zk-row"><b>${esc(x.n)}</b><span>${L({ ja:'残り', en:'left', vi:'còn' })} ${x.q}${esc(x.u)} ／ ${L({ ja:'基準', en:'min', vi:'định mức' })} ${x.std}${esc(x.u)}</span></div>`).join('')}</div>
+      <button class="mini" data-open="zaiko">${L({ ja:'発注リストを開く', en:'Open order list', vi:'Mở danh sách đặt hàng' })}</button>
+    </div>`;
+  }
+  APP_VIEWS.zaiko = () => {
+    const vis = visibleStores(); const store = zkStore();
+    let tab = ''; try { tab = localStorage.getItem(ZK_LS_TAB) || ''; } catch (e) {}
+    if (!['in', 'order', 'items'].includes(tab)) tab = 'in';
+    if (tab === 'items' && !zkMgr()) tab = 'in';
+    const m = zkMaster(store), l = zkLatest(store), low = zkLow(store), ord = zkOrdered(store);
+    const today = dateKeyFor(store, Date.now());
+    const tabs = [['in', { ja:'在庫数を入力', en:'Enter counts', vi:'Nhập tồn' }], ['order', { ja:'発注リスト', en:'Order list', vi:'Đặt hàng' }]].concat(zkMgr() ? [['items', { ja:'品目・基準在庫', en:'Items & minimums', vi:'Mặt hàng & định mức' }]] : []);
+    const tabBar = `<div class="segs">${tabs.map(([v, t]) => `<button type="button" class="seg ${tab === v ? 'on' : ''}" data-zktab="${v}">${esc(L(t))}${v === 'order' && low.length ? ` <span class="zk-n">${low.length}</span>` : ''}</button>`).join('')}</div>`;
+    const storeSel = vis.length > 1 ? `<label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="zk_store">${vis.map(x => `<option${x === store ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : '';
+    let body = '';
+    if (tab === 'in') {
+      if (!m.length) body = `<div class="muted">${L({ ja:'品目がまだ登録されていません。', en:'No items registered yet.', vi:'Chưa đăng ký mặt hàng.' })}${zkMgr() ? ` <button class="mini" data-zktab="items">${L({ ja:'品目を登録する', en:'Register items', vi:'Đăng ký' })}</button>` : L({ ja:'店長に「品目・基準在庫」の登録を頼んでください。', en:'Ask your manager to register items.', vi:'Nhờ quản lý đăng ký.' })}</div>`;
+      else {
+        const isToday = l && l.dk === today;
+        body = `
+        <div class="hint" style="display:block">${isToday ? L({ ja:'今日の入力があります。直すときはそのまま上書きして提出してください。', en:'Today’s counts exist; resubmit to overwrite.', vi:'Đã có số hôm nay; gửi lại để ghi đè.' }) : (l ? `${L({ ja:'前回', en:'Last', vi:'Lần trước' })} ${esc(l.dk)}${l.by ? `（${esc(l.by)}）` : ''}${L({ ja:'の数を薄く出しています。今日の数を入れてください。', en:' counts shown faintly; enter today’s.', vi:' hiển thị mờ; nhập số hôm nay.' })}` : L({ ja:'締めの時点の数を入れてください（0.5などの小数も可）。', en:'Enter counts at close (decimals OK).', vi:'Nhập số lúc chốt ca (được nhập số lẻ).' }))}</div>
+        ${m.map((it, i) => { const cur = l && l.q[it.n]; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
+          return `<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}</small></label>
+            <input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${isToday && cur != null ? esc(String(cur)) : ''}" placeholder="${!isToday && cur != null ? esc(String(cur)) : '0'}"><span class="muted">${esc(it.u || '')}</span></div>`; }).join('')}
+        <label class="fld"><span>${L({ ja:'名前', en:'Your name', vi:'Tên bạn' })}</span><input type="text" id="zk_by" value="${esc(getUserName() || '')}"></label>
+        <button class="btn-primary" id="submitZk">${L({ ja:'在庫数を提出する', en:'Submit counts', vi:'Gửi số tồn' })}</button>
+        <div class="hint">${L({ ja:'※ 基準を下回った品目は、提出した時点で「発注リスト」と「今日出すもの」に赤で出ます。', en:'Items below minimum appear in red on the order list and today’s list.', vi:'Hàng dưới định mức sẽ hiện đỏ ở danh sách đặt và việc hôm nay.' })}</div>`;
+      }
+    } else if (tab === 'order') {
+      const recent = Object.keys(ord).filter(n => l && ord[n] > l.t);
+      body = low.length ? `<div class="zk-list">${low.map(x => `<div class="zk-row low"><div><b>${esc(x.n)}</b><br><span>${L({ ja:'残り', en:'left', vi:'còn' })} ${x.q}${esc(x.u)} ／ ${L({ ja:'基準', en:'min', vi:'định mức' })} ${x.std}${esc(x.u)}</span></div>${zkMgr() ? `<button class="mini" data-zkorder="${esc(x.n)}">${L({ ja:'発注した', en:'Ordered', vi:'Đã đặt' })}</button>` : ''}</div>`).join('')}</div>
+        <div class="hint">${zkMgr() ? L({ ja:'「発注した」を押すと一覧から外れます（次の在庫入力でまた判定します）。', en:'“Ordered” removes it until the next count.', vi:'“Đã đặt” sẽ ẩn đến lần nhập sau.' }) : L({ ja:'発注は店長が行います。', en:'The manager places orders.', vi:'Quản lý sẽ đặt hàng.' })}</div>`
+        : `<div class="muted">${l ? L({ ja:'いま基準を下回っている品目はありません。', en:'No items below minimum.', vi:'Không có hàng dưới định mức.' }) : L({ ja:'まだ在庫数の入力がありません。', en:'No counts yet.', vi:'Chưa có số tồn.' })}</div>`;
+      if (recent.length) body += `<div class="idlabel" style="margin-top:12px">${L({ ja:'発注済み（次の入力まで）', en:'Ordered (until next count)', vi:'Đã đặt (đến lần nhập sau)' })}</div><div class="muted">${recent.map(esc).join('、')}</div>`;
+    } else {
+      const rows = m.slice(); while (rows.length < ZK_SLOTS) rows.push({ n: '', std: '', u: '' });
+      body = `
+        <div class="hint" style="display:block">${L({ ja:'在庫チェック表と同じ順で品目を入れてください。基準在庫＝これを下回ったら発注する数。単位は「本」「袋」「kg」など。', en:'List items in the same order as the stock sheet. Minimum = order when below this.', vi:'Nhập mặt hàng theo thứ tự bảng kiểm kho. Định mức = đặt hàng khi thấp hơn.' })}</div>
+        <div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span></div>
+        ${rows.map((r, i) => `<div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="0"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'本', en:'pcs', vi:'cái' })}"></div>`).join('')}
+        <div style="margin:6px 0 10px"><button class="mini" id="zkFromTana">${L({ ja:'月次棚卸の品目を取り込む', en:'Import stocktake items', vi:'Nhập mặt hàng từ kiểm kê' })}${(() => { const n = zkTanaNames(store).length; return n ? `（${n}）` : ''; })()}</button>
+          <span class="muted" style="font-size:12px">${L({ ja:'棚卸と同じ品目名にそろえると、月末の棚卸がそのまま使えます', en:'Use the same names as the stocktake', vi:'Dùng cùng tên với kiểm kê' })}</span></div>
+        <button class="btn-primary" id="saveZkMaster">${L({ ja:'品目と基準在庫を保存する', en:'Save items', vi:'Lưu mặt hàng' })}</button>
+        <div class="hint">${L({ ja:'※ 保存すると全端末に届きます。空欄の行は保存されません。', en:'Saved for all devices; blank rows are dropped.', vi:'Lưu cho mọi thiết bị; dòng trống bị bỏ.' })}</div>`;
+    }
+    return `
+      ${NOTE({ ja:'◆ 締めに在庫数を入れると、基準を下回った品目が発注リストに出ます（在庫チェック表の写真の代わり）', en:'◆ Enter counts at close; items below minimum go to the order list (replaces the stock sheet photo)', vi:'◆ Nhập tồn lúc chốt ca; hàng dưới định mức vào danh sách đặt (thay ảnh bảng kiểm kho)' })}
+      <div class="card">
+        <h3>${L({ ja:'在庫', en:'Stock', vi:'Tồn kho' })} — ${esc(storeShort(store))}</h3>
+        ${storeSel}${tabBar}${body}
+      </div>`;
+  };
   APP_VIEWS.kinshu = () => {
     const vis = visibleStores();
     const recent = getKinshu().filter(r => vis.includes(r.store)).sort((a, b) => b.t - a.t).slice(0, 5);
@@ -6380,6 +6487,10 @@
         how:{ja:'納品書や買い出しのレシートを、届いたつど撮影して提出してください（1日に何回でも）',en:'Photograph delivery slips and purchase receipts as they arrive (any number per day)',vi:'Chụp phiếu giao hàng và hóa đơn mua ngoài khi nhận được (bao nhiêu lần cũng được)'} },
       { id:'ck_sakura',  name:{ja:'桜チェックリスト（トイレ）',en:'Sakura checklist (restroom)',vi:'Checklist WC'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'sakura', linkApp:'checklist' },
       { id:'hygiene_d',  name:{ja:'定期衛生管理（本日の曜日の箇所）',en:'Periodic hygiene (today\'s spots)',vi:'Vệ sinh định kỳ (hôm nay)'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none', detect:'ckdone', ckMode:'hygiene', linkApp:'checklist' },
+      /* ★在庫数の入力（2026-09-18 長堀橋の現場の声）＝写真の代わりに数を入れる。写真の項目は当面残す（並行して様子を見る）。
+         autoAdd＝本部が提出物マスタを保存済みでも、この項目だけは既定から足す（無いと長堀橋の画面に出ない） */
+      { id:'zaiko', name:{ja:'在庫数の入力（締め）',en:'Stock counts (close)',vi:'Nhập tồn kho (chốt ca)'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店', '牛カツ世桜 富士山店'], hqReview:'none', detect:'zaiko', linkApp:'zaiko', slot:'shime', autoAdd:true,
+        how:{ja:'締めの時点の在庫数を品目ごとに入力してください（基準を下回った品目は発注リストに出ます）',en:'Enter stock counts per item at close (low items go to the order list)',vi:'Nhập tồn kho từng mặt hàng lúc chốt ca (hàng thấp vào danh sách đặt)'} },
       { id:'zaiko_photo', name:{ja:'在庫チェック表の写真',en:'Stock check sheet photos',vi:'Ảnh bảng kiểm kho'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'記入した在庫チェック表（食材①②・ドリンク・消耗品）を撮影して提出してください',en:'Photograph the filled stock check sheets (ingredients, drinks, supplies)',vi:'Chụp các bảng kiểm kho đã điền (nguyên liệu, đồ uống, vật tư)'} },
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
@@ -6504,6 +6615,8 @@
       const m = jget(SUBKEYS.master, null);
       base = (Array.isArray(m) && m.length) ? m : defaultMasters();
     }
+    /* ★既定に autoAdd の印がある項目は、本部が保存した一覧に無くても足す（2026-09-18 在庫数の入力） */
+    defaultMasters().forEach(d => { if (d.autoAdd && !base.some(b => b.id === d.id)) base = base.concat([d]); });
     const urls = getMasterUrls();
     const sUrls = store ? getMasterStoreUrls() : {};
     const key = store ? normalizeStore(store) : '';
@@ -6604,6 +6717,7 @@
       if (m.detect === 'chukan') return getReports().some(r => r.kind === 'chukan' && r.store === store && inScope(r.t));
       // 金種別入力（レジクローズ）＝当日の kinshu 記録が1件でもあれば提出済み
       if (m.detect === 'kinshu') return getReports().some(r => r.kind === 'kinshu' && r.store === store && inScope(r.t));
+      if (m.detect === 'zaiko')  return getReports().some(r => r.kind === 'zaiko' && r.store === store && inScope(r.t));
       if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
       /* アプリのチェックリスト＝★その日の項目が「全部」終わったときだけ提出済みとする。
          2026-08-12 神田さんのご指摘で修正。以前は1つでもチェックすれば実施とみなしていたため、
@@ -6852,7 +6966,7 @@
     if (m.dueNextDay) return 'shime';
     const ck = { open:'asa', idle:'hiru', sakura:'yoru', hygiene:'yoru', close:'shime' };
     if (m.ckMode && ck[m.ckMode]) return ck[m.ckMode];
-    const byId = { openphoto:'asa', chukan:'hiru', nikkei_idle:'hiru', nikkei_close:'shime', genkin_photo:'shime', tip_photo:'shime', kinshu:'shime', kizuki:'shime' };
+    const byId = { openphoto:'asa', chukan:'hiru', nikkei_idle:'hiru', nikkei_close:'shime', genkin_photo:'shime', tip_photo:'shime', kinshu:'shime', kizuki:'shime', zaiko:'shime' };
     if (byId[m.id]) return byId[m.id];
     const due = String(m.due || '23:59');
     return due <= '12:00' ? 'asa' : due <= '17:00' ? 'hiru' : 'yoru';
@@ -6908,6 +7022,7 @@
       <div class="card">
         <h3>${L(K.title)} — ${esc(storeShort(store))}${p ? ` <small style="color:#8a8">${p}</small>` : ''}</h3>
         <p class="hint" style="display:block">${hint}</p>
+        ${kind === 'daily' ? zkAlertCard(store) : ''}
         ${rows}
       </div>
       <p class="hint" style="display:block">${foot}</p>`;
@@ -7710,7 +7825,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -7739,6 +7854,14 @@
       // 巡回チェックの履歴＝店舗行を押す→その店の年間推移／訪問を押す→その日の結果（2026-09-17）
       if (t.dataset.svhist !== undefined) { svState.store = t.dataset.svhist; svState.tab = 'hist'; 最後の入力時刻 = 0; render(true); return; }
       if (t.dataset.svopen !== undefined) { svState.date = t.dataset.svopen; svState.tab = 'report'; 最後の入力時刻 = 0; render(true); return; }
+      if (t.dataset.zktab !== undefined) { try { localStorage.setItem(ZK_LS_TAB, t.dataset.zktab); } catch (e) {} render(true); return; }
+      if (t.dataset.zkorder !== undefined) {
+        if (!zkMgr()) return;
+        const store = zkStore(); const t0 = Date.now();
+        const rep = { kind:'zaikoorder', store, item: dateKeyFor(store, t0), note: JSON.stringify({ items: [t.dataset.zkorder], by: getUserName() || submitterLabel() }), photos: [], t: t0 };
+        try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
+        lastSync = t0; toast(L({ ja:'発注済みにしました', en:'Marked as ordered', vi:'Đã đánh dấu đặt hàng' })); render(true); postReport(rep); return;
+      }
       // 数字の要確認＝確認済みの切替／表示の切替（2026-09-17）
       if (t.dataset.numack !== undefined) { const o = getNumAck(); if (o[t.dataset.numack]) delete o[t.dataset.numack]; else o[t.dataset.numack] = Date.now(); saveNumAck(o); render(true); return; }
       if (t.dataset.numall !== undefined) { localStorage.setItem('yosakura_numcheck_all', t.dataset.numall); render(true); return; }
@@ -9528,6 +9651,49 @@
       const kx = document.getElementById('kc_expect'); if (kx) kx.oninput = kcCalc;
       kcCalc();
     }
+    // 在庫（2026-09-18）＝店舗の切替・在庫数の提出・品目の保存
+    const zkSt = document.getElementById('zk_store'); if (zkSt) zkSt.onchange = () => { try { localStorage.setItem(ZK_LS_STORE, zkSt.value); } catch (e) {} render(true); };
+    const subZk = document.getElementById('submitZk');
+    if (subZk) subZk.onclick = () => {
+      const store = zkStore(); const q = {}; let n = 0;
+      document.querySelectorAll('input[data-zkname]').forEach(el => { const v = String(el.value || '').trim(); if (v === '') return; const num = Number(v); if (isNaN(num)) return; q[el.dataset.zkname] = num; n++; });
+      if (!n) { toast(L({ ja:'在庫数を1つ以上入れてください', en:'Enter at least one count', vi:'Nhập ít nhất một số' })); return; }
+      const by = String((document.getElementById('zk_by') || {}).value || '').trim(); if (by) setUserName(by);
+      const t = Date.now();
+      const rep = { kind:'zaiko', store, item: dateKeyFor(store, t), note: JSON.stringify({ q, by: by || submitterLabel() }), photos: [], t };
+      try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
+      lastSync = t;
+      const low = zkLow(store);
+      toast(low.length ? `${L({ ja:'在庫数を提出しました。基準を下回った品目', en:'Submitted. Items below minimum', vi:'Đã gửi. Hàng dưới định mức' })}：${low.length}` : L({ ja:'在庫数を提出しました', en:'Counts submitted', vi:'Đã gửi số tồn' }));
+      go('/app/kyou');
+      postReport(rep);
+    };
+    const zkTana = document.getElementById('zkFromTana');
+    if (zkTana) zkTana.onclick = () => {
+      const names = zkTanaNames(zkStore());
+      if (!names.length) { toast(L({ ja:'この店舗の月次棚卸にはまだ品目がありません', en:'No stocktake items yet', vi:'Chưa có mặt hàng kiểm kê' })); return; }
+      const have = {}; document.querySelectorAll('input[id^="zk_n"]').forEach(el => { const v = String(el.value || '').trim(); if (v) have[v] = true; });
+      let added = 0;
+      names.forEach(n => { if (have[n]) return; const empty = Array.from(document.querySelectorAll('input[id^="zk_n"]')).find(el => !String(el.value || '').trim()); if (!empty) return; empty.value = n; have[n] = true; added++; });
+      toast(added ? `${L({ ja:'棚卸の品目を追加しました', en:'Added', vi:'Đã thêm' })}：${added}${L({ ja:'件（基準在庫を入れて保存してください）', en:' (set minimums and save)', vi:' (đặt định mức rồi lưu)' })}` : L({ ja:'追加する品目はありません（すべて登録済み）', en:'Nothing to add', vi:'Không có gì để thêm' }));
+    };
+    const svZk = document.getElementById('saveZkMaster');
+    if (svZk) svZk.onclick = () => {
+      if (!zkMgr()) return;
+      const store = zkStore(); const items = [];
+      for (let i = 0; i < ZK_SLOTS + 50; i++) {
+        const nEl = document.getElementById('zk_n' + i); if (!nEl) break;
+        const name = String(nEl.value || '').trim(); if (!name) continue;
+        const sv = String((document.getElementById('zk_s' + i) || {}).value || '').trim();
+        items.push({ n: name, std: sv === '' ? '' : (Number(sv) || 0), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim() });
+      }
+      if (!items.length) { toast(L({ ja:'品目を1つ以上入れてください', en:'Enter at least one item', vi:'Nhập ít nhất một mặt hàng' })); return; }
+      const t = Date.now();
+      const rep = { kind:'zaikomaster', store, item: store, note: JSON.stringify({ items, by: getUserName() || submitterLabel() }), photos: [], t };
+      try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
+      lastSync = t; try { localStorage.setItem(ZK_LS_TAB, 'in'); } catch (e) {}
+      toast(L({ ja:'品目と基準在庫を保存しました', en:'Items saved', vi:'Đã lưu mặt hàng' })); render(true); postReport(rep);
+    };
     const subKc = document.getElementById('submitKc');
     if (subKc) subKc.onclick = () => {
       const store = (document.getElementById('kc_store') || {}).value || visibleStores()[0];
@@ -10324,7 +10490,7 @@
         // ★2026-09-08 追加＝newslike/newsread/newscmt（お知らせへの反応）。KEEP判断＝お知らせ本体と同じく恒久（Code.gsに追加）
         // ★2026-09-08 追加＝kinshu（金種別入力・レジクローズ）。KEEP判断＝90日で消えてよい（差異は総括表のレジ誤差に恒久で残る）
         case 'chukan': case 'chukandraft': case 'skdraft': case 'gsnap': case 'handover':
-        case 'newslike': case 'newsread': case 'newscmt': case 'kinshu': case 'commcmt':
+        case 'newslike': case 'newsread': case 'newscmt': case 'kinshu': case 'commcmt': case 'zaiko': case 'zaikomaster': case 'zaikoorder':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
         case 'route': route.push({ store, route:r.item, t, id }); break;

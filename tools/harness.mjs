@@ -5440,5 +5440,47 @@ console.log('== 今日出すもの＝時間帯（朝／昼／夜／締め）で�
   ok(!/data-kslot=/.test(w), '週次には時間帯の帯を出さない');
 }
 
+console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const t0 = Date.now();
+  const dk = new Date(t0 + 9 * 3600e3).toISOString().slice(0, 10);
+  const master = { kind:'zaikomaster', store:S, item:S, note: JSON.stringify({ items:[{ n:'牛肉', std:5, u:'kg' }, { n:'パン粉', std:3, u:'袋' }, { n:'油', std:2, u:'缶' }], by:'永井' }), photos:[], t: t0 - 3600e3 };
+  const count = { kind:'zaiko', store:S, item: dk, note: JSON.stringify({ q:{ '牛肉':4, 'パン粉':3, '油':1 }, by:'スタッフ' }), photos:[], t: t0 - 600e3 };
+  const order = { kind:'zaikoorder', store:S, item: dk, note: JSON.stringify({ items:['油'], by:'永井' }), photos:[], t: t0 - 60e3 };
+  const seed = (role, tab) => { run(() => { setLS(role, S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([master, count, order])); if (tab) localStorage.setItem('yosakura_zk_tab', tab); }); };
+  seed('manager'); location.hash = '#/app/zaiko'; let hIn = registry.app.innerHTML;
+  ok(/data-zktab="in"/.test(hIn) && /data-zktab="order"/.test(hIn) && /data-zktab="items"/.test(hIn), '店長＝入力／発注リスト／品目・基準在庫の3タブ');
+  ok(/data-zkname="牛肉"/.test(hIn) && /id="submitZk"/.test(hIn), '入力タブ＝登録した品目の欄と提出ボタン');
+  ok(/class="zk-in low"/.test(hIn), '基準を下回っている品目の欄は赤い');
+  seed('staff'); location.hash = '#/app/zaiko'; const hSt = registry.app.innerHTML;
+  ok(!/data-zktab="items"/.test(hSt) && /id="submitZk"/.test(hSt), 'スタッフ＝品目の編集は出ないが入力はできる');
+  seed('manager', 'order'); location.hash = '#/app/zaiko'; const hOr = registry.app.innerHTML;
+  ok(/data-zkorder="牛肉"/.test(hOr) && !/data-zkorder="油"/.test(hOr) && !/data-zkorder="パン粉"/.test(hOr), '発注リスト＝基準未満の牛肉だけ（油は発注済み・パン粉は基準どおり）');
+  seed('staff', 'order'); location.hash = '#/app/zaiko'; const hOrS = registry.app.innerHTML;
+  ok(/牛肉/.test(hOrS) && !/data-zkorder=/.test(hOrS), 'スタッフには発注リストは見えるが「発注した」は出ない');
+  seed('manager'); location.hash = '#/app/kyou'; const kyou = registry.app.innerHTML;
+  ok(/class="card zk-low"/.test(kyou) && /牛肉/.test(kyou) && /data-open="zaiko"/.test(kyou), '今日出すものの先頭に「発注が必要な品目」の赤い箱');
+  const rowOf = (html, label) => { const i = html.indexOf(label); return i < 0 ? '' : html.slice(Math.max(0, i - 300), i + 400); };
+  ok(/在庫数の入力（締め）/.test(kyou) && /提出済/.test(rowOf(kyou, '在庫数の入力（締め）')), '提出物マスタに「在庫数の入力」があり、今日の入力があれば提出済');
+  const pos = (re) => { const m = re.exec(kyou); return m ? m.index : -1; };
+  ok(pos(/data-kslot="shime"/) < pos(/在庫数の入力（締め）/), '在庫数の入力は「締め」の帯');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_zk_tab', 'items'); localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store:S, ym:'2026-08', closeDetail:[{ n:'牛肉', t:'f', u:3000, q:2 }, { n:'キャベツ', t:'f', u:200, q:3 }] }])); localStorage.setItem('yosakura_seed_ver:monthly', 'x'); });
+  location.hash = '#/app/zaiko'; const hIt = registry.app.innerHTML;
+  ok(/id="zkFromTana"/.test(hIt) && /id="zk_n0"/.test(hIt) && /id="saveZkMaster"/.test(hIt), '品目タブ＝月次棚卸の品目を取り込むボタンと保存');
+  {
+    const src = code;
+    ok(/case 'zaiko': case 'zaikomaster': case 'zaikoorder':/.test(src), '同期＝3つのkindが提出一覧に流れる');
+    ok(/d\.autoAdd && !base\.some/.test(src), '本部が保存した提出物マスタにも在庫数の入力が足される（autoAdd）');
+    const gs = fs.readFileSync(APP.replace(/app\.js$/, 'backend/Code.gs'), 'utf8');
+    ok(/'zaikomaster'/.test(gs.split('PURGE_KEEP_KINDS')[1] || ''), '品目・基準在庫は90日削除から守る（要GAS貼り替え）');
+  }
+  const fg = renderView('kyou', 'manager', '牛カツ世桜 富士山店', 'ja');
+  ok(/在庫数の入力（締め）/.test(fg), '牛カツ富士山店にも出る（牛カツ業態で試す）');
+  const wg = renderView('kyou', 'manager', '和牛世桜 広島店', 'ja');
+  ok(!/在庫数の入力/.test(wg), '対象外の店舗（広島）には出ない');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
