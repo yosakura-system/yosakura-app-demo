@@ -4879,7 +4879,8 @@ console.log('== ログインが外れたときは理由を出す（2026-09-03 �
      'ログイン画面に「なぜ外れたか」と「入力内容は残っている」を出す');
   ok(/removeItem\('yosakura_auth_dropped'\)/.test(src9), 'ログインし直したら案内は消える');
   const auth = fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8');
-  ok(/var AUTH_TOKEN_MAX = 10;/.test(auth), '同時に使える端末の上限を10へ（要GAS貼り替え）');
+  ok(/var AUTH_TOKEN_MAX = 20;/.test(auth), '同時に使える端末の上限を20へ（店舗IDをスタッフのスマホで共有）（要GAS貼り替え）');
+  ok(/function 認証_共有パスワードを設定\(uid, pw\)/.test(auth) && /rec.must_change = 'false'/.test(auth), '共有IDのパスワード設定＝初回変更なし・全端末ログアウト（要GAS貼り替え）');
 }
 
 console.log('== ログインの保存は確かめてから進む（2026-09-14 本店iPad＝保存領域いっぱいで無言でログイン画面に戻り続けた）==');
