@@ -5470,6 +5470,18 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
     run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([masterF])); localStorage.setItem('yosakura_zk_tab', 'items'); }); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hFi = registry.app.innerHTML;
     ok(/id="zk_f0"/.test(hFi) && /<option value="mon,thu"/.test(hFi), '品目タブ＝確認日の選択（毎日／月・木／曜日）');
     run(() => { setLS('manager', '牛カツ世桜 富士山店', 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); }); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hBig = registry.app.innerHTML;
+    ok(!/id="zkFromDefault"/.test(hBig), '既定のままの店では「本部が写した品目を取り込む」は出ない');
+    {
+      /* 店長が保存した一覧に既定の品目が足りないとき＝取り込むボタンが出て、押すと空の行に入る（2026-09-19 牛カツ富士山） */
+      const SF = '牛カツ世桜 富士山店';
+      const savedM = { kind:'zaikomaster', store:SF, item:SF, note: JSON.stringify({ items:[{ n:'割り箸（1袋100本）', std:15, u:'袋', f:'sat' }], by:'長田' }), photos:[], t: t0 - 3600e3 };
+      run(() => { setLS('manager', SF, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([savedM])); localStorage.setItem('yosakura_zk_tab', 'items'); });
+      location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hM = registry.app.innerHTML;
+      ok(/id="zkFromDefault"/.test(hM) && /本部が写した品目を取り込む/.test(hM), '店長の保存後に本部が既定を足したら、品目タブに「本部が写した品目を取り込む」が出る');
+      const nEmpty = (hM.match(/id="zk_n\d+" value=""/g) || []).length;
+      ok(nEmpty >= 10, '足りない既定の品目の数だけ空の行が用意されている（' + nEmpty + '行）');
+      ok(/zkFromDefault'\);\s*if \(zkDef\) zkDef\.onclick/.test(code.replace(/\r\n/g, '\n')) && /fEl\.value = zkFreqOf\(d\)/.test(code), '押すと品目名・基準・単位・区分・確認日が空の行に入る（保存は店長）');
+    }
     { const n = (hBig.match(/id="zk_n\d+"/g) || []).length; const filled = (hBig.match(/id="zk_n\d+" value="[^"]+"/g) || []).length; ok(n - filled >= 8, '品目が24を超える店でも、追加用の空き行が8行以上ある（富士山 ' + filled + '品＋空き' + (n - filled) + '）'); }
     const masterOff = { kind:'zaikomaster', store:S, item:S, note: JSON.stringify({ items:[{ n:'別の日の品', std:1, u:'個', f: other }], by:'永井' }), photos:[], t: t0 - 3600e3 };
     run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([masterOff])); });
