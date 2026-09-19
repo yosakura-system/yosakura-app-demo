@@ -2181,6 +2181,11 @@
     return saved.length ? saved : (ZK_DEFAULT_ITEMS[store] || []).map(it => Object.assign({}, it));   // 保存が無ければ既定（在庫チェック表の転記）
   }
   const zkIsDefault = (store) => !getZk('zaikomaster').some(r => r.store === store);
+  /* 既定（本部が紙から写した品目）のうち、いまの一覧に無いもの＝店長が保存した後に本部が既定を足したとき用（2026-09-19 牛カツ富士山） */
+  function zkMissingDefaults(store) {
+    const have = {}; zkMaster(store).forEach(it => { have[String(it.n || '').trim()] = true; });
+    return (ZK_DEFAULT_ITEMS[store] || []).filter(it => !have[String(it.n || '').trim()]);
+  }
   function zkLatest(store) {
     const rows = getZk('zaiko').filter(r => r.store === store).sort((a, b) => b.t - a.t);
     if (!rows.length) return null;
@@ -2259,11 +2264,13 @@
       if (recent.length) body += `<div class="idlabel" style="margin-top:12px">${L({ ja:'発注済み（次の入力まで）', en:'Ordered (until next count)', vi:'Đã đặt (đến lần nhập sau)' })}</div><div class="muted">${recent.map(esc).join('、')}</div>`;
     } else {
       /* 空の行は必ず8行以上残す（品目が24を超える店＝富士山で、追加する行が無くなっていた 2026-09-19） */
-      const rows = m.slice(); const want = Math.max(ZK_SLOTS, m.length + 8); while (rows.length < want) rows.push({ n: '', std: '', u: '' });
+      const rows = m.slice(); const missing = zkMissingDefaults(store); const want = Math.max(ZK_SLOTS, m.length + 8 + missing.length); while (rows.length < want) rows.push({ n: '', std: '', u: '' });
       body = `
         <div class="hint" style="display:block">${L({ ja:'在庫チェック表と同じ順で品目を入れてください。基準在庫＝これを下回ったら発注する数。単位は「本」「袋」「kg」など。', en:'List items in the same order as the stock sheet. Minimum = order when below this.', vi:'Nhập mặt hàng theo thứ tự bảng kiểm kho. Định mức = đặt hàng khi thấp hơn.' })}</div>
         <div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span><span>${L({ ja:'確認日', en:'Check', vi:'Ngày' })}</span></div>
         ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="idlabel" style="margin-top:${i ? 12 : 2}px">${esc(r.g)}</div>` : ''}<input type="hidden" id="zk_g${i}" value="${esc(r.g || '')}"><div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="0"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'本', en:'pcs', vi:'cái' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${(r.n ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select></div>`).join('')}
+        ${missing.length ? `<div style="margin:6px 0 4px"><button class="mini" id="zkFromDefault">${L({ ja:'本部が写した品目を取り込む', en:'Add HQ-listed items', vi:'Thêm mặt hàng do HQ nhập' })}（${missing.length}）</button>
+          <span class="muted" style="font-size:12px">${L({ ja:'紙の在庫表・朝礼シートから本部が写した品目のうち、この一覧に無いものを空の行に足します（足したら保存）', en:'Adds items HQ copied from the paper sheets that are not in this list', vi:'Thêm các mặt hàng HQ đã nhập mà danh sách chưa có' })}</span></div>` : ''}
         <div style="margin:6px 0 10px"><button class="mini" id="zkFromTana">${L({ ja:'月次棚卸の品目を取り込む', en:'Import stocktake items', vi:'Nhập mặt hàng từ kiểm kê' })}${(() => { const n = zkTanaNames(store).length; return n ? `（${n}）` : ''; })()}</button>
           <span class="muted" style="font-size:12px">${L({ ja:'棚卸と同じ品目名にそろえると、月末の棚卸がそのまま使えます', en:'Use the same names as the stocktake', vi:'Dùng cùng tên với kiểm kê' })}</span></div>
         <button class="btn-primary" id="saveZkMaster">${L({ ja:'品目と基準在庫を保存する', en:'Save items', vi:'Lưu mặt hàng' })}</button>
@@ -9836,6 +9843,20 @@
       toast(low.length ? `${L({ ja:'在庫数を提出しました。基準を下回った品目', en:'Submitted. Items below minimum', vi:'Đã gửi. Hàng dưới định mức' })}：${low.length}` : L({ ja:'在庫数を提出しました', en:'Counts submitted', vi:'Đã gửi số tồn' }));
       go('/app/kyou');
       postReport(rep);
+    };
+    const zkDef = document.getElementById('zkFromDefault');
+    if (zkDef) zkDef.onclick = () => {
+      const miss = zkMissingDefaults(zkStore()); let added = 0;
+      miss.forEach(d => {
+        const empty = Array.from(document.querySelectorAll('input[id^="zk_n"]')).find(el => !String(el.value || '').trim()); if (!empty) return;
+        const i = empty.id.slice(4); empty.value = d.n;
+        const sEl = document.getElementById('zk_s' + i); if (sEl) sEl.value = d.std != null && d.std !== '' ? String(d.std) : '';
+        const uEl = document.getElementById('zk_u' + i); if (uEl) uEl.value = d.u || '';
+        const gEl = document.getElementById('zk_g' + i); if (gEl) gEl.value = d.g || '';
+        const fEl = document.getElementById('zk_f' + i); if (fEl) fEl.value = zkFreqOf(d);
+        added++;
+      });
+      toast(added ? `${L({ ja:'本部が写した品目を足しました', en:'Added', vi:'Đã thêm' })}：${added}${L({ ja:'件（「品目と基準在庫を保存する」を押してください）', en:' (tap Save)', vi:' (bấm Lưu)' })}` : L({ ja:'足す品目はありません', en:'Nothing to add', vi:'Không có gì để thêm' }));
     };
     const zkTana = document.getElementById('zkFromTana');
     if (zkTana) zkTana.onclick = () => {
