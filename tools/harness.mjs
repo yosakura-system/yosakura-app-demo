@@ -5456,11 +5456,32 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
   seed('manager'); location.hash = '#/app/zaiko'; let hIn = registry.app.innerHTML;
   ok(/data-zktab="in"/.test(hIn) && /data-zktab="order"/.test(hIn) && /data-zktab="items"/.test(hIn), '店長＝入力／発注リスト／品目・基準在庫の3タブ');
   ok(/data-zkname="牛肉"/.test(hIn) && /id="submitZk"/.test(hIn), '入力タブ＝登録した品目の欄と提出ボタン');
+  ok(!/data-zklater/.test(hIn) && !/今日確認する品目/.test(hIn), '確認日の指定が無い品目だけなら、折りたたみも見出しも出ない（今までどおり）');
+  {
+    /* 確認日（毎日／月・木／土）＝今日の曜日で「今日確認する品目」と折りたたみに分かれる（2026-09-19 長田さん） */
+    const dowNow = new Date().getDay(); const todayKey = ['sun','mon','tue','wed','thu','fri','sat'][dowNow];
+    const other = todayKey === 'sat' ? 'sun' : 'sat';
+    const masterF = { kind:'zaikomaster', store:S, item:S, note: JSON.stringify({ items:[{ n:'毎日の品', std:1, u:'個', f:'' }, { n:'今日の品', std:1, u:'個', f: todayKey }, { n:'別の日の品', std:1, u:'個', f: other }], by:'永井' }), photos:[], t: t0 - 3600e3 };
+    run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([masterF])); localStorage.setItem('yosakura_zk_tab', 'in'); });
+    location.hash = '#/app/zaiko'; const hF = registry.app.innerHTML;
+    const iLater = hF.indexOf('data-zklater');
+    ok(/今日確認する品目/.test(hF) && iLater > 0, '確認日つきの品目があると「今日確認する品目」と折りたたみが出る');
+    ok(hF.indexOf('data-zkname="毎日の品"') < iLater && hF.indexOf('data-zkname="今日の品"') < iLater && hF.indexOf('data-zkname="別の日の品"') > iLater, '毎日と今日の曜日の品目は上、別の曜日の品目は折りたたみの中');
+    run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([masterF])); localStorage.setItem('yosakura_zk_tab', 'items'); }); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hFi = registry.app.innerHTML;
+    ok(/id="zk_f0"/.test(hFi) && /<option value="mon,thu"/.test(hFi), '品目タブ＝確認日の選択（毎日／月・木／曜日）');
+    const masterOff = { kind:'zaikomaster', store:S, item:S, note: JSON.stringify({ items:[{ n:'別の日の品', std:1, u:'個', f: other }], by:'永井' }), photos:[], t: t0 - 3600e3 };
+    run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([masterOff])); });
+    location.hash = '#/app/kyou'; const kOff = registry.app.innerHTML;
+    ok(!/在庫数の入力（締め）/.test(kOff), '今日確認する品目が無い日は「在庫数の入力」を今日出すものに出さない');
+    ok(/'日本鰻世桜 富士山店': \[/.test(code) && /'牛カツ世桜 富士山店': \[/.test(code) && /n:'固形燃料（1箱280個）', std:1000/.test(code) && /n:'TO弁当', std:140/.test(code), '富士山2店の品目が既定に入っている（長田さんの発注シート）');
+    ok(/f:'mon,thu'/.test(code) && /f:'sat'/.test(code), '富士山の食材＝月・木、備品＝土');
+  }
   ok(/class="zk-in low"/.test(hIn), '基準を下回っている品目の欄は赤い');
   seed('staff'); location.hash = '#/app/zaiko'; const hSt = registry.app.innerHTML;
   ok(!/data-zktab="items"/.test(hSt) && /id="submitZk"/.test(hSt), 'スタッフ＝品目の編集は出ないが入力はできる');
   seed('manager', 'order'); location.hash = '#/app/zaiko'; const hOr = registry.app.innerHTML;
   ok(/data-zkorder="牛肉"/.test(hOr) && !/data-zkorder="油"/.test(hOr) && !/data-zkorder="パン粉"/.test(hOr), '発注リスト＝基準未満の牛肉だけ（油は発注済み・パン粉は基準どおり）');
+  ok(/発注の目安 <b>1<\/b>kg/.test(hOr), '発注リストに「発注の目安」＝基準−残り（牛肉 5−4＝1kg）');
   seed('staff', 'order'); location.hash = '#/app/zaiko'; const hOrS = registry.app.innerHTML;
   ok(/牛肉/.test(hOrS) && !/data-zkorder=/.test(hOrS), 'スタッフには発注リストは見えるが「発注した」は出ない');
   seed('manager'); location.hash = '#/app/kyou'; const kyou = registry.app.innerHTML;

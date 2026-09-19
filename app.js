@@ -2111,7 +2111,54 @@
       { g:'ドリンク管理（毎日）', n:'獺祭', std:2, u:'本' }, { g:'ドリンク管理（毎日）', n:'宇治茶（茶葉）', std:0, u:'袋' }, { g:'ドリンク管理（毎日）', n:'ほうじ茶（茶葉）', std:0, u:'袋' },
       { g:'ドリンク管理（毎日）', n:'コーラゼロ', std:'', u:'本' }, { g:'ドリンク管理（毎日）', n:'炭酸水', std:'', u:'本' },
     ],
+    /* 富士山2店＝長田さんの発注シート（備品＝土曜に確認・発注／食材＝月曜・木曜に確認・発注）9/19の写真から転記。std＝紙の「定数」（この数まで持つ）。f＝確認する曜日 */
+    '日本鰻世桜 富士山店': [
+      { g:'食材（月・木に確認）／太陽食品', n:'ゆず', std:6, u:'袋', f:'mon,thu' }, { g:'食材（月・木に確認）／太陽食品', n:'わさび', std:6, u:'個', f:'mon,thu' }, { g:'食材（月・木に確認）／太陽食品', n:'ガリ', std:5, u:'袋', f:'mon,thu' },
+      { g:'食材（月・木に確認）／太陽食品', n:'しば漬け', std:5, u:'袋', f:'mon,thu' }, { g:'食材（月・木に確認）／太陽食品', n:'白だし', std:6, u:'本', f:'mon,thu' }, { g:'食材（月・木に確認）／太陽食品', n:'ステーキシーズニング', std:2, u:'本', f:'mon,thu' },
+      { g:'食材（月・木に確認）／太陽食品', n:'金粉', std:1.5, u:'本', f:'mon,thu' }, { g:'食材（月・木に確認）／WEB', n:'山椒', std:2, u:'袋', f:'mon,thu' }, { g:'食材（月・木に確認）／WEB', n:'七味', std:5, u:'袋', f:'mon,thu' },
+      { g:'食材（月・木に確認）／WEB', n:'いくら', std:4, u:'箱', f:'mon,thu' }, { g:'食材（月・木に確認）／WEB', n:'鰻タレ', std:1.5, u:'箱', f:'mon,thu' }, { g:'食材（月・木に確認）／マツムラ酒販', n:'ビール', std:30, u:'本', f:'mon,thu' },
+      { g:'食材（月・木に確認）／マツムラ酒販', n:'コーラ', std:24, u:'本', f:'mon,thu' }, { g:'食材（月・木に確認）／梶野茶業', n:'宇治茶パック', std:2, u:'袋', f:'mon,thu' }, { g:'食材（月・木に確認）／梶野茶業', n:'焙じ茶パック', std:2, u:'袋', f:'mon,thu' },
+      { g:'食材（月・木に確認）／世桜', n:'世桜梅酒', std:2, u:'本', f:'mon,thu' }, { g:'食材（月・木に確認）／虎屋リカー', n:'獺祭', std:2, u:'本', f:'mon,thu' }, { g:'備品（土曜に確認）', n:'割り箸（1袋100本）', std:15, u:'袋', f:'sat' },
+      { g:'備品（土曜に確認）', n:'クッキングシート', std:10, u:'本', f:'sat' }, { g:'備品（土曜に確認）', n:'サランラップ', std:10, u:'本', f:'sat' }, { g:'備品（土曜に確認）', n:'手袋S', std:10, u:'箱', f:'sat' },
+      { g:'備品（土曜に確認）', n:'手袋M', std:10, u:'箱', f:'sat' }, { g:'備品（土曜に確認）', n:'ジップロック', std:2, u:'箱', f:'sat' }, { g:'備品（土曜に確認）', n:'スポンジ', std:10, u:'個', f:'sat' },
+      { g:'備品（土曜に確認）', n:'食器用洗剤', std:1, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'手洗い洗剤', std:1, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'漂白剤', std:1, u:'個', f:'sat' },
+      { g:'備品（土曜に確認）', n:'アルコール', std:1, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'ケミクール', std:1, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'スチコン洗浄剤（青）', std:100, u:'個', f:'sat' },
+      { g:'備品（土曜に確認）', n:'スチコン洗浄剤（緑）', std:100, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'トイレットペーパー', std:20, u:'本', f:'sat' }, { g:'備品（土曜に確認）', n:'トイレ洗浄シート', std:20, u:'袋', f:'sat' },
+      { g:'備品（土曜に確認）', n:'手拭きペーパー', std:20, u:'袋', f:'sat' }, { g:'備品（土曜に確認）', n:'トイレハイター', std:4, u:'本', f:'sat' }, { g:'備品（土曜に確認）', n:'ガスバーナー', std:6, u:'本', f:'sat' },
+      { g:'備品（土曜に確認）', n:'ゴミ袋45L（ゴミ箱）', std:20, u:'袋', f:'sat' }, { g:'備品（土曜に確認）', n:'ゴミ袋7L（トイレと切り場用）', std:10, u:'袋', f:'sat' }, { g:'備品（土曜に確認）', n:'レジロール58×50', std:10, u:'本', f:'sat' },
+      { g:'備品（土曜に確認）', n:'TO弁当', std:140, u:'箱', f:'sat' }, { g:'備品（土曜に確認）', n:'TOスプーン', std:140, u:'本', f:'sat' }, { g:'備品（土曜に確認）', n:'TOタレ瓶', std:140, u:'個', f:'sat' },
+      { g:'備品（土曜に確認）', n:'TOおしぼり', std:140, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'TOカトラリー袋', std:140, u:'袋', f:'sat' },
+    ],
+    '牛カツ世桜 富士山店': [
+      { g:'食材（月・木に確認）／高田屋', n:'小麦粉', std:6, u:'袋', f:'mon,thu' }, { g:'食材（月・木に確認）／高田屋', n:'パン粉', std:4, u:'袋', f:'mon,thu' }, { g:'食材（月・木に確認）／高田屋', n:'米油', std:2, u:'斗缶', f:'mon,thu' },
+      { g:'食材（月・木に確認）／太陽食品', n:'ゆず', std:6, u:'袋', f:'mon,thu' }, { g:'食材（月・木に確認）／太陽食品', n:'わさび', std:6, u:'個', f:'mon,thu' }, { g:'食材（月・木に確認）／太陽食品', n:'ガリ', std:4, u:'袋', f:'mon,thu' },
+      { g:'食材（月・木に確認）／太陽食品', n:'白だし', std:6, u:'本', f:'mon,thu' }, { g:'食材（月・木に確認）／太陽食品', n:'ごまだれ', std:6, u:'本', f:'mon,thu' }, { g:'食材（月・木に確認）／太陽食品', n:'ポン酢', std:3, u:'本', f:'mon,thu' },
+      { g:'食材（月・木に確認）／太陽食品', n:'焼肉のたれ', std:20, u:'本', f:'mon,thu' }, { g:'食材（月・木に確認）／太陽食品', n:'塩胡椒', std:3, u:'本', f:'mon,thu' }, { g:'食材（月・木に確認）／太陽食品', n:'塩', std:2, u:'袋', f:'mon,thu' },
+      { g:'食材（月・木に確認）／太陽食品', n:'味の素', std:2, u:'袋', f:'mon,thu' }, { g:'食材（月・木に確認）／太陽食品', n:'ピンク岩塩', std:2, u:'袋', f:'mon,thu' }, { g:'食材（月・木に確認）／WEB', n:'山椒', std:2, u:'袋', f:'mon,thu' },
+      { g:'食材（月・木に確認）／WEB', n:'七味', std:5, u:'袋', f:'mon,thu' }, { g:'食材（月・木に確認）／WEB', n:'いくら', std:20, u:'箱', f:'mon,thu' }, { g:'食材（月・木に確認）／マツムラ酒販', n:'ビール', std:30, u:'本', f:'mon,thu' },
+      { g:'食材（月・木に確認）／マツムラ酒販', n:'コーラ', std:24, u:'本', f:'mon,thu' }, { g:'食材（月・木に確認）／梶野茶業', n:'宇治茶パック', std:2, u:'袋', f:'mon,thu' }, { g:'食材（月・木に確認）／梶野茶業', n:'焙じ茶パック', std:2, u:'袋', f:'mon,thu' },
+      { g:'食材（月・木に確認）／世桜', n:'世桜梅酒', std:2, u:'本', f:'mon,thu' }, { g:'食材（月・木に確認）／虎屋リカー', n:'獺祭', std:2, u:'本', f:'mon,thu' }, { g:'食材（月・木に確認）／（手書き追加）', n:'抹茶', std:2, u:'', f:'mon,thu' },
+      { g:'食材（月・木に確認）／（手書き追加）', n:'抹茶塩', std:2, u:'', f:'mon,thu' }, { g:'備品（土曜に確認）', n:'割り箸（1袋100本）', std:15, u:'袋', f:'sat' }, { g:'備品（土曜に確認）', n:'固形燃料（1箱280個）', std:1000, u:'個', f:'sat' },
+      { g:'備品（土曜に確認）', n:'クッキングシート', std:10, u:'本', f:'sat' }, { g:'備品（土曜に確認）', n:'サランラップ', std:10, u:'本', f:'sat' }, { g:'備品（土曜に確認）', n:'キッチンペーパー', std:10, u:'袋', f:'sat' },
+      { g:'備品（土曜に確認）', n:'手袋S', std:10, u:'箱', f:'sat' }, { g:'備品（土曜に確認）', n:'手袋M', std:10, u:'箱', f:'sat' }, { g:'備品（土曜に確認）', n:'ジップロック', std:2, u:'箱', f:'sat' },
+      { g:'備品（土曜に確認）', n:'スポンジ', std:10, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'食器用洗剤', std:1, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'金手ブラシ', std:2, u:'個', f:'sat' },
+      { g:'備品（土曜に確認）', n:'油用スプレー', std:2, u:'本', f:'sat' }, { g:'備品（土曜に確認）', n:'手洗い洗剤', std:1, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'漂白剤', std:1, u:'個', f:'sat' },
+      { g:'備品（土曜に確認）', n:'アルコール', std:1, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'ケミクール', std:1, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'スチコン洗浄剤（青）', std:100, u:'個', f:'sat' },
+      { g:'備品（土曜に確認）', n:'スチコン洗浄剤（緑）', std:100, u:'個', f:'sat' }, { g:'備品（土曜に確認）', n:'トイレットペーパー', std:20, u:'本', f:'sat' }, { g:'備品（土曜に確認）', n:'トイレ洗浄シート', std:20, u:'袋', f:'sat' },
+      { g:'備品（土曜に確認）', n:'手拭きペーパー', std:20, u:'袋', f:'sat' }, { g:'備品（土曜に確認）', n:'トイレハイター', std:4, u:'本', f:'sat' }, { g:'備品（土曜に確認）', n:'ゴミ袋45L（10枚）', std:20, u:'袋', f:'sat' },
+      { g:'備品（土曜に確認）', n:'レジロール80×80（レジ）', std:10, u:'本', f:'sat' }, { g:'備品（土曜に確認）', n:'レジロール58×40（端末）', std:10, u:'本', f:'sat' },
+    ],
   };
+  /* ★品目ごとの確認日（2026-09-19 長田さん「毎日確認したい食材、週2回・週1回の備品がある」）
+     f＝'' 毎日／'mon,thu' 月・木／'sat' 土 …（曜日の英略を , で並べる）。f が無い品目は区分名から補う（長堀橋の「月・木に確認」） */
+  const ZK_DOW = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const ZK_DOW_JA = { sun:'日', mon:'月', tue:'火', wed:'水', thu:'木', fri:'金', sat:'土' };
+  const ZK_FREQ_OPTS = [['', { ja:'毎日', en:'Daily', vi:'Hằng ngày' }], ['mon,thu', { ja:'月・木', en:'Mon & Thu', vi:'T2 & T5' }], ['mon', { ja:'月', en:'Mon', vi:'T2' }], ['tue', { ja:'火', en:'Tue', vi:'T3' }], ['wed', { ja:'水', en:'Wed', vi:'T4' }], ['thu', { ja:'木', en:'Thu', vi:'T5' }], ['fri', { ja:'金', en:'Fri', vi:'T6' }], ['sat', { ja:'土', en:'Sat', vi:'T7' }], ['sun', { ja:'日', en:'Sun', vi:'CN' }]];
+  function zkFreqOf(it) { if (it && it.f != null && it.f !== '') return String(it.f); const g = String((it && it.g) || ''); return /月・木/.test(g) ? 'mon,thu' : /土曜/.test(g) ? 'sat' : ''; }
+  const zkFreqLabel = (f) => { const o = ZK_FREQ_OPTS.find(x => x[0] === f); return o ? L(o[1]) : f.split(',').map(d => ZK_DOW_JA[d] || d).join('・'); };
+  function zkDue(it, dow) { const f = zkFreqOf(it); if (!f) return true; const d = ZK_DOW[dow == null ? new Date().getDay() : dow]; return f.split(',').includes(d); }
+  /* 今日確認する品目があるか（品目未登録なら true＝登録を促す画面を出す） */
+  function zkDueToday(store, dow) { const m = zkMaster(store); return !m.length || m.some(it => zkDue(it, dow)); }
   function zkStore() {
     const vis = visibleStores(); if (vis.length <= 1) return vis[0] || '';
     let s = ''; try { s = localStorage.getItem(ZK_LS_STORE) || ''; } catch (e) {}
@@ -2140,7 +2187,7 @@
     const m = zkMaster(store); const l = zkLatest(store); if (!m.length || !l) return [];
     const ord = zkOrdered(store);
     return m.filter(it => it.std != null && it.std !== '' && l.q[it.n] != null && l.q[it.n] !== '' && Number(l.q[it.n]) < Number(it.std) && !(ord[it.n] && ord[it.n] > l.t))
-            .map(it => ({ n: it.n, u: it.u || '', q: Number(l.q[it.n]), std: Number(it.std) }));
+            .map(it => ({ n: it.n, u: it.u || '', q: Number(l.q[it.n]), std: Number(it.std), need: Math.max(0, Number(it.std) - Number(l.q[it.n])) }));
   }
   /* 月次棚卸（kind:'monthly' の closeDetail）に載っている品目名＝在庫の品目にそろえる材料（最新の月から） */
   function zkTanaNames(store) {
@@ -2155,7 +2202,7 @@
     const low = zkLow(store); if (!low.length) return '';
     return `<div class="card zk-low">
       <h3>${L({ ja:'発注が必要な品目', en:'Items to order', vi:'Hàng cần đặt' })} <span class="zk-n">${low.length}</span></h3>
-      <div class="zk-list">${low.map(x => `<div class="zk-row"><b>${esc(x.n)}</b><span>${L({ ja:'残り', en:'left', vi:'còn' })} ${x.q}${esc(x.u)} ／ ${L({ ja:'基準', en:'min', vi:'định mức' })} ${x.std}${esc(x.u)}</span></div>`).join('')}</div>
+      <div class="zk-list">${low.map(x => `<div class="zk-row"><b>${esc(x.n)}</b><span>${L({ ja:'残り', en:'left', vi:'còn' })} ${x.q}${esc(x.u)} ／ ${L({ ja:'発注の目安', en:'order', vi:'cần đặt' })} <b>${x.need}</b>${esc(x.u)}</span></div>`).join('')}</div>
       <button class="mini" data-open="zaiko">${L({ ja:'発注リストを開く', en:'Open order list', vi:'Mở danh sách đặt hàng' })}</button>
     </div>`;
   }
@@ -2177,17 +2224,27 @@
         body = `
         <div class="hint" style="display:block">${isToday ? L({ ja:'今日の入力があります。直すときはそのまま上書きして提出してください。', en:'Today’s counts exist; resubmit to overwrite.', vi:'Đã có số hôm nay; gửi lại để ghi đè.' }) : (l ? `${L({ ja:'前回', en:'Last', vi:'Lần trước' })} ${esc(l.dk)}${l.by ? `（${esc(l.by)}）` : ''}${L({ ja:'の数を薄く出しています。今日の数を入れてください。', en:' counts shown faintly; enter today’s.', vi:' hiển thị mờ; nhập số hôm nay.' })}` : L({ ja:'締めの時点の数を入れてください（0.5などの小数も可）。', en:'Enter counts at close (decimals OK).', vi:'Nhập số lúc chốt ca (được nhập số lẻ).' }))}</div>
         ${zkIsDefault(store) ? `<p class="hint" style="display:block">${L({ ja:'品目は在庫チェック表から写してあります。直したいときは店長が「品目・基準在庫」タブから。', en:'Items were copied from the stock sheet; the manager can edit them in the Items tab.', vi:'Mặt hàng chép từ bảng kiểm kho; quản lý sửa ở tab Mặt hàng.' })}</p>` : ''}
-        ${m.map((it, i) => { const cur = l && l.q[it.n]; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
-          const head = (it.g && (i === 0 || m[i - 1].g !== it.g)) ? `<div class="idlabel" style="margin-top:${i ? 14 : 4}px">${esc(it.g)}</div>` : '';
-          return `${head}<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}</small></label>
-            <input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${isToday && cur != null ? esc(String(cur)) : ''}" placeholder="${!isToday && cur != null ? esc(String(cur)) : '0'}"><span class="muted">${esc(it.u || '')}</span></div>`; }).join('')}
+        ${(() => {
+          /* ★今日確認する品目を先に出し、確認日でない品目は折りたたむ（2026-09-19 長田さん：毎日／週2／週1の品目がある） */
+          const dow = new Date().getDay();
+          const rowsOf = (list) => list.map(([it, i]) => { const cur = l && l.q[it.n]; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
+            const prev = list[list.indexOf(list.find(x => x[1] === i)) - 1]; const head = (it.g && (!prev || prev[0].g !== it.g)) ? `<div class="idlabel" style="margin-top:${prev ? 14 : 4}px">${esc(it.g)}</div>` : '';
+            return `${head}<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}</small></label>
+            <input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${isToday && cur != null ? esc(String(cur)) : ''}" placeholder="${!isToday && cur != null ? esc(String(cur)) : '0'}"><span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
+          const all = m.map((it, i) => [it, i]); const due = all.filter(([it]) => zkDue(it, dow)); const later = all.filter(([it]) => !zkDue(it, dow));
+          const hasFreq = m.some(it => zkFreqOf(it));
+          let h = '';
+          if (hasFreq) h += `<div class="idlabel" style="margin-top:4px">${L({ ja:'今日確認する品目', en:'Items to check today', vi:'Kiểm hôm nay' })}（${ZK_DOW_JA[ZK_DOW[dow]]}）<span class="muted" style="font-weight:400"> ${due.length}</span></div>`;
+          h += due.length ? rowsOf(due) : `<div class="muted" style="margin:6px 0 10px">${L({ ja:'今日は確認日の品目がありません。', en:'Nothing scheduled today.', vi:'Hôm nay không có mặt hàng cần kiểm.' })}</div>`;
+          if (later.length) h += `<details class="zk-later" data-zklater><summary>${L({ ja:'今日は確認日ではない品目', en:'Not scheduled today', vi:'Không kiểm hôm nay' })}（${later.length}）— ${L({ ja:'必要なら開いて入力', en:'open to enter anyway', vi:'mở để nhập' })}</summary>${rowsOf(later)}</details>`;
+          return h; })()}
         <label class="fld"><span>${L({ ja:'名前', en:'Your name', vi:'Tên bạn' })}</span><input type="text" id="zk_by" value="${esc(getUserName() || '')}"></label>
         <button class="btn-primary" id="submitZk">${L({ ja:'在庫数を提出する', en:'Submit counts', vi:'Gửi số tồn' })}</button>
         <div class="hint">${L({ ja:'※ 基準を下回った品目は、提出した時点で「発注リスト」と「今日出すもの」に赤で出ます。', en:'Items below minimum appear in red on the order list and today’s list.', vi:'Hàng dưới định mức sẽ hiện đỏ ở danh sách đặt và việc hôm nay.' })}</div>`;
       }
     } else if (tab === 'order') {
       const recent = Object.keys(ord).filter(n => l && ord[n] > l.t);
-      body = low.length ? `<div class="zk-list">${low.map(x => `<div class="zk-row low"><div><b>${esc(x.n)}</b><br><span>${L({ ja:'残り', en:'left', vi:'còn' })} ${x.q}${esc(x.u)} ／ ${L({ ja:'基準', en:'min', vi:'định mức' })} ${x.std}${esc(x.u)}</span></div>${zkMgr() ? `<button class="mini" data-zkorder="${esc(x.n)}">${L({ ja:'発注した', en:'Ordered', vi:'Đã đặt' })}</button>` : ''}</div>`).join('')}</div>
+      body = low.length ? `<div class="zk-list">${low.map(x => `<div class="zk-row low"><div><b>${esc(x.n)}</b><br><span>${L({ ja:'残り', en:'left', vi:'còn' })} ${x.q}${esc(x.u)} ／ ${L({ ja:'基準', en:'min', vi:'định mức' })} ${x.std}${esc(x.u)} ／ ${L({ ja:'発注の目安', en:'order', vi:'cần đặt' })} <b>${x.need}</b>${esc(x.u)}</span></div>${zkMgr() ? `<button class="mini" data-zkorder="${esc(x.n)}">${L({ ja:'発注した', en:'Ordered', vi:'Đã đặt' })}</button>` : ''}</div>`).join('')}</div>
         <div class="hint">${zkMgr() ? L({ ja:'「発注した」を押すと一覧から外れます（次の在庫入力でまた判定します）。', en:'“Ordered” removes it until the next count.', vi:'“Đã đặt” sẽ ẩn đến lần nhập sau.' }) : L({ ja:'発注は店長が行います。', en:'The manager places orders.', vi:'Quản lý sẽ đặt hàng.' })}</div>`
         : `<div class="muted">${l ? L({ ja:'いま基準を下回っている品目はありません。', en:'No items below minimum.', vi:'Không có hàng dưới định mức.' }) : L({ ja:'まだ在庫数の入力がありません。', en:'No counts yet.', vi:'Chưa có số tồn.' })}</div>`;
       if (recent.length) body += `<div class="idlabel" style="margin-top:12px">${L({ ja:'発注済み（次の入力まで）', en:'Ordered (until next count)', vi:'Đã đặt (đến lần nhập sau)' })}</div><div class="muted">${recent.map(esc).join('、')}</div>`;
@@ -2195,8 +2252,8 @@
       const rows = m.slice(); while (rows.length < ZK_SLOTS) rows.push({ n: '', std: '', u: '' });
       body = `
         <div class="hint" style="display:block">${L({ ja:'在庫チェック表と同じ順で品目を入れてください。基準在庫＝これを下回ったら発注する数。単位は「本」「袋」「kg」など。', en:'List items in the same order as the stock sheet. Minimum = order when below this.', vi:'Nhập mặt hàng theo thứ tự bảng kiểm kho. Định mức = đặt hàng khi thấp hơn.' })}</div>
-        <div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span></div>
-        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="idlabel" style="margin-top:${i ? 12 : 2}px">${esc(r.g)}</div>` : ''}<input type="hidden" id="zk_g${i}" value="${esc(r.g || '')}"><div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="0"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'本', en:'pcs', vi:'cái' })}"></div>`).join('')}
+        <div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span><span>${L({ ja:'確認日', en:'Check', vi:'Ngày' })}</span></div>
+        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="idlabel" style="margin-top:${i ? 12 : 2}px">${esc(r.g)}</div>` : ''}<input type="hidden" id="zk_g${i}" value="${esc(r.g || '')}"><div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="0"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'本', en:'pcs', vi:'cái' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${(r.n ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select></div>`).join('')}
         <div style="margin:6px 0 10px"><button class="mini" id="zkFromTana">${L({ ja:'月次棚卸の品目を取り込む', en:'Import stocktake items', vi:'Nhập mặt hàng từ kiểm kê' })}${(() => { const n = zkTanaNames(store).length; return n ? `（${n}）` : ''; })()}</button>
           <span class="muted" style="font-size:12px">${L({ ja:'棚卸と同じ品目名にそろえると、月末の棚卸がそのまま使えます', en:'Use the same names as the stocktake', vi:'Dùng cùng tên với kiểm kê' })}</span></div>
         <button class="btn-primary" id="saveZkMaster">${L({ ja:'品目と基準在庫を保存する', en:'Save items', vi:'Lưu mặt hàng' })}</button>
@@ -6772,6 +6829,7 @@
     if (m.target === 'stores' && Array.isArray(m.stores) && !m.stores.includes(store)) return false;
     if (m.target === 'gyotai_in' && Array.isArray(m.gyotai) && !m.gyotai.includes(storeMeta(store).gyotai)) return false; // 指定業態のみ（例：牛カツのみ）
     if (m.target === 'gyotai_ex' && Array.isArray(m.gyotai) && m.gyotai.includes(storeMeta(store).gyotai)) return false;  // 指定業態を除く（例：牛カツ以外）
+    if (m.detect === 'zaiko' && !zkDueToday(store)) return false;   // 在庫数の入力＝今日確認する品目が無い日は出さない（2026-09-19）
     return true;
   }
   // 週キー（月曜始まり）＝週次提出の「今週提出済み」判定に使用
@@ -9786,7 +9844,7 @@
         const nEl = document.getElementById('zk_n' + i); if (!nEl) break;
         const name = String(nEl.value || '').trim(); if (!name) continue;
         const sv = String((document.getElementById('zk_s' + i) || {}).value || '').trim();
-        items.push({ n: name, std: sv === '' ? '' : (Number(sv) || 0), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g: String((document.getElementById('zk_g' + i) || {}).value || '').trim() });
+        items.push({ n: name, std: sv === '' ? '' : (Number(sv) || 0), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g: String((document.getElementById('zk_g' + i) || {}).value || '').trim(), f: String((document.getElementById('zk_f' + i) || {}).value || '') });
       }
       if (!items.length) { toast(L({ ja:'品目を1つ以上入れてください', en:'Enter at least one item', vi:'Nhập ít nhất một mặt hàng' })); return; }
       const t = Date.now();

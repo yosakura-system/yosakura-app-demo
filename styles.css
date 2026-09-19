@@ -886,6 +886,8 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 .zk-head span:nth-child(1), .zk-edit input:nth-child(1) { flex: 1.4; min-width: 0; }
 .zk-head span:nth-child(2), .zk-edit input:nth-child(2) { flex: 0.6; min-width: 0; text-align: right; }
 .zk-head span:nth-child(3), .zk-edit input:nth-child(3) { flex: 0.5; min-width: 0; }
+.zk-head span:nth-child(4), .zk-edit select { flex: 0.7; min-width: 0; padding: 8px 4px; }
+.zk-later { margin: 12px 0 6px; } .zk-later summary { cursor: pointer; color: #6b635a; font-size: 13px; padding: 8px 0; }
 .zk-edit input { padding: 10px 8px; }
 
 /* ホームの3タブ（2026-09-18） */
