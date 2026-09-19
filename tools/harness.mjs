@@ -5469,6 +5469,8 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
     ok(hF.indexOf('data-zkname="毎日の品"') < iLater && hF.indexOf('data-zkname="今日の品"') < iLater && hF.indexOf('data-zkname="別の日の品"') > iLater, '毎日と今日の曜日の品目は上、別の曜日の品目は折りたたみの中');
     run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([masterF])); localStorage.setItem('yosakura_zk_tab', 'items'); }); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hFi = registry.app.innerHTML;
     ok(/id="zk_f0"/.test(hFi) && /<option value="mon,thu"/.test(hFi), '品目タブ＝確認日の選択（毎日／月・木／曜日）');
+    run(() => { setLS('manager', '牛カツ世桜 富士山店', 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); }); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hBig = registry.app.innerHTML;
+    { const n = (hBig.match(/id="zk_n\d+"/g) || []).length; const filled = (hBig.match(/id="zk_n\d+" value="[^"]+"/g) || []).length; ok(n - filled >= 8, '品目が24を超える店でも、追加用の空き行が8行以上ある（富士山 ' + filled + '品＋空き' + (n - filled) + '）'); }
     const masterOff = { kind:'zaikomaster', store:S, item:S, note: JSON.stringify({ items:[{ n:'別の日の品', std:1, u:'個', f: other }], by:'永井' }), photos:[], t: t0 - 3600e3 };
     run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([masterOff])); });
     location.hash = '#/app/kyou'; const kOff = registry.app.innerHTML;

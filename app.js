@@ -2258,7 +2258,8 @@
         : `<div class="muted">${l ? L({ ja:'いま基準を下回っている品目はありません。', en:'No items below minimum.', vi:'Không có hàng dưới định mức.' }) : L({ ja:'まだ在庫数の入力がありません。', en:'No counts yet.', vi:'Chưa có số tồn.' })}</div>`;
       if (recent.length) body += `<div class="idlabel" style="margin-top:12px">${L({ ja:'発注済み（次の入力まで）', en:'Ordered (until next count)', vi:'Đã đặt (đến lần nhập sau)' })}</div><div class="muted">${recent.map(esc).join('、')}</div>`;
     } else {
-      const rows = m.slice(); while (rows.length < ZK_SLOTS) rows.push({ n: '', std: '', u: '' });
+      /* 空の行は必ず8行以上残す（品目が24を超える店＝富士山で、追加する行が無くなっていた 2026-09-19） */
+      const rows = m.slice(); const want = Math.max(ZK_SLOTS, m.length + 8); while (rows.length < want) rows.push({ n: '', std: '', u: '' });
       body = `
         <div class="hint" style="display:block">${L({ ja:'在庫チェック表と同じ順で品目を入れてください。基準在庫＝これを下回ったら発注する数。単位は「本」「袋」「kg」など。', en:'List items in the same order as the stock sheet. Minimum = order when below this.', vi:'Nhập mặt hàng theo thứ tự bảng kiểm kho. Định mức = đặt hàng khi thấp hơn.' })}</div>
         <div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span><span>${L({ ja:'確認日', en:'Check', vi:'Ngày' })}</span></div>
@@ -9849,7 +9850,7 @@
     if (svZk) svZk.onclick = () => {
       if (!zkMgr()) return;
       const store = zkStore(); const items = [];
-      for (let i = 0; i < ZK_SLOTS + 50; i++) {
+      for (let i = 0; i < 400; i++) {
         const nEl = document.getElementById('zk_n' + i); if (!nEl) break;
         const name = String(nEl.value || '').trim(); if (!name) continue;
         const sv = String((document.getElementById('zk_s' + i) || {}).value || '').trim();
