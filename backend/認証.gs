@@ -207,8 +207,16 @@ function auth_verify_(token) {
 }
 
 /* ===== API（doPost から呼ばれる。該当しなければ null を返して通常の提出処理へ） ===== */
+/* ★2026-09-20 同じIDで2台が同時にログインすると、トークン一覧の「読んで→足して→書く」が重なり、
+   後から書いた方が先の分を消していた（長堀橋のiPad2台＝片方しか入れない）。ロックで1件ずつ処理する */
 function auth_api_(data) {
   if (!data || !data.action) return null;
+  if (data.action !== 'login' && data.action !== 'chpw' && data.action !== 'authping') return null;
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(15000); } catch (e) { return { ok: false, error: 'BUSY', retry: true }; }
+  try { return auth_api_locked_(data); } finally { lock.releaseLock(); }
+}
+function auth_api_locked_(data) {
   if (data.action === 'login') {
     var rec = auth_find_(data.uid);
     if (!rec || rec.hash !== auth_hash_(data.uid, data.pw)) {
