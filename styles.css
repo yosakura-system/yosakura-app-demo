@@ -879,6 +879,7 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 .zk-in { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
 .zk-in label { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .zk-in label small { color: #8a8478; font-size: 11px; }
+.zk-in input.zk-bad { border-color: #C0392B; background: #FBF1F2; }   /* 数字として読めない欄（2026-09-21） */
 .zk-in input { width: 92px; flex: none; text-align: right; padding: 10px 8px; }
 .zk-in.low input { border-color: var(--suou); background: #fbf1f2; }
 .zk-head, .zk-edit { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }

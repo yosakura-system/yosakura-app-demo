@@ -5604,5 +5604,52 @@ console.log('== 在庫＝長堀橋の品目は最初から入っている・写�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 9/21 長堀橋＝画面エラーを本部へ／在庫の数の読み方と下書き／1Fの桜チェックを外す ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  // ① 画面のエラー＝端末に控えて番号を出す（window の error ハンドラが登録されている）
+  run(() => { setLS('staff', S, 'ja'); });
+  const errH = winHandlers['error'] || [];
+  ok(errH.length >= 1, 'window の error ハンドラが登録されている');
+  if (errH.length) {
+    errH[0]({ message: 'boom test', filename: 'app.js', lineno: 12, error: { stack: 'Error: boom test\n at x' } });
+    let log = []; try { log = JSON.parse(localStorage.getItem('yosakura_errlog') || '[]'); } catch (e) {}
+    ok(log.length === 1 && /^E\d{5}$/.test(log[0].code) && log[0].msg === 'boom test' && log[0].store === S, 'エラーが端末に控えられる（番号・内容・店舗）');
+    ok(/エラーが起きました（E\d{5}）/.test(registry.toast.textContent), '画面に番号つきで知らせる');
+  }
+  ok(/kind:'apperr'/.test(code) && /unhandledrejection/.test(code), 'apperr で本部へ送る・Promise の取りこぼしも拾う');
+  // ② 数の読み方＝全角・単位・分数・カンマ
+  const m = /function zkParseNum\(v\) \{[\s\S]*?\n  \}\n/.exec(code.replace(/\r\n/g, '\n'));
+  ok(!!m, 'zkParseNum がある');
+  if (m) {
+    const zkParseNum = new Function(m[0] + '; return zkParseNum;')();
+    ok(zkParseNum('１２') === 12, '全角の１２ → 12');
+    ok(zkParseNum('3本') === 3, '単位つきの 3本 → 3');
+    ok(zkParseNum('1/2') === 0.5, '分数の 1/2 → 0.5');
+    ok(zkParseNum('1,000') === 1000, 'カンマ入りの 1,000 → 1000');
+    ok(zkParseNum(' 0.5 ') === 0.5 && zkParseNum('') === null, '0.5 はそのまま・空欄は null（未入力）');
+    ok(Number.isNaN(zkParseNum('abc')), '読めない文字は NaN（黙って落とさない）');
+  }
+  ok(/bad\.push\(el\.dataset\.zkname\); el\.classList\.add\('zk-bad'\)/.test(code) && /数字として読めない欄があります/.test(code), '読めない欄は赤くして品目名を出し、提出を止める');
+  ok(/\.zk-in input\.zk-bad/.test(fs.readFileSync(APP.replace('app.js', 'styles.css'), 'utf8')), '赤い欄の見た目がある');
+  // ② 下書き＝入れた数が端末に残り、画面に戻る
+  {
+    const t0 = Date.now(); const dk = new Date(t0 + 9 * 3600e3).toISOString().slice(0, 10);
+    run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_draft', JSON.stringify({ [S + '||' + dk]: { '白だし': '１２' } })); });
+    location.hash = '#/app/zaiko'; const hD = registry.app.innerHTML;
+    ok(/data-zkname="白だし" value="１２"/.test(hD), '下書きの数が入力欄に戻る（今日の提出が無いとき）');
+    ok(/el\.oninput = \(\) => \{ const s = zkStore\(\); zkDraftSet/.test(code) && /zkDraftClear\(\);\n      lastSync = t;/.test(code.replace(/\r\n/g, '\n')), '入力のたびに下書きを保存し、提出したら消す');
+  }
+  // ③ 1Fの桜チェック＝長堀橋だけ・1Fだけ外れる（2Fと他店はそのまま）
+  const ck = (store, mode) => { run(() => { setLS('manager', store, 'ja'); localStorage.setItem('yosakura_ckmode', mode); }); location.hash = '#/app/checklist'; return registry.app.innerHTML; };
+  const idle1 = ck(S, 'idle'), idle2 = ck(S, 'idle@2F'), close1 = ck(S, 'close'), close2 = ck(S, 'close@2F'), fuji = ck('牛カツ世桜 富士山店', 'idle');
+  ok(!/<span class="lbl"[^>]*>桜チェック/.test(idle1) && /<span class="lbl"[^>]*>桜チェック/.test(idle2), '長堀橋のアイドル＝1Fに桜チェックが無く、2Fにはある');
+  ok(!/<span class="lbl"[^>]*>トイレ清掃/.test(close1) && /<span class="lbl"[^>]*>トイレ清掃/.test(close2), '長堀橋のクローズ＝1Fにトイレ清掃が無く、2Fにはある');
+  ok(/<span class="lbl"[^>]*>桜チェック/.test(fuji), '富士山（牛カツ）のアイドルには桜チェックが残る');
+  ok(!/data-ckshow="idle-c-0-4"/.test(idle1), '設備で外した分は「戻す」に出ない');
+  ok(/<span class="lbl"[^>]*>カスターセット/.test(idle1) && /<span class="lbl"[^>]*>ドリンク補充/.test(idle1), '1Fのアイドルはほかの項目がそのまま（番号がずれない）');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
