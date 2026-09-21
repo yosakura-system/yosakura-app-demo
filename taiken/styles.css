@@ -18,7 +18,11 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; padding: 0; }
+/* ★ページ（body）はスクロールさせない（2026-09-08 常山さんの動画＝店舗iPadで下バーが
+   スクロール中に画面の途中へ置き去りになる。fixed→sticky（2026-09-04）でも再発＝
+   この機種はページスクロール中の貼り付き描画そのものが追従しない）。
+   スクロールは中身（.appmain）だけで行う＝バーはスクロールの外にあるので物理的に動けない */
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 body {
   font-family: var(--sans);
   color: var(--sumi);
@@ -31,11 +35,21 @@ body {
 #app {
   max-width: var(--maxw);
   margin: 0 auto;
-  min-height: 100vh;
+  height: 100%;
   background: var(--kinari);
   position: relative;
   box-shadow: 0 0 60px rgba(0,0,0,.08);
-  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  /* ヘッダー・体験版帯・中身（.appmain）・ボトムナビの縦積み。スクロールは .appmain の中だけ。
+     overflow-y:auto はシェルの無い画面（ログイン・総括表の月次出力）用の予備＝
+     シェルがある画面では中身が .appmain に収まるため #app 自体はあふれない */
+  display: flex; flex-direction: column;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+/* シェルの中身＝唯一のスクロール領域。バー（ヘッダー・タブ）はこの外で静止している */
+.appmain {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 /* ===== スプラッシュ ===== */
@@ -52,7 +66,7 @@ body {
 
 /* ===== ヘッダー ===== */
 .hdr {
-  position: sticky; top: 0; z-index: 20;
+  flex-shrink: 0; z-index: 20; /* スクロールの外（#app直下）に静止＝sticky不要になった（2026-09-08） */
   display: flex; align-items: center; gap: 10px;
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
   background: rgba(255,255,255,.85);
@@ -159,7 +173,7 @@ body {
 /* ===== 開発者ビュー（店舗側の表示を確認中の戻るバナー）===== */
 .devview-bar { display: block; width: 100%; border: 0; cursor: pointer; text-align: center;
   background: #7a5c1e; color: #fff; font-family: var(--sans); font-size: 12px; font-weight: 700;
-  padding: 9px 14px; line-height: 1.5; position: sticky; top: 0; z-index: 60; }
+  padding: 9px 14px; line-height: 1.5; position: -webkit-sticky; position: sticky; top: 0; z-index: 60; }
 
 /* ===== アプリ詳細 ===== */
 .appbar { display: flex; align-items: center; gap: 10px; padding: 6px 0 4px; }
@@ -192,7 +206,8 @@ input[type=text], input[type=password], input[type=date], select, textarea {
 /* iOSのdate入力は固有の最小幅を持ち列からはみ出るため、ネイティブ装飾を外して列内に収める */
 input[type=date] { -webkit-appearance: none; appearance: none; min-width: 0; text-align: left; }
 /* 総括表など多項目フォームの2カラム配置 */
-.sk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.sk-grid { display: grid; grid-template-columns: 1fr; gap: 0 12px; }   /* 入力欄は縦1列（2026-09-18 神田さん「横に広がって入力しにくい」）。広い画面（PC）だけ2列 */
+@media (min-width: 900px) { .sk-grid { grid-template-columns: 1fr 1fr; } }
 .sk-grid { min-width: 0; }
 .sk-grid .fld { min-width: 0; }
 .sk-grid .fld input, .sk-grid .fld select { min-width: 0; }
@@ -216,6 +231,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .pt img { width: 64px; height: 64px; border-radius: 11px; object-fit: cover; display: block; border: 1px solid var(--line); }
 .pt-x { position: absolute; top: -7px; right: -7px; width: 21px; height: 21px; border-radius: 50%; border: 2px solid var(--paper);
   background: var(--sumi); color: #fff; font-size: 12px; line-height: 1; cursor: pointer; padding: 0; box-shadow: var(--shadow-s); }
+/* 回転（縦横直し）＝×と対の左上。2026-09-09 神田さんのご要望 */
+.pt-r { position: absolute; top: -7px; left: -7px; width: 21px; height: 21px; border-radius: 50%; border: 2px solid var(--paper);
+  background: var(--gold); color: #fff; font-size: 13px; line-height: 1; cursor: pointer; padding: 0; box-shadow: var(--shadow-s); }
 
 .btn-primary {
   width: 100%; padding: 15px; border: none; border-radius: 14px; background: var(--suou); color: #fff;
@@ -297,10 +315,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .stag.st-new { background: #FFFFFF; color: #1F1C1B; box-shadow: inset 0 0 0 1px #1F1C1B; }
 .stag.st-done { background: #EEEBE6; color: #8A817A; }
 
-/* ===== ボトムナビ ===== */
+/* ===== ボトムナビ =====
+   ★経緯：fixed（〜9/4）→ sticky（9/4）でも店舗iPadでスクロール中の置き去りが再発（2026-09-08 常山さんの動画）。
+   ＝この機種はページスクロール中の貼り付き描画そのものが追従しない。
+   最終形＝ページをスクロールさせず中身（.appmain）だけスクロール。バーはただの通常配置＝動けない */
 .tabbar {
-  position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 30;
-  width: 100%; max-width: var(--maxw);
+  flex-shrink: 0; z-index: 30;
+  width: 100%;
   display: flex; justify-content: space-around;
   background: rgba(255,255,255,.9); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--line);
@@ -476,7 +497,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 /* 体験版の帯（2026-08-12）。勉強会のあとに加盟店の皆さまへお配りする版でだけ出る。
    ヘッダーの直下に固定で置き、どの画面へ移っても「触っても大丈夫」が視界に残るようにする。 */
 .taiken-band {
-  position: sticky; top: 0; z-index: 8;
+  flex-shrink: 0; z-index: 8; /* スクロールの外（ヘッダー直下）に静止（2026-09-08） */
   background: #8E354A; color: #fff;
   font-size: 12px; line-height: 1.5; font-weight: 700;
   padding: 7px 14px; text-align: center;
@@ -486,6 +507,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 /* 総括表の形での月次出力（#/skprint）。
    ★新しい見た目を発明しない＝罫線の表で、総括表と同じ数字の並び。
    画面では横スクロール、印刷ではA4横に1か月が収まる。 */
+/* ★総括表の月次出力はヘッダーの無い画面のため、そのままだと iPhone の時計・電波表示に
+   「個店カルテへ」のボタンが隠れて押せなかった（2026-09-03 ユンさんのご報告）。
+   端末の安全領域のぶんだけ、画面の上に余白を足す。 */
+.screen.skp { padding-top: calc(10px + env(safe-area-inset-top)); }
 .skp-sheet { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
 .skp-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
 .skp-head b { font-size: 15px; }
@@ -503,10 +528,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
+  /* ★紙ではスクロール箱をすべて解除して文書の流れに戻す（2026-09-08 の中身スクロール化に伴う）。
+     これが無いと、あふれた分が2枚目以降に出ず1画面分で切れる */
+  html, body { height: auto; overflow: visible; }
   body { background: #fff; }
   /* アプリはスマホ幅の柱で描いているが、紙では柱を外して紙幅いっぱいに使う。
      ★これが無いと、表が柱からはみ出した部分の背後に地色（灰色）が印刷される */
-  #app { max-width: none; box-shadow: none; padding-bottom: 0; }
+  #app { max-width: none; box-shadow: none; padding-bottom: 0; height: auto; overflow: visible; display: block; }
+  .appmain { overflow: visible; height: auto; }
   /* 画面に重なるもの（設定シート・ガイド・写真拡大・起動画面・トースト）は紙に写さない。
      ★「はじめの設定」が開いたまま印刷すると、灰色の幕ごと紙に出ていた（2026-08-27 検品で発見） */
   .no-print, .hdr, .tabbar, .taiken-band, .sheet-mask, .tour-mask, .lightbox, .splash, .toast { display: none !important; }
@@ -524,3 +553,355 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
   .skp-foot { margin-top: 6px; font-size: 10px; }
   .skp-note { margin-top: 3px; font-size: 8.5px; line-height: 1.5; }
 }
+
+/* タスク（試行・2026-09-15）のレ点＝完了／未完了／保留。絵文字を使わず線で描く */
+.tkmk{display:inline-flex;align-items:center;gap:5px}
+.tkmk .bx{width:14px;height:14px;flex:none}
+.tkmk .bx rect{fill:none;stroke:currentColor;stroke-width:1.4;opacity:.55}
+.tkmk .bx path{fill:none;stroke:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.tkmk[aria-pressed="true"]{font-weight:700;border-color:currentColor}
+.tkmk[aria-pressed="true"] .bx rect{opacity:1}
+.tkmk[aria-pressed="true"] .bx path{stroke:currentColor}
+.tkmk[data-tkmark="open"][aria-pressed="true"] .bx path{stroke:none}
+.tkmk[data-tkmark="done"][aria-pressed="true"]{color:#3f6b3a;background:#e6f0e3}
+.tkmk[data-tkmark="hold"][aria-pressed="true"]{color:#8a7f72;background:#efeae2}
+.tkmk[data-tkmark="open"][aria-pressed="true"]{color:#8E354A;background:#f6e4e8}
+.tk-done .l1{text-decoration:line-through;opacity:.65}
+.tk-hold .l1{text-decoration:line-through;text-decoration-style:dotted;opacity:.8}
+/* ★2026-09-15 タスク（試行）が「フラフラする」＝メモにURL・長いパス（折り返せない文字列）が入ると
+   カードが画面より横に広がり、触るたびに左右へ揺れていた。どんな文字列でも枠の中で折り返す */
+#tk_list, .tk { max-width: 100%; overflow: hidden; }
+#tk_list { overscroll-behavior: contain; }
+.tk .l1, .tk .l2 { overflow-wrap: anywhere; word-break: break-word; }
+.tk .l2 { font-size: 12px; color: var(--soft, #6B6459); }
+.tktabs button { flex: 1 1 0; min-width: 0; }
+
+
+/* 巡回チェック（本部・2026-09-16）＝2人で同じ画面を見ながら入力する。指で押しやすい大きさ・見ている段階が分かるタブ */
+.svhead { padding: 10px 12px; }
+.svbar { height: 6px; background: var(--line, #E6E1D8); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+.svbar-in { height: 100%; background: var(--suou, #8E354A); transition: width .2s; }
+.svbar-t { display: flex; justify-content: space-between; font-size: 12px; color: var(--soft, #6B6459); margin-top: 4px; }
+.vctabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; -webkit-overflow-scrolling: touch; }
+.vctab { flex: none; font: inherit; font-size: 12px; padding: 7px 10px; border: 1px solid var(--line, #DED8CE); background: #fff; border-radius: 16px; display: inline-flex; flex-direction: column; align-items: center; line-height: 1.2; }
+.vctab small { font-size: 10px; color: var(--soft, #6B6459); }
+.vctab.done { border-color: #5C6E58; }
+.vctab.done small { color: #5C6E58; }
+.vctab.on { background: var(--suou, #8E354A); color: #fff; border-color: var(--suou, #8E354A); }
+.vctab.on small { color: #F3DCE2; }
+.svlist { padding: 4px 12px; }
+.svit { padding: 10px 0; border-bottom: 1px solid var(--line2, #EFEAE2); }
+.svit:last-child { border-bottom: 0; }
+.svit-h { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--soft, #6B6459); }
+.svit-no { font-weight: 700; }
+.svit-pt { padding: 0 6px; border-radius: 2px; background: #EFEAE2; }
+.svit-pt.pt3, .svit-pt.pt5 { background: #F6E4E8; color: #8E354A; font-weight: 700; }
+.svit-tag { padding: 0 6px; border-radius: 2px; background: #E8EDE6; color: #3f6b3a; }
+.svit-by { margin-left: auto; }
+.svit-t { font-size: 14px; font-weight: 600; line-height: 1.5; margin: 4px 0 8px; overflow-wrap: anywhere; }
+.svjudge { display: flex; gap: 6px; }
+.svjudge button { flex: 1; min-height: 44px; font: inherit; font-size: 16px; font-weight: 700; border: 1.5px solid var(--line, #DED8CE); background: #fff; border-radius: 8px; color: #6B6459; }
+.svjudge button[data-svv="na"] { font-size: 13px; flex: .8; }
+.svjudge button[aria-pressed="true"][data-svv="ok"] { background: #E6F0E3; border-color: #3f6b3a; color: #3f6b3a; }
+.svjudge button[aria-pressed="true"][data-svv="ng"] { background: #F6E4E8; border-color: #8E354A; color: #8E354A; }
+.svjudge button[aria-pressed="true"][data-svv="na"] { background: #EFEAE2; border-color: #8a7f72; color: #8a7f72; }
+.svit.v-ok .svit-t { color: #3f6b3a; }
+.svit.v-ng .svit-t { color: #8E354A; }
+.svit.v-na .svit-t { color: #8a7f72; text-decoration: line-through; text-decoration-style: dotted; }
+.svmemo { margin-top: 8px; font-size: 13px; }
+.svnav { display: flex; justify-content: space-between; gap: 8px; margin: 8px 0 14px; }
+.svnav .btn, .svnav .btn-primary { min-height: 44px; }
+.svscore { display: flex; align-items: baseline; gap: 10px; }
+.svscore b { font-size: 34px; color: var(--suou, #8E354A); }
+.svscore span { font-size: 12px; color: var(--soft, #6B6459); }
+.svcounts { font-size: 14px; margin: 6px 0 10px; }
+.svpre { white-space: pre-wrap; word-break: break-word; font: inherit; font-size: 12.5px; line-height: 1.7; background: var(--bg, #F7F4EF); padding: 10px; border-radius: 6px; margin-top: 10px; -webkit-user-select: text; user-select: text; }
+
+/* 巡回チェック＝写真（複数） */
+.svphotos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+.svph { position: relative; width: 72px; height: 72px; border-radius: 6px; overflow: hidden; background: #EFEAE2; }
+.svph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.svph button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 11px; border: 0; background: rgba(26,26,26,.75); color: #fff; font-size: 14px; line-height: 22px; padding: 0; }
+.svph-add { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 72px; height: 72px; border: 1.5px dashed var(--line, #DED8CE); border-radius: 6px; color: #6B6459; font-size: 11px; overflow: hidden; }
+.svph-add svg { width: 22px; height: 22px; }
+.svph-add input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; font-size: 40px; }   /* 透明な入力を重ねる＝iPhoneのホーム画面版でも開く */
+
+/* 巡回チェック＝基準（あるべき姿） */
+.svstd { margin-top: 8px; border: 1px dashed var(--line, #DED8CE); border-radius: 6px; padding: 4px 10px; background: #FBFAF7; }
+.svstd summary { cursor: pointer; font-size: 12px; color: #5C6E58; font-weight: 700; display: flex; gap: 8px; align-items: center; }
+.svstd summary small { font-weight: 400; color: #8a7f72; }
+.svstd-b { padding: 6px 0 4px; }
+.svstd-t { font-size: 13px; line-height: 1.6; margin-bottom: 6px; }
+.svstd-m { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.svstd-e { display: flex; gap: 6px; align-items: flex-start; margin-top: 6px; }
+.svstd-e textarea { flex: 1; font-size: 12px; }
+.svph.big { width: 120px; height: 90px; }
+
+.svmat { border-color: #5C6E58 !important; color: #3f6b3a !important; }
+
+/* =====================================================================
+   HP基準デザイン（yosakura.jp）＝テーマ層。html[data-theme="hp"] のときだけ効く。
+   2026-09-16 神田さん即採用。書体＝Zen Old Mincho＋EB Garamond／色＝白・#F8F8F8・墨#333・罫#cacaca・朱#8e3e3e一点／
+   角丸・影・カードをやめ、1pxの罫線と余白で区切る／写真は角版＋黒の被せ。動き（入力・保存・同期）は一切変えない。
+   ===================================================================== */
+html[data-theme="hp"] {
+  --suou: #333333; --suou-d: #202020; --suou-t: #F1F1F1; --sumi: #333333; --gray: #6E6A66;
+  --kinari: #FFFFFF; --paper: #FFFFFF; --line: #cacaca; --gold: #8e3e3e; --moegi: #333333;
+  --shadow: none; --shadow-s: none;
+  --serif: "Zen Old Mincho", "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif;
+  --sans: "Zen Old Mincho", "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif;
+  --en: "EB Garamond", Georgia, "Times New Roman", serif;
+}
+/* ベトナム語は明朝に字形が無い＝本文をゴシックへ（英字はEB Garamondが越語対応） */
+html[data-theme="hp"][lang="vi"] { --sans: -apple-system, "Noto Sans", "Segoe UI", "Hiragino Sans", sans-serif; --serif: -apple-system, "Noto Sans", "Segoe UI", sans-serif; }
+html[data-theme="hp"] body { background: #EDECEA; letter-spacing: .02em; }
+html[data-theme="hp"] .splash { background: #FFFFFF; gap: 18px; }
+html[data-theme="hp"] .splash__logo { width: 40%; max-width: 170px; }
+html[data-theme="hp"] .splash__tag { display: flex; flex-direction: column; align-items: center; gap: 12px; animation: logoIn 1.4s .4s ease both; }
+html[data-theme="hp"] .splash__en { font-family: var(--en); font-size: 12px; letter-spacing: .3em; color: #333333; }
+html[data-theme="hp"] .splash__rule { width: 28px; height: 1px; background: #cacaca; }
+html[data-theme="hp"] .splash__ja { font-family: var(--serif); font-size: 13px; letter-spacing: .1em; color: #393939; text-align: center; line-height: 2; }
+html[data-theme="hp"] .hdr { background: #FFFFFF; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 1px solid #cacaca; }
+html[data-theme="hp"] .hdr__logo { border-radius: 0; box-shadow: none; border: none; }
+html[data-theme="hp"] .hdr__brand { letter-spacing: .2em; }
+html[data-theme="hp"] .hdr__brand small { font-family: var(--en); letter-spacing: .3em; }
+html[data-theme="hp"] .role-chip { background: transparent; color: #333333; border: 1px solid #333333; border-radius: 0; box-shadow: none; font-weight: 500; letter-spacing: .08em; padding: 6px 12px; }
+html[data-theme="hp"] .role-chip .dot { background: #333333; }
+html[data-theme="hp"] .lang-chip { border-radius: 0; font-family: var(--en); font-weight: 600; letter-spacing: .15em; }
+html[data-theme="hp"] .screen { padding-top: 0; }
+/* ホームのヒーロー */
+html[data-theme="hp"] .hp-hero { position: relative; height: 300px; margin: 0 -16px 18px; overflow: hidden; background: #333333; }
+html[data-theme="hp"] .hp-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 45%; }
+html[data-theme="hp"] .hp-hero__sh { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,.12) 40%, rgba(0,0,0,.55) 100%); }
+html[data-theme="hp"] .hp-hero__b { position: absolute; left: 20px; right: 20px; bottom: 22px; display: flex; flex-direction: column; gap: 9px; color: #FFFFFF; }
+html[data-theme="hp"] .hp-en { font-family: var(--en); font-size: 12px; letter-spacing: .2em; color: rgba(255,255,255,.85); }
+html[data-theme="hp"] .hp-hero__t { font-family: var(--serif); font-size: 23px; line-height: 1.5; letter-spacing: .1em; text-wrap: pretty; }
+html[data-theme="hp"] .hp-hero__s { font-size: 12px; letter-spacing: .1em; color: rgba(255,255,255,.8); }
+/* 見出し＝縦棒をやめ、明朝＋罫線 */
+html[data-theme="hp"] .sec-h { margin: 24px 2px 10px; padding-bottom: 8px; border-bottom: 1px solid #333333; }
+html[data-theme="hp"] .sec-h .bar { display: none; }
+html[data-theme="hp"] .sec-h h2 { font-family: var(--serif); font-size: 15px; letter-spacing: .12em; font-weight: 500; }
+/* カード・タイル・リンク＝角丸と影をやめ、罫線に */
+html[data-theme="hp"] .card { border: none; border-bottom: 1px solid #cacaca; border-radius: 0; box-shadow: none; background: transparent; padding: 16px 2px; margin-bottom: 6px; }
+html[data-theme="hp"] .card h3 { font-family: var(--serif); font-weight: 500; letter-spacing: .1em; font-size: 14px; }
+html[data-theme="hp"] .tile { border-radius: 0; box-shadow: none; border: 1px solid #cacaca; background: #FFFFFF; }
+html[data-theme="hp"] .tile .ico { border-radius: 0; background: transparent; border: 1px solid #cacaca; color: #333333; }
+html[data-theme="hp"] .tile .nm { font-weight: 500; letter-spacing: .06em; }
+html[data-theme="hp"] .tile .live { border-radius: 0; background: #8e3e3e; font-family: var(--en); letter-spacing: .15em; }
+html[data-theme="hp"] .homelink { border-radius: 0; box-shadow: none; border: none; border-bottom: 1px solid #cacaca; background: transparent; padding: 14px 4px; }
+html[data-theme="hp"] .homelink .hl-ic { border-radius: 0; background: transparent; border: 1px solid #cacaca; color: #333333; }
+html[data-theme="hp"] .homelink .hl-t { font-weight: 500; letter-spacing: .06em; }
+html[data-theme="hp"] .news-card--imp { border-color: #cacaca; box-shadow: none; }
+html[data-theme="hp"] .news-card--imp .news-ic { background: transparent; color: #8e3e3e; border: 1px solid #8e3e3e; }
+html[data-theme="hp"] .news-ic { border-radius: 0; }
+html[data-theme="hp"] .news-more { color: #333333; font-weight: 500; letter-spacing: .1em; }
+html[data-theme="hp"] .news-more::before { content: "→ "; font-family: var(--en); }
+html[data-theme="hp"] .news-thumb { border-radius: 0; }
+/* ボタン・入力 */
+html[data-theme="hp"] .btn-primary { border-radius: 0; background: #333333; box-shadow: none; font-weight: 500; letter-spacing: .15em; padding: 15px; }
+html[data-theme="hp"] .btn, html[data-theme="hp"] .mini, html[data-theme="hp"] button.role-opt { border-radius: 0; }
+html[data-theme="hp"] .seg button { border-radius: 0; font-weight: 500; letter-spacing: .06em; }
+html[data-theme="hp"] .seg button.on { background: #333333; border-color: #333333; box-shadow: none; }
+html[data-theme="hp"] input[type="text"], html[data-theme="hp"] input[type="search"], html[data-theme="hp"] input[type="number"], html[data-theme="hp"] input[type="date"], html[data-theme="hp"] input[type="time"], html[data-theme="hp"] select, html[data-theme="hp"] textarea { border-radius: 0; border: 1px solid #cacaca; background: #FFFFFF; font-family: var(--sans); }
+html[data-theme="hp"] .rep .kind { border-radius: 0; font-weight: 500; letter-spacing: .08em; }
+html[data-theme="hp"] .rep .kind.b { box-shadow: inset 0 0 0 1px #cacaca; }
+html[data-theme="hp"] .sheet { border-radius: 0; }
+html[data-theme="hp"] .idlabel { font-family: var(--en); letter-spacing: .2em; font-weight: 500; }
+/* 下のバー */
+html[data-theme="hp"] .tabbar { background: #FFFFFF; backdrop-filter: none; -webkit-backdrop-filter: none; border-top: 1px solid #cacaca; }
+html[data-theme="hp"] .tabbar button { font-weight: 500; letter-spacing: .1em; color: #9a9a9a; }
+html[data-theme="hp"] .tabbar button.on { color: #333333; }
+/* 巡回チェック・タスク（今日足した画面）も同じ作法に */
+html[data-theme="hp"] .vctab, html[data-theme="hp"] .svjudge button, html[data-theme="hp"] .svph, html[data-theme="hp"] .svph-add, html[data-theme="hp"] .svstd, html[data-theme="hp"] .mk { border-radius: 0; }
+html[data-theme="hp"] .vctab.on { background: #333333; border-color: #333333; }
+html[data-theme="hp"] .svjudge button[aria-pressed="true"][data-svv="ng"] { border-color: #8e3e3e; color: #8e3e3e; background: #FFFFFF; }
+html[data-theme="hp"] .svjudge button[aria-pressed="true"][data-svv="ok"] { border-color: #333333; color: #333333; background: #FFFFFF; }
+html[data-theme="hp"] .svit-pt.pt3, html[data-theme="hp"] .svit-pt.pt5 { background: transparent; border: 1px solid #8e3e3e; color: #8e3e3e; border-radius: 0; }
+html[data-theme="hp"] .svit-tag, html[data-theme="hp"] .svit-pt { border-radius: 0; }
+html[data-theme="hp"] .svscore b { color: #333333; }
+html[data-theme="hp"] .svbar-in { background: #333333; }
+html[data-theme="hp"] .svpre { border-radius: 0; background: #F8F8F8; }
+html[data-theme="hp"] .toast { border-radius: 0; }
+
+/* HP基準＝段階②（全画面の細部） */
+html[data-theme="hp"] .hp-tabhero { position: relative; height: 200px; margin: 0 -16px 8px; overflow: hidden; background: #333333; }
+html[data-theme="hp"] .hp-tabhero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
+html[data-theme="hp"] .hp-tabhero .hp-hero__b { bottom: 18px; gap: 6px; }
+html[data-theme="hp"] .hp-tabhero .hp-hero__t { font-size: 22px; }
+html[data-theme="hp"] .hp-tabhero .hp-hero__s { font-size: 12px; line-height: 1.7; }
+html[data-theme="hp"] .sec-h { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 0 8px; }
+html[data-theme="hp"] .sec-h .sec-en { grid-column: 1; font-size: 10px; color: #8e3e3e; margin-bottom: 2px; }
+html[data-theme="hp"] .sec-h h2 { grid-column: 1; }
+html[data-theme="hp"] .sec-h .count { grid-column: 2; grid-row: 1 / span 2; margin-left: 0; font-family: var(--en); letter-spacing: .1em; }
+html[data-theme="hp"] .app-head { margin: 14px 0 16px; padding-bottom: 14px; border-bottom: 1px solid #333333; }
+html[data-theme="hp"] .app-head .ico { border-radius: 0; background: transparent; border: 1px solid #333333; color: #333333; width: 50px; height: 50px; }
+html[data-theme="hp"] .app-head .hp-en { display: block; font-size: 10px; color: #8e3e3e; margin-bottom: 2px; }
+html[data-theme="hp"] .app-head h1 { font-family: var(--serif); font-weight: 500; letter-spacing: .1em; font-size: 20px; }
+html[data-theme="hp"] .app-head p { color: var(--gray); }
+html[data-theme="hp"] .grid { gap: 10px; }
+html[data-theme="hp"] .tile { min-height: 112px; }
+html[data-theme="hp"] .install-card { border-radius: 0; background: #F8F8F8; color: #333333; border: 1px solid #cacaca; box-shadow: none; }
+html[data-theme="hp"] .install-card b, html[data-theme="hp"] .install-card span { color: #333333; }
+html[data-theme="hp"] .install-card #installBtn { border-radius: 0; background: #333333; color: #FFFFFF; }
+html[data-theme="hp"] .install-card .install-x { color: #333333; }
+html[data-theme="hp"] .footer-note { font-family: var(--en); letter-spacing: .12em; font-size: 10px; color: #9a9a9a; text-align: center; }
+html[data-theme="hp"] .appbar .mini, html[data-theme="hp"] .appbar button { border-radius: 0; font-weight: 500; letter-spacing: .06em; }
+html[data-theme="hp"] .hero__title, html[data-theme="hp"] h1, html[data-theme="hp"] h2, html[data-theme="hp"] h3 { font-family: var(--serif); font-weight: 500; }
+html[data-theme="hp"] .news-h b { font-family: var(--serif); font-weight: 500; letter-spacing: .08em; }
+html[data-theme="hp"] .news-title { font-weight: 500; }
+html[data-theme="hp"] .role-opt, html[data-theme="hp"] .chip { border-radius: 0; }
+html[data-theme="hp"] .lightbox img, html[data-theme="hp"] .pt img { border-radius: 0; }
+html[data-theme="hp"] .photo-drop { border-radius: 0; border: 1px dashed #cacaca; }
+html[data-theme="hp"] .ph-ico { border-radius: 0; }
+html[data-theme="hp"] .live { border-radius: 0; }
+
+/* HP基準＝見やすさ・押しやすさの底上げ（2026-09-16 全画面巡回の結果）
+   ・英字の小見出し10px→11px（店舗iPadで細すぎる）
+   ・戻るボタン33px・小ボタン25px→44px/36px（指で押しにくい）
+   ・チェックリストの曜日・タグ10px→11px／金種入力の欄23px→40px */
+html[data-theme="hp"] .hp-en { font-size: 11px; }
+html[data-theme="hp"] .sec-h .sec-en, html[data-theme="hp"] .app-head .hp-en { font-size: 11px; }
+html[data-theme="hp"] .appbar .back, html[data-theme="hp"] .back { min-height: 44px; padding-top: 8px; padding-bottom: 8px; }
+html[data-theme="hp"] .mini { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
+html[data-theme="hp"] .dk, html[data-theme="hp"] .k, html[data-theme="hp"] small { font-size: 11px; }
+html[data-theme="hp"] .svit-h, html[data-theme="hp"] .svit-h span { font-size: 11px; }
+html[data-theme="hp"] input[type="number"], html[data-theme="hp"] input[inputmode="numeric"], html[data-theme="hp"] input[inputmode="decimal"] { min-height: 40px; font-size: 16px; }
+html[data-theme="hp"] .tabbar button { font-size: 11px; }
+html[data-theme="hp"] .hint { font-size: 12px; }
+html[data-theme="hp"] .muted { font-size: 13px; }
+/* 写真の上の白文字＝被せを濃くして可読性を担保（薄い写真でも読める） */
+html[data-theme="hp"] .hp-hero__sh { background: linear-gradient(180deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.18) 40%, rgba(0,0,0,.62) 100%); }
+
+/* 今日・今週・月次で出すもの＝店舗チップ＋全店の一枚表（2026-09-16） */
+.kchips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; -webkit-overflow-scrolling: touch; }
+.kchip { flex: none; font: inherit; font-size: 12px; padding: 8px 12px; border: 1px solid var(--line); background: #fff; border-radius: 16px; min-height: 36px; }
+.kchip.on { background: var(--suou); color: #fff; border-color: var(--suou); }
+.ksum { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 2px 0 10px; font-size: 12px; color: var(--gray); }
+.ksum-i b { font-size: 18px; margin-right: 3px; color: var(--sumi); }
+.ksum-i.ov b { color: #a23b3b; }
+.klist { display: flex; flex-direction: column; }
+.krow { display: grid; grid-template-columns: 1fr 72px 44px 58px; align-items: center; gap: 8px; width: 100%; min-height: 46px; padding: 6px 2px; border: 0; border-bottom: 1px solid var(--line); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.krow .kname { font-size: 14px; font-weight: 700; color: var(--sumi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.krow .kbar { height: 6px; background: #EFEAE2; border-radius: 3px; overflow: hidden; }
+.krow .kbar i { display: block; height: 100%; background: #5C6E58; }
+.krow.ov .kbar i { background: #a23b3b; }
+.krow.rem .kbar i { background: #8F8170; }
+.krow .kn { font-size: 12px; color: var(--gray); text-align: right; font-variant-numeric: tabular-nums; }
+.krow .kov { font-size: 12px; font-weight: 700; text-align: right; color: #5C6E58; }
+.krow.ov .kov { color: #a23b3b; }
+.krow.rem .kov { color: #8F8170; }
+.krow.hol .kov, .krow.hol .kname { color: #b7b0a6; }
+html[data-theme="hp"] .kchip { border-radius: 0; }
+html[data-theme="hp"] .kchip.on { background: #333333; border-color: #333333; }
+html[data-theme="hp"] .krow .kbar { border-radius: 0; background: #EFEFEF; }
+html[data-theme="hp"] .krow .kbar i { background: #333333; }
+html[data-theme="hp"] .krow.ov .kbar i { background: #8e3e3e; }
+html[data-theme="hp"] .krow.ov .kov, html[data-theme="hp"] .ksum-i.ov b { color: #8e3e3e; }
+html[data-theme="hp"] .krow .kname { font-weight: 500; letter-spacing: .04em; }
+
+/* 数字の要確認（本部・2026-09-17） */
+.numrow { display: grid; grid-template-columns: 96px 1fr auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.numrow.done { opacity: .55; }
+.numrow-l b { font-size: 13px; }
+.numsrc { display: inline-block; font-size: 10px; color: var(--gray); border: 1px solid var(--line); padding: 1px 5px; margin-left: 4px; border-radius: 8px; }
+.numrow-m b { font-size: 13px; color: #a23b3b; }
+.numrow.done .numrow-m b { color: var(--gray); }
+.numrow-m small { font-size: 11px; color: var(--sumi); }
+html[data-theme="hp"] .numsrc { border-radius: 0; }
+html[data-theme="hp"] .numrow-m b { color: #8e3e3e; }
+
+/* 巡回チェック＝履歴・比較（2026-09-17） */
+.svh-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.svh { border-collapse: collapse; font-size: 11px; min-width: 640px; }
+.svh th, .svh td { padding: 4px 3px; text-align: center; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.svh thead th { color: var(--gray); font-weight: 600; }
+.svh .svh-st { text-align: left; font-weight: 700; color: var(--sumi); position: sticky; left: 0; background: #fff; }
+.svh-row { cursor: pointer; }
+.svh-row.on .svh-st { color: var(--suou); }
+.svh-c { min-width: 30px; font-weight: 700; border-radius: 4px; }
+.svh-c.g { background: #E4EFE0; color: #2f5d2a; } .svh-c.y { background: #FBF0D5; color: #7a5a00; } .svh-c.r { background: #F8DCDC; color: #a23b3b; }
+.svh-n { color: var(--gray); }
+.svchart { width: 100%; height: auto; display: block; margin: 4px 0 8px; }
+.svc-grid { stroke: #E5E0D8; stroke-width: 1; } .svc-vgrid { stroke: #F1EDE6; stroke-width: 1; } .svc-ax { font-size: 10px; fill: #8a8; }
+.svc-line { fill: none; stroke: #8E354A; stroke-width: 2; } .svc-dot { fill: #8E354A; } .svc-dot.g { fill: #5C6E58; } .svc-dot.y { fill: #b8860b; } .svc-dot.r { fill: #a23b3b; }
+.svc-lab { font-size: 11px; fill: #1A1A1A; font-weight: 700; }
+.svh-list { display: flex; flex-direction: column; }
+.svh-visit { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; width: 100%; text-align: left; padding: 8px 2px; border: 0; border-bottom: 1px solid var(--line); background: transparent; font: inherit; cursor: pointer; }
+.svh-vd { font-size: 13px; } .svh-vd small { color: var(--gray); }
+.svh-vp { font-size: 16px; font-weight: 700; grid-row: span 2; align-self: center; }
+.svh-vp.g { color: #2f5d2a; } .svh-vp.y { color: #7a5a00; } .svh-vp.r { color: #a23b3b; }
+.svh-vc { font-size: 11px; color: var(--gray); }
+.svh-vs { grid-column: 1 / -1; font-size: 11px; color: var(--sumi); }
+html[data-theme="hp"] .svh-c { border-radius: 0; }
+html[data-theme="hp"] .svc-line { stroke: #333333; } html[data-theme="hp"] .svc-dot { fill: #333333; }
+
+/* 巡回チェック＝実施時間・確認方法・表示する軸（2026-09-17） */
+.svhl { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray); flex: 1; min-width: 150px; }
+.svhl input, .svhl select { flex: 1; min-height: 38px; font: inherit; font-size: 15px; }
+.svaxis { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.svhl-t { font-size: 12px; color: var(--gray); margin-right: 2px; }
+.svax { font: inherit; font-size: 12px; padding: 7px 12px; min-height: 36px; border: 1px solid var(--line); background: #fff; border-radius: 16px; }
+.svax.on { background: var(--suou); color: #fff; border-color: var(--suou); }
+html[data-theme="hp"] .svax { border-radius: 0; }
+html[data-theme="hp"] .svax.on { background: #333333; border-color: #333333; }
+
+/* 巡回チェックの履歴＝削除（2026-09-17） */
+.svh-vrow { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); }
+.svh-vrow .svh-visit { border-bottom: 0; }
+.svh-del { color: var(--gray); }
+.svh-del2 { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 0 10px; font-size: 12px; color: #a23b3b; }
+.svh-delgo { background: #a23b3b; color: #fff; border-color: #a23b3b; }
+
+/* A4レポート＝できあがりの案内（2026-09-17） */
+.svready { border: 1px solid var(--suou); background: var(--usuaka, #FBF1F2); padding: 10px 12px; margin: 8px 0 10px; }
+.svready-t { font-weight: 700; margin-bottom: 8px; }
+html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
+
+/* 今日出すもの＝時間帯の帯（2026-09-18） */
+.kslot { border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; background: #fff; }
+.kslot > summary { list-style: none; cursor: pointer; padding: 10px 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.kslot > summary::-webkit-details-marker { display: none; }
+.kslot > summary::before { content: '▸'; color: var(--suou); }
+.kslot[open] > summary::before { content: '▾'; }
+.kslot > summary small { color: var(--suou); font-weight: 400; }
+.kslot-n { margin-left: auto; font-size: 12px; font-weight: 400; color: #a33; background: #fbf1f2; border-radius: 12px; padding: 2px 8px; }
+.kslot-n.done { color: #4a7; background: #eef7f0; }
+.kslot-n.over { color: #fff; background: var(--suou); }
+.kslot > .tsub, .kslot > .item, .kslot > div { margin: 0 8px 8px; }
+
+/* 在庫（数と発注）2026-09-18 */
+.zk-low { border: 2px solid var(--suou); background: #fbf1f2; }
+.zk-low h3 { color: var(--suou); }
+.zk-n { display: inline-block; min-width: 20px; padding: 1px 7px; border-radius: 10px; background: var(--suou); color: #fff; font-size: 12px; font-weight: 700; text-align: center; }
+.zk-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.zk-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.zk-row span { color: #a33; font-size: 13px; }
+.zk-in { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.zk-in label { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.zk-in label small { color: #8a8478; font-size: 11px; }
+.zk-in input.zk-bad { border-color: #C0392B; background: #FBF1F2; }   /* 数字として読めない欄（2026-09-21） */
+.zk-in input { width: 92px; flex: none; text-align: right; padding: 10px 8px; }
+.zk-in.low input { border-color: var(--suou); background: #fbf1f2; }
+.zk-head, .zk-edit { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+.zk-head span { font-size: 11px; color: #8a8478; }
+.zk-head span:nth-child(1), .zk-edit input:nth-child(1) { flex: 1.4; min-width: 0; }
+.zk-head span:nth-child(2), .zk-edit input:nth-child(2) { flex: 0.6; min-width: 0; text-align: right; }
+.zk-head span:nth-child(3), .zk-edit input:nth-child(3) { flex: 0.5; min-width: 0; }
+.zk-head span:nth-child(4), .zk-edit select { flex: 0.7; min-width: 0; padding: 8px 4px; }
+.zk-grp { background: var(--suou); color: #fff; font-weight: 700; font-size: 15px; padding: 8px 12px; border-radius: 8px; margin: 14px 0 6px; }
+.zk-today { font-size: 17px; font-weight: 700; color: var(--suou); border-left: 5px solid var(--suou); padding: 2px 0 2px 10px; margin: 4px 0 8px; display: flex; align-items: center; gap: 8px; }
+.zk-later { margin: 12px 0 6px; } .zk-later summary { cursor: pointer; color: #6b635a; font-size: 13px; padding: 8px 0; }
+.zk-edit input { padding: 10px 8px; }
+
+/* ホームの3タブ（2026-09-18） */
+.home-tabs { display: flex; gap: 6px; margin: 4px 0 12px; border-bottom: 1px solid var(--line); }
+.htab { position: relative; flex: 1; font: inherit; font-size: 14px; padding: 10px 6px; background: none; border: 0; border-bottom: 3px solid transparent; color: var(--gray); min-height: 44px; }
+.htab.on { color: var(--suou); border-bottom-color: var(--suou); font-weight: 700; }
+.htab .hdot { position: absolute; top: 8px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: #c0392b; }
+.hpane[hidden] { display: none; }
+/* 本部の点検一覧＝1店1行 */
+.ckov table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ckov th, .ckov td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
+.ckov tbody th { text-align: left; font-weight: 600; }
+.ckov td.r { color: #a23b3b; background: #fbf1f2; } .ckov td.y { color: #8a6d00; background: #fff9e6; } .ckov td.g { color: #2a7; background: #eef7f0; }
+.ckov td small { display: block; font-size: 10px; color: var(--gray); white-space: normal; }
