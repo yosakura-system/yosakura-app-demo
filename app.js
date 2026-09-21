@@ -886,6 +886,24 @@
     el2.textContent = msg; el2.classList.add('show');
     clearTimeout(toastTimer); toastTimer = setTimeout(() => el2.classList.remove('show'), 2400);
   }
+  /* ★画面のエラーを黙って消さない（2026-09-21 牛カツ長堀橋「アプリのバグで入力できない」＝何が起きたか遠隔で分からず、原因を特定できなかった）。
+     エラーを端末に控え（最新30件）、本部データへ kind:'apperr' で送り、画面には短い番号を出す。店舗は番号を伝えるだけでよい。
+     控え＝localStorage の yosakura_errlog（本部メニューやサポート時に読める） */
+  const ERR_LS = 'yosakura_errlog';
+  function reportAppError(msg, detail) {
+    try {
+      const t = Date.now(); const code = 'E' + String(t).slice(-5);
+      const e = { code, t, path: String(location.hash || '').replace(/^#/, ''), msg: String(msg || '').slice(0, 300), detail: String(detail || '').slice(0, 600),
+                  ua: String((navigator && navigator.userAgent) || '').slice(0, 160), store: (visibleStores()[0] || ''), role: getRole(), by: getUserName() || '' };
+      let log = []; try { log = JSON.parse(localStorage.getItem(ERR_LS) || '[]'); } catch (x) { log = []; }
+      log.push(e); while (log.length > 30) log.shift(); try { localStorage.setItem(ERR_LS, JSON.stringify(log)); } catch (x) {}
+      toast(`⚠ ${L({ ja:'画面でエラーが起きました', en:'Something went wrong', vi:'Đã xảy ra lỗi' })}（${code}）${L({ ja:'。この番号を本部に伝えてください', en:'. Please tell HQ this code', vi:'. Hãy báo mã này cho trụ sở' })}`);
+      if (useBackend()) fetch(getApiUrl(), { method:'POST', body: JSON.stringify(Object.assign({ token: authToken() }, { kind:'apperr', store: e.store, item: code, level:'', note: JSON.stringify(e), photos: [], t })) }).catch(() => {});
+      return code;
+    } catch (x) { return ''; }
+  }
+  window.addEventListener('error', (ev) => { if (!ev) return; reportAppError(ev.message || 'error', (ev.error && ev.error.stack) || `${ev.filename || ''}:${ev.lineno || ''}`); });
+  window.addEventListener('unhandledrejection', (ev) => { const r = ev && ev.reason; reportAppError((r && (r.message || String(r))) || 'unhandled rejection', r && r.stack); });
   const timeAgo = (ts) => {
     const m = Math.floor((Date.now() - ts) / 60000);
     if (m < 1) return L({ ja:'たった今', en:'just now', vi:'vừa xong' });
@@ -2186,6 +2204,24 @@
     const have = {}; zkMaster(store).forEach(it => { have[String(it.n || '').trim()] = true; });
     return (ZK_DEFAULT_ITEMS[store] || []).filter(it => !have[String(it.n || '').trim()]);
   }
+  /* ★数の読み方（2026-09-21 長堀橋「入力できない」の再発防止）＝全角の数字（１２）・単位つき（3本）・分数（1/2）・カンマも読む。
+     読めない文字（例：abc）は NaN を返し、提出側で「どの欄か」を示す（黙って落とさない） */
+  function zkParseNum(v) {
+    let s = String(v == null ? '' : v).trim();
+    try { s = s.normalize('NFKC'); } catch (e) {}
+    s = s.replace(/[,\s]/g, '').replace(/^([0-9]*\.?[0-9]+)[^0-9.\/]*$/, '$1');
+    if (s === '') return null;
+    const m = /^([0-9]+(?:\.[0-9]+)?)\/([0-9]+(?:\.[0-9]+)?)$/.exec(s); if (m && Number(m[2])) return Number(m[1]) / Number(m[2]);
+    const n = Number(s); return isNaN(n) ? NaN : n;
+  }
+  /* ★入力の下書き＝入れた数を端末に残す（画面が閉じても・ログインし直しても消えない）。提出したら消す。店舗×日付で1つだけ持つ */
+  const ZK_LS_DRAFT = 'yosakura_zk_draft';
+  const zkDraftKey = (store, dk) => `${store}||${dk}`;
+  function zkDraft(store, dk) { try { return (JSON.parse(localStorage.getItem(ZK_LS_DRAFT) || '{}') || {})[zkDraftKey(store, dk)] || {}; } catch (e) { return {}; } }
+  function zkDraftSet(store, dk, name, v) {
+    try { const k = zkDraftKey(store, dk); const d = zkDraft(store, dk); if (v === '') delete d[name]; else d[name] = v; const all = {}; all[k] = d; localStorage.setItem(ZK_LS_DRAFT, JSON.stringify(all)); } catch (e) {}
+  }
+  function zkDraftClear() { try { localStorage.removeItem(ZK_LS_DRAFT); } catch (e) {} }
   function zkLatest(store) {
     const rows = getZk('zaiko').filter(r => r.store === store).sort((a, b) => b.t - a.t);
     if (!rows.length) return null;
@@ -2235,6 +2271,7 @@
       if (!m.length) body = `<div class="muted">${L({ ja:'品目がまだ登録されていません。', en:'No items registered yet.', vi:'Chưa đăng ký mặt hàng.' })}${zkMgr() ? ` <button class="mini" data-zktab="items">${L({ ja:'品目を登録する', en:'Register items', vi:'Đăng ký' })}</button>` : L({ ja:'店長に「品目・基準在庫」の登録を頼んでください。', en:'Ask your manager to register items.', vi:'Nhờ quản lý đăng ký.' })}</div>`;
       else {
         const isToday = l && l.dk === today;
+        const draft = zkDraft(store, today);   // 端末に残した下書き（今日の提出が無いときだけ使う）
         body = `
         <div class="hint" style="display:block">${isToday ? L({ ja:'今日の入力があります。直すときはそのまま上書きして提出してください。', en:'Today’s counts exist; resubmit to overwrite.', vi:'Đã có số hôm nay; gửi lại để ghi đè.' }) : (l ? `${L({ ja:'前回', en:'Last', vi:'Lần trước' })} ${esc(l.dk)}${l.by ? `（${esc(l.by)}）` : ''}${L({ ja:'の数を薄く出しています。今日の数を入れてください。', en:' counts shown faintly; enter today’s.', vi:' hiển thị mờ; nhập số hôm nay.' })}` : L({ ja:'締めの時点の数を入れてください（0.5などの小数も可）。', en:'Enter counts at close (decimals OK).', vi:'Nhập số lúc chốt ca (được nhập số lẻ).' }))}</div>
         ${zkIsDefault(store) ? `<p class="hint" style="display:block">${L({ ja:'品目は在庫チェック表から写してあります。直したいときは店長が「品目・基準在庫」タブから。', en:'Items were copied from the stock sheet; the manager can edit them in the Items tab.', vi:'Mặt hàng chép từ bảng kiểm kho; quản lý sửa ở tab Mặt hàng.' })}</p>` : ''}
@@ -2244,7 +2281,7 @@
           const rowsOf = (list) => list.map(([it, i]) => { const cur = l && l.q[it.n]; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
             const prev = list[list.indexOf(list.find(x => x[1] === i)) - 1]; const head = (it.g && (!prev || prev[0].g !== it.g)) ? `<div class="zk-grp" style="margin-top:${prev ? 16 : 4}px">${esc(it.g)}</div>` : '';
             return `${head}<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}</small></label>
-            <input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${isToday && cur != null ? esc(String(cur)) : ''}" placeholder="${!isToday && cur != null ? esc(String(cur)) : '0'}"><span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
+            <input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${isToday && cur != null ? esc(String(cur)) : (draft[it.n] != null ? esc(String(draft[it.n])) : '')}" placeholder="${!isToday && cur != null ? esc(String(cur)) : '0'}"><span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
           const all = m.map((it, i) => [it, i]); const due = all.filter(([it]) => zkDue(it, dow)); const later = all.filter(([it]) => !zkDue(it, dow));
           const hasFreq = m.some(it => zkFreqOf(it));
           let h = '';
@@ -3020,6 +3057,11 @@
      定期衛生だけでなく、オープン／アイドル／クローズ／桜も**設備・レイアウトが店舗で違う**ため、
      一覧を出発点として各店で作り替えられるようにする。外した項目は消さずに残し、いつでも戻せる。 */
   const CK_HIDABLE = ['open', 'idle', 'close', 'sakura', 'hygiene'];
+  /* ★店舗の設備で最初から外す共通項目（2026-09-21 神田さん「牛カツ長堀橋はトイレが2Fにしか無いので、1Fの桜チェックは消して」）。
+     フロア無し（1F）の点検だけ。2F（@2F）はそのまま。店長が外した項目と同じ扱いで数からも除く。
+     画面の「戻す」には出さない＝戻したいときはここから外す（設備の事実なので、店舗の操作で戻ることが無いように） */
+  const CK_DEFAULT_HIDE = { '牛カツ世桜 長堀橋店': { idle: ['idle-c-0-4'], close: ['close-c-0-7'] } };   // idle-c-0-4＝昼の締め（ホール）の桜チェック／close-c-0-7＝ホールのトイレ清掃
+  const ckDefaultHide = (store, mode) => ckFloor(mode) ? [] : (((CK_DEFAULT_HIDE[normalizeStore(store || '')] || {})[ckBase(mode)]) || []);
   // 定期衛生は曜日ごと。フロア（@2F）は種類の後ろに残す＝別の点検として分かれる
   const ckKey = (store, mode, day) => ckBase(mode) === 'hygiene'
     ? `${store}||hygiene-${day == null ? new Date().getDay() : day}${ckFloor(mode) ? '@' + ckFloor(mode) : ''}`
@@ -3038,7 +3080,7 @@
   const getCkHide = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckhide')) || {}; } catch { return {}; } };
   const saveCkHide = (o) => { try { localStorage.setItem('yosakura_demo_ckhide', JSON.stringify(o)); } catch (e) {} };
   const ckHidden = (store, mode, day) =>
-    CK_HIDABLE.includes(ckBase(mode)) ? (getCkHide()[ckKey(store, mode, day)] || []) : [];
+    CK_HIDABLE.includes(ckBase(mode)) ? (getCkHide()[ckKey(store, mode, day)] || []).concat(ckDefaultHide(store, mode)) : [];
   // チェック状態＝店舗×モード×日付（日付が変わると自動で新しい一日になる）
   const getCkDone = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckdone')) || {}; } catch { return {}; } };
   const saveCkDone = (o) => { try { localStorage.setItem('yosakura_demo_ckdone', JSON.stringify(o)); } catch (e) {} };
@@ -3223,12 +3265,13 @@
       <div class="card" style="padding:4px 14px">${rows}${extras}</div>`;
     }).join('');
     /* 外した項目は消さずに畳んでおく＝間違えて外しても、その場で戻せるようにする */
-    const hiddenHTML = (canHide && hidden.length) ? `
+    const hiddenUser = hidden.filter(id => !ckDefaultHide(store, mode).includes(id));   // 設備で外した既定の分は「戻す」に出さない
+    const hiddenHTML = (canHide && hiddenUser.length) ? `
       <div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'この店舗では使わない項目', en:'Items not used at this store', vi:'Mục không dùng ở cửa hàng này' })}（${hidden.length}）</h2></div>
       <div class="card" style="padding:4px 14px">
         ${groups.map((gr, gi) => gr.items.map((it, ii) => {
           const id = `${idBase}-c-${gi}-${ii}`;
-          if (!hidden.includes(id)) return '';
+          if (!hiddenUser.includes(id)) return '';
           return `<div class="check" style="opacity:.65;cursor:default"><span class="lbl">${esc(L(it))}</span><button class="mini" style="margin-left:auto" data-ckshow="${id}">${L({ ja:'戻す', en:'Restore', vi:'Khôi phục' })}</button></div>`;
         }).join('')).join('')}
         <div class="hint" style="display:block;padding:2px 4px 8px">${L({ ja:'※ 外した項目は点検の件数から除かれます。設備が変わったら「戻す」で元に戻せます。', en:'Removed items are excluded from the count. Use Restore if your equipment changes.', vi:'Mục đã bỏ không tính vào số lượng. Nhấn Khôi phục khi cần.' })}</div>
@@ -9831,19 +9874,26 @@
     const zkSt = document.getElementById('zk_store'); if (zkSt) zkSt.onchange = () => { try { localStorage.setItem(ZK_LS_STORE, zkSt.value); } catch (e) {} render(true); };
     const subZk = document.getElementById('submitZk');
     if (subZk) subZk.onclick = () => {
-      const store = zkStore(); const q = {}; let n = 0;
-      document.querySelectorAll('input[data-zkname]').forEach(el => { const v = String(el.value || '').trim(); if (v === '') return; const num = Number(v); if (isNaN(num)) return; q[el.dataset.zkname] = num; n++; });
+      const store = zkStore(); const q = {}; let n = 0; const bad = [];
+      document.querySelectorAll('input[data-zkname]').forEach(el => {
+        const num = zkParseNum(el.value); if (num === null) { el.classList.remove('zk-bad'); return; }
+        if (isNaN(num)) { bad.push(el.dataset.zkname); el.classList.add('zk-bad'); return; }
+        el.classList.remove('zk-bad'); q[el.dataset.zkname] = num; n++;
+      });
+      if (bad.length) { toast(`${L({ ja:'数字として読めない欄があります', en:'Some counts are not numbers', vi:'Có ô không phải số' })}：${bad.slice(0, 3).join('・')}${bad.length > 3 ? '…' : ''}`); return; }
       if (!n) { toast(L({ ja:'在庫数を1つ以上入れてください', en:'Enter at least one count', vi:'Nhập ít nhất một số' })); return; }
       const by = String((document.getElementById('zk_by') || {}).value || '').trim(); if (by) setUserName(by);
       const t = Date.now();
       const rep = { kind:'zaiko', store, item: dateKeyFor(store, t), note: JSON.stringify({ q, by: by || submitterLabel() }), photos: [], t };
       try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
+      zkDraftClear();
       lastSync = t;
       const low = zkLow(store);
       toast(low.length ? `${L({ ja:'在庫数を提出しました。基準を下回った品目', en:'Submitted. Items below minimum', vi:'Đã gửi. Hàng dưới định mức' })}：${low.length}` : L({ ja:'在庫数を提出しました', en:'Counts submitted', vi:'Đã gửi số tồn' }));
       go('/app/kyou');
       postReport(rep);
     };
+    document.querySelectorAll('input[data-zkname]').forEach(el => { el.oninput = () => { const s = zkStore(); zkDraftSet(s, dateKeyFor(s, Date.now()), el.dataset.zkname, String(el.value || '')); }; });
     const zkDef = document.getElementById('zkFromDefault');
     if (zkDef) zkDef.onclick = () => {
       const miss = zkMissingDefaults(zkStore()); let added = 0;
