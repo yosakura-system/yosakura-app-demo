@@ -3244,6 +3244,16 @@ console.log('== 今月の着地見込み＋月別の推移（第2弾・2026-08-3
   location.hash = '#/app/dashboard';
   const h = registry.app.innerHTML;
   ok(/今月の着地見込み/.test(h), '本部ダッシュボードに「今月の着地見込み」が出る');
+  // 本部ダッシュボード＝タブで項目別（2026-09-22 神田さん「スクロールしないと見えない」）
+  ok(/data-dtab="num"/.test(h) && /data-dtab="loss"/.test(h) && /data-dtab="kz"/.test(h), 'ダッシュボードに「数字」「食べ残し」「気づき」の3タブがある');
+  ok(/data-dpane="num">/.test(h), '最初は「数字」の面が開いている');
+  ok(/data-dpane="loss" hidden/.test(h) && /data-dpane="kz" hidden/.test(h), '食べ残しと気づきの面は隠れている（DOMには残る＝検索に引っかかる）');
+  ok(/最新の総括表（店舗別）/.test(h) && /店舗別の報告数/.test(h), 'それぞれの面に中身がある');
+  try { localStorage.setItem('yosakura_dash_tab', 'kz'); } catch (e) {}
+  location.hash = '#/app/menu'; location.hash = '#/app/dashboard';   // 開き直す（hash の代入で描画される）
+  const hDash = registry.app.innerHTML;
+  ok(/data-dpane="kz">/.test(hDash) && /data-dpane="num" hidden/.test(hDash), '覚えたタブ（気づき）で開き直せる');
+  try { localStorage.removeItem('yosakura_dash_tab'); } catch (e) {}
   ok(/ここまで/.test(h) && /直近ペース/.test(h), '実績と直近ペース（式の材料）を添えて出す');
   ok(/目標/.test(h) && /%/.test(h), '総括表に目標が入っている店は目標比が出る');
   ok(/今月の入力なし/.test(h), '今月の入力が無い店も一覧に出る（隠さない）');

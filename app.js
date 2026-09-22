@@ -1321,6 +1321,8 @@
       </div>`;
   }
   const HOME_TAB_LS = 'yosakura_home_tab';
+  const DASH_TAB_LS = 'yosakura_dash_tab';   // 本部ダッシュボードのタブ（2026-09-22 神田さん「スクロールしないと見えない。タブで項目別に」）
+  const dashTabSel_ = () => { try { const v = localStorage.getItem(DASH_TAB_LS) || ''; return ['num', 'loss', 'kz'].includes(v) ? v : 'num'; } catch (e) { return 'num'; } };
   const homeTabSel_ = () => { try { const v = localStorage.getItem(HOME_TAB_LS) || ''; return ['today', 'news', 'menu'].includes(v) ? v : 'today'; } catch (e) { return 'today'; } };
   function homeInner(role) {
     const tiles = (ids) => ids.map(appById).filter(a => a && !appHidden(a) && canOpen(a, role)).map(a => tileHTML(a, role)).join('');
@@ -6004,7 +6006,17 @@
     const max = Math.max(1, ...Object.values(byStore));
     const rows = Object.entries(byStore).sort((x,y)=>y[1]-x[1]);
     const recent = reps.slice().sort((x,y)=>y.t-x.t).slice(0,6);
-    return `
+    // 面①「数字」＝総括表（店舗の動き・着地見込み・比較・最新）
+    const sk = getSk().filter(r => vis.includes(r.store));
+    const paneNum = (() => {
+      if (!sk.length) return `<p class="hint" style="display:block">${L({ ja:'総括表の数字はまだありません。', en:'No daily report numbers yet.', vi:'Chưa có số liệu báo cáo.' })}</p>`;
+      const latest = {}; sk.slice().sort((a,b)=>a.t-b.t).forEach(r => latest[r.store] = r);
+      const lrows = Object.values(latest).sort((a,b)=>b.t-a.t).slice(0,6);
+      return `${vis.length > 1 ? skMovement(vis, '/app/dashboard') + skOutlook(vis) + skCompare(vis, '/app/dashboard') : ''}
+        <div class="card"><h3>${L({ ja:'最新の総括表（店舗別）', en:'Latest daily report by store', vi:'Báo cáo mới theo cửa hàng' })}</h3>${lrows.map(skRow).join('')}</div>`;
+    })();
+    // 面②「食べ残し」＝現場の報告（自動集約）
+    const paneLoss = `
       ${NOTE({ ja:'◆ 現場の「食べ残し報告」がここに自動集約されます（実データ連動）', en:'◆ Field reports auto-aggregate here (live data)', vi:'◆ Báo cáo hiện trường tự tổng hợp (dữ liệu thật)' })}
       <div class="stat-row">
         <div class="stat"><div class="n">${reps.length}</div><div class="k">${L({ja:'総報告数',en:'Total',vi:'Tổng'})}</div></div>
@@ -6013,23 +6025,23 @@
       </div>
       <div class="card">
         <h3>${L({ ja:'店舗別の報告数', en:'Reports by store', vi:'Báo cáo theo cửa hàng' })}</h3>
-        ${rows.map(([s,c])=>`<div class="bar-row"><div class="bl"><span>${esc(s)}</span><b>${c}${L({ja:'件',en:'',vi:''})}</b></div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(c/max*100)}%"></div></div></div>`).join('') || `<div class="muted">${L({ja:'データがありません',en:'No data',vi:'Chưa có dữ liệu'})}</div>`}
+        ${rows.map(([s,c])=>`<div class="bar-row"><div class="bl"><span>${esc(s)}</span><b>${c}${L({ja:'件',en:'',vi:''})}</b></div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(c/max*100)}%"></div></div></div>`).join('') || `<p class="hint" style="display:block">${L({ ja:'報告はまだありません。', en:'No reports yet.', vi:'Chưa có báo cáo.' })}</p>`}
       </div>
-      <div class="card"><h3>${L({ ja:'最新の報告', en:'Latest reports', vi:'Báo cáo mới nhất' })}</h3>${recent.map(repRow).join('')}</div>
-      ${(() => {
-        const sk = getSk().filter(r => vis.includes(r.store));
-        if (!sk.length) return '';
-        const latest = {}; sk.slice().sort((a,b)=>a.t-b.t).forEach(r => latest[r.store] = r);
-        const rows = Object.values(latest).sort((a,b)=>b.t-a.t).slice(0,6);
-        return `${vis.length > 1 ? skMovement(vis, '/app/dashboard') + skOutlook(vis) + skCompare(vis, '/app/dashboard') : ''}
-          <div class="card"><h3>${L({ ja:'最新の総括表（店舗別）', en:'Latest daily report by store', vi:'Báo cáo mới theo cửa hàng' })}</h3>${rows.map(skRow).join('')}</div>`;
-      })()}
-      ${(() => {
-        const kz = getKz().filter(r => vis.includes(r.store));
-        if (!kz.length) return '';
-        const rows = kz.slice().sort((a,b)=>b.t-a.t).slice(0,6);
-        return `<div class="card"><h3>${L({ ja:'最近の気づき（全店）', en:'Recent staff insights', vi:'Ghi nhận gần đây' })}</h3>${rows.map(kzRow).join('')}</div>`;
-      })()}`;
+      <div class="card"><h3>${L({ ja:'最新の報告', en:'Latest reports', vi:'Báo cáo mới nhất' })}</h3>${recent.map(repRow).join('') || `<p class="hint" style="display:block">${L({ ja:'まだありません。', en:'None yet.', vi:'Chưa có.' })}</p>`}</div>`;
+    // 面③「気づき」＝全店の気づき
+    const paneKz = (() => {
+      const kz = getKz().filter(r => vis.includes(r.store));
+      if (!kz.length) return `<p class="hint" style="display:block">${L({ ja:'気づきはまだありません。', en:'No insights yet.', vi:'Chưa có ghi nhận.' })}</p>`;
+      const krows = kz.slice().sort((a,b)=>b.t-a.t).slice(0,6);
+      return `<div class="card"><h3>${L({ ja:'最近の気づき（全店）', en:'Recent staff insights', vi:'Ghi nhận gần đây' })}</h3>${krows.map(kzRow).join('')}</div>`;
+    })();
+    // タブ（ホーム画面と同じ部品。選んだタブは端末に覚える）2026-09-22
+    const cur = dashTabSel_();
+    const tabs = [['num', { ja:'数字', en:'Numbers', vi:'Số liệu' }, sk.length], ['loss', { ja:'食べ残し', en:'Leftovers', vi:'Đồ thừa' }, reps.length], ['kz', { ja:'気づき', en:'Insights', vi:'Ghi nhận' }, getKz().filter(r => vis.includes(r.store)).length]];
+    const bar = `<div class="home-tabs" role="tablist">${tabs.map(([v, t, n]) =>
+      `<button type="button" class="htab${cur === v ? ' on' : ''}" data-dtab="${v}" role="tab" aria-selected="${cur === v}">${esc(L(t))}${n ? `<span class="tcount">${n}</span>` : ''}</button>`).join('')}</div>`;
+    const pane = (v, html) => `<section class="hpane" data-dpane="${v}"${cur === v ? '' : ' hidden'}>${html}</section>`;
+    return bar + pane('num', paneNum) + pane('loss', paneLoss) + pane('kz', paneKz);
   };
 
   /* ⑩ 月例MTG（一元管理・実データ）*/
@@ -8035,7 +8047,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-htab],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
@@ -8068,6 +8080,13 @@
         const v = t.dataset.htab; try { localStorage.setItem(HOME_TAB_LS, v); } catch (e) {}
         document.querySelectorAll('[data-htab]').forEach(b => b.classList.toggle('on', b.dataset.htab === v));
         document.querySelectorAll('[data-hpane]').forEach(p => { p.hidden = p.dataset.hpane !== v; });
+        try { window.scrollTo(0, 0); } catch (e) {}
+        return;
+      }
+      if (t.dataset.dtab !== undefined) {   // 本部ダッシュボードのタブ（2026-09-22）
+        const v = t.dataset.dtab; try { localStorage.setItem(DASH_TAB_LS, v); } catch (e) {}
+        document.querySelectorAll('[data-dtab]').forEach(b => { b.classList.toggle('on', b.dataset.dtab === v); b.setAttribute('aria-selected', String(b.dataset.dtab === v)); });
+        document.querySelectorAll('[data-dpane]').forEach(p => { p.hidden = p.dataset.dpane !== v; });
         try { window.scrollTo(0, 0); } catch (e) {}
         return;
       }
