@@ -905,3 +905,7 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 .ckov tbody th { text-align: left; font-weight: 600; }
 .ckov td.r { color: #a23b3b; background: #fbf1f2; } .ckov td.y { color: #8a6d00; background: #fff9e6; } .ckov td.g { color: #2a7; background: #eef7f0; }
 .ckov td small { display: block; font-size: 10px; color: var(--gray); white-space: normal; }
+
+/* 本部ダッシュボードのタブ＝件数の小さな数（2026-09-22） */
+.htab .tcount { margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--gray); background: var(--kinari, #f3efe8); border-radius: 10px; padding: 1px 7px; vertical-align: 1px; }
+.htab.on .tcount { color: #fff; background: var(--suou); }
