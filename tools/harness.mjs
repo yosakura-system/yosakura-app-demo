@@ -3480,7 +3480,7 @@ console.log('== ユンさんの3件（2026-08-31）＝同期で先頭へ戻ら�
 {
   const S = '牛カツ世桜 長堀橋店';
   // ① 同期の描き直しは位置を保つ（チェックのたびに先頭へ戻っていた）
-  ok(/画面を作り直してよい_/.test(code) && /else render\(true\);/.test(code), '同期の再描画は render(true)＝チェック中に先頭へ戻らない');
+  ok(/画面を作り直してよい_/.test(code) && /else if \(force\) render\(true\);/.test(code), '同期の再描画は render(true)（自分の提出の直後だけ）＝チェック中に先頭へ戻らない');
   // ② アプリ画面の下にも戻るバーがある
   run(() => setLS('manager', S, 'ja'));
   location.hash = '#/app/checklist';
@@ -5704,5 +5704,18 @@ location.hash = '#/app/checklist';
   ok(/indexOf\('\/app\/checklist'\) !== -1\) \{ try \{ ckApplyDom_\(\); \} catch \(e\) \{\} \}/.test(src), '同期はチェックリスト画面を作り直さず、行と件数だけ差し替える');
   ok(/function ckApplyDom_\(\) \{[\s\S]{0,700}row\.classList\.toggle\('done', !!day\[row\.dataset\.ck\]\)/.test(src), 'ckApplyDom_ は行のクラスを差し替える');
 }
+
+// ==== v281: 自動同期で画面を作り直さない（2026-09-24 神田さん「接客から戻って触ろうとするとプチプチ」） ====
+{
+  const src = code;
+  ok(/else if \(force\) render\(true\);\s*\n\s*else showSyncBand_\(\);/.test(src), '自動同期は描き直さず帯を出す。自分の提出の直後だけ描き直す');
+  ok(/function showSyncBand_\(\) \{[\s\S]{0,900}data-syncrefresh="1"/.test(src), '帯には「表示を更新する」ボタン');
+  ok(/if \(t\.dataset\.syncrefresh\) \{ render\(true\); return; \}/.test(src) && /\[data-syncrefresh\],/.test(src), '押したときだけ描き直す配線');
+  ok(/if \(document\.getElementById\('syncFresh'\) \|\| document\.getElementById\('inboxFresh'\)\) return;/.test(src), '帯は二重に出さない（受信箱の帯とも重ねない）');
+  ok(/if \(rep && rep\.kind === 'ckdone'\) return;   \/\/ チェックは黙って保留/.test(src), 'チェックの送信が保留になっても「電波が無い」トーストは出さない');
+}
+
+// ==== v281: 起動時の強制同期をやめる（開き直した瞬間の作り直しを無くす） ====
+ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('  render();' + String.fromCharCode(10) + '  syncReports(true);') === -1, '起動時に render の直後の syncReports(true) が無い（開き直しで二度描かない）');
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
