@@ -2135,9 +2135,13 @@ console.log('== チェックリスト：最後まで終えたときだけ提出�
   ok(/localStorage\.setItem\('yosakura_ckmode', t\.dataset\.tsubmode\)/.test(code),
      '押したときに、その種類へ切り替えてから画面を開く');
 
-  // ② チェックしても画面の先頭へ戻らない（読んでいた位置を保つ）
-  ok(/render\(true\);\s*\n\s*postReport\(\{ kind:'ckdone'/.test(code),
-     'チェックのたびに先頭へ戻らない（位置を保って描き直す）');
+  // ② チェックしても画面の先頭へ戻らない
+  //    2026-09-23 神田さん「プチプチなる」対策＝画面全体を再描画する方式（render(true)）をやめ、
+  //    該当の行と件数・進捗バーだけを直接書き換える方式にした。そもそも再描画しないので位置もずれない。
+  ok(!/render\(true\);\s*\n\s*postReport\(\{ kind:'ckdone'/.test(code),
+     '画面全体を再描画する古いやり方（render(true)）はもう無い');
+  ok(/row\.classList\.toggle\('done', !!day\[id\]\);[\s\S]{0,600}postReport\(\{ kind:'ckdone'/.test(code),
+     'チェックのたびに先頭へ戻らない（行だけ書き換えるので、そもそも位置がずれない）');
 
   // ③ 全部終わるまで提出済みにしない
   const app3 = run(() => {
@@ -5659,6 +5663,18 @@ console.log('== 9/21 長堀橋＝画面エラーを本部へ／在庫の数の�
   ok(!/data-ckshow="idle-c-0-4"/.test(idle1), '設備で外した分は「戻す」に出ない');
   ok(/<span class="lbl"[^>]*>カスターセット/.test(idle1) && /<span class="lbl"[^>]*>ドリンク補充/.test(idle1), '1Fのアイドルはほかの項目がそのまま（番号がずれない）');
   run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+
+// ==== v278: チェックリスト＝件数・進捗バーの差し替え先（id）が出ている（2026-09-23 神田さん「プチプチなる」対策）====
+// ★このハーネスの querySelector は常に空を返す簡易DOMのため、実際のクリック動作は確かめられない。
+//   画面全体を描き直さないこと・履歴の間引きが日付順になったことは、headless Chrome の実ブラウザで別途確認済み。
+run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_ckmode', 'open'); });
+location.hash = '#/app/checklist';
+{
+  const h = registry.app.innerHTML;
+  ok(/id="ckCount"/.test(h), 'チェック画面に件数の差し替え先（ckCount）がある');
+  ok(/id="ckBar"/.test(h), 'チェック画面に進捗バーの差し替え先（ckBar）がある');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
