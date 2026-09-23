@@ -4566,7 +4566,7 @@ await new Promise(r=>setTimeout(r, 50));
   ok(String(localStorage.getItem('yosakura_demo_rawkeys') || '').indexOf('kizuki|') === 0, '代わりの目印一覧（rawkeys）で変更を検知する');
   ok(JSON.parse(localStorage.getItem('yosakura_demo_kizuki') || '[]').some(r => r.note === '凍結テストの気づき'), '取り込み自体は従来どおり動く');
   const srcQ = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/distribute\(d\.reports\);\s*\n\s*try \{ localStorage\.setItem\('yosakura_demo_rawkeys'/.test(srcQ), '振り分けが先・目印の保存が後＝途中で失敗したら次の同期で自動でやり直される');
+  ok(/distribute\(d\.reports\);[\s\S]{0,700}if \(!_distFail\) \{ try \{ localStorage\.setItem\('yosakura_demo_rawkeys'/.test(srcQ), '振り分けが先・目印の保存が後（v279＝保存できたときだけ）＝途中で失敗したら次の同期で自動でやり直される');
   ok(/removeItem\('yosakura_demo_raw'\)/.test(srcQ) && /_lsFull = true/.test(srcQ), '保存に失敗したら旧コピーを捨ててやり直し、それでも駄目なら受信箱に注意を出す（黙って凍らない）');
   FETCH_ROWS = { ok:false };
   run(() => { setLS('hq', 'all', 'ja'); });
@@ -5677,5 +5677,19 @@ location.hash = '#/app/checklist';
   ok(/id="ckBar"/.test(h), 'チェック画面に進捗バーの差し替え先（ckBar）がある');
 }
 
+
+// ==== v279: 同期の凍結をほどく（2026-09-23 長堀橋店「提出したものが全て消えた」＝本部には届いていた） ====
+{
+  const src = code;
+  ok(/_distFail = false;\s*\n\s*distribute\(d\.reports\);/.test(src), '同期は取り込みの前に失敗の印をリセットする');
+  ok(/if \(!_distFail\) \{ try \{ localStorage\.setItem\('yosakura_demo_rawkeys', nextKeys\)/.test(src), '取り込みが全部保存できたときだけ「取り込み済み」の目印を保存する');
+  ok(/else \{ try \{ localStorage\.removeItem\('yosakura_demo_rawkeys'\); \} catch \(e\) \{\} reportLsFull_\(\); \}/.test(src), '失敗したら目印を消して、容量の内訳を本部データへ送る');
+  ok(/REBUILDABLE_KEYS\.forEach\(rk => \{ if \(rk !== 'yosakura_demo_rawkeys' && !written\[rk\]\)/.test(src), '保存に失敗したら、まだ書いていない控えだけを捨てて空きを作る（書いた直後の一覧は消さない）');
+  ok(/localStorage\.getItem\('yosakura_resync_once'\) !== 'v279'/.test(src), 'この版に上がった端末は1回だけ本部データから一覧を作り直す');
+  ok(/if \(!localStorage\.getItem\('yosakura_demo_reports'\) && localStorage\.getItem\('yosakura_demo_rawkeys'\)\) localStorage\.removeItem\('yosakura_demo_rawkeys'\)/.test(src), '一覧が無いのに目印だけある端末は起動時にほどく');
+  ok(/APP_VIEWS\.kyou = \(\) => kyouBand_\(\) \+ kyouView_\('daily'\);/.test(src), '報告画面の先頭に帯（取り込めていない端末だけ）');
+  ok(/data-refetch="1"/.test(src) && /if \(t\.dataset\.refetch\) \{ refetchAll_\(\); return; \}/.test(src), '「表示を取り直す」ボタンと、その処理がある');
+  ok(/\[data-refetch\],/.test(src), 'クリックの振り分けに data-refetch が入っている');
+}
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
