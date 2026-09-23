@@ -3321,8 +3321,8 @@
         <h3>${L({ ja:'本日の', en:'Today: ', vi:'Hôm nay: ' })}${esc(L((CK_MODES.find(m => m.v === ckBase(mode)) || {}).t || ''))}${L({ ja:'点検', en:' check', vi:'' })}${ckFloor(mode) ? `（${esc(ckFloor(mode))}）` : (ckFloorStore(store) ? `（1F）` : '')}</h3>
         <div class="muted" style="margin:2px 0 8px">${esc(store)}</div>
         ${ckBase(mode) === 'hygiene' ? `<div class="seg" data-seg="hygday" style="margin:6px 0 10px"><button type="button" data-hygall="1" class="${hygAll ? 'on' : ''}">${L({ ja:'全体', en:'All', vi:'Tất cả' })}</button>${WDAY_LABELS.map((w, i) => `<button type="button" data-hygday="${i}" class="${!hygAll && i===getHygDay()?'on':''}">${L(w)}</button>`).join('')}</div>` : ''}
-        <div style="font-size:26px;font-weight:700;letter-spacing:.02em">${n}<span style="color:var(--gray);font-size:17px">/${total}</span></div>
-        <div class="bar-track" style="margin:9px 0 2px"><div class="bar-fill" style="width:${Math.round(n/total*100)}%"></div></div>
+        <div style="font-size:26px;font-weight:700;letter-spacing:.02em"><span id="ckCount">${n}</span><span style="color:var(--gray);font-size:17px">/${total}</span></div>
+        <div class="bar-track" style="margin:9px 0 2px"><div class="bar-fill" id="ckBar" style="width:${Math.round(n/total*100)}%"></div></div>
       </div>
       ${ckSmpHTML}
       ${hygAll ? hygAllHTML : groupsHTML + customHTML + hiddenHTML}
@@ -10322,16 +10322,31 @@
       if (e.target.closest('[data-ckdel]') || e.target.closest('[data-ckhide]') || e.target.closest('[data-ckgrp]')) return; // 削除・非表示・分類ボタンは別処理
       const store = visibleStores()[0], mode = getCkMode(), key = ckDoneKey(store, mode), id = row.dataset.ck;
       const map = getCkDone(); const day = map[key] || {}; day[id] = !day[id]; map[key] = day;
-      // 古い日付のチェックは肥大化防止のため間引く（直近14日分のみ保持）
-      const keep = {}; const keys = Object.keys(map).sort().slice(-40); keys.forEach(k => keep[k] = map[k]);
+      /* ★2026-09-23 神田さん「履歴が全部消えてる」＝間引きのキーが store||mode||日付 の形なのに、
+         キー文字列をそのままソートして末尾40件を残していた。store名・mode名が先頭にあるため
+         「アルファベット順で後ろに来た組み合わせ」が残るだけで、日付の新しい順にはならず、
+         直近の記録ごと消えることがあった。キー末尾の日付だけを見て、直近14日ぶんを残す形に直す。 */
+      const keep = {}; const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 13);
+      const cutoffKey = cutoff.toLocaleDateString('en-CA');
+      Object.keys(map).forEach(k => { const d = k.slice(k.lastIndexOf('||') + 2); if (d >= cutoffKey) keep[k] = map[k]; });
       saveCkDone(keep);
       // 実施状況をオーナー・本部からも見えるように共有する（店舗×モード×日付ごと最新が正）
       const t = Date.now(); lastSync = t;
       const meta = getCkMeta(); meta[key] = { by: submitterLabel(), t };
       try { localStorage.setItem('yosakura_demo_ckmeta', JSON.stringify(meta)); } catch (e) {}
-      // ★1項目チェックするたびに画面の先頭へ戻っていた（2026-08-12 神田さんのご指摘）。
-      //   上から順に押していく画面なので、押すたびに戻ると実質使えない。読んでいた位置を保つ。
-      render(true);
+      /* ★2026-09-23 神田さん「この画面がプチプチなる」＝チェックのたびに画面全体を描き直していたのが原因
+         （本部の巡回チェックで直した「プツプツ対策」と同じ考え方）。該当の行と、上の件数・進捗バーだけを
+         直接書き換える。CSSは .check.done のクラスだけで見た目が決まるので、行はクラスの付け外しで足りる。
+         画面全体は再描画しないため、ちらつきが起きようがない。 */
+      row.classList.toggle('done', !!day[id]);
+      const cEl = byId('ckCount'), bEl = byId('ckBar');
+      if (cEl && bEl) {
+        const hygDay = getHygDay();
+        const ids = ckIdsOf(store, mode, hygDay);          // 上の件数と必ず同じ数え方（render時のallIdsと同じ関数・同じ引数）
+        const n2 = ids.filter(i => day[i]).length, total2 = ids.length || 1;
+        cEl.textContent = n2;
+        bEl.style.width = `${Math.round(n2 / total2 * 100)}%`;
+      }
       postReport({ kind:'ckdone', store, item:`${mode}||${todayKey()}`, note: JSON.stringify({ done: day, by: submitterLabel() }), t });
     });
     /* 店舗ごとのカスタマイズ（追加・削除・共通項目の非表示）。
