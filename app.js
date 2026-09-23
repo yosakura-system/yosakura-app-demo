@@ -8088,12 +8088,13 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
       if (t.dataset.inboxrefresh) { render(true); return; }  // 「新しい報告が届きました」＝押したときだけ描き直す
       if (t.dataset.refetch) { refetchAll_(); return; }       // 「表示を取り直す」＝目印を消して本部データから一覧を作り直す（2026-09-23）
+      if (t.dataset.syncrefresh) { render(true); return; }    // 「新しい情報が届きました」＝押したときだけ描き直す（2026-09-24）
       if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(true); return; }
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
@@ -10949,6 +10950,20 @@
       cEl.textContent = n; bEl.style.width = `${Math.round(n / total * 100)}%`;
     }
   }
+  /* 同期で新しい行が届いたとき、いま見ている画面は作り直さず「新しい情報が届きました」の帯だけを出す（2026-09-24）。
+     帯は画面の中身（.body）の先頭に差し込む。次の描き直しで自然に消える。 */
+  function showSyncBand_() {
+    try {
+      if (document.getElementById('syncFresh') || document.getElementById('inboxFresh')) return;
+      const app = document.getElementById('app'); if (!app) return;
+      const d = document.createElement('div'); d.id = 'syncFresh'; d.className = 'card';
+      d.style.cssText = 'border:1px solid #d8b56a;background:#fdf6e7;margin:8px 12px';
+      d.innerHTML = `<div class="l1" style="font-weight:600">${esc(L({ ja:'新しい情報が届きました', en:'New data arrived', vi:'Có dữ liệu mới' }))}</div>
+        <button type="button" class="mini" data-syncrefresh="1" style="margin-top:6px">${esc(L({ ja:'表示を更新する', en:'Refresh', vi:'Cập nhật' }))}</button>`;
+      const body = app.querySelector('.body');
+      if (body) body.insertBefore(d, body.firstChild); else app.insertBefore(d, app.firstChild);
+    } catch (e) {}
+  }
   async function syncReports(force) {
     if (!useBackend()) return;
     if (!force && Date.now() - lastSync < 3000) return;
@@ -10987,7 +11002,11 @@
             try { const n = document.getElementById('inboxFresh'); if (n) n.style.display = ''; } catch (e) {}
           }
           else if (String(location.hash || '').indexOf('/app/checklist') !== -1) { try { ckApplyDom_(); } catch (e) {} }  // 店舗チェックリスト＝行と件数だけ差し替え（2026-09-24 パチパチ対策）
-          else render(true);
+          /* ★2026-09-24 神田さん「接客から戻って触ろうとするとプチプチ」＝画面を開くたびの自動同期で新しい行が届くと
+             全画面を作り直していた（古いiPadでは触り始めた瞬間に起きる）。自動同期では描き直さず、帯をそっと出して
+             押したときだけ描き直す（受信箱と同じ）。自分の提出の直後（force）は結果を見せるため従来どおり描き直す。 */
+          else if (force) render(true);
+          else showSyncBand_();
         }
       }
     } catch (_) { /* オフライン時はローカル（既存データ）を使用 */ }
@@ -11080,6 +11099,7 @@
                   vi:'⚠ Mất kết nối và bộ nhớ máy đầy — không giữ được. Vui lòng gửi lại khi có mạng.' }));
         return;
       }
+      if (rep && rep.kind === 'ckdone') return;   // チェックは黙って保留→次の同期で自動再送（画面に何も出さない・2026-09-24）
       toast(L({ ja:'電波が無いため、この提出はいったん端末に保留しました。つながったら自動で送信します',
                 en:'No connection. Saved on this device and will send automatically.',
                 vi:'Mất kết nối. Đã lưu trên máy và sẽ tự gửi lại.' }));
@@ -11131,7 +11151,8 @@
   photoLocalLoadAll_().then(() => { try { if (String(location.hash || '').indexOf('/app/hqcheck') !== -1) render(true); } catch (e) {} });   // 写真の中身（IndexedDB）を読み込んでから巡回チェックを描き直す
   写真選択中の再読み込みを報告_(); // ★前回、写真の選択中に再読み込みが起きていたら画面に出す（★render より先＝bindが印を読むため）
   render();
-  syncReports(true);
+  /* ★起動時の強制同期はしない（2026-09-24 神田さん「接客から戻って触ろうとするとプチプチ」）＝render→bind の自動同期で足りる。
+     強制すると読み込み直後に全画面がもう一度作り直され、iPadを開き直した瞬間の「プチッ」になっていた。新しい行が届けば帯で知らせる。 */
   // 表示中の版を読み、画面下に出す（更新が端末へ届いているかの確認用）
   try {
     fetch('./sw.js', { cache: 'no-store' }).then(r => r.text()).then(t => {
