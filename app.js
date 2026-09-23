@@ -86,6 +86,7 @@
   }
   let lastSync = 0;
   let _lsFull = false; // 端末の保存領域いっぱい＝同期の取り込みに失敗した印（受信箱に注意を出す）
+  let _distFail = false; // ★直近の同期で取り込みの保存に失敗した印（2026-09-23 長堀橋店）＝目印を保存せず次の同期でやり直す
   /* ★自動同期による「画面の作り直し」を、写真の作業中だけ止める（2026-08-25 実機で発生）
      スマホは写真を選ぶあいだアプリが背面へ回る。その数秒で同期の通信が終わると render() が走り、
      貼り付け先（photoThumbs）も選択中の <input type=file> も別物に差し替わる。
@@ -525,6 +526,32 @@
   const REBUILDABLE_KEYS = ['yosakura_demo_raw', 'yosakura_demo_reports',
                             'yosakura_demo_soukatsu', 'yosakura_demo_survey', 'yosakura_demo_kizuki',
                             'yosakura_demo_news', 'yosakura_demo_storevideo', 'yosakura_demo_rawkeys'];
+  /* ★2026-09-23 長堀橋店＝「取り込み済み」の目印だけ残って一覧が古い／無い端末を、起動時にほどく。
+     ・一覧（reports）が無いのに目印がある＝次の同期が必ず作り直すよう目印を消す
+     ・この版に上がった端末は1回だけ目印を消し、本部データから一覧を作り直す（凍っていた端末の復旧） */
+  try {
+    if (!TAIKEN) {
+      if (!localStorage.getItem('yosakura_demo_reports') && localStorage.getItem('yosakura_demo_rawkeys')) localStorage.removeItem('yosakura_demo_rawkeys');
+      if (localStorage.getItem('yosakura_resync_once') !== 'v279') { localStorage.removeItem('yosakura_demo_rawkeys'); localStorage.setItem('yosakura_resync_once', 'v279'); }
+    }
+  } catch (e) {}
+  /* 端末の保存領域の内訳（大きいキー順）＝容量いっぱいの報告に添える */
+  function lsUsage_() {
+    const a = [];
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); a.push([k, (localStorage.getItem(k) || '').length]); } } catch (e) {}
+    a.sort((x, y) => y[1] - x[1]);
+    return { total: a.reduce((n, x) => n + x[1], 0), top: a.slice(0, 8).map(x => x[0] + ':' + Math.round(x[1] / 1024) + 'KB').join(' ') };
+  }
+  let _lsFullReported = false;
+  function reportLsFull_() {
+    if (_lsFullReported) return; _lsFullReported = true;
+    try {
+      const u = lsUsage_(); const t = Date.now(); const code = 'LSFULL';
+      const e = { code, t, path: String(location.hash || '').replace(/^#/, ''), msg: 'localStorage full: sync distribute failed', detail: (Math.round(u.total / 1024) + 'KB ' + u.top).slice(0, 600),
+                  ua: String((navigator && navigator.userAgent) || '').slice(0, 160), store: (visibleStores()[0] || ''), role: getRole(), by: getUserName() || '' };
+      if (useBackend()) fetch(getApiUrl(), { method:'POST', body: JSON.stringify(Object.assign({ token: authToken() }, { kind:'apperr', store: e.store, item: code, level:'', note: JSON.stringify(e), photos: [], t })) }).catch(() => {});
+    } catch (x) {}
+  }
   /* 保存を試し、駄目なら控えを1つずつ消して空きを作りながらやり直す。戻り値＝保存できたか */
   function trySetWithCleanup_(key, val) {
     try { localStorage.setItem(key, val); return true; } catch (e) {}
@@ -7249,7 +7276,21 @@
       </div>
       <p class="hint" style="display:block">${foot}</p>`;
   }
-  APP_VIEWS.kyou = () => kyouView_('daily');
+  /* ★2026-09-23 長堀橋店＝取り込みの保存に失敗した端末には、報告画面の先頭で正直に伝え、1タップで作り直せるようにする
+     （提出は本部に届いている。端末の一覧だけを本部データから作り直す） */
+  const kyouBand_ = () => (_lsFull || _distFail) ? `
+      <div class="card" style="border:1px solid #d8b56a;background:#fdf6e7">
+        <div class="l1" style="font-weight:600">${esc(L({ ja:'⚠ 最新の提出を、この端末に取り込めていません', en:'⚠ Latest submissions could not be stored on this device', vi:'⚠ Chưa lưu được các mục nộp mới nhất trên máy này' }))}</div>
+        <p class="hint" style="display:block">${esc(L({ ja:'提出そのものは本部に届いています。押すと、本部のデータからこの一覧を作り直します。', en:'Your submissions did reach HQ. Tap to rebuild this list from HQ data.', vi:'Các mục đã đến trụ sở. Bấm để tạo lại danh sách từ dữ liệu trụ sở.' }))}</p>
+        <button type="button" class="mini" data-refetch="1" style="margin-top:6px">${esc(L({ ja:'表示を取り直す', en:'Rebuild the list', vi:'Tạo lại danh sách' }))}</button>
+      </div>` : '';
+  function refetchAll_() {
+    try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {}
+    _distFail = false; _lsFull = false;
+    toast(L({ ja:'本部のデータから取り直しています…', en:'Rebuilding from HQ data…', vi:'Đang tạo lại từ dữ liệu trụ sở…' }));
+    syncReports(true);
+  }
+  APP_VIEWS.kyou = () => kyouBand_() + kyouView_('daily');
   APP_VIEWS.shukan = () => kyouView_('weekly');
   APP_VIEWS.getsuji = () => kyouView_('monthly');
 
@@ -8047,11 +8088,12 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
       if (t.dataset.inboxrefresh) { render(true); return; }  // 「新しい報告が届きました」＝押したときだけ描き直す
+      if (t.dataset.refetch) { refetchAll_(); return; }       // 「表示を取り直す」＝目印を消して本部データから一覧を作り直す（2026-09-23）
       if (t.dataset.inboxdone) { const cur = localStorage.getItem('yosakura_inbox_showdone') === '1'; localStorage.setItem('yosakura_inbox_showdone', cur ? '0' : '1'); render(true); return; }
       // 受信箱の種類の絞り込み／提出履歴の期間切替＝どちらも同じ位置のまま切り替える
       if (t.dataset.inboxkind !== undefined) { localStorage.setItem('yosakura_inbox_kind', t.dataset.inboxkind); render(true); return; }
@@ -10806,11 +10848,17 @@
     });
     /* ★保存に失敗したら、容量を食っていた旧キー（サーバー応答の全文コピー）を捨てて1回だけやり直す。
        それでも入らなければ「容量いっぱい」を覚えて受信箱に注意を出す（黙って古いまま、を作らない） */
+    const written = {};
     const set = (k, a) => {
       const s = JSON.stringify(a);
-      try { localStorage.setItem(k, s); return; } catch (_) {}
+      try { localStorage.setItem(k, s); written[k] = 1; return; } catch (_) {}
       try { localStorage.removeItem('yosakura_demo_raw'); } catch (_) {}
-      try { localStorage.setItem(k, s); } catch (_) { _lsFull = true; }
+      try { localStorage.setItem(k, s); written[k] = 1; return; } catch (_) {}
+      /* ★2026-09-23 長堀橋店の実機＝それでも入らないときは、この振り分けがこれから作り直す控え
+         （まだ書いていない reports/soukatsu 等）を先に捨てて空きを作り、もう一度だけ試す。
+         書けなければ失敗の印を立てる＝呼び出し側は「取り込み済み」の目印を保存しない（次の同期でやり直す） */
+      REBUILDABLE_KEYS.forEach(rk => { if (rk !== 'yosakura_demo_rawkeys' && !written[rk]) { try { localStorage.removeItem(rk); } catch (_) {} } });
+      try { localStorage.setItem(k, s); written[k] = 1; } catch (_) { _lsFull = true; _distFail = true; }
     };
     set(LS.reports, food.concat(subs)); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
     set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
@@ -10885,8 +10933,14 @@
            ★振り分けを先に行う＝途中で失敗したら目印を残さず、次の同期で自動的にやり直される */
         const nextKeys = d.reports.map(repKey_).join('\n');
         if (nextKeys !== (localStorage.getItem('yosakura_demo_rawkeys') || '')) {
+          _distFail = false;
           distribute(d.reports);
-          try { localStorage.setItem('yosakura_demo_rawkeys', nextKeys); } catch (e) {}
+          /* ★2026-09-23 長堀橋店「提出したものが全て消えた」＝取り込みの保存に失敗しても目印を保存していたため、
+             以後の同期が「変更なし」と判定されてスキップされ続け、22:15の在庫より後の提出が画面に出なかった
+             （本部データには全部届いていた）。保存できたときだけ目印を残す。失敗したら目印を消し、
+             端末の容量の内訳を apperr で本部データへ送る（次に起きたとき番号で追える） */
+          if (!_distFail) { try { localStorage.setItem('yosakura_demo_rawkeys', nextKeys); } catch (e) {} }
+          else { try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {} reportLsFull_(); }
           try { localStorage.removeItem('yosakura_demo_raw'); } catch (e) {} // 旧の全文コピーを消して容量を空ける
           // ★写真の作業中は描き直さない（貼った写真と選択中の入力欄が消えるため）。取り込み自体は済んでいる
           // ★同期の描き直しでは位置を保つ（2026-08-31 ユンさんの報告＝チェックのたびに同期→再描画で先頭へ戻っていた）
