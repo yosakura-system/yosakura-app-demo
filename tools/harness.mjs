@@ -2140,7 +2140,7 @@ console.log('== チェックリスト：最後まで終えたときだけ提出�
   //    該当の行と件数・進捗バーだけを直接書き換える方式にした。そもそも再描画しないので位置もずれない。
   ok(!/render\(true\);\s*\n\s*postReport\(\{ kind:'ckdone'/.test(code),
      '画面全体を再描画する古いやり方（render(true)）はもう無い');
-  ok(/row\.classList\.toggle\('done', !!day\[id\]\);[\s\S]{0,600}postReport\(\{ kind:'ckdone'/.test(code),
+  ok(/row\.classList\.toggle\('done', !!day\[id\]\);[\s\S]{0,900}queueCkPost_\(store, mode, day, t\)/.test(code),
      'チェックのたびに先頭へ戻らない（行だけ書き換えるので、そもそも位置がずれない）');
 
   // ③ 全部終わるまで提出済みにしない
@@ -5690,6 +5690,19 @@ location.hash = '#/app/checklist';
   ok(/APP_VIEWS\.kyou = \(\) => kyouBand_\(\) \+ kyouView_\('daily'\);/.test(src), '報告画面の先頭に帯（取り込めていない端末だけ）');
   ok(/data-refetch="1"/.test(src) && /if \(t\.dataset\.refetch\) \{ refetchAll_\(\); return; \}/.test(src), '「表示を取り直す」ボタンと、その処理がある');
   ok(/\[data-refetch\],/.test(src), 'クリックの振り分けに data-refetch が入っている');
+}
+
+// ==== v280: チェックリスト＝描き直す経路を全部なくす・送信は1.5秒まとめ（2026-09-24 神田さん実機「カクカク・パチパチ」） ====
+{
+  const src = code;
+  ok(/queueCkPost_\(store, mode, day, t\);\s*\n\s*\}\);/.test(src), 'タップは送信キューへ入れるだけ（その場で送らない）');
+  ok(!/postReport\(\{ kind:'ckdone', store, item:`\$\{mode\}\|\|\$\{todayKey\(\)\}`[^\n]*\n\s*\}\);\n\s*\/\* 店舗ごとのカスタマイズ/.test(src), 'クリック処理から直接の postReport が消えている');
+  ok(/_ckTimer = setTimeout\(flushCkPost_, 1500\)/.test(src), '最後のタップから1.5秒で1回だけ送る');
+  ok(/visibilitychange[^\n]*flushCkPost_\(\)/.test(src) && /pagehide', flushCkPost_/.test(src) && /hashchange', flushCkPost_/.test(src), '裏に回る・閉じる・画面を離れるときは待たずに送る');
+  ok(/keepalive: !!\(rep && rep\.kind === 'ckdone'\)/.test(src), 'チェックの送信は keepalive（閉じても届く）');
+  ok(/if \(rep && rep\.kind === 'ckdone' && !\(d && d\.needLogin\)\) return;/.test(src), 'チェックの送信後は同期を呼ばない');
+  ok(/indexOf\('\/app\/checklist'\) !== -1\) \{ try \{ ckApplyDom_\(\); \} catch \(e\) \{\} \}/.test(src), '同期はチェックリスト画面を作り直さず、行と件数だけ差し替える');
+  ok(/function ckApplyDom_\(\) \{[\s\S]{0,700}row\.classList\.toggle\('done', !!day\[row\.dataset\.ck\]\)/.test(src), 'ckApplyDom_ は行のクラスを差し替える');
 }
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

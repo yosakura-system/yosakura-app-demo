@@ -10389,7 +10389,10 @@
         cEl.textContent = n2;
         bEl.style.width = `${Math.round(n2 / total2 * 100)}%`;
       }
-      postReport({ kind:'ckdone', store, item:`${mode}||${todayKey()}`, note: JSON.stringify({ done: day, by: submitterLabel() }), t });
+      /* ★2026-09-24 神田さん実機「連続で入れるとカクカク・パチパチ」＝タップごとに送信→直後の同期→画面全体の作り直し、
+         という2つ目の経路が残っていた（v278はタップの瞬間の作り直しを止めただけ）。送信は1.5秒まとめて1回にし、
+         送ったあとも同期は呼ばない。同期が走っても、この画面は行のクラスと件数だけ差し替える（ckApplyDom_）。 */
+      queueCkPost_(store, mode, day, t);
     });
     /* 店舗ごとのカスタマイズ（追加・削除・共通項目の非表示）。
        ★保存のキーは ckKey に合わせる＝定期衛生は曜日ごとに別々に持つ（2026-08-13）。
@@ -10915,6 +10918,37 @@
       set('yosakura_demo_svstd', curT);
     }
   }
+  /* ★チェックリストの送信をまとめる箱（2026-09-24）。タップのたびに送ると古いiPadでは
+     送信→返事→同期→作り直しが連なって画面がカクカクする。最後のタップから1.5秒待って1回だけ送る。
+     画面を離れる・アプリが裏に回る・閉じるときは待たずに送る（keepalive 付き＝閉じても届く）。 */
+  let _ckQ = null, _ckTimer = 0, _lastCkTap = 0;
+  function queueCkPost_(store, mode, day, t) {
+    _lastCkTap = t;
+    _ckQ = { kind:'ckdone', store, item:`${mode}||${todayKey()}`, note: JSON.stringify({ done: day, by: submitterLabel() }), t };
+    clearTimeout(_ckTimer); _ckTimer = setTimeout(flushCkPost_, 1500);
+  }
+  function flushCkPost_() {
+    clearTimeout(_ckTimer); _ckTimer = 0;
+    const q = _ckQ; _ckQ = null;
+    if (q) postReport(q);
+  }
+  try {
+    document.addEventListener('visibilitychange', () => { if (document.hidden) flushCkPost_(); });
+    window.addEventListener('pagehide', flushCkPost_);
+    window.addEventListener('hashchange', flushCkPost_);
+  } catch (e) {}
+  /* 同期で届いた実施状況を、チェックリスト画面に「行のクラスと件数だけ」反映する（画面は作り直さない） */
+  function ckApplyDom_() {
+    const store = visibleStores()[0], mode = getCkMode(), key = ckDoneKey(store, mode);
+    const day = (getCkDone()[key]) || {};
+    document.querySelectorAll('[data-ck]').forEach(row => row.classList.toggle('done', !!day[row.dataset.ck]));
+    const cEl = document.getElementById('ckCount'), bEl = document.getElementById('ckBar');
+    if (cEl && bEl) {
+      const ids = ckIdsOf(store, mode, getHygDay());
+      const n = ids.filter(i => day[i]).length, total = ids.length || 1;
+      cEl.textContent = n; bEl.style.width = `${Math.round(n / total * 100)}%`;
+    }
+  }
   async function syncReports(force) {
     if (!useBackend()) return;
     if (!force && Date.now() - lastSync < 3000) return;
@@ -10952,6 +10986,7 @@
                取り込みは済ませたうえで、上部の「表示を更新」の帯だけをそっと出す（押したときだけ描き直す） */
             try { const n = document.getElementById('inboxFresh'); if (n) n.style.display = ''; } catch (e) {}
           }
+          else if (String(location.hash || '').indexOf('/app/checklist') !== -1) { try { ckApplyDom_(); } catch (e) {} }  // 店舗チェックリスト＝行と件数だけ差し替え（2026-09-24 パチパチ対策）
           else render(true);
         }
       }
@@ -11022,9 +11057,10 @@
   // rep = { kind, store, item, level, note, photos, t }
   function postReport(rep) {
     if (!useBackend()) return Promise.resolve();
-    return fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(Object.assign({ token: authToken() }, rep)) })
+    return fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(Object.assign({ token: authToken() }, rep)), keepalive: !!(rep && rep.kind === 'ckdone') })
       .then((r) => r.json())
       .then((d) => {
+        if (rep && rep.kind === 'ckdone' && !(d && d.needLogin)) return;   // ★チェックの送信後は同期しない（2026-09-24＝同期→作り直しがパチパチの元）
         if (d && d.needLogin) {
           // ★提出は保留箱へ残してからログインへ（ログイン後の同期で自動再送される＝提出は失われない）
           const q = getPending_(); q.push(rep);
