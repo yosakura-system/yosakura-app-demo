@@ -56,7 +56,8 @@ var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide',
                          'community', 'commlike', 'commcmt',
                          'hqtask',    // 本部の個人タスク（試行・2026-09-15）＝消えると困るもの
                          'svcheck',   // 巡回チェック（本部・2026-09-16）＝巡回の記録は消さない
-                         'svstd'];    // 巡回チェックの基準（あるべき姿・スクショ）＝恒久
+                         'svstd',     // 巡回チェックの基準（あるべき姿・スクショ）＝恒久
+                         'whistle'];  // 公益通報（カスハラ含む・2026-09-24 神田さん）＝法律上の記録。90日で消さない（閲覧は本部のみ）
 
 // スクリプトプロパティから設定を読む（無ければ既定値）。管理画面や手動で変更できる。
 function getSetting_(key, def) {
