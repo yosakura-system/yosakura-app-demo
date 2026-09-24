@@ -220,6 +220,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
   border-radius: 12px; font: inherit; font-size: 13px; font-weight: 700; color: var(--gray); cursor: pointer; font-family: var(--sans);
 }
 .seg button.on { background: var(--suou); color: #fff; border-color: var(--suou); box-shadow: var(--shadow-s); }
+/* 公益通報の種類＝8つあるので、スマホ幅では2列にする（4列だと右端が切れる・2026-09-24） */
+[data-seg="whcat"] button { flex: 1 1 42%; min-width: 0; }
 
 .photo-drop { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1.5px dashed var(--line); border-radius: 12px; background: #FCFBF9; cursor: pointer; }
 .photo-drop .ph-ico { width: 40px; height: 40px; border-radius: 10px; background: var(--suou-t); color: var(--suou); display: grid; place-items: center; }

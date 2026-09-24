@@ -8701,7 +8701,9 @@
   const WHISTLE_CATS = [
     { v:'power',   t:{ ja:'パワーハラスメント',   en:'Power harassment',    vi:'Quấy rối quyền lực' } },
     { v:'sexual',  t:{ ja:'セクシュアルハラスメント', en:'Sexual harassment', vi:'Quấy rối tình dục' } },
-    { v:'abuse',   t:{ ja:'暴言・威圧',           en:'Verbal abuse',        vi:'Lăng mạ/đe dọa' } },
+    /* ★お客様からのハラスメント（2026-09-24 神田さん）＝10/1施行のカスハラ対応。掲示用ポスターのQRからこの画面へ */
+    { v:'customer', t:{ ja:'お客様からの暴言・威圧・不当な要求（カスハラ）', en:'Customer harassment', vi:'Quấy rối từ khách hàng' } },
+    { v:'abuse',   t:{ ja:'職場での暴言・威圧',   en:'Verbal abuse at work', vi:'Lăng mạ/đe dọa tại nơi làm việc' } },
     { v:'fraud',   t:{ ja:'不正行為',             en:'Misconduct',          vi:'Gian lận' } },
     { v:'legal',   t:{ ja:'法令違反',             en:'Legal violation',     vi:'Vi phạm pháp luật' } },
     { v:'hygiene', t:{ ja:'衛生上の重大問題',     en:'Serious hygiene issue', vi:'Vệ sinh nghiêm trọng' } },
@@ -8731,7 +8733,7 @@
     // スタッフ・店長・オーナー＝通報フォーム
     const store = visibleStores()[0];
     return `
-      ${NOTE({ ja:'◆ 店長・オーナーに相談しにくい問題を、本部へ直接お伝えいただく窓口です', en:'◆ A channel to report issues to HQ directly when hard to raise with your manager/owner', vi:'◆ Kênh báo cáo trực tiếp tới HQ khi khó nói với quản lý/chủ' })}
+      ${NOTE({ ja:'◆ 店長・オーナーに相談しにくい問題や、お客様からの暴言・威圧（カスハラ）を、本部へ直接お伝えいただく窓口です', en:'◆ A channel to report issues to HQ directly when hard to raise with your manager/owner — including customer harassment', vi:'◆ Kênh báo cáo trực tiếp tới HQ khi khó nói với quản lý/chủ' })}
       <div class="card" id="whForm">
         <h3>${L({ ja:'公益通報・コンプライアンス窓口', en:'Whistleblowing / Compliance', vi:'Tố giác / Tuân thủ' })}</h3>
         <label class="fld"><span>${L({ ja:'種類', en:'Category', vi:'Loại' })}</span>
