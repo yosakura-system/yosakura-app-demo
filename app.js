@@ -7136,7 +7136,7 @@
           <span class="ksum-i ok"><b>${list.length - open.length}</b>${L({ ja:'件 確認済み', en:' checked', vi:' đã xác nhận' })}</span>
           <button type="button" class="mini" data-numall="${showAll ? '0' : '1'}">${showAll ? L({ ja:'未確認だけ表示', en:'Open only', vi:'Chỉ chưa xác nhận' }) : L({ ja:'確認済みも表示', en:'Show checked', vi:'Hiện cả đã xác nhận' })}</button>
         </div>
-        <p class="hint" style="display:block">${L({ ja:'※ 検査は7つ＝フード＋ドリンク≠売上／フードが1,000円未満（個数の疑い）／客数が空／客単価が普段（直近の中央値）の±40%外／レジ差≠0／昼＞合計／現金＋カード＞売上（コード決済の行が総括表に無いため、少ない分は拾いません）。売上の増減そのものは見ません（お客様は日によって違うため）。アプリ提出もシート取込も同じ基準です。「確認済み」はこの端末にだけ残ります。店長・オーナーは自店の分だけが出ます。', en:'7 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'7 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
+        <p class="hint" style="display:block">${L({ ja:'※ 検査は7つ＝フード＋ドリンク≠売上／フードが1,000円未満（個数の疑い）／客数が空／客単価が普段（直近の中央値）の±40%外／レジ差≠0／昼＞合計／現金＋カード＞売上（コード決済の行が総括表に無いため、少ない分は拾いません）。売上の増減そのものは見ません（お客様は日によって違うため）。アプリ提出もシート取込も同じ基準です。「確認済み」は本部・店長の端末で共有されます（同期で届きます）。店長・オーナーは自店の分だけが出ます。', en:'7 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'7 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
       </div>
       ${rows || `<div class="card"><p class="muted">${L({ ja:'要確認の数字はありません', en:'Nothing to check', vi:'Không có gì cần xác nhận' })}</p></div>`}`;
   };
@@ -8148,7 +8148,15 @@
         lastSync = t0; toast(L({ ja:'発注済みにしました', en:'Marked as ordered', vi:'Đã đánh dấu đặt hàng' })); render(true); postReport(rep); return;
       }
       // 数字の要確認＝確認済みの切替／表示の切替（2026-09-17）
-      if (t.dataset.numack !== undefined) { const o = getNumAck(); if (o[t.dataset.numack]) delete o[t.dataset.numack]; else o[t.dataset.numack] = Date.now(); saveNumAck(o); render(true); return; }
+      if (t.dataset.numack !== undefined) {
+        /* ★確認済みは本部・店長の全端末で共有する（2026-09-24 神田さん「以前全て確認したのに、また要確認に戻っている」
+           ＝端末ごとの保存だったため、別の端末・ブラウザでは全部未確認に見えていた）。キーごとに最新が正 */
+        const o = getNumAck(); const k = t.dataset.numack; const on = !o[k]; const now = Date.now();
+        if (on) o[k] = now; else delete o[k];
+        saveNumAck(o); render(true);
+        postReport({ kind:'numack', store: k.split('|')[0], item: k, note: JSON.stringify({ on, by: getUserName() || submitterLabel() }), t: now });
+        return;
+      }
       if (t.dataset.numall !== undefined) { localStorage.setItem('yosakura_numcheck_all', t.dataset.numall); render(true); return; }
       // 今日出すもの／今週／月次／提出履歴の店舗チップ（2026-09-17＝画面ごとの登録でなく委譲に。どの画面でも効く）
       if (t.dataset.kyou !== undefined) { try { localStorage.setItem(KYOU_LS, t.dataset.kyou); } catch (err) {} if (currentRoute().params.get('s') || currentRoute().params.get('store')) go(currentRoute().path); else render(true); return; }
@@ -10795,6 +10803,7 @@
   const pj = (s) => { try { return JSON.parse(s); } catch (_) { return {}; } };
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
+    const numack = {}, numackT = {};   // 数字の要確認の「確認済み」＝キーごとに最新が正（2026-09-24）
     const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null; const svc={}, svcT={}; const svstd={}, svstdT={};
     /* ★同じ提出が何行にもなっているとき、1件にまとめて見せる（2026-09-03 実機で発覚）。
        受け取り側は1回のPOSTごとに1行を足す作りのため、返事が届かずに送り直されると
@@ -10849,6 +10858,11 @@
         case 'ckhide': { const p=pj(r.note); const k=`${store}||${p.mode||''}`; if (ckhideT[k]==null || t>=ckhideT[k]) { ckhide[k]=Array.isArray(p.ids)?p.ids:[]; ckhideT[k]=t; } } break;
         // オープン/クローズの実施状況＝店舗×モード×日付ごと最新が正。誰が実施したかは別に持つ
         case 'ckdone': { const p=pj(r.note); const k=`${store}||${r.item}`; if (ckdoneT[k]==null || t>=ckdoneT[k]) { ckdone[k]=p.done||{}; ckmeta[k]={ by:p.by||'', t }; ckdoneT[k]=t; } } break;
+        case 'numack': {   // 数字の要確認の確認済み（2026-09-24）＝1件ずつの行と、引っ越しのまとめ行（batch）の両方
+          const p=pj(r.note) || {};
+          if (p.batch && typeof p.batch === 'object') { Object.keys(p.batch).forEach(k2 => { const tt = Number(p.batch[k2]) || t; if (numackT[k2]==null || tt>=numackT[k2]) { numack[k2] = tt; numackT[k2] = tt; } }); break; }
+          const k=String(r.item || ''); if (!k) break; if (numackT[k]==null || t>=numackT[k]) { numack[k] = p.on ? t : 0; numackT[k]=t; }
+        } break;
         // 勉強会＝IDごと最新が正。削除は deleted:true の行で表す（追記式のため）
         case 'study': { const p=pj(r.note); const k=r.item || (p && p.id); if (!k) break; if (studyT[k]==null || t>=studyT[k]) { study[k]=p; studyT[k]=t; } } break;
         case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, goal:p.goal, closeDetail:Array.isArray(p.closeDetail)?p.closeDetail:undefined, by:p.by||'', src:p.src||'', t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正（closeDetail=棚卸の品目内訳・2026-09-01）
@@ -10897,6 +10911,8 @@
       set(lsKey, cur);
     };
     mergeMap('yosakura_demo_ckitem', ckitem); mergeMap('yosakura_demo_ckhide', ckhide); mergeMap('yosakura_demo_phsample', phs);
+    /* 数字の要確認の「確認済み」＝届いたキーだけ差し替える（on=確認済みの時刻／取り消しは削除）。届いていないキーは端末の状態を保つ */
+    if (Object.keys(numack).length) { const cur = getNumAck(); Object.keys(numack).forEach(k => { if (numack[k]) cur[k] = numack[k]; else delete cur[k]; }); set(NUM_ACK_LS, cur); }
     /* ★実施状況（ckdone）はキーごとに「新しいほう」を残す（2026-09-02 常山さんのスマホでの報告＝
          連続タップで直前のチェックが外れる）。原因＝タップ→送信→直後の同期の読み取りに
          いま送った行がまだ載っておらず、古い行でローカルを丸ごと上書き→チェックが巻き戻っていた。
@@ -11167,6 +11183,15 @@
   if (!useBackend()) seedIfEmpty();
   // バックエンド接続時は全端末同期を使うためシードしない（＝実データのみ）。オフライン検証時のみ初期データを用意。
   if (!useBackend()) { seedSk(); seedMonthly(); seedKz(); seedSvfb(); seedSurvey(); seedEmg(); seedNews(); seedCommunity(); seedMaterials(); seedStudy(); }
+  /* ★数字の要確認の「確認済み」の引っ越し（v283・端末ごとに1回だけ）＝これまで端末にだけあった確認済みを
+     本部データへまとめて送り、以後は全端末で共有する。送るのは店舗|日付|検査 のキーと押した時刻だけ */
+  try {
+    if (!TAIKEN && useBackend() && localStorage.getItem('yosakura_numack_shared') !== 'v283') {
+      const o = getNumAck();
+      if (Object.keys(o).length) postReport({ kind:'numack', store:'', item:'*batch*', note: JSON.stringify({ batch: o, by: getUserName() || '' }), t: Date.now() });
+      localStorage.setItem('yosakura_numack_shared', 'v283');
+    }
+  } catch (e) {}
   migrateStoreNames(); // 端末に残っている旧い店舗表記を、正式名称へ寄せ直す
   photoLocalLoadAll_().then(() => { try { if (String(location.hash || '').indexOf('/app/hqcheck') !== -1) render(true); } catch (e) {} });   // 写真の中身（IndexedDB）を読み込んでから巡回チェックを描き直す
   写真選択中の再読み込みを報告_(); // ★前回、写真の選択中に再読み込みが起きていたら画面に出す（★render より先＝bindが印を読むため）

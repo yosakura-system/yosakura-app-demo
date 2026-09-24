@@ -5734,5 +5734,23 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   ok(/data-tnadd\]'\)\.forEach\(b => b\.onclick[\s\S]{0,900}for \(let i = 0; i < 4; i\+\+\) items\.push\(\{ n: '', t: b\.dataset\.tnadd/.test(code), '押すと入力中の内容を下書きに写してから、そのブロックに4行足す');
   ok(/drafts\[tnDraftKey\(store, ym\)\] = items;[\s\S]{0,200}render\(true\);/.test(code), '足したあとは位置を保って描き直す');
 }
+
+// ==== v283: 数字の要確認＝「確認済み」を全端末で共有（2026-09-24 神田さん） ====
+{
+  const src = code;
+  ok(/postReport\(\{ kind:'numack', store: k\.split\('\|'\)\[0\], item: k, note: JSON\.stringify\(\{ on, by:/.test(src), '確認・取り消しを本部データへ送る（店舗|日付|検査 をキーに）');
+  ok(/case 'numack': \{[\s\S]{0,700}const k=String\(r\.item \|\| ''\); if \(!k\) break; if \(numackT\[k\]==null \|\| t>=numackT\[k\]\) \{ numack\[k\] = p\.on \? t : 0;/.test(src), '同期の振り分けに numack がある（キーごとに最新が正）');
+  ok(/Object\.keys\(numack\)\.forEach\(k => \{ if \(numack\[k\]\) cur\[k\] = numack\[k\]; else delete cur\[k\]; \}\); set\(NUM_ACK_LS, cur\);/.test(src), '届いたキーだけ差し替える（取り消しは削除・未着のキーは端末の状態を保つ）');
+  ok(/「確認済み」は本部・店長の端末で共有されます/.test(src) && !/この端末にだけ残ります/.test(src), '画面の注記が「共有される」に変わっている');
+  // 同期の振り分け（distribute）は簡易DOMから呼べないため、実ブラウザ（headless Chrome）で確認する
+}
+
+// ==== v283b: 端末にだけあった確認済みを、更新後1回だけ本部データへ引っ越す ====
+{
+  const src = code;
+  ok(/if \(p\.batch && typeof p\.batch === 'object'\) \{ Object\.keys\(p\.batch\)\.forEach\(k2 =>/.test(src), '同期の振り分けは、まとめ行（batch）も受ける');
+  ok(/localStorage\.getItem\('yosakura_numack_shared'\) !== 'v283'/.test(src) && /item:'\*batch\*', note: JSON\.stringify\(\{ batch: o, by:/.test(src), '起動時に1回だけ、端末の確認済みをまとめて送る');
+  ok(/localStorage\.setItem\('yosakura_numack_shared', 'v283'\)/.test(src), '送ったら印を残して二度と送らない');
+}
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
