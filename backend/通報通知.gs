@@ -54,3 +54,14 @@ function testWhistleMail() {
                    note: JSON.stringify({ cat: 'customer', body: 'テスト送信です（本文の見え方の確認）', anon: false }) }, 'test');
   Logger.log('送信しました → ' + to);
 }
+
+/* スクリプト プロパティの画面で保存できないときは、これを1回実行して登録する（2026-09-24 設定画面で保存が消える現象があった） */
+function setWhistleMailTo() {
+  PropertiesService.getScriptProperties().setProperty('WHISTLE_MAIL_TO', 'yosakura.fc@gmail.com');
+  Logger.log('登録しました → ' + PropertiesService.getScriptProperties().getProperty('WHISTLE_MAIL_TO'));
+}
+
+/* いま何が入っているかを見る */
+function showWhistleMailTo() {
+  Logger.log('WHISTLE_MAIL_TO = ' + PropertiesService.getScriptProperties().getProperty('WHISTLE_MAIL_TO'));
+}
