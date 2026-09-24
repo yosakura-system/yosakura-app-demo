@@ -5717,5 +5717,22 @@ location.hash = '#/app/checklist';
 
 // ==== v281: 起動時の強制同期をやめる（開き直した瞬間の作り直しを無くす） ====
 ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('  render();' + String.fromCharCode(10) + '  syncReports(true);') === -1, '起動時に render の直後の syncReports(true) が無い（開き直しで二度描かない）');
+
+// ==== v282: 棚卸タブ＝品目を足せる（2026-09-24 神田さん） ====
+{
+  const S2 = '牛カツ世桜 長堀橋店';
+  const ym2 = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
+  // 食材が12品目で枠いっぱいの店でも、空の行が4つ残る
+  const twelve = Array.from({ length: 12 }, (_, i) => ({ n: '品' + (i + 1), t: 'f', u: 100, q: 1, a: 100 }));
+  run(() => { setLS('manager', S2, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); localStorage.removeItem('yosakura_tn_draft');
+    localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store: S2, ym: ym2, close: 1200, closeDetail: twelve, t: Date.now() }])); });
+  location.hash = '#/app/pl';
+  let h2 = registry.app.innerHTML;
+  ok(/id="tn_f11_n"[^>]*value="品12"/.test(h2) && /id="tn_f15_n"/.test(h2) && !/id="tn_f16_n"/.test(h2), '食材12品目で枠いっぱいでも、空の行が4つ残る（16行）');
+  ok(/data-tnadd="f"/.test(h2) && /data-tnadd="d"/.test(h2) && /＋ 品目を足す（4行）/.test(h2), '食材・飲料それぞれに「＋ 品目を足す（4行）」がある');
+  ok(/const want = Math\.max\(n, filled \+ 4, rows\.length\);/.test(code), '空の行の数＝max（固定枠, 入力済み+4, 下書きの行数）');
+  ok(/data-tnadd\]'\)\.forEach\(b => b\.onclick[\s\S]{0,900}for \(let i = 0; i < 4; i\+\+\) items\.push\(\{ n: '', t: b\.dataset\.tnadd/.test(code), '押すと入力中の内容を下書きに写してから、そのブロックに4行足す');
+  ok(/drafts\[tnDraftKey\(store, ym\)\] = items;[\s\S]{0,200}render\(true\);/.test(code), '足したあとは位置を保って描き直す');
+}
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

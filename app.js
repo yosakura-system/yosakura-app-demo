@@ -5975,7 +5975,11 @@
       : (prev && Array.isArray(prev.closeDetail) && prev.closeDetail.length) ? prev.closeDetail.map(d => ({ n: d.n, t: d.t, u: d.u, q: null })) : [];
     const n = type === 'f' ? TN_FOOD_N : TN_DRINK_N;
     const rows = detail.filter(d => d.t === type).map(d => ({ n: d.n, u: d.u, q: d.q }));
-    while (rows.length < n) rows.push({ n: '', u: null, q: null });
+    /* ★空の行は常に4行以上残す（2026-09-24 神田さん＝棚卸からも品目を足せるように）。
+       以前は食材12・飲料6の固定枠で、品目が枠いっぱいになると足す行が無かった（在庫画面の9/19の直しと同じ考え方） */
+    const filled = rows.filter(r => r.n).length;
+    const want = Math.max(n, filled + 4, rows.length);
+    while (rows.length < want) rows.push({ n: '', u: null, q: null });
     return rows;
   }
   function tanaCard(store, curYm) {
@@ -5997,7 +6001,8 @@
           <input type="text" inputmode="numeric" id="tn_${type}${i}_u" value="${r.u != null ? esc(String(r.u)) : ''}" placeholder="0" style="flex:0.7;min-width:0;text-align:right;padding:10px 8px">
           <input type="text" inputmode="decimal" id="tn_${type}${i}_q" value="${r.q != null ? esc(String(r.q)) : ''}" placeholder="0" style="flex:0.55;min-width:0;text-align:right;padding:10px 8px">
           <span id="tn_${type}${i}_amt" class="muted" style="width:64px;flex:none;text-align:right;font-size:12px;overflow:hidden;text-overflow:ellipsis">—</span>
-        </div>`).join('')}`;
+        </div>`).join('')}
+      <button type="button" class="mini" data-tnadd="${type}" style="margin:2px 0 6px">${esc(L({ ja:'＋ 品目を足す（4行）', en:'+ Add rows (4)', vi:'+ Thêm dòng (4)' }))}</button>`;
     const fRows = tanaRowsFor(store, nowYm, 'f'), dRows = tanaRowsFor(store, nowYm, 'd');
     return `
       <div class="card" id="tnForm">
@@ -9537,6 +9542,21 @@
       };
       tnIds.forEach(k => ['n', 'u', 'q'].forEach(s => { const el = byId('tn_' + k + '_' + s); if (el) el.oninput = tnRecalc; }));
       tnRecalc();
+      /* ★「＋ 品目を足す」（2026-09-24）＝いま画面に入っている内容（空の行も含めて）を下書きに写し、
+         押したブロックに空の行を4つ足して描き直す。打ち込み途中の数量や単価は消えない。下書きは保存で消える */
+      document.querySelectorAll('[data-tnadd]').forEach(b => b.onclick = () => {
+        const store = visibleStores()[0];
+        const ym = (byId('tn_ym') && byId('tn_ym').value) || '';
+        const items = tnIds.map(k => {
+          const r = tnRow(k);
+          const uEl = byId('tn_' + k + '_u'), qEl = byId('tn_' + k + '_q');
+          return { n: r.name, t: k[0], u: (uEl && uEl.value.trim() !== '') ? r.u : null, q: (qEl && qEl.value.trim() !== '') ? r.q : null };
+        });
+        for (let i = 0; i < 4; i++) items.push({ n: '', t: b.dataset.tnadd, u: null, q: null });
+        const drafts = getTnDrafts(); drafts[tnDraftKey(store, ym)] = items;
+        try { localStorage.setItem('yosakura_tn_draft', JSON.stringify(drafts)); } catch (e) {}
+        render(true);
+      });
       /* 対象月を変えたら、その月の保存分（無ければ前月の品目）を出し直す */
       if (byId('tn_ym')) byId('tn_ym').onchange = () => { localStorage.setItem('yosakura_tn_ym', byId('tn_ym').value); render(); };
       /* 品目のまとめて貼り付け＝最初の1回の手打ちを無くす（2026-09-01 神田さんの方針「いかに手間なく使ってもらえるか」）。
