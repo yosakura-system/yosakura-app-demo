@@ -452,6 +452,8 @@ function doPost(e) {
     var input = Array.isArray(data.photos) ? data.photos.slice(0, 6) : [];
     var photoIds = input.map(savePhoto);
     sh.appendRow([id, ts, data.kind || '', data.store || '', data.item || '', data.level || '', normNote(data.note), JSON.stringify(photoIds)]);
+    // ★公益通報は本部へメールで知らせる（通報通知.gs・通知先はスクリプト プロパティ WHISTLE_MAIL_TO。未設定なら何もしない・2026-09-24）
+    try { if (typeof notifyWhistle_ === 'function' && String(data.kind || '') === 'whistle') notifyWhistle_(data, id); } catch (e) {}
     /* ★日計レポート写真の自動読み取り（日計OCR.gs・長堀橋トライアル 2026-09-01）。
        ファイルを貼っていないプロジェクトでも壊れないよう、関数の有無を見てから呼ぶ。
        読み取りに失敗しても提出は成功のまま（下書きが作られないだけ） */

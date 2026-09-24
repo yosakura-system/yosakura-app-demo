@@ -5752,5 +5752,27 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   ok(/localStorage\.getItem\('yosakura_numack_shared'\) !== 'v283'/.test(src) && /item:'\*batch\*', note: JSON\.stringify\(\{ batch: o, by:/.test(src), '起動時に1回だけ、端末の確認済みをまとめて送る');
   ok(/localStorage\.setItem\('yosakura_numack_shared', 'v283'\)/.test(src), '送ったら印を残して二度と送らない');
 }
+
+// ==== v284: 公益通報に「お客様からの暴言・威圧・不当な要求（カスハラ）」（2026-09-24 神田さん） ====
+{
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); });
+  location.hash = '#/app/whistle';
+  const hw = registry.app.innerHTML;
+  ok(/data-v="customer"[^>]*>お客様からの暴言・威圧・不当な要求（カスハラ）</.test(hw), 'スタッフの通報フォームに「お客様からの暴言・威圧・不当な要求（カスハラ）」がある');
+  ok(/data-v="abuse"[^>]*>職場での暴言・威圧</.test(hw), '既存の「暴言・威圧」は「職場での」と分かる表記になった');
+  ok(/お客様からの暴言・威圧（カスハラ）を、本部へ直接/.test(hw), '画面の案内文にもカスハラが入っている');
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'en'); });
+  location.hash = '#/app/whistle';
+  ok(/Customer harassment/.test(registry.app.innerHTML), '英語でも出る');
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'vi'); });
+  location.hash = '#/app/whistle';
+  ok(/Quấy rối từ khách hàng/.test(registry.app.innerHTML), 'ベトナム語でも出る');
+}
+
+// ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
+{
+  const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  ok(/\[data-seg="whcat"\] button \{ flex: 1 1 42%; min-width: 0; \}/.test(css), '公益通報の種類ボタン＝1つ42%幅で2列に折り返す（右端が切れない）');
+}
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
