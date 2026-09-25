@@ -3810,7 +3810,7 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   // ⑥b 品目のまとめて貼り付け＝最初の1回の手打ちを無くす（「いかに手間なく使ってもらえるか」）
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
-  ok(/品目をまとめて貼り付けて登録/.test(registry.app.innerHTML), '棚卸タブに「まとめて貼り付け」がある');
+  ok(/品目をまとめて貼り付けて登録|まず品目を登録する（貼り付け）/.test(registry.app.innerHTML), '棚卸タブに「まとめて貼り付け」がある（v287＝品目が無い月は「まず品目を登録する（貼り付け）」）');
   doc.getElementById('tn_ym').value = ymNow2;
   doc.getElementById('tn_paste').value = '米 3,000\nサーロイン肉 12000円\n単価まだ不明の品\n飲料\nビール（瓶） 200\nコーラ（瓶）,130';
   doc.getElementById('tnImport').onclick();
@@ -5802,9 +5802,24 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   ok(/id="tnForm"/.test(ht), '棚卸タブが開く');
   ok(/data-openurl="https:\/\/drive\.google\.com\/file\/d\/abc\/view"[^>]*>📖 月末棚卸 1枚マニュアル</.test(ht), 'タイトルに「棚卸」を含む資料が、棚卸タブの上にリンクとして出る');
   ok(!/📖 世桜の理念/.test(ht), '棚卸に関係ない資料は出ない');
-  run(() => { localStorage.removeItem('yosakura_demo_links'); });
+  run(() => { setLS('manager', '日本鰻世桜 富士山店', 'ja'); localStorage.removeItem('yosakura_demo_links'); });
   location.hash = '#/app/pl?tab=tana';
   ok(!/📖/.test(registry.app.innerHTML), '登録が無ければ何も出ない（空の行も作らない）');
+}
+// ==== v287: 品目が無い月は「まず品目を登録する（貼り付け）」を開いた状態で上に出す（2026-09-25 神田さん） ====
+{
+  const ymT = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+  run(() => { setLS('manager', '日本鰻世桜 富士山店', 'ja'); localStorage.removeItem('yosakura_demo_monthly'); localStorage.removeItem('yosakura_tn_draft'); localStorage.setItem('yosakura_tn_ym', ymT); localStorage.setItem('yosakura_pl_tab', 'tana'); });
+  location.hash = '#/app/pl?tab=tana';
+  const ht = registry.app.innerHTML;
+  ok(/<details style="margin:10px 0" open>/.test(ht), '品目が無い月は貼り付け欄が開いている');
+  ok(/まず品目を登録する（貼り付け）/.test(ht), '見出しは「まず品目を登録する（貼り付け）」');
+  ok(ht.indexOf('id="tn_paste"') < ht.indexOf('id="tn_f0_n"'), '貼り付け欄が食材の行より上にある');
+  run(() => { setLS('manager', '日本鰻世桜 富士山店', 'ja'); localStorage.setItem('yosakura_tn_ym', ymT); localStorage.setItem('yosakura_pl_tab', 'tana'); localStorage.setItem('yosakura_tn_draft', JSON.stringify({ ['日本鰻世桜 富士山店||' + ymT]: [{ n:'鰻（尾）', t:'f', u:925, q:null }] })); });
+  location.hash = '#/app/pl';
+  const h2 = registry.app.innerHTML;
+  ok(!/<details style="margin:10px 0" open>/.test(h2) && /品目をまとめて貼り付けて登録（最初の1回だけ）/.test(h2), '品目がある月は従来どおり下に畳む');
+  ok(h2.indexOf('id="tn_paste"') > h2.indexOf('id="tn_f0_n"'), '品目がある月は貼り付け欄が行の下');
 }
 // ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
 {
