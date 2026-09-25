@@ -5918,6 +5918,29 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   ok(!/本部で決定してください（未確定）/.test(hqw) && /受付 平日9:00〜18:00・回答 原則翌営業日/.test(hqw), '本部側の「未確定」の注記は決定内容に置き換わった');
   ok(!/公益通報・コンプラ窓口/.test(code.slice(code.indexOf("name:{ ja:'相談・通報窓口'") - 200, code.indexOf("name:{ ja:'相談・通報窓口'") + 50)), 'メニュー名は「相談・通報窓口」');
 }
+// ==== 画面298: 数字の要確認＝「フードとドリンクが逆では？」（2026-09-25 神田さん・寿司世桜の総括表） ====
+{
+  const S = '寿司世桜 心斎橋店';
+  const day = (i) => new Date(Date.now() - i * 864e5).toLocaleDateString('en-CA');
+  // 普段＝フード9割の店。最後の1日だけ逆に入れる
+  const sk = [];
+  for (let i = 12; i >= 1; i--) sk.push({ store: S, date: day(i), sales: 220000, guests: 15, foodamt: 200000, drinkamt: 20000, src: 'drive', t: Date.now() - i * 864e5 });
+  sk.push({ store: S, date: day(0), sales: 227230, guests: 16, foodamt: 13230, drinkamt: 214000, src: 'drive', t: Date.now() });
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(sk)); localStorage.removeItem('yosakura_numcheck_ack'); });
+  location.hash = '#/app/numcheck';
+  const h1 = registry.app.innerHTML;
+  ok(/フードとドリンクが逆では？/.test(h1), '逆の日が「フードとドリンクが逆では？」で出る');
+  ok(new RegExp('フード13,230（6%）・ドリンク214,000／普段はフード9[01]%').test(h1), '数字＝その日のフード比と、その店の普段のフード比が出る');
+  ok((h1.match(/フードとドリンクが逆では？/g) || []).length === 1, '普段どおりの日は拾わない（1件だけ）');
+  // 飲み中心の業態（普段フード3割）は、ドリンクがフードを上回っても拾わない
+  const bar = [];
+  for (let i = 12; i >= 1; i--) bar.push({ store: S, date: day(i), sales: 200000, guests: 20, foodamt: 60000, drinkamt: 140000, src: 'drive', t: Date.now() - i * 864e5 });
+  bar.push({ store: S, date: day(0), sales: 200000, guests: 20, foodamt: 50000, drinkamt: 150000, src: 'drive', t: Date.now() });
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(bar)); localStorage.removeItem('yosakura_numcheck_ack'); });
+  location.hash = '#/app/numcheck';
+  ok(!/フードとドリンクが逆では？/.test(registry.app.innerHTML), '普段からドリンクが多い店は拾わない（業態の違いを異常にしない）');
+  ok(/検査は8つ＝/.test(code), '画面の説明が「検査は8つ」になっている');
+}
 // ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
 {
   const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');

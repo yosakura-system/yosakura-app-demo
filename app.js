@@ -7129,7 +7129,8 @@
     unit:  { ja:'客単価が普段と違う', en:'Unit price off', vi:'Đơn giá bất thường' },
     reg:   { ja:'レジ差が0でない', en:'Register diff ≠ 0', vi:'Lệch két' },
     lunch: { ja:'昼の売上＞合計', en:'Lunch > total', vi:'Trưa > tổng' },
-    cc:    { ja:'現金＋カード＞売上', en:'Cash+card > sales', vi:'Tiền mặt+thẻ > doanh thu' }
+    cc:    { ja:'現金＋カード＞売上', en:'Cash+card > sales', vi:'Tiền mặt+thẻ > doanh thu' },
+    swap:  { ja:'フードとドリンクが逆では？', en:'Food/drink swapped?', vi:'Món/đồ uống bị đảo?' }
   };
   const numN_ = (v) => { const n = Number(String(v == null ? '' : v).replace(/[,円\s]/g, '')); return (v === '' || v == null || isNaN(n)) ? null : n; };
   function getNumAck() { try { return JSON.parse(localStorage.getItem(NUM_ACK_LS) || '{}') || {}; } catch (e) { return {}; } }
@@ -7147,6 +7148,10 @@
       const byDate = {}; rs.forEach(r => { byDate[r.date] = r; });
       const units = rs.map(r => (numN_(r.sales) && numN_(r.guests)) ? numN_(r.sales) / numN_(r.guests) : null).filter(x => x && x > 0).sort((a, b) => a - b);
       const med = units.length >= 5 ? units[Math.floor(units.length / 2)] : null;
+      /* ★その店の普段の「フード比」（画面298・2026-09-25 神田さん＝寿司世桜の総括表でフードとドリンクが逆の日が複数）。
+         合計は売上と合うので既存の7つでは拾えない。店ごとの中央値と比べる＝飲み中心の業態を一律に疑わないため */
+      const fr = rs.map(r => { const f = numN_(r.foodamt), d = numN_(r.drinkamt); return (f != null && d != null && (f + d) > 0) ? f / (f + d) : null; }).filter(x => x != null).sort((a, b) => a - b);
+      const medFr = fr.length >= 5 ? fr[Math.floor(fr.length / 2)] : null;
       rs.forEach(r => {
         const sales = numN_(r.sales), guests = numN_(r.guests), food = numN_(r.foodamt), drink = numN_(r.drinkamt);
         const lunch = numN_(r.lunch), err = numN_(r.err), cash = numN_(r.cash), card = numN_(r.card);
@@ -7164,6 +7169,11 @@
         if (lunch != null && lunch > sales) add('lunch', `昼${lunch.toLocaleString()}／合計${sales.toLocaleString()}`);
         // 総括表に「コード決済」の行が無く、カードだけ入れている店は 現金＋カード＜売上 になる（増田さん 2026-09-17＝次月の総括表で行を足す）。それまでは「売上を超える」ときだけ拾う
         if (cash != null && card != null && (cash + card) > 0 && (cash + card) - sales > Math.max(1000, sales * 0.02)) add('cc', `現金${cash.toLocaleString()}＋カード${card.toLocaleString()}／売上${sales.toLocaleString()}`);
+        /* フードとドリンクが逆＝普段フードが6割以上の店で、ドリンクがフードを上回り、フード比が普段の半分未満の日（画面298） */
+        if (medFr != null && medFr >= 0.6 && food != null && drink != null && (food + drink) > 0) {
+          const rt = food / (food + drink);
+          if (drink > food && rt < medFr * 0.5) add('swap', `フード${food.toLocaleString()}（${Math.round(rt * 100)}%）・ドリンク${drink.toLocaleString()}／普段はフード${Math.round(medFr * 100)}%`);
+        }
       });
     });
     return out.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : a.store.localeCompare(b.store));
@@ -7201,7 +7211,7 @@
           <span class="ksum-i ok"><b>${list.length - open.length}</b>${L({ ja:'件 確認済み', en:' checked', vi:' đã xác nhận' })}</span>
           <button type="button" class="mini" data-numall="${showAll ? '0' : '1'}">${showAll ? L({ ja:'未確認だけ表示', en:'Open only', vi:'Chỉ chưa xác nhận' }) : L({ ja:'確認済みも表示', en:'Show checked', vi:'Hiện cả đã xác nhận' })}</button>
         </div>
-        <p class="hint" style="display:block">${L({ ja:'※ 検査は7つ＝フード＋ドリンク≠売上／フードが1,000円未満（個数の疑い）／客数が空／客単価が普段（直近の中央値）の±40%外／レジ差≠0／昼＞合計／現金＋カード＞売上（コード決済の行が総括表に無いため、少ない分は拾いません）。売上の増減そのものは見ません（お客様は日によって違うため）。アプリ提出もシート取込も同じ基準です。「確認済み」は本部・店長の端末で共有されます（同期で届きます）。店長・オーナーは自店の分だけが出ます。', en:'7 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'7 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
+        <p class="hint" style="display:block">${L({ ja:'※ 検査は8つ＝フード＋ドリンク≠売上／フードとドリンクが逆（普段のフード比の半分未満）／フードが1,000円未満（個数の疑い）／客数が空／客単価が普段（直近の中央値）の±40%外／レジ差≠0／昼＞合計／現金＋カード＞売上（コード決済の行が総括表に無いため、少ない分は拾いません）。売上の増減そのものは見ません（お客様は日によって違うため）。アプリ提出もシート取込も同じ基準です。「確認済み」は本部・店長の端末で共有されます（同期で届きます）。店長・オーナーは自店の分だけが出ます。', en:'7 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'7 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
       </div>
       ${rows || `<div class="card"><p class="muted">${L({ ja:'要確認の数字はありません', en:'Nothing to check', vi:'Không có gì cần xác nhận' })}</p></div>`}`;
   };
