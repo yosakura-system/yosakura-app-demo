@@ -6006,9 +6006,14 @@
         </div>`).join('')}
       <button type="button" class="mini" data-tnadd="${type}" style="margin:2px 0 6px">${esc(L({ ja:'＋ 品目を足す（4行）', en:'+ Add rows (4)', vi:'+ Thêm dòng (4)' }))}</button>`;
     const fRows = tanaRowsFor(store, nowYm, 'f'), dRows = tanaRowsFor(store, nowYm, 'd');
+    /* ★やり方（1枚マニュアル）へのリンク（v286・2026-09-25 長田さん「月次の棚卸の際にURLを埋め込んでやり方を見られるように」）。
+       本部が「資料リンクを追加」で登録した資料のうち、タイトルに「棚卸」を含むものを出す＝登録画面を増やさない */
+    const tnGuides = getLinks().filter(l => /棚卸/.test(String(l.title || '')) && isHttp(l.url));
+    const tnGuideRow = tnGuides.length ? `<div class="seg-chips" style="margin:2px 0 8px">${tnGuides.map(l => `<button type="button" class="chip" data-openurl="${esc(l.url)}">📖 ${esc(l.title)}</button>`).join('')}</div>` : '';
     return `
       <div class="card" id="tnForm">
         <h3>${L({ ja:'棚卸（月末・食材のみ）', en:'Stocktake (month-end, food only)', vi:'Kiểm kê (cuối tháng, thực phẩm)' })} — ${esc(storeShort(store))}</h3>
+        ${tnGuideRow}
         <p class="hint" style="display:block">${L({ ja:'月末に、店の食材を数えて入力してください。開封済み・使いかけは 0.25／0.5／0.75／1 のどれかで概算します（例：粉が半分→0.5）。包材や消耗品は数えません（PLで別に管理します）。', en:'Count food items at month end. Opened/partial items are estimated as 0.25 / 0.5 / 0.75 / 1 (e.g. half a bag = 0.5). Packaging and supplies are not counted (managed separately in P&L).', vi:'Cuối tháng đếm thực phẩm. Hàng đã mở ước lượng 0.25/0.5/0.75/1. Không đếm bao bì, vật tư.' })}</p>
         <label class="fld"><span>${L({ ja:'対象月', en:'Month', vi:'Tháng' })}</span><input type="month" id="tn_ym" value="${esc(nowYm)}"></label>
         <input type="hidden" id="tn_fcount" value="${fRows.length}"><input type="hidden" id="tn_dcount" value="${dRows.length}">
