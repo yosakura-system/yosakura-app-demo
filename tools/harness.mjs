@@ -5470,7 +5470,7 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
   seed('manager'); location.hash = '#/app/zaiko'; let hIn = registry.app.innerHTML;
   ok(/data-zktab="in"/.test(hIn) && /data-zktab="order"/.test(hIn) && /data-zktab="items"/.test(hIn), '店長＝入力／発注リスト／品目・基準在庫の3タブ');
   ok(/data-zkname="牛肉"/.test(hIn) && /id="submitZk"/.test(hIn), '入力タブ＝登録した品目の欄と提出ボタン');
-  ok(!/data-zklater/.test(hIn) && !/今日確認する品目/.test(hIn), '確認日の指定が無い品目だけなら、折りたたみも見出しも出ない（今までどおり）');
+  ok(/data-zkname="牛肉"/.test(hIn) && (!/今日確認する品目/.test(hIn) || /器（水曜に数える）/.test(hIn)), '毎日の品目は畳まれない。折りたたみに入るのは確認日のある品目（画面292から器＝水曜）だけ');
   {
     /* 確認日（毎日／月・木／土）＝今日の曜日で「今日確認する品目」と折りたたみに分かれる（2026-09-19 長田さん） */
     const dowNow = new Date().getDay(); const todayKey = ['sun','mon','tue','wed','thu','fri','sat'][dowNow];
@@ -5859,6 +5859,18 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   location.hash = '#/app/zaiko';
   const z4 = registry.app.innerHTML;
   ok(/器（水曜に数える）/.test(z4) && /汁椀/.test(z4) && !/海鮮丼皿/.test(z4), '一覧の無い業態（日本料理）＝共通6品だけ。他業態の器は混ざらない');
+}
+// ==== 画面293: 店長が品目を保存済みの店（牛カツ富士山）にも器を自動で足す／国内10店すべてに器が出るか総当たり（2026-09-25 神田さん「ダブルチェック」） ====
+{
+  run(() => { setLS('manager', '牛カツ世桜 富士山店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in');
+    localStorage.setItem(LS.reports, JSON.stringify([{ kind:'zaikomaster', store:'牛カツ世桜 富士山店', item:'牛カツ世桜 富士山店', note: JSON.stringify({ items: [{ g:'食材（月・木に確認）／太陽食品', n:'白だし', std:1, u:'本', f:'mon,thu' }, { g:'備品（土曜に確認）', n:'手袋M', std:10, u:'箱', f:'sat' }] }), t: Date.now() - 1000 }])); });
+  location.hash = '#/app/zaiko';
+  const zf = registry.app.innerHTML;
+  ok(/白だし/.test(zf) && /手袋M/.test(zf), '店長が保存した品目はそのまま');
+  ok(/器（水曜に数える）/.test(zf) && /牛カツ皿（運ぶ皿）/.test(zf) && /茶碗/.test(zf), '保存済みの店にも業態の器が自動で足される');
+  const STORES10 = ['日本料理世桜本店', '寿司世桜 心斎橋店', '牛カツ世桜 長堀橋店', '日本鰻世桜 長堀橋店', '手巻き寿司世桜 難波店', '牛カツ世桜 富士山店', '日本鰻世桜 富士山店', '日本鰻世桜 京都祇園店', '日本鰻世桜 浅草橋店', '和牛世桜 広島店'];
+  const missing = STORES10.filter(st => !/器（水曜に数える）/.test(renderView('zaiko', 'manager', st, 'ja')));
+  ok(!missing.length, '国内10店すべての在庫数に「器（水曜に数える）」が出る' + (missing.length ? '（出ない：' + missing.join('・') + '）' : ''));
 }
 // ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
 {

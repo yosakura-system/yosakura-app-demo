@@ -2227,7 +2227,12 @@
     const rows = getZk('zaikomaster').filter(r => r.store === store).sort((a, b) => b.t - a.t);
     const p = rows.length ? parseNote(rows[0].note) : null;
     const saved = (p && Array.isArray(p.items)) ? p.items.filter(it => it && it.n) : [];
-    return saved.length ? saved : zkDefaultsFor_(store);   // 保存が無ければ既定（在庫チェック表の転記＋業態の器）
+    if (!saved.length) return zkDefaultsFor_(store);   // 保存が無ければ既定（在庫チェック表の転記＋業態の器）
+    /* ★店長が保存済みの店（牛カツ富士山 9/19）にも、業態の器を自動で足す（画面293・2026-09-25 神田さん「牛カツ富士山の器が反映されてない」）。
+       器は本部（田中さん）の週次のお願い＝店の保存を待たずに出す。同名が保存にあれば足さない */
+    const have = {}; saved.forEach(it => { have[String(it.n || '').trim()] = true; });
+    const tw = (ZK_TABLEWARE[zkFormatOf_(store)] || []).filter(it => !have[it.n]).map(it => Object.assign({}, it));
+    return saved.concat(tw);
   }
   const zkIsDefault = (store) => !getZk('zaikomaster').some(r => r.store === store);
   /* ★器（週次・水曜に数える）＝田中さん 2026-09-25「週次で器の棚卸し・チップの確認」（いる・いらないシート No.59）。
