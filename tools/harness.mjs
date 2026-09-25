@@ -5776,12 +5776,22 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   ok(/catch \(e2\) \{ saved = false; \}/.test(code), '保存に失敗しても例外を投げず、画面に案内を出す');
   ok(/async function fpSlim_\(\)/.test(code) && /^\s*fpSlim_\(\);/m.test(code), '起動時に fpSlim_ で既存の dataURL を IndexedDB へ逃がす');
   ok(/fpSlim_\(\);[\s\S]{0,400}photoLocalLoadAll_\(\)/.test(code), 'fpSlim_ は写真の読み込みより前（同期より前）に走る');
+  /* 画面は v285b で hide（メニューからも直接URLでも開かない）ため、文言はソースで確かめる */
+  ok(/id="submitFP">\$\{L\(\{ja:'この端末に記録する（お試し）'/.test(code), 'ボタンは「この端末に記録する（お試し）」＝本部へ送る提出ではないと分かる');
+  ok(/この画面の記録はこの端末にだけ残り、本部には届きません/.test(code), '準備中の案内に「本部には届きません」がある');
+  ok(!/AIチェックして提出/.test(code), '旧「AIチェックして提出」は消えた');
+}
+// ==== v285b: 一食目写真の画面をアプリから外す（2026-09-25 神田さん「使うフェーズになればまた解放」） ====
+{
+  ok(/id:'firstphoto', group:'genba', icon:'camera', soon:true, hide:true,/.test(code), 'firstphoto は hide:true（消さずに伏せる）');
   run(() => { setLS('staff', '手巻き寿司世桜 難波店', 'ja'); });
+  location.hash = '#/app/home';
+  ok(!/一食目写真の報告/.test(registry.app.innerHTML), 'スタッフのメニューに「一食目写真の報告」が出ない');
   location.hash = '#/app/firstphoto';
-  const h = registry.app.innerHTML;
-  ok(/この端末に記録する（お試し）/.test(h), 'ボタンは「この端末に記録する（お試し）」＝本部へ送る提出ではないと分かる');
-  ok(/本部には届きません/.test(h), '準備中の案内に「本部には届きません」がある');
-  ok(!/AIチェックして提出/.test(h), '旧「AIチェックして提出」は消えた');
+  ok(!/id="fpForm"/.test(registry.app.innerHTML), '直接の URL でも一食目写真のフォームは開かない');
+  run(() => { setLS('hq', '', 'ja'); });
+  location.hash = '#/app/home';
+  ok(!/一食目写真の報告/.test(registry.app.innerHTML), '本部のメニューにも出ない');
 }
 // ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
 {

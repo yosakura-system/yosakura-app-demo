@@ -300,7 +300,9 @@
     { id:'tabemono', group:'genba', icon:'food', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'食べ残し報告', en:'Food Waste', vi:'Thức ăn thừa' },
       desc:{ ja:'お客様の食べ残しを写真で報告（食材ロスは将来）', en:'Report customer leftovers by photo', vi:'Báo cáo đồ khách để thừa bằng ảnh' } },
-    { id:'firstphoto', group:'genba', icon:'camera', soon:true, roles:['staff','manager','owner','hq'],
+    /* 2026-09-25 神田さん「一食目写真はアプリから外す。使うフェーズになればまた解放」（9/14「LINE継続有力」・9/24 浅草橋もLINE）。
+       お試し画面のまま写真が端末に溜まり、5MBの壁でエラー連発と同期停止の原因になっていた（v285）。消さずに hide＝戻すときは hide を外すだけ */
+    { id:'firstphoto', group:'genba', icon:'camera', soon:true, hide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'一食目写真の報告', en:'First-plate Photo', vi:'Ảnh món đầu tiên' },
       desc:{ ja:'提供直後の一枚を本部へ', en:'Send the first serving photo', vi:'Gửi ảnh ngay khi phục vụ' } },
     // 日次業務の最後に並ぶようになったため、タブには重ねない（2026-08-12）。
