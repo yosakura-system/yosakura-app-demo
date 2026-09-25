@@ -5872,17 +5872,15 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   const missing = STORES10.filter(st => !/器（水曜に数える）/.test(renderView('zaiko', 'manager', st, 'ja')));
   ok(!missing.length, '国内10店すべての在庫数に「器（水曜に数える）」が出る' + (missing.length ? '（出ない：' + missing.join('・') + '）' : ''));
 }
-// ==== 画面294（案A）: 定期衛生＝今日の項目を直接出し、曜日チップは下に畳む（2026-09-25 神田さん「ワンクリックで入れた方が良い」） ====
+// ==== 画面294→296: 定期衛生＝今日の項目を直接出す。曜日チップ（全体／日〜土）は見出しの下に常に出す（2026-09-25 神田さん「上の定期衛生の下あたりに常に」） ====
 {
   run(() => { setLS('staff', '日本鰻世桜 富士山店', 'ja'); localStorage.setItem('yosakura_ckmode', 'hygiene'); localStorage.removeItem('yosakura_hygall'); localStorage.removeItem('yosakura_hygday'); });
   location.hash = '#/app/checklist';
   const hh = registry.app.innerHTML;
-  ok(/今日（.曜日）の箇所/.test(hh), '見出しの下は「今日（○曜日）の箇所」の一言だけ');
-  ok(hh.indexOf('data-seg="hygday"') > hh.indexOf('data-ck="hygiene-'), '曜日チップは項目の一覧より下にある');
-  ok(/<details class="card"[^>]*>\s*<summary[^>]*>他の曜日・全体を見る/.test(hh) && !/<details class="card"[^>]*open>/.test(hh), '今日の表示のときは畳まれている');
-  run(() => { setLS('staff', '日本鰻世桜 富士山店', 'ja'); localStorage.setItem('yosakura_ckmode', 'hygiene'); localStorage.setItem('yosakura_hygall', '1'); });
-  location.hash = '#/app/checklist';
-  ok(/<details class="card"[^>]*open>/.test(registry.app.innerHTML) && /全曜日の項目を表示中/.test(registry.app.innerHTML), '「全体」を選んでいる間は開いたまま（戻れる）');
+  ok(/今日（.曜日）の箇所/.test(hh), '見出しの下に「今日（○曜日）の箇所」');
+  ok(hh.indexOf('data-seg="hygday"') < hh.indexOf('data-ck="hygiene-'), '曜日チップは項目の一覧より上（常に見える）');
+  ok(!/<details class="card"[^>]*>\s*<summary[^>]*>他の曜日・全体を見る/.test(hh), '下の折りたたみは無い');
+  ok((hh.match(/data-hygday="/g) || []).length === 7 && /data-hygall="1"/.test(hh) && />今日</.test(hh), '全体＋日〜土の8ボタン、今日に印');
 }
 // ==== 画面295: 今日出すものに今日の定期衛生の箇所／週次業務に曜日別業務（2026-09-25 神田さん） ====
 {
