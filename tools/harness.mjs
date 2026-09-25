@@ -5769,6 +5769,20 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   ok(/Quấy rối từ khách hàng/.test(registry.app.innerHTML), 'ベトナム語でも出る');
 }
 
+// ==== v285: 1食目写真（お試し）の写真を localStorage に置かない（2026-09-25 難波店の匿名のご意見「エラーが連発」＝QuotaExceeded @/app/firstphoto） ====
+{
+  ok(/for \(const p of raw\) photos\.push\(isDataUrl\(p\) \? await photoLocalPut_\(p\) : p\);/.test(code), '提出時：dataURL は IndexedDB へ入れ、行には idb:キー だけ残す');
+  ok(/now - \(last\.t \|\| 0\) < 120000\) fps\.pop\(\);/.test(code), '2分以内の同じ店・同じメニューは直前の1件を置き換える（連打の重複を防ぐ）');
+  ok(/catch \(e2\) \{ saved = false; \}/.test(code), '保存に失敗しても例外を投げず、画面に案内を出す');
+  ok(/async function fpSlim_\(\)/.test(code) && /^\s*fpSlim_\(\);/m.test(code), '起動時に fpSlim_ で既存の dataURL を IndexedDB へ逃がす');
+  ok(/fpSlim_\(\);[\s\S]{0,400}photoLocalLoadAll_\(\)/.test(code), 'fpSlim_ は写真の読み込みより前（同期より前）に走る');
+  run(() => { setLS('staff', '手巻き寿司世桜 難波店', 'ja'); });
+  location.hash = '#/app/firstphoto';
+  const h = registry.app.innerHTML;
+  ok(/この端末に記録する（お試し）/.test(h), 'ボタンは「この端末に記録する（お試し）」＝本部へ送る提出ではないと分かる');
+  ok(/本部には届きません/.test(h), '準備中の案内に「本部には届きません」がある');
+  ok(!/AIチェックして提出/.test(h), '旧「AIチェックして提出」は消えた');
+}
 // ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
 {
   const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');

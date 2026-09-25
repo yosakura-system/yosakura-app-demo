@@ -1829,7 +1829,7 @@
   APP_VIEWS.firstphoto = () => {
     const recent = getFP().filter(r => visibleStores().includes(r.store)).sort((x,y)=>y.t-x.t).slice(0,6);
     return `
-      ${NOTE({ ja:'◆ 準備中：AI判定の運用を検討中です。正式な運用開始までは、これまでどおりの方法でお願いします（お試しでの提出は可能です）', en:'◆ In preparation: AI judgment is under discussion. Please continue the current method until the official start (you may try submitting here).', vi:'◆ Đang chuẩn bị: cách dùng AI đang được bàn. Vui lòng giữ cách hiện tại cho đến khi chính thức.' })}
+      ${NOTE({ ja:'◆ 準備中：AI判定の運用を検討中です。正式な運用開始までは、1食目写真はこれまでどおりLINEでお願いします。この画面の記録はこの端末にだけ残り、本部には届きません', en:'◆ In preparation: AI judgment is under discussion. Please continue the current method until the official start (you may try submitting here).', vi:'◆ Đang chuẩn bị: cách dùng AI đang được bàn. Vui lòng giữ cách hiện tại cho đến khi chính thức.' })}
       <div class="card" id="fpForm">
         <h3>${L({ ja:'提供直後の一枚を報告', en:'Report the first serving photo', vi:'Gửi ảnh món vừa phục vụ' })}</h3>
         <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="fp_store">${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
@@ -1838,7 +1838,7 @@
           <div class="photo-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ja:'撮影して追加',en:'Take photos',vi:'Chụp ảnh'})}</b><br><small>${L({ja:'盛付の基準チェックに使用',en:'Used to check plating standards',vi:'Dùng để kiểm tra trình bày'})}</small></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
           <div class="photo-thumbs" id="photoThumbs"></div>
         </label>
-        <button class="btn-primary" id="submitFP">${L({ja:'AIチェックして提出',en:'Check with AI & submit',vi:'Kiểm AI & gửi'})}</button>
+        <button class="btn-primary" id="submitFP">${L({ja:'この端末に記録する（お試し）',en:'Save on this device (trial)',vi:'Lưu trên thiết bị (thử)'})}</button>
         <div class="hint">${L({ ja:'本番ではAIが盛付を一次判定 → 基準外のみ本部へ通知する構想', en:'In production, AI pre-checks plating and only flags issues to HQ', vi:'Bản chính: AI kiểm tra trình bày, chỉ báo HQ khi bất thường' })}</div>
       </div>
       <div class="card">
@@ -10328,16 +10328,27 @@
     };
 
     const subFP = document.getElementById('submitFP');
-    if (subFP) subFP.onclick = () => {
+    if (subFP) subFP.onclick = async () => {
       const thumbsEl = document.getElementById('photoThumbs');
-      const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0,3) : [];
+      const raw = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0,3) : [];
       const item = document.getElementById('fp_item').value.trim();
       const store = document.getElementById('fp_store').value;
-      if (!photos.length) { toast(L({ ja:'写真を追加してください', en:'Please add a photo', vi:'Vui lòng thêm ảnh' })); return; }
+      if (!raw.length) { toast(L({ ja:'写真を追加してください', en:'Please add a photo', vi:'Vui lòng thêm ảnh' })); return; }
+      /* ★写真の中身を localStorage に置かない（v285・2026-09-25 難波店の匿名のご意見「エラーが連発、何度かやると全て表示されて迷惑」）。
+         この画面は本部へ送らないお試しなので、写真の dataURL が yosakura_demo_fp に溜まり続け（長堀橋 2.2MB）、
+         5MBの壁で QuotaExceededError が連発し、同期（distribute）まで失敗していた。中身は IndexedDB、行には 'idb:キー' だけ */
+      const photos = [];
+      for (const p of raw) photos.push(isDataUrl(p) ? await photoLocalPut_(p) : p);
       const ai = '';   // AIは未接続のため判定しない（本部が確認して判定を付ける）
-      const fps = getFP(); fps.push({ id: 'fp' + Date.now() + Math.random().toString(36).slice(2,6), store, item, photos, ai, t: Date.now() });
-      try { saveFP(fps.slice(-15)); } catch (e) { saveFP(fps.slice(-5)); }
-      toast(L({ ja:'提出しました。ありがとうございます！', en:'Submitted. Thank you!', vi:'Đã gửi. Cảm ơn!' }));
+      const fps = getFP(); const now = Date.now();
+      /* 連打・やり直し＝同じ店・同じメニューが2分以内なら直前の1件を置き換える（「何度かやると全て表示されて」を防ぐ） */
+      const last = fps[fps.length - 1];
+      if (last && last.store === store && (last.item || '') === item && now - (last.t || 0) < 120000) fps.pop();
+      fps.push({ id: 'fp' + now + Math.random().toString(36).slice(2,6), store, item, photos, ai, t: now });
+      let saved = true;
+      try { saveFP(fps.slice(-15)); } catch (e) { try { saveFP(fps.slice(-5)); } catch (e2) { saved = false; } }
+      toast(saved ? L({ ja:'この端末に記録しました（お試し・本部には届きません）', en:'Saved on this device (trial, not sent to HQ)', vi:'Đã lưu trên thiết bị này (thử nghiệm)' })
+                  : L({ ja:'記録できませんでした。画面下の「最新にする」を押してからもう一度お試しください', en:'Could not save. Tap “Update” at the bottom and retry.', vi:'Không lưu được. Nhấn “Cập nhật” rồi thử lại.' }));
       render();
     };
 
@@ -11148,6 +11159,20 @@
      ★同期は「バックエンドの中身が前回と同じなら作り直さない」ため、
        店舗名の付け替えをしても、データが増えない限り古い表記が端末に残り続ける。
        その状態だと、新しい店舗一覧と照合できず、過去の実績が画面から消えてしまう。 */
+  /* ★v285（2026-09-25）：yosakura_demo_fp に残った写真の dataURL を IndexedDB へ移し、行には 'idb:キー' だけ残す。
+     長堀橋で 2.2MB・難波で QuotaExceeded ×8 の原因。IndexedDB が使えない端末では写真だけ外す（お試しの記録なので中身より同期を優先） */
+  async function fpSlim_() {
+    let a = null; try { a = JSON.parse(localStorage.getItem('yosakura_demo_fp') || 'null'); } catch (e) { a = null; }
+    if (!Array.isArray(a) || !a.some(r => r && Array.isArray(r.photos) && r.photos.some(isDataUrl))) return;
+    for (const r of a) {
+      if (!r || !Array.isArray(r.photos)) continue;
+      const out = [];
+      for (const p of r.photos) { if (isDataUrl(p)) { try { out.push(await photoLocalPut_(p)); } catch (e) {} } else out.push(p); }
+      r.photos = out;
+    }
+    try { saveFP(a.slice(-15)); }
+    catch (e) { try { saveFP(a.slice(-15).map(r => Object.assign({}, r, { photos: [] }))); } catch (e2) { try { localStorage.removeItem('yosakura_demo_fp'); } catch (e3) {} } }
+  }
   function migrateStoreNames() {
     const listKeys = [LS.reports, 'yosakura_demo_soukatsu', 'yosakura_demo_survey', 'yosakura_demo_kizuki',
       'yosakura_demo_route', 'yosakura_demo_open', 'yosakura_demo_svfb', 'yosakura_demo_storevideo',
@@ -11195,6 +11220,7 @@
     }
   } catch (e) {}
   migrateStoreNames(); // 端末に残っている旧い店舗表記を、正式名称へ寄せ直す
+  fpSlim_();           // ★v285：1食目写真（お試し）の写真の中身を localStorage から IndexedDB へ逃がす＝5MBの壁で同期が止まる原因を取り除く
   photoLocalLoadAll_().then(() => { try { if (String(location.hash || '').indexOf('/app/hqcheck') !== -1) render(true); } catch (e) {} });   // 写真の中身（IndexedDB）を読み込んでから巡回チェックを描き直す
   写真選択中の再読み込みを報告_(); // ★前回、写真の選択中に再読み込みが起きていたら画面に出す（★render より先＝bindが印を読むため）
   render();
