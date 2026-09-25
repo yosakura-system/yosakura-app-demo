@@ -3387,12 +3387,17 @@
         <div class="hint" style="display:block;margin:-6px 0 10px">${L({ ja:'※ 1Fと2Fは別々に記録されます。ご自分がいるフロアを選んで、そのフロアの分だけチェックしてください。項目もフロアごとに足したり外したりできます。', en:'1F and 2F are recorded separately. Pick your floor and check only that floor’s items.', vi:'Tầng 1 và tầng 2 được ghi riêng. Chọn tầng của bạn.' })}</div>` : ''}
         <h3>${L({ ja:'本日の', en:'Today: ', vi:'Hôm nay: ' })}${esc(L((CK_MODES.find(m => m.v === ckBase(mode)) || {}).t || ''))}${L({ ja:'点検', en:' check', vi:'' })}${ckFloor(mode) ? `（${esc(ckFloor(mode))}）` : (ckFloorStore(store) ? `（1F）` : '')}</h3>
         <div class="muted" style="margin:2px 0 8px">${esc(store)}</div>
-        ${ckBase(mode) === 'hygiene' ? `<div class="seg" data-seg="hygday" style="margin:6px 0 10px"><button type="button" data-hygall="1" class="${hygAll ? 'on' : ''}">${L({ ja:'全体', en:'All', vi:'Tất cả' })}</button>${WDAY_LABELS.map((w, i) => `<button type="button" data-hygday="${i}" class="${!hygAll && i===getHygDay()?'on':''}">${L(w)}</button>`).join('')}</div>` : ''}
+        ${ckBase(mode) === 'hygiene' ? `<div class="muted" style="margin:-4px 0 8px;font-size:12.5px">${hygAll ? L({ ja:'全曜日の項目を表示中', en:'Showing all days', vi:'Đang hiện tất cả các ngày' }) : (getHygDay() === new Date().getDay() ? L({ ja:'今日（', en:'Today (', vi:'Hôm nay (' }) + L(WDAY_LABELS[getHygDay()]) + L({ ja:'曜日）の箇所', en:')', vi:')' }) : L({ ja:'別の曜日（', en:'Another day (', vi:'Ngày khác (' }) + L(WDAY_LABELS[getHygDay()]) + L({ ja:'曜日）の箇所を表示中', en:') is shown', vi:') đang hiện' }))}</div>` : ''}
         <div style="font-size:26px;font-weight:700;letter-spacing:.02em"><span id="ckCount">${n}</span><span style="color:var(--gray);font-size:17px">/${total}</span></div>
         <div class="bar-track" style="margin:9px 0 2px"><div class="bar-fill" id="ckBar" style="width:${Math.round(n/total*100)}%"></div></div>
       </div>
       ${ckSmpHTML}
       ${hygAll ? hygAllHTML : groupsHTML + customHTML + hiddenHTML}
+      ${ckBase(mode) === 'hygiene' ? `
+      <details class="card" style="padding:8px 14px;margin-top:10px" ${(hygAll || getHygDay() !== new Date().getDay()) ? 'open' : ''}>
+        <summary style="cursor:pointer;font-size:13px;color:#6a6458">${L({ ja:'他の曜日・全体を見る（余裕のある日に先に進めるとき）', en:'Other days / all (to work ahead)', vi:'Ngày khác / tất cả (làm trước)' })}</summary>
+        <div class="seg" data-seg="hygday" style="margin:8px 0 6px"><button type="button" data-hygall="1" class="${hygAll ? 'on' : ''}">${L({ ja:'全体', en:'All', vi:'Tất cả' })}</button>${WDAY_LABELS.map((w, i) => `<button type="button" data-hygday="${i}" class="${!hygAll && i===getHygDay()?'on':''}">${L(w)}</button>`).join('')}</div>
+      </details>` : ''}
       ${CK_NOTES[ckBase(mode)] ? `<div class="hint" style="display:block">${L(CK_NOTES[ckBase(mode)])}</div>` : ''}
       <div class="hint">${L({ ja:'上から順に実施すれば完了です。チェックは店舗ごと・当日分として保存されます（翌日は自動でリセット）。実施状況は本部・オーナーからも確認できます。', en:'Work top to bottom. Checks are saved per store for today (auto-resets next day) and visible to HQ/owners.', vi:'Làm từ trên xuống. Lưu theo cửa hàng cho hôm nay; HQ/chủ có thể xem.' })}</div>`;
   };
