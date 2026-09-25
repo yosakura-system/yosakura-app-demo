@@ -5821,6 +5821,19 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   ok(!/<details style="margin:10px 0" open>/.test(h2) && /品目をまとめて貼り付けて登録（最初の1回だけ）/.test(h2), '品目がある月は従来どおり下に畳む');
   ok(h2.indexOf('id="tn_paste"') > h2.indexOf('id="tn_f0_n"'), '品目がある月は貼り付け欄が行の下');
 }
+// ==== v288: 田中さんの週次のお願い4つを「定期衛生」に足す（2026-09-25・No.59） ====
+{
+  const dayItems = (d) => { const m = code.match(/const HYGIENE_DAYS = \[([\s\S]*?)\n  \];/); const blk = m[1]; const parts = blk.split(/\{ d:(\d),/); const idx = parts.indexOf(String(d)); return idx > 0 ? parts[idx + 1] : ''; };
+  ok(/在庫の整理・先入先出・期限の確認/.test(dayItems(0)), '日曜：在庫の整理・先入先出・期限の確認（③）');
+  ok(/器の数を数える・欠け（チップ）の確認/.test(dayItems(3)) && /食器類のケース・破損確認/.test(dayItems(3)), '水曜：器の数と欠けの確認（①②）＝既存の食器項目は残す');
+  ok(/見えない所の埃（トイレの換気扇・棚の上）/.test(dayItems(4)), '木曜：トイレの換気扇・棚の上（④）');
+  ok(/スタッフルーム・厨房の整理整頓/.test(dayItems(6)), '土曜：スタッフルーム・厨房の整理整頓（④）');
+  ok(/在庫数の「備品」に入れる/.test(code) && /怪我につながる/.test(code), '器の項目に「在庫数の備品へ」「怪我」の説明がある');
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_ckmode', 'hygiene'); localStorage.setItem('yosakura_hygall', '1'); });
+  location.hash = '#/app/checklist';
+  const hw = registry.app.innerHTML;
+  ok(/器の数を数える・欠け（チップ）の確認/.test(hw) && /在庫の整理・先入先出・期限の確認/.test(hw) && /スタッフルーム・厨房の整理整頓/.test(hw), '定期衛生（全曜日表示）に4項目が出る');
+}
 // ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
 {
   const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
