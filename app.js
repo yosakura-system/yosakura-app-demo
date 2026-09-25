@@ -8778,17 +8778,27 @@
      公益通報・コンプライアンス窓口（whistle）＝スタッフ画面から削除不可の固定項目。
      店長・オーナーに相談しにくい問題を本部へ直接。通報先・担当は本部が別途決定。
   =================================================================== */
-  const WHISTLE_CATS = [
-    { v:'power',   t:{ ja:'パワーハラスメント',   en:'Power harassment',    vi:'Quấy rối quyền lực' } },
-    { v:'sexual',  t:{ ja:'セクシュアルハラスメント', en:'Sexual harassment', vi:'Quấy rối tình dục' } },
-    /* ★お客様からのハラスメント（2026-09-24 神田さん）＝10/1施行のカスハラ対応。掲示用ポスターのQRからこの画面へ */
-    { v:'customer', t:{ ja:'お客様からの暴言・威圧・不当な要求（カスハラ）', en:'Customer harassment', vi:'Quấy rối từ khách hàng' } },
-    { v:'abuse',   t:{ ja:'職場での暴言・威圧',   en:'Verbal abuse at work', vi:'Lăng mạ/đe dọa tại nơi làm việc' } },
-    { v:'fraud',   t:{ ja:'不正行為',             en:'Misconduct',          vi:'Gian lận' } },
-    { v:'legal',   t:{ ja:'法令違反',             en:'Legal violation',     vi:'Vi phạm pháp luật' } },
-    { v:'hygiene', t:{ ja:'衛生上の重大問題',     en:'Serious hygiene issue', vi:'Vệ sinh nghiêm trọng' } },
-    { v:'other',   t:{ ja:'その他重大な相談',     en:'Other serious matter', vi:'Vấn đề nghiêm trọng khác' } }
+  /* ★2区分（画面297・2026-09-25 構築MTG決定＋増田さん 9/24「公益通報とカスハラを分ける」）
+     harass＝ハラスメントの相談（お客様から＝カスハラ／パワハラ／セクハラ／職場での暴言）
+     whistle＝公益通報（不正／法令違反／衛生／その他）。既定は「ハラスメントの相談」のカスハラ（掲示用のQRから開く人が多いため） */
+  const WHISTLE_KINDS = [
+    { v:'harass',  t:{ ja:'ハラスメントの相談', en:'Harassment', vi:'Tư vấn quấy rối' } },
+    { v:'whistle', t:{ ja:'公益通報', en:'Whistleblowing', vi:'Tố giác' } }
   ];
+  const WHISTLE_CATS = [
+    /* ★お客様からのハラスメント（2026-09-24 神田さん）＝10/1施行のカスハラ対応。掲示用ポスターのQRからこの画面へ */
+    { v:'customer', k:'harass', t:{ ja:'お客様からの暴言・威圧・不当な要求（カスハラ）', en:'Customer harassment', vi:'Quấy rối từ khách hàng' } },
+    { v:'power',   k:'harass', t:{ ja:'パワーハラスメント',   en:'Power harassment',    vi:'Quấy rối quyền lực' } },
+    { v:'sexual',  k:'harass', t:{ ja:'セクシュアルハラスメント', en:'Sexual harassment', vi:'Quấy rối tình dục' } },
+    { v:'abuse',   k:'harass', t:{ ja:'職場での暴言・威圧',   en:'Verbal abuse at work', vi:'Lăng mạ/đe dọa tại nơi làm việc' } },
+    { v:'fraud',   k:'whistle', t:{ ja:'不正行為',             en:'Misconduct',          vi:'Gian lận' } },
+    { v:'legal',   k:'whistle', t:{ ja:'法令違反',             en:'Legal violation',     vi:'Vi phạm pháp luật' } },
+    { v:'hygiene', k:'whistle', t:{ ja:'衛生上の重大問題',     en:'Serious hygiene issue', vi:'Vệ sinh nghiêm trọng' } },
+    { v:'other',   k:'whistle', t:{ ja:'その他重大な相談',     en:'Other serious matter', vi:'Vấn đề nghiêm trọng khác' } }
+  ];
+  const whistleKindOf = (cat) => { const c = WHISTLE_CATS.find(x => x.v === cat); return c ? c.k : 'whistle'; };
+  const whistleKindLabel = (k) => { const o = WHISTLE_KINDS.find(x => x.v === k); return o ? L(o.t) : ''; };
+  const WHISTLE_HOURS = { ja:'受付：平日 9:00〜18:00／回答：原則、翌営業日（世桜本部 yosakura.fc@gmail.com）', en:'Hours: weekdays 9:00–18:00 / reply: next business day (HQ yosakura.fc@gmail.com)', vi:'Tiếp nhận: ngày thường 9:00–18:00 / trả lời: ngày làm việc tiếp theo (HQ yosakura.fc@gmail.com)' };
   const whistleCatLabel = (v) => { const c = WHISTLE_CATS.find(x => x.v === v); return c ? L(c.t) : v; };
   const getWhistle = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_whistle')) || []; } catch { return []; } };
   const saveWhistle = (a) => { try { localStorage.setItem('yosakura_demo_whistle', JSON.stringify(a)); } catch (e) {} };
@@ -8799,25 +8809,28 @@
       const done = getWhistleDone();
       const list = getWhistle().slice().sort((a,b) => b.t - a.t);
       return `
-        ${NOTE({ ja:'◆ スタッフから直接届いた通報です。取り扱いは慎重に（担当・保存方法は本部で決定）', en:'◆ Reports sent directly by staff. Handle with care (owner & retention set by HQ).', vi:'◆ Báo cáo gửi trực tiếp từ nhân viên. Xử lý thận trọng.' })}
+        ${NOTE({ ja:'◆ スタッフから直接届いた相談・通報です。受付 平日9:00〜18:00、回答は原則翌営業日（窓口＝世桜本部）。取り扱いは慎重に', en:'◆ Reports sent directly by staff. Hours weekdays 9:00–18:00; reply next business day. Handle with care.', vi:'◆ Báo cáo gửi trực tiếp từ nhân viên. Xử lý thận trọng.' })}
         <div class="card"><h3>${L({ ja:'受け付けた通報', en:'Received reports', vi:'Báo cáo đã nhận' })}</h3>
           ${list.length ? list.map(r => `<div class="rep">
-            <span class="kind ${done.includes(r.t)?'':'a'}">${esc(whistleCatLabel(r.cat))}</span>
+            <span class="kind ${done.includes(r.t)?'':'a'}">${esc(whistleKindLabel(r.kind2 || whistleKindOf(r.cat)))}：${esc(whistleCatLabel(r.cat))}</span>
             <div class="body"><div class="l1">${esc(r.body||'—')}</div>
             <div class="l2">${r.anon ? L({ ja:'匿名', en:'Anonymous', vi:'Ẩn danh' }) : esc(r.store||'—')} ・ ${timeAgo(r.t)}</div></div>
             <button class="mini ${done.includes(r.t)?'on':''}" data-whdone="${r.t}">${done.includes(r.t) ? L({ ja:'対応済', en:'Done', vi:'Đã xử lý' }) : L({ ja:'未対応', en:'Open', vi:'Chưa xử lý' })}</button>
           </div>`).join('') : `<div class="muted">${L({ ja:'まだ通報はありません', en:'No reports yet', vi:'Chưa có báo cáo' })}</div>`}
         </div>
-        <p class="hint">${L({ ja:'※ 通報先メール・受付担当・匿名可否・保存方法・対応フローは本部で決定してください（未確定）', en:'HQ to decide report address, handler, anonymity, retention and response flow (pending).', vi:'HQ quyết định địa chỉ, người phụ trách, ẩn danh, lưu trữ và quy trình (chưa chốt).' })}</p>`;
+        <p class="hint">${L({ ja:'※ 9/25 構築MTG決定＝窓口は世桜本部（yosakura.fc@gmail.com）・受付 平日9:00〜18:00・回答 原則翌営業日・カスハラは「カスハラ対応記録」に記録。公益通報はハラスメントと分けて扱う', en:'HQ to decide report address, handler, anonymity, retention and response flow (pending).', vi:'HQ quyết định địa chỉ, người phụ trách, ẩn danh, lưu trữ và quy trình (chưa chốt).' })}</p>`;
     }
     // スタッフ・店長・オーナー＝通報フォーム
     const store = visibleStores()[0];
     return `
-      ${NOTE({ ja:'◆ 店長・オーナーに相談しにくい問題や、お客様からの暴言・威圧（カスハラ）を、本部へ直接お伝えいただく窓口です', en:'◆ A channel to report issues to HQ directly when hard to raise with your manager/owner — including customer harassment', vi:'◆ Kênh báo cáo trực tiếp tới HQ khi khó nói với quản lý/chủ' })}
+      ${NOTE({ ja:'◆ お客様からの暴言・威圧（カスハラ）やハラスメントの相談と、不正・法令違反の公益通報を、本部へ直接お伝えいただく窓口です。受付 平日9:00〜18:00、回答は原則翌営業日', en:'◆ A channel to report issues to HQ directly when hard to raise with your manager/owner — including customer harassment', vi:'◆ Kênh báo cáo trực tiếp tới HQ khi khó nói với quản lý/chủ' })}
       <div class="card" id="whForm">
-        <h3>${L({ ja:'公益通報・コンプライアンス窓口', en:'Whistleblowing / Compliance', vi:'Tố giác / Tuân thủ' })}</h3>
+        <h3>${L({ ja:'相談・通報窓口', en:'Consultation & whistleblowing', vi:'Tư vấn & tố giác' })}</h3>
+        <label class="fld"><span>${L({ ja:'区分', en:'Type', vi:'Phân loại' })}</span>
+          <div class="seg" data-seg="whkind">${WHISTLE_KINDS.map((k,i) => `<button type="button" data-v="${k.v}" class="${i===0?'on':''}">${L(k.t)}</button>`).join('')}</div></label>
         <label class="fld"><span>${L({ ja:'種類', en:'Category', vi:'Loại' })}</span>
-          <div class="seg" data-seg="whcat" style="flex-wrap:wrap">${WHISTLE_CATS.map((c,i) => `<button type="button" data-v="${c.v}" class="${i===0?'on':''}">${L(c.t)}</button>`).join('')}</div></label>
+          <div class="seg" data-seg="whcat" style="flex-wrap:wrap">${WHISTLE_CATS.map((c,i) => `<button type="button" data-v="${c.v}" data-k="${c.k}" class="${i===0?'on':''}"${c.k !== 'harass' ? ' hidden' : ''}>${L(c.t)}</button>`).join('')}</div></label>
+        <p class="hint" style="display:block;margin:-2px 0 8px">${L(WHISTLE_HOURS)}</p>
         <label class="fld"><span>${L({ ja:'内容', en:'Details', vi:'Nội dung' })}</span>
           <textarea id="wh_body" placeholder="${esc(L({ ja:'事実を具体的に。日時・場所・関係者など分かる範囲で。', en:'Describe the facts: when, where, who, as far as you know.', vi:'Mô tả sự việc: khi nào, ở đâu, ai, trong khả năng biết.' }))}"></textarea></label>
         <label class="check-inline"><input type="checkbox" id="wh_anon"> ${L({ ja:'匿名で送信する（店舗名を伝えない）', en:'Send anonymously (hide store)', vi:'Gửi ẩn danh (ẩn cửa hàng)' })}</label>
@@ -9312,7 +9325,7 @@
   if (!appById('whistle')) {
     // 2026-08-18 神田さんのご判断：ホームから「その他」へ移した（tabHide を外して一覧に出す）
     APPS.push({ id:'whistle', group:'other', icon:'shield', live:true, roles:['staff','manager','owner','hq'],
-      name:{ ja:'公益通報・コンプラ窓口', en:'Whistleblowing', vi:'Tố giác / Tuân thủ' },
+      name:{ ja:'相談・通報窓口', en:'Consult / Report', vi:'Tư vấn / Tố giác' },
       desc:{ ja:'相談しにくい問題を本部へ直接（固定）', en:'Report directly to HQ (fixed item)', vi:'Báo cáo trực tiếp tới HQ (cố định)' } });
   }
 
@@ -9761,6 +9774,13 @@
       );
     });
 
+    // 相談・通報窓口：区分（ハラスメント／公益通報）を切り替えると、種類のボタンを絞る（画面297）
+    document.querySelectorAll('[data-seg="whkind"] button').forEach(b => b.onclick = () => {
+      document.querySelectorAll('[data-seg="whkind"] button').forEach(x => x.classList.toggle('on', x === b));
+      let first = null;
+      document.querySelectorAll('[data-seg="whcat"] button').forEach(c => { const show = c.dataset.k === b.dataset.v; c.hidden = !show; c.classList.remove('on'); if (show && !first) first = c; });
+      if (first) first.classList.add('on');
+    });
     // 公益通報：本部へ送信（匿名可）
     const whSubmit = byId('whSubmit');
     if (whSubmit) whSubmit.onclick = () => {
@@ -9772,12 +9792,13 @@
       const anon = !!(byId('wh_anon') && byId('wh_anon').checked);
       const store = anon ? '' : visibleStores()[0];
       const t = Date.now();
-      const arr = getWhistle(); arr.push({ store, cat, body, anon, t });
+      const kind2 = whistleKindOf(cat);
+      const arr = getWhistle(); arr.push({ store, cat, kind2, body, anon, t });
       try { saveWhistle(arr.slice(-200)); } catch (e) { saveWhistle(arr.slice(-60)); }
       lastSync = t;
       toast(L({ ja:'本部へ送信しました。ありがとうございます。', en:'Sent to HQ. Thank you.', vi:'Đã gửi tới HQ. Cảm ơn.' }));
       render();
-      postReport({ kind:'whistle', store, note: JSON.stringify({ cat, body, anon }), t });
+      postReport({ kind:'whistle', store, note: JSON.stringify({ cat, kind2, body, anon }), t });
     };
 
     // 公益通報（本部）：対応済みトグル（この端末で表示管理）
