@@ -5793,6 +5793,19 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   location.hash = '#/app/home';
   ok(!/一食目写真の報告/.test(registry.app.innerHTML), '本部のメニューにも出ない');
 }
+// ==== v286: 棚卸タブに「やり方（1枚マニュアル）」のリンク（2026-09-25 長田さん） ====
+{
+  run(() => { setLS('manager', '日本鰻世桜 富士山店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana');
+    localStorage.setItem('yosakura_demo_links', JSON.stringify([{ id:'lk1', title:'月末棚卸 1枚マニュアル', url:'https://drive.google.com/file/d/abc/view', mcat:'12', desc:'' }, { id:'lk2', title:'世桜の理念', url:'https://example.com/x', mcat:'01', desc:'' }])); });
+  location.hash = '#/app/pl?tab=tana';
+  let ht = registry.app.innerHTML;
+  ok(/id="tnForm"/.test(ht), '棚卸タブが開く');
+  ok(/data-openurl="https:\/\/drive\.google\.com\/file\/d\/abc\/view"[^>]*>📖 月末棚卸 1枚マニュアル</.test(ht), 'タイトルに「棚卸」を含む資料が、棚卸タブの上にリンクとして出る');
+  ok(!/📖 世桜の理念/.test(ht), '棚卸に関係ない資料は出ない');
+  run(() => { localStorage.removeItem('yosakura_demo_links'); });
+  location.hash = '#/app/pl?tab=tana';
+  ok(!/📖/.test(registry.app.innerHTML), '登録が無ければ何も出ない（空の行も作らない）');
+}
 // ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
 {
   const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
