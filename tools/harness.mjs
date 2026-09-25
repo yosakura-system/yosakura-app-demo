@@ -5863,7 +5863,7 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
 // ==== 画面293: 店長が品目を保存済みの店（牛カツ富士山）にも器を自動で足す／国内10店すべてに器が出るか総当たり（2026-09-25 神田さん「ダブルチェック」） ====
 {
   run(() => { setLS('manager', '牛カツ世桜 富士山店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in');
-    localStorage.setItem(LS.reports, JSON.stringify([{ kind:'zaikomaster', store:'牛カツ世桜 富士山店', item:'牛カツ世桜 富士山店', note: JSON.stringify({ items: [{ g:'食材（月・木に確認）／太陽食品', n:'白だし', std:1, u:'本', f:'mon,thu' }, { g:'備品（土曜に確認）', n:'手袋M', std:10, u:'箱', f:'sat' }] }), t: Date.now() - 1000 }])); });
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([{ kind:'zaikomaster', store:'牛カツ世桜 富士山店', item:'牛カツ世桜 富士山店', note: JSON.stringify({ items: [{ g:'食材（月・木に確認）／太陽食品', n:'白だし', std:1, u:'本', f:'mon,thu' }, { g:'備品（土曜に確認）', n:'手袋M', std:10, u:'箱', f:'sat' }] }), t: Date.now() - 1000 }])); });
   location.hash = '#/app/zaiko';
   const zf = registry.app.innerHTML;
   ok(/白だし/.test(zf) && /手袋M/.test(zf), '店長が保存した品目はそのまま');
