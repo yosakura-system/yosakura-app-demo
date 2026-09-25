@@ -6009,6 +6009,15 @@
     /* ★やり方（1枚マニュアル）へのリンク（v286・2026-09-25 長田さん「月次の棚卸の際にURLを埋め込んでやり方を見られるように」）。
        本部が「資料リンクを追加」で登録した資料のうち、タイトルに「棚卸」を含むものを出す＝登録画面を増やさない */
     const tnGuides = getLinks().filter(l => /棚卸/.test(String(l.title || '')) && isHttp(l.url));
+    /* ★品目がまだ無い月＝貼り付け欄を開いた状態で一番上に出す（v287・2026-09-25 神田さん「品目をまとめて貼り付けっていう項目が見当たらない」＝飲料の下に畳んだ小さい文字だった） */
+    const tnEmpty = !fRows.some(r => r.n) && !dRows.some(r => r.n);
+    const tnPaste = `
+        <details style="margin:10px 0" ${tnEmpty ? 'open' : ''}>
+          <summary style="cursor:pointer;font-size:${tnEmpty ? '15px;font-weight:700;color:var(--sumi)' : '13px;color:#6a6458'}">${tnEmpty ? L({ ja:'まず品目を登録する（貼り付け）', en:'Register items first (paste)', vi:'Đăng ký mặt hàng trước (dán)' }) : L({ ja:'品目をまとめて貼り付けて登録（最初の1回だけ）', en:'Paste item list at once (first time only)', vi:'Dán danh sách mặt hàng (lần đầu)' })}</summary>
+          <p class="hint" style="display:block;margin-top:8px">${L({ ja:'1行に1品目で「品名 単価」（例：米 3000）。単価が分からなければ品名だけでも大丈夫です。「飲料」とだけ書いた行より下は飲料として取り込みます。既存の行は置き換わります。', en:'One item per line: “name price” (e.g. rice 3000). Lines after a line saying “飲料” are treated as drinks. Existing rows are replaced.', vi:'Mỗi dòng 1 mặt hàng “tên giá”. Sau dòng “飲料” là đồ uống.' })}</p>
+          <textarea id="tn_paste" rows="6" placeholder="${esc(L({ ja:'米 3000\nサーロイン肉 12000\nパン粉 800\n飲料\nビール（瓶） 200\nコーラ（瓶） 130', en:'rice 3000\nbeer 200', vi:'gạo 3000' }))}" style="width:100%"></textarea>
+          <button class="mini" id="tnImport" style="margin-top:6px">${L({ ja:'この内容で品目を登録する', en:'Import items', vi:'Nhập danh sách' })}</button>
+        </details>`;
     const tnGuideRow = tnGuides.length ? `<div class="seg-chips" style="margin:2px 0 8px">${tnGuides.map(l => `<button type="button" class="chip" data-openurl="${esc(l.url)}">📖 ${esc(l.title)}</button>`).join('')}</div>` : '';
     return `
       <div class="card" id="tnForm">
@@ -6017,14 +6026,10 @@
         <p class="hint" style="display:block">${L({ ja:'月末に、店の食材を数えて入力してください。開封済み・使いかけは 0.25／0.5／0.75／1 のどれかで概算します（例：粉が半分→0.5）。包材や消耗品は数えません（PLで別に管理します）。', en:'Count food items at month end. Opened/partial items are estimated as 0.25 / 0.5 / 0.75 / 1 (e.g. half a bag = 0.5). Packaging and supplies are not counted (managed separately in P&L).', vi:'Cuối tháng đếm thực phẩm. Hàng đã mở ước lượng 0.25/0.5/0.75/1. Không đếm bao bì, vật tư.' })}</p>
         <label class="fld"><span>${L({ ja:'対象月', en:'Month', vi:'Tháng' })}</span><input type="month" id="tn_ym" value="${esc(nowYm)}"></label>
         <input type="hidden" id="tn_fcount" value="${fRows.length}"><input type="hidden" id="tn_dcount" value="${dRows.length}">
+        ${tnEmpty ? tnPaste : ''}
         ${block('f', { ja:'食材', en:'Food', vi:'Thực phẩm' }, fRows)}
         ${block('d', { ja:'飲料', en:'Drinks', vi:'Đồ uống' }, dRows)}
-        <details style="margin:10px 0">
-          <summary style="cursor:pointer;font-size:13px;color:#6a6458">${L({ ja:'品目をまとめて貼り付けて登録（最初の1回だけ）', en:'Paste item list at once (first time only)', vi:'Dán danh sách mặt hàng (lần đầu)' })}</summary>
-          <p class="hint" style="display:block;margin-top:8px">${L({ ja:'1行に1品目で「品名 単価」（例：米 3000）。単価が分からなければ品名だけでも大丈夫です。「飲料」とだけ書いた行より下は飲料として取り込みます。既存の行は置き換わります。', en:'One item per line: “name price” (e.g. rice 3000). Lines after a line saying “飲料” are treated as drinks. Existing rows are replaced.', vi:'Mỗi dòng 1 mặt hàng “tên giá”. Sau dòng “飲料” là đồ uống.' })}</p>
-          <textarea id="tn_paste" rows="6" placeholder="${esc(L({ ja:'米 3000\nサーロイン肉 12000\nパン粉 800\n飲料\nビール（瓶） 200\nコーラ（瓶） 130', en:'rice 3000\nbeer 200', vi:'gạo 3000' }))}" style="width:100%"></textarea>
-          <button class="mini" id="tnImport" style="margin-top:6px">${L({ ja:'この内容で品目を登録する', en:'Import items', vi:'Nhập danh sách' })}</button>
-        </details>
+        ${tnEmpty ? '' : tnPaste}
         <div class="stat-row" style="margin:10px 0">
           <div class="stat"><div class="n" id="tn_food_sum">¥0</div><div class="k">${L({ ja:'食材 計', en:'Food total', vi:'Tổng thực phẩm' })}</div></div>
           <div class="stat"><div class="n" id="tn_drink_sum">¥0</div><div class="k">${L({ ja:'飲料 計', en:'Drinks total', vi:'Tổng đồ uống' })}</div></div>
