@@ -3079,6 +3079,13 @@
   const ckGroupsOf = (mode, hygDay, store) => ckBase(mode) === 'hygiene'
     ? ((HYGIENE_DAYS.find(x => x.d === (hygDay == null ? new Date().getDay() : hygDay)) || {}).g || [])
     : ((store && storeGyotai(store) === 'temaki' && CK_TEMAKI[ckBase(mode)]) ? CK_TEMAKI[ckBase(mode)] : (CK_COMMON[ckBase(mode)] || []));
+  /* ★曜日の定期衛生の箇所を名前だけ並べる（画面295）＝今日出すもの・週次業務で「開かなくても分かる」ように */
+  function hygSpotNames_(store, d) {
+    const hid = ckHidden(store, 'hygiene', d); const out = [];
+    ckGroupsOf('hygiene', d, store).forEach((gr, gi) => gr.items.forEach((it, ii) => { if (!hid.includes(`hygiene-${d}-c-${gi}-${ii}`)) out.push(L(it)); }));
+    ckCustom(store, 'hygiene', d).forEach(c => { if (c && c.label) out.push(c.label); });
+    return out;
+  }
   const WDAY_LABELS = [{ja:'日',en:'Sun',vi:'CN'},{ja:'月',en:'Mon',vi:'T2'},{ja:'火',en:'Tue',vi:'T3'},{ja:'水',en:'Wed',vi:'T4'},{ja:'木',en:'Thu',vi:'T5'},{ja:'金',en:'Fri',vi:'T6'},{ja:'土',en:'Sat',vi:'T7'}];
   const CK_MODES = [
     { v:'open',   t:{ ja:'オープン', en:'Opening', vi:'Mở cửa' } },
@@ -7102,6 +7109,11 @@
         en:'The sheet will open from here once HQ has set it up',
         vi:'Bảng sẽ mở được ở đây sau khi HQ thiết lập' })}</div>`;
     }
+    /* ★定期衛生＝今日の曜日の箇所をここに並べる（画面295・2026-09-25 神田さん「日次業務を開いた時に今日やるべきことの中に出てくる」） */
+    if (it.m.id === 'hygiene_d') {
+      const dToday = new Date().getDay(); const spots = hygSpotNames_(it.store || visibleStores()[0], dToday);
+      if (spots.length) howTxt += `<div class="l2" style="color:var(--sumi);white-space:normal;line-height:1.6">${esc(L({ ja:'今日（', en:'Today (', vi:'Hôm nay (' }) + L(WDAY_LABELS[dToday]) + L({ ja:'）：', en:'): ', vi:'): ' }))}${spots.map(esc).join('・')}</div>`;
+    }
     return `<div class="rep"><span class="kind ${badgeCls}">${badgeTxt}</span>
       <div class="body"><div class="l1">${esc(L(it.m.name))} <small style="color:#8a8">(${L(OBLIG_LABEL[it.m.oblig])})</small></div>${howTxt}
       <div class="l2">${due}${oflag}${noentry}</div></div>${openBtn}</div>`;
@@ -7330,6 +7342,7 @@
       : L({ja:'※ 月内に提出があれば自動で「提出済」になります（月次数値は「数値・原価率」画面の入力で判定）。',en:'Marked done when submitted within the month (numbers via the Cost screen).',vi:'Tự đánh dấu khi nộp trong tháng.'});
     return `
       ${pick.chips}
+      ${kind === 'weekly' ? hygWeekCard_(store) : ''}
       <div class="card">
         <h3>${L(K.title)} — ${esc(storeShort(store))}${p ? ` <small style="color:#8a8">${p}</small>` : ''}</h3>
         <p class="hint" style="display:block">${hint}</p>
@@ -7337,6 +7350,20 @@
         ${rows}
       </div>
       <p class="hint" style="display:block">${foot}</p>`;
+  }
+  /* ★曜日別業務（定期衛生）＝週次業務の先頭（画面295・2026-09-25 神田さん「日次業務の次に曜日別業務として曜日を選択できるように」）。
+     曜日を押すとその曜日の箇所が並び、「この曜日の点検を開く」で点検画面（定期衛生・その曜日）へ。既定は今日 */
+  function hygWeekCard_(store) {
+    const d = getHygDay(); const today = new Date().getDay();
+    const spots = hygSpotNames_(store, d);
+    return `
+      <div class="card">
+        <h3>${L({ ja:'曜日別業務（定期衛生）', en:'By weekday (periodic hygiene)', vi:'Theo ngày (vệ sinh định kỳ)' })} — ${esc(storeShort(store))}</h3>
+        <p class="hint" style="display:block">${L({ ja:'曜日ごとに決められた箇所を掃除して、1週間で店を1周します。今日の分は「日次業務」にも出ます。', en:'Each weekday has its own spots; the whole store is covered in a week. Today’s spots also appear in Daily tasks.', vi:'Mỗi ngày có khu vực riêng; cả tuần đi hết cửa hàng. Việc hôm nay cũng có trong Hàng ngày.' })}</p>
+        <div class="seg" data-seg="hygpick" style="margin:4px 0 10px">${WDAY_LABELS.map((w, i) => `<button type="button" data-hygpick="${i}" class="${i === d ? 'on' : ''}">${L(w)}${i === today ? `<small style="display:block;font-size:9px;line-height:1">${L({ ja:'今日', en:'today', vi:'nay' })}</small>` : ''}</button>`).join('')}</div>
+        ${spots.length ? spots.map(n => `<div class="rep"><span class="kind b">${svg('check')}</span><div class="body"><div class="l1">${esc(n)}</div></div></div>`).join('') : `<div class="muted">${L({ ja:'この曜日の箇所はありません', en:'No spots for this day', vi:'Không có mục cho ngày này' })}</div>`}
+        <button class="btn-primary" data-hygopen="${d}" style="margin-top:10px">${L({ ja:'この曜日の点検を開く ›', en:'Open this day’s check ›', vi:'Mở kiểm tra ngày này ›' })}</button>
+      </div>`;
   }
   /* ★2026-09-23 長堀橋店＝取り込みの保存に失敗した端末には、報告画面の先頭で正直に伝え、1タップで作り直せるようにする
      （提出は本部に届いている。端末の一覧だけを本部データから作り直す） */
@@ -10452,6 +10479,9 @@
     document.querySelectorAll('[data-phtarget]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_photo_target', b.dataset.phtarget); render(); });
     // 定期衛生：曜日の切替（手が空いていれば他の曜日を先に実施してもよい運用）
     document.querySelectorAll('[data-hygday]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', `${todayKey()}|${b.dataset.hygday}`); localStorage.removeItem('yosakura_hygall'); render(true); });
+    /* 画面295：週次業務の曜日別業務＝曜日を選ぶ／その曜日の点検を開く（点検画面と同じ鍵に入れるので、開いた先も同じ曜日になる） */
+    document.querySelectorAll('[data-hygpick]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', `${todayKey()}|${b.dataset.hygpick}`); localStorage.removeItem('yosakura_hygall'); render(true); });
+    document.querySelectorAll('[data-hygopen]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', `${todayKey()}|${b.dataset.hygopen}`); localStorage.removeItem('yosakura_hygall'); localStorage.setItem('yosakura_ckmode', 'hygiene'); go('/app/checklist'); });
     // 定期衛生：全体表示（7曜日まとめて・2026-08-31 ユンさんのご要望）
     document.querySelectorAll('[data-hygall]').forEach(b => b.onclick = () => {
       if (localStorage.getItem('yosakura_hygall') === '1') localStorage.removeItem('yosakura_hygall');

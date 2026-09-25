@@ -5884,6 +5884,24 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   location.hash = '#/app/checklist';
   ok(/<details class="card"[^>]*open>/.test(registry.app.innerHTML) && /全曜日の項目を表示中/.test(registry.app.innerHTML), '「全体」を選んでいる間は開いたまま（戻れる）');
 }
+// ==== 画面295: 今日出すものに今日の定期衛生の箇所／週次業務に曜日別業務（2026-09-25 神田さん） ====
+{
+  run(() => { setLS('staff', '日本鰻世桜 富士山店', 'ja'); localStorage.removeItem('yosakura_hygday'); localStorage.removeItem('yosakura_hygall'); });
+  location.hash = '#/app/kyou';
+  const k = registry.app.innerHTML;
+  const dToday = new Date().getDay(); const W = ['日','月','火','水','木','金','土'];
+  ok(new RegExp('定期衛生管理（本日の曜日の箇所）[\\s\\S]{0,600}今日（' + W[dToday] + '）：').test(k), '今日出すものの定期衛生の行に「今日（○）：」と箇所が並ぶ');
+  run(() => { setLS('staff', '日本鰻世桜 富士山店', 'ja'); localStorage.removeItem('yosakura_hygday'); });
+  location.hash = '#/app/shukan';
+  const w = registry.app.innerHTML;
+  ok(/曜日別業務（定期衛生）/.test(w) && (w.match(/data-hygpick="/g) || []).length === 7, '週次業務の先頭に曜日別業務＝曜日ボタン7つ');
+  ok(new RegExp('data-hygpick="' + dToday + '" class="on"').test(w) && /data-hygopen="/.test(w), '既定は今日の曜日が選ばれ、「この曜日の点検を開く」がある');
+  run(() => { setLS('staff', '日本鰻世桜 富士山店', 'ja'); localStorage.setItem('yosakura_hygday', new Date().toLocaleDateString('en-CA') + '|3'); });
+  location.hash = '#/app/shukan';
+  const w3 = registry.app.innerHTML;
+  ok(/data-hygpick="3" class="on"/.test(w3) && /器の数と欠け（チップ）/.test(w3), '水曜を選ぶと、水曜の箇所（器の数と欠け）が並ぶ');
+  ok(/data-hygopen="3"/.test(w3), '開くボタンも水曜になる');
+}
 // ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
 {
   const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
