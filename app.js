@@ -6012,7 +6012,9 @@
     const fRows = tanaRowsFor(store, nowYm, 'f'), dRows = tanaRowsFor(store, nowYm, 'd');
     /* ★やり方（1枚マニュアル）へのリンク（v286・2026-09-25 長田さん「月次の棚卸の際にURLを埋め込んでやり方を見られるように」）。
        本部が「資料リンクを追加」で登録した資料のうち、タイトルに「棚卸」を含むものを出す＝登録画面を増やさない */
-    const tnGuides = getLinks().filter(l => /棚卸/.test(String(l.title || '')) && isHttp(l.url));
+    /* ★v289（2026-09-25 神田さん「そっち側で表示できるように」）＝マニュアルのURLをアプリに固定で持つ。本部の登録は不要（登録があれば並べて出す） */
+    const TN_GUIDE_BUILTIN = { title: { ja:'月末棚卸 1枚マニュアル（やり方）', en:'Month-end stocktake guide', vi:'Hướng dẫn kiểm kê cuối tháng' }, url: 'https://drive.google.com/file/d/1TLOmPLj0lglW-LnhSq3Uo_Rv-khuISUM/view' };
+    const tnGuides = [{ title: L(TN_GUIDE_BUILTIN.title), url: TN_GUIDE_BUILTIN.url }].concat(getLinks().filter(l => /棚卸/.test(String(l.title || '')) && isHttp(l.url) && l.url.indexOf('1TLOmPLj0lglW-LnhSq3Uo_Rv-khuISUM') < 0));
     /* ★品目がまだ無い月＝貼り付け欄を開いた状態で一番上に出す（v287・2026-09-25 神田さん「品目をまとめて貼り付けっていう項目が見当たらない」＝飲料の下に畳んだ小さい文字だった） */
     const tnEmpty = !fRows.some(r => r.n) && !dRows.some(r => r.n);
     const tnPaste = `
