@@ -5760,7 +5760,7 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   const hw = registry.app.innerHTML;
   ok(/data-v="customer"[^>]*>お客様からの暴言・威圧・不当な要求（カスハラ）</.test(hw), 'スタッフの通報フォームに「お客様からの暴言・威圧・不当な要求（カスハラ）」がある');
   ok(/data-v="abuse"[^>]*>職場での暴言・威圧</.test(hw), '既存の「暴言・威圧」は「職場での」と分かる表記になった');
-  ok(/お客様からの暴言・威圧（カスハラ）を、本部へ直接/.test(hw), '画面の案内文にもカスハラが入っている');
+  ok(/お客様からの暴言・威圧（カスハラ）やハラスメントの相談と、不正・法令違反の公益通報を、本部へ直接/.test(hw), '画面の案内文にもカスハラが入っている（画面297で2区分の文に）');
   run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'en'); });
   location.hash = '#/app/whistle';
   ok(/Customer harassment/.test(registry.app.innerHTML), '英語でも出る');
@@ -5899,6 +5899,24 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   const w3 = registry.app.innerHTML;
   ok(/data-hygpick="3" class="on"/.test(w3) && /器の数と欠け（チップ）/.test(w3), '水曜を選ぶと、水曜の箇所（器の数と欠け）が並ぶ');
   ok(/data-hygopen="3"/.test(w3), '開くボタンも水曜になる');
+}
+// ==== 画面297: 相談・通報窓口＝2区分（ハラスメントの相談／公益通報）・受付時間・翌営業日（2026-09-25 構築MTG） ====
+{
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); });
+  location.hash = '#/app/whistle';
+  const w = registry.app.innerHTML;
+  ok(/<h3>相談・通報窓口<\/h3>/.test(w), '見出しは「相談・通報窓口」');
+  ok(/data-seg="whkind"[\s\S]*data-v="harass" class="on">ハラスメントの相談<[\s\S]*data-v="whistle" class="">公益通報</.test(w), '区分の2ボタン＝既定はハラスメントの相談');
+  ok(/data-v="customer" data-k="harass" class="on">お客様からの暴言・威圧・不当な要求（カスハラ）</.test(w), '種類の既定はカスハラ（掲示用のQRから開く人向け）');
+  ok(/data-v="fraud" data-k="whistle" class="" hidden>不正行為</.test(w), '公益通報の種類は最初は隠れている');
+  ok(/受付：平日 9:00〜18:00／回答：原則、翌営業日（世桜本部 yosakura\.fc@gmail\.com）/.test(w), '受付時間と回答の目安が出る');
+  ok(/kind2 = whistleKindOf\(cat\)/.test(code) && /JSON\.stringify\(\{ cat, kind2, body, anon \}\)/.test(code), '送信データに区分（kind2）が付く');
+  run(() => { setLS('hq', '', 'ja'); localStorage.setItem('yosakura_demo_whistle', JSON.stringify([{ store:'', cat:'customer', kind2:'harass', body:'テスト', anon:true, t: Date.now() - 1000 }, { store:'牛カツ世桜 長堀橋店', cat:'fraud', body:'テスト2', anon:false, t: Date.now() - 2000 }])); });
+  location.hash = '#/app/whistle';
+  const hqw = registry.app.innerHTML;
+  ok(/ハラスメントの相談：お客様からの暴言・威圧・不当な要求（カスハラ）/.test(hqw) && /公益通報：不正行為/.test(hqw), '本部一覧は区分：種類で出る（古い送信は種類から区分を判定）');
+  ok(!/本部で決定してください（未確定）/.test(hqw) && /受付 平日9:00〜18:00・回答 原則翌営業日/.test(hqw), '本部側の「未確定」の注記は決定内容に置き換わった');
+  ok(!/公益通報・コンプラ窓口/.test(code.slice(code.indexOf("name:{ ja:'相談・通報窓口'") - 200, code.indexOf("name:{ ja:'相談・通報窓口'") + 50)), 'メニュー名は「相談・通報窓口」');
 }
 // ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
 {
