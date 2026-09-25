@@ -5804,7 +5804,7 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   ok(!/📖 世桜の理念/.test(ht), '棚卸に関係ない資料は出ない');
   run(() => { setLS('manager', '日本鰻世桜 富士山店', 'ja'); localStorage.removeItem('yosakura_demo_links'); });
   location.hash = '#/app/pl?tab=tana';
-  ok(!/📖/.test(registry.app.innerHTML), '登録が無ければ何も出ない（空の行も作らない）');
+  ok(/📖 月末棚卸 1枚マニュアル（やり方）/.test(registry.app.innerHTML) && /data-openurl="https:\/\/drive\.google\.com\/file\/d\/1TLOmPLj0lglW-LnhSq3Uo_Rv-khuISUM\/view"/.test(registry.app.innerHTML), 'v289：本部の登録が無くても、アプリに固定で持つマニュアルのボタンが出る');
 }
 // ==== v287: 品目が無い月は「まず品目を登録する（貼り付け）」を開いた状態で上に出す（2026-09-25 神田さん） ====
 {
