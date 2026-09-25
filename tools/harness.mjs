@@ -5531,7 +5531,7 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
   const fg = renderView('kyou', 'manager', '牛カツ世桜 富士山店', 'ja');
   ok(/在庫数の入力（締め）/.test(fg), '牛カツ富士山店にも出る');
   const wg = renderView('kyou', 'manager', '和牛世桜 広島店', 'ja');
-  ok(/在庫数の入力（締め）/.test(wg), '全店に出る（9/18 全店から希望＝広島にも）');
+  ok(/器（水曜に数える）/.test(renderView('zaiko', 'manager', '和牛世桜 広島店', 'ja')), '全店に出る（9/18 全店から希望＝広島にも）＝画面292から広島にも「器（水曜に数える）」が最初から入る。今日出すものには水曜だけ出る');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
@@ -5614,7 +5614,7 @@ console.log('== 在庫＝長堀橋の品目は最初から入っている・写�
   const kyou = renderView('kyou', 'manager', S, 'ja');
   ok(!/在庫チェック表の写真/.test(kyou) && /在庫数の入力（締め）/.test(kyou), '今日出すもの＝写真の項目は消え、在庫数の入力だけ');
   const other = renderView('zaiko', 'staff', '日本料理世桜本店', 'ja');
-  ok(/品目がまだ登録されていません/.test(other), '既定の無い店は従来どおり（店長が登録）');
+  ok(/器（水曜に数える）/.test(other) && !/品目がまだ登録されていません/.test(other), '紙の既定が無い店にも、画面292から業態の器が最初から入る（店長は足すだけ）');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
@@ -5824,15 +5824,41 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
 // ==== v288: 田中さんの週次のお願い4つを「定期衛生」に足す（2026-09-25・No.59） ====
 {
   const dayItems = (d) => { const m = code.match(/const HYGIENE_DAYS = \[([\s\S]*?)\n  \];/); const blk = m[1]; const parts = blk.split(/\{ d:(\d),/); const idx = parts.indexOf(String(d)); return idx > 0 ? parts[idx + 1] : ''; };
-  ok(/在庫の整理・先入先出・期限の確認/.test(dayItems(0)), '日曜：在庫の整理・先入先出・期限の確認（③）');
-  ok(/器の数を数える・欠け（チップ）の確認/.test(dayItems(3)) && /食器類のケース・破損確認/.test(dayItems(3)), '水曜：器の数と欠けの確認（①②）＝既存の食器項目は残す');
-  ok(/見えない所の埃（トイレの換気扇・棚の上）/.test(dayItems(4)), '木曜：トイレの換気扇・棚の上（④）');
+  ok(/在庫の整理（先入先出・期限切れ）/.test(dayItems(0)), '日曜：在庫の整理（先入先出・期限切れ）（③）');
+  ok(/器の数と欠け（チップ）/.test(dayItems(3)) && /食器類のケース・破損確認/.test(dayItems(3)), '水曜：器の数と欠け（①②）＝既存の食器項目は残す');
+  ok(/見えない所の埃（トイレ換気扇・棚の上）/.test(dayItems(4)), '木曜：トイレ換気扇・棚の上（④）');
   ok(/スタッフルーム・厨房の整理整頓/.test(dayItems(6)), '土曜：スタッフルーム・厨房の整理整頓（④）');
-  ok(/在庫数の「備品」に入れる/.test(code) && /怪我につながる/.test(code), '器の項目に「在庫数の備品へ」「怪我」の説明がある');
+  ok(/「在庫数」の器の欄へ／欠け・ひびは取り除く（怪我のもと）/.test(code), '器の項目の説明＝在庫数の器の欄へ・欠けは取り除く（短く）');
   run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_ckmode', 'hygiene'); localStorage.setItem('yosakura_hygall', '1'); });
   location.hash = '#/app/checklist';
   const hw = registry.app.innerHTML;
-  ok(/器の数を数える・欠け（チップ）の確認/.test(hw) && /在庫の整理・先入先出・期限の確認/.test(hw) && /スタッフルーム・厨房の整理整頓/.test(hw), '定期衛生（全曜日表示）に4項目が出る');
+  ok(/器の数と欠け（チップ）/.test(hw) && /在庫の整理（先入先出・期限切れ）/.test(hw) && /スタッフルーム・厨房の整理整頓/.test(hw), '定期衛生（全曜日表示）に4項目が出る');
+}
+// ==== 画面292: 田中さんの週次のお願い＝文言を短く・器の在庫を業態別に最初から・点検から在庫数へ（2026-09-25 神田さん「詰めが甘いと言われないように」） ====
+{
+  ok(/ja:'器の数と欠け（チップ）',[^\n]*go:'\/app\/zaiko'/.test(code), '水曜の器の項目に「在庫数を入力へ」の行き先がある');
+  ok(!/2026-09-25 田中さん）'/.test(code.slice(code.indexOf('const HYGIENE_DAYS'), code.indexOf('const CK_COMMON'))), '定期衛生の説明文から長い注記を外した（短く）');
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_ckmode', 'hygiene'); localStorage.setItem('yosakura_hygall', '1'); });
+  location.hash = '#/app/checklist';
+  const hw = registry.app.innerHTML;
+  ok(/data-ckgo="\/app\/zaiko"[^>]*>在庫数を入力へ ›</.test(hw), '定期衛生（全体表示）の器の項目に「在庫数を入力へ ›」ボタンが出る');
+  ok(/if \(e\.target\.closest\('\[data-ckgo\]'\)\) \{ go\(/.test(code), 'ボタンを押してもチェックは切り替わらない（別画面へ移動）');
+  // 器の既定＝業態ごと
+  run(() => { setLS('manager', '日本鰻世桜 京都祇園店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in'); });
+  location.hash = '#/app/zaiko';
+  const z1 = registry.app.innerHTML;
+  ok(/器（水曜に数える）/.test(z1) && /３連皿/.test(z1) && /どんぶり/.test(z1) && /卓上タレ入れ/.test(z1), '鰻の店＝既定が無い店でも「器（水曜に数える）」に３連皿・どんぶり・卓上タレ入れが最初から入る');
+  run(() => { setLS('manager', '寿司世桜 心斎橋店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in'); });
+  location.hash = '#/app/zaiko';
+  ok(/海鮮丼皿/.test(registry.app.innerHTML) && /ペアリンググラス/.test(registry.app.innerHTML), '寿司の店＝心斎橋の備品リストの器が入る');
+  run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in'); });
+  location.hash = '#/app/zaiko';
+  const z3 = registry.app.innerHTML;
+  ok(/器（水曜に数える）/.test(z3) && /牛カツ皿（運ぶ皿）/.test(z3) && /食材管理①（毎日）/.test(z3), '長堀橋＝紙から写した既定の後ろに器が足される（既存の品目は残る）');
+  run(() => { setLS('manager', '日本料理世桜本店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in'); });
+  location.hash = '#/app/zaiko';
+  const z4 = registry.app.innerHTML;
+  ok(/器（水曜に数える）/.test(z4) && /汁椀/.test(z4) && !/海鮮丼皿/.test(z4), '一覧の無い業態（日本料理）＝共通6品だけ。他業態の器は混ざらない');
 }
 // ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
 {
