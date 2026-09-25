@@ -8822,13 +8822,14 @@
         ${NOTE({ ja:'◆ スタッフから直接届いた相談・通報です。受付 平日9:00〜18:00、回答は原則翌営業日（窓口＝世桜本部）。取り扱いは慎重に', en:'◆ Reports sent directly by staff. Hours weekdays 9:00–18:00; reply next business day. Handle with care.', vi:'◆ Báo cáo gửi trực tiếp từ nhân viên. Xử lý thận trọng.' })}
         <div class="card"><h3>${L({ ja:'受け付けた通報', en:'Received reports', vi:'Báo cáo đã nhận' })}</h3>
           ${list.length ? list.map(r => `<div class="rep">
-            <span class="kind ${done.includes(r.t)?'':'a'}">${esc(whistleKindLabel(r.kind2 || whistleKindOf(r.cat)))}：${esc(whistleCatLabel(r.cat))}</span>
-            <div class="body"><div class="l1">${esc(r.body||'—')}</div>
+            ${/* 画面299：バッジは区分だけ（長い種類名を入れると折り返せず画面からはみ出す＝9/25 神田さん）。種類は本文側に */''}
+            <span class="kind ${done.includes(r.t)?'':'a'}">${esc(whistleKindLabel(r.kind2 || whistleKindOf(r.cat)))}</span>
+            <div class="body"><div class="l2" style="color:var(--suou);font-weight:700">${esc(whistleCatLabel(r.cat))}</div><div class="l1" style="white-space:normal">${esc(r.body||'—')}</div>
             <div class="l2">${r.anon ? L({ ja:'匿名', en:'Anonymous', vi:'Ẩn danh' }) : esc(r.store||'—')} ・ ${timeAgo(r.t)}</div></div>
             <button class="mini ${done.includes(r.t)?'on':''}" data-whdone="${r.t}">${done.includes(r.t) ? L({ ja:'対応済', en:'Done', vi:'Đã xử lý' }) : L({ ja:'未対応', en:'Open', vi:'Chưa xử lý' })}</button>
           </div>`).join('') : `<div class="muted">${L({ ja:'まだ通報はありません', en:'No reports yet', vi:'Chưa có báo cáo' })}</div>`}
         </div>
-        <p class="hint">${L({ ja:'※ 9/25 構築MTG決定＝窓口は世桜本部（yosakura.fc@gmail.com）・受付 平日9:00〜18:00・回答 原則翌営業日・カスハラは「カスハラ対応記録」に記録。公益通報はハラスメントと分けて扱う', en:'HQ to decide report address, handler, anonymity, retention and response flow (pending).', vi:'HQ quyết định địa chỉ, người phụ trách, ẩn danh, lưu trữ và quy trình (chưa chốt).' })}</p>`;
+        <p class="hint" style="overflow-wrap:anywhere">${L({ ja:'※ 9/25 構築MTG決定＝窓口は世桜本部 yosakura.fc@gmail.com ／受付 平日9:00〜18:00／回答 原則翌営業日／カスハラは「カスハラ対応記録」に記録。公益通報はハラスメントと分けて扱う', en:'HQ to decide report address, handler, anonymity, retention and response flow (pending).', vi:'HQ quyết định địa chỉ, người phụ trách, ẩn danh, lưu trữ và quy trình (chưa chốt).' })}</p>`;
     }
     // スタッフ・店長・オーナー＝通報フォーム
     const store = visibleStores()[0];
