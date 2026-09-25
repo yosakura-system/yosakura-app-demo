@@ -2227,13 +2227,39 @@
     const rows = getZk('zaikomaster').filter(r => r.store === store).sort((a, b) => b.t - a.t);
     const p = rows.length ? parseNote(rows[0].note) : null;
     const saved = (p && Array.isArray(p.items)) ? p.items.filter(it => it && it.n) : [];
-    return saved.length ? saved : (ZK_DEFAULT_ITEMS[store] || []).map(it => Object.assign({}, it));   // 保存が無ければ既定（在庫チェック表の転記）
+    return saved.length ? saved : zkDefaultsFor_(store);   // 保存が無ければ既定（在庫チェック表の転記＋業態の器）
   }
   const zkIsDefault = (store) => !getZk('zaikomaster').some(r => r.store === store);
+  /* ★器（週次・水曜に数える）＝田中さん 2026-09-25「週次で器の棚卸し・チップの確認」（いる・いらないシート No.59）。
+     出典＝本部ドライブ「2.初回発注 備品リスト」（2026-09-25 読取）
+       寿司＝2.寿司世桜備品【心斎橋店】のマルシン・兼光の器（個数14＝席数）
+       鰻＝5.日本鰻世桜備品【長堀橋】のマルシン・山口陶器＋6.浅草橋（３連皿・茶碗・どんぶりは50、卓上薬味入れ22、卓上タレ入れ11）
+       牛カツ＝7.和牛世桜備品【広島】本部手配分の「[牛カツ] 茶碗×24」＋全業態共通のマルシン行（サラダ皿・牛カツを運ぶ皿）
+       和牛・日本料理・手巻き寿司＝備品リストに器の一覧が無い → 全業態共通の6品だけ（店長が「品目・基準在庫」で足す）
+     std＝初回発注の個数（これを下回ったら「減っている」の目安）。数が分からない物は空欄＝発注リストには出ない */
+  const ZK_TW_G = '器（水曜に数える）';
+  const zkTw_ = (rows) => rows.map(r => ({ g: ZK_TW_G, n: r[0], std: r[2] == null ? '' : r[2], u: r[1], f: 'wed' }));
+  const ZK_TW_COMMON = [['茶碗', '個', ''], ['汁椀', '個', ''], ['湯呑', '個', ''], ['グラス', '個', ''], ['ビールグラス', '個', ''], ['箸置き', '個', '']];
+  const ZK_TABLEWARE = {
+    '鰻': zkTw_([['３連皿', '枚', 50], ['茶碗', '個', 50], ['どんぶり', '個', 50], ['汁椀', '個', ''], ['卓上薬味入れ', '個', 22], ['卓上タレ入れ', '個', 11], ['湯呑', '個', ''], ['グラス', '個', ''], ['ビールグラス', '個', ''], ['箸置き', '個', '']]),
+    '牛カツ': zkTw_([['茶碗', '個', 24], ['汁椀', '個', ''], ['牛カツ皿（運ぶ皿）', '枚', ''], ['サラダ皿', '枚', ''], ['卓上薬味入れ', '個', ''], ['湯呑', '個', ''], ['グラス', '個', ''], ['ビールグラス', '個', ''], ['箸置き', '個', '']]),
+    '寿司': zkTw_([['海鮮丼皿', '枚', 14], ['手巻き寿司食器（こめ）', '個', 14], ['手巻き食器（いくら）', '個', 14], ['手巻き寿司（トレー）', '枚', 14], ['手巻き寿司（醤油入れ）', '個', 14], ['手巻き寿司（ミニスプーン）', '本', 14], ['松茸吸い物だし容器', '個', 14], ['蛤だし容器', '個', 14], ['鯛だし容器', '個', ''], ['味噌汁容器（朱色）', '個', 14], ['鰹だし容器（耐熱グラス）', '個', 12], ['抹茶容器', '個', 14], ['お茶用コップ（陶器）', '個', 14], ['おしぼり置き', '個', 14], ['箸置き', '個', 14], ['グラス', '個', 14], ['ビールグラス', '個', 14], ['ペアリンググラス', '個', 14]]),
+    '手巻き': zkTw_([['手巻き寿司食器（こめ）', '個', ''], ['手巻き食器（いくら）', '個', ''], ['手巻き寿司（トレー）', '枚', ''], ['手巻き寿司（醤油入れ）', '個', ''], ['手巻き寿司（ミニスプーン）', '本', ''], ['味噌汁容器', '個', ''], ['お茶用コップ（陶器）', '個', ''], ['箸置き', '個', ''], ['グラス', '個', ''], ['ビールグラス', '個', '']]),
+    '和牛': zkTw_(ZK_TW_COMMON),
+    '日本料理': zkTw_(ZK_TW_COMMON)
+  };
+  const zkFormatOf_ = (store) => { const n = String(store || ''); return /^日本鰻/.test(n) ? '鰻' : /^牛カツ/.test(n) ? '牛カツ' : /^手巻き/.test(n) ? '手巻き' : /^寿司/.test(n) ? '寿司' : /^和牛/.test(n) ? '和牛' : /^日本料理/.test(n) ? '日本料理' : ''; };
+  /* 店舗の既定＝紙から写した品目（あれば）＋業態の器。既定に同名があれば器の方は足さない */
+  function zkDefaultsFor_(store) {
+    const base = (ZK_DEFAULT_ITEMS[store] || []).map(it => Object.assign({}, it));
+    const have = {}; base.forEach(it => { have[String(it.n || '').trim()] = true; });
+    const tw = (ZK_TABLEWARE[zkFormatOf_(store)] || []).filter(it => !have[it.n]).map(it => Object.assign({}, it));
+    return base.concat(tw);
+  }
   /* 既定（本部が紙から写した品目）のうち、いまの一覧に無いもの＝店長が保存した後に本部が既定を足したとき用（2026-09-19 牛カツ富士山） */
   function zkMissingDefaults(store) {
     const have = {}; zkMaster(store).forEach(it => { have[String(it.n || '').trim()] = true; });
-    return (ZK_DEFAULT_ITEMS[store] || []).filter(it => !have[String(it.n || '').trim()]);
+    return zkDefaultsFor_(store).filter(it => !have[String(it.n || '').trim()]);
   }
   /* ★数の読み方（2026-09-21 長堀橋「入力できない」の再発防止）＝全角の数字（１２）・単位つき（3本）・分数（1/2）・カンマも読む。
      読めない文字（例：abc）は NaN を返し、提出側で「どの欄か」を示す（黙って落とさない） */
@@ -2754,7 +2780,7 @@
       { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
         {ja:'荷物かご',d:{ja:'洗えるものは洗ってしっかり乾かす／洗えないものはアルコールと水拭きで／収納スペースもリセット'}},
         {ja:'収納スペースの整理整頓',d:{ja:'全部退けて拭く／いるものといらないものを分ける／定位置に収納／テプラが剥がれていたら貼り直す'}},
-        {ja:'在庫の整理・先入先出・期限の確認',en:'Stock tidy-up, FIFO & expiry check',vi:'Sắp xếp kho, nhập trước xuất trước, hạn dùng',d:{ja:'食材・飲料・備品の置き場を整える／古い物を手前に（先入先出）／期限切れ・腐敗・傷みは捨ててロス管理に記録／多すぎる在庫（超過）は次の発注を減らす／週に1回、必ず時間を作る（2026-09-25 田中さん）',en:'Tidy storage; oldest in front (FIFO); discard expired or spoiled and log it; reduce next order if overstocked.',vi:'Sắp xếp kho; hàng cũ ra trước; bỏ hàng hết hạn/hỏng và ghi vào hao hụt; giảm đặt hàng nếu dư.'}} ] } ] },
+        {ja:'在庫の整理（先入先出・期限切れ）',en:'Stock tidy-up (FIFO, expiry)',vi:'Sắp xếp kho (FIFO, hạn dùng)',d:{ja:'古い物を手前に／期限切れ・傷みは捨ててロス管理へ／多すぎる物は次の発注を減らす',en:'Oldest in front; discard expired items and log them; cut the next order if overstocked.',vi:'Hàng cũ ra trước; bỏ hàng hết hạn và ghi hao hụt; giảm đặt hàng nếu dư.'}} ] } ] },
     { d:1, g:[
       { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
         {ja:'ゴミ箱の洗浄',d:{ja:'キッチンとトイレのゴミ箱／全体にマジックリン／不要なスポンジで磨く（特に底）／水で流し、逆さにして水気を切る'}},
@@ -2777,7 +2803,7 @@
         {ja:'食器類のケース・破損確認',d:{ja:'食器を出してケース内をアルコールで拭く／戻してテプラを貼り直す／ひび割れや破損がないか確認'}},
         {ja:'冷凍庫（内部・外部）',d:{ja:'中身を全部出す／ダスターを湿らせアルコールで拭く／ストック用ケースはシンクで洗浄／外側の扉も'}},
         {ja:'冷凍庫（フィルター）',d:{ja:'取り外してシンクで洗い流す／乾かしてから戻す'}},
-        {ja:'器の数を数える・欠け（チップ）の確認',en:'Count tableware & check for chips',vi:'Đếm bát đĩa & kiểm tra mẻ',d:{ja:'器の種類ごとに数を数え、在庫数の「備品」に入れる（減っていると最適なオペレーションが組めない）／欠け・ひびのある器は取り除く（見栄えだけでなく、怪我につながる）／減った分・欠けた数は本部へ（2026-09-25 田中さん）',en:'Count each type and enter it in Stock (supplies); remove chipped or cracked pieces (injury risk); report shortfalls to HQ.',vi:'Đếm từng loại và nhập vào Tồn kho (vật tư); loại bỏ đồ mẻ/nứt (nguy cơ thương tích); báo HQ số thiếu.'}} ] },
+        {ja:'器の数と欠け（チップ）',en:'Tableware count & chips',vi:'Đếm bát đĩa & đồ mẻ',go:'/app/zaiko',goT:{ja:'在庫数を入力へ',en:'Open Stock count',vi:'Mở Tồn kho'},d:{ja:'種類ごとに数えて「在庫数」の器の欄へ／欠け・ひびは取り除く（怪我のもと）',en:'Count each type into Stock (tableware); remove chipped or cracked pieces.',vi:'Đếm từng loại vào Tồn kho (bát đĩa); loại bỏ đồ mẻ/nứt.'}} ] },
       { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
         {ja:'レジカウンター周辺',d:{ja:'レジ周りの埃／整理整頓／アルコールで全体を拭く／金銭トレイ・チラシ立ても／カウンターの後ろも／傘立ては水を捨てて掃除'}},
         {ja:'バックヤード',d:{ja:'何がどこにあるか見て分かるように整理し、名称を表示／昼と夜の物を分ける／使ったものは必ず元に戻す'}},
@@ -2789,7 +2815,7 @@
       { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
         {ja:'カーテン・暖簾',d:{ja:'カーテンは外さず、下の部分を洗剤入りの水でもみ洗い／暖簾は湿らせたダスターに洗剤をつけて汚れを取る／レールや金具も'}},
         {ja:'エアコンの吹き出し口',d:{ja:'フィルターが外れれば外して洗浄、外れなければアルコールで拭く／埃が落ちるので清掃後はカウンターや床も掃除'}},
-        {ja:'見えない所の埃（トイレの換気扇・棚の上）',en:'Hidden dust: toilet fan & top of shelves',vi:'Bụi nơi khuất: quạt WC & nóc kệ',d:{ja:'トイレの換気扇のカバーと羽根の埃／棚の上・冷蔵庫の上・パーテーションの上／見えない所を綺麗にできないと、盛り付けや提供も細かく見られなくなる（2026-09-25 田中さん）',en:'Dust on toilet fan cover and blades; tops of shelves, fridge and partitions.',vi:'Bụi trên nắp và cánh quạt WC; nóc kệ, nóc tủ lạnh, vách ngăn.'}} ] } ] },
+        {ja:'見えない所の埃（トイレ換気扇・棚の上）',en:'Hidden dust (toilet fan, shelf tops)',vi:'Bụi nơi khuất (quạt WC, nóc kệ)',d:{ja:'換気扇のカバーと羽根／棚・冷蔵庫の上',en:'Fan cover and blades; tops of shelves and fridge.',vi:'Nắp và cánh quạt; nóc kệ và tủ lạnh.'}} ] } ] },
     { d:5, g:[
       { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
         {ja:'冷蔵冷凍庫（パッキン）',d:{ja:'全部外してお湯＋ケミクールに漬ける／外した箇所をアルコールで拭く／漬けたパッキンをブラシで洗う／水気を取ってから戻す'}},
@@ -2802,12 +2828,15 @@
       { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
         {ja:'ポットの洗浄',d:{ja:'専用の洗浄剤を使用方法に従って／本体もアルコールで拭く（放置すると汚れが落ちなくなり故障の原因に）'}},
         {ja:'シンク下・作業台下',d:{ja:'下の物を全部出す／アルコールで汚れを拭き取る／出した物が汚れていれば拭く／元に戻す（全部出さないときれいにならない）'}},
-        {ja:'スタッフルーム・厨房の整理整頓',en:'Staff room & kitchen tidy-up',vi:'Dọn phòng nhân viên & bếp',d:{ja:'スタッフルームの私物・段ボール・書類を片づける／厨房の棚・作業台の上に物を置きっぱなしにしない／ゴミ箱の中とフードダクトの周りも見る／見えない場所を綺麗にできると、細かい部分に気づける（2026-09-25 田中さん）',en:'Clear personal items, boxes and papers; nothing left on kitchen shelves or counters; check inside bins and around the hood.',vi:'Dọn đồ cá nhân, thùng, giấy tờ; không để đồ trên kệ/bàn bếp; xem trong thùng rác và quanh hút mùi.'}} ] },
+        {ja:'スタッフルーム・厨房の整理整頓',en:'Staff room & kitchen tidy-up',vi:'Dọn phòng nhân viên & bếp',d:{ja:'私物・段ボール・書類を片づける／ゴミ箱の中とフードダクトの周りも見る',en:'Clear personal items, boxes and papers; check inside bins and around the hood.',vi:'Dọn đồ cá nhân, thùng, giấy; xem trong thùng rác và quanh hút mùi.'}} ] },
       { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
         {ja:'外看板の清掃',d:{ja:'フィルムやフレームを拭き上げ／同時に外観の清掃も／コンセントの故障やポスターの色褪せも確認'}},
         {ja:'椅子',d:{ja:'フレームや脚を拭き上げ／足を乗せる場所の黒ずみは必ず落とす／脚裏のアジャスターやクッションが取れていないか'}} ] } ] }
   ];
   const CK_COMMON = { open: CHECK_GROUPS, idle: IDLE_GROUPS, close: CLOSE_GROUPS, sakura: SAKURA_GROUPS };
+  /* ★点検項目から別画面へ（画面292・2026-09-25）＝項目に go があれば小さなボタンを出す（例：器の数→在庫数の入力へ）。
+     行のタップ＝チェックの切替なので、ボタンは data-ckgo で切替から除外する */
+  const ckGoBtn_ = (it) => it && it.go ? ` <button type="button" class="mini" data-ckgo="${esc(it.go)}" style="margin-left:6px;padding:3px 9px;font-size:11.5px;vertical-align:middle">${esc(L(it.goT || { ja:'開く', en:'Open', vi:'Mở' }))} ›</button>` : '';
   /* ★手巻き寿司業態（難波店）専用の初期チェックリスト（2026-09-02 永井さん経由・難波店のご要望）。
      「店の作りが違い、共通シートだと項目が抜ける」→ 難波店の紙チェックシート
      （OPEN業務／中間業務lunch後・dinner前／CLOSE業務・2026/04/24-25更新版）を、そのまま項目化した。
@@ -3265,7 +3294,7 @@
         const rows2 = ckGroupsOf('hygiene', d).map((gr, gi) => gr.items.map((it, ii) => {
           const id = `${idB}-c-${gi}-${ii}`;
           if (hid.includes(id)) return '';
-          return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span></div>`;
+          return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(L(it))}${ckGoBtn_(it)}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span></div>`;
         }).join('')).join('')
           + dayCustom.map(c => `<div class="check ${done[c.id]?'done':''}" data-ck="${c.id}"><span class="box">${svg('tick')}</span><span class="lbl">${esc(c.label)}</span></div>`).join('');
         if (!rows2) return '';
@@ -3290,7 +3319,7 @@
         const id = `${idBase}-c-${gi}-${ii}`;
         if (hidden.includes(id)) return '';
         // ×は右端に重ねて出るので、文章がその下へ潜らないように右側を空ける
-        return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl"${canHide && canRemove ? ' style="padding-right:26px"' : ''}>${esc(L(it))}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span>${canHide && canRemove ? `<button class="ck-del" data-ckhide="${id}" aria-label="${esc(L({ ja:'この店舗では使わない', en:'Not used at this store', vi:'Không dùng ở cửa hàng này' }))}">×</button>` : ''}</div>`;
+        return `<div class="check ${done[id]?'done':''}" data-ck="${id}"><span class="box">${svg('tick')}</span><span class="lbl"${canHide && canRemove ? ' style="padding-right:26px"' : ''}>${esc(L(it))}${ckGoBtn_(it)}${it.d ? `<small style="display:block;color:var(--gray);font-weight:400;line-height:1.5;margin-top:3px">${esc(L(it.d))}</small>` : ''}</span>${canHide && canRemove ? `<button class="ck-del" data-ckhide="${id}" aria-label="${esc(L({ ja:'この店舗では使わない', en:'Not used at this store', vi:'Không dùng ở cửa hàng này' }))}">×</button>` : ''}</div>`;
       }).join('');
       // この分類に振り分けられた追加項目は、グループの末尾に出す
       const extras = custom.filter(c => c.g && c.g === grpJa(gr)).map(customRow).join('');
@@ -10422,6 +10451,7 @@
     // チェックのON/OFF（店舗×モード×当日で保存）
     document.querySelectorAll('[data-ck]').forEach(row => row.onclick = (e) => {
       if (e.target.closest('[data-ckdel]') || e.target.closest('[data-ckhide]') || e.target.closest('[data-ckgrp]')) return; // 削除・非表示・分類ボタンは別処理
+      if (e.target.closest('[data-ckgo]')) { go(e.target.closest('[data-ckgo]').dataset.ckgo); return; }   // 画面292：項目から別画面へ（チェックは切り替えない）
       const store = visibleStores()[0], mode = getCkMode(), key = ckDoneKey(store, mode), id = row.dataset.ck;
       const map = getCkDone(); const day = map[key] || {}; day[id] = !day[id]; map[key] = day;
       /* ★2026-09-23 神田さん「履歴が全部消えてる」＝間引きのキーが store||mode||日付 の形なのに、
