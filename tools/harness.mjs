@@ -5914,8 +5914,9 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   run(() => { setLS('hq', '', 'ja'); localStorage.setItem('yosakura_demo_whistle', JSON.stringify([{ store:'', cat:'customer', kind2:'harass', body:'テスト', anon:true, t: Date.now() - 1000 }, { store:'牛カツ世桜 長堀橋店', cat:'fraud', body:'テスト2', anon:false, t: Date.now() - 2000 }])); });
   location.hash = '#/app/whistle';
   const hqw = registry.app.innerHTML;
-  ok(/ハラスメントの相談：お客様からの暴言・威圧・不当な要求（カスハラ）/.test(hqw) && /公益通報：不正行為/.test(hqw), '本部一覧は区分：種類で出る（古い送信は種類から区分を判定）');
-  ok(!/本部で決定してください（未確定）/.test(hqw) && /受付 平日9:00〜18:00・回答 原則翌営業日/.test(hqw), '本部側の「未確定」の注記は決定内容に置き換わった');
+  ok(/class="kind a">ハラスメントの相談<\/span>/.test(hqw) && /class="kind a">公益通報<\/span>/.test(hqw), '本部一覧のバッジは区分だけ（画面299＝長い種類名でスマホ幅からはみ出さない）');
+  ok(/>お客様からの暴言・威圧・不当な要求（カスハラ）<\/div>/.test(hqw) && />不正行為<\/div>/.test(hqw), '種類は本文側の行に出る（古い送信は種類から区分を判定）');
+  ok(!/本部で決定してください（未確定）/.test(hqw) && /受付 平日9:00〜18:00／回答 原則翌営業日/.test(hqw), '本部側の「未確定」の注記は決定内容に置き換わった');
   ok(!/公益通報・コンプラ窓口/.test(code.slice(code.indexOf("name:{ ja:'相談・通報窓口'") - 200, code.indexOf("name:{ ja:'相談・通報窓口'") + 50)), 'メニュー名は「相談・通報窓口」');
 }
 // ==== 画面298: 数字の要確認＝「フードとドリンクが逆では？」（2026-09-25 神田さん・寿司世桜の総括表） ====
