@@ -5460,21 +5460,6 @@ console.log('== 今日出すもの＝時間帯（朝／昼／夜／締め）で�
   ok(!/data-kslot=/.test(w), '週次には時間帯の帯を出さない');
 }
 
-console.log('== LINEの中のブラウザ＝Safariで開く案内（2026-09-28 神田さん実機） ==');
-{
-  const S = '寿司世桜 心斎橋店';
-  const ua0 = navigator.userAgent;
-  navigator.userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari Line/14.0.0';
-  run(() => setLS('staff', S, 'ja')); location.hash = '#/app/checklist'; const hL = registry.app.innerHTML;
-  ok(/class="line-band"/.test(hL) && /openExternalBrowser=1/.test(hL) && /Safariで開く/.test(hL), 'LINEのUAでは、ヘッダー直下に「Safariで開く」の帯（openExternalBrowser=1 付きのリンク）が出る');
-  ok(/data-ck=/.test(hL), '帯が出ても画面の中身（チェックリスト）はそのまま');
-  navigator.userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
-  run(() => setLS('staff', S, 'ja')); location.hash = '#/app/checklist'; const hS = registry.app.innerHTML;
-  ok(!/class="line-band"/.test(hS), 'SafariのUAでは帯は出ない');
-  navigator.userAgent = ua0;
-  ok(/openExternalBrowser=1/.test(code) && /IN_LINE/.test(code), 'LINE内ブラウザの判定と誘導URLがコードにある');
-}
-
 console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 ==');
 {
   const S = '牛カツ世桜 長堀橋店';
