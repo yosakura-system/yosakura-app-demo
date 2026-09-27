@@ -325,8 +325,10 @@
       name:{ ja:'金種別入力（レジクローズ）', en:'Cash Denomination Count', vi:'Kiểm đếm mệnh giá' },
       desc:{ ja:'お札・硬貨の枚数を入力→合計と差異を自動計算', en:'Enter counts; totals auto-calculated', vi:'Nhập số lượng; tự tính tổng' } },
     /* 在庫（2026-09-18 長堀橋の現場の声）＝在庫チェック表の写真の代わりに数を入れる。基準を下回った品目は発注リストへ。
-       入力＝店舗iPad（スタッフ）・発注の印と品目登録＝店長。長堀橋から試す（提出物マスタ側の stores で対象を決める） */
-    { id:'zaiko', group:'genba', icon:'box', tabHide:true, roles:['staff','manager','owner','hq'],
+       入力＝店舗iPad（スタッフ）・発注の印と品目登録＝店長。長堀橋から試す（提出物マスタ側の stores で対象を決める）
+       ★2026-09-27 神田さん「在庫の画面まで何ステップも要る」＝tabHide を外し、報告タブの「現場業務」にも並べる
+         （「今日出すもの」の行からも開ける。日次業務と同じものは報告タブに並べない方針（8/12）の例外＝いまの在庫・発注リストは日次の提出以外にも見に来る画面） */
+    { id:'zaiko', group:'genba', icon:'box', roles:['staff','manager','owner','hq'],
       name:{ ja:'在庫（数と発注）', en:'Stock (counts & orders)', vi:'Tồn kho (đếm & đặt hàng)' },
       desc:{ ja:'締めに在庫数を入力→基準を下回った品目が発注リストに出る', en:'Enter counts at close; low items go to the order list', vi:'Nhập tồn kho lúc chốt ca; hàng thấp vào danh sách đặt' } },
     /* 中間報告＝長堀橋トライアル（2026-09-01）。タブには出さず「今日出すもの」の行から開く
