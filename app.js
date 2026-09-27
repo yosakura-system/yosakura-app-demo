@@ -34,12 +34,9 @@
        （ここを localStorage 任せにすると、以前この端末で本番URLを入れていた方の操作が
          本物の履歴に混ざる。配る版なので、ビルドの時点で断ち切る） */
   const TAIKEN = !API_URL_DEFAULT;
-  /* ★LINEの中のブラウザ（2026-09-28 神田さん実機＝体験版のチェックがLINE内では押せず、Safariでは押せた）。
-     LINE内ブラウザ（WKWebView）はSafariと別物で、動かない機能がある。原因を追うより、LINE公式の
-     「?openExternalBrowser=1 を付けたURLは端末の標準ブラウザで開く」を使って、Safariへ誘導する。
-     判定はUA（"Line/"）。案内はヘッダー直下の帯＝画面のどこにいても見える */
-  const IN_LINE = /\bLine\//i.test(String((typeof navigator !== 'undefined' && navigator.userAgent) || ''));
-  const lineOpenUrl_ = () => { try { const u = String(location.href || '').split('#'); const base = u[0] + (u[0].indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1'; return base + (u[1] ? '#' + u[1] : ''); } catch (e) { return '?openExternalBrowser=1'; } };
+  /* 2026-09-28 メモ＝体験版のチェックが「LINEの中のブラウザでは押せない」は、公開中の体験版が9/21の版で止まっていたのが原因
+     （LINE内ブラウザにはサービスワーカーが無く「最新にする」が効かない＝古いまま）。新しい版を公開したらLINE内でも押せた。
+     一時的に出した「Safariで開く」の帯は、事実と違うため外した。LINEから確実にSafariで開かせたいときは URL に ?openExternalBrowser=1 */
   /* 体験版のご意見の受け皿（Googleフォーム）。★URLが決まったらここに入れる。
      2026-08-13 神田さんのご判断＝アプリの中で受けると「送れたのに届かない」ため、窓口を1つにする。
      空のままなら、フォームの代わりにLINEでお知らせいただくようご案内する。 */
@@ -1305,10 +1302,6 @@
         ja:'体験版｜どこを押しても大丈夫です。入力はこの端末の中だけに残り、お店の記録には送られません。',
         en:'Trial version — tap anything. Entries stay on this device and are never sent to store records.',
         vi:'Bản dùng thử — cứ chạm thoải mái. Dữ liệu chỉ lưu trên máy này, không gửi tới hồ sơ cửa hàng.' })}</div>` : ''}
-      ${IN_LINE ? `<div class="line-band">${L({
-        ja:'LINEの中のブラウザでは、チェックなど一部が動きません。',
-        en:'Some features do not work inside the LINE browser.',
-        vi:'Một số chức năng không chạy trong trình duyệt của LINE.' })} <a href="${esc(lineOpenUrl_())}">${L({ ja:'Safariで開く ›', en:'Open in Safari ›', vi:'Mở bằng Safari ›' })}</a></div>` : ''}
       <main class="appmain" id="appmain">${inner}</main>
       <nav class="tabbar">
         ${tabs.map(([k, lbl, ic]) => `<button data-tab="${k}" class="${activeTab===k?'on':''}">${svg(ic)}${L(lbl)}</button>`).join('')}
