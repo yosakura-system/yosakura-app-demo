@@ -5469,6 +5469,24 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
   const seed = (role, tab) => { run(() => { setLS(role, S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([master, count, order])); if (tab) localStorage.setItem('yosakura_zk_tab', tab); }); };
   seed('manager'); location.hash = '#/app/zaiko'; let hIn = registry.app.innerHTML;
   ok(/data-zktab="in"/.test(hIn) && /data-zktab="order"/.test(hIn) && /data-zktab="items"/.test(hIn), '店長＝入力／発注リスト／品目・基準在庫の3タブ');
+  ok(/data-zktab="now"/.test(hIn), '「いまの在庫」タブがある（画面300・2026-09-27 長田さん「現在の在庫数の一覧」）');
+  {
+    /* いまの在庫＝品目ごとに最後に数えた値。最新の提出に無い品目の数も消えない（画面300） */
+    const dkOld = new Date(t0 - 7 * 86400e3 + 9 * 3600e3).toISOString().slice(0, 10);
+    const countOld = { kind:'zaiko', store:S, item: dkOld, note: JSON.stringify({ q:{ '牛肉':2, 'パン粉':10 }, by:'スタッフ' }), photos:[], t: t0 - 7 * 86400e3 };
+    const countNew = { kind:'zaiko', store:S, item: dk, note: JSON.stringify({ q:{ '油':1 }, by:'スタッフ' }), photos:[], t: t0 - 600e3 };
+    run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([master, countOld, countNew])); localStorage.setItem('yosakura_zk_tab', 'now'); });
+    location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hN = registry.app.innerHTML;
+    ok(/data-zktab="now"/.test(hN) && /数が入っている品目/.test(hN), 'スタッフでも「いまの在庫」タブが開く');
+    const rowOf = (n) => { const i = hN.indexOf(`data-zknow="${n}"`); if (i < 0) return ''; const st = hN.lastIndexOf('<div class="zk-row', i); return hN.slice(st, hN.indexOf('</div></div>', i)); };
+    ok(/<b style="font-size:18px">2<\/b>/.test(rowOf('牛肉')) && rowOf('牛肉').indexOf(dkOld) > 0, '最新の提出に無い品目（牛肉）は、前の提出の数2と数えた日が出る');
+    ok(/<b style="font-size:18px">1<\/b>/.test(rowOf('油')) && rowOf('油').indexOf(dk) > 0, '最新の提出の品目（油）は今日の数1と今日の日付');
+    ok(/zk-row low/.test(rowOf('牛肉')) && !/zk-row low/.test(rowOf('パン粉')), '基準5を下回る牛肉は赤、パン粉10は赤くない');
+    ok(/数が入っている品目 3 \/ 1\d</.test(hN), '数が入っている品目 3 / 12（登録3＋牛カツの器9＝入力の無い器は「—」）');
+    run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([master, countOld, countNew])); localStorage.setItem('yosakura_zk_tab', 'order'); });
+    location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hO = registry.app.innerHTML;
+    ok(/<b>牛肉<\/b>/.test(hO) && /<b>油<\/b>/.test(hO), '発注リスト＝前の提出で基準割れの牛肉も、今日の油も両方出る（最新1件だけを見ない）');
+  }
   ok(/data-zkname="牛肉"/.test(hIn) && /id="submitZk"/.test(hIn), '入力タブ＝登録した品目の欄と提出ボタン');
   ok(/data-zkname="牛肉"/.test(hIn) && (!/今日確認する品目/.test(hIn) || /器（水曜に数える）/.test(hIn)), '毎日の品目は畳まれない。折りたたみに入るのは確認日のある品目（画面292から器＝水曜）だけ');
   {

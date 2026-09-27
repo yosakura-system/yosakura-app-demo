@@ -2284,11 +2284,18 @@
     try { const k = zkDraftKey(store, dk); const d = zkDraft(store, dk); if (v === '') delete d[name]; else d[name] = v; const all = {}; all[k] = d; localStorage.setItem(ZK_LS_DRAFT, JSON.stringify(all)); } catch (e) {}
   }
   function zkDraftClear() { try { localStorage.removeItem(ZK_LS_DRAFT); } catch (e) {} }
+  /* ★いまの在庫＝品目ごとに「最後に数えた値」を合成する（画面300・2026-09-27 長田さん「現在の在庫数がいくつあるか一覧確認できますか？」）。
+     以前は最新の1件だけを見ていたため、毎日／週2／週1の品目が混ざる店（富士山）では、その日に入れなかった品目の数が
+     「いまの在庫」から消え、発注リストからも外れていた（9/26 牛カツ富士山＝固形燃料1品だけの提出で、9/19の割り箸の数が見えなくなる）。
+     q＝品目→数、qt＝品目→数えた時刻、qd＝品目→数えた日。t・dk・by は最新の提出のもの（「今日の入力があります」の判定に使う） */
   function zkLatest(store) {
     const rows = getZk('zaiko').filter(r => r.store === store).sort((a, b) => b.t - a.t);
     if (!rows.length) return null;
-    const p = parseNote(rows[0].note) || {};
-    return { q: p.q || {}, by: p.by || '', t: rows[0].t, dk: dateKeyOfItem(rows[0].item) };
+    const q = {}, qt = {}, qd = {};
+    rows.forEach(r => { const p = parseNote(r.note) || {}; const dk = dateKeyOfItem(r.item);
+      Object.keys(p.q || {}).forEach(n => { if (q[n] === undefined && p.q[n] != null && p.q[n] !== '') { q[n] = p.q[n]; qt[n] = r.t; qd[n] = dk; } }); });
+    const p0 = parseNote(rows[0].note) || {};
+    return { q, qt, qd, by: p0.by || '', t: rows[0].t, dk: dateKeyOfItem(rows[0].item) };
   }
   function zkOrdered(store) {
     const o = {};
@@ -2298,7 +2305,7 @@
   function zkLow(store) {
     const m = zkMaster(store); const l = zkLatest(store); if (!m.length || !l) return [];
     const ord = zkOrdered(store);
-    return m.filter(it => it.std != null && it.std !== '' && l.q[it.n] != null && l.q[it.n] !== '' && Number(l.q[it.n]) < Number(it.std) && !(ord[it.n] && ord[it.n] > l.t))
+    return m.filter(it => it.std != null && it.std !== '' && l.q[it.n] != null && l.q[it.n] !== '' && Number(l.q[it.n]) < Number(it.std) && !(ord[it.n] && ord[it.n] > (l.qt[it.n] || l.t)))
             .map(it => ({ n: it.n, u: it.u || '', q: Number(l.q[it.n]), std: Number(it.std), need: Math.max(0, Number(it.std) - Number(l.q[it.n])) }));
   }
   /* 月次棚卸（kind:'monthly' の closeDetail）に載っている品目名＝在庫の品目にそろえる材料（最新の月から） */
@@ -2321,11 +2328,11 @@
   APP_VIEWS.zaiko = () => {
     const vis = visibleStores(); const store = zkStore();
     let tab = ''; try { tab = localStorage.getItem(ZK_LS_TAB) || ''; } catch (e) {}
-    if (!['in', 'order', 'items'].includes(tab)) tab = 'in';
+    if (!['in', 'now', 'order', 'items'].includes(tab)) tab = 'in';
     if (tab === 'items' && !zkMgr()) tab = 'in';
     const m = zkMaster(store), l = zkLatest(store), low = zkLow(store), ord = zkOrdered(store);
     const today = dateKeyFor(store, Date.now());
-    const tabs = [['in', { ja:'在庫数を入力', en:'Enter counts', vi:'Nhập tồn' }], ['order', { ja:'発注リスト', en:'Order list', vi:'Đặt hàng' }]].concat(zkMgr() ? [['items', { ja:'品目・基準在庫', en:'Items & minimums', vi:'Mặt hàng & định mức' }]] : []);
+    const tabs = [['in', { ja:'在庫数を入力', en:'Enter counts', vi:'Nhập tồn' }], ['now', { ja:'いまの在庫', en:'Current stock', vi:'Tồn hiện tại' }], ['order', { ja:'発注リスト', en:'Order list', vi:'Đặt hàng' }]].concat(zkMgr() ? [['items', { ja:'品目・基準在庫', en:'Items & minimums', vi:'Mặt hàng & định mức' }]] : []);
     const tabBar = `<div class="seg" style="margin-bottom:10px">${tabs.map(([v, t]) => `<button type="button" class="${tab === v ? 'on' : ''}" data-zktab="${v}">${esc(L(t))}${v === 'order' && low.length ? ` <span class="zk-n">${low.length}</span>` : ''}</button>`).join('')}</div>`;
     const storeSel = vis.length > 1 ? `<label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="zk_store">${vis.map(x => `<option${x === store ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : '';
     let body = '';
@@ -2355,8 +2362,26 @@
         <button class="btn-primary" id="submitZk">${L({ ja:'在庫数を提出する', en:'Submit counts', vi:'Gửi số tồn' })}</button>
         <div class="hint">${L({ ja:'※ 基準を下回った品目は、提出した時点で「発注リスト」と「今日出すもの」に赤で出ます。', en:'Items below minimum appear in red on the order list and today’s list.', vi:'Hàng dưới định mức sẽ hiện đỏ ở danh sách đặt và việc hôm nay.' })}</div>`;
       }
+    } else if (tab === 'now') {
+      /* ★いまの在庫（画面300・2026-09-27）＝全品目を登録順に、最後に数えた数と日付。赤＝基準を下回っている。入力が無い品目は「—」。
+         オーナー・本部は店舗を切り替えて見られる（同じ画面）。新しい画面は作らず在庫タブの中に足した */
+      if (!m.length) body = `<div class="muted">${L({ ja:'品目がまだ登録されていません。', en:'No items registered yet.', vi:'Chưa đăng ký mặt hàng.' })}</div>`;
+      else if (!l) body = `<div class="muted">${L({ ja:'まだ在庫数の入力がありません。', en:'No counts yet.', vi:'Chưa có số tồn.' })}</div>`;
+      else {
+        let cnt = 0;
+        const rows = m.map((it, i) => {
+          const cur = l.q[it.n]; const has = cur != null && cur !== ''; if (has) cnt++;
+          const below = has && it.std != null && it.std !== '' && Number(cur) < Number(it.std);
+          const prev = m[i - 1]; const head = (it.g && (!prev || prev.g !== it.g)) ? `<div class="zk-grp" style="margin-top:${i ? 14 : 2}px">${esc(it.g)}</div>` : '';
+          return `${head}<div class="zk-row${below ? ' low' : ''}" data-zknow="${esc(it.n)}"><div><b>${esc(it.n)}</b><br><span style="color:#6B635A">${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) + esc(it.u || '') : '—'}</span></div>
+            <div style="text-align:right;flex:none"><b style="font-size:18px">${has ? esc(String(cur)) : '—'}</b>${has ? `<small> ${esc(it.u || '')}</small>` : ''}<br><span style="color:#6B635A;font-size:12px">${has ? esc(l.qd[it.n] || '') : L({ ja:'未入力', en:'not counted', vi:'chưa đếm' })}</span></div></div>`;
+        }).join('');
+        body = `<div class="hint" style="display:block">${L({ ja:'品目ごとに「最後に数えた数」と「数えた日」です。赤は基準を下回っている品目。数を直すときは「在庫数を入力」から。', en:'Last counted quantity and date per item. Red = below minimum. Fix counts in “Enter counts”.', vi:'Số đếm gần nhất và ngày đếm theo mặt hàng. Đỏ = dưới định mức.' })}</div>
+          <div class="idlabel">${L({ ja:'数が入っている品目', en:'Counted items', vi:'Đã đếm' })} ${cnt} / ${m.length}</div>
+          <div class="zk-list">${rows}</div>`;
+      }
     } else if (tab === 'order') {
-      const recent = Object.keys(ord).filter(n => l && ord[n] > l.t);
+      const recent = Object.keys(ord).filter(n => l && ord[n] > (l.qt[n] || l.t));
       body = low.length ? `<div class="zk-list">${low.map(x => `<div class="zk-row low"><div><b>${esc(x.n)}</b><br><span>${L({ ja:'残り', en:'left', vi:'còn' })} ${x.q}${esc(x.u)} ／ ${L({ ja:'基準', en:'min', vi:'định mức' })} ${x.std}${esc(x.u)} ／ ${L({ ja:'発注の目安', en:'order', vi:'cần đặt' })} <b>${x.need}</b>${esc(x.u)}</span></div>${zkMgr() ? `<button class="mini" data-zkorder="${esc(x.n)}">${L({ ja:'発注した', en:'Ordered', vi:'Đã đặt' })}</button>` : ''}</div>`).join('')}</div>
         <div class="hint">${zkMgr() ? L({ ja:'「発注した」を押すと一覧から外れます（次の在庫入力でまた判定します）。', en:'“Ordered” removes it until the next count.', vi:'“Đã đặt” sẽ ẩn đến lần nhập sau.' }) : L({ ja:'発注は店長が行います。', en:'The manager places orders.', vi:'Quản lý sẽ đặt hàng.' })}</div>`
         : `<div class="muted">${l ? L({ ja:'いま基準を下回っている品目はありません。', en:'No items below minimum.', vi:'Không có hàng dưới định mức.' }) : L({ ja:'まだ在庫数の入力がありません。', en:'No counts yet.', vi:'Chưa có số tồn.' })}</div>`;
