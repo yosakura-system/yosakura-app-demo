@@ -884,6 +884,9 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 .zk-in input.zk-bad { border-color: #C0392B; background: #FBF1F2; }   /* 数字として読めない欄（2026-09-21） */
 .zk-in input { width: 92px; flex: none; text-align: right; padding: 10px 8px; }
 .zk-in.low input { border-color: var(--suou); background: #fbf1f2; }
+/* 画面300（2026-09-27）＝「いまの在庫」「発注リスト」の行で、基準を下回った品目は枠と数を赤に */
+.zk-row.low { border-color: var(--suou); background: #fbf1f2; }
+.zk-row.low > div:last-child b { color: var(--suou); }
 .zk-head, .zk-edit { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
 .zk-head span { font-size: 11px; color: #8a8478; }
 .zk-head span:nth-child(1), .zk-edit input:nth-child(1) { flex: 1.4; min-width: 0; }
