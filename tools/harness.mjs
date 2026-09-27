@@ -2242,7 +2242,9 @@ console.log('== 「報告する」タブに、日次・週次・月次と同じ�
   run(() => setLS('manager', S4, 'ja'));
   location.hash = '#/home?tab=genba';
   const tabIds = [...registry.app.innerHTML.matchAll(/data-open="([a-zA-Z_]+)"/g)].map(m => m[1]);
-  const dup = tabIds.filter(id => opened.has(id));
+  /* 在庫（zaiko）は例外＝2026-09-27 神田さん「在庫の画面まで何ステップも要る」→ 報告タブにも並べる（いまの在庫・発注リストは日次の提出以外にも見に来る） */
+  const dup = tabIds.filter(id => opened.has(id) && id !== 'zaiko');
+  ok(tabIds.includes('zaiko'), '在庫（数と発注）は報告タブの現場業務に並ぶ（画面301・2026-09-27 神田さん）');
   ok(dup.length === 0, `タブに、日次・週次・月次と同じものが残っていない${dup.length ? '（重複: ' + dup.join(',') + '）' : ''}`);
 
   /* 日次・週次・月次そのものも、ホームに常に出ているのでタブには並べない（2026-08-12）。
