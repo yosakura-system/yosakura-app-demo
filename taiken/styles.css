@@ -498,14 +498,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 
 /* 体験版の帯（2026-08-12）。勉強会のあとに加盟店の皆さまへお配りする版でだけ出る。
    ヘッダーの直下に固定で置き、どの画面へ移っても「触っても大丈夫」が視界に残るようにする。 */
-/* LINEの中のブラウザで開いたときの案内（2026-09-28）＝体験版の帯と同じ位置・目立つ黄 */
-.line-band {
-  flex-shrink: 0; z-index: 8;
-  background: #FFF4CC; color: #1A1A1A; border-bottom: 1px solid #E6D68A;
-  font-size: 12.5px; line-height: 1.5; font-weight: 700;
-  padding: 8px 14px; text-align: center;
-}
-.line-band a { color: #8E354A; text-decoration: underline; white-space: nowrap; margin-left: 4px; }
 .taiken-band {
   flex-shrink: 0; z-index: 8; /* スクロールの外（ヘッダー直下）に静止（2026-09-08） */
   background: #8E354A; color: #fff;
