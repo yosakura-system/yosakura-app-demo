@@ -23,7 +23,7 @@
 =================================================================== */
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -81,6 +81,21 @@ const GDIR = path.join(ROOT, 'guide');
 if (fs.existsSync(GDIR)) {
   fs.mkdirSync(path.join(OUT, 'guide'), { recursive: true });
   for (const f of fs.readdirSync(GDIR)) fs.copyFileSync(path.join(GDIR, f), path.join(OUT, 'guide', f));
+  /* ★2026-09-28 OneDrive が guide/ の画像を消していて、空のまま体験版を組み、公開側の27枚を消してしまった。
+     git に入っている分と照らし、無い画像は git から取り出して入れる（画像ファイルに依存しない＝復元できる形）。
+     それでもそろわなければ中断する（壊れたまま公開しない） */
+  try {
+    const tracked = execFileSync('git', ['ls-tree', '--name-only', 'HEAD:guide'], { cwd: ROOT, encoding: 'utf8' }).split(/[\r\n]+/).filter(Boolean);
+    let restored = 0;
+    for (const f of tracked) {
+      const dst = path.join(OUT, 'guide', f);
+      if (fs.existsSync(dst) && fs.statSync(dst).size > 0) continue;
+      fs.writeFileSync(dst, execFileSync('git', ['show', 'HEAD:guide/' + f], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 })); restored++;
+    }
+    if (restored) console.log(`※ guide/ の画像 ${restored} 枚を git から復元して入れました（OneDrive に無かった分）`);
+    const n = fs.readdirSync(path.join(OUT, 'guide')).length;
+    if (n < tracked.length) throw new Error(`guide/ が ${n}/${tracked.length} 枚しかありません`);
+  } catch (e) { console.error('✗ guide/ の画像がそろっていません。公開すると使い方ガイドの画像が消えます：', e.message); process.exit(1); }
 }
 
 /* アイコンは「gitが持っているもの」を正とする。
