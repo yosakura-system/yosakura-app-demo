@@ -100,6 +100,13 @@ if (fs.existsSync(GDIR)) {
   for (const f of fs.readdirSync(GDIR)) fs.copyFileSync(path.join(GDIR, f), path.join(WORK, 'guide', f));
 }
 
+// 4-c) マニュアルPDF（画面311・2026-09-29）＝アプリのボタンから開く manual/ をそのまま置く（Driveの差し替えを無くす）
+const MDIR = path.join(DEMO, 'manual');
+if (fs.existsSync(MDIR)) {
+  fs.mkdirSync(path.join(WORK, 'manual'), { recursive: true });
+  for (const f of fs.readdirSync(MDIR)) fs.copyFileSync(path.join(MDIR, f), path.join(WORK, 'manual', f));
+}
+
 // 5) commit & push
 const msg = process.argv.slice(2).join(' ') || 'デモから同期（プレビュー反映）';
 sh('git add app.js styles.css sw.js guide', WORK);
