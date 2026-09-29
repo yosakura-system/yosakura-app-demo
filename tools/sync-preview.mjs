@@ -109,7 +109,7 @@ if (fs.existsSync(MDIR)) {
 
 // 5) commit & push
 const msg = process.argv.slice(2).join(' ') || 'デモから同期（プレビュー反映）';
-sh('git add app.js styles.css sw.js guide', WORK);
+sh('git add app.js styles.css sw.js guide manual', WORK);   // manual/＝マニュアルPDF（画面311）
 sh(`git -c user.name="yosakura-system" -c user.email="yosakura.system@gmail.com" commit -m "${msg}\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"`, WORK);
 sh('git push origin HEAD', WORK);
 console.log(`OK: プレビューへ同期・push 完了（SWキャッシュ → yosakura-hq-v${next}）`);
