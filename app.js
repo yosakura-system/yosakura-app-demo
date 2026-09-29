@@ -6084,7 +6084,7 @@
         <span style="flex:0.7;min-width:0;text-align:right">${L({ ja:'単価（税込）', en:'Unit ¥ (incl.)', vi:'Đơn giá (gồm thuế)' })}</span>
         <span style="width:44px;flex:none;text-align:center">${L({ ja:'税率', en:'Tax', vi:'Thuế' })}</span>
         <span style="flex:0.55;min-width:0;text-align:right">${L({ ja:'数量', en:'Qty', vi:'SL' })}</span>
-        <span style="width:64px;flex:none;text-align:right">${L({ ja:'金額（税抜）', en:'Amount (excl.)', vi:'Tiền (chưa thuế)' })}</span>
+        <span style="width:64px;flex:none;text-align:right">${L({ ja:'税抜額', en:'Excl. tax', vi:'Chưa thuế' })}</span>
       </div>
       ${rows.map((r, i) => `
         <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
