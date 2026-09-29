@@ -4895,7 +4895,7 @@
           <label class="fld"><span>${L({ja:'仕入 食材（税込・8%）',en:'Purchases: food (tax incl., 8%)',vi:'Nhập hàng: thực phẩm (gồm thuế 8%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_food" placeholder="7560"></label>
           <label class="fld"><span>${L({ja:'仕入 飲料 お酒（税込・10%）',en:'Purchases: alcohol (tax incl., 10%)',vi:'Nhập hàng: rượu bia (gồm thuế 10%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_alc" placeholder="0"></label>
           <label class="fld"><span>${L({ja:'仕入 飲料 お酒以外（税込・8%）',en:'Purchases: soft drinks (tax incl., 8%)',vi:'Nhập hàng: đồ uống khác (gồm thuế 8%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_drink" placeholder="0"></label>
-          <label class="fld"><span>${L({ja:'仕入 合計（税抜・自動計算）',en:'Purchases total (excl. tax, auto)',vi:'Tổng nhập hàng (chưa thuế, tự động)'})}</span><input type="text" inputmode="numeric" id="sk_buy" placeholder="7000" readonly></label>
+          <label class="fld"><span>${L({ja:'仕入 合計（税抜・自動計算）',en:'Purchases total (excl. tax, auto)',vi:'Tổng nhập hàng (chưa thuế, tự động)'})}</span><input type="text" inputmode="numeric" id="sk_buy" placeholder="7000"></label>
           <label class="fld"><span>${L({ja:'消耗品金額',en:'Supplies',vi:'Vật tư'})}</span><input type="text" inputmode="numeric" id="sk_supply" placeholder="0"></label>
           ${storeGyotai(vis[0]) === 'unagi' ? `<label class="fld"><span>${L({ja:'鰻の使用尾数',en:'Eel used',vi:'Số lươn'})}</span><input type="text" inputmode="numeric" id="sk_unagi" placeholder="12"></label>` : ''}
         </div>
@@ -6054,6 +6054,27 @@
   const TN_FOOD_N = 12, TN_DRINK_N = 6;  // 食材12行＋飲料6行（空きスロット式・貼り付け取り込みで自動的に増える）
   /* 「まとめて貼り付け」の下書き（店舗×月ごと・保存で消す）＝ゼロから手打ちしないための入口 */
   const tnDraftKey = (store, ym) => `${store}||${ym}`;
+  /* ★画面305（2026-09-29）＝長堀橋の棚卸の品目と単価を最初から入れておく（9/30 22:30〜 実地棚卸・神田さん「まだアプリに単価反映されてません」）。
+     出どころ＝総括表Ver.2.6_牛カツ世桜_長堀橋店（202609）「棚卸表」タブの仕入価格（9/29 読取）。単価が税込か税抜かは総括表に無い＝当日 常山さんに確認して直す。
+     使うのは「その店・その月に下書きも保存分も無く、前月の品目も無い」ときだけ＝一度保存すれば以後は保存分が正。
+     単価の無いもの（うなぎ・サーモン・炭酸水）は空＝当日納品書で。塩系4つは総括表がg単価＝袋・缶に換算するまで空。税率＝お酒10%・それ以外8% */
+  const TN_DEFAULT_ITEMS = {
+    '牛カツ世桜 長堀橋店': [
+      ['白だし（本）', 1945], ['米（袋）', 7515], ['ガリ（袋）', 700], ['わさび（パック）', 980], ['卵（パック）', 300],
+      ['サーロイン肉（kg）', 8200], ['神戸牛（kg）', 23500], ['バッター粉（袋）', 756], ['パン粉（袋）', 459], ['食パン 6枚切り（袋）', 188],
+      ['青ネギ カット小（パック）', 100], ['三つ葉（袋）', 138], ['キャベツ（玉）', 450], ['ミニトマト（個）', 218], ['大根おろし 冷凍（袋）', 500],
+      ['いくら 冷凍（パック）', 6800], ['うなぎ（箱）', null], ['サーモン（パック）', null], ['塩（袋）', 190], ['抹茶塩（袋）', null],
+      ['ピンク塩（袋）', null], ['唐辛子（袋）', null], ['山椒（缶）', null], ['油（缶）', 5475], ['柚子皮 冷凍（袋）', 550],
+      ['焼肉のタレ（本）', 282], ['ポン酢（本）', 970], ['金箔（本）', 2080], ['胡麻ドレッシング（本）', 860], ['マヨネーズ（本）', 871],
+      'd',
+      ['ビール 瓶（本）', 201, 10], ['コーラ 瓶（本）', 122, 8], ['コーラゼロ（本）', 130, 8], ['炭酸水（本）', null, 8],
+      ['梅酒（本）', 3850, 10], ['獺祭（本）', 5830, 10], ['宇治茶 茶葉（袋）', 4050, 8], ['ほうじ茶 茶葉（袋）', 3000, 8]]
+  };
+  const tnDefaultDetail = (store) => {
+    const src = TN_DEFAULT_ITEMS[store]; if (!src) return [];
+    let type = 'f';
+    return src.reduce((acc, it) => { if (it === 'd') { type = 'd'; return acc; } acc.push({ n: it[0], t: type, u: it[1], q: null, r: it[2] || (type === 'd' ? 10 : 8) }); return acc; }, []);
+  };
   const getTnDrafts = () => { try { return JSON.parse(localStorage.getItem('yosakura_tn_draft')) || {}; } catch { return {}; } };
   function tanaRowsFor(store, ym, type) {
     const rec = getMonthly().find(r => r.store === store && r.ym === ym);
@@ -6062,7 +6083,8 @@
     /* 貼り付けの下書き ＞ 当月の保存分 ＞ 前月の品目（名前・単価だけ引き継ぎ・数量は空） */
     const detail = (Array.isArray(draft) && draft.length) ? draft
       : (rec && Array.isArray(rec.closeDetail) && rec.closeDetail.length) ? rec.closeDetail
-      : (prev && Array.isArray(prev.closeDetail) && prev.closeDetail.length) ? prev.closeDetail.map(d => ({ n: d.n, t: d.t, u: d.u, r: d.r, q: null })) : [];
+      : (prev && Array.isArray(prev.closeDetail) && prev.closeDetail.length) ? prev.closeDetail.map(d => ({ n: d.n, t: d.t, u: d.u, r: d.r, q: null }))
+      : tnDefaultDetail(store);   // 画面305＝何も無い店・月だけ既定の品目（長堀橋）
     const n = type === 'f' ? TN_FOOD_N : TN_DRINK_N;
     const rows = detail.filter(d => d.t === type).map(d => ({ n: d.n, u: d.u, q: d.q, r: d.r }));
     /* ★空の行は常に4行以上残す（2026-09-24 神田さん＝棚卸からも品目を足せるように）。

@@ -3783,6 +3783,21 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   doc.getElementById('tnSave').onclick();
   const mon2 = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
   ok(mon2.closeDetail[0].q === 1.25 && mon2.close === 1250 - 92, '1.3のような端数は0.25単位へ寄せる（→1.25・税込1250→税抜1158）');
+  // ③c 画面305＝長堀橋は品目と単価が最初から入っている（保存も下書きも前月も無いとき）
+  run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
+  location.hash = '#/app/pl';
+  { const hh = registry.app.innerHTML;
+    ok(/id="tn_f0_n"[^>]*value="白だし（本）"/.test(hh) && /id="tn_f0_u"[^>]*value="1945"/.test(hh), '長堀橋＝棚卸タブに白だし 1945 が最初から入る（総括表202609の単価）');
+    ok(/id="tn_d0_n"[^>]*value="ビール 瓶（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="10"/.test(hh), '飲料の先頭＝ビール（10%）');
+    ok(/id="tn_d1_r"[^>]*data-r="8"/.test(hh) && /id="tn_d6_r"[^>]*data-r="8"/.test(hh), 'コーラ・宇治茶は8%');
+    ok(/id="tn_f16_n"[^>]*value="うなぎ（箱）"/.test(hh) && /id="tn_f16_u"[^>]*value=""/.test(hh), 'うなぎは品目だけ（単価は当日）');
+    ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 30 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 8, '食材30・飲料8＝38品目');
+    ok(!/まず品目を登録する（貼り付け）/.test(hh), '品目が入っているので「まず品目を登録する」は畳まれる'); }
+  run(() => { setLS('manager', '日本鰻世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
+  location.hash = '#/app/pl';
+  ok(/まず品目を登録する（貼り付け）/.test(registry.app.innerHTML) && !/白だし（本）/.test(registry.app.innerHTML), '既定が無い店（鰻長堀橋）は従来どおり空＝貼り付けから');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
+  location.hash = '#/app/pl';
   // ③b 画面304＝税率ボタンで 10%→8% に切り替えると金額が変わる（お茶など）
   doc.getElementById('tn_f0_n').value = '';
   doc.getElementById('tn_d0_n').value = 'お茶'; doc.getElementById('tn_d0_u').value = '1100'; doc.getElementById('tn_d0_q').value = '1';
@@ -3927,7 +3942,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   // ②b 画面304＝仕入は税込3欄→税抜合計（自動）。食材1080（8%）＋お酒1100（10%）＋お酒以外540（8%）＝1000+1000+500
   location.hash = '#/app/soukatsu?x=tax';
   h = registry.app.innerHTML;
-  ok(/id="sk_buy_food"/.test(h) && /id="sk_buy_alc"/.test(h) && /id="sk_buy_drink"/.test(h) && /id="sk_buy"[^>]*readonly/.test(h), '仕入は税込3欄＋税抜合計（自動・読み取り専用）');
+  ok(/id="sk_buy_food"/.test(h) && /id="sk_buy_alc"/.test(h) && /id="sk_buy_drink"/.test(h) && /id="sk_buy"/.test(h), '仕入は税込3欄＋税抜合計（自動）');
   ok(/税込金額をそのまま入れてください/.test(h) && /誤差が出ることがあります/.test(h), '税込のまま入れる説明と誤差の注意書きがある');
   doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = today4; doc.getElementById('sk_sales').value = '100000';
   doc.getElementById('sk_buy_food').value = '1080'; doc.getElementById('sk_buy_alc').value = '1100'; doc.getElementById('sk_buy_drink').value = '540';
