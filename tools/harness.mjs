@@ -3821,6 +3821,12 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   doc.getElementById('tnSave').onclick();
   const mon2b = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
   ok(mon2b.closeDetail.length === 1 && mon2b.closeDetail[0].r === 8 && mon2b.closeDetail[0].a === 1100 - 81 && mon2b.close === 1019, '8%で保存＝税込1100→税抜1019（消費税81を切り捨ててから引く）');
+  // ③e 画面308＝数量が空のうちは税抜の単価が薄く出る
+  doc.getElementById('tn_d0_q').value = ''; doc.getElementById('tn_d0_u').value = '1100';
+  doc.getElementById('tn_d0_q').oninput();
+  ok(/税抜1,019/.test(doc.getElementById('tn_d0_amt').textContent), '数量が空＝税抜の単価（1100・8%→1,019）を出す');
+  doc.getElementById('tn_d0_q').value = '2'; doc.getElementById('tn_d0_q').oninput();
+  ok(doc.getElementById('tn_d0_amt').textContent === '2,038', '数量を入れると税抜額（2200→2,038・消費税162を切り捨て）に変わる');
   ok(/税込/.test(registry.app.innerHTML) && /税抜/.test(registry.app.innerHTML) && /誤差が出ることがあります/.test(registry.app.innerHTML), '棚卸画面に「単価は税込・金額は税抜・誤差の注意書き」がある');
   // ④ 前月の品目が翌月へ引き継がれる（名前・単価だけ・数量は空）
   run(() => {
