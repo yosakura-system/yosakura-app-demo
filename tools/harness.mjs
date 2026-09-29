@@ -3788,24 +3788,40 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
     ok(/id="tn_f0_n"[^>]*value="白だし（本）"/.test(hh) && /id="tn_f0_u"[^>]*value="2101"/.test(hh), '長堀橋＝棚卸タブに白だし 2101（税抜1945→税込）が最初から入る');
-    ok(/id="tn_d0_n"[^>]*value="ビール 瓶（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="10"/.test(hh), '飲料の先頭＝ビール（10%）');
-    ok(/id="tn_d1_r"[^>]*data-r="8"/.test(hh) && /id="tn_d6_r"[^>]*data-r="8"/.test(hh), 'コーラ・宇治茶は8%');
-    ok(/id="tn_f16_n"[^>]*value="うなぎ（箱）"/.test(hh) && /id="tn_f16_u"[^>]*value="38340"/.test(hh), 'うなぎ＝鰻単価表 1ケース35,500（税抜）→38,340');
-    ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 30 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 8, '食材30・飲料8＝38品目');
+    ok(/id="tn_d0_n"[^>]*value="ビール（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="10"/.test(hh), '飲料の先頭＝ビール（10%）');
+    ok(/id="tn_d1_r"[^>]*data-r="8"/.test(hh) && /id="tn_d4_r"[^>]*data-r="8"/.test(hh), 'コーラ・宇治茶は8%');
+    ok(/id="tn_f30_n"[^>]*value="鰻（個＝尾）"/.test(hh) && /id="tn_f30_u"[^>]*value="767"/.test(hh), '鰻＝鰻単価表 35,500÷50尾→税込767／尾');
+    ok(/id="tn_f17_n"[^>]*value="抹茶塩（g）"/.test(hh) && /id="tn_f17_u"[^>]*value="3.89"/.test(hh) && /id="tn_f29_n"[^>]*value="固形燃料（個）"/.test(hh) && /id="tn_f29_r"[^>]*data-r="10"/.test(hh), '塩系は g 単価・固形燃料は10%（総括表どおり）');
+    ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 31 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 7, '食材31・飲料7＝総括表の棚卸表と同じ38品目');
     ok(!/まず品目を登録する（貼り付け）/.test(hh), '品目が入っているので「まず品目を登録する」は畳まれる'); }
   // ③d 画面306＝品目だけ保存済み（単価が空）の店にも、同じ品名の既定の単価が入る（9/25 に長堀橋へ38品目を数量・単価空で保存済み）
   run(() => {
     setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana');
     localStorage.setItem('yosakura_demo_monthly', JSON.stringify([
-      { store: '牛カツ世桜 長堀橋店', ym: ymNow2, closeDetail: [{ n: '白だし（本）', t: 'f', u: null, q: null }, { n: 'サーロイン肉', t: 'f', u: null, q: null }, { n: '油（缶）', t: 'f', u: 5000, q: null }, { n: 'コーラ 瓶（本）', t: 'd', u: null, q: null }], t: Date.now() }
+      { store: '牛カツ世桜 長堀橋店', ym: ymNow2, closeDetail: [{ n: '白だし（本）', t: 'f', u: null, q: null }, { n: 'サーロイン肉', t: 'f', u: null, q: null }, { n: '油（缶）', t: 'f', u: 5000, q: null }, { n: 'わさび（パック）', t: 'f', u: null, q: null }, { n: 'サーモン（パック）', t: 'f', u: null, q: null }, { n: 'コーラ 瓶（本）', t: 'd', u: null, q: null }], t: Date.now() }
     ]));
   });
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
     ok(/id="tn_f0_u"[^>]*value="2101"/.test(hh), '保存済みで単価が空の白だしに既定の2101が入る');
-    ok(/id="tn_f1_n"[^>]*value="サーロイン肉"/.test(hh) && /id="tn_f1_u"[^>]*value="8856"/.test(hh), '「サーロイン肉」（単位なし）も既定「サーロイン肉（kg）」と同じ品名として8856（税抜8200→税込）が入る');
+    ok(/id="tn_f1_n"[^>]*value="サーロイン肉（kg）"/.test(hh) && /id="tn_f1_u"[^>]*value="8856"/.test(hh), '「サーロイン肉」（単位なし）は総括表の「サーロイン肉（kg）」8856（税抜8200→税込）に読み替わる');
     ok(/id="tn_f2_u"[^>]*value="5000"/.test(hh), '店が入れた単価（油 5000）はそのまま＝既定で上書きしない');
-    ok(/id="tn_d0_u"[^>]*value="132"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), 'コーラは132・8%が入る'); }
+    ok(/id="tn_d0_n"[^>]*value="コーラ（本）"/.test(hh) && /id="tn_d0_u"[^>]*value="132"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), '「コーラ 瓶（本）」は総括表の「コーラ（本）」132・8%に読み替わる');
+    ok(/id="tn_f3_n"[^>]*value="ワサビ（個）"/.test(hh) && /id="tn_f3_u"[^>]*value="1058"/.test(hh), '「わさび（パック）」は総括表の「ワサビ（個）」1058（単位も総括表に合わせる）');
+    ok(/id="tn_f4_n"[^>]*value="サーモン（パック）"/.test(hh) && /id="tn_f4_u"[^>]*value=""/.test(hh), '総括表に無いサーモンは登録のまま残る（単価は空）');
+    ok(!/value="サーロインブロック（個）"/.test(hh), '単価を入れて運用中の一覧（油 5000）には、総括表の品目を勝手に足さない'); }
+  // ③d2 単価を1つも入れていない一覧（9/25 の長堀橋の状態）＝総括表にあって登録に無い品目を末尾に足す
+  run(() => {
+    setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana');
+    localStorage.setItem('yosakura_demo_monthly', JSON.stringify([
+      { store: '牛カツ世桜 長堀橋店', ym: ymNow2, closeDetail: [{ n: '白だし（本）', t: 'f', u: null, q: null }, { n: 'うなぎ（箱）', t: 'f', u: null, q: null }, { n: 'ビール 瓶（本）', t: 'd', u: null, q: null }], t: Date.now() }
+    ]));
+  });
+  location.hash = '#/app/pl';
+  { const hh = registry.app.innerHTML;
+    ok(/id="tn_f1_n"[^>]*value="鰻（個＝尾）"/.test(hh) && /id="tn_f1_u"[^>]*value="767"/.test(hh), '「うなぎ（箱）」は総括表の「鰻（個＝尾）」767に読み替わる');
+    ok(/value="サーロインブロック（個）"/.test(hh) && /value="固形燃料（個）"/.test(hh) && /value="コーラ（本）"/.test(hh), '総括表にあって登録に無い品目（サーロインブロック・固形燃料・コーラ）は末尾に足される');
+    ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 31 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 7, '足した結果＝総括表と同じ食材31・飲料7'); }
   run(() => { setLS('manager', '日本鰻世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   ok(/まず品目を登録する（貼り付け）/.test(registry.app.innerHTML) && !/白だし（本）/.test(registry.app.innerHTML), '既定が無い店（鰻長堀橋）は従来どおり空＝貼り付けから');
