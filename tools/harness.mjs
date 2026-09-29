@@ -3773,7 +3773,8 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   doc.getElementById('tn_ym').value = ymNow2;
   doc.getElementById('tnSave').onclick();
   const mon = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
-  ok(!!mon && mon.close === 3000 * 2.5 + 800 * 0.75 + 300 * 20, '保存で月末在庫＝品目合計（米7500+パン粉600+ビール6000=14100）');
+  ok(!!mon && mon.close === (7500 - 555) + (600 - 44) + (6000 - 545), '保存で月末在庫＝品目合計を税抜に直した値（画面304＝米7500→6945・パン粉600→556・ビール6000（10%）→5455＝12956）');
+  ok(mon.closeDetail[0].r === 8 && mon.closeDetail[2].r === 10 && mon.closeDetail[2].a === 5455, '税率＝食材8%・飲料10%が既定で保存される');
   ok(Array.isArray(mon.closeDetail) && mon.closeDetail.length === 3 && mon.closeDetail[0].q === 2.5, '品目の内訳（数量0.25刻み）が保存される');
   // ③ 0.25刻みでない数量は寄せる（②の入力欄が残っているので明示的に空へ）
   doc.getElementById('tn_f1_n').value = ''; doc.getElementById('tn_d0_n').value = '';
@@ -3781,7 +3782,18 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   doc.getElementById('tn_ym').value = ymNow2;
   doc.getElementById('tnSave').onclick();
   const mon2 = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
-  ok(mon2.closeDetail[0].q === 1.25 && mon2.close === 1250, '1.3のような端数は0.25単位へ寄せる（→1.25）');
+  ok(mon2.closeDetail[0].q === 1.25 && mon2.close === 1250 - 92, '1.3のような端数は0.25単位へ寄せる（→1.25・税込1250→税抜1158）');
+  // ③b 画面304＝税率ボタンで 10%→8% に切り替えると金額が変わる（お茶など）
+  doc.getElementById('tn_f0_n').value = '';
+  doc.getElementById('tn_d0_n').value = 'お茶'; doc.getElementById('tn_d0_u').value = '1100'; doc.getElementById('tn_d0_q').value = '1';
+  ok(/id="tn_d0_r"[^>]*data-r="10"/.test(registry.app.innerHTML) && /id="tn_f0_r"[^>]*data-r="8"/.test(registry.app.innerHTML), '税率ボタンの既定＝飲料10%・食材8%');
+  doc.getElementById('tn_d0_r').onclick();   // 模擬DOMは属性を持たない＝既定（飲料10%）から切り替わる
+  ok(doc.getElementById('tn_d0_r').dataset.r === '8' && /8%/.test(doc.getElementById('tn_d0_r').textContent), '押すと8%に切り替わる');
+  doc.getElementById('tn_ym').value = ymNow2;
+  doc.getElementById('tnSave').onclick();
+  const mon2b = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
+  ok(mon2b.closeDetail.length === 1 && mon2b.closeDetail[0].r === 8 && mon2b.closeDetail[0].a === 1100 - 81 && mon2b.close === 1019, '8%で保存＝税込1100→税抜1019（消費税81を切り捨ててから引く）');
+  ok(/税込/.test(registry.app.innerHTML) && /税抜/.test(registry.app.innerHTML) && /誤差が出ることがあります/.test(registry.app.innerHTML), '棚卸画面に「単価は税込・金額は税抜・誤差の注意書き」がある');
   // ④ 前月の品目が翌月へ引き継がれる（名前・単価だけ・数量は空）
   run(() => {
     setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana');
@@ -3878,7 +3890,7 @@ console.log('== 日報の累計＝当日だけ入れれば自動で足し上が�
   ok(last3 && last3.cancelt === '2000', '提出データに当日キャンセルが入る');
   // ④ ソース＝当日欄4つの入力と日付・店舗の変更で累計を足し上げ直す配線がある
   const src3 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/\['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt', 'sk_buy'\]\.forEach/.test(src3), '当日欄の入力で累計が自動で足し上がる（配線・仕入率も追従）');
+  ok(/\['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt', 'sk_buy', 'sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'\]\.forEach/.test(src3), '当日欄の入力で累計が自動で足し上がる（配線・仕入率も追従・税込3欄も）');
   ok(/\['sk_date', 'sk_store'\]\.forEach/.test(src3), '日付・店舗を変えると累計の起点を取り直す（配線）');
   // 後始末
   run(() => { setLS('hq', 'all', 'ja'); });
@@ -3912,6 +3924,18 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   const last4 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
   ok(last4 && last4.foodamt === '80000' && last4.drinkamt === '20000' && last4.buy === '18000', '提出データにフード金額・ドリンク金額・仕入が入る');
   ok(last4 && !('food' in last4) && !('foodct' in last4) && !('drinkct' in last4), '旧キー（原価率手入力・点数）は保存しない');
+  // ②b 画面304＝仕入は税込3欄→税抜合計（自動）。食材1080（8%）＋お酒1100（10%）＋お酒以外540（8%）＝1000+1000+500
+  location.hash = '#/app/soukatsu?x=tax';
+  h = registry.app.innerHTML;
+  ok(/id="sk_buy_food"/.test(h) && /id="sk_buy_alc"/.test(h) && /id="sk_buy_drink"/.test(h) && /id="sk_buy"[^>]*readonly/.test(h), '仕入は税込3欄＋税抜合計（自動・読み取り専用）');
+  ok(/税込金額をそのまま入れてください/.test(h) && /誤差が出ることがあります/.test(h), '税込のまま入れる説明と誤差の注意書きがある');
+  doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = today4; doc.getElementById('sk_sales').value = '100000';
+  doc.getElementById('sk_buy_food').value = '1080'; doc.getElementById('sk_buy_alc').value = '1100'; doc.getElementById('sk_buy_drink').value = '540';
+  doc.getElementById('sk_buy').value = '';
+  doc.getElementById('submitSk').onclick();
+  ok(doc.getElementById('sk_buy').value === '2500', '税抜合計＝1000+1000+500=2500（消費税を切り捨ててから引く・提出時にも入れ直す）');
+  const last4b = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
+  ok(last4b && last4b.buy === '2500' && last4b.buy_food === '1080' && last4b.buy_alc === '1100' && last4b.buy_drink === '540', '提出データ＝税抜合計（buy）と税込3欄が残る');
   // ③ 個店カルテ＝新形式はフード金額を表示し、点数の欄は出ない
   location.hash = '#/store?s=' + encodeURIComponent(S);
   h = registry.app.innerHTML;
@@ -5574,9 +5598,9 @@ console.log('== 月次数値・棚卸＝売上・仕入は総括表の月合計�
   doc.getElementById('tn_ym').value = ym;
   doc.getElementById('tnSave').onclick();
   const mon = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ym);
-  ok(!!mon && mon.close === 20000 && mon.sales === 500000 && mon.purchase === 150000 && mon.open === 40000, '棚卸を保存すると売上・仕入・月初も自動で埋まる');
+  ok(!!mon && mon.close === 20000 - 1481 && mon.sales === 500000 && mon.purchase === 150000 && mon.open === 40000, '棚卸を保存すると売上・仕入・月初も自動で埋まる（月末在庫＝税込20,000→税抜18,519・画面304）');
   const c = plCalcOf(mon);
-  ok(Math.abs(c.costRate - 34) < 0.01, '原価率＝(40,000＋150,000−20,000)÷500,000＝34.0%');
+  ok(Math.abs(c.costRate - (40000 + 150000 - 18519) / 500000 * 100) < 0.01, '原価率＝(40,000＋150,000−18,519)÷500,000＝34.3%');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
