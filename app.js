@@ -4892,7 +4892,10 @@
           <label class="fld"><span>${L({ja:'現金売上',en:'Cash sales',vi:'DT tiền mặt'})}</span><input type="text" inputmode="numeric" id="sk_cash" placeholder="96800"${skDraft.cash != null ? ` value="${skDraft.cash}"` : ''}></label>
           <label class="fld"><span>${L({ja:'カード売上',en:'Card sales',vi:'DT thẻ'})}</span><input type="text" inputmode="numeric" id="sk_card" placeholder="251700"${skDraft.card != null ? ` value="${skDraft.card}"` : ''}></label>
           <label class="fld"><span>${L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'})}</span><input type="text" inputmode="numeric" id="sk_lunch" placeholder="186400" value="${skChukanToday(vis[0]) != null ? skChukanToday(vis[0]) : ''}"></label>
-          <label class="fld"><span>${L({ja:'仕入金額（当日）',en:'Purchases today',vi:'Nhập hàng'})}</span><input type="text" inputmode="numeric" id="sk_buy" placeholder="7049"></label>
+          <label class="fld"><span>${L({ja:'仕入 食材（税込・8%）',en:'Purchases: food (tax incl., 8%)',vi:'Nhập hàng: thực phẩm (gồm thuế 8%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_food" placeholder="7560"></label>
+          <label class="fld"><span>${L({ja:'仕入 飲料 お酒（税込・10%）',en:'Purchases: alcohol (tax incl., 10%)',vi:'Nhập hàng: rượu bia (gồm thuế 10%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_alc" placeholder="0"></label>
+          <label class="fld"><span>${L({ja:'仕入 飲料 お酒以外（税込・8%）',en:'Purchases: soft drinks (tax incl., 8%)',vi:'Nhập hàng: đồ uống khác (gồm thuế 8%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_drink" placeholder="0"></label>
+          <label class="fld"><span>${L({ja:'仕入 合計（税抜・自動計算）',en:'Purchases total (excl. tax, auto)',vi:'Tổng nhập hàng (chưa thuế, tự động)'})}</span><input type="text" inputmode="numeric" id="sk_buy" placeholder="7000" readonly></label>
           <label class="fld"><span>${L({ja:'消耗品金額',en:'Supplies',vi:'Vật tư'})}</span><input type="text" inputmode="numeric" id="sk_supply" placeholder="0"></label>
           ${storeGyotai(vis[0]) === 'unagi' ? `<label class="fld"><span>${L({ja:'鰻の使用尾数',en:'Eel used',vi:'Số lươn'})}</span><input type="text" inputmode="numeric" id="sk_unagi" placeholder="12"></label>` : ''}
         </div>
@@ -4900,7 +4903,8 @@
         <div class="stat-row" style="margin:2px 0 10px">
           <div class="stat"><div class="n" id="sk_buyrate">—</div><div class="k">${L({ja:'仕入率（自動計算・当月）',en:'Purchase ratio (auto, month)',vi:'Tỷ lệ nhập hàng (tự động, tháng)'})}</div></div>
         </div>
-        <p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 仕入率＝当月の仕入合計÷売上合計。毎日「仕入金額（当日）」を入れると自動で出ます（率の手入力は不要です）。在庫まで含めた正式な原価率は、月締めの「数値・原価率」画面で計算します。', en:'Purchase ratio = month purchases ÷ month sales, calculated automatically from the daily purchase amounts. The official cost ratio including stock is calculated on the monthly Numbers & Cost screen.', vi:'Tỷ lệ nhập hàng = tổng nhập ÷ tổng doanh thu trong tháng, tự tính từ số nhập hàng mỗi ngày. Giá vốn chính thức (gồm tồn kho) tính ở màn hình số liệu tháng.' })}</p>
+        <p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 仕入は、納品書やレシートの税込金額をそのまま入れてください（食材／お酒／お酒以外の飲料の3つ）。税抜への換算はアプリが行います（消費税を切り捨ててから引く）。自動計算のため誤差が出ることがあります。お茶などお酒以外の飲料は8%の欄へ。', en:'Enter purchases as the tax-inclusive amounts on the delivery slip (food / alcohol / soft drinks). The app converts to tax-exclusive (tax rounded down, then subtracted). Small rounding differences may occur.', vi:'Nhập số tiền gồm thuế trên phiếu giao hàng (thực phẩm / rượu bia / đồ uống khác). Ứng dụng tự quy đổi sang chưa thuế.' })}</p>
+        <p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 仕入率＝当月の仕入合計÷売上合計。毎日、仕入の3欄（税込）を入れると税抜合計から自動で出ます（率の手入力は不要です）。在庫まで含めた正式な原価率は、月締めの「数値・原価率」画面で計算します。', en:'Purchase ratio = month purchases ÷ month sales, calculated automatically from the daily purchase amounts. The official cost ratio including stock is calculated on the monthly Numbers & Cost screen.', vi:'Tỷ lệ nhập hàng = tổng nhập ÷ tổng doanh thu trong tháng, tự tính từ số nhập hàng mỗi ngày. Giá vốn chính thức (gồm tồn kho) tính ở màn hình số liệu tháng.' })}</p>
         <label class="fld"><span>${L({ ja:'過不足（現金）の理由', en:'Reason for cash difference', vi:'Lý do chênh lệch tiền mặt' })}</span><input type="text" id="sk_errnote" placeholder="${L({ja:'差がある場合のみ',en:'only if there is a difference',vi:'chỉ khi có chênh lệch'})}"></label>
 
         <div class="idlabel" style="margin-top:14px">${L({ ja:'勤怠・ロス（総括表の項目）', en:'Staffing & loss (summary-sheet items)', vi:'Nhân sự & hao hụt (mục bảng tổng kết)' })}</div>
@@ -5424,7 +5428,11 @@
     { k:'cash',    t:{ ja:'現金売上', en:'Cash sales', vi:'DT tiền mặt' },      f:'yen' },
     { k:'card',    t:{ ja:'カード売上', en:'Card sales', vi:'DT thẻ' },         f:'yen' },
     { k:'lunch',   t:{ ja:'昼のみ売上', en:'Lunch-only sales', vi:'DT buổi trưa' }, f:'yen' },
-    { k:'buy',     t:{ ja:'仕入金額（当日）', en:'Purchases today', vi:'Nhập hàng hôm nay' }, f:'yen' },
+    { k:'buy',     t:{ ja:'仕入金額（当日・税抜）', en:'Purchases today (excl. tax)', vi:'Nhập hàng hôm nay (chưa thuế)' }, f:'yen' },
+    /* 画面304＝税込の3欄（入力した日だけ出す） */
+    { k:'buy_food',  t:{ ja:'仕入 食材（税込）', en:'Purchases: food (incl.)', vi:'Nhập: thực phẩm (gồm thuế)' }, f:'yen', opt:true },
+    { k:'buy_alc',   t:{ ja:'仕入 お酒（税込）', en:'Purchases: alcohol (incl.)', vi:'Nhập: rượu bia (gồm thuế)' }, f:'yen', opt:true },
+    { k:'buy_drink', t:{ ja:'仕入 お酒以外の飲料（税込）', en:'Purchases: soft drinks (incl.)', vi:'Nhập: đồ uống khác (gồm thuế)' }, f:'yen', opt:true },
     { k:'supply',  t:{ ja:'消耗品金額', en:'Supplies', vi:'Vật tư tiêu hao' },  f:'yen' },
     { k:'unagi',   t:{ ja:'鰻の使用尾数', en:'Eel used', vi:'Số lươn đã dùng' }, f:'num' },
     { k:'errnote', t:{ ja:'過不足の理由', en:'Cash difference reason', vi:'Lý do chênh lệch' }, f:'txt' },
@@ -5684,7 +5692,7 @@
     { k:'lunch',     t:{ ja:'昼のみ', en:'Lunch', vi:'Trưa' },          f:'yen' }, // ★日報が空の日は中間報告から自動（＊印）
     { k:'guests',    t:{ ja:'客数', en:'Guests', vi:'Khách' },          f:'num' },
     { k:'per',       t:{ ja:'客単価（自動計算）', en:'Per guest (auto)', vi:'BQ/khách (tự động)' },  f:'yen', auto:true },
-    { k:'buy',       t:{ ja:'仕入', en:'Purchases', vi:'Nhập hàng' },   f:'yen' },
+    { k:'buy',       t:{ ja:'仕入（税抜）', en:'Purchases (excl.)', vi:'Nhập hàng (chưa thuế)' },   f:'yen' },
     { k:'laborcost', t:{ ja:'人件費', en:'Labor', vi:'Nhân sự' },       f:'yen' },
     { k:'staffct',   t:{ ja:'人数', en:'Staff', vi:'Số NV' },           f:'num' },
     { k:'hours',     t:{ ja:'時間(h)', en:'Hours', vi:'Giờ' },          f:'num' },
@@ -5785,6 +5793,10 @@
      前月末在庫は翌月の月初在庫へ自動引継。全端末同期（店舗×月ごと最新版が正）。 */
   const getMonthly = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_monthly')) || []; } catch { return []; } };
   const saveMonthly = (a) => { try { localStorage.setItem('yosakura_demo_monthly', JSON.stringify(a)); } catch (e) {} };
+  /* ★画面304 税込→税抜（2026-09-28 決定・社長確認／9-29 棚卸打合せ）＝店舗は納品書の税込をそのまま入れ、アプリが税抜に直す。
+     端数＝消費税を切り捨ててから引く（多くの会計ソフトの標準）。税率＝食材8・飲料（お酒）10・飲料（お酒以外）8。
+     旧データ（税込3欄や税率の無い行）はそのまま＝換算しない（黙って数字を変えない） */
+  const taxNet = (gross, rate) => { const g = Math.round(Number(gross) || 0); const r = Number(rate) || 0; if (!g || !r) return g; return g - Math.floor(g * r / (100 + r)); };
   const plCalc = (m) => { const sales = Number(m.sales) || 0; const cost = (Number(m.open) || 0) + (Number(m.purchase) || 0) - (Number(m.close) || 0); const costRate = sales ? cost / sales * 100 : 0; const gross = sales - cost; const grossRate = sales ? gross / sales * 100 : 0; return { sales, cost, costRate, gross, grossRate }; };
   const prevYm = (ym) => { const [y, m] = (ym || '').split('-').map(Number); if (!y) return ''; const d = new Date(y, m - 2, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   /* ★売上・仕入の自動＝総括表（日報）の月合計から（2026-09-18 神田さん「棚卸が自動で反映するように」）。
@@ -6009,7 +6021,7 @@
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'対象月', en:'Month', vi:'Tháng' })}</span><input type="month" id="pl_ym" value="${esc(nowYm)}"></label>
           <label class="fld"><span>${L({ ja:'売上（税抜・月合計）', en:'Sales (monthly)', vi:'Doanh thu tháng' })}</span><input type="text" inputmode="numeric" id="pl_sales" value="${esc(salesDef||'')}" placeholder="0"></label>
-          <label class="fld"><span>${L({ ja:'当月仕入（合計）', en:'Purchases', vi:'Nhập hàng' })}</span><input type="text" inputmode="numeric" id="pl_purchase" value="${esc(purchaseDef||'')}" placeholder="0"></label>
+          <label class="fld"><span>${L({ ja:'当月仕入（合計・税抜）', en:'Purchases (excl. tax)', vi:'Nhập hàng (chưa thuế)' })}</span><input type="text" inputmode="numeric" id="pl_purchase" value="${esc(purchaseDef||'')}" placeholder="0"></label>
           <label class="fld"><span>${L({ ja:'月初在庫', en:'Opening stock', vi:'Tồn đầu kỳ' })}</span><input type="text" inputmode="numeric" id="pl_open" value="${esc(openDef||'')}" placeholder="0"></label>
           <label class="fld"><span>${L({ ja:'月末在庫（棚卸）', en:'Closing stock', vi:'Tồn cuối kỳ' })}</span><input type="text" inputmode="numeric" id="pl_close" value="${esc(cur.close||'')}" placeholder="0"></label>
           <label class="fld"><span>${L({ ja:'今月の売上目標', en:'Monthly sales goal', vi:'Mục tiêu doanh thu' })}</span><input type="text" inputmode="numeric" id="pl_goal" value="${esc(cur.goal||'')}" placeholder="3000000"></label>
@@ -6050,14 +6062,14 @@
     /* 貼り付けの下書き ＞ 当月の保存分 ＞ 前月の品目（名前・単価だけ引き継ぎ・数量は空） */
     const detail = (Array.isArray(draft) && draft.length) ? draft
       : (rec && Array.isArray(rec.closeDetail) && rec.closeDetail.length) ? rec.closeDetail
-      : (prev && Array.isArray(prev.closeDetail) && prev.closeDetail.length) ? prev.closeDetail.map(d => ({ n: d.n, t: d.t, u: d.u, q: null })) : [];
+      : (prev && Array.isArray(prev.closeDetail) && prev.closeDetail.length) ? prev.closeDetail.map(d => ({ n: d.n, t: d.t, u: d.u, r: d.r, q: null })) : [];
     const n = type === 'f' ? TN_FOOD_N : TN_DRINK_N;
-    const rows = detail.filter(d => d.t === type).map(d => ({ n: d.n, u: d.u, q: d.q }));
+    const rows = detail.filter(d => d.t === type).map(d => ({ n: d.n, u: d.u, q: d.q, r: d.r }));
     /* ★空の行は常に4行以上残す（2026-09-24 神田さん＝棚卸からも品目を足せるように）。
        以前は食材12・飲料6の固定枠で、品目が枠いっぱいになると足す行が無かった（在庫画面の9/19の直しと同じ考え方） */
     const filled = rows.filter(r => r.n).length;
     const want = Math.max(n, filled + 4, rows.length);
-    while (rows.length < want) rows.push({ n: '', u: null, q: null });
+    while (rows.length < want) rows.push({ n: '', u: null, q: null, r: null });
     return rows;
   }
   function tanaCard(store, curYm) {
@@ -6069,14 +6081,16 @@
       <div class="idlabel" style="margin-top:${type === 'f' ? '4' : '14'}px">${L(label)}</div>
       <div style="display:flex;gap:6px;font-size:11px;color:#8a8478;margin-bottom:4px">
         <span style="flex:1.2;min-width:0">${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span>
-        <span style="flex:0.7;min-width:0;text-align:right">${L({ ja:'単価', en:'Unit ¥', vi:'Đơn giá' })}</span>
+        <span style="flex:0.7;min-width:0;text-align:right">${L({ ja:'単価（税込）', en:'Unit ¥ (incl.)', vi:'Đơn giá (gồm thuế)' })}</span>
+        <span style="width:44px;flex:none;text-align:center">${L({ ja:'税率', en:'Tax', vi:'Thuế' })}</span>
         <span style="flex:0.55;min-width:0;text-align:right">${L({ ja:'数量', en:'Qty', vi:'SL' })}</span>
-        <span style="width:64px;flex:none;text-align:right">${L({ ja:'金額', en:'Amount', vi:'Tiền' })}</span>
+        <span style="width:64px;flex:none;text-align:right">${L({ ja:'金額（税抜）', en:'Amount (excl.)', vi:'Tiền (chưa thuế)' })}</span>
       </div>
       ${rows.map((r, i) => `
         <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
           <input type="text" id="tn_${type}${i}_n" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên hàng' })}" style="flex:1.2;min-width:0;padding:10px 8px">
           <input type="text" inputmode="numeric" id="tn_${type}${i}_u" value="${r.u != null ? esc(String(r.u)) : ''}" placeholder="0" style="flex:0.7;min-width:0;text-align:right;padding:10px 8px">
+          <button type="button" class="mini" id="tn_${type}${i}_r" data-r="${r.r === 10 || r.r === 8 ? r.r : (type === 'd' ? 10 : 8)}" title="${esc(L({ ja:'押すと 8%／10% が切り替わります', en:'Tap to switch 8% / 10%', vi:'Chạm để đổi 8% / 10%' }))}" style="width:44px;flex:none;padding:8px 0;text-align:center">${r.r === 10 || r.r === 8 ? r.r : (type === 'd' ? 10 : 8)}%</button>
           <input type="text" inputmode="decimal" id="tn_${type}${i}_q" value="${r.q != null ? esc(String(r.q)) : ''}" placeholder="0" style="flex:0.55;min-width:0;text-align:right;padding:10px 8px">
           <span id="tn_${type}${i}_amt" class="muted" style="width:64px;flex:none;text-align:right;font-size:12px;overflow:hidden;text-overflow:ellipsis">—</span>
         </div>`).join('')}
@@ -6092,7 +6106,7 @@
     const tnPaste = `
         <details style="margin:10px 0" ${tnEmpty ? 'open' : ''}>
           <summary style="cursor:pointer;font-size:${tnEmpty ? '15px;font-weight:700;color:var(--sumi)' : '13px;color:#6a6458'}">${tnEmpty ? L({ ja:'まず品目を登録する（貼り付け）', en:'Register items first (paste)', vi:'Đăng ký mặt hàng trước (dán)' }) : L({ ja:'品目をまとめて貼り付けて登録（最初の1回だけ）', en:'Paste item list at once (first time only)', vi:'Dán danh sách mặt hàng (lần đầu)' })}</summary>
-          <p class="hint" style="display:block;margin-top:8px">${L({ ja:'1行に1品目で「品名 単価」（例：米 3000）。単価が分からなければ品名だけでも大丈夫です。「飲料」とだけ書いた行より下は飲料として取り込みます。既存の行は置き換わります。', en:'One item per line: “name price” (e.g. rice 3000). Lines after a line saying “飲料” are treated as drinks. Existing rows are replaced.', vi:'Mỗi dòng 1 mặt hàng “tên giá”. Sau dòng “飲料” là đồ uống.' })}</p>
+          <p class="hint" style="display:block;margin-top:8px">${L({ ja:'1行に1品目で「品名 税込の単価」（例：米 3000）。単価が分からなければ品名だけでも大丈夫です。税率は食材8%・飲料10%で入り、お茶などは行のボタンで8%に直せます。「飲料」とだけ書いた行より下は飲料として取り込みます。既存の行は置き換わります。', en:'One item per line: “name price” (e.g. rice 3000). Lines after a line saying “飲料” are treated as drinks. Existing rows are replaced.', vi:'Mỗi dòng 1 mặt hàng “tên giá”. Sau dòng “飲料” là đồ uống.' })}</p>
           <textarea id="tn_paste" rows="6" placeholder="${esc(L({ ja:'米 3000\nサーロイン肉 12000\nパン粉 800\n飲料\nビール（瓶） 200\nコーラ（瓶） 130', en:'rice 3000\nbeer 200', vi:'gạo 3000' }))}" style="width:100%"></textarea>
           <button class="mini" id="tnImport" style="margin-top:6px">${L({ ja:'この内容で品目を登録する', en:'Import items', vi:'Nhập danh sách' })}</button>
         </details>`;
@@ -6114,7 +6128,7 @@
           <div class="stat"><div class="n" id="tn_total">¥0</div><div class="k">${L({ ja:'月末在庫（合計）', en:'Closing stock', vi:'Tồn cuối kỳ' })}</div></div>
         </div>
         <button class="btn-primary" id="tnSave">${L({ ja:'棚卸を保存する', en:'Save stocktake', vi:'Lưu kiểm kê' })}</button>
-        <div class="hint">${L({ ja:'※ 金額＝単価×数量（単価が分からないものは単価を空にして、数量の欄はそのまま・金額が出ません＝本部へご相談ください）。品目と単価は翌月に引き継がれ、毎月は数量を入れるだけになります。保存すると「月次数値」タブの月末在庫と原価率、翌月の月初在庫へ自動で反映されます。', en:'Amount = unit price × qty. Items and prices carry over to next month, so you only enter quantities monthly. Saving updates closing stock, cost ratio and next month’s opening stock.', vi:'Thành tiền = đơn giá × SL. Mặt hàng và giá chuyển sang tháng sau.' })}</div>
+        <div class="hint">${L({ ja:'※ 単価は納品書の税込のまま入れてください。金額＝単価×数量を税抜に直したもの（消費税を切り捨ててから引く。自動計算のため誤差が出ることがあります）。税率のボタンで 8%／10% を切り替えられます（お酒＝10%・お茶など＝8%）。単価が分からないものは単価を空にして、数量の欄はそのまま・金額が出ません＝本部へご相談ください。品目と単価は翌月に引き継がれ、毎月は数量を入れるだけになります。保存すると「月次数値」タブの月末在庫と原価率、翌月の月初在庫へ自動で反映されます。', en:'Amount = unit price × qty. Items and prices carry over to next month, so you only enter quantities monthly. Saving updates closing stock, cost ratio and next month’s opening stock.', vi:'Thành tiền = đơn giá × SL. Mặt hàng và giá chuyển sang tháng sau.' })}</div>
         ${rec.close != null && rec.close !== '' && !(Array.isArray(rec.closeDetail) && rec.closeDetail.length) ? `<p class="hint" style="display:block">${L({ ja:'※ この月の月末在庫は手入力済みです（内訳なし）。ここで保存すると品目からの合計で上書きされます。', en:'Closing stock was entered manually this month; saving here overwrites it with the itemised total.', vi:'Tồn cuối kỳ đã nhập tay; lưu ở đây sẽ ghi đè.' })}</p>` : ''}
       </div>`;
   }
@@ -9670,7 +9684,8 @@
       const tnRow = (k) => {
         const name = (byId('tn_' + k + '_n') && byId('tn_' + k + '_n').value || '').trim();
         const u = tnNum('tn_' + k + '_u'), q = tnNum('tn_' + k + '_q');
-        return { k, name, u, q, amt: Math.round(u * q) };
+        const rEl = byId('tn_' + k + '_r'); const r = rEl && (rEl.dataset.r === '10' || rEl.dataset.r === '8') ? Number(rEl.dataset.r) : (k[0] === 'd' ? 10 : 8);
+        return { k, name, u, q, r, amt: taxNet(Math.round(u * q), r) };   // 画面304＝単価は税込・金額は税抜
       };
       const tnRecalc = () => {
         let f = 0, d = 0;
@@ -9685,6 +9700,8 @@
         if (byId('tn_total')) byId('tn_total').textContent = yen(f + d);
       };
       tnIds.forEach(k => ['n', 'u', 'q'].forEach(s => { const el = byId('tn_' + k + '_' + s); if (el) el.oninput = tnRecalc; }));
+      /* 画面304＝税率ボタン（8%↔10%）。飲料の既定は10%＝お茶など8%の飲料は店で押して直す */
+      tnIds.forEach(k => { const b = byId('tn_' + k + '_r'); if (b) b.onclick = () => { const cur = (b.dataset.r === '10' || b.dataset.r === '8') ? b.dataset.r : (k[0] === 'd' ? '10' : '8'); b.dataset.r = cur === '10' ? '8' : '10'; b.textContent = b.dataset.r + '%'; tnRecalc(); }; });
       tnRecalc();
       /* ★「＋ 品目を足す」（2026-09-24）＝いま画面に入っている内容（空の行も含めて）を下書きに写し、
          押したブロックに空の行を4つ足して描き直す。打ち込み途中の数量や単価は消えない。下書きは保存で消える */
@@ -9694,9 +9711,9 @@
         const items = tnIds.map(k => {
           const r = tnRow(k);
           const uEl = byId('tn_' + k + '_u'), qEl = byId('tn_' + k + '_q');
-          return { n: r.name, t: k[0], u: (uEl && uEl.value.trim() !== '') ? r.u : null, q: (qEl && qEl.value.trim() !== '') ? r.q : null };
+          return { n: r.name, t: k[0], u: (uEl && uEl.value.trim() !== '') ? r.u : null, q: (qEl && qEl.value.trim() !== '') ? r.q : null, r: r.r };
         });
-        for (let i = 0; i < 4; i++) items.push({ n: '', t: b.dataset.tnadd, u: null, q: null });
+        for (let i = 0; i < 4; i++) items.push({ n: '', t: b.dataset.tnadd, u: null, q: null, r: null });
         const drafts = getTnDrafts(); drafts[tnDraftKey(store, ym)] = items;
         try { localStorage.setItem('yosakura_tn_draft', JSON.stringify(drafts)); } catch (e) {}
         render(true);
@@ -9718,8 +9735,8 @@
           if (/^(食材|フード|food)[：:]?$/i.test(s)) { mode = 'f'; return; }
           /* 「品名 単価」…最後の数字の塊を単価とみなす。数字が無ければ品名だけ（単価は後で入れる） */
           const m = s.match(/^(.*?)[\s,、\t]+([\d,]+)\s*(?:円)?$/);
-          if (m) items.push({ n: m[1].trim(), t: mode, u: Number(m[2].replace(/,/g, '')) || null, q: null });
-          else items.push({ n: s.replace(/[\s,、\t]+$/, ''), t: mode, u: null, q: null });
+          if (m) items.push({ n: m[1].trim(), t: mode, u: Number(m[2].replace(/,/g, '')) || null, q: null, r: mode === 'd' ? 10 : 8 });
+          else items.push({ n: s.replace(/[\s,、\t]+$/, ''), t: mode, u: null, q: null, r: mode === 'd' ? 10 : 8 });
         });
         if (!items.length) { toast(L({ ja:'貼り付け欄に品目を入れてください', en:'Paste items first', vi:'Dán danh sách trước' })); return; }
         const drafts = getTnDrafts(); drafts[tnDraftKey(store, ym)] = items;
@@ -9737,7 +9754,7 @@
           if (!r.name) return;
           /* 数量は0.25刻みへ丸める（8/18決定＝0.25/0.5/0.75/1の概算カウント。1.3のような端数は0.25単位に寄せる） */
           const q = Math.round(r.q / 0.25) * 0.25;
-          detail.push({ n: r.name, t: k[0], u: r.u, q, a: Math.round(r.u * q) });
+          detail.push({ n: r.name, t: k[0], u: r.u, q, r: r.r, a: taxNet(Math.round(r.u * q), r.r) });   // 画面304＝u は税込単価・a は税抜金額
         });
         if (!detail.length) { toast(L({ ja:'品目を1つ以上入力してください', en:'Enter at least one item', vi:'Nhập ít nhất 1 mặt hàng' })); return; }
         const total = detail.reduce((s, d) => s + d.a, 0);
@@ -10792,6 +10809,10 @@
       put('sk_laborauto', (s && lc) ? ((lc / s * 100).toFixed(1) + '%') : '—');
       /* 仕入率＝（当月これまでの仕入合計＋当日仕入）÷月累計売上。
          呼び方は総括表に合わせて「仕入率」（在庫込みの原価率は月締めの「数値・原価率」が受け持つ） */
+      /* ★画面304 仕入＝税込3欄→税抜合計（自動）。3欄が全部空なら合計欄は触らない（税込3欄の無い古い日報を直すときは合計だけが入っている） */
+      if (byId('sk_buy') && ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'].some(id => byId(id) && byId(id).value.trim() !== '')) {
+        byId('sk_buy').value = String(taxNet(num('sk_buy_food'), 8) + taxNet(num('sk_buy_alc'), 10) + taxNet(num('sk_buy_drink'), 8));
+      }
       if (byId('sk_buyrate')) {
         const store = (byId('sk_store') && byId('sk_store').value) || visibleStores()[0];
         const dk = (byId('sk_date') && byId('sk_date').value) || todayKey();
@@ -10809,7 +10830,7 @@
       }
     };
     if (skSales) {
-      ['sk_sales', 'sk_guests', 'sk_foodamt', 'sk_drinkamt', 'sk_mtd', 'sk_goal', 'sk_hours', 'sk_laborcost', 'sk_buy', 'sk_lunch']
+      ['sk_sales', 'sk_guests', 'sk_foodamt', 'sk_drinkamt', 'sk_mtd', 'sk_goal', 'sk_hours', 'sk_laborcost', 'sk_buy', 'sk_buy_food', 'sk_buy_alc', 'sk_buy_drink', 'sk_lunch']
         .forEach(id => { const el = byId(id); if (el) el.addEventListener('input', skAuto_); });
       /* 昼・夜の人数×時間から「総労働時間」を自動で入れる（手で直せる）＝同じ数字を2回打たない */
       if (byId('sk_lstaff')) {
@@ -10838,7 +10859,7 @@
         if (byId('sk_cancel')) byId('sk_cancel').value = (c.cancel + n('sk_cancelt')) || '';
         skAuto_();   // 到達度・仕入率も入れ直した累計で出す
       };
-      ['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt', 'sk_buy'].forEach(id => { const el = byId(id); if (el) el.addEventListener('input', cumUpd); });
+      ['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt', 'sk_buy', 'sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'].forEach(id => { const el = byId(id); if (el) el.addEventListener('input', cumUpd); });
 
       /* ★提出した日報を後から直せるようにする（2026-09-03 ユンさんのご要望）。
          その店舗・その日の日報がすでにあれば、入力欄にその内容を入れて開く。
@@ -10911,6 +10932,11 @@
     if (subSk) subSk.onclick = () => {
       const v = (id) => { const e = byId(id); return e ? e.value.trim() : ''; };
       if (!v('sk_sales')) { toast(L({ ja:'当日売上を入力してください', en:'Please enter sales', vi:'Vui lòng nhập doanh thu' })); return; }
+      /* 画面304＝仕入の税込3欄が入っていれば、提出の直前にも税抜合計を入れ直す（入力イベントを取りこぼしても保存値は正しい） */
+      if (byId('sk_buy') && ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'].some(id => v(id) !== '')) {
+        const n_ = (id) => Number(v(id)) || 0;
+        byId('sk_buy').value = String(taxNet(n_('sk_buy_food'), 8) + taxNet(n_('sk_buy_alc'), 10) + taxNet(n_('sk_buy_drink'), 8));
+      }
       const rec = {
         store: v('sk_store'), date: v('sk_date'), sales: Number(v('sk_sales'))||0, guests: Number(v('sk_guests'))||0,
         net: Number(v('sk_net'))||0, err: v('sk_err'), mtd: Number(v('sk_mtd'))||0, goal: Number(v('sk_goal'))||0,
@@ -10921,6 +10947,8 @@
         cancel: v('sk_cancel'), cancelt: v('sk_cancelt'), closer: v('sk_closer'), order: v('sk_order'),
         // 総括表 Ver.2.6 に合わせて足した項目
         cash: v('sk_cash'), card: v('sk_card'), lunch: v('sk_lunch'), buy: v('sk_buy'),
+        // 画面304＝仕入の税込3欄（食材8%／お酒10%／お酒以外8%）。buy＝その税抜合計（自動）
+        buy_food: v('sk_buy_food'), buy_alc: v('sk_buy_alc'), buy_drink: v('sk_buy_drink'),
         supply: v('sk_supply'), unagi: v('sk_unagi'), errnote: v('sk_errnote'),
         // 日報一本化（2026-08-26 決定）で足した項目＝元の数字だけ。率は計算で出す
         staffct: v('sk_staffct'), hours: v('sk_hours'), laborcost: v('sk_laborcost'),
