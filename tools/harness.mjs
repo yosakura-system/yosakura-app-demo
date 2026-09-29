@@ -3793,6 +3793,19 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
     ok(/id="tn_f16_n"[^>]*value="うなぎ（箱）"/.test(hh) && /id="tn_f16_u"[^>]*value=""/.test(hh), 'うなぎは品目だけ（単価は当日）');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 30 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 8, '食材30・飲料8＝38品目');
     ok(!/まず品目を登録する（貼り付け）/.test(hh), '品目が入っているので「まず品目を登録する」は畳まれる'); }
+  // ③d 画面306＝品目だけ保存済み（単価が空）の店にも、同じ品名の既定の単価が入る（9/25 に長堀橋へ38品目を数量・単価空で保存済み）
+  run(() => {
+    setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana');
+    localStorage.setItem('yosakura_demo_monthly', JSON.stringify([
+      { store: '牛カツ世桜 長堀橋店', ym: ymNow2, closeDetail: [{ n: '白だし（本）', t: 'f', u: null, q: null }, { n: 'サーロイン肉', t: 'f', u: null, q: null }, { n: '油（缶）', t: 'f', u: 5000, q: null }, { n: 'コーラ 瓶（本）', t: 'd', u: null, q: null }], t: Date.now() }
+    ]));
+  });
+  location.hash = '#/app/pl';
+  { const hh = registry.app.innerHTML;
+    ok(/id="tn_f0_u"[^>]*value="1945"/.test(hh), '保存済みで単価が空の白だしに既定の1945が入る');
+    ok(/id="tn_f1_n"[^>]*value="サーロイン肉"/.test(hh) && /id="tn_f1_u"[^>]*value="8200"/.test(hh), '「サーロイン肉」（単位なし）も既定「サーロイン肉（kg）」と同じ品名として8200が入る');
+    ok(/id="tn_f2_u"[^>]*value="5000"/.test(hh), '店が入れた単価（油 5000）はそのまま＝既定で上書きしない');
+    ok(/id="tn_d0_u"[^>]*value="122"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), 'コーラは122・8%が入る'); }
   run(() => { setLS('manager', '日本鰻世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   ok(/まず品目を登録する（貼り付け）/.test(registry.app.innerHTML) && !/白だし（本）/.test(registry.app.innerHTML), '既定が無い店（鰻長堀橋）は従来どおり空＝貼り付けから');
