@@ -9726,7 +9726,8 @@
         tnIds.forEach(k => {
           const r = tnRow(k);
           const el = byId('tn_' + k + '_amt');
-          if (el) el.textContent = (r.u && r.q) ? r.amt.toLocaleString('en-US') : '—';
+          /* 画面308（2026-09-29 神田さん「税込で入力して8%/10%を選ぶだけで税抜が出る形に」）＝数量が空のうちは「税抜の単価」を薄く出す（数量を入れると税抜額に変わる） */
+          if (el) { if (r.u && r.q) { el.textContent = r.amt.toLocaleString('en-US'); el.style.color = ''; } else if (r.u) { el.textContent = '税抜' + taxNet(r.u, r.r).toLocaleString('en-US'); el.style.color = '#8a8478'; } else { el.textContent = '—'; el.style.color = ''; } }
           if (r.name && r.u && r.q) { if (k[0] === 'f') f += r.amt; else d += r.amt; }
         });
         if (byId('tn_food_sum')) byId('tn_food_sum').textContent = yen(f);
