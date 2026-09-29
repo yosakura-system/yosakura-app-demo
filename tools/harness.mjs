@@ -3790,7 +3790,7 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
     ok(/id="tn_f0_n"[^>]*value="白だし（本）"/.test(hh) && /id="tn_f0_u"[^>]*value="2101"/.test(hh), '長堀橋＝棚卸タブに白だし 2101（税抜1945→税込）が最初から入る');
     ok(/id="tn_d0_n"[^>]*value="ビール（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="10"/.test(hh), '飲料の先頭＝ビール（10%）');
     ok(/id="tn_d1_r"[^>]*data-r="8"/.test(hh) && /id="tn_d4_r"[^>]*data-r="8"/.test(hh), 'コーラ・宇治茶は8%');
-    ok(/id="tn_f30_n"[^>]*value="鰻（個＝尾）"/.test(hh) && /id="tn_f30_u"[^>]*value="767"/.test(hh), '鰻＝鰻単価表 35,500÷50尾→税込767／尾');
+    ok(/id="tn_f30_n"[^>]*value="鰻（g）"/.test(hh) && /id="tn_f30_u"[^>]*value="3.834"/.test(hh), '鰻＝g単価（鰻単価表 35,500÷10,000g→税込3.834）');
     ok(/id="tn_f17_n"[^>]*value="抹茶塩（g）"/.test(hh) && /id="tn_f17_u"[^>]*value="3.89"/.test(hh) && /id="tn_f29_n"[^>]*value="固形燃料（個）"/.test(hh) && /id="tn_f29_r"[^>]*data-r="10"/.test(hh), '塩系は g 単価・固形燃料は10%（総括表どおり）');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 31 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 7, '食材31・飲料7＝総括表の棚卸表と同じ38品目');
     ok(!/まず品目を登録する（貼り付け）/.test(hh), '品目が入っているので「まず品目を登録する」は畳まれる'); }
@@ -3819,7 +3819,7 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   });
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
-    ok(/id="tn_f1_n"[^>]*value="鰻（個＝尾）"/.test(hh) && /id="tn_f1_u"[^>]*value="767"/.test(hh), '「うなぎ（箱）」は総括表の「鰻（個＝尾）」767に読み替わる');
+    ok(/id="tn_f1_n"[^>]*value="鰻（g）"/.test(hh) && /id="tn_f1_u"[^>]*value="3.834"/.test(hh), '「うなぎ（箱）」は「鰻（g）」3.834に読み替わる');
     ok(/value="サーロインブロック（個）"/.test(hh) && /value="固形燃料（個）"/.test(hh) && /value="コーラ（本）"/.test(hh), '総括表にあって登録に無い品目（サーロインブロック・固形燃料・コーラ）は末尾に足される');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 31 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 7, '足した結果＝総括表と同じ食材31・飲料7'); }
   run(() => { setLS('manager', '日本鰻世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
