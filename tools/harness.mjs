@@ -3787,10 +3787,10 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
-    ok(/id="tn_f0_n"[^>]*value="白だし（本）"/.test(hh) && /id="tn_f0_u"[^>]*value="1945"/.test(hh), '長堀橋＝棚卸タブに白だし 1945 が最初から入る（総括表202609の単価）');
+    ok(/id="tn_f0_n"[^>]*value="白だし（本）"/.test(hh) && /id="tn_f0_u"[^>]*value="2101"/.test(hh), '長堀橋＝棚卸タブに白だし 2101（税抜1945→税込）が最初から入る');
     ok(/id="tn_d0_n"[^>]*value="ビール 瓶（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="10"/.test(hh), '飲料の先頭＝ビール（10%）');
     ok(/id="tn_d1_r"[^>]*data-r="8"/.test(hh) && /id="tn_d6_r"[^>]*data-r="8"/.test(hh), 'コーラ・宇治茶は8%');
-    ok(/id="tn_f16_n"[^>]*value="うなぎ（箱）"/.test(hh) && /id="tn_f16_u"[^>]*value=""/.test(hh), 'うなぎは品目だけ（単価は当日）');
+    ok(/id="tn_f16_n"[^>]*value="うなぎ（箱）"/.test(hh) && /id="tn_f16_u"[^>]*value="38340"/.test(hh), 'うなぎ＝鰻単価表 1ケース35,500（税抜）→38,340');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 30 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 8, '食材30・飲料8＝38品目');
     ok(!/まず品目を登録する（貼り付け）/.test(hh), '品目が入っているので「まず品目を登録する」は畳まれる'); }
   // ③d 画面306＝品目だけ保存済み（単価が空）の店にも、同じ品名の既定の単価が入る（9/25 に長堀橋へ38品目を数量・単価空で保存済み）
@@ -3802,10 +3802,10 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   });
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
-    ok(/id="tn_f0_u"[^>]*value="1945"/.test(hh), '保存済みで単価が空の白だしに既定の1945が入る');
-    ok(/id="tn_f1_n"[^>]*value="サーロイン肉"/.test(hh) && /id="tn_f1_u"[^>]*value="8200"/.test(hh), '「サーロイン肉」（単位なし）も既定「サーロイン肉（kg）」と同じ品名として8200が入る');
+    ok(/id="tn_f0_u"[^>]*value="2101"/.test(hh), '保存済みで単価が空の白だしに既定の2101が入る');
+    ok(/id="tn_f1_n"[^>]*value="サーロイン肉"/.test(hh) && /id="tn_f1_u"[^>]*value="8856"/.test(hh), '「サーロイン肉」（単位なし）も既定「サーロイン肉（kg）」と同じ品名として8856（税抜8200→税込）が入る');
     ok(/id="tn_f2_u"[^>]*value="5000"/.test(hh), '店が入れた単価（油 5000）はそのまま＝既定で上書きしない');
-    ok(/id="tn_d0_u"[^>]*value="122"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), 'コーラは122・8%が入る'); }
+    ok(/id="tn_d0_u"[^>]*value="132"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), 'コーラは132・8%が入る'); }
   run(() => { setLS('manager', '日本鰻世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   ok(/まず品目を登録する（貼り付け）/.test(registry.app.innerHTML) && !/白だし（本）/.test(registry.app.innerHTML), '既定が無い店（鰻長堀橋）は従来どおり空＝貼り付けから');
