@@ -6086,7 +6086,17 @@
       : (prev && Array.isArray(prev.closeDetail) && prev.closeDetail.length) ? prev.closeDetail.map(d => ({ n: d.n, t: d.t, u: d.u, r: d.r, q: null }))
       : tnDefaultDetail(store);   // 画面305＝何も無い店・月だけ既定の品目（長堀橋）
     const n = type === 'f' ? TN_FOOD_N : TN_DRINK_N;
-    const rows = detail.filter(d => d.t === type).map(d => ({ n: d.n, u: d.u, q: d.q, r: d.r }));
+    /* ★画面306（2026-09-29 19:20 神田さん実機「まだアプリ上に出てきてません」）＝9/25に品目だけ登録して保存した店（長堀橋）には
+       保存分があるため既定が効かなかった。保存分・前月・下書きの行でも「単価が空」なら、同じ品名（かっこ書きと空白を除いて比べる）の既定の単価と税率を入れる。
+       単価が入っている行は触らない（店が入れた値が正） */
+    const dflt = tnDefaultDetail(store);
+    const keyOf = (n) => String(n || '').replace(/[（(][^]*$/, '').replace(/ |　/g, '');
+    const dmap = {}; dflt.forEach(d => { if (d.u != null) dmap[keyOf(d.n)] = d; });
+    const rows = detail.filter(d => d.t === type).map(d => {
+      const r = { n: d.n, u: d.u, q: d.q, r: d.r };
+      if ((r.u == null || r.u === '' || Number(r.u) === 0) && r.n && dmap[keyOf(r.n)]) { r.u = dmap[keyOf(r.n)].u; if (r.r !== 8 && r.r !== 10) r.r = dmap[keyOf(r.n)].r; }
+      return r;
+    });
     /* ★空の行は常に4行以上残す（2026-09-24 神田さん＝棚卸からも品目を足せるように）。
        以前は食材12・飲料6の固定枠で、品目が枠いっぱいになると足す行が無かった（在庫画面の9/19の直しと同じ考え方） */
     const filled = rows.filter(r => r.n).length;
