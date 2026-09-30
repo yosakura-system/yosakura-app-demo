@@ -331,7 +331,7 @@ td.b{color:var(--suou-ink);font-weight:500}
   if (!HQ) { document.querySelectorAll('[data-role="hq"], .hqonly').forEach(e => e.remove()); }
   else {
     const g = document.getElementById('gate'); let okd = false; try { okd = sessionStorage.getItem('planb_hq') === '1'; } catch (e) {}
-    if (!okd) { g.hidden = false; const tryOpen = () => { const v = document.getElementById('gate_in').value.trim(); if (v === '') { try { sessionStorage.setItem('planb_hq', '1'); } catch (e) {} g.remove(); } else { document.getElementById('gate_ng').textContent = '合言葉が違います'; } };
+    if (!okd && '') { g.hidden = false;   // 合言葉が空なら扉は出さない（2026-09-30 神田さん「リンクを加盟店に渡さないから不要」） const tryOpen = () => { const v = document.getElementById('gate_in').value.trim(); if (v === '') { try { sessionStorage.setItem('planb_hq', '1'); } catch (e) {} g.remove(); } else { document.getElementById('gate_ng').textContent = '合言葉が違います'; } };
       document.getElementById('gate_ok').onclick = tryOpen; document.getElementById('gate_in').onkeydown = (e) => { if (e.key === 'Enter') tryOpen(); }; }
   }
 (function(){
