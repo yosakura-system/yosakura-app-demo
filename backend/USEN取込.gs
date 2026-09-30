@@ -159,6 +159,29 @@ function usen_readFolder_() {
   out.sort(function (a, b) { return (a.updated || 0) - (b.updated || 0); });   // 古い→新しい（新しい方が最後に勝つ）
   return out;
 }
+/* C. 神田さんのPC（Claude Code）から貼付用の表をそのまま送る入口（2026-09-30 「USEN更新」の日課）
+   Code.gs の doPost の先頭で usen_api_(data) を呼ぶ。kind:'usen_import' のときだけ動き、それ以外は null（通常の提出へ）。
+   合言葉＝Script Properties の USEN_POST_KEY（英字まじり）。受け取った表を「USEN貼付」シートに置き換えてから取込を走らせ、結果を返す */
+function usen_api_(data) {
+  if (!data || data.kind !== 'usen_import') return null;
+  var key = String(getSetting_('USEN_POST_KEY', '') || '');
+  if (!key || String(data.key || '') !== key) return { ok: false, error: 'USEN_KEY' };
+  var text = String(data.text || '');
+  if (text.indexOf('営業日') === -1) return { ok: false, error: '見出し（営業日）が無い' };
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    var ss = getSheet().getParent();
+    var sh = ss.getSheetByName(USEN_PASTE_SHEET) || ss.insertSheet(USEN_PASTE_SHEET);
+    sh.clear();
+    var rows = text.split(/\r?\n/).filter(function (l) { return l.trim(); }).map(function (l) { return l.split('\t'); });
+    var w = Math.max.apply(null, rows.map(function (r) { return r.length; }));
+    rows = rows.map(function (r) { while (r.length < w) r.push(''); return r; });
+    sh.getRange(1, 1, rows.length, w).setValues(rows);
+    var 結果 = usen_実行_(data.dryRun ? false : true);
+    return { ok: true, rows: rows.length - 1, result: 結果 };
+  } finally { lock.releaseLock(); }
+}
+
 /* B. 「USEN貼付」シート（画面の表を貼ったもの）。空白区切りでもタブ区切りでもよい */
 function usen_readPaste_() {
   var ss; try { ss = getSheet().getParent(); } catch (e) { return []; }

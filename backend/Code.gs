@@ -429,6 +429,8 @@ function findSameReport_(sh, data) {
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
+    /* ★USENレジの表を受け取る入口（USEN取込.gs・合言葉つき・2026-09-30）。貼っていないプロジェクトでも壊れない */
+    if (typeof usen_api_ === 'function') { var ur = usen_api_(data); if (ur) return json(ur); }
     /* ★ログインなどの認証API（2026-08-25 追加）。該当しなければ null が返り、通常の提出処理へ進む */
     if (typeof auth_api_ === 'function') {
       var ar = auth_api_(data);
