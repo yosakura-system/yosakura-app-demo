@@ -122,6 +122,16 @@ main{flex:1;overflow:auto;padding:12px 14px 22px;-webkit-overflow-scrolling:touc
 .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;font-weight:700;vertical-align:middle}
 .pill.ok{background:var(--matsu-soft);color:var(--matsu)} .pill.warn{background:var(--kaki-soft);color:var(--kaki)} .pill.bad{background:var(--beni-soft);color:var(--beni)} .pill.info{background:var(--suou-soft);color:var(--suou-ink)}
 .taxrow{display:flex;gap:6px;align-items:center;justify-content:flex-end;margin-top:4px}
+.slip{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px}
+.slip-h{display:flex;align-items:center;gap:8px}
+.slip-h select{font-size:15px;font-weight:700;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--kinari);color:var(--sumi)}
+.slip-h .mini{margin-left:auto}
+.slip-b{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-top:8px}
+.slip-b label{font-size:11px;color:var(--hai)}
+.slip-b label small{margin-left:4px}
+.slip-b input{display:block;width:100%;margin-top:3px;text-align:right;font-variant-numeric:tabular-nums;font-size:17px;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--kinari)}
+.slip-net{font-size:11px;color:var(--hai);text-align:right;padding-bottom:8px;min-width:78px}
+.slip-net b{display:block;font-size:15px;color:var(--sumi);font-variant-numeric:tabular-nums}
 .taxrow button{font-size:11px;padding:3px 8px;border:1px solid var(--line);border-radius:6px;color:var(--hai)}
 .taxrow button.on{background:var(--sumi);color:var(--paper);border-color:var(--sumi)}
 .big{width:100%;margin-top:12px;background:var(--suou);color:#fff;border-radius:14px;padding:14px;font-size:16px;font-weight:700;text-align:center}
@@ -264,7 +274,7 @@ td.b{color:var(--suou-ink);font-weight:500}
         <tr><td>写真</td><td class="now">撮って送る。見本は別の画面で登録</td><td class="b">見本と今日の写真を並べて撮る。点検の項目にもお手本の写真</td></tr>
         <tr><td>見た目</td><td class="now">文字と枠だけ</td><td class="b">本部の商品写真とロゴが画面の顔。店ごとに「今日の一枚」が変わる</td></tr>
         <tr><td>売上・客数</td><td class="now">店が毎日手で入力</td><td class="b">POSから取り込み（取れるまでは手入力の欄が出る）</td></tr>
-        <tr><td>仕入</td><td class="now">税抜に直してから入力</td><td class="b">税込のまま入力。8％／10％を押すだけ</td></tr>
+        <tr><td>仕入</td><td class="now">食材・酒・飲料の合計を税抜に直して入力</td><td class="b">納品書ごとに仕入先を選び、8％対象と10％対象の税込額を写すだけ。食材・酒・飲料の振り分けと税抜は自動</td></tr>
         <tr><td>日報の項目</td><td class="now">約30項目が一列</td><td class="b">毎日触るのは5つ。残りは「本部が使う項目」に畳む</td></tr>
         <tr><td>入力にかかる時間</td><td class="now">測っていない</td><td class="b">画面ごとに測り、本部の画面に店舗別で出す</td></tr>
         <tr><td>提出物</td><td class="now">全店ほぼ同じ</td><td class="b">店ごとに 必須／推奨／不要 を本部が設定</td></tr>
@@ -302,7 +312,7 @@ td.b{color:var(--suou-ink);font-weight:500}
       <ol class="try">
         <li>「きょう」で未の行を押す→出す→戻ると済になり、残り件数と目安時間が減る</li>
         <li>点検の項目の右にお手本の写真。オープン写真は見本と今日を並べて撮る</li>
-        <li>日報で仕入を税込で入れて 8％／10％ を押す→税抜が自動で出る</li>
+        <li>日報で「納品書を足す」→仕入先を選んで8％対象・10％対象を写す→食材・酒・飲料の税抜が自動で出る（名畑は酒と飲料が1枚に混ざる）</li>
         <li>役割を「本部」に→全店の一枚表・返答待ち・店舗別の入力時間・提出物の設定</li>
         <li>「調べる」→鰻ひつまぶし 上のレシピが写真つきの1枚で出る</li>
       </ol>
@@ -342,6 +352,7 @@ td.b{color:var(--suou-ink);font-weight:500}
     handover:[{ id:1, txt:'鰻のタレ、残り1本。明日の納品まで使い切らないように。', by:'昼のシフト ・ 14:10', open:true }],
     replies:[{ k:'気づき', t:'ガリの盛りが高くて良い。写真ありがとうございます。', ago:'2時間前' }],
     buy:{ food:{ v:'', r:8 }, alc:{ v:'', r:10 }, drink:{ v:'', r:8 } },
+    slips:[ { v:'西原', a8:'42120', a10:'' }, { v:'名畑', a8:'6480', a10:'11880' } ],
     stock:[ ['米（kg）',12,10,null],['鰻（尾）',18,15,'yakiOk'],['パン粉（袋）',3,4,'scale'],['ミニトマト（袋）',2,3,'fridge'],['固形燃料（個）',40,30,null] ],
     ck:{}, started:null, oblig:{ openphoto:'必須', ck_idle:'推奨', kinshu:'不要', chukan:'推奨' }
   };
@@ -431,15 +442,29 @@ td.b{color:var(--suou-ink);font-weight:500}
       <div class="card" style="font-size:14px">${low.length ? low.map(s => `<div style="display:flex;justify-content:space-between;padding:3px 0">${s[0]}<span class="pill warn">あと ${s[2] - s[1]}</span></div>`).join('') : '<span style="color:var(--hai)">いまは無し</span>'}</div>
       <button class="big" data-done="${id}">出す</button>${timer()}`;
   }
+  const VENDORS = ['西原', 'フレッシュ', '銘洋', '名畑', '魚伸', 'その他'];
+  const VKIND = (v, rate) => v === '名畑' ? (rate === 8 ? 'drink' : 'alc') : 'food';   // 仕入先と税率から 食材／酒／酒以外 を自動で振り分け
   function screenNippou(id){
-    const b = S.buy; const net = (k) => taxNet(b[k].v, b[k].r); const total = net('food') + net('alc') + net('drink');
-    const tax = (k, lbl, hint) => `<div class="fld"><label>${lbl}<small>${hint}</small></label><div><input id="buy_${k}" inputmode="numeric" placeholder="税込" value="${b[k].v}" data-buy="${k}"><div class="taxrow"><button data-rate="${k}:8" class="${b[k].r === 8 ? 'on' : ''}">8％</button><button data-rate="${k}:10" class="${b[k].r === 10 ? 'on' : ''}">10％</button><span style="font-size:11px;color:var(--hai);min-width:64px;text-align:right">税抜 ${yen(net(k))}</span></div></div></div>`;
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">日報</div><p class="lead">売上と客数はPOSから入っています。入れるのは仕入と一言だけ。</p>
+    const sums = { food:0, alc:0, drink:0 };
+    S.slips.forEach(s => { sums[VKIND(s.v, 8)] += taxNet(s.a8, 8); sums[VKIND(s.v, 10)] += taxNet(s.a10, 10); });
+    const total = sums.food + sums.alc + sums.drink;
+    const rowsHtml = S.slips.map((s, i) => `<div class="slip">
+        <div class="slip-h"><select data-sv="${i}">${VENDORS.map(v => `<option ${s.v === v ? 'selected' : ''}>${v}</option>`).join('')}</select><span class="pill info">${s.v === '名畑' ? '酒 10％ ・ 飲料 8％' : '食材 8％'}</span><button class="mini" data-sdel="${i}">消す</button></div>
+        <div class="slip-b"><label>8％対象<small>税込</small><input id="s8_${i}" inputmode="numeric" placeholder="¥" value="${s.a8}" data-s8="${i}"></label><label>10％対象<small>税込</small><input id="s10_${i}" inputmode="numeric" placeholder="¥" value="${s.a10}" data-s10="${i}"></label><div class="slip-net">税抜<b>${yen(taxNet(s.a8, 8) + taxNet(s.a10, 10))}</b></div></div>
+      </div>`).join('');
+    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">日報</div><p class="lead">売上と客数はPOSから入っています。入れるのは今日届いた納品書だけ。伝票の「8％対象」「10％対象」の税込額をそのまま写します。</p>
       <div class="card">
         <div class="fld"><label>売上（税抜）<small>POS 22:05 取込</small></label><div class="auto">${yen(186400)}<small>自動</small></div></div>
         <div class="fld"><label>客数<small>POS</small></label><div class="auto">64<small>自動</small></div></div>
-        ${tax('food', '仕入・食材', '納品書の税込金額')}${tax('alc', '仕入・酒', '')}${tax('drink', '仕入・酒以外の飲料', '')}
-        <div class="fld"><label>仕入 合計（税抜）<small>自動で計算</small></label><div class="auto">${yen(total)}</div></div>
+      </div>
+      <div class="sec"><h2>今日の納品書</h2><small>${S.slips.length}枚 ・ 写真も撮れます</small></div>
+      ${rowsHtml}
+      <button class="chip" data-sadd="1" style="width:100%;margin-top:6px">＋ 納品書を足す<small>仕入先を選んで金額を写すだけ</small></button>
+      <div class="card" style="margin-top:10px">
+        <div class="fld"><label>食材（税抜）<small>西原・フレッシュ・銘洋・魚伸・その他</small></label><div class="auto">${yen(sums.food)}<small>自動</small></div></div>
+        <div class="fld"><label>酒（税抜）<small>名畑の10％分</small></label><div class="auto">${yen(sums.alc)}<small>自動</small></div></div>
+        <div class="fld"><label>酒以外の飲料（税抜）<small>名畑の8％分</small></label><div class="auto">${yen(sums.drink)}<small>自動</small></div></div>
+        <div class="fld"><label>仕入 合計（税抜）</label><div class="auto">${yen(total)}</div></div>
         <div class="fld"><label>一言<small>本部に伝えたいこと</small></label><input id="np_note" placeholder="任意" style="text-align:left;font-size:14px"></div>
       </div>
       <details class="card" style="margin-top:8px;padding:0"><summary style="list-style:none;padding:12px 14px;display:flex;justify-content:space-between;cursor:pointer;font-weight:500">本部が使う項目 <small style="color:var(--hai);font-weight:400">8項目 ・ 毎日は不要</small></summary><div style="padding:0 14px 12px;font-size:13px;color:var(--hai)">現金・カード・値引き・レジ誤差・チップ・キャンセル・口コミ数・国別。POSで取れるようになった項目から順に消えていきます。</div></details>
@@ -567,12 +592,19 @@ td.b{color:var(--suou-ink);font-weight:500}
     else if (d.ck) { const [id, i] = d.ck.split(':'); S.ck[id] = S.ck[id] || {}; S.ck[id][i] = !S.ck[id][i]; }
     else if (d.st) { const [i, dv] = d.st.split(':').map(Number); S.stock[i][1] = Math.max(0, S.stock[i][1] + dv); }
     else if (d.rate) { const [k, r] = d.rate.split(':'); S.buy[k].r = Number(r); }
+    else if (d.sadd) { S.slips.push({ v:'西原', a8:'', a10:'' }); }
+    else if (d.sdel) { S.slips.splice(Number(d.sdel), 1); }
     else if (d.ob) { const [id, o] = d.ob.split(':'); S.oblig[id] = o; toast('長堀橋の「きょう」に反映しました'); }
     else if (d.toast) { toast(d.toast); return; }
     else return;
     render();
   });
-  $('#device').addEventListener('input', (e) => { const k = e.target.dataset.buy; if (k) { S.buy[k].v = e.target.value; const pos = e.target.selectionStart; render(); const n = $('#buy_' + k); n.focus(); n.setSelectionRange(pos, pos); } });
+  $('#device').addEventListener('input', (e) => {
+    const k = e.target.dataset.buy; if (k) { S.buy[k].v = e.target.value; const pos = e.target.selectionStart; render(); const n = $('#buy_' + k); n.focus(); n.setSelectionRange(pos, pos); return; }
+    const i8 = e.target.dataset.s8, i10 = e.target.dataset.s10;
+    if (i8 != null || i10 != null) { const i = Number(i8 != null ? i8 : i10); const key = i8 != null ? 'a8' : 'a10'; S.slips[i][key] = e.target.value; const pos = e.target.selectionStart; render(); const n = $((i8 != null ? '#s8_' : '#s10_') + i); n.focus(); n.setSelectionRange(pos, pos); }
+  });
+  $('#device').addEventListener('change', (e) => { const i = e.target.dataset.sv; if (i != null) { S.slips[Number(i)].v = e.target.value; render(); } });
   render();
 })();
 </script>
