@@ -41,7 +41,7 @@ function aggSs_() {
 
 /* ---------- 表示用の対応表 ---------- */
 var AGG_KIND = {
-  soukatsu: '総括表（アプリ入力）', soukatsu_imp: '総括表（スプシ取込）', survey: 'サーベイ回答', kizuki: '気づき',
+  soukatsu: '総括表（アプリ入力）', soukatsu_imp: '総括表（総括表取込）', soukatsu_usen: '総括表（USENレジ取込）', survey: 'サーベイ回答', kizuki: '気づき',
   chukan: '中間報告', subrec: '写真等の提出', ckdone: 'チェックリスト操作', gsnap: 'Google口コミ取得',
   video: '店内動画', kinshu: '金種別入力', handover: '店内伝言板', a: '食べ残し', b: '食べ残し',
   svfb: '巡回フィードバック', route: '来店経路', open: '開局記録（旧）', community: 'みんなの投稿',
@@ -136,7 +136,7 @@ function aggCover_(ss) {
     ['毎朝6時に自動更新（最終更新 ' + upd + '）', '', '', ''],
     ['', '', '', ''],
     ['見たいもの', 'タブ', '件数', 'ひとこと'],
-    ['全店の日次数値（売上・客数・目標・チップ…）', '総括表_日別', '', 'アプリ入力とスプシ取込を店舗×日付で1行に。同じ日はアプリ入力を優先'],
+    ['全店の日次数値（売上・客数・目標・チップ…）', '総括表_日別', '', '店舗×日付で1行。「経路」＝アプリ入力／総括表取込／USENレジ（＋USENレジ＝売上・客数だけレジの値）。「売上・客数の出どころ」列で数字の出どころが分かる'],
     ['お客様の国別内訳（組数・人数）', '総括表_国別内訳', '', '総括表の「お客様の内訳」。1国1行でピボットしやすい形'],
     ['お客様アンケートの生の声', 'サーベイ', '', '満足度・来店経路・来店国・コメント'],
     ['現場からの気づき・提案', '気づき', '', '店舗スタッフの声を全文そのまま'],
@@ -195,27 +195,41 @@ function aggRebuild() {
   var ss = aggSs_();
 
   /* --- ① 総括表_日別：店舗×日付で1行（アプリ入力を取込より優先・同種なら新しい方） --- */
-  var byDay = {};
+  var byDay = {}, usenDay = {};
   recs.forEach(function (x) {
     if (x.kind !== 'soukatsu' || !x.p.date) return;
     var key = x.store + '|' + aggDate_(x.p.date);
+    if (x.p.src === 'usen') { if (!usenDay[key] || x.t >= usenDay[key].t) usenDay[key] = x; return; }   // USENレジは別に持つ
     var cur = byDay[key];
     var isApp = !x.p.src;
     if (!cur || (isApp && cur.p.src) || (isApp === !cur.p.src && x.t >= cur.t)) byDay[key] = x;
   });
+  /* ★出どころ（2026-09-30 神田さん「アプリ入力／USEN／総括表取込が分かるように」）
+     行のもと＝アプリ入力＞総括表取込。USENレジの行しか無い日はUSENの行。
+     売上・純売上・客数・現金・カード・電子マネー・ポイント・値引きは、USENの行があればUSENの値で上書き（レジが正）。
+     「経路」列＝行のもと（＋USENレジ で上書きあり）／「売上・客数の出どころ」列＝その数字がどこから来たか */
+  Object.keys(usenDay).forEach(function (key) { if (!byDay[key]) byDay[key] = usenDay[key]; });
+  var USEN_F = ['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'disc'];
   var known = {}; AGG_SK_COLS.forEach(function (c) { known[c[0]] = 1; });
   var extras = {};
   Object.keys(byDay).forEach(function (k) {
     Object.keys(byDay[k].p).forEach(function (key) {
-      if (!known[key] && key !== 'date' && key !== 'src' && key !== 'cty') extras[key] = 1;
+      if (!known[key] && key !== 'date' && key !== 'src' && key !== 'cty' && key !== 'usenCode') extras[key] = 1;
     });
   });
   var exKeys = Object.keys(extras).sort();
-  var skHead = ['日付', '店舗', '経路', '客単価（自動）'].concat(AGG_SK_COLS.map(function (c) { return c[1]; })).concat(exKeys);
+  var skHead = ['日付', '店舗', '経路', '売上・客数の出どころ', '客単価（自動）'].concat(AGG_SK_COLS.map(function (c) { return c[1]; })).concat(exKeys);
   var skRows = Object.keys(byDay).sort().map(function (k) {
-    var x = byDay[k], p = x.p;
+    var x = byDay[k], p = x.p, u = usenDay[k];
+    var route = p.src === 'usen' ? 'USENレジ' : p.src ? '総括表取込' : 'アプリ入力';
+    var numSrc = route;
+    if (u && u !== x) {
+      p = Object.assign({}, p);
+      USEN_F.forEach(function (f) { if (u.p[f] != null && u.p[f] !== '') p[f] = u.p[f]; });
+      numSrc = 'USENレジ'; route += '＋USENレジ';
+    }
     var unit = (Number(p.sales) > 0 && Number(p.guests) > 0) ? Math.round(Number(p.sales) / Number(p.guests)) : '';
-    var row = [aggDate_(p.date), x.store, p.src ? 'スプシ取込' : 'アプリ入力', unit];
+    var row = [aggDate_(p.date), x.store, route, numSrc, unit];
     AGG_SK_COLS.forEach(function (c) { row.push(p[c[0]] != null ? p[c[0]] : ''); });
     exKeys.forEach(function (key) { var v = p[key]; row.push(v == null ? '' : (typeof v === 'object' ? JSON.stringify(v) : v)); });
     return row;
@@ -287,7 +301,7 @@ function aggRebuild() {
   /* --- ⑧ 店舗別サマリ（どの店が・何を・どれだけ使っているか）＝縦持ち（ピボットしやすい形） --- */
   var sum = {};
   recs.forEach(function (x) {
-    var kk = x.kind === 'soukatsu' ? (x.p.src ? 'soukatsu_imp' : 'soukatsu') : x.kind;
+    var kk = x.kind === 'soukatsu' ? (x.p.src === 'usen' ? 'soukatsu_usen' : x.p.src ? 'soukatsu_imp' : 'soukatsu') : x.kind;
     if (!AGG_KIND[kk] || !x.store) return;
     var key = x.store + '|' + kk;
     if (!sum[key]) sum[key] = { store: x.store, kind: kk, n: 0, lastT: 0 };

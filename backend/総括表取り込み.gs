@@ -301,6 +301,7 @@ function sk_既存の値_() {
     var t = Number(vals[i][1]) || 0;
     var p; try { p = JSON.parse(vals[i][6] || '{}'); } catch (e) { continue; }
     if (!p.date) continue;
+    if (p.src === 'usen') continue;                      // ★USENレジの行は別の出どころ＝ここでは見ない（見ると毎時お互いを書き直す・2026-09-30）
     var k = String(vals[i][3]) + '|' + p.date;
     if (!map[k] || t >= map[k].t) map[k] = { t: t, canon: sk_canon_(p), src: p.src || '', p: p };
   }
