@@ -111,7 +111,7 @@ if (fs.existsSync(MDIR)) {
 const PDIR = path.join(DEMO, 'planb');
 if (fs.existsSync(PDIR)) {
   fs.mkdirSync(path.join(WORK, 'planb'), { recursive: true });
-  for (const f of fs.readdirSync(PDIR)) fs.copyFileSync(path.join(PDIR, f), path.join(WORK, 'planb', f));
+  fs.cpSync(PDIR, path.join(WORK, 'planb'), { recursive: true });   // planb/tenpo/（店舗版）も含めて丸ごと（2026-09-30）
 }
 
 // 5) commit & push
