@@ -482,7 +482,7 @@
   const roleKeys = () => TAIKEN ? ['staff', 'manager', 'owner'] : ROLE_KEYS_ALL;
   /* 開発者ビューの対象（2026-09-01 神田さんのご要望・2026-09-03 増田さんを追加）＝本部のこのアカウントだけ、
      端末で選んだ役割を「見え方」として使える。ログイン・権限・保存は本部のまま。 */
-  const DEV_VIEW_UIDS = ['kanda', 'masuda', 'yosakura-fc'];   // 2026-09-18 増田さん「まだできてない」＝本部共有ID（yosakura-fc）でログインしている可能性→同じ扱いに
+  const DEV_VIEW_UIDS = ['kanda', 'masuda', 'yosakura-fc', 'tsuneyama'];   // 2026-09-30 神田さん「常山さんも本部だけでなく加盟店の画面としても使えるように」   // 2026-09-18 増田さん「まだできてない」＝本部共有ID（yosakura-fc）でログインしている可能性→同じ扱いに
   const getRole = () => {
     const a = getAuth();
     if (a && a.role) {

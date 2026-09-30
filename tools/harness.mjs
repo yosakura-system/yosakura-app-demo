@@ -3603,7 +3603,7 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   ok(!/開発者ビュー/.test(registry.app.innerHTML), '対象でないアカウントにはバナーを出さない');
   // ④ ソース＝対象は許可リストのみ・ログイン済みの役割切替は開発者ビューだけ例外
   const dsrc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/const DEV_VIEW_UIDS = \['kanda', 'masuda', 'yosakura-fc'\];/.test(dsrc), '対象は許可リスト（kanda・masuda・本部共有ID）だけ');
+  ok(/const DEV_VIEW_UIDS = \['kanda', 'masuda', 'yosakura-fc', 'tsuneyama'\];/.test(dsrc), '対象は許可リスト（kanda・masuda・本部共有ID・tsuneyama）だけ');
   ok(/if \(getAuth\(\) && !devViewAllowed\(\)\) return;/.test(dsrc), 'ログイン済みの役割切替は開発者ビューだけ例外');
   ok(/data-devexit/.test(dsrc) && /setRole\('hq'\); setStoreSel\('all'\);/.test(dsrc), 'バナーを押すと本部の表示（全店）へ戻る');
   // 後始末＝以後のテストにログイン状態を残さない
