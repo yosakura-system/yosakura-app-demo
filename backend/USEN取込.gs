@@ -110,7 +110,11 @@ function usen_parseTable_(table, label) {
     var store = map[code] || (cName >= 0 ? map[String(row[cName] || '').trim()] : '') || '';
     if (!store) { out.push({ skip: '店舗の対応が無い：' + code + ' ' + (cName >= 0 ? row[cName] : '') }); continue; }
     var d = { date: date, src: USEN_SRC_TAG, usenCode: code };
-    cols.forEach(function (c) { if (c[1] < 0) return; var n = usen_num_(row[c[1]]); if (n != null && n !== 0) d[c[0]] = n; });
+    /* ★差異合計（レジ誤差）は既定で取り込まない（2026-09-30 9月分で確認＝長堀橋・手巻きは締めで「入力現金」に釣銭準備金しか入れておらず、
+       差異＝−現金売上になっている日が大半。レジ誤差として日報に入れると全店の要確認が誤差で埋まる）。
+       締めの運用が整った店から Script Properties USEN_IMPORT_ERR=true で有効にする */
+    var importErr = getSetting_('USEN_IMPORT_ERR', false) === true;
+    cols.forEach(function (c) { if (c[1] < 0) return; if (c[0] === 'err' && !importErr) return; var n = usen_num_(row[c[1]]); if (n != null && n !== 0) d[c[0]] = n; });
     if (!d.sales && !d.guests) continue;                                   // 休業・未入力
     out.push({ store: store, date: date, p: d });
   }
