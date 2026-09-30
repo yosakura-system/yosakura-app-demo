@@ -79,6 +79,9 @@ var AGG_PAPER = '#FFFFFF';  // 白
 var AGG_KINARI = '#F7F5F1'; // 生成り（縞）
 var AGG_GRAY = '#7C736D';   // 副次文字
 var AGG_GOLD = '#8F8170';   // 差し色（グレージュ）
+var AGG_C_APP = '#E4F0E2';   // 経路の色＝アプリ入力（緑）
+var AGG_C_DRIVE = '#F1E7D0'; // 経路の色＝総括表取込（生成り・濃いめ）
+var AGG_C_USEN = '#DCE7F3';  // 経路の色＝USENレジ（青）
 
 function aggWrite_(ss, name, header, data) {
   var sh = ss.getSheetByName(name) || ss.insertSheet(name);
@@ -136,7 +139,8 @@ function aggCover_(ss) {
     ['毎朝6時に自動更新（最終更新 ' + upd + '）', '', '', ''],
     ['', '', '', ''],
     ['見たいもの', 'タブ', '件数', 'ひとこと'],
-    ['全店の日次数値（売上・客数・目標・チップ…）', '総括表_日別', '', '店舗×日付で1行。「経路」＝アプリ入力／総括表取込／USENレジ（＋USENレジ＝売上・客数だけレジの値）。「売上・客数の出どころ」列で数字の出どころが分かる'],
+    ['全店の日次数値（売上・客数・目標・チップ…）', '総括表_日別', '', '店舗×日付で1行。「経路」列の色＝緑：アプリ入力／生成り：総括表取込／青：USENレジ。「＋USENレジ」＝売上・客数だけレジの値で上書き。「売上・客数の出どころ」列で数字の出どころが分かる'],
+    ['USENレジの締めの数字（取り込んだ店×日）', 'USENレジ_日別', '', 'レジの値そのまま（売上・純売上・客数・支払方法別・値引き）。USENに載る7店だけ'],
     ['お客様の国別内訳（組数・人数）', '総括表_国別内訳', '', '総括表の「お客様の内訳」。1国1行でピボットしやすい形'],
     ['お客様アンケートの生の声', 'サーベイ', '', '満足度・来店経路・来店国・コメント'],
     ['現場からの気づき・提案', '気づき', '', '店舗スタッフの声を全文そのまま'],
@@ -148,11 +152,12 @@ function aggCover_(ss) {
     ['使い方', '', '', ''],
     ['・各タブの見出し行のフィルターで、どの列でも絞り込み・並べ替えができます', '', '', ''],
     ['・このスプシは毎日上書きされます。加工はコピーを取るか、IMPORTRANGE で別シートへ', '', '', ''],
-    ['・元データは世桜アプリ。この表を直しても元データは変わりません', '', '', '']
+    ['・元データは世桜アプリ。この表を直しても元データは変わりません', '', '', ''],
+    ['・総括表_日別の「経路」の色＝緑：アプリ入力／生成り：総括表取込／青：USENレジ', '', '', '']
   ];
   sh.getRange(1, 1, rows.length, 4).setValues(rows);
   // 件数＝自動計算（開いたときの実数が常に出る）
-  var tabs = ['総括表_日別', '総括表_国別内訳', 'サーベイ', '気づき', '中間報告', 'Google口コミ', '提出ログ', '店舗別サマリ'];
+  var tabs = ['総括表_日別', 'USENレジ_日別', '総括表_国別内訳', 'サーベイ', '気づき', '中間報告', 'Google口コミ', '提出ログ', '店舗別サマリ'];
   for (var i = 0; i < tabs.length; i++) {
     sh.getRange(7 + i, 3).setFormula("=COUNTA('" + tabs[i] + "'!A2:A)&\" 件\"");
   }
@@ -170,8 +175,9 @@ function aggCover_(ss) {
   band.setHeaderRowColor(null).setFirstRowColor(AGG_PAPER).setSecondRowColor(AGG_KINARI);
   sh.getRange(7, 2, tabs.length, 1).setFontWeight('bold');
   sh.getRange(7, 3, tabs.length, 1).setHorizontalAlignment('right');
-  sh.getRange(16, 1).setFontWeight('bold').setFontColor(AGG_GOLD);
-  sh.getRange(17, 1, 3, 1).setFontColor(AGG_GRAY).setFontSize(10);
+  var howRow = 7 + tabs.length + 1;                                     // 「使い方」の行（タブの数で決まる）
+  sh.getRange(howRow, 1).setFontWeight('bold').setFontColor(AGG_GOLD);
+  sh.getRange(howRow + 1, 1, 4, 1).setFontColor(AGG_GRAY).setFontSize(10);
   sh.setColumnWidth(1, 340); sh.setColumnWidth(2, 150); sh.setColumnWidth(3, 90); sh.setColumnWidth(4, 420);
   sh.setTabColor(AGG_GOLD);
   // 表紙をいちばん左へ
@@ -235,6 +241,23 @@ function aggRebuild() {
     return row;
   });
   aggWrite_(ss, '総括表_日別', skHead, skRows);
+  /* ★経路の色分け（2026-09-30 神田さん「集約スプシでUSENレジ・総括表・アプリ入力が分かるように」）
+     アプリ入力＝緑／総括表取込＝生成り（濃いめ）／USENレジ＝青。「＋USENレジ」の日は経路＝行のもとの色・出どころ＝青 */
+  if (skRows.length) {
+    var shSk = ss.getSheetByName('総括表_日別');
+    var colorOf = function (s) { return s.indexOf('USENレジ') === 0 ? AGG_C_USEN : s.indexOf('総括表') === 0 ? AGG_C_DRIVE : AGG_C_APP; };
+    var bg = skRows.map(function (r) { return [colorOf(String(r[2])), colorOf(String(r[3]))]; });
+    shSk.getRange(2, 3, bg.length, 2).setBackgrounds(bg);
+  }
+
+  /* --- ①' USENレジ_日別：レジから取り込んだ行だけ（レジの値そのまま・上書き前） --- */
+  var usenRows = Object.keys(usenDay).sort().map(function (k) {
+    var x = usenDay[k], p = x.p;
+    return [aggDate_(p.date), x.store, p.sales != null ? p.sales : '', p.net != null ? p.net : '', p.guests != null ? p.guests : '',
+      p.cash != null ? p.cash : '', p.card != null ? p.card : '', p.emoney != null ? p.emoney : '', p.point != null ? p.point : '',
+      p.disc != null ? p.disc : '', p.err != null ? p.err : '', p.usenCode || '', aggFmtT_(x.t)];
+  });
+  aggWrite_(ss, 'USENレジ_日別', ['日付', '店舗', '売上（税込）', '純売上', '客数', '現金', 'クレジット', '電子マネー', 'ポイント', '値引き', 'レジ誤差', 'USEN店舗コード', '取込日時'], usenRows);
 
   /* --- ② 総括表_国別内訳（cty のある日だけ・1国1行） --- */
   var ctyRows = [];
