@@ -107,9 +107,16 @@ if (fs.existsSync(MDIR)) {
   for (const f of fs.readdirSync(MDIR)) fs.copyFileSync(path.join(MDIR, f), path.join(WORK, 'manual', f));
 }
 
+// 4-d) 案B（白紙から組み直した触れる見本・2026-09-30）＝ planb/ をそのまま置く（本部が 10/2 構築MTG で見る。アプリ本体には触れない）
+const PDIR = path.join(DEMO, 'planb');
+if (fs.existsSync(PDIR)) {
+  fs.mkdirSync(path.join(WORK, 'planb'), { recursive: true });
+  for (const f of fs.readdirSync(PDIR)) fs.copyFileSync(path.join(PDIR, f), path.join(WORK, 'planb', f));
+}
+
 // 5) commit & push
 const msg = process.argv.slice(2).join(' ') || 'デモから同期（プレビュー反映）';
-sh('git add app.js styles.css sw.js guide manual', WORK);   // manual/＝マニュアルPDF（画面311）
+sh('git add app.js styles.css sw.js guide manual planb', WORK);   // manual/＝マニュアルPDF（画面311）
 sh(`git -c user.name="yosakura-system" -c user.email="yosakura.system@gmail.com" commit -m "${msg}\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"`, WORK);
 sh('git push origin HEAD', WORK);
 console.log(`OK: プレビューへ同期・push 完了（SWキャッシュ → yosakura-hq-v${next}）`);
