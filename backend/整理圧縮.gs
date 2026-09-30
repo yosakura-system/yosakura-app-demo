@@ -8,7 +8,7 @@
  *   表示は常に「最新の行が正」なので、**古い方の行は消しても表示は1つも変わらない**。
  *
  * ■ 圧縮するもの（最新1行だけ残す）
- *   ・soukatsu（総括表）＝店舗×日付ごと。アプリ入力と取込は別々に最新を残す（アプリ優先の表示を壊さない）
+ *   ・soukatsu（総括表）＝店舗×日付×出どころ（アプリ入力／総括表取込／USENレジ）ごとに最新を残す（表示の勝ち負けを壊さない）
  *   ・ckdone（チェックリスト実施）＝店舗×項目キーごと
  *   ・gsnap（Google口コミの日次記録）＝店舗×日付ごと
  *   それ以外の種類（写真提出・気づき・サーベイ・対応済み・お知らせ等）は一切触らない。
@@ -40,7 +40,9 @@ function 圧縮_(書き込む) {
       if (!p || !p.date) return null;
       var d = p.date;
       var ds = (d && d.getTime) ? Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy-MM-dd') : String(d);
-      return 'sk|' + r[3] + '|' + ds + '|' + (p.src ? 'drive' : 'app');
+      /* ★出どころごとに最新1行を残す（2026-09-30）。以前は src の有無だけで分けていたため、
+         USENレジの行（src:'usen'）と総括表の行（src:'drive'）が同じ鍵になり、片方が消えてしまう */
+      return 'sk|' + r[3] + '|' + ds + '|' + (p.src ? String(p.src) : 'app');
     }
     if (kind === 'ckdone') return 'ck|' + r[3] + '|' + String(r[4] || '');
     if (kind === 'gsnap') {
