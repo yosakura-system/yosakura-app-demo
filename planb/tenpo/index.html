@@ -327,11 +327,11 @@ td.b{color:var(--suou-ink);font-weight:500}
 <div id="gate" hidden style="position:fixed;inset:0;z-index:99;background:#F7F5F1;display:grid;place-items:center;font-family:inherit"><div style="width:min(92vw,360px);background:#fff;border:1px solid #E5E0D8;border-radius:16px;padding:24px 22px;text-align:center"><div style="font-size:12px;letter-spacing:.12em;color:#7C736D">YOSAKURA APP ・ PLAN B</div><div style="font-size:18px;font-weight:600;margin:8px 0 14px">本部の方だけ見られる見本です</div><input id="gate_in" type="password" placeholder="合言葉" style="width:100%;font-size:16px;padding:10px 12px;border:1px solid #E5E0D8;border-radius:10px;text-align:center"><button id="gate_ok" style="margin-top:10px;width:100%;padding:11px;border:0;border-radius:10px;background:#201D1C;color:#fff;font-size:15px">開く</button><div id="gate_ng" style="font-size:12px;color:#B5533C;margin-top:8px;min-height:1em"></div></div></div>
 <script>
   /* ★本部版（HQ=true）＝合言葉の扉つき・本部タブあり／店舗版（HQ=false）＝本部の役割と本部向けの説明を出さない（加盟店の方に見せる用・2026-09-30 神田さん） */
-  const HQ = true;
+  const HQ = false;
   if (!HQ) { document.querySelectorAll('[data-role="hq"], .hqonly').forEach(e => e.remove()); }
   else {
     const g = document.getElementById('gate'); let okd = false; try { okd = sessionStorage.getItem('planb_hq') === '1'; } catch (e) {}
-    if (!okd) { g.hidden = false; const tryOpen = () => { const v = document.getElementById('gate_in').value.trim(); if (v === '世桜本部') { try { sessionStorage.setItem('planb_hq', '1'); } catch (e) {} g.remove(); } else { document.getElementById('gate_ng').textContent = '合言葉が違います'; } };
+    if (!okd) { g.hidden = false; const tryOpen = () => { const v = document.getElementById('gate_in').value.trim(); if (v === '') { try { sessionStorage.setItem('planb_hq', '1'); } catch (e) {} g.remove(); } else { document.getElementById('gate_ng').textContent = '合言葉が違います'; } };
       document.getElementById('gate_ok').onclick = tryOpen; document.getElementById('gate_in').onkeydown = (e) => { if (e.key === 'Enter') tryOpen(); }; }
   }
 (function(){
