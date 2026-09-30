@@ -679,11 +679,26 @@
        取込の役割は「アプリで出していない日を埋める」＝アプリ提出のある日はアプリが正。
        同じ出どころ同士は従来どおり新しい方が正（出し直しで直せる）。 */
     const rank = (r) => (r.src === 'drive' || r.src === 'usen') ? 0 : 1;   // 取込（総括表・USENレジ）よりアプリ提出を勝たせる
+    /* ★USENレジ（src:'usen'）は「売上側の正」（2026-09-30 神田さん「USENレジのデータが一番正しい」）。
+       行の勝ち負けは従来どおり（アプリ提出が勝つ＝仕入・一言・累計はアプリの値を残す）が、
+       レジが持つ項目＝売上・純売上・客数・現金・カード・電子マネー・ポイント・値引き は USEN の値で上書きする。
+       上書きした行には pos:true の印（画面では「POS」と出す） */
+    const USEN_FIELDS = ['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'disc'];
+    const usenBy = {};
     (arr || []).forEach(r => {
       if (!r || !r.date || r.date > today) return;
       const k = (r.store || '') + '||' + r.date;
       const cur = latest[k];
       if (!cur || rank(r) > rank(cur) || (rank(r) === rank(cur) && (Number(r.t) || 0) >= (Number(cur.t) || 0))) latest[k] = r;
+      if (r.src === 'usen' && (!usenBy[k] || (Number(r.t) || 0) >= (Number(usenBy[k].t) || 0))) usenBy[k] = r;
+    });
+    Object.keys(usenBy).forEach(k => {
+      const u = usenBy[k]; const base = latest[k];
+      if (!base) return;
+      if (base === u) { latest[k] = Object.assign({}, u, { pos: true }); return; }
+      const m = Object.assign({}, base, { pos: true });
+      USEN_FIELDS.forEach(f => { if (u[f] != null && u[f] !== '') m[f] = u[f]; });
+      latest[k] = m;
     });
     return Object.values(latest).filter(r => (Number(r.sales) || 0) > 0);
   }
@@ -7254,7 +7269,7 @@
       rs.forEach(r => {
         const sales = numN_(r.sales), guests = numN_(r.guests), food = numN_(r.foodamt), drink = numN_(r.drinkamt);
         const lunch = numN_(r.lunch), err = numN_(r.err), cash = numN_(r.cash), card = numN_(r.card);
-        const add = (code, vals) => out.push({ store: st, date: r.date, code, vals, src: r.src === 'drive' ? 'drive' : r.src === 'usen' ? 'usen' : 'app' });
+        const add = (code, vals) => out.push({ store: st, date: r.date, code, vals, src: (r.src === 'usen' || r.pos) ? 'usen' : r.src === 'drive' ? 'drive' : 'app' });
         if (!sales || sales <= 0) return;
         // アプリ入力は 2026-09-02（フード・ドリンクを点数→金額に切替した日）より前を見ない（神田さん 2026-09-17）。シート取込は最初から金額なので対象
         if (r.src !== 'drive' && r.date < '2026-09-02') return;
