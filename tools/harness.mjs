@@ -5098,7 +5098,7 @@ console.log('== 日報の累計＝シート取込と同じ日がぶつかって�
   }
   // ③ ソース＝同じ店×同じ日の勝ち方（アプリ提出＞シート取込）が固定されている
   const src4 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/const rank = \(r\) => r\.src === 'drive' \? 0 : 1;/.test(src4), '同じ店×同じ日はアプリ提出＞シート取込（skClean）');
+  ok(/const rank = \(r\) => \(r\.src === 'drive' \|\| r\.src === 'usen'\) \? 0 : 1;/.test(src4), '同じ店×同じ日はアプリ提出＞シート取込・USEN取込（skClean）');   // 2026-09-30 USENレジの取込（src:'usen'）も取込側
   // 後始末
   run(() => { setLS('hq', 'all', 'ja'); });
 }

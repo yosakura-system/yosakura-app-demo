@@ -678,7 +678,7 @@
        しかもシートとアプリの数字が少しでも違うと、毎時の取込がその日をかぶせ直す＝毎回負ける。
        取込の役割は「アプリで出していない日を埋める」＝アプリ提出のある日はアプリが正。
        同じ出どころ同士は従来どおり新しい方が正（出し直しで直せる）。 */
-    const rank = (r) => r.src === 'drive' ? 0 : 1;
+    const rank = (r) => (r.src === 'drive' || r.src === 'usen') ? 0 : 1;   // 取込（総括表・USENレジ）よりアプリ提出を勝たせる
     (arr || []).forEach(r => {
       if (!r || !r.date || r.date > today) return;
       const k = (r.store || '') + '||' + r.date;
@@ -7254,7 +7254,7 @@
       rs.forEach(r => {
         const sales = numN_(r.sales), guests = numN_(r.guests), food = numN_(r.foodamt), drink = numN_(r.drinkamt);
         const lunch = numN_(r.lunch), err = numN_(r.err), cash = numN_(r.cash), card = numN_(r.card);
-        const add = (code, vals) => out.push({ store: st, date: r.date, code, vals, src: r.src === 'drive' ? 'drive' : 'app' });
+        const add = (code, vals) => out.push({ store: st, date: r.date, code, vals, src: r.src === 'drive' ? 'drive' : r.src === 'usen' ? 'usen' : 'app' });
         if (!sales || sales <= 0) return;
         // アプリ入力は 2026-09-02（フード・ドリンクを点数→金額に切替した日）より前を見ない（神田さん 2026-09-17）。シート取込は最初から金額なので対象
         if (r.src !== 'drive' && r.date < '2026-09-02') return;
@@ -7296,7 +7296,7 @@
         <h3>${esc(storeLabel(st))} <small style="color:#8a8">${byStore[st].length}${L({ ja:'件', en:'', vi:'' })}</small></h3>
         ${byStore[st].map(x => { const k = numKey_(x); const done = !!ack[k]; return `
         <div class="numrow ${done ? 'done' : ''}">
-          <div class="numrow-l"><b>${esc(x.date)}</b> <span class="numsrc">${x.src === 'drive' ? L({ ja:'取込', en:'sheet', vi:'sheet' }) : L({ ja:'アプリ', en:'app', vi:'app' })}</span></div>
+          <div class="numrow-l"><b>${esc(x.date)}</b> <span class="numsrc">${x.src === 'drive' ? L({ ja:'取込', en:'sheet', vi:'sheet' }) : x.src === 'usen' ? L({ ja:'POS', en:'POS', vi:'POS' }) : L({ ja:'アプリ', en:'app', vi:'app' })}</span></div>
           <div class="numrow-m"><b>${esc(L(NUM_CODES[x.code]))}</b><br><small>${esc(x.vals)}</small></div>
           <button type="button" class="mini" data-numack="${esc(k)}">${done ? L({ ja:'未確認に戻す', en:'Reopen', vi:'Mở lại' }) : L({ ja:'確認済みにする', en:'Mark checked', vi:'Đã xác nhận' })}</button>
         </div>`; }).join('')}
@@ -7508,7 +7508,7 @@
        取込の行には note に src:'drive' の印がある（総括表取り込み.gs の SK_SRC_TAG） */
     const skRouteOf = (s, dk) => {
       const r = getSk().filter(x => x.store === s && x.date === dk).sort((a, b) => b.t - a.t)[0];
-      return r ? (r.src === 'drive' ? 'import' : 'app') : '';
+      return r ? ((r.src === 'drive' || r.src === 'usen') ? 'import' : 'app') : '';
     };
     const rows = stores.map(s => {
       const ms = masters.filter(m => appliesToStore(m, s));
@@ -8255,7 +8255,7 @@
         let rt = '';
         if (m.detect === 'sk' && sub) {
           const rr = getSk().filter(x => x.store === store && x.date === dk).sort((a, b) => b.t - a.t)[0];
-          if (rr) rt = rr.src === 'drive' ? L({ ja:'（取込）', en:'(import)', vi:'(nhập)' }) : L({ ja:'（アプリ）', en:'(app)', vi:'(app)' });
+          if (rr) rt = rr.src === 'drive' ? L({ ja:'（取込）', en:'(import)', vi:'(nhập)' }) : rr.src === 'usen' ? L({ ja:'（POS取込）', en:'(POS)', vi:'(POS)' }) : L({ ja:'（アプリ）', en:'(app)', vi:'(app)' });
         }
         const opt = m.oblig !== 'required';
         return `<span class="kind ${sub ? 'b' : (opt ? '' : 'a')}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(m.name))}${opt ? L({ja:'（任意）',en:' (opt)',vi:' (tùy chọn)'}) : ''}${sub?'✓':'✗'}${rt}${jl}</span>`;
@@ -10947,7 +10947,7 @@
            正体＝日中にスプシへ入れた数字が毎時取込でアプリに入り、この画面が「この日は提出済み」と
            誤解して全欄を取込行で上書き→取込行に無い累計・下書きまで空に消していた）。
            取込行のときは売上・客数だけを下書きとして入れ、累計の自動入力・他の欄はそのまま生かす */
-        if (rec.src === 'drive') {
+        if (rec.src === 'drive' || rec.src === 'usen') {   // 取込行（総括表・USENレジ）＝売上・客数だけ下書きに
           if (空にしてよい) {
             SK_FIELDS.map(f => f.k).concat(['cancelt', 'order', 'note']).forEach(k => { const el = byId('sk_' + k); if (el) el.value = ''; });
             SK_COUNTRIES.concat(SK_VISITKIND).forEach(cn => {
