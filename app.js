@@ -702,6 +702,14 @@
     });
     return Object.values(latest).filter(r => (Number(r.sales) || 0) > 0);
   }
+  /* ★日報の出どころ（2026-09-30 神田さん「アプリ入力なのか、USENなのか、総括表取込なのか分かるように」）
+     app＝アプリ入力／drive＝総括表取込／usen＝USENレジ／app+usen・drive+usen＝行のもとはアプリ（総括表）で
+     売上・客数などレジの項目だけUSENの値（skClean の pos:true） */
+  const skSrcKey = (r) => !r ? '' : r.src === 'usen' ? 'usen' : r.src === 'drive' ? (r.pos ? 'drive+usen' : 'drive') : (r.pos ? 'app+usen' : 'app');
+  const skSrcLabel = (key) => ({
+    app: L({ ja:'アプリ', en:'app', vi:'app' }), drive: L({ ja:'総括表', en:'sheet', vi:'sheet' }), usen: L({ ja:'POS', en:'POS', vi:'POS' }),
+    'app+usen': L({ ja:'アプリ＋POS', en:'app+POS', vi:'app+POS' }), 'drive+usen': L({ ja:'総括表＋POS', en:'sheet+POS', vi:'sheet+POS' })
+  })[key] || '';
   // 総括表＝正規化（skClean）まで含めて1回で済ませる（日付が変わったら作り直す）
   let _skCache = null;
   const getSk = () => {
@@ -7269,7 +7277,7 @@
       rs.forEach(r => {
         const sales = numN_(r.sales), guests = numN_(r.guests), food = numN_(r.foodamt), drink = numN_(r.drinkamt);
         const lunch = numN_(r.lunch), err = numN_(r.err), cash = numN_(r.cash), card = numN_(r.card);
-        const add = (code, vals) => out.push({ store: st, date: r.date, code, vals, src: (r.src === 'usen' || r.pos) ? 'usen' : r.src === 'drive' ? 'drive' : 'app' });
+        const add = (code, vals) => out.push({ store: st, date: r.date, code, vals, src: skSrcKey(r) });
         if (!sales || sales <= 0) return;
         // アプリ入力は 2026-09-02（フード・ドリンクを点数→金額に切替した日）より前を見ない（神田さん 2026-09-17）。シート取込は最初から金額なので対象
         if (r.src !== 'drive' && r.date < '2026-09-02') return;
@@ -7311,7 +7319,7 @@
         <h3>${esc(storeLabel(st))} <small style="color:#8a8">${byStore[st].length}${L({ ja:'件', en:'', vi:'' })}</small></h3>
         ${byStore[st].map(x => { const k = numKey_(x); const done = !!ack[k]; return `
         <div class="numrow ${done ? 'done' : ''}">
-          <div class="numrow-l"><b>${esc(x.date)}</b> <span class="numsrc">${x.src === 'drive' ? L({ ja:'取込', en:'sheet', vi:'sheet' }) : x.src === 'usen' ? L({ ja:'POS', en:'POS', vi:'POS' }) : L({ ja:'アプリ', en:'app', vi:'app' })}</span></div>
+          <div class="numrow-l"><b>${esc(x.date)}</b> <span class="numsrc">${skSrcLabel(x.src)}</span></div>
           <div class="numrow-m"><b>${esc(L(NUM_CODES[x.code]))}</b><br><small>${esc(x.vals)}</small></div>
           <button type="button" class="mini" data-numack="${esc(k)}">${done ? L({ ja:'未確認に戻す', en:'Reopen', vi:'Mở lại' }) : L({ ja:'確認済みにする', en:'Mark checked', vi:'Đã xác nhận' })}</button>
         </div>`; }).join('')}
@@ -8270,7 +8278,7 @@
         let rt = '';
         if (m.detect === 'sk' && sub) {
           const rr = getSk().filter(x => x.store === store && x.date === dk).sort((a, b) => b.t - a.t)[0];
-          if (rr) rt = rr.src === 'drive' ? L({ ja:'（取込）', en:'(import)', vi:'(nhập)' }) : rr.src === 'usen' ? L({ ja:'（POS取込）', en:'(POS)', vi:'(POS)' }) : L({ ja:'（アプリ）', en:'(app)', vi:'(app)' });
+          if (rr) rt = '（' + skSrcLabel(skSrcKey(rr)) + '）';
         }
         const opt = m.oblig !== 'required';
         return `<span class="kind ${sub ? 'b' : (opt ? '' : 'a')}" style="margin:2px 4px 2px 0;display:inline-block">${esc(L(m.name))}${opt ? L({ja:'（任意）',en:' (opt)',vi:' (tùy chọn)'}) : ''}${sub?'✓':'✗'}${rt}${jl}</span>`;

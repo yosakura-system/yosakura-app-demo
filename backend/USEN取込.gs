@@ -134,7 +134,11 @@ function usen_既存_() {
     var t = Number(vals[i][1]) || 0; var p; try { p = JSON.parse(vals[i][6] || '{}'); } catch (e) { continue; }
     if (!p.date) continue;
     var k = String(vals[i][3]) + '|' + p.date;
-    if (!map[k] || t >= map[k].t) map[k] = { t: t, src: p.src || '', canon: usen_canon_(p), p: p };
+    /* ★「変わらず」の判定は同じ店×日の最新の USEN 行と比べる（2026-09-30 夜に判明＝総括表の毎時取込と
+       USEN取込が同じ日を交互に書き直し、1時間に約400行ずつ増えていた）。any＝出どころを問わない最新行（新規／更新の表示用） */
+    if (!map[k]) map[k] = { t: 0, src: '', canon: '', p: null, usenT: 0, usenCanon: '' };
+    if (t >= map[k].t) { map[k].t = t; map[k].src = p.src || ''; map[k].canon = usen_canon_(p); map[k].p = p; }
+    if (p.src === USEN_SRC_TAG && t >= map[k].usenT) { map[k].usenT = t; map[k].usenCanon = usen_canon_(p); }
   }
   return map;
 }
@@ -186,10 +190,10 @@ function usen_実行_(書き込む) {
       n++;
       var k = r.store + '|' + r.date; var cur = 既存[k]; var canon = usen_canon_(r.p);
       var st = 結果.店舗[r.store] || (結果.店舗[r.store] = { 新規: 0, 更新: 0, 変わらず: 0 });
-      if (cur && cur.src === USEN_SRC_TAG && cur.canon === canon) { st.変わらず++; 結果.変わらず++; return; }
+      if (cur && cur.usenCanon && cur.usenCanon === canon) { st.変わらず++; 結果.変わらず++; return; }
       if (cur) { st.更新++; 結果.更新++; } else { st.新規++; 結果.新規++; }
       if (書き込む) { 追記.push([Utilities.getUuid(), Date.now(), 'soukatsu', r.store, '', '', JSON.stringify(r.p), '[]']); }
-      既存[k] = { t: Date.now(), src: USEN_SRC_TAG, canon: canon, p: r.p };
+      既存[k] = { t: Date.now(), src: USEN_SRC_TAG, canon: canon, p: r.p, usenT: Date.now(), usenCanon: canon };
     });
     結果.読んだ.push(s.label + '：' + n + '日分');
   });

@@ -3396,7 +3396,7 @@ console.log('== 提出物管理のタブ化＋日報の提出経路（アプリ�
   };
   run(seedRoute('drive'));
   location.hash = '#/app/history?s=' + encodeURIComponent(S);
-  ok(/（取込）/.test(registry.app.innerHTML), '提出履歴：シート取込の日報は（取込）と出る');
+  ok(/（総括表）/.test(registry.app.innerHTML), '提出履歴：シート取込の日報は（総括表）と出る');
   run(seedRoute(''));
   location.hash = '#/app/history?s=' + encodeURIComponent(S);
   ok(/（アプリ）/.test(registry.app.innerHTML), '提出履歴：アプリ入力の日報は（アプリ）と出る');
