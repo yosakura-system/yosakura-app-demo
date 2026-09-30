@@ -307,7 +307,7 @@ td.b{color:var(--suou-ink);font-weight:500}
         <li><span>四</span>取る前に使い道。店に返らない数字は集めない</li>
         <li><span>五</span>導入は順番。効く機能から入れて、慣れてから足す</li>
       </ul>
-      <p class="muted" style="margin-top:8px">9/29 京都祇園でいただいた話を、そのまま設計の決まりにしたものです。</p>
+      <p class="muted" style="margin-top:8px">9/28 構築MTGと 9/29 の打合せでいただいた話を、設計の決まりにしたものです。</p>
     </div>
     <div>
       <h2>触ってみるなら</h2>
@@ -316,7 +316,7 @@ td.b{color:var(--suou-ink);font-weight:500}
         <li>「きょう」で未の行を押す→出す→戻ると済になり、残り件数と目安時間が減る</li>
         <li>点検の項目の右にお手本の写真。オープン写真は見本と今日を並べて撮る</li>
         <li>日報で「納品書を足す」→仕入先を選んで8％対象・10％対象を写す→食材・酒・飲料の税抜が自動で出る（名畑は酒と飲料が1枚に混ざる）</li>
-        <li>役割を「本部」に→全店の一枚表・返答待ち・店舗別の入力時間・提出物の設定</li>
+        <li class="hqonly">役割を「本部」に→全店の一枚表・返答待ち・店舗別の入力時間・提出物の設定</li>
         <li>「調べる」→鰻ひつまぶし 上のレシピが写真つきの1枚で出る</li>
       </ol>
       <p class="muted" style="margin-top:8px">これは絵です。作り直しではなく、いまのアプリの入口と並びを組み替えれば同じ形になります（10/7のデモに間に合う規模）。</p>
@@ -324,7 +324,16 @@ td.b{color:var(--suou-ink);font-weight:500}
   </aside>
 </div>
 
+<div id="gate" hidden style="position:fixed;inset:0;z-index:99;background:#F7F5F1;display:grid;place-items:center;font-family:inherit"><div style="width:min(92vw,360px);background:#fff;border:1px solid #E5E0D8;border-radius:16px;padding:24px 22px;text-align:center"><div style="font-size:12px;letter-spacing:.12em;color:#7C736D">YOSAKURA APP ・ PLAN B</div><div style="font-size:18px;font-weight:600;margin:8px 0 14px">本部の方だけ見られる見本です</div><input id="gate_in" type="password" placeholder="合言葉" style="width:100%;font-size:16px;padding:10px 12px;border:1px solid #E5E0D8;border-radius:10px;text-align:center"><button id="gate_ok" style="margin-top:10px;width:100%;padding:11px;border:0;border-radius:10px;background:#201D1C;color:#fff;font-size:15px">開く</button><div id="gate_ng" style="font-size:12px;color:#B5533C;margin-top:8px;min-height:1em"></div></div></div>
 <script>
+  /* ★本部版（HQ=true）＝合言葉の扉つき・本部タブあり／店舗版（HQ=false）＝本部の役割と本部向けの説明を出さない（加盟店の方に見せる用・2026-09-30 神田さん） */
+  const HQ = true;
+  if (!HQ) { document.querySelectorAll('[data-role="hq"], .hqonly').forEach(e => e.remove()); }
+  else {
+    const g = document.getElementById('gate'); let okd = false; try { okd = sessionStorage.getItem('planb_hq') === '1'; } catch (e) {}
+    if (!okd) { g.hidden = false; const tryOpen = () => { const v = document.getElementById('gate_in').value.trim(); if (v === '世桜本部') { try { sessionStorage.setItem('planb_hq', '1'); } catch (e) {} g.remove(); } else { document.getElementById('gate_ng').textContent = '合言葉が違います'; } };
+      document.getElementById('gate_ok').onclick = tryOpen; document.getElementById('gate_in').onkeydown = (e) => { if (e.key === 'Enter') tryOpen(); }; }
+  }
 (function(){
   const $ = (s, el=document) => el.querySelector(s);
   const P = {
@@ -548,23 +557,23 @@ td.b{color:var(--suou-ink);font-weight:500}
   }
   /* ---------- 本部 ---------- */
   function hq(){
-    const stores = ['本店','長堀橋','難波','京都祇園','広島','富士山 鰻','富士山 牛カツ','浅草橋'];
+    const stores = ['本店','長堀橋','難波','心斎橋','広島','富士山 鰻','富士山 牛カツ','浅草橋'];
     const items = ['写真','OPEN','CLOSE','在庫','日報','レジ締め'];
     const pat = [[1,1,1,1,1,3],[1,1,0,0,0,2],[1,1,1,2,1,2],[1,0,0,0,0,1],[1,1,1,3,1,1],[1,1,1,3,0,3],[1,1,0,3,0,1],[2,2,2,3,2,1]];
     const cls = (v) => v === 1 ? 'ok' : v === 2 ? 'late' : v === 3 ? 'na' : '';
-    const times = [['本店',5.2],['長堀橋',7.8],['難波',4.1],['京都祇園',3.6],['広島',6.4]];
-    const cards = [['長堀橋','牛カツ','ikuraDon',2,false],['富士山','日本鰻','fujiDon',0,true],['広島','和牛','hiroshima',1,false],['心斎橋','寿司','counter',3,false],['本店','日本料理','course',0,true],['京都祇園','日本鰻','fujiClose',4,false]];
+    const times = [['本店',5.2],['長堀橋',7.8],['難波',4.1],['心斎橋',3.6],['広島',6.4]];
+    const cards = [['長堀橋','牛カツ','ikuraDon',2,false],['富士山','日本鰻','fujiDon',0,true],['広島','和牛','hiroshima',1,false],['心斎橋','寿司','counter',3,false],['本店','日本料理','course',0,true],['浅草橋','日本鰻','fujiClose',4,false]];
     const storeCards = `<div class="stores">${cards.map(([n, g, ph, k, ok]) => `<button><img src="${P[ph]}" alt=""><span class="b ${ok ? 'ok' : ''}">${ok ? '完了' : '残 ' + k}</span><span class="n">${n}</span><span class="s">${g}</span></button>`).join('')}</div>`;
     return `<div class="sec"><h2>店舗</h2><small>押すとその店の「きょう」</small></div>${storeCards}
       <div class="sec"><h2>全店 きょう</h2><small>22:10 ・ 赤＝締切超過</small></div>
       <div class="card"><div class="hqgrid"><span></span>${items.map(i => `<span class="h">${i}</span>`).join('')}${stores.map((s, i) => `<span class="s">${s}</span>` + pat[i].map(v => `<span class="dot ${cls(v)}"></span>`).join('')).join('')}</div><div class="note">点線＝その店では不要にした項目、またはUSENレジが無い店（本店・日本鰻の2店＝売上は手入力）。レジ締めの赤＝現金の過不足あり</div></div>
       <div class="sec"><h2>レジ締め</h2><small>USENから毎朝 ・ 7店</small></div>
-      <div class="card"><div class="bar"><span>長堀橋</span><i style="width:20%;background:var(--kaki)"></i><b>−1,000</b></div><div class="bar"><span>難波</span><i style="width:40%;background:var(--kaki)"></i><b>−2,000</b></div><div class="bar"><span>富士山 牛カツ</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>京都祇園</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>浅草橋</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>心斎橋</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>広島</span><i style="width:0%"></i><b>0</b></div><div class="note">昨日の現金の過不足。理由の無い日だけ本部が聞く。全店の締め方をそろえるところから</div></div>
+      <div class="card"><div class="bar"><span>長堀橋</span><i style="width:20%;background:var(--kaki)"></i><b>−1,000</b></div><div class="bar"><span>難波</span><i style="width:40%;background:var(--kaki)"></i><b>−2,000</b></div><div class="bar"><span>富士山 牛カツ</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>浅草橋</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>心斎橋</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>広島</span><i style="width:0%"></i><b>0</b></div><div class="note">昨日の現金の過不足。理由の無い日だけ本部が聞く。全店の締め方をそろえるところから</div></div>
       <div class="sec"><h2>返答待ち</h2><small>3件</small></div>
       <div class="card">
         <div class="inboxrow"><img src="${P.unagiT}" alt=""><div><div class="k">気づき ・ 難波</div><div class="t">ご飯の量を聞かれることが増えた。POPに書けないか</div><div class="by">1時間前</div></div><button class="mini pri">返す</button></div>
         <div class="inboxrow"><img src="${P.fridge}" alt=""><div><div class="k">オープン写真 ・ 長堀橋</div><div class="t">冷蔵庫の写真が見本と違う（庫内が暗い）</div><div class="by">今朝</div></div><button class="mini">見る</button></div>
-        <div class="inboxrow"><span class="st" style="width:48px;height:48px;border-radius:10px;background:var(--kinari);border:1px solid var(--line);display:grid;place-items:center;color:var(--hai)">${ICONS.yen}</span><div><div class="k">数字の要確認 ・ 京都祇園</div><div class="t">仕入が個数で入っている</div><div class="by">3時間前</div></div><button class="mini">見る</button></div>
+        <div class="inboxrow"><span class="st" style="width:48px;height:48px;border-radius:10px;background:var(--kinari);border:1px solid var(--line);display:grid;place-items:center;color:var(--hai)">${ICONS.yen}</span><div><div class="k">数字の要確認 ・ 心斎橋</div><div class="t">仕入が個数で入っている</div><div class="by">3時間前</div></div><button class="mini">見る</button></div>
       </div>
       <div class="sec"><h2>日報の入力時間</h2><small>今週の中央値 ・ 分</small></div>
       <div class="card">${times.map(([s, m]) => `<div class="bar"><span>${s}</span><i style="width:${m / 8 * 100}%"></i><b>${m.toFixed(1)}</b></div>`).join('')}<div class="note">長い店から減らす。「10分が5分になったか」をここで見ます</div></div>
