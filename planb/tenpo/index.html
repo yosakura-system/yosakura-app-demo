@@ -274,6 +274,8 @@ td.b{color:var(--suou-ink);font-weight:500}
         <tr><td>写真</td><td class="now">撮って送る。見本は別の画面で登録</td><td class="b">見本と今日の写真を並べて撮る。点検の項目にもお手本の写真</td></tr>
         <tr><td>見た目</td><td class="now">文字と枠だけ</td><td class="b">本部の商品写真とロゴが画面の顔。店ごとに「今日の一枚」が変わる</td></tr>
         <tr><td>売上・客数・現金・カード</td><td class="now">店が毎日手で入力</td><td class="b">USENレジから毎朝取り込み（9/30から動いている）。USENの無い店だけ手入力の欄が出る</td></tr>
+        <tr><td>レジの数字</td><td class="now">売上・客数・現金・カードを手入力</td><td class="b">USENにある項目はすべて「数字」に出る（組数・客数・税込／税抜・10%／8%・現金・クレジット・電子マネー・ポイント・値引き・差異・現金在高・準備金）。店が入れるものは無い</td></tr>
+        <tr><td>サーベイ・口コミ</td><td class="now">報告する→サーベイ集計／口コミ集計（別の画面）</td><td class="b">「数字」→お客様の声＝回答・低評価・来店国・来店経路・Google口コミの推移が1画面。QRは「きょう」からお声かけ用に出す（回答の最後にGoogle口コミ／TripAdvisorへ）</td></tr>
         <tr><td>レジ締め</td><td class="now">金種別入力とレジ誤差を手で入力</td><td class="b">POSの締めをそのまま使う。現金の過不足があった日だけ「理由」を1つ選ぶ</td></tr>
         <tr><td>店が毎日入れる数字</td><td class="now">売上・客数・現金・カード・値引き・誤差・食材・酒・飲料 …約15</td><td class="b">納品書の金額（伝票を写す）と一言。USENの7店はこれだけ</td></tr>
         <tr><td>仕入</td><td class="now">食材・酒・飲料の合計を税抜に直して入力</td><td class="b">納品書ごとに仕入先を選び、8％対象と10％対象の税込額を写すだけ。食材・酒・飲料の振り分けと税抜は自動</td></tr>
@@ -312,6 +314,8 @@ td.b{color:var(--suou-ink);font-weight:500}
     <div>
       <h2>触ってみるなら</h2>
       <ol class="try">
+        <li>「数字」のいちばん上＝レジ（USEN）の今日。押すと、USENから入る項目がぜんぶ並ぶ（組数・客数・税率別売上・支払方法別・値引き・差異・現金在高）</li>
+        <li>「数字」の「お客様の声」を押す→サーベイの回答・低評価・来店国・来店経路と、Google口コミの推移。「きょう」の「サーベイQR」がお客様に見せる画面（回答の最後にGoogle口コミへ）</li>
         <li>「きょう」のいちばん上＝昨日のレジ締め。POSの売上と現金の過不足が入っていて、過不足があった日だけ理由を選ぶ（金種別入力もレジ誤差の手入力も無くなる）</li>
         <li>「きょう」で未の行を押す→出す→戻ると済になり、残り件数と目安時間が減る</li>
         <li>点検の項目の右にお手本の写真。オープン写真は見本と今日を並べて撮る</li>
@@ -363,7 +367,7 @@ td.b{color:var(--suou-ink);font-weight:500}
     handover:[{ id:1, txt:'鰻のタレ、残り1本。明日の納品まで使い切らないように。', by:'昼のシフト ・ 14:10', open:true }],
     replies:[{ k:'気づき', t:'ガリの盛りが高くて良い。写真ありがとうございます。', ago:'2時間前' }],
     buy:{ food:{ v:'', r:8 }, alc:{ v:'', r:10 }, drink:{ v:'', r:8 } },
-    pos:{ at:'8:05', sales:186400, guests:64, cash:48000, card:132400, diff:-1000, reason:'' },   // USENレジから毎朝入る（見本）
+    pos:{ at:'8:05', sales:186400, gross:205040, s10:195040, s8:10000, groups:24, guests:64, cash:48000, card:132400, emoney:21500, point:0, disc:3140, diff:-1000, drawer:98000, float:50000, reason:'' },   // USENレジから毎朝入る（見本・レジクローズ情報の項目）
     slips:[ { v:'西原', a8:'42120', a10:'' }, { v:'名畑', a8:'6480', a10:'11880' } ],
     stock:[ ['米（kg）',12,10,null],['鰻（尾）',18,15,'yakiOk'],['パン粉（袋）',3,4,'scale'],['ミニトマト（袋）',2,3,'fridge'],['固形燃料（個）',40,30,null] ],
     ck:{}, started:null, oblig:{ openphoto:'必須', ck_idle:'推奨', kinshu:'不要', chukan:'推奨' }
@@ -411,7 +415,7 @@ td.b{color:var(--suou-ink);font-weight:500}
       <div class="sec"><h2>今日の流れ</h2><small>時間帯の順</small></div>
       <div class="card">${flow}</div>
       <div class="sec"><h2>いつでも</h2></div>
-      <div class="chips"><button class="chip" data-open="kizuki">気づき<small>良かったことも困ったことも</small></button><button class="chip" data-open="waste">食べ残し<small>写真1枚で</small></button><button class="chip" data-go="write">引き継ぎを書く<small>次の人へ</small></button></div>
+      <div class="chips"><button class="chip" data-open="kizuki">気づき<small>良かったことも困ったことも</small></button><button class="chip" data-open="waste">食べ残し<small>写真1枚で</small></button><button class="chip" data-open="qr">サーベイQR<small>お会計のときにお見せする</small></button><button class="chip" data-go="write">引き継ぎを書く<small>次の人へ</small></button></div>
       <div class="sec"><h2>今夜・今月</h2><small>棚卸 22:30 ・ 週POP 金曜まで</small></div>
       <button class="photocard" data-go="tana"><img src="${P.count}" alt=""><div class="cap"><b>今夜 22:30 月末棚卸</b><span>品目と単価は入っています。数えて入れるだけ。原価率はその場で出ます</span></div></button>`;
   }
@@ -471,7 +475,8 @@ td.b{color:var(--suou-ink);font-weight:500}
       <div class="card">
         <div class="fld"><label>売上（税抜）<small>POS ${S.pos.at} 取込</small></label><div class="auto">${yen(S.pos.sales)}<small>自動</small></div></div>
         <div class="fld"><label>客数<small>POS</small></label><div class="auto">${S.pos.guests}<small>自動</small></div></div>
-        <div class="fld"><label>現金 ・ カード<small>POS</small></label><div class="auto">${yen(S.pos.cash)} ・ ${yen(S.pos.card)}<small>自動</small></div></div>
+        <div class="fld"><label>現金 ・ カード ・ 電子マネー<small>POS</small></label><div class="auto">${yen(S.pos.cash)} ・ ${yen(S.pos.card)} ・ ${yen(S.pos.emoney)}<small>自動</small></div></div>
+        <div class="fld"><label>値引き ・ 組数<small>POS</small></label><div class="auto">${yen(S.pos.disc)} ・ ${S.pos.groups}組<small>自動</small></div></div>
       </div>
       <div class="sec"><h2>今日の納品書</h2><small>${S.slips.length}枚 ・ 写真も撮れます</small></div>
       ${rowsHtml}
@@ -490,6 +495,43 @@ td.b{color:var(--suou-ink);font-weight:500}
     return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">気づき</div><p class="lead">良かったことも困ったことも、そのままの言葉で。本部から返答が来ます。</p>
       <div class="card"><textarea class="ta" placeholder="例：ご飯の量を聞かれることが増えた。POPに書けないか"></textarea><div class="twins" style="margin-top:8px"><figure><img src="${P.unagiT}" alt=""><figcaption>写真 1枚目<span class="pill ok">追加済</span></figcaption></figure><figure><div class="empty">${ICONS.cam}　追加</div><figcaption>写真 2枚目<span style="color:var(--hai)">任意</span></figcaption></figure></div></div>
       <button class="big" data-done="kizuki">送る</button>`;
+  }
+  function screenRegi(){
+    const P_ = S.pos; const sgn = (n) => (n < 0 ? '−' : '') + '¥' + Math.abs(n).toLocaleString('ja-JP');
+    const rows = [['売上（税込）', yen(P_.gross)], ['純売上（税抜）', yen(P_.sales)], ['10%対象（税込）', yen(P_.s10)], ['8%対象（税込）', yen(P_.s8)], ['組数', P_.groups + '組'], ['客数', P_.guests + '人'], ['客単価（税抜）', '¥' + Math.round(P_.sales / P_.guests).toLocaleString('ja-JP')],
+      ['現金', yen(P_.cash)], ['クレジット', yen(P_.card)], ['電子マネー', yen(P_.emoney)], ['ポイント', yen(P_.point)], ['値割引', yen(P_.disc)], ['差異合計（現金の過不足）', sgn(P_.diff)], ['現金在高', yen(P_.drawer)], ['レジオープン時現金', yen(P_.float)]];
+    const days = [['9/24', 222902, 44, 84200, 161000, -84200], ['9/25', 207632, 46, 56900, 171500, 0], ['9/26', 243539, 56, 60900, 207000, -60900], ['9/27', 243355, 63, 113300, 154400, -113200], ['9/28', 143087, 32, 40200, 117200, -40200], ['9/29', 192996, 49, 101500, 103200, -101500], ['9/30', 154631, 37, 53600, 112600, -103600]];
+    return `<button class="back" data-go="numtop">${ICONS.back} 数字</button><div class="ttl">レジ（USEN）</div><p class="lead">USENレジのレジクローズ情報にある項目は、毎朝ぜんぶここに入ります。店が入れるものはありません。</p>
+      <div class="sec"><h2>昨日 ・ ${P_.at} 取込</h2><small>レジクローズ情報</small></div>
+      <div class="card">${rows.map(([k, v]) => `<div class="fld"><label>${k}</label><div class="auto">${v}</div></div>`).join('')}</div>
+      <div class="sec"><h2>日別</h2><small>純売上 ・ 客数 ・ 現金 ・ カード ・ 差異</small></div>
+      <div class="card" style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap">
+        <tr style="color:var(--hai)"><th style="text-align:left;padding:4px">日</th><th style="text-align:right;padding:4px">純売上</th><th style="text-align:right;padding:4px">客数</th><th style="text-align:right;padding:4px">現金</th><th style="text-align:right;padding:4px">カード</th><th style="text-align:right;padding:4px">差異</th></tr>
+        ${days.map(d => `<tr style="border-top:1px solid var(--line)"><td style="padding:5px 4px">${d[0]}</td><td style="text-align:right;padding:5px 4px">${yen(d[1])}</td><td style="text-align:right;padding:5px 4px">${d[2]}</td><td style="text-align:right;padding:5px 4px">${yen(d[3])}</td><td style="text-align:right;padding:5px 4px">${yen(d[4])}</td><td style="text-align:right;padding:5px 4px;color:${d[5] ? 'var(--kaki)' : 'inherit'}">${sgn(d[5])}</td></tr>`).join('')}
+      </table><div class="note">差異が「現金売上と同じ額の不足」の日は、締めで準備金だけを入力した日です（9/30 増田さんの展開どおり直ると0になります）</div></div>`;
+  }
+  function screenVoice(){
+    const answers = [['4', '韓国', 'Instagram', '牛カツが柔らかくて感動。店員さんの説明も丁寧'], ['5', '台湾', 'Google検索', 'いくら丼が最高。また来ます'], ['2', '日本', '通りがかり', '提供まで25分待った。味は良い'], ['5', 'アメリカ', 'TripAdvisor', 'Best katsu in Osaka'], ['3', '韓国', '友人の紹介', '量が少し少ない']];
+    return `<button class="back" data-go="numtop">${ICONS.back} 数字</button><div class="ttl">お客様の声</div><p class="lead">サーベイの回答とGoogle口コミ。どちらも自動で集まります。低評価は本部にも届きます。</p>
+      <div class="kpi"><div class="card"><div class="l">サーベイ ・ 今月</div><div class="v">4.6</div><div class="d">38件 ・ 低評価（1〜2）2件</div></div><div class="card"><div class="l">Google口コミ ・ 通算</div><div class="v">1,284<span style="font-size:14px"> 件</span></div><div class="d">星 4.7 ・ 今月 +12件</div></div></div>
+      <div class="sec"><h2>来店国 ・ 来店経路</h2><small>今月のサーベイから</small></div>
+      <div class="card"><div class="bar"><span>日本</span><i style="width:40%"></i><b>40%</b></div><div class="bar"><span>韓国</span><i style="width:25%"></i><b>25%</b></div><div class="bar"><span>台湾</span><i style="width:15%"></i><b>15%</b></div><div class="bar"><span>アメリカ</span><i style="width:10%"></i><b>10%</b></div><div class="bar"><span>その他</span><i style="width:10%"></i><b>10%</b></div>
+        <div style="height:8px"></div><div class="bar"><span>Google検索</span><i style="width:35%;background:var(--matsu)"></i><b>35%</b></div><div class="bar"><span>Instagram</span><i style="width:20%;background:var(--matsu)"></i><b>20%</b></div><div class="bar"><span>口コミ・紹介</span><i style="width:20%;background:var(--matsu)"></i><b>20%</b></div><div class="bar"><span>通りがかり</span><i style="width:15%;background:var(--matsu)"></i><b>15%</b></div><div class="bar"><span>TripAdvisor</span><i style="width:10%;background:var(--matsu)"></i><b>10%</b></div></div>
+      <div class="sec"><h2>最近の回答</h2><small>低評価は赤</small></div>
+      <div class="card">${answers.map(([s, c, r, m]) => `<div class="ho"><div><div class="txt" style="${Number(s) <= 2 ? 'color:var(--kaki)' : ''}">★${s} ・ ${c} ・ ${r}</div><div class="by">${m}</div></div></div>`).join('')}</div>
+      <div class="sec"><h2>Google口コミの推移</h2><small>1日1回の自動取得</small></div>
+      <div class="card"><div class="bar"><span>9/24</span><i style="width:30%"></i><b>+1</b></div><div class="bar"><span>9/25</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>9/26</span><i style="width:60%"></i><b>+2</b></div><div class="bar"><span>9/27</span><i style="width:90%"></i><b>+3</b></div><div class="bar"><span>9/28</span><i style="width:30%"></i><b>+1</b></div><div class="bar"><span>9/29</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>9/30</span><i style="width:60%"></i><b>+2</b></div><div class="note">回答の最後にGoogle口コミのご案内が出ます（星に関係なく同じ案内）。TripAdvisorへの案内は設定した店だけ</div></div>
+      <button class="chip" data-open="qr" style="width:100%;margin-top:6px">サーベイQRを見せる<small>お会計のときに</small></button>`;
+  }
+  function screenQr(){
+    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">サーベイQR</div><p class="lead">お会計のときに、この画面をお客様にお見せください。読み取り→アンケート→そのままGoogle口コミのご案内へ。</p>
+      <div class="card" style="text-align:center">
+        <div style="max-width:230px;margin:6px auto;background:#fff;padding:12px;border-radius:14px;border:1px solid var(--line)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 37 37" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h37v37H0z"/><path stroke="#000000" d="M2 2.5h7m1 0h5m1 0h1m3 0h1m2 0h1m4 0h7M2 3.5h1m5 0h1m1 0h2m3 0h1m2 0h2m1 0h2m1 0h1m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m2 0h2m1 0h1m1 0h1m1 0h2m2 0h2m1 0h1m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h3m3 0h1m1 0h2m1 0h1m1 0h2m3 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m2 0h1m1 0h1m1 0h1m3 0h1m5 0h1m2 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M13 9.5h4m1 0h1m2 0h1m2 0h3M2 10.5h1m2 0h6m1 0h1m1 0h1m4 0h1m1 0h2m3 0h2m2 0h1m1 0h3M2 11.5h2m2 0h2m2 0h1m1 0h1m1 0h4m2 0h2m3 0h1m4 0h3M3 12.5h3m2 0h1m5 0h2m1 0h1m2 0h1m4 0h1m4 0h3m1 0h1M5 13.5h1m4 0h1m2 0h1m1 0h1m2 0h4m2 0h6m2 0h3M8 14.5h2m4 0h2m2 0h1m2 0h1m3 0h1m2 0h2M3 15.5h1m3 0h1m2 0h1m1 0h2m2 0h5m3 0h2m3 0h1m1 0h1M2 16.5h4m1 0h3m2 0h1m1 0h1m1 0h3m2 0h2m1 0h1m3 0h1m1 0h2M5 17.5h1m1 0h1m1 0h1m2 0h5m4 0h2m1 0h1m2 0h1m2 0h3m1 0h1M2 18.5h1m2 0h2m1 0h1m2 0h3m3 0h1m2 0h1m3 0h1m1 0h5M4 19.5h3m3 0h1m1 0h4m1 0h1m1 0h4m1 0h1m2 0h2m1 0h1m1 0h1m1 0h1M3 20.5h3m2 0h1m1 0h1m1 0h2m1 0h5m1 0h1m3 0h1m2 0h2m1 0h2m1 0h1M2 21.5h1m2 0h3m3 0h1m3 0h1m2 0h1m2 0h2m2 0h2m1 0h1m1 0h3m1 0h1M3 22.5h3m1 0h2m1 0h1m3 0h2m1 0h1m1 0h2m1 0h1m3 0h1m2 0h1m1 0h1m1 0h2M2 23.5h3m2 0h1m1 0h1m3 0h2m1 0h2m1 0h1m1 0h1m2 0h4m1 0h2M2 24.5h1m1 0h2m2 0h1m1 0h1m1 0h1m1 0h1m1 0h2m5 0h1m1 0h1m4 0h1m1 0h3M2 25.5h1m2 0h2m2 0h3m1 0h1m1 0h1m2 0h5m2 0h3m2 0h1m1 0h2M2 26.5h2m1 0h2m1 0h1m1 0h1m2 0h1m1 0h2m7 0h8M10 27.5h1m3 0h1m2 0h2m1 0h1m4 0h2m3 0h1m1 0h2M2 28.5h7m1 0h6m1 0h1m1 0h5m1 0h2m1 0h1m1 0h1m1 0h1M2 29.5h1m5 0h1m1 0h1m1 0h3m1 0h1m1 0h1m1 0h3m2 0h2m3 0h3M2 30.5h1m1 0h3m1 0h1m1 0h5m1 0h1m3 0h1m1 0h1m1 0h7m2 0h1M2 31.5h1m1 0h3m1 0h1m1 0h3m3 0h2m1 0h3m1 0h1m3 0h1m1 0h1m3 0h2M2 32.5h1m1 0h3m1 0h1m2 0h1m1 0h2m2 0h2m2 0h1m1 0h1m3 0h1m1 0h2m2 0h2M2 33.5h1m5 0h1m2 0h1m2 0h1m1 0h3m2 0h2m1 0h1m2 0h8M2 34.5h7m1 0h2m4 0h1m1 0h2m2 0h1m2 0h7"/></svg></div>
+        <p style="font-size:16px;font-weight:700;margin:8px 0 2px">ご来店アンケートにご協力ください</p>
+        <p class="muted" style="font-size:12px;letter-spacing:.04em">Scan me!　·　스캔해 주세요　·　请扫码</p>
+      </div>
+      <div class="card" style="margin-top:8px;font-size:13px;line-height:1.7">回答の最後に、この店のGoogle口コミのボタンが出ます（星の点数に関係なく全員同じご案内）。自動では進まないので、完了画面が見えたら青いボタンを指さして「よろしければ」と一言。TripAdvisorへの案内は設定した店だけ出ます。</div>
+      <button class="chip" data-toast="お声かけの例文（韓・英・中＋読みがな）を開く（見本）" style="width:100%;margin-top:6px">お声かけの例文を開く<small>韓・英・中＋読みがな</small></button>`;
   }
   function screenWaste(){
     return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">食べ残し</div><p class="lead">下げたお皿を1枚。残されやすい商品を本部が見ます。</p>
@@ -529,15 +571,19 @@ td.b{color:var(--suou-ink);font-weight:500}
   /* ---------- 数字 ---------- */
   function numbers(){
     const mgr = S.role !== 'staff';
-    return `<div class="sec"><h2>今日</h2><small>POS ・ 22:05</small></div>
-      <div class="kpi"><div class="card"><div class="l">売上（税抜）</div><div class="v">¥186,400</div><div class="d">先週の火曜 ¥171,200</div></div><div class="card"><div class="l">客数 ・ 客単価</div><div class="v">64<span style="font-size:14px"> 人</span></div><div class="d">¥2,913／人</div></div></div>
+    const P_ = S.pos;
+    return `<div class="sec"><h2>今日 ・ レジ（USEN）</h2><small>POS ${P_.at} 取込 ・ 押すと全項目</small></div>
+      <button class="card" data-go="regi" style="width:100%;text-align:left;cursor:pointer">
+        <div class="kpi" style="margin:0"><div><div class="l">売上（税抜）</div><div class="v">${yen(P_.sales)}</div><div class="d">税込 ${yen(P_.gross)} ・ 先週の火曜 ¥171,200</div></div><div><div class="l">客数 ・ 客単価</div><div class="v">${P_.guests}<span style="font-size:14px"> 人</span></div><div class="d">${P_.groups}組 ・ ¥${Math.round(P_.sales / P_.guests).toLocaleString('ja-JP')}／人</div></div></div>
+        <div class="muted" style="font-size:12px;margin-top:8px;display:flex;flex-wrap:wrap;gap:6px 14px"><span>現金 ${yen(P_.cash)}</span><span>クレジット ${yen(P_.card)}</span><span>電子マネー ${yen(P_.emoney)}</span><span>値引き ${yen(P_.disc)}</span><span>差異 ${P_.diff < 0 ? '−' : ''}¥${Math.abs(P_.diff).toLocaleString('ja-JP')}</span><span>現金在高 ${yen(P_.drawer)}</span></div>
+      </button>
       <div class="sec"><h2>今月の売上</h2><small>9/1〜9/30 ・ 日別</small></div>
       <div class="card"><canvas id="spark" width="800" height="200"></canvas><div class="note" style="display:flex;justify-content:space-between"><span>9/1</span><span>着地見込み ¥5.62M（先月 ¥5.31M）</span><span>9/30</span></div></div>
       <div class="kpi" style="margin-top:8px"><div class="card"><div class="l">原価率</div><div class="v">33.8<span style="font-size:14px">％</span></div><div class="d">月初＋仕入−月末。棚卸のあと確定</div></div><div class="card"><div class="l">日報の入力時間</div><div class="v">3.1<span style="font-size:14px"> 分</span></div><div class="d">今週の中央値。POS取込前は 7.8分</div></div></div>
       <div class="kpi" style="margin-top:8px"><div class="card"><div class="l">現金の過不足 ・ 今月</div><div class="v">−¥3,200</div><div class="d">3日。理由あり 3日</div></div><div class="card"><div class="l">POSと日報のずれ</div><div class="v">0<span style="font-size:14px"> 日</span></div><div class="d">売上は自動なので、ずれは起きない</div></div></div>
       ${mgr ? `<div class="card" style="margin-top:8px"><div class="bar"><span>売上</span><i style="width:100%"></i><b>100</b></div><div class="bar"><span>原価</span><i style="width:34%;background:var(--kaki)"></i><b>33.8</b></div><div class="bar"><span>人件費</span><i style="width:28%;background:var(--hai)"></i><b>28.1</b></div><div class="bar"><span>粗利</span><i style="width:38%;background:var(--matsu)"></i><b>38.1</b></div><div class="note">店長・オーナーだけに出る行</div></div>` : ''}
       <div class="sec"><h2>お客様の声</h2><small>自動</small></div>
-      <div class="kpi"><div class="card"><div class="l">サーベイ満足度</div><div class="v">4.6</div><div class="d">今月 38件 ・ 来店経路はここ</div></div><div class="card"><div class="l">Google口コミ</div><div class="v">4.7</div><div class="d">今月 +12件</div></div></div>
+      <button class="card" data-go="voice" style="width:100%;text-align:left;cursor:pointer"><div class="kpi" style="margin:0"><div><div class="l">サーベイ満足度</div><div class="v">4.6</div><div class="d">今月 38件 ・ 低評価 2件</div></div><div><div class="l">Google口コミ</div><div class="v">4.7</div><div class="d">通算 1,284件 ・ 今月 +12</div></div></div><div class="muted" style="font-size:12px;margin-top:8px">押すと、回答の一覧・来店国・来店経路・口コミの推移</div></button>
       <div class="note">数字は見るだけ。入力する場所は「きょう」の日報だけです。</div>`;
   }
   function drawSpark(){
@@ -587,8 +633,8 @@ td.b{color:var(--suou-ink);font-weight:500}
     const m = $('#main'); let html = '';
     if (S.tab === 'today') {
       const sc = S.screen;
-      html = !sc ? today() : sc === 'replies' ? replies() : sc === 'write' ? write() : sc === 'tana' ? tana() : sc === 'photo' ? screenPhoto(S.sid) : sc === 'check' ? screenCheck(S.sid) : sc === 'stock' ? screenStock(S.sid) : sc === 'nippou' ? screenNippou(S.sid) : sc === 'kizuki' ? screenKizuki() : screenWaste();
-    } else if (S.tab === 'search') html = search(); else if (S.tab === 'num') html = numbers(); else html = hq();
+      html = !sc ? today() : sc === 'replies' ? replies() : sc === 'write' ? write() : sc === 'tana' ? tana() : sc === 'photo' ? screenPhoto(S.sid) : sc === 'check' ? screenCheck(S.sid) : sc === 'stock' ? screenStock(S.sid) : sc === 'nippou' ? screenNippou(S.sid) : sc === 'kizuki' ? screenKizuki() : sc === 'qr' ? screenQr() : screenWaste();
+    } else if (S.tab === 'search') html = search(); else if (S.tab === 'num') html = S.screen === 'regi' ? screenRegi() : S.screen === 'voice' ? screenVoice() : S.screen === 'qr' ? screenQr() : numbers(); else html = hq();
     m.innerHTML = html; m.scrollTop = 0;
     $('#tabbar').innerHTML = TABS.filter(t => t[0] !== 'hq' || S.role === 'hq').map(t => `<button data-tab="${t[0]}" class="${S.tab === t[0] ? 'on' : ''}">${ICONS[t[2]]}${t[1]}</button>`).join('');
     $('#storeLbl').textContent = S.role === 'hq' ? '本部 ・ 全店' : '牛カツ世桜 長堀橋店';
@@ -602,7 +648,7 @@ td.b{color:var(--suou-ink);font-weight:500}
     const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
     if (d.role) { S.role = d.role; if (S.role !== 'hq' && S.tab === 'hq') S.tab = 'today'; if (S.role === 'hq' && S.tab === 'today') S.tab = 'hq'; S.screen = null; }
     else if (d.tab) { S.tab = d.tab; S.screen = null; }
-    else if (d.go) { S.screen = (d.go === 'today' || d.go === 'searchtop') ? null : d.go; }
+    else if (d.go) { S.screen = (d.go === 'today' || d.go === 'searchtop' || d.go === 'numtop') ? null : d.go; }
     else if (d.open) { S.screen = d.open; S.sid = d.id || ''; S.started = null; }
     else if (d.hodone) { S.handover.find(h => h.id == d.hodone).open = false; toast('確認しました'); }
     else if (d.hosave) { const v = $('#ho_txt').value.trim(); if (v) S.handover.push({ id: Date.now(), txt: v, by: '店舗iPad ・ ' + now(), open: true }); S.screen = null; toast('次の人へ残しました'); }
