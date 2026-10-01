@@ -268,14 +268,14 @@ td.b{color:var(--suou-ink);font-weight:500}
       <thead><tr><th></th><th>いまのアプリ</th><th>案B</th></tr></thead>
       <tbody>
         <tr><td>入口</td><td class="now">6系統（ホーム3ペイン・下のタブ・今日出すもの・リンク）</td><td class="b">1つ。開いたら「きょう」</td></tr>
-        <tr><td>下のタブ</td><td class="now">ホーム／報告する／学ぶ／その他／本部</td><td class="b">きょう／調べる／数字（本部だけ＋本部）</td></tr>
+        <tr><td>下のタブ</td><td class="now">ホーム／報告する／学ぶ／その他／本部</td><td class="b">きょう（運営）／調べる／管理（本部だけ＋本部）</td></tr>
         <tr><td>店舗が触る画面</td><td class="now">37画面（準備中の札が2つ）</td><td class="b">12画面。準備中は出さない</td></tr>
         <tr><td>今日の作業まで</td><td class="now">ホーム→日次業務→行＝2タップ</td><td class="b">開く→行＝1タップ。時間帯順に並ぶ</td></tr>
         <tr><td>写真</td><td class="now">撮って送る。見本は別の画面で登録</td><td class="b">見本と今日の写真を並べて撮る。点検の項目にもお手本の写真</td></tr>
         <tr><td>見た目</td><td class="now">文字と枠だけ</td><td class="b">本部の商品写真とロゴが画面の顔。店ごとに「今日の一枚」が変わる</td></tr>
         <tr><td>売上・客数・現金・カード</td><td class="now">店が毎日手で入力</td><td class="b">USENレジから毎朝取り込み（9/30から動いている）。USENの無い店だけ手入力の欄が出る</td></tr>
-        <tr><td>レジの数字</td><td class="now">売上・客数・現金・カードを手入力</td><td class="b">USENにある項目はすべて「数字」に出る（組数・客数・税込／税抜・10%／8%・現金・クレジット・電子マネー・ポイント・値引き・差異・現金在高・準備金）。店が入れるものは無い</td></tr>
-        <tr><td>サーベイ・口コミ</td><td class="now">報告する→サーベイ集計／口コミ集計（別の画面）</td><td class="b">「数字」→お客様の声＝回答・低評価・来店国・来店経路・Google口コミの推移が1画面。QRは「きょう」からお声かけ用に出す（回答の最後にGoogle口コミ／TripAdvisorへ）</td></tr>
+        <tr><td>レジの数字</td><td class="now">売上・客数・現金・カードを手入力</td><td class="b">USENにある項目はすべて「管理」に出る（組数・客数・税込／税抜・10%／8%・現金・クレジット・電子マネー・ポイント・値引き・差異・現金在高・準備金）。店が入れるものは無い</td></tr>
+        <tr><td>サーベイ・口コミ</td><td class="now">報告する→サーベイ集計／口コミ集計（別の画面）</td><td class="b">「管理」→お客様の声＝回答・低評価・来店国・来店経路・Google口コミの推移が1画面。QRは「きょう」からお声かけ用に出す（回答の最後にGoogle口コミ／TripAdvisorへ）</td></tr>
         <tr><td>レジ締め</td><td class="now">金種別入力とレジ誤差を手で入力</td><td class="b">POSの締めをそのまま使う。現金の過不足があった日だけ「理由」を1つ選ぶ</td></tr>
         <tr><td>店が毎日入れる数字</td><td class="now">売上・客数・現金・カード・値引き・誤差・食材・酒・飲料 …約15</td><td class="b">納品書の金額（伝票を写す）と一言。USENの7店はこれだけ</td></tr>
         <tr><td>仕入</td><td class="now">食材・酒・飲料の合計を税抜に直して入力</td><td class="b">納品書ごとに仕入先を選び、8％対象と10％対象の税込額を写すだけ。食材・酒・飲料の振り分けと税抜は自動</td></tr>
@@ -284,7 +284,7 @@ td.b{color:var(--suou-ink);font-weight:500}
         <tr><td>提出物</td><td class="now">全店ほぼ同じ</td><td class="b">店ごとに 必須／推奨／不要 を本部が設定</td></tr>
         <tr><td>お知らせ・返答</td><td class="now">別のペインに見に行く</td><td class="b">「きょう」のいちばん上に1行。未読のときだけ</td></tr>
         <tr><td>レシピ</td><td class="now">ドライブのカード（docx）を開く</td><td class="b">完成写真・5工程・焼き加減がアプリの中で1枚</td></tr>
-        <tr><td>数字</td><td class="now">総括表の画面の中のタブ</td><td class="b">「数字」タブ。今日・今月・原価率・お客様の声が1画面</td></tr>
+        <tr><td>管理（数字・棚卸・設定）</td><td class="now">総括表の画面の中のタブ・月次数値・提出物の設定が別々</td><td class="b">「管理」タブ。今日・今月・原価率・お客様の声が1画面</td></tr>
       </tbody>
     </table>
     <div>
@@ -314,8 +314,8 @@ td.b{color:var(--suou-ink);font-weight:500}
     <div>
       <h2>触ってみるなら</h2>
       <ol class="try">
-        <li>「数字」のいちばん上＝レジ（USEN）の今日。押すと、USENから入る項目がぜんぶ並ぶ（組数・客数・税率別売上・支払方法別・値引き・差異・現金在高）</li>
-        <li>「数字」の「お客様の声」を押す→サーベイの回答・低評価・来店国・来店経路と、Google口コミの推移。「きょう」の「サーベイQR」がお客様に見せる画面（回答の最後にGoogle口コミへ）</li>
+        <li>「管理」のいちばん上＝レジ（USEN）の今日。押すと、USENから入る項目がぜんぶ並ぶ（組数・客数・税率別売上・支払方法別・値引き・差異・現金在高）</li>
+        <li>「管理」の「お客様の声」を押す→サーベイの回答・低評価・来店国・来店経路と、Google口コミの推移。「きょう」の「サーベイQR」がお客様に見せる画面（回答の最後にGoogle口コミへ）</li>
         <li>「きょう」のいちばん上＝昨日のレジ締め。POSの売上と現金の過不足が入っていて、過不足があった日だけ理由を選ぶ（金種別入力もレジ誤差の手入力も無くなる）</li>
         <li>「きょう」で未の行を押す→出す→戻ると済になり、残り件数と目安時間が減る</li>
         <li>点検の項目の右にお手本の写真。オープン写真は見本と今日を並べて撮る</li>
@@ -501,7 +501,7 @@ td.b{color:var(--suou-ink);font-weight:500}
     const rows = [['売上（税込）', yen(P_.gross)], ['純売上（税抜）', yen(P_.sales)], ['10%対象（税込）', yen(P_.s10)], ['8%対象（税込）', yen(P_.s8)], ['組数', P_.groups + '組'], ['客数', P_.guests + '人'], ['客単価（税抜）', '¥' + Math.round(P_.sales / P_.guests).toLocaleString('ja-JP')],
       ['現金', yen(P_.cash)], ['クレジット', yen(P_.card)], ['電子マネー', yen(P_.emoney)], ['ポイント', yen(P_.point)], ['値割引', yen(P_.disc)], ['差異合計（現金の過不足）', sgn(P_.diff)], ['現金在高', yen(P_.drawer)], ['レジオープン時現金', yen(P_.float)]];
     const days = [['9/24', 222902, 44, 84200, 161000, -84200], ['9/25', 207632, 46, 56900, 171500, 0], ['9/26', 243539, 56, 60900, 207000, -60900], ['9/27', 243355, 63, 113300, 154400, -113200], ['9/28', 143087, 32, 40200, 117200, -40200], ['9/29', 192996, 49, 101500, 103200, -101500], ['9/30', 154631, 37, 53600, 112600, -103600]];
-    return `<button class="back" data-go="numtop">${ICONS.back} 数字</button><div class="ttl">レジ（USEN）</div><p class="lead">USENレジのレジクローズ情報にある項目は、毎朝ぜんぶここに入ります。店が入れるものはありません。</p>
+    return `<button class="back" data-go="numtop">${ICONS.back} 管理</button><div class="ttl">レジ（USEN）</div><p class="lead">USENレジのレジクローズ情報にある項目は、毎朝ぜんぶここに入ります。店が入れるものはありません。</p>
       <div class="sec"><h2>昨日 ・ ${P_.at} 取込</h2><small>レジクローズ情報</small></div>
       <div class="card">${rows.map(([k, v]) => `<div class="fld"><label>${k}</label><div class="auto">${v}</div></div>`).join('')}</div>
       <div class="sec"><h2>日別</h2><small>純売上 ・ 客数 ・ 現金 ・ カード ・ 差異</small></div>
@@ -512,7 +512,7 @@ td.b{color:var(--suou-ink);font-weight:500}
   }
   function screenVoice(){
     const answers = [['4', '韓国', 'Instagram', '牛カツが柔らかくて感動。店員さんの説明も丁寧'], ['5', '台湾', 'Google検索', 'いくら丼が最高。また来ます'], ['2', '日本', '通りがかり', '提供まで25分待った。味は良い'], ['5', 'アメリカ', 'TripAdvisor', 'Best katsu in Osaka'], ['3', '韓国', '友人の紹介', '量が少し少ない']];
-    return `<button class="back" data-go="numtop">${ICONS.back} 数字</button><div class="ttl">お客様の声</div><p class="lead">サーベイの回答とGoogle口コミ。どちらも自動で集まります。低評価は本部にも届きます。</p>
+    return `<button class="back" data-go="numtop">${ICONS.back} 管理</button><div class="ttl">お客様の声</div><p class="lead">サーベイの回答とGoogle口コミ。どちらも自動で集まります。低評価は本部にも届きます。</p>
       <div class="kpi"><div class="card"><div class="l">サーベイ ・ 今月</div><div class="v">4.6</div><div class="d">38件 ・ 低評価（1〜2）2件</div></div><div class="card"><div class="l">Google口コミ ・ 通算</div><div class="v">1,284<span style="font-size:14px"> 件</span></div><div class="d">星 4.7 ・ 今月 +12件</div></div></div>
       <div class="sec"><h2>来店国 ・ 来店経路</h2><small>今月のサーベイから</small></div>
       <div class="card"><div class="bar"><span>日本</span><i style="width:40%"></i><b>40%</b></div><div class="bar"><span>韓国</span><i style="width:25%"></i><b>25%</b></div><div class="bar"><span>台湾</span><i style="width:15%"></i><b>15%</b></div><div class="bar"><span>アメリカ</span><i style="width:10%"></i><b>10%</b></div><div class="bar"><span>その他</span><i style="width:10%"></i><b>10%</b></div>
@@ -628,7 +628,7 @@ td.b{color:var(--suou-ink);font-weight:500}
   }
 
   /* ---------- 描画 ---------- */
-  const TABS = [['today','きょう','today'],['search','調べる','search'],['num','数字','num'],['hq','本部','hq']];
+  const TABS = [['today','きょう','today'],['search','調べる','search'],['num','管理','num'],['hq','本部','hq']];
   function render(){
     const m = $('#main'); let html = '';
     if (S.tab === 'today') {
