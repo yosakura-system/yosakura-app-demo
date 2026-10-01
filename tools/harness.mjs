@@ -3137,6 +3137,35 @@ console.log('== 見本写真＋店舗ごとの注意書き（2026-08-30 長田�
   location.hash = '#/app/openphoto';
   ok(/これを見本にする」を押すと/.test(registry.app.innerHTML), '店長：未登録なら登録のしかたを案内する');
 }
+// distribute()：月次＝アプリの棚卸記録を土台に、総括表の仕入だけ重ねる（2026-10-01 長堀橋9月）
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const now = Date.now();
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-09', purchase:602875, src:'drive' }), photos:[], t: now - 3000, id:'m1' },
+    { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-09', sales:4290050, purchase:602875, open:123199, close:678263, closeDetail:[{ n:'米（袋）', u:7371, q:2, a:13650 }], by:'店長' }), photos:[], t: now - 2000, id:'m2' },
+    { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-09', purchase:1234567, src:'drive' }), photos:[], t: now - 1000, id:'m3' },
+    { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-08', sales:1, purchase:5000, open:0, close:0, by:'店長' }), photos:[], t: now - 2000, id:'m4' },
+    { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-08', purchase:9999, src:'drive' }), photos:[], t: now - 1000, id:'m5' },
+    { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-07', purchase:777, src:'drive' }), photos:[], t: now - 1000, id:'m6' },
+  ]};
+  try { run(()=> setLS('manager', S, 'ja')); } catch(e){ FAIL++; console.log('  ✗ load threw: '+e.message); }
+}
+await new Promise(r=>setTimeout(r, 50));
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const ms = JSON.parse(localStorage.getItem('yosakura_demo_monthly')||'[]');
+  const sep = ms.find(r => r.store===S && r.ym==='2026-09'), aug = ms.find(r => r.store===S && r.ym==='2026-08'), jul = ms.find(r => r.store===S && r.ym==='2026-07');
+  ok(!!sep && sep.close === 678263 && Array.isArray(sep.closeDetail) && sep.closeDetail.length === 1, '新しい取込行が来ても棚卸（月末在庫・明細）は消えない');
+  ok(!!sep && sep.purchase === 1234567 && sep.purchaseFrom === 'drive', '仕入が取込の値そのままだった月は、新しい取込の仕入に追いつく（602,875→1,234,567）');
+  ok(!!aug && aug.purchase === 5000 && aug.purchaseFrom === 'app', '手で入れた仕入（取込の値と違う）は上書きしない');
+  ok(!!jul && jul.purchase === 777 && jul.src === 'drive', 'アプリの記録が無い月は取込行をそのまま使う');
+  run(() => { localStorage.setItem('yosakura_pl_tab', 'input'); });
+  location.hash = '#/app/pl?x=purchasefrom';
+  const hp = registry.app.innerHTML;
+  ok(/総括表の仕入台帳から取り込んだ値です/.test(hp) || !/id="pl_purchase"/.test(hp), '月次数値の画面に「仕入は総括表の仕入台帳から（○/○時点）」の注記（当月に取込があるとき）');
+  FETCH_ROWS = { ok:true, reports:[] };
+}
 // distribute()：バックエンドの phsample 行がローカルへ復元される（最新版が正）
 {
   const S = '牛カツ世桜 長堀橋店';
@@ -5695,7 +5724,7 @@ console.log('== 総括表からの月次（棚卸）取込＝期首・仕入・�
   {
     const gs = fs.readFileSync(APP.replace(/app\.js$/, 'backend/総括表取り込み.gs'), 'utf8');
     ok(/function sk_月次を読む_\(ss, ym\)/.test(gs) && /期首棚卸高/.test(gs) && /期末棚卸高/.test(gs), '総括表取り込み＝期首・仕入・期末棚卸高を読む（要GAS貼り替え）');
-    ok(/if \(mcur && !mcur\.src\) \{ 結果\.月次\.アプリ優先\+\+; \}/.test(gs), 'アプリで入力した月は取込で上書きしない');
+    ok(/mcur && !mcur\.src && mcur\.p && mcur\.p\.purchase === mo\.purchase/.test(gs) && /月次既存\[mk \+ '\|drive'\]/.test(gs), 'アプリで入力した月＝棚卸は消さず、総括表の仕入が変わったときだけ取込行を足す（アプリ側で仕入だけ重ねる・2026-10-01）');
     ok(/if \(o\.open == null && o\.purchase == null && o\.close == null\) return null;/.test(gs), '空欄・0の月は取り込まない');
   }
   run(() => { setLS('hq', 'all', 'ja'); });

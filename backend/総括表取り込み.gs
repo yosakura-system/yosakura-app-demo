@@ -360,6 +360,7 @@ function sk_月次既存_() {
     if (!p.ym) continue;
     var k = String(vals[i][3]) + '|' + p.ym;
     if (!map[k] || t >= map[k].t) map[k] = { t: t, p: p, src: p.src || '' };
+    if (p.src === SK_SRC_TAG && (!map[k + '|drive'] || t >= map[k + '|drive'].t)) map[k + '|drive'] = { t: t, p: p, src: p.src };   // 最新の取込行（2026-10-01）
   }
   return map;
 }
@@ -400,11 +401,15 @@ function sk_実行_(書き込む, 全期間, 予算ms) {
           var mo = sk_月次を読む_(ss, b.ym);
           if (mo) {
             var mk = src.store + '|' + mo.ym; var mcur = 月次既存[mk];
-            if (mcur && !mcur.src) { 結果.月次.アプリ優先++; }
-            else if (mcur && sk_月次canon_(mcur.p) === sk_月次canon_(mo)) { 結果.月次.変わらず++; }
+            /* ★2026-10-01＝アプリで棚卸を保存した月でも、総括表の仕入台帳が後から更新されたら取込行を足す
+               （アプリ側は棚卸の記録を土台に「取込の仕入」だけを重ねる＝棚卸は消えない・仕入は追いつく）。
+               比べる相手は「最新の取込行」＝アプリの行と比べると毎時書き足してしまう */
+            var mdrv = 月次既存[mk + '|drive'];
+            if (mdrv && sk_月次canon_(mdrv.p) === sk_月次canon_(mo)) { 結果.月次.変わらず++; }
+            else if (!mdrv && mcur && !mcur.src && mcur.p && mcur.p.purchase === mo.purchase) { 結果.月次.アプリ優先++; }
             else {
               if (mcur) 結果.月次.更新++; else 結果.月次.新規++;
-              if (書き込む) { 追記.push([Utilities.getUuid(), Date.now(), 'monthly', src.store, '', '', JSON.stringify(mo), '[]']); 月次既存[mk] = { t: Date.now(), p: mo, src: SK_SRC_TAG }; }
+              if (書き込む) { 追記.push([Utilities.getUuid(), Date.now(), 'monthly', src.store, '', '', JSON.stringify(mo), '[]']); 月次既存[mk] = { t: Date.now(), p: mo, src: SK_SRC_TAG }; 月次既存[mk + '|drive'] = 月次既存[mk]; }
             }
           }
         } catch (e) { 結果.エラー.push({ 店舗: src.store, 理由: '月次（棚卸）: ' + String(e.message || e) }); }
