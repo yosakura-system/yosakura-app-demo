@@ -2897,8 +2897,9 @@ console.log('== 写真の添付：貼れないときに黙って捨てない（2
   /* ⑨ ★iOSのライブラリ選択で change が届かない不具合への対策（2026-08-25 実機で確定）
      症状＝カメラ撮影は貼れるのに、ライブラリから選ぶと「選択画面を開きました…」のまま変わらない。
      再読み込みでもない（検知に掛からなかった）＝選んだ写真がアプリに一切渡っていない。 */
-  ok(/if \(IOS\) fi\.removeAttribute\('multiple'\);/.test(code),
-     '対策①＝iPhone・iPadでは複数選択をやめる（単数選択の画面は確実に届く）');
+  ok(/!\(IOS && STANDALONE\)/.test(code) && /yosakura_photo_multi/.test(code) && /id = 'photoMulti'/.test(code),
+     '対策①（2026-10-01 改）＝iPhone・iPadのホーム画面版だけ複数選択を既定オフ。端末ごとにボタンで切替（複数枚をまとめて選ぶ）');
+  ok(/複数枚をまとめて選ぶ：オン/.test(code) && /複数枚をまとめて選ぶ：オフ/.test(code), '切替ボタンの文言＝オン／オフが分かる');
   ok(/iPad\|iPhone\|iPod/.test(code) && /maxTouchPoints > 1/.test(code),
      'iPadOS（Macを名乗る）も判定に入れている');
   ok(/const 受け取りを見に行く = \(\) => \{/.test(code) && /\[400, 1000, 2000, 4000, 8000\]/.test(code),
