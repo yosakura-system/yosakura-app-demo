@@ -3990,6 +3990,35 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   location.hash = '#/store?s=' + encodeURIComponent(S);
   h = registry.app.innerHTML;
   ok(/フード金額/.test(h) && !/フード数/.test(h), 'カルテ＝新形式はフード金額（点数の欄は出ない）');
+  // ②c 納品書の写真→仕入の自動加算（2026-10-01 神田さん）＝nouhindraft（仕入先・8%税込・10%税込）が日報の「今日の納品書」に並び、3欄が自動
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+    { kind:'nouhindraft', store:S, item: today4, note: JSON.stringify({ src:'ocr', v:'西原商会', a8:1080, total:1080, conf:'high', photo:'PHOTO_A1234567' }), photos:[], t: Date.now() - 5000, id:'n1' },
+    { kind:'nouhindraft', store:S, item: today4, note: JSON.stringify({ src:'ocr', v:'名畑', a8:540, a10:1100, total:1640, conf:'high', photo:'PHOTO_B1234567' }), photos:[], t: Date.now() - 4000, id:'n2' },
+    { kind:'nouhindraft', store:S, item: today4, note: JSON.stringify({ src:'ocr', v:'フレッシュ青果', total:2094, conf:'low', photo:'PHOTO_C1234567' }), photos:[], t: Date.now() - 3000, id:'n3' },
+    { kind:'nouhindraft', store:S, item: today4, note: JSON.stringify({ src:'ocr', v:'名畑', a8:999, total:999, conf:'high', photo:'PHOTO_B1234567' }), photos:[], t: Date.now() - 9000, id:'n0' } ])); });
+  location.hash = '#/app/soukatsu?x=slips';
+  h = registry.app.innerHTML;
+  ok(/id="sk_slipbox"/.test(h) && (h.match(/data-slip="/g) || []).length === 3, '日報に「今日の納品書」＝写真から読んだ伝票が並ぶ（同じ写真の古い下書きは最新だけ＝3枚）');
+  ok(/要確認/.test(h) && /写真から/.test(h), '税率が読めなかった伝票は「要確認」・写真由来の印');
+  ok(doc.getElementById('sk_buy_food').value === '3174' && doc.getElementById('sk_buy_alc').value === '1100' && doc.getElementById('sk_buy_drink').value === '540',
+     '仕入3欄が自動＝食材 1080+2094（合計だけの伝票は8%へ）・お酒 1100（名畑の10%）・お酒以外 540（名畑の8%）');
+  doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = today4; doc.getElementById('sk_sales').value = '100000';
+  doc.getElementById('submitSk').onclick();
+  const lastS = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
+  ok(lastS && Array.isArray(lastS.slips) && lastS.slips.length === 3 && lastS.slips[1].v === '名畑' && lastS.slips[1].a10 === '1100' && lastS.slips[1].photo === 'PHOTO_B1234567' && lastS.buy_food === '3174',
+     '提出データに納品書ごとの内訳（仕入先・8%・10%・写真ID）が残り、3欄は自動値');
+  ok(lastS && lastS.buy === '4439', '税抜合計も自動（2939+1000+500）');
+  // 提出済みの日を開き直す＝内訳は提出した中身から（下書きではなく）
+  location.hash = '#/app/soukatsu?x=slips2';
+  h = registry.app.innerHTML;
+  ok((h.match(/data-slip="/g) || []).length === 3 && doc.getElementById('sk_buy_food').value === '3174', '提出済みの日を開き直しても内訳と3欄が残る');
+  {
+    const src5 = code;
+    ok(/case 'chukan': case 'chukandraft': case 'skdraft': case 'nouhindraft':/.test(src5), '同期＝nouhindraft が提出一覧に流れる（消えない）');
+    const gs2 = fs.readFileSync(APP.replace(/app\.js$/, 'backend/Code.gs'), 'utf8');
+    ok(/nouhin_ocr_hook_/.test(gs2), 'doPost に納品書OCRのフックがある（要GAS貼り替え）');
+  }
+  run(() => { localStorage.setItem('yosakura_demo_reports', '[]'); });
   // ④ 旧形式の日報（点数・手入力の原価率あり）は、その値をそのまま表示（legacy＝黙って消さない）
   run(() => {
     setLS('manager', S, 'ja');

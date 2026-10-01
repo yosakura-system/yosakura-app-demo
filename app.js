@@ -2022,6 +2022,76 @@
     const p = parseNote(best.note);
     return (p && p.src === 'ocr') ? Object.assign({ _t: best.t }, p) : null;
   }
+  /* ★納品書の写真→仕入の自動加算（2026-10-01 神田さん「写真を撮ったら自動で仕入に加算され、食材／酒／酒以外と8%・10%も自動で」）。
+     GAS（納品書OCR.gs）が写真1枚＝伝票1枚として nouhindraft（仕入先・8%税込・10%税込・合計）を作る。
+     日報は「今日の納品書」としてそれを並べ、仕入先×税率で 食材／お酒／お酒以外 の3欄（税込）を自動で埋める。
+     送信は必ず人が押す＝読み取りが違っていても、その場で直せる */
+  const NOUHIN_VENDORS = ['西原商会', 'フレッシュ青果', '銘洋', '魚伸', '名畑', 'リカーマウンテン', '日本食研', 'オーディエー', 'イオン', 'ローソン', '本部', 'その他'];
+  const NOUHIN_ALC_VENDORS = ['名畑', 'リカーマウンテン'];      // 酒屋＝8%はお酒以外の飲料・10%はお酒
+  const NOUHIN_MIX_VENDORS = ['本部', 'イオン', 'ローソン'];     // 8%は食材・10%はお酒（本部請求＝和牛・鰻が8%、梅酒が10%）
+  const nouhinKind = (v, rate) => {
+    const n = String(v || '');
+    if (NOUHIN_ALC_VENDORS.some(x => n.includes(x))) return rate === 10 ? 'alc' : 'drink';
+    if (rate === 10 && (NOUHIN_MIX_VENDORS.some(x => n.includes(x)) || /酒/.test(n))) return 'alc';
+    return 'food';
+  };
+  const nouhinDrafts = (store, dk) => {
+    const by = {};
+    try {
+      getReports().forEach(r => {
+        if (r.kind !== 'nouhindraft' || r.store !== store || dateKeyOfItem(r.item) !== dk) return;
+        const p = parseNote(r.note); if (!p || p.src !== 'ocr') return;
+        const key = p.photo || r.id || String(r.t);
+        if (!by[key] || r.t > by[key]._t) by[key] = Object.assign({ _t: r.t }, p);
+      });
+    } catch (e) {}
+    return Object.values(by).sort((a, b) => a._t - b._t).map(p => ({
+      v: p.v || '', a8: p.a8 != null ? String(p.a8) : '', a10: p.a10 != null ? String(p.a10) : '',
+      total: p.total != null ? Number(p.total) : 0, conf: p.conf || 'low', photo: p.photo || '', src: 'ocr' }));
+  };
+  let skSlips_ = [];
+  const skSlipsLoad_ = (store, dk, rec) => {
+    if (rec && Array.isArray(rec.slips) && rec.slips.length) { skSlips_ = rec.slips.map(s => Object.assign({}, s)); return; }
+    skSlips_ = nouhinDrafts(store, dk);
+    // 税率の行が読めなかった伝票＝合計を仕入先の既定の税率へ（酒屋は10%・それ以外は8%）。要確認の印は残る
+    skSlips_.forEach(s => { if (s.a8 === '' && s.a10 === '' && s.total) { if (NOUHIN_ALC_VENDORS.some(x => String(s.v).includes(x))) s.a10 = String(s.total); else s.a8 = String(s.total); } });
+  };
+  const skSlipsSums_ = () => {
+    const o = { food: 0, alc: 0, drink: 0 };
+    skSlips_.forEach(s => {
+      const a8 = Math.round(Number(s.a8) || 0), a10 = Math.round(Number(s.a10) || 0);
+      if (a8) o[nouhinKind(s.v, 8)] += a8;
+      if (a10) o[nouhinKind(s.v, 10)] += a10;
+    });
+    return o;
+  };
+  const skSlipsRowsHtml_ = () => skSlips_.map((s, i) => {
+    const opts = NOUHIN_VENDORS.slice(); if (s.v && !opts.includes(s.v)) opts.unshift(s.v);
+    const rateLbl = NOUHIN_ALC_VENDORS.some(x => String(s.v).includes(x)) ? L({ ja:'8%＝お酒以外・10%＝お酒', en:'8% soft / 10% alcohol', vi:'8% khác / 10% rượu' })
+      : (NOUHIN_MIX_VENDORS.some(x => String(s.v).includes(x)) ? L({ ja:'8%＝食材・10%＝お酒', en:'8% food / 10% alcohol', vi:'8% thực phẩm / 10% rượu' }) : L({ ja:'食材', en:'food', vi:'thực phẩm' }));
+    return `<div class="sk-slip" data-slip="${i}" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto;gap:6px;align-items:center;margin:4px 0">
+        <div><select data-sv="${i}" style="width:100%;font-size:14px;padding:6px"><option value="">${L({ ja:'仕入先', en:'Vendor', vi:'Nhà cung cấp' })}</option>${opts.map(v => `<option${s.v === v ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select>
+          <div class="muted" style="font-size:11px;margin-top:2px">${rateLbl}${s.src === 'ocr' ? L({ ja:'・写真から', en:' · from photo', vi:' · từ ảnh' }) : ''}${s.conf === 'low' ? ` <span class="pill warn" style="font-size:10px">${L({ ja:'要確認', en:'check', vi:'kiểm tra' })}</span>` : ''}</div></div>
+        <input type="text" inputmode="numeric" data-s8="${i}" placeholder="${L({ ja:'8%対象（税込）', en:'8% (incl.)', vi:'8% (gồm thuế)' })}" value="${esc(s.a8 || '')}" style="min-width:0">
+        <input type="text" inputmode="numeric" data-s10="${i}" placeholder="${L({ ja:'10%対象（税込）', en:'10% (incl.)', vi:'10% (gồm thuế)' })}" value="${esc(s.a10 || '')}" style="min-width:0">
+        <button type="button" class="btn-sm" data-sdel="${i}" aria-label="delete">×</button>
+      </div>`;
+  }).join('');
+  const skSlipsHtml_ = () => `
+        <div class="card" id="sk_slipbox" style="margin:0 0 10px">
+          <div class="idlabel" style="margin-top:0">${L({ ja:'今日の納品書', en:'Today’s delivery slips', vi:'Phiếu giao hàng hôm nay' })} <span class="muted" style="font-weight:400">${L({ ja:'（写真から自動・確認して直せます）', en:'(auto from photos · editable)', vi:'(tự động từ ảnh · có thể sửa)' })}</span></div>
+          <div id="sk_slips">${skSlipsRowsHtml_()}</div>
+          <button type="button" class="btn-sm" id="sk_slipadd">${L({ ja:'＋ 納品書を足す', en:'+ Add slip', vi:'+ Thêm phiếu' })}</button>
+          <p class="hint" style="display:block;margin:6px 0 0">${L({ ja:'※ 納品書の写真を出すと、仕入先と「8％対象」「10％対象」の税込額を読み取ってここに並びます。仕入先ごとに 食材／お酒／お酒以外 へ自動で振り分け、下の仕入3欄に合計が入ります（税抜への換算も自動）。読み取りが違えば直してください。「要確認」は税込か税抜か迷った伝票です。', en:'Submitted slip photos are read automatically (vendor, 8% / 10% amounts incl. tax) and split into food / alcohol / soft drinks below. Fix any misreads.', vi:'Ảnh phiếu được đọc tự động (nhà cung cấp, 8%/10%) và chia vào thực phẩm / rượu / đồ uống khác bên dưới.' })}</p>
+        </div>`;
+  const skSlipsRender_ = () => { const el = document.getElementById('sk_slips'); if (el) el.innerHTML = skSlipsRowsHtml_(); };
+  const skSlipsApply_ = () => {
+    if (!skSlips_.length) return false;
+    const o = skSlipsSums_();
+    const put = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ? String(v) : ''; };
+    put('sk_buy_food', o.food); put('sk_buy_alc', o.alc); put('sk_buy_drink', o.drink);
+    return true;
+  };
   APP_VIEWS.chukan = () => {
     const vis = visibleStores();
     const recent = getChukan().filter(r => vis.includes(r.store)).sort((a, b) => b.t - a.t).slice(0, 5);
@@ -4911,6 +4981,7 @@
           <label class="fld"><span>${L({ja:'キャンセル 累計（自動計算）',en:'Cancel total (auto)',vi:'Hủy tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_cancel" placeholder="31700" value="${skCum0.cancel || ''}"></label>
           <label class="fld"><span>${L({ja:'レジ締め担当',en:'Cash-up by',vi:'Người chốt sổ'})}</span><input type="text" id="sk_closer" placeholder="${L({ja:'担当者名',en:'staff name',vi:'tên NV'})}"></label>
         </div>
+        ${(skSlipsLoad_(vis[0], todayKey(), null), skSlipsHtml_())}
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'現金売上',en:'Cash sales',vi:'DT tiền mặt'})}</span><input type="text" inputmode="numeric" id="sk_cash" placeholder="96800"${skDraft.cash != null ? ` value="${skDraft.cash}"` : ''}></label>
           <label class="fld"><span>${L({ja:'カード売上',en:'Card sales',vi:'DT thẻ'})}</span><input type="text" inputmode="numeric" id="sk_card" placeholder="251700"${skDraft.card != null ? ` value="${skDraft.card}"` : ''}></label>
@@ -10952,6 +11023,10 @@
         const store = sEl.value || skEditTarget_().store || visibleStores()[0];
         const date  = dEl.value || skEditTarget_().date  || todayKey();
         const rec = getSk().filter(r => r.store === store && r.date === date).sort((a, b) => (b.t || 0) - (a.t || 0))[0];
+        /* ★今日の納品書＝その日の下書き（提出済みならその内訳）を入れ直し、仕入3欄を自動で埋める（2026-10-01） */
+        skSlipsLoad_(store, date, (rec && rec.src !== 'drive' && rec.src !== 'usen') ? rec : null);
+        skSlipsRender_();
+        if (skSlipsApply_()) cumUpd();
         /* まだ提出の無い日は、写真から読み取った下書きや累計の自動入力を消さない
            （日付を選び直したときだけ、前の日の内容が残らないように空にする） */
         if (!rec) {
@@ -11004,6 +11079,25 @@
         skAuto_();
       };
       ['sk_date', 'sk_store'].forEach(id => { const el = byId(id); if (el) el.addEventListener('change', () => skFill_(true)); });
+      /* ★今日の納品書の操作（2026-10-01）＝仕入先を選ぶ・金額を直す・足す・消す → 仕入3欄と累計を入れ直す */
+      const slipsRefresh = (rerender) => { if (rerender) skSlipsRender_(); skSlipsApply_(); cumUpd(); };
+      const slipBox = byId('sk_slipbox');
+      if (slipBox) {
+        slipBox.addEventListener('input', (e) => {
+          const d = e.target.dataset || {};
+          if (d.s8 != null) { skSlips_[Number(d.s8)].a8 = e.target.value.trim(); slipsRefresh(false); }
+          else if (d.s10 != null) { skSlips_[Number(d.s10)].a10 = e.target.value.trim(); slipsRefresh(false); }
+        });
+        slipBox.addEventListener('change', (e) => {
+          const d = e.target.dataset || {};
+          if (d.sv != null) { skSlips_[Number(d.sv)].v = e.target.value; slipsRefresh(true); }
+        });
+        slipBox.addEventListener('click', (e) => {
+          const b = e.target.closest('button'); if (!b) return;
+          if (b.id === 'sk_slipadd') { skSlips_.push({ v: '', a8: '', a10: '', src: 'app' }); skSlipsRender_(); const last = slipBox.querySelector(`[data-sv="${skSlips_.length - 1}"]`); if (last) last.focus(); }
+          else if (b.dataset.sdel != null) { skSlips_.splice(Number(b.dataset.sdel), 1); slipsRefresh(true); if (!skSlips_.length) { ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'].forEach(id => { const el = byId(id); if (el) el.value = ''; }); cumUpd(); } }
+        });
+      }
       // 開いた時点＝すでに提出のある日なら、その内容を入れて「直せる」状態にする（無い日はそのまま）
       skFill_(false);
     }
@@ -11028,6 +11122,8 @@
         cash: v('sk_cash'), card: v('sk_card'), lunch: v('sk_lunch'), buy: v('sk_buy'),
         // 画面304＝仕入の税込3欄（食材8%／お酒10%／お酒以外8%）。buy＝その税抜合計（自動）
         buy_food: v('sk_buy_food'), buy_alc: v('sk_buy_alc'), buy_drink: v('sk_buy_drink'),
+        // 納品書ごとの内訳（2026-10-01）＝仕入先・8%税込・10%税込・写真ID。空なら持たない
+        slips: skSlips_.length ? skSlips_.map(s => ({ v: s.v || '', a8: s.a8 || '', a10: s.a10 || '', photo: s.photo || '', src: s.src || 'app' })) : undefined,
         supply: v('sk_supply'), unagi: v('sk_unagi'), errnote: v('sk_errnote'),
         // 日報一本化（2026-08-26 決定）で足した項目＝元の数字だけ。率は計算で出す
         staffct: v('sk_staffct'), hours: v('sk_hours'), laborcost: v('sk_laborcost'),
@@ -11104,7 +11200,8 @@
         // ★2026-09-08 追加＝handover（店内の引き継ぎボード）。KEEP判断＝90日で消えてよい（短命の連絡）
         // ★2026-09-08 追加＝newslike/newsread/newscmt（お知らせへの反応）。KEEP判断＝お知らせ本体と同じく恒久（Code.gsに追加）
         // ★2026-09-08 追加＝kinshu（金種別入力・レジクローズ）。KEEP判断＝90日で消えてよい（差異は総括表のレジ誤差に恒久で残る）
-        case 'chukan': case 'chukandraft': case 'skdraft': case 'gsnap': case 'handover':
+        // ★2026-10-01 追加＝nouhindraft（納品書写真のOCR下書き＝日報の「今日の納品書」）。KEEP判断＝90日で消えてよい
+        case 'chukan': case 'chukandraft': case 'skdraft': case 'nouhindraft': case 'gsnap': case 'handover':
         case 'newslike': case 'newsread': case 'newscmt': case 'kinshu': case 'commcmt': case 'zaiko': case 'zaikomaster': case 'zaikoorder':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
