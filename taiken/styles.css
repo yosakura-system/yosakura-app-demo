@@ -513,6 +513,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
    「個店カルテへ」のボタンが隠れて押せなかった（2026-09-03 ユンさんのご報告）。
    端末の安全領域のぶんだけ、画面の上に余白を足す。 */
 .screen.skp { padding-top: calc(10px + env(safe-area-inset-top)); }
+/* ★月次出力の「個店カルテへ」＝上に追従させ、開発者ビューのバナー（z-index:60）やiPhoneの上端の下に隠れないようにする（2026-10-01） */
+.skp-bar { position: -webkit-sticky; position: sticky; top: 0; z-index: 61; background: var(--paper, #FFFFFF); margin: -4px -16px 0; padding: calc(8px + env(safe-area-inset-top)) 16px 6px; }
+.skp-bar .back { min-height: 44px; }
 .skp-sheet { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
 .skp-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
 .skp-head b { font-size: 15px; }
