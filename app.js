@@ -726,7 +726,9 @@
   const saveSk = (a) => localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(a));
   /* ★累計の起点（2026-09-02 ユンさんのご提案「当日だけ入れれば累計が自動で入る」）。
      前回（対象日より前で最新の日報・同日再提出は最新が正）の累計を起点にし、当日の数字を足す。
-     月累計売上・チップ累計・キャンセル累計＝月のもの（月が替わると0から）／口コミ累計＝通算で引き継ぐ */
+     月累計売上・チップ累計・キャンセル累計・口コミ累計＝すべて月のもの（月が替わると0から）。
+     ★口コミ累計は v187 で「通算」にしていたが、総括表の定義は月間（本部の月間口コミ集計と同じ）＝
+       2026-10-01 ユンさん「前月分から引き継がれて表示されている」→ 月のものに揃えた（v320） */
   function skCumBase(store, dateStr) {
     // getSk()＝店×日1行に正規化済み（同日はアプリ提出＞シート取込・skClean参照）
     const rows = getSk().filter(r => r.store === store && r.date && r.date < dateStr);
@@ -735,8 +737,7 @@
     /* 起点にできるのは累計欄を持つ行（＝アプリ提出。取込・旧形式は売上・客数のみ）。
        月累計売上が入っていれば累計欄を持つ行と見なす（提出があれば当日売上ぶんは必ず入る） */
     const lastApp = (arr) => { let x = null; arr.forEach(r => { if ((Number(r.mtd) || 0) > 0 && (!x || r.date > x.date)) x = r; }); return x; };
-    const am = lastApp(inM);    // 月内の起点（チップ・キャンセル＝月が替わると0から）
-    const aa = lastApp(rows);   // 通算の起点（口コミ＝月をまたいで引き継ぐ）
+    const am = lastApp(inM);    // 月内の起点（チップ・キャンセル・口コミ＝月が替わると0から）
     /* ★月累計売上は「前回のmtd欄の引き継ぎ」をやめ、当月のΣ当日売上で毎回計算し直す
        （2026-09-05 ユンさんの実機報告＝売上の累計が前日の値のまま増えない）。
        以前は前回のmtdを起点に当日を足す鎖だったため、不具合期間（〜v197＝取込が勝って
@@ -755,7 +756,7 @@
       mtd,
       tipa:   am ? Number(am.tipa)   || 0 : 0,
       cancel: am ? Number(am.cancel) || 0 : 0,
-      rva:    aa ? Number(aa.rva)    || 0 : 0,
+      rva:    am ? Number(am.rva)    || 0 : 0,   // 口コミ累計＝月間（総括表の定義・2026-10-01）
       buym
     };
   }
