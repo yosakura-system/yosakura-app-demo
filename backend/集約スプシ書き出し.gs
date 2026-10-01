@@ -220,7 +220,7 @@ function aggRebuild() {
   var extras = {};
   Object.keys(byDay).forEach(function (k) {
     Object.keys(byDay[k].p).forEach(function (key) {
-      if (!known[key] && key !== 'date' && key !== 'src' && key !== 'cty' && key !== 'usenCode') extras[key] = 1;
+      if (!known[key] && key !== 'date' && key !== 'src' && key !== 'cty' && key !== 'usenCode' && key !== 'slips') extras[key] = 1;   // slips＝納品書ごとの内訳（JSONのまま出さない）
     });
   });
   var exKeys = Object.keys(extras).sort();

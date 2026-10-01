@@ -260,6 +260,8 @@ function validateBackendConfiguration() {
      ＝外から ?action=validate で「貼り替えが済んだか」を確認できる */
   ck('日計OCR（写真の自動読み取り・長堀橋トライアル）', true,
      (typeof nikkei_ocr_hook_ === 'function') ? '貼付済み' : '未貼付（任意：backend/日計OCR.gs を追加すると有効）');
+  ck('納品書OCR（納品書写真→仕入の下書き）', true,
+     (typeof nouhin_ocr_hook_ === 'function') ? '貼付済み' : '未貼付（任意：backend/納品書OCR.gs を追加すると有効）');
   /* ★2026-09-03 の貼り替えぶん＝外から ?action=validate で「済んだか」を確認できるようにする */
   ck('提出の重複防止（findSameReport_）', typeof findSameReport_ === 'function',
      (typeof findSameReport_ === 'function') ? '貼付済み＝送り直しで同じ提出が増えない' : '未貼付：Code.gs を貼り替えてください');
@@ -461,6 +463,8 @@ function doPost(e) {
        ファイルを貼っていないプロジェクトでも壊れないよう、関数の有無を見てから呼ぶ。
        読み取りに失敗しても提出は成功のまま（下書きが作られないだけ） */
     if (typeof nikkei_ocr_hook_ === 'function') { try { nikkei_ocr_hook_(data, photoIds); } catch (ocrErr) {} }
+    /* ★納品書写真の自動読み取り（納品書OCR.gs・2026-10-01）＝仕入先・8%／10%の税込額を下書きに。失敗しても提出は成功のまま */
+    if (typeof nouhin_ocr_hook_ === 'function') { try { nouhin_ocr_hook_(data, photoIds); } catch (ocrErr2) {} }
     return json({ ok: true, id: id });
   } catch (err) {
     return json({ ok: false, error: String(err) });
