@@ -6120,6 +6120,7 @@
           <label class="fld"><span>${L({ ja:'月末在庫（棚卸）', en:'Closing stock', vi:'Tồn cuối kỳ' })}</span><input type="text" inputmode="numeric" id="pl_close" value="${esc(cur.close||'')}" placeholder="0"></label>
           <label class="fld"><span>${L({ ja:'今月の売上目標', en:'Monthly sales goal', vi:'Mục tiêu doanh thu' })}</span><input type="text" inputmode="numeric" id="pl_goal" value="${esc(cur.goal||'')}" placeholder="3000000"></label>
         </div>
+        ${cur.purchaseFrom === 'drive' && cur.purchaseAt ? `<p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 当月仕入は、総括表の仕入台帳から取り込んだ値です（' + new Date(cur.purchaseAt).toLocaleDateString('ja-JP', { month:'numeric', day:'numeric' }) + ' 時点）。台帳に後から足された分は、取り込みのたびに自動で追いつきます。手で直した値は上書きされません。', en:'Purchases were imported from the summary sheet (as of ' + new Date(cur.purchaseAt).toLocaleDateString('en-US', { month:'numeric', day:'numeric' }) + '). Later additions follow automatically; a hand-edited value is kept.', vi:'Nhập hàng lấy từ bảng tổng kết (tính đến ' + new Date(cur.purchaseAt).toLocaleDateString('vi-VN', { month:'numeric', day:'numeric' }) + ').' })}</p>` : ''}
         ${autoUsed ? `<p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 売上・仕入は総括表（日報）の月合計から自動で入っています（違うときは直せます）。月初在庫は前月の棚卸から。', en:'Sales and purchases are pre-filled from the daily reports (editable). Opening stock from last month’s stocktake.', vi:'Doanh thu & nhập hàng tự điền từ báo cáo ngày (có thể sửa). Tồn đầu kỳ từ kiểm kê tháng trước.' })}</p>` : ''}
         <p class="hint" style="display:block;margin:2px 0 8px">${L({ ja:'※ 売上目標は本部・オーナー・店長が設定します。設定すると各店の画面に「目標到達」と進捗バーが出ます。', en:'The sales goal is set by HQ/owner/manager and appears as progress on each store screen.', vi:'Mục tiêu do HQ/chủ/quản lý đặt; hiển thị tiến độ trên màn hình cửa hàng.' })}</p>
         <div class="stat-row" style="margin-top:8px">
@@ -11166,7 +11167,7 @@
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
     const numack = {}, numackT = {};   // 数字の要確認の「確認済み」＝キーごとに最新が正（2026-09-24）
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null; const svc={}, svcT={}; const svstd={}, svstdT={};
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}, monthlyD={}, monthlyDV={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null; const svc={}, svcT={}; const svstd={}, svstdT={};
     /* ★同じ提出が何行にもなっているとき、1件にまとめて見せる（2026-09-03 実機で発覚）。
        受け取り側は1回のPOSTごとに1行を足す作りのため、返事が届かずに送り直されると
        中身が同じ行が並ぶ（長堀橋店の日計レポートが同じ写真で8行）。
@@ -11228,7 +11229,16 @@
         } break;
         // 勉強会＝IDごと最新が正。削除は deleted:true の行で表す（追記式のため）
         case 'study': { const p=pj(r.note); const k=r.item || (p && p.id); if (!k) break; if (studyT[k]==null || t>=studyT[k]) { study[k]=p; studyT[k]=t; } } break;
-        case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`; if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, goal:p.goal, closeDetail:Array.isArray(p.closeDetail)?p.closeDetail:undefined, by:p.by||'', src:p.src||'', t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正（closeDetail=棚卸の品目内訳・2026-09-01）
+        case 'monthly': { const p=pj(r.note); const k=`${store}||${p.ym}`;
+          /* ★総括表からの取込行（src:'drive'＝仕入・期首・期末だけ）は別に持つ（2026-10-01 長堀橋9月＝取込の仕入が9/24で止まったまま
+             棚卸を保存→「最新が正」で取込行が勝つと棚卸の明細が消え、負けると仕入が古いまま。だから行ごと勝ち負けにせず、
+             アプリの記録を土台に「取込の仕入」だけを重ねる。重ねるのは、アプリ側の仕入が空か、取込の値をそのまま使っていたときだけ） */
+          if (p.src === 'drive') {
+            (monthlyDV[k] = monthlyDV[k] || []).push(String(p.purchase == null ? '' : p.purchase));
+            if (!monthlyD[k] || t >= monthlyD[k].t) monthlyD[k] = { purchase: p.purchase, open: p.open, close: p.close, t };
+            break;
+          }
+          if (monthlyT[k]==null || t>=monthlyT[k]) { monthly[k]={ store, ym:p.ym, sales:p.sales, purchase:p.purchase, open:p.open, close:p.close, goal:p.goal, closeDetail:Array.isArray(p.closeDetail)?p.closeDetail:undefined, by:p.by||'', src:p.src||'', t }; monthlyT[k]=t; } } break; // 店舗×月ごと最新版が正（closeDetail=棚卸の品目内訳・2026-09-01）
         case 'community': { const p=pj(r.note); comm.push({ store, cat:r.item, body:p.body||'', by:p.by||'', photos:r.photos||[], t, id }); } break;
         case 'commmod': { const p=pj(r.note); const k=r.item; if (commmodT[k]==null || t>=commmodT[k]) { commmod[k]={ state:p.state||'published', t }; commmodT[k]=t; } } break; // 投稿キーごと最新の公開状態が正
         // 拍手は件数を合算。取り消し（off）は -1 として数える（追記式なので行は消せない）
@@ -11264,6 +11274,15 @@
     set(LS.reports, food.concat(subs)); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
     set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
+    /* ★月次＝総括表の取込を重ねる（上の case 'monthly' の注記）。アプリの記録が無い月は取込行をそのまま使う */
+    Object.keys(monthlyD).forEach(k => {
+      const d = monthlyD[k]; const u = monthly[k];
+      if (!u) { const [store, ym] = k.split('||'); monthly[k] = { store, ym, sales: undefined, purchase: d.purchase, open: d.open, close: d.close, goal: undefined, closeDetail: undefined, by: '', src: 'drive', t: d.t, purchaseFrom: 'drive', purchaseAt: d.t }; return; }
+      const up = u.purchase == null ? '' : String(u.purchase);
+      const fromDrive = up === '' || (monthlyDV[k] || []).includes(up);
+      if (fromDrive) { if (d.t >= (u.t || 0) || up === '') u.purchase = d.purchase; u.purchaseFrom = 'drive'; u.purchaseAt = d.t; }
+      else { u.purchaseFrom = 'app'; }
+    });
     set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_monthly', Object.values(monthly));
     /* ★店舗ごとのカスタマイズは「届いたキーだけ」差し替える（2026-08-13）。
        以前は同期のたびに丸ごと入れ替えていたため、バックエンドに1件も無い同期

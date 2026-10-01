@@ -155,3 +155,54 @@ function 納品書OCR_動作確認() {
   var sample = '西原商会\n御納品書\n白だし 1本 1,945\n米 8kg 6,825\n8%対象 8,770\n消費税 701\n合計 ¥9,471\n';
   Logger.log(JSON.stringify(nouhin_parse_(sample)));
 }
+
+/* ★過去の納品書写真をまとめて読む（2026-10-01 神田さん「9月の仕入が更新されていない」＝総括表の仕入台帳が9/24で止まっている）。
+   店舗×月の「納品書の写真」（subrec・item nouhin|日付）を全部OCRして nouhindraft を作り、仕入先ごとの合計と税抜合計をログに出す。
+   使い方（GASエディタで）：
+     納品書OCR_月まとめ('牛カツ世桜 長堀橋店', '2026-09')          … 1回で最大40枚。残りがあればログに出るので、もう一度実行
+   ・すでに下書きのある写真は読み直さない（何度実行しても二重にならない）
+   ・自動では走らない（手で実行したときだけ） */
+function 納品書OCR_月まとめ(store, ym, limit) {
+  var sh = getSheet(); var last = sh.getLastRow();
+  var vals = last >= 2 ? sh.getRange(2, 1, last - 1, HEADERS.length).getValues() : [];
+  var done = {}; var photos = [];
+  for (var i = 0; i < vals.length; i++) {
+    var kind = String(vals[i][2] || ''); if (String(vals[i][3] || '') !== store) continue;
+    if (kind === NOUHIN_DRAFT_KIND) { try { var q = JSON.parse(vals[i][6] || '{}'); if (q.photo) done[q.photo] = true; } catch (e) {} }
+    if (kind !== 'subrec') continue;
+    var item = String(vals[i][4] || ''); if (item.indexOf('nouhin|' + ym) !== 0) continue;
+    var ids; try { ids = JSON.parse(vals[i][7] || '[]'); } catch (e) { ids = []; }
+    (ids || []).forEach(function (id) { if (/^[a-zA-Z0-9_-]{10,}$/.test(String(id || ''))) photos.push({ id: id, date: item.split('|')[1] || '' }); });
+  }
+  var todo = photos.filter(function (p) { return !done[p.id]; });
+  var max = Number(limit) || 40; var read = 0, made = 0, failed = 0; var start = Date.now();
+  for (var j = 0; j < todo.length && j < max; j++) {
+    if (Date.now() - start > 4.5 * 60 * 1000) break;                       // 6分の壁の手前で止める
+    var text = ''; try { text = nikkei_ocr_text_(todo[j].id); read++; } catch (e) { failed++; continue; }
+    var p = nouhin_parse_(text);
+    if (!p) { sh.appendRow([Utilities.getUuid(), Date.now(), NOUHIN_DRAFT_KIND, store, "'" + todo[j].date, '', JSON.stringify({ src: 'ocr', photo: todo[j].id, unread: true }), '[]']); continue; }
+    p.src = 'ocr'; p.photo = todo[j].id;
+    sh.appendRow([Utilities.getUuid(), Date.now(), NOUHIN_DRAFT_KIND, store, "'" + todo[j].date, '', JSON.stringify(p), '[]']);
+    made++;
+  }
+  // 集計（今回ぶんも含めて読み直す）
+  var sum = {}, totalIncl = 0, totalNet = 0, n = 0, unread = 0;
+  last = sh.getLastRow(); vals = last >= 2 ? sh.getRange(2, 1, last - 1, HEADERS.length).getValues() : [];
+  var seen = {};
+  for (var k = vals.length - 1; k >= 0; k--) {                              // 新しい行から＝同じ写真は最新だけ
+    if (String(vals[k][2]) !== NOUHIN_DRAFT_KIND || String(vals[k][3]) !== store) continue;
+    var it = String(vals[k][4] || '').replace(/^'/, ''); if (it.indexOf(ym) !== 0) continue;
+    var d; try { d = JSON.parse(vals[k][6] || '{}'); } catch (e) { continue; }
+    var key = d.photo || ('row' + k); if (seen[key]) continue; seen[key] = true;
+    if (d.unread) { unread++; continue; }
+    n++;
+    var v = d.v || '（仕入先不明）'; sum[v] = sum[v] || { 枚: 0, a8: 0, a10: 0, 税抜: 0 };
+    var a8 = Number(d.a8) || 0, a10 = Number(d.a10) || 0;
+    if (!a8 && !a10 && d.total) { if (/名畑|リカー/.test(v)) a10 = Number(d.total) || 0; else a8 = Number(d.total) || 0; }
+    var net = (a8 - Math.floor(a8 * 8 / 108)) + (a10 - Math.floor(a10 * 10 / 110));
+    sum[v].枚++; sum[v].a8 += a8; sum[v].a10 += a10; sum[v].税抜 += net; totalIncl += a8 + a10; totalNet += net;
+  }
+  var out = { 店舗: store, 月: ym, 写真: photos.length, 今回読んだ: read, 今回下書き: made, 読めなかった: unread + failed, 残り: Math.max(0, todo.length - read - failed),
+              読めた伝票: n, 仕入先ごと: sum, 仕入合計_税込: totalIncl, 仕入合計_税抜: totalNet, 注意: '合計だけの伝票は仕入先の既定の税率で税抜にした。要確認の伝票は税込か税抜か迷ったもの' };
+  Logger.log(JSON.stringify(out, null, 2)); return out;
+}
