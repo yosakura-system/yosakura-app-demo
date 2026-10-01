@@ -5813,7 +5813,7 @@
     };
     return `
       <main class="screen skp">
-        <div class="appbar no-print"><button class="back" data-go="/store?s=${encodeURIComponent(store)}&ym=${ym}">${svg('back')}${L({ ja:'個店カルテへ', en:'Back to store', vi:'Về cửa hàng' })}</button></div>
+        <div class="appbar no-print skp-bar"><button class="back" data-go="/store?s=${encodeURIComponent(store)}&ym=${ym}">${svg('back')}${L({ ja:'個店カルテへ', en:'Back to store', vi:'Về cửa hàng' })}</button></div>
         <div class="card no-print">
           ${NOTE({ ja:'◆ アプリに入力された内容を、総括表と同じ並びで1か月分まとめました。印刷して紙で保管できます（A4横）。', en:'◆ One month of app-entered reports in the summary-sheet layout. Print on A4 landscape for paper filing.', vi:'◆ Một tháng báo cáo theo bố cục bảng tổng kết. In A4 ngang để lưu giấy.' })}
           <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -5845,6 +5845,7 @@
           </div>
           <p class="hint skp-note">${L({ ja:'※ 「自動計算」と書かれた数字（客単価・仕入率・人件費率・人時生産性）は、入力された元の数字（売上・客数・仕入・人件費・労働時間）から自動で計算されます。仕入率は在庫を見ない速報値で、在庫込みの原価率は月締めの「数値・原価率」で計算します。入力は要りません。空欄の日は未入力です。＊印の昼のみ売上は、その日の中間報告から自動で拾った数字です（総括表に入力があればそちらが優先されます）。', en:'Values marked (auto) are calculated automatically from entered base numbers; no input needed. Blank days have no entry. Lunch values marked ＊ are taken automatically from that day’s midday report (a value entered in the daily report takes priority).', vi:'Các số ghi (tự động) được tính tự động từ số gốc đã nhập. Ngày trống là chưa nhập. Số có dấu ＊ lấy tự động từ báo cáo giữa ngày.' })}</p>
         </div>
+              <div class="card no-print" style="margin-top:12px"><button class="btn-primary" style="width:100%" data-go="/store?s=${encodeURIComponent(store)}&ym=${ym}">${L({ ja:'← 個店カルテへ戻る', en:'← Back to store', vi:'← Về cửa hàng' })}</button></div>
       </main>`;
   }
   // CSV出力（Excelで開けるようBOM付き・UTF-8）。表と同じ数字＝画面とファイルで食い違いを作らない
