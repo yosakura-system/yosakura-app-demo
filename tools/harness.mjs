@@ -3943,14 +3943,14 @@ console.log('== 日報の累計＝当日だけ入れれば自動で足し上が�
     localStorage.setItem('yosakura_soukatsu_tab', 'input');
     localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows));
   });
-  // ① 月替わり＝口コミ累計だけ通算で引き継ぎ、月累計売上・チップ・キャンセルは0から
+  // ① 月替わり＝口コミ累計も含めて、月累計売上・チップ・キャンセル・口コミはすべて0から（2026-10-01 ユンさん＝総括表の定義は月間）
   seedSk3([{ store: S, date: pmDate, sales: 200000, mtd: 4000000, tipa: 84541, cancel: 31700, rva: 70, t: Date.now() - 86400e3 }]);
   location.hash = '#/app/soukatsu';
   let h = registry.app.innerHTML;
-  ok(/id="sk_rva"[^>]*value="70"/.test(h), '口コミ累計＝前月から通算で自動で入る');
+  ok(/id="sk_rva"[^>]*value=""/.test(h), '口コミ累計＝月が替わると0から（前月の70を引き継がない）');
   ok(/id="sk_mtd"[^>]*value=""/.test(h) && /id="sk_tipa"[^>]*value=""/.test(h), '月累計売上・チップ累計は月が替わると0から（空欄）');
   ok(/id="sk_cancelt"/.test(h), '「キャンセル 当日」の欄が増えた');
-  ok(/月累計売上（自動計算）/.test(h) && /前回までの総括表から自動で入っています/.test(h), 'ラベルと説明で自動計算だと分かる');
+  ok(/月累計売上（自動計算）/.test(h), 'ラベルで自動計算だと分かる（月が替わった直後は累計の起点が無いので説明文は出ない）');
   // ② 同月内＝前回の累計がそのまま起点として入る
   if (today3 !== monthFirst) {
     seedSk3([{ store: S, date: monthFirst, sales: 143800, mtd: 143800, tipa: 21000, cancel: 5000, rva: 72, t: Date.now() - 3600e3 }]);
