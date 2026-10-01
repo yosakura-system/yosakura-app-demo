@@ -10062,7 +10062,24 @@
       try {
         const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
                     ((navigator.platform === 'MacIntel') && navigator.maxTouchPoints > 1);
-        if (IOS) fi.removeAttribute('multiple');
+        /* ★2026-10-01 神田さん「オープン写真を複数枚一気に投稿できるように」＝複数選択を端末ごとに切り替えられるようにする。
+           既定＝iPhone・iPadの「ホーム画面版」だけオフ（上の不具合＝ライブラリの複数選択で change が届かないことがある）、
+           Safariで開いた iPad や PC はオン。ホーム画面版でも下のボタンで「オン」にして試せる＝届かなければ状態表示に出るので、
+           オフに戻せば従来どおり1枚ずつ。設定は端末に残る（yosakura_photo_multi） */
+        const STANDALONE = (navigator.standalone === true) || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+        let multiPref = null; try { multiPref = localStorage.getItem('yosakura_photo_multi'); } catch (e2) {}
+        let multiOn = multiPref === 'on' ? true : multiPref === 'off' ? false : !(IOS && STANDALONE);
+        const applyMulti = () => { if (multiOn) fi.setAttribute('multiple', ''); else fi.removeAttribute('multiple'); };
+        applyMulti();
+        const mt = document.createElement('button'); mt.type = 'button'; mt.id = 'photoMulti'; mt.className = 'btn-sm';
+        mt.style.cssText = 'margin-top:6px;font-size:12px';
+        const mtLabel = () => { mt.textContent = multiOn
+          ? L({ ja:'複数枚をまとめて選ぶ：オン（押すと1枚ずつに戻す）', en:'Pick several at once: ON (tap to switch to one at a time)', vi:'Chọn nhiều ảnh: BẬT (chạm để chọn từng ảnh)' })
+          : L({ ja:'複数枚をまとめて選ぶ：オフ（押すとまとめて選べる）', en:'Pick several at once: OFF (tap to enable)', vi:'Chọn nhiều ảnh: TẮT (chạm để bật)' }); };
+        mtLabel();
+        mt.onclick = (e) => { e.preventDefault(); e.stopPropagation(); multiOn = !multiOn; try { localStorage.setItem('yosakura_photo_multi', multiOn ? 'on' : 'off'); } catch (e3) {} applyMulti(); mtLabel();
+          setStat(multiOn ? L({ ja:'写真を選ぶ画面で複数枚を選べます。選んでも貼り付かないときは、このボタンでオフに戻してください', en:'You can now pick several photos. If nothing attaches, tap again to switch back.', vi:'Có thể chọn nhiều ảnh. Nếu không đính kèm được, chạm lại để tắt.' }) : L({ ja:'1枚ずつ選ぶ形に戻しました', en:'Back to one at a time.', vi:'Đã trở về chọn từng ảnh.' })); };
+        stat.parentNode.insertBefore(mt, stat.nextSibling);
       } catch (e) {}
       /* ★取り込みを1つの関数に（対策②の「拾い直し」からも呼ぶため）。写真が無ければ false。
          取り込み中フラグ＝change と拾い直しタイマーが同時に来ても、後から来た方が
