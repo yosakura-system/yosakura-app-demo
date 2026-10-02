@@ -3626,15 +3626,15 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
     const gs = fs.readFileSync(APP.replace(/app\.js$/, 'backend/認証.gs'), 'utf8');
     ok(/if \(data\.kickOthers\) rec2\.tokens = JSON\.stringify\(\[String\(data\.token\)\]\);/.test(gs), '認証.gs＝変更した端末のトークンだけ残し、ほかの端末は外す（要GAS貼り替え）');
     ok(/'pw_at'\]/.test(gs) && /pwYm: auth_pwYm_\(rec\)/.test(gs), '認証.gs＝最後に変えた月（pw_at）をログインの返事に載せる');
-    ok(/id="pw_old"/.test(code) && /id="pw_new1"/.test(code) && /id="pw_new2"/.test(code) && /kickOthers: true/.test(code), '端末設定に「パスワードを変更」（いまの・新しい×2・ほかの端末はログアウト）');
+    ok(/id="pw_old"/.test(code) && /id="pw_new1"/.test(code) && /id="pw_new2"/.test(code) && /kickOthers: true/.test(code) && /function openPwChangeSheet_\(\)/.test(code) && /openPwChangeSheet_\(\); \} catch/.test(code) && /data-pwopen/.test(code), 'パスワードの変更画面（いまの・新しい×2・ほかの端末はログアウト）＝帯と端末設定のボタンから直接開く');
   }
   // ① 対象アカウント（kanda・本部）が店舗表示に切り替えると、戻るバナーが全画面に出る
   seedAuth('kanda', 'hq', 'staff');
   location.hash = '#/home';
-  ok(/開発者ビュー（店舗側の表示を確認中）/.test(registry.app.innerHTML), '店舗表示中はホームに戻るバナーが出る');
+  ok(/開発者ビュー・タップで本部に戻る/.test(registry.app.innerHTML), '店舗表示中はホームに戻るバナーが出る');
   ok(!/本部メニュー/.test(registry.app.innerHTML), '店舗表示中は本部メニューが消える（見え方が本当に店舗側になる）');
   location.hash = '#/app/kizuki';
-  ok(/開発者ビュー（店舗側の表示を確認中）/.test(registry.app.innerHTML), 'アプリ画面にも戻るバナーが出る');
+  ok(/開発者ビュー・タップで本部に戻る/.test(registry.app.innerHTML), 'アプリ画面にも戻るバナーが出る');
   // ② 本部の表示に戻っているときはバナーを出さない
   seedAuth('kanda', 'hq', 'hq');
   location.hash = '#/home';
@@ -3642,7 +3642,7 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   // ②' 増田さんも対象（2026-09-03 ご要望＝本部・加盟店の両目線）
   seedAuth('masuda', 'hq', 'staff');
   location.hash = '#/home';
-  ok(/開発者ビュー（店舗側の表示を確認中）/.test(registry.app.innerHTML), '増田さんのアカウントでも店舗表示に切り替えられる');
+  ok(/開発者ビュー・タップで本部に戻る/.test(registry.app.innerHTML), '増田さんのアカウントでも店舗表示に切り替えられる');
   // ③ 対象でない本部アカウントには何も起きない（切替の入口も開かない）
   seedAuth('takahara', 'hq', 'staff');
   location.hash = '#/home';
