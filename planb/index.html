@@ -702,7 +702,11 @@ td.b{color:var(--suou-ink);font-weight:500}
       const sc = S.screen;
       html = !sc ? today() : sc === 'replies' ? replies() : sc === 'write' ? write() : sc === 'tana' ? tana() : sc === 'photo' ? screenPhoto(S.sid) : sc === 'check' ? screenCheck(S.sid) : sc === 'stock' ? screenStock(S.sid) : sc === 'nippou' ? screenNippou(S.sid) : sc === 'kizuki' ? screenKizuki() : sc === 'qr' ? screenQr() : sc === 'photoadd' ? photoAdd() : sc === 'own' ? screenOwn(S.sid) : screenWaste();
     } else if (S.tab === 'board') { if (S.screen === 'bwrite') html = boardWrite(); else { html = board(); S.boardSeen = S.board.length; } } else if (S.tab === 'search') html = search(); else if (S.tab === 'num') html = S.screen === 'regi' ? screenRegi() : S.screen === 'voice' ? screenVoice() : S.screen === 'qr' ? screenQr() : S.screen === 'ownadd' ? ownAdd() : numbers(); else html = hq();
-    m.innerHTML = html; m.scrollTop = 0;
+    /* 同じ画面の中の操作（提出物の設定・拍手・在庫の±・チェック）では、描き直しても上に戻さない（2026-10-02 神田さん「設定を押すたびに上の画面にいくのやめて」）。
+       画面が変わったときだけ上から */
+    const viewKey = S.role + '|' + S.tab + '|' + (S.screen || '');
+    const keepScroll = viewKey === S._view; const prevTop = m.scrollTop;
+    m.innerHTML = html; m.scrollTop = keepScroll ? prevTop : 0; S._view = viewKey;
     $('#tabbar').innerHTML = TABS.filter(t => (t[0] !== 'hq' || S.role === 'hq') && (t[0] !== 'num' || S.role !== 'staff')).map(t => `<button data-tab="${t[0]}" class="${S.tab === t[0] ? 'on' : ''}">${ICONS[t[2]]}${t[1]}</button>`).join('');
     $('#storeLbl').textContent = S.role === 'hq' ? '本部 ・ 全店' : '牛カツ世桜 長堀橋店';
     /* 右上の役割ボタン＝いまの役割を塗る（2026-10-02 神田さん「切り替えたらボタンも切り替わるように」）。切替で下のタブ・店名・中身も同時に変わる */
