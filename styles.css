@@ -176,6 +176,10 @@ body {
   padding: 9px 14px; line-height: 1.5; position: -webkit-sticky; position: sticky; top: 0; z-index: 60;
   /* ★iPhoneのホーム画面版＝画面上端（時計・電波の帯）の下に潜って押せない（2026-10-02 神田さん）→ 上端ぶんを空ける */
   padding-top: calc(9px + env(safe-area-inset-top)); }
+/* 帯が2本並ぶとき（開発者ビュー＋パスワード変更）は2本目を詰める。帯の下のヘッダーは上端ぶんを二重に取らない（2026-10-02 神田さん「上に色々出過ぎて操作しにくい」） */
+.devview-bar + .devview-bar { padding-top: 7px; top: 0; }
+.devview-bar { font-size: 11px; padding-bottom: 7px; line-height: 1.4; }
+.devview-bar ~ .hdr { padding-top: 10px; }
 
 /* ===== アプリ詳細 ===== */
 .appbar { display: flex; align-items: center; gap: 10px; padding: 6px 0 4px; }
