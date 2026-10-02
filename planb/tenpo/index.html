@@ -283,6 +283,7 @@ td.b{color:var(--suou-ink);font-weight:500}
         <tr><td>入力にかかる時間</td><td class="now">測っていない</td><td class="b">画面ごとに測り、本部の画面に店舗別で出す</td></tr>
         <tr><td>提出物</td><td class="now">全店ほぼ同じ</td><td class="b">本部提出必須／店舗内実施必須／推奨／不要 の4区分を本部が店ごとに設定（10/2 構築MTG）。店内実施は本部へ提出しない</td></tr>
         <tr><td>お知らせ・返答</td><td class="now">別のペインに見に行く</td><td class="b">「きょう」のいちばん上に1行。未読のときだけ</td></tr>
+        <tr><td>店の中の共有</td><td class="now">LINEグループ（流れて残らない）</td><td class="b">「掲示板」タブ。注意事項は店長が期限つきで上にとめる。うれしい話・共有は拍手だけ。本部へは届かない（全店へ出すものだけ店長が送る）</td></tr>
         <tr><td>レシピ</td><td class="now">ドライブのカード（docx）を開く</td><td class="b">完成写真・5工程・焼き加減がアプリの中で1枚</td></tr>
         <tr><td>管理（数字・棚卸・設定）</td><td class="now">総括表の画面の中のタブ・月次数値・提出物の設定が別々</td><td class="b">「管理」タブ。今日・今月・原価率・お客様の声が1画面</td></tr>
       </tbody>
@@ -350,6 +351,7 @@ td.b{color:var(--suou-ink);font-weight:500}
   const ICONS = {
     today:'<svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4M8 14l3 3 5-5"/></svg>',
     search:'<svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
+    board:'<svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>',
     num:'<svg class="ic" viewBox="0 0 24 24"><path d="M4 19V10M10 19V5M16 19v-8M22 19H2"/></svg>',
     hq:'<svg class="ic" viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l7-5 7 5v13M10 21v-6h4v6"/></svg>',
     check:'<svg class="ic" viewBox="0 0 24 24" width="18" height="18" style="stroke-width:2.6"><path d="M5 12l4 4 10-10"/></svg>',
@@ -372,7 +374,16 @@ td.b{color:var(--suou-ink);font-weight:500}
     stock:[ ['米（kg）',12,10,null],['鰻（尾）',18,15,'yakiOk'],['パン粉（袋）',3,4,'scale'],['ミニトマト（袋）',2,3,'fridge'],['固形燃料（個）',40,30,null] ],
     ck:{}, started:null,
     /* 提出物の4区分（10/2 構築MTG）＝本部提出／店内実施／推奨／不要。本部が店ごとに設定する。「店舗で実施する」＝「本部へ毎回提出する」ではない */
-    own:[ ['製氷機の点検', '店内実施'], ['テラス席の掃き掃除', '推奨'] ],   // 店が自分で足した項目（見本）
+    own:[ ['製氷機の点検', '店内実施'], ['テラス席の掃き掃除', '推奨'] ],
+    /* 掲示板（2026-10-02 神田さん「LINEだと流れる。注意事項も嬉しい情報も残る場所を下のタブに」）＝店の中だけ。
+       pin＝店長がとめた注意事項（期限つき・上に固定）／本部から／みんなの投稿（拍手だけ・返信なし）。本部は見られるが管理しない */
+    boardSeen: 2,
+    board:[
+      { id:1, kind:'注意', pin:true, until:'10/15', txt:'土日はテイクアウトの容器が足りなくなりやすい。木曜に在庫を見て発注。', by:'店長 ・ 10/1', clap:0 },
+      { id:2, kind:'本部から', pin:false, txt:'10月の定期衛生＝製氷機まわり。月末までに写真を1枚。', by:'本部 ・ 10/1', clap:0 },
+      { id:3, kind:'うれしい', pin:false, txt:'韓国からのご家族に「日本で一番おいしい牛カツ」と言ってもらえました。写真を撮らせてもらいました！', by:'ユン ・ きのう 21:40', clap:4, photo:'ikuraDon' },
+      { id:4, kind:'共有', pin:false, txt:'新しいガリの容器は右の棚の2段目に移しました。', by:'昼のシフト ・ きのう 15:02', clap:1 }
+    ],   // 店が自分で足した項目（見本）
     oblig:{ openphoto:'店内実施', ck_open:'店内実施', ck_idle:'店内実施', ck_sakura:'店内実施', ck_close:'店内実施', zaiko:'店内実施', nippou:'本部提出', kizuki:'推奨', chukan:'不要', kinshu:'不要' }
   };
   const FLOW = [
@@ -394,6 +405,8 @@ td.b{color:var(--suou-ink);font-weight:500}
     const mins = left.reduce((a, r) => a + r[3], 0);
     const pct = Math.round(100 * (rows.length - 1 - left.length) / (rows.length - 1));
     const rep = S.replies.length ? `<button class="strip" data-go="replies"><b>本部から</b>${S.replies[0].k}に返答があります<span class="n">${S.replies.length}</span></button>` : '';
+    const bNew = S.board.length - S.boardSeen;
+    const bStrip = bNew > 0 ? `<button class="strip" data-tab="board" style="margin-top:8px"><b>掲示板</b>新しい投稿があります<span class="n">${bNew}</span></button>` : '';
     const ho = S.handover.filter(h => h.open);
     const hoCard = `<div class="card">${ho.length ? ho.map(h => `<div class="ho"><div><div class="txt">${h.txt}</div><div class="by">${h.by}</div></div><button class="mini pri" data-hodone="${h.id}">確認しました</button></div>`).join('') : `<div class="ho"><div class="txt" style="color:var(--hai)">未確認の引き継ぎはありません</div><button class="mini" data-go="write">書く</button></div>`}</div>`;
     const flow = FLOW.map(f => {
@@ -415,7 +428,7 @@ td.b{color:var(--suou-ink);font-weight:500}
     const pos = S.pos; const sgn = (n) => (n < 0 ? '−' : '+') + '¥' + Math.abs(n).toLocaleString('ja-JP');
     const posCard = `<div class="card"><div class="ho"><div><div class="txt">売上 ${yen(pos.sales)}（税抜）・ ${pos.guests}人 ・ 現金 ${yen(pos.cash)} ・ カード ${yen(pos.card)}</div><div class="by">${pos.diff === 0 ? '現金の過不足 0円。入れることはありません' : pos.reason ? `現金の過不足 ${sgn(pos.diff)} ・ 理由「${pos.reason}」＝本部に届きました` : `現金の過不足 <b style="color:var(--kaki)">${sgn(pos.diff)}</b>。理由だけ選んでください`}</div></div>${pos.diff === 0 || pos.reason ? '' : `<select data-reason="1" style="font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff"><option value="">理由</option>${['両替','釣銭の渡し間違い','レジ外で支払い','分からない'].map(o => `<option>${o}</option>`).join('')}</select>`}</div></div>`;
     const mgrStrip = S.role === 'manager' ? `<button class="strip" data-tab="num" style="margin-top:8px"><b>店長</b>スタッフの提出 ${rows.length - 1 - left.length}／${rows.length - 1} ・ 返答待ち ${S.replies.length} ・ 昨日の原価率 33.8%<span class="n">管理へ</span></button>` : '';
-    return `${cover}${rep ? '<div style="height:8px"></div>' + rep : ''}${mgrStrip}
+    return `${cover}${rep ? '<div style="height:8px"></div>' + rep : ''}${bStrip}${mgrStrip}
       <div class="sec"><h2>昨日のレジ締め</h2><small>POS ${pos.at} 取込 ・ 入力なし</small></div>${posCard}
       <div class="sec"><h2>引き継ぎ</h2><small>出勤したら最初に</small></div>${hoCard}
       <div class="sec"><h2>今日の流れ</h2><small>時間帯の順</small></div>
@@ -611,6 +624,18 @@ td.b{color:var(--suou-ink);font-weight:500}
     ctx.beginPath(); v.forEach((n, i) => i ? ctx.lineTo(x(i), y(n)) : ctx.moveTo(x(i), y(n))); ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke();
     const li = v.length - 1; ctx.beginPath(); ctx.arc(x(li), y(v[li]), 6, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
   }
+  /* ---------- 掲示板（店の中だけ） ---------- */
+  function board(){
+    const kindPill = (k) => k === '注意' ? '<span class="pill warn">注意</span>' : k === '本部から' ? '<span class="pill info">本部から</span>' : k === 'うれしい' ? '<span class="pill ok">うれしい</span>' : '<span class="pill" style="background:var(--kinari);color:var(--hai)">共有</span>';
+    const post = (b) => `<div class="ho" style="padding:10px 0;border-top:1px solid var(--line)">${b.photo ? `<img src="${P[b.photo]}" alt="" style="width:56px;height:56px;border-radius:10px;object-fit:cover">` : ''}<div style="flex:1"><div style="margin-bottom:4px">${kindPill(b.kind)}${b.pin ? ` <span class="pill" style="background:var(--kinari);color:var(--hai)">${b.until}まで</span>` : ''}</div><div class="txt">${b.txt}</div><div class="by">${b.by}</div></div><button class="mini" data-clap="${b.id}">👏 ${b.clap || ''}</button></div>`;
+    const pins = S.board.filter(b => b.pin), rest = S.board.filter(b => !b.pin);
+    return `<div class="ttl">掲示板</div><p class="lead">この店のみんなで見る場所。注意・うれしい・共有、何でも。LINEと違って流れません。本部へは届きません（本部へは「気づき」から）。</p>
+      <button class="big" data-toast="書く画面（見本）＝種類（注意／うれしい／共有）を選んで、文と写真1枚。店長は「上にとめる」と期限を付けられます">書く</button>
+      ${pins.length ? `<div class="sec"><h2>とめてある</h2><small>店長が期限つきで固定</small></div><div class="card" style="padding-top:0">${pins.map(post).join('')}</div>` : ''}
+      <div class="sec"><h2>みんなの投稿</h2><small>新しい順 ・ 拍手だけ</small></div>
+      <div class="card" style="padding-top:0">${rest.map(post).join('')}</div>
+      ${S.role === 'manager' ? `<div class="note">店長＝投稿を「上にとめる」「全店へ送る（本部が確認してから全店に出ます）」ができます</div>` : ''}`;
+  }
   /* ---------- 本部 ---------- */
   function hq(){
     const stores = ['本店','長堀橋','難波','心斎橋','広島','富士山 鰻','富士山 牛カツ','浅草橋'];
@@ -639,13 +664,13 @@ td.b{color:var(--suou-ink);font-weight:500}
   }
 
   /* ---------- 描画 ---------- */
-  const TABS = [['today','きょう','today'],['search','調べる','search'],['num','管理','num'],['hq','本部','hq']];
+  const TABS = [['today','きょう','today'],['board','掲示板','board'],['search','調べる','search'],['num','管理','num'],['hq','本部','hq']];
   function render(){
     const m = $('#main'); let html = '';
     if (S.tab === 'today') {
       const sc = S.screen;
       html = !sc ? today() : sc === 'replies' ? replies() : sc === 'write' ? write() : sc === 'tana' ? tana() : sc === 'photo' ? screenPhoto(S.sid) : sc === 'check' ? screenCheck(S.sid) : sc === 'stock' ? screenStock(S.sid) : sc === 'nippou' ? screenNippou(S.sid) : sc === 'kizuki' ? screenKizuki() : sc === 'qr' ? screenQr() : screenWaste();
-    } else if (S.tab === 'search') html = search(); else if (S.tab === 'num') html = S.screen === 'regi' ? screenRegi() : S.screen === 'voice' ? screenVoice() : S.screen === 'qr' ? screenQr() : numbers(); else html = hq();
+    } else if (S.tab === 'board') { html = board(); S.boardSeen = S.board.length; } else if (S.tab === 'search') html = search(); else if (S.tab === 'num') html = S.screen === 'regi' ? screenRegi() : S.screen === 'voice' ? screenVoice() : S.screen === 'qr' ? screenQr() : numbers(); else html = hq();
     m.innerHTML = html; m.scrollTop = 0;
     $('#tabbar').innerHTML = TABS.filter(t => (t[0] !== 'hq' || S.role === 'hq') && (t[0] !== 'num' || S.role !== 'staff')).map(t => `<button data-tab="${t[0]}" class="${S.tab === t[0] ? 'on' : ''}">${ICONS[t[2]]}${t[1]}</button>`).join('');
     $('#storeLbl').textContent = S.role === 'hq' ? '本部 ・ 全店' : '牛カツ世桜 長堀橋店';
@@ -674,6 +699,7 @@ td.b{color:var(--suou-ink);font-weight:500}
     else if (d.sdel) { S.slips.splice(Number(d.sdel), 1); }
     else if (d.ob) { const [id, o] = d.ob.split(':'); S.oblig[id] = o; toast('長堀橋の「きょう」に反映しました'); }
     else if (d.toast) { toast(d.toast); return; }
+    else if (d.clap) { const b = S.board.find(x => x.id == d.clap); if (b) b.clap = (b.clap || 0) + 1; }
     else return;
     render();
   });
