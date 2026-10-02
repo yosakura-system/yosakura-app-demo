@@ -342,10 +342,40 @@ function sk_月次を読む_(ss, ym) {
     if (open != null && open > 0) o.open = Math.round(open);
     if (buy != null && buy > 0) o.purchase = Math.round(buy);
     if (close != null && close > 0) o.close = Math.round(close);
+    /* ★2026-10-02（神田さん「富士山店の月末在庫高が0のまま。連動できないん？」）＝富士山2店は「棚卸表」タブに数量・金額を入れているのに、
+       総括表タブの期末棚卸高が0のまま（棚卸表紙の業者別集計が、その店の業者＝ユーテク・メイヨウ・高田屋などに対応していない）。
+       期末が空のときだけ、棚卸表タブの金額（食材・飲料・資材。備品は除く）を足して月末在庫にする。期末が入っている店（長堀橋など）はそのまま */
+    if (o.close == null) { var tc = sk_棚卸表合計_(ss); if (tc != null && tc > 0) { o.close = Math.round(tc); o.closeFrom = 'tana'; } }
     if (o.open == null && o.purchase == null && o.close == null) return null;   // 何も入っていない月
     return o;
   }
   return null;
+}
+/* 「棚卸表」タブの金額合計（種別＝食材・飲料・資材の行。備品は原価に入れない）。
+   見出し行（業者｜種別｜商品名｜…｜金額）は保管場所ごとに繰り返すので、見出しを見つけるたびに列を取り直す。
+   金額が式エラー（#VALUE!）の行は飛ばす。1行も無ければ null */
+function sk_棚卸表合計_(ss) {
+  var sheets = ss.getSheets(), sh = null;
+  for (var i = 0; i < sheets.length; i++) { var nm = sheets[i].getName(); if (nm.indexOf('棚卸表') !== -1 && nm.indexOf('表紙') === -1) { sh = sheets[i]; break; } }
+  if (!sh) return null;
+  var rows = sh.getLastRow(), cols = Math.min(sh.getLastColumn(), 20);
+  if (rows < 2 || cols < 3) return null;
+  var vals = sh.getRange(1, 1, rows, cols).getValues();
+  var cKind = -1, cName = -1, cAmt = -1, sum = 0, n = 0;
+  for (var r = 0; r < rows; r++) {
+    var row = vals[r], isHead = false;
+    var hk = -1, hn = -1, ha = -1;   // その行で最初に出る見出しだけ使う（右側の業者一覧にも「種別」があるため）
+    for (var c = 0; c < cols; c++) { var v = String(row[c] || '').trim(); if (v === '種別' && hk < 0) hk = c; else if (v === '商品名' && hn < 0) hn = c; else if (v === '金額' && ha < 0) ha = c; }
+    if (hk >= 0 && ha >= 0) { cKind = hk; cName = hn; cAmt = ha; isHead = true; }
+    if (isHead || cKind < 0 || cAmt < 0) continue;
+    var kind = String(row[cKind] || '').trim();
+    if (kind !== '食材' && kind !== '飲料' && kind !== '資材') continue;
+    if (cName >= 0 && String(row[cName] || '').trim() === '') continue;
+    var a = sk_num_(row[cAmt]);
+    if (a == null) continue;
+    sum += a; n++;
+  }
+  return n ? sum : null;
 }
 function sk_月次既存_() {
   var sh = getSheet();

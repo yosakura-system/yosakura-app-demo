@@ -6137,6 +6137,7 @@
           <label class="fld"><span>${L({ ja:'今月の売上目標', en:'Monthly sales goal', vi:'Mục tiêu doanh thu' })}</span><input type="text" inputmode="numeric" id="pl_goal" value="${esc(cur.goal||'')}" placeholder="3000000"></label>
         </div>
         ${cur.purchaseFrom === 'drive' && cur.purchaseAt ? `<p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 当月仕入は、総括表の仕入台帳から取り込んだ値です（' + new Date(cur.purchaseAt).toLocaleDateString('ja-JP', { month:'numeric', day:'numeric' }) + ' 時点）。台帳に後から足された分は、取り込みのたびに自動で追いつきます。手で直した値は上書きされません。', en:'Purchases were imported from the summary sheet (as of ' + new Date(cur.purchaseAt).toLocaleDateString('en-US', { month:'numeric', day:'numeric' }) + '). Later additions follow automatically; a hand-edited value is kept.', vi:'Nhập hàng lấy từ bảng tổng kết (tính đến ' + new Date(cur.purchaseAt).toLocaleDateString('vi-VN', { month:'numeric', day:'numeric' }) + ').' })}</p>` : ''}
+        ${cur.closeFrom === 'drive' && cur.closeAt ? `<p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 月末在庫は、総括表の棚卸表から取り込んだ値です（' + new Date(cur.closeAt).toLocaleDateString('ja-JP', { month:'numeric', day:'numeric' }) + ' 時点）。アプリの棚卸で保存した値があれば、そちらが優先されます。', en:'Closing stock was imported from the summary sheet stocktake (as of ' + new Date(cur.closeAt).toLocaleDateString('en-US', { month:'numeric', day:'numeric' }) + '). A stocktake saved in the app takes precedence.', vi:'Tồn cuối kỳ lấy từ bảng kiểm kê của bảng tổng kết (tính đến ' + new Date(cur.closeAt).toLocaleDateString('vi-VN', { month:'numeric', day:'numeric' }) + '). Kiểm kê lưu trong ứng dụng được ưu tiên.' })}</p>` : ''}
         ${autoUsed ? `<p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 売上・仕入は総括表（日報）の月合計から自動で入っています（違うときは直せます）。月初在庫は前月の棚卸から。', en:'Sales and purchases are pre-filled from the daily reports (editable). Opening stock from last month’s stocktake.', vi:'Doanh thu & nhập hàng tự điền từ báo cáo ngày (có thể sửa). Tồn đầu kỳ từ kiểm kê tháng trước.' })}</p>` : ''}
         <p class="hint" style="display:block;margin:2px 0 8px">${L({ ja:'※ 売上目標は本部・オーナー・店長が設定します。設定すると各店の画面に「目標到達」と進捗バーが出ます。', en:'The sales goal is set by HQ/owner/manager and appears as progress on each store screen.', vi:'Mục tiêu do HQ/chủ/quản lý đặt; hiển thị tiến độ trên màn hình cửa hàng.' })}</p>
         <div class="stat-row" style="margin-top:8px">
@@ -11243,7 +11244,7 @@
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
     const numack = {}, numackT = {};   // 数字の要確認の「確認済み」＝キーごとに最新が正（2026-09-24）
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}, monthlyD={}, monthlyDV={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null; const svc={}, svcT={}; const svstd={}, svstdT={};
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}, monthlyD={}, monthlyDV={}, monthlyCV={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null; const svc={}, svcT={}; const svstd={}, svstdT={};
     /* ★同じ提出が何行にもなっているとき、1件にまとめて見せる（2026-09-03 実機で発覚）。
        受け取り側は1回のPOSTごとに1行を足す作りのため、返事が届かずに送り直されると
        中身が同じ行が並ぶ（長堀橋店の日計レポートが同じ写真で8行）。
@@ -11311,6 +11312,7 @@
              アプリの記録を土台に「取込の仕入」だけを重ねる。重ねるのは、アプリ側の仕入が空か、取込の値をそのまま使っていたときだけ） */
           if (p.src === 'drive') {
             (monthlyDV[k] = monthlyDV[k] || []).push(String(p.purchase == null ? '' : p.purchase));
+            (monthlyCV[k] = monthlyCV[k] || []).push(String(p.close == null ? '' : p.close));
             if (!monthlyD[k] || t >= monthlyD[k].t) monthlyD[k] = { purchase: p.purchase, open: p.open, close: p.close, t };
             break;
           }
@@ -11358,6 +11360,14 @@
       const fromDrive = up === '' || (monthlyDV[k] || []).includes(up);
       if (fromDrive) { if (d.t >= (u.t || 0) || up === '') u.purchase = d.purchase; u.purchaseFrom = 'drive'; u.purchaseAt = d.t; }
       else { u.purchaseFrom = 'app'; }
+      /* ★月末在庫（2026-10-02 神田さん「富士山店の月末在庫高が0のまま。連動できないん？」）＝アプリの棚卸が空か0のまま、
+         または前の取込の値そのままなら、総括表（棚卸表タブ）の月末在庫を重ねる。アプリで数えて保存した値（0以外）はそのまま。
+         月初在庫も同じ（空のときだけ） */
+      const dc = (d.close == null || d.close === '') ? null : Number(d.close);
+      const uc = (u.close == null || u.close === '' || Number(u.close) === 0) ? '' : String(u.close);
+      if (dc != null && dc > 0 && (uc === '' || (monthlyCV[k] || []).includes(uc))) { u.close = d.close; u.closeFrom = 'drive'; u.closeAt = d.t; }
+      const dop = (d.open == null || d.open === '') ? null : Number(d.open);
+      if (dop != null && dop > 0 && (u.open == null || u.open === '' || Number(u.open) === 0)) { u.open = d.open; u.openFrom = 'drive'; }
     });
     set('yosakura_demo_emg', emg); set('yosakura_demo_whistle', whistle); set('yosakura_demo_news', news); set('yosakura_demo_monthly', Object.values(monthly));
     /* ★店舗ごとのカスタマイズは「届いたキーだけ」差し替える（2026-08-13）。
