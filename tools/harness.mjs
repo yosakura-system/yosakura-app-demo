@@ -5783,6 +5783,35 @@ console.log('== ホーム＝3タブ（きょう／お知らせ／メニュー）
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== きょう＝サーベイの低い評価（★3以下・昨日と今日）が店長・オーナー・本部に出る（2026-10-02 神田さん）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const now = Date.now();
+  const seedVer = (fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8').match(/const APP_BUILD = '([^']+)'/) || [])[1] || 'dev';
+  /* setLS は端末の記録を一度まっさらにするので、回答の見本は setLS の後に入れる。見本データの版の印も付ける（付けないと seedSurvey が見本で上書きする） */
+  const home = (role, st, rows) => {
+    run(() => { setLS(role, st, 'ja'); localStorage.setItem('yosakura_demo_survey', JSON.stringify(rows)); localStorage.setItem('yosakura_demo_seed_ver:survey', seedVer); localStorage.setItem('yosakura_home_tab', 'today'); });
+    location.hash = '#/home'; return registry.app.innerHTML;
+  };
+  const rows = [
+    { store:S, sat:2, route:'Google', note:'待ち時間が長かった', country:'日本', t: now - 3600e3, id:'sv1' },
+    { store:S, sat:3, route:'Instagram', note:'', country:'韓国', t: now - 20 * 3600e3, id:'sv2' },
+    { store:S, sat:5, route:'Google', note:'', country:'韓国', t: now - 3600e3, id:'sv3' },
+    { store:S, sat:1, route:'Google', note:'古い', country:'日本', t: now - 5 * 864e5, id:'sv4' },
+    { store:'日本料理世桜本店', sat:2, route:'Google', note:'', country:'日本', t: now - 3600e3, id:'sv5' },
+  ];
+  let hm = home('manager', S, rows);
+  ok(/data-svlow="2"/.test(hm) && /サーベイに低い評価の回答があります/.test(hm) && /data-open="survey\?tab=voice"/.test(hm), '店長：自店の★3以下（昨日・今日）が件数つきで出て、押すと「お声」タブへ');
+  ok(!/いま急ぎの確認はありません/.test(hm.split('data-hpane="news"')[0]), '店長：カードがあるので「急ぎなし」は出ない');
+  hm = home('staff', S, rows);
+  ok(!/data-svlow=/.test(hm), 'スタッフには出さない（店長・オーナー・本部だけ）');
+  hm = home('hq', 'all', rows);
+  ok(/data-svlow="3"/.test(hm) && /長堀橋/.test(hm) && /本店/.test(hm), '本部（全店）：店舗ごとの件数つきで出る');
+  hm = home('manager', S, [{ store:S, sat:5, route:'Google', note:'', country:'韓国', t: now - 3600e3, id:'sv6' }]);
+  ok(!/data-svlow=/.test(hm), '高い評価だけならカードは出ない');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== 在庫＝長堀橋の品目は最初から入っている・写真の提出は不要（2026-09-18 神田さん）==');
 {
   const S = '牛カツ世桜 長堀橋店';
