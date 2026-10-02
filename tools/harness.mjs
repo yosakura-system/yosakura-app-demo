@@ -3612,6 +3612,22 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
     setLS(viewRole, S, 'ja');
     localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid, name: 'テスト', role: authRole, stores: ['*'] }));
   });
+  // ⓪ 店舗IDのパスワード＝月初に責任者が店舗iPadで変える（2026-10-02 神田さん）
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'ipad-gyukatsu', name: '牛カツ長堀橋 iPad', role: 'staff', stores: [S], pwYm: '2026-09' })); });
+  location.hash = '#/app/kyou';
+  ok(/data-pwchange="1"/.test(registry.app.innerHTML) && /今月のパスワードがまだ変更されていません/.test(registry.app.innerHTML), '共有の店舗ID＝最後に変えた月が今月より前なら「今月のパスワードがまだ変更されていません」のバナーが全画面に出る');
+  run(() => { localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'ipad-gyukatsu', name: '牛カツ長堀橋 iPad', role: 'staff', stores: [S], pwYm: new Date().toISOString().slice(0, 7) })); });
+  location.hash = '#/app/kyou?x=pw2';
+  ok(!/data-pwchange="1"/.test(registry.app.innerHTML), '今月すでに変えていればバナーは出ない');
+  run(() => { localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'kanda', name: '神田', role: 'hq', stores: ['*'], pwYm: '2026-01' })); setLS('hq', 'all', 'ja'); });
+  location.hash = '#/app/kyou?x=pw3';
+  ok(!/data-pwchange="1"/.test(registry.app.innerHTML), '個人名義のID（本部・店長）にはバナーを出さない（対象は ipad-* だけ）');
+  {
+    const gs = fs.readFileSync(APP.replace(/app\.js$/, 'backend/認証.gs'), 'utf8');
+    ok(/if \(data\.kickOthers\) rec2\.tokens = JSON\.stringify\(\[String\(data\.token\)\]\);/.test(gs), '認証.gs＝変更した端末のトークンだけ残し、ほかの端末は外す（要GAS貼り替え）');
+    ok(/'pw_at'\]/.test(gs) && /pwYm: auth_pwYm_\(rec\)/.test(gs), '認証.gs＝最後に変えた月（pw_at）をログインの返事に載せる');
+    ok(/id="pw_old"/.test(code) && /id="pw_new1"/.test(code) && /id="pw_new2"/.test(code) && /kickOthers: true/.test(code), '端末設定に「パスワードを変更」（いまの・新しい×2・ほかの端末はログアウト）');
+  }
   // ① 対象アカウント（kanda・本部）が店舗表示に切り替えると、戻るバナーが全画面に出る
   seedAuth('kanda', 'hq', 'staff');
   location.hash = '#/home';

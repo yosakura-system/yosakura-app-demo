@@ -32,7 +32,8 @@
 
 /* ===== 設定 ===== */
 var AUTH_SHEET = '_users';
-var AUTH_HEADERS = ['uid', 'name', 'role', 'stores', 'hash', 'must_change', 'tokens', 'updated'];
+var AUTH_HEADERS = ['uid', 'name', 'role', 'stores', 'hash', 'must_change', 'tokens', 'updated', 'pw_at'];   // pw_at＝パスワードを最後に変えた日（2026-10-02・月初の変更の目印）
+function auth_pwYm_(rec) { try { var d = rec && rec.pw_at ? new Date(rec.pw_at) : null; return (d && !isNaN(d.getTime())) ? Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy-MM') : ''; } catch (e) { return ''; } }
 /* ★1つのIDで同時にログインしていられる端末数。超えると古い端末から順に外れる。
    2026-09-03＝5→10へ（神田さんの実機で「急にログイン画面になった」＝
    検証で同じIDを複数の端末・ブラウザで使い、上限を超えて古い端末が押し出されていた）。
@@ -57,6 +58,8 @@ function auth_sheet_() {
   var sh = ss.getSheetByName(AUTH_SHEET);
   if (!sh) { sh = ss.insertSheet(AUTH_SHEET); sh.appendRow(AUTH_HEADERS); }
   if (sh.getLastRow() === 0) sh.appendRow(AUTH_HEADERS);
+  // 列を足したとき（pw_at・2026-10-02）＝見出しだけ補う。既存の行は空のまま＝「未変更」扱い
+  try { if (String(sh.getRange(1, AUTH_HEADERS.length).getValue() || '') === '') sh.getRange(1, AUTH_HEADERS.length).setValue(AUTH_HEADERS[AUTH_HEADERS.length - 1]); } catch (e) {}
   return sh;
 }
 function auth_rows_() {
@@ -102,7 +105,7 @@ function 認証_利用者を登録(uid, name, role, storesSlash, tempPw) {
   rec.hash = auth_hash_(uid, tempPw);
   rec.must_change = 'true';        // 仮パスワード＝初回に必ず変更してもらう
   rec.tokens = '[]';               // 再発行時は全端末からログアウト
-  rec.updated = new Date();
+  rec.updated = new Date(); rec.pw_at = new Date();
   auth_write_(rec);
   var out = { 結果: (rec._row ? '上書き（再発行）' : '新規登録'), uid: uid, 名前: rec.name, 役割: role, 店舗: rec.stores };
   Logger.log(JSON.stringify(out)); return out;
@@ -120,7 +123,7 @@ function 認証_共有パスワードを設定(uid, pw) {
   rec.hash = auth_hash_(uid, pw);
   rec.must_change = 'false';       // 共有ID＝初回変更を強制しない
   rec.tokens = '[]';               // 全端末からログアウト（新パスワードで入り直す）
-  rec.updated = new Date();
+  rec.updated = new Date(); rec.pw_at = new Date();
   auth_write_(rec);
   var out = { 結果: '共有パスワードを設定・全端末ログアウト', uid: uid, 名前: rec.name, 役割: rec.role, 店舗: rec.stores, 同時ログイン上限: AUTH_TOKEN_MAX };
   Logger.log(JSON.stringify(out)); return out;
@@ -136,7 +139,7 @@ function 認証_店舗IDを月次リセット() {
   var lines = [], done = [];
   rows.forEach(function (rec) {
     var pw = String(rec.uid).replace(/^ipad-/, '') + '-' + ym + '-' + String(Math.floor(1000 + Math.random() * 9000));
-    rec.hash = auth_hash_(rec.uid, pw); rec.must_change = 'false'; rec.tokens = '[]'; rec.updated = now;
+    rec.hash = auth_hash_(rec.uid, pw); rec.must_change = 'false'; rec.tokens = '[]'; rec.updated = now; rec.pw_at = now;
     auth_write_(rec);
     lines.push(rec.stores + '　ID: ' + rec.uid + '　新パスワード: ' + pw);
     done.push({ uid: rec.uid, 店舗: rec.stores });
@@ -203,7 +206,7 @@ function auth_verify_(token) {
   if (!hit) return null;
   return { uid: hit.uid, name: hit.name, role: hit.role,
            stores: String(hit.stores || '').split('／').map(function (s) { return s.trim(); }).filter(String),
-           mustChange: String(hit.must_change) === 'true' };
+           mustChange: String(hit.must_change) === 'true', pwYm: auth_pwYm_(hit) };
 }
 
 /* ===== API（doPost から呼ばれる。該当しなければ null を返して通常の提出処理へ） ===== */
@@ -228,7 +231,7 @@ function auth_api_locked_(data) {
     rec.tokens = JSON.stringify(list); rec.updated = new Date();
     auth_write_(rec);
     return { ok: true, auth: { token: token, uid: rec.uid, name: rec.name, role: rec.role,
-             stores: String(rec.stores || '').split('／').filter(String), mustChange: String(rec.must_change) === 'true' } };
+             stores: String(rec.stores || '').split('／').filter(String), mustChange: String(rec.must_change) === 'true', pwYm: auth_pwYm_(rec) } };
   }
   if (data.action === 'chpw') {
     var u = auth_verify_(data.token);
@@ -237,14 +240,17 @@ function auth_api_locked_(data) {
     if (rec2.hash !== auth_hash_(u.uid, data.oldPw)) return { ok: false, error: 'OLDPW_WRONG' };
     if (!data.newPw || String(data.newPw).length < 6) return { ok: false, error: 'NEWPW_TOO_SHORT' };  // 自分で決める方は6文字以上
     rec2.hash = auth_hash_(u.uid, data.newPw);
-    rec2.must_change = 'false'; rec2.updated = new Date();
+    rec2.must_change = 'false'; rec2.updated = new Date(); rec2.pw_at = new Date();
+    /* ★2026-10-02 神田さん＝責任者が店舗iPadでパスワードを変えたら、その時点でほかの端末（スタッフのスマホ・別のiPad）は
+       ログインできなくなる。変えた端末だけは残す（入り直し不要）。新しいパスワードは責任者が在籍スタッフへ */
+    if (data.kickOthers) rec2.tokens = JSON.stringify([String(data.token)]);
     auth_write_(rec2);
-    return { ok: true };
+    return { ok: true, pwYm: auth_pwYm_(rec2), kicked: !!data.kickOthers };
   }
   if (data.action === 'authping') {
     var u2 = auth_verify_(data.token);
     return { ok: true, auth: u2 ? { uid: u2.uid, name: u2.name, role: u2.role, stores: u2.stores,
-             mustChange: u2.mustChange, enabled: authOn_() } : { enabled: authOn_() } };
+             mustChange: u2.mustChange, pwYm: u2.pwYm, enabled: authOn_() } : { enabled: authOn_() } };
   }
   return null;
 }
