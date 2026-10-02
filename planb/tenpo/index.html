@@ -645,6 +645,8 @@ td.b{color:var(--suou-ink);font-weight:500}
     m.innerHTML = html; m.scrollTop = 0;
     $('#tabbar').innerHTML = TABS.filter(t => (t[0] !== 'hq' || S.role === 'hq') && (t[0] !== 'num' || S.role !== 'staff')).map(t => `<button data-tab="${t[0]}" class="${S.tab === t[0] ? 'on' : ''}">${ICONS[t[2]]}${t[1]}</button>`).join('');
     $('#storeLbl').textContent = S.role === 'hq' ? '本部 ・ 全店' : '牛カツ世桜 長堀橋店';
+    /* 右上の役割ボタン＝いまの役割を塗る（2026-10-02 神田さん「切り替えたらボタンも切り替わるように」）。切替で下のタブ・店名・中身も同時に変わる */
+    document.querySelectorAll('#roles button').forEach(b => b.classList.toggle('on', b.dataset.role === S.role));
     if (S.screen && !['replies','write','kizuki','waste','recipe'].includes(S.screen)) S.started = S.started || Date.now(); else S.started = null;
     const q = $('#q'); if (q) q.oninput = (e) => { S.q = e.target.value; const pos = e.target.selectionStart; render(); const q2 = $('#q'); q2.focus(); q2.setSelectionRange(pos, pos); };
     drawSpark();
