@@ -197,7 +197,7 @@ canvas{display:block;width:100%;height:96px}
 .bar{display:grid;grid-template-columns:96px 1fr 44px;gap:8px;align-items:center;font-size:13px;padding:5px 0}
 .bar i{display:block;height:10px;border-radius:5px;background:var(--suou);opacity:.85}
 .bar b{font-variant-numeric:tabular-nums;text-align:right;font-weight:500;color:var(--hai)}
-.hqgrid{display:grid;grid-template-columns:auto repeat(6,1fr);gap:5px 6px;font-size:12px;align-items:center}
+.hqgrid{display:grid;grid-template-columns:auto repeat(5,1fr);gap:5px 6px;font-size:12px;align-items:center}
 .hqgrid .h{font-size:10px;color:var(--hai);text-align:center;letter-spacing:.04em}
 .hqgrid .s{white-space:nowrap}
 .dot{width:15px;height:15px;border-radius:50%;margin:0 auto;background:var(--usu)}
@@ -372,10 +372,11 @@ td.b{color:var(--suou-ink);font-weight:500}
     stock:[ ['米（kg）',12,10,null],['鰻（尾）',18,15,'yakiOk'],['パン粉（袋）',3,4,'scale'],['ミニトマト（袋）',2,3,'fridge'],['固形燃料（個）',40,30,null] ],
     ck:{}, started:null,
     /* 提出物の4区分（10/2 構築MTG）＝本部提出／店内実施／推奨／不要。本部が店ごとに設定する。「店舗で実施する」＝「本部へ毎回提出する」ではない */
+    own:[ ['製氷機の点検', '店内実施'], ['テラス席の掃き掃除', '推奨'] ],   // 店が自分で足した項目（見本）
     oblig:{ openphoto:'店内実施', ck_open:'店内実施', ck_idle:'店内実施', ck_sakura:'店内実施', ck_close:'店内実施', zaiko:'店内実施', nippou:'本部提出', kizuki:'推奨', chukan:'不要', kinshu:'不要' }
   };
   const FLOW = [
-    { slot:'開店前', rows:[ ['openphoto','オープン写真','見本と同じ画角で2枚',1,'photo','cam','hiroshima'], ['ck_open','OPENチェック','12項目・お手本つき',3,'check','list',null] ] },
+    { slot:'開店前', rows:[ ['openphoto','オープン写真','外観と内観は必須・あとは店が足せる',1,'photo','cam','hiroshima'], ['ck_open','OPENチェック','12項目・お手本つき',3,'check','list',null] ] },
     { slot:'営業中', rows:[ ['ck_idle','お手すきチェック','6項目',2,'check','list',null], ['ck_sakura','桜（トイレ）','4項目・14時までに',2,'check','list',null] ] },
     { slot:'締め', rows:[ ['ck_close','CLOSEチェック','10項目',3,'check','list',null], ['zaiko','在庫の数','5品目。少ないものは発注リストへ',3,'stock','box','scale'], ['nippou','日報','売上・客数・現金はPOSから。入れるのは納品書と一言',3,'nippou','yen',null], ['kizuki','気づき','任意。良かったことも',1,'kizuki','pen',null] ] }
   ];
@@ -441,13 +442,15 @@ td.b{color:var(--suou-ink);font-weight:500}
       <div class="card"><textarea class="ta" id="ho_txt" placeholder="例：氷が少ない。19時までに製氷機を確認"></textarea></div><button class="big" data-hosave="1">次の人へ残す</button>`;
   }
   function screenPhoto(id){
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">オープン写真</div><p class="lead">左が見本、右が今日。同じ画角で撮るだけ。送り先は選びません。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">オープン写真</div><p class="lead">左が店長の登録した見本、右が今日。同じ画角で撮るだけ。外観と内観の2つは必須、ほかは店が自由に足せます（10/2 神田さん）。店長が店内で見る写真で、本部には出しません。</p>
       <div class="card"><div class="twins">
-        <figure><img src="${P.hiroshima}" alt=""><figcaption>内観の見本<span class="pill info">店長が登録</span></figcaption></figure>
-        <figure><div class="empty">${ICONS.cam}　撮る</div><figcaption>今日の内観<span class="pill warn">未</span></figcaption></figure>
-        <figure><img src="${P.fridge}" alt=""><figcaption>冷蔵庫の見本<span class="pill info">店長が登録</span></figcaption></figure>
-        <figure><img src="${P.fridge}" alt="" style="filter:saturate(.9)"><figcaption>今日の冷蔵庫<span class="pill ok">9:41</span></figcaption></figure>
-      </div></div>
+        <figure><div class="empty">${ICONS.cam}　見本を登録</div><figcaption>外観の見本<span class="pill warn">必須 ・ 店長が登録</span></figcaption></figure>
+        <figure><div class="empty">${ICONS.cam}　撮る</div><figcaption>今日の外観<span class="pill warn">未</span></figcaption></figure>
+        <figure><img src="${P.hiroshima}" alt=""><figcaption>内観の見本<span class="pill info">必須 ・ 店長が登録</span></figcaption></figure>
+        <figure><img src="${P.hiroshima}" alt="" style="filter:saturate(.9)"><figcaption>今日の内観<span class="pill ok">9:41</span></figcaption></figure>
+        <figure><img src="${P.counter}" alt=""><figcaption>レジまわりの見本<span class="pill info">この店だけ</span></figcaption></figure>
+        <figure><div class="empty">${ICONS.cam}　撮る</div><figcaption>今日のレジまわり<span class="pill warn">未</span></figcaption></figure>
+      </div><button class="mini" data-toast="この店だけの写真を足す画面（見本）＝名前と見本の写真を登録するだけ" style="margin-top:10px">＋ この店だけの写真を足す</button></div>
       <button class="big" data-done="${id}">送る</button>${timer()}`;
   }
   function screenCheck(id){
@@ -590,7 +593,8 @@ td.b{color:var(--suou-ink);font-weight:500}
       <div class="sec"><h2>お客様の声</h2><small>自動</small></div>
       <button class="card" data-go="voice" style="width:100%;text-align:left;cursor:pointer"><div class="kpi" style="margin:0"><div><div class="l">サーベイ満足度</div><div class="v">4.6</div><div class="d">今月 38件 ・ 低評価 2件</div></div><div><div class="l">Google口コミ</div><div class="v">4.7</div><div class="d">通算 1,284件 ・ 今月 +12</div></div></div><div class="muted" style="font-size:12px;margin-top:8px">押すと、回答の一覧・来店国・来店経路・口コミの推移</div></button>
       ${S.role === 'manager' ? `<div class="sec"><h2>この店の提出物</h2><small>本部が4区分で設定 ・ 店は見るだけ</small></div>
-      <div class="card"><div class="seg3">${OBL_ITEMS.map(([id, nm]) => `<span>${nm}</span><span class="opts"><button class="on" style="flex:1;cursor:default">${S.oblig[id] || '店内実施'}</button></span>`).join('')}</div><div class="note">「店内実施」＝店で必ずやるが本部への提出はない（店長が店内で確認）。「本部へ」の印がある行だけ本部に届きます</div></div>` : ''}
+      <div class="card"><div class="seg3">${OBL_ITEMS.map(([id, nm]) => `<span>${nm}</span><span class="opts"><button class="on" style="flex:1;cursor:default">${S.oblig[id] || '店内実施'}</button></span>`).join('')}${S.own.map(([nm, k]) => `<span>${nm} <span class="pill info" style="font-size:10px">この店だけ</span></span><span class="opts"><button class="on" style="flex:1;cursor:default">${k}</button></span>`).join('')}</div><div class="note">「店内実施」＝店で必ずやるが本部への提出はない（店長が店内で確認）。「本部へ」の印がある行だけ本部に届きます</div>
+      <button class="mini" data-toast="この店だけの項目を足す画面（見本）＝名前・時間帯・店内実施か推奨 を選ぶだけ" style="margin-top:8px">＋ この店だけの項目を足す</button><div class="note">店が自分で足せます（店内実施か推奨だけ）。本部の表には出ず、この店の「きょう」にだけ出ます</div></div>` : ''}
       <div class="note">数字は見るだけ。入力する場所は「きょう」の日報だけです。</div>`;
   }
   function drawSpark(){
@@ -610,7 +614,7 @@ td.b{color:var(--suou-ink);font-weight:500}
   /* ---------- 本部 ---------- */
   function hq(){
     const stores = ['本店','長堀橋','難波','心斎橋','広島','富士山 鰻','富士山 牛カツ','浅草橋'];
-    const items = ['写真','OPEN','CLOSE','在庫','日報','レジ締め'];
+    const items = ['OPEN','CLOSE','在庫','日報','レジ締め'];   // オープン写真は店内実施＝本部の表に出さない（10/2）
     const pat = [[1,1,1,1,1,3],[1,1,0,0,0,2],[1,1,1,2,1,2],[1,0,0,0,0,1],[1,1,1,3,1,1],[1,1,1,3,0,3],[1,1,0,3,0,1],[2,2,2,3,2,1]];
     const cls = (v) => v === 1 ? 'ok' : v === 2 ? 'late' : v === 3 ? 'na' : '';
     const times = [['本店',5.2],['長堀橋',7.8],['難波',4.1],['心斎橋',3.6],['広島',6.4]];
@@ -618,19 +622,19 @@ td.b{color:var(--suou-ink);font-weight:500}
     const storeCards = `<div class="stores">${cards.map(([n, g, ph, k, ok]) => `<button><img src="${P[ph]}" alt=""><span class="b ${ok ? 'ok' : ''}">${ok ? '完了' : '残 ' + k}</span><span class="n">${n}</span><span class="s">${g}</span></button>`).join('')}</div>`;
     return `<div class="sec"><h2>店舗</h2><small>押すとその店の「きょう」</small></div>${storeCards}
       <div class="sec"><h2>全店 きょう</h2><small>22:10 ・ 赤＝締切超過</small></div>
-      <div class="card"><div class="hqgrid"><span></span>${items.map(i => `<span class="h">${i}</span>`).join('')}${stores.map((s, i) => `<span class="s">${s}</span>` + pat[i].map(v => `<span class="dot ${cls(v)}"></span>`).join('')).join('')}</div><div class="note">点線＝その店では不要にした項目、またはUSENレジが無い店（本店・日本鰻の2店＝売上は手入力）。レジ締めの赤＝現金の過不足あり</div></div>
+      <div class="card"><div class="hqgrid"><span></span>${items.map(i => `<span class="h">${i}</span>`).join('')}${stores.map((s, i) => `<span class="s">${s}</span>` + pat[i].slice(1).map(v => `<span class="dot ${cls(v)}"></span>`).join('')).join('')}</div><div class="note">点線＝その店では不要にした項目、またはUSENレジが無い店（本店・日本鰻の2店＝売上は手入力）。レジ締めの赤＝現金の過不足あり</div></div>
       <div class="sec"><h2>レジ締め</h2><small>USENから毎朝 ・ 7店</small></div>
       <div class="card"><div class="bar"><span>長堀橋</span><i style="width:20%;background:var(--kaki)"></i><b>−1,000</b></div><div class="bar"><span>難波</span><i style="width:40%;background:var(--kaki)"></i><b>−2,000</b></div><div class="bar"><span>富士山 牛カツ</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>浅草橋</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>心斎橋</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>広島</span><i style="width:0%"></i><b>0</b></div><div class="note">昨日の現金の過不足。理由の無い日だけ本部が聞く。全店の締め方をそろえるところから</div></div>
       <div class="sec"><h2>返答待ち</h2><small>3件</small></div>
       <div class="card">
         <div class="inboxrow"><img src="${P.unagiT}" alt=""><div><div class="k">気づき ・ 難波</div><div class="t">ご飯の量を聞かれることが増えた。POPに書けないか</div><div class="by">1時間前</div></div><button class="mini pri">返す</button></div>
-        <div class="inboxrow"><img src="${P.fridge}" alt=""><div><div class="k">オープン写真 ・ 長堀橋</div><div class="t">冷蔵庫の写真が見本と違う（庫内が暗い）</div><div class="by">今朝</div></div><button class="mini">見る</button></div>
+        <div class="inboxrow"><img src="${P.labels}" alt=""><div><div class="k">定期衛生 ・ 富士山 鰻</div><div class="t">今月の指定箇所の写真が届きました（確認待ち）</div><div class="by">今朝</div></div><button class="mini">見る</button></div>
         <div class="inboxrow"><span class="st" style="width:48px;height:48px;border-radius:10px;background:var(--kinari);border:1px solid var(--line);display:grid;place-items:center;color:var(--hai)">${ICONS.yen}</span><div><div class="k">数字の要確認 ・ 心斎橋</div><div class="t">仕入が個数で入っている</div><div class="by">3時間前</div></div><button class="mini">見る</button></div>
       </div>
       <div class="sec"><h2>日報の入力時間</h2><small>今週の中央値 ・ 分</small></div>
       <div class="card">${times.map(([s, m]) => `<div class="bar"><span>${s}</span><i style="width:${m / 8 * 100}%"></i><b>${m.toFixed(1)}</b></div>`).join('')}<div class="note">長い店から減らす。「10分が5分になったか」をここで見ます</div></div>
       <div class="sec"><h2>提出物の設定 ・ 長堀橋</h2><small>本部提出／店内実施／推奨／不要</small></div>
-      <div class="card"><div class="seg3">${OBL_ITEMS.map(([id, nm]) => `<span>${nm}</span><span class="opts">${OBL_KINDS.map(o => `<button data-ob="${id}:${o}" class="${S.oblig[id] === o ? 'on' : ''}">${o}</button>`).join('')}</span>`).join('')}</div><div class="note">10/2 構築MTGの4区分。「店内実施」＝店で必ずやるが本部への提出はない。「本部提出」だけが全店の一枚表と返答待ちに出ます。変えると、その店の「きょう」がすぐ変わります（左で店舗に切り替えて確認）</div></div>
+      <div class="card"><div class="seg3">${OBL_ITEMS.map(([id, nm]) => `<span>${nm}</span><span class="opts">${OBL_KINDS.map(o => `<button data-ob="${id}:${o}" class="${S.oblig[id] === o ? 'on' : ''}">${o}</button>`).join('')}</span>`).join('')}</div><div class="note">10/2 構築MTGの4区分。「店内実施」＝店で必ずやるが本部への提出はない。「本部提出」だけが全店の一枚表と返答待ちに出ます。変えると、その店の「きょう」がすぐ変わります（左で店舗に切り替えて確認）。店が自分で足した項目（店内実施・推奨）はこの表には出ません</div></div>
       <button class="big" data-toast="お知らせを書く画面（見本）">お知らせを出す</button>`;
   }
 
