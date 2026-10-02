@@ -3149,6 +3149,12 @@ console.log('== 見本写真＋店舗ごとの注意書き（2026-08-30 長田�
     { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-08', sales:1, purchase:5000, open:0, close:0, by:'店長' }), photos:[], t: now - 2000, id:'m4' },
     { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-08', purchase:9999, src:'drive' }), photos:[], t: now - 1000, id:'m5' },
     { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-07', purchase:777, src:'drive' }), photos:[], t: now - 1000, id:'m6' },
+    // 2026-10-02 富士山2店の型＝アプリの棚卸は品目だけで数量0（close 0）→ 総括表の棚卸表タブの月末在庫を重ねる。明細は消えない
+    { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-06', sales:1, purchase:100, open:0, close:0, closeDetail:[{ n:'鰻（尾）', u:925, q:0, a:0 }], by:'店長' }), photos:[], t: now - 2000, id:'m7' },
+    { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-06', purchase:100, close:389424, src:'drive', closeFrom:'tana' }), photos:[], t: now - 1000, id:'m8' },
+    // アプリで数えて保存した月末在庫（0以外）は、取込の値で上書きしない
+    { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-05', sales:1, purchase:100, open:0, close:5000, by:'店長' }), photos:[], t: now - 2000, id:'m9' },
+    { kind:'monthly', store:S, note: JSON.stringify({ ym:'2026-05', purchase:100, close:7000, src:'drive' }), photos:[], t: now - 1000, id:'m10' },
   ]};
   try { run(()=> setLS('manager', S, 'ja')); } catch(e){ FAIL++; console.log('  ✗ load threw: '+e.message); }
 }
@@ -3161,6 +3167,10 @@ await new Promise(r=>setTimeout(r, 50));
   ok(!!sep && sep.purchase === 1234567 && sep.purchaseFrom === 'drive', '仕入が取込の値そのままだった月は、新しい取込の仕入に追いつく（602,875→1,234,567）');
   ok(!!aug && aug.purchase === 5000 && aug.purchaseFrom === 'app', '手で入れた仕入（取込の値と違う）は上書きしない');
   ok(!!jul && jul.purchase === 777 && jul.src === 'drive', 'アプリの記録が無い月は取込行をそのまま使う');
+  const jun = ms.find(r => r.store===S && r.ym==='2026-06'), may = ms.find(r => r.store===S && r.ym==='2026-05');
+  ok(!!jun && jun.close === 389424 && jun.closeFrom === 'drive' && Array.isArray(jun.closeDetail) && jun.closeDetail.length === 1, '月末在庫が0のままの月は、総括表（棚卸表タブ）の月末在庫を重ねる（明細は残る）');
+  ok(!!may && may.close === 5000 && !may.closeFrom, 'アプリで数えて保存した月末在庫（0以外）は取込で上書きしない');
+  ok(!!sep && sep.close === 678263 && !sep.closeFrom, '取込行に月末在庫が無い月は何も変えない');
   run(() => { localStorage.setItem('yosakura_pl_tab', 'input'); });
   location.hash = '#/app/pl?x=purchasefrom';
   const hp = registry.app.innerHTML;
