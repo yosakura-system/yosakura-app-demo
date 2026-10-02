@@ -605,7 +605,7 @@
      押すと端末設定が開き、同じ「パスワードを変更」の欄が見える（変えるのは自分のIDのパスワード） */
   const pwChangeBanner_ = () => (pwChangeDue_() || (inDevView() && getRole() === 'staff'))
     ? `<button type="button" class="devview-bar pwchange-bar" data-pwchange="1">${pwChangeDue_() ? '' : L({ ja:'【見本】', en:'[Sample] ', vi:'[Mẫu] ' })}${L({
-        ja:'今月のパスワードが未変更です。責任者の方はここを押して変更してください',
+        ja:'今月のパスワードが未変更です。責任者の方はここを押して変更',
         en:'This month’s password has not been changed yet. Manager: tap here to set a new password (other devices will need to sign in again).',
         vi:'Mật khẩu tháng này chưa được đổi. Người phụ trách: chạm để đặt mật khẩu mới (các thiết bị khác phải đăng nhập lại).' })}</button>`
     : '';
@@ -614,10 +614,10 @@
      「画面の見え方」だけを店舗iPad・店長・オーナーに切り替える。確認中は上部に戻るバナーを常時出す。 */
   const devViewAllowed = () => { const a = getAuth(); return !!a && a.role === 'hq' && DEV_VIEW_UIDS.includes(String(a.uid || '')); };
   const inDevView = () => devViewAllowed() && getRole() !== 'hq';
-  document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pwchange]') : null; if (b) { e.preventDefault(); try { openIdentitySheet(false); } catch (e2) {} } });
+  document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pwchange]') : null; if (b) { e.preventDefault(); try { openPwChangeSheet_(); } catch (e2) {} } });
   const devViewBanner = () => inDevView()
     ? `<button type="button" class="devview-bar" data-devexit="1">${L({
-        ja:'開発者ビュー（店舗側の表示を確認中）・タップで本部に戻る',
+        ja:'開発者ビュー・タップで本部に戻る',
         en:'Developer view: store-side display (HQ account). Tap to return to HQ.',
         vi:'Chế độ phát triển: đang xem như cửa hàng (tài khoản HQ). Chạm để về HQ.' })}</button>`
     : '';
@@ -6815,6 +6815,45 @@
      いままでは右上のボタンを自分で見つけないと役割・店舗・お名前を設定できず、
      現場が最初につまずく場所だった。初回だけ、開いた時点でこの画面から始める。 */
   const SETUP_KEY = 'yosakura_setup_done';
+  /* ★パスワードの変更画面（2026-10-02 神田さん「帯を押したら直接変更画面へ」）＝これだけの小さなシート。
+     いまのPW＋新PW（6文字以上・2回）→ chpw（kickOthers）→ ほかの端末は外れ、この端末はそのまま */
+  function openPwChangeSheet_() {
+    const old = document.querySelector('.mask'); if (old) old.remove();
+    const mask = document.createElement('div'); mask.className = 'mask';
+    mask.innerHTML = `<div class="sheet">
+        <h3 style="margin:0 0 6px">${L({ ja:'パスワードを変更', en:'Change password', vi:'Đổi mật khẩu' })}</h3>
+        <p class="hint" style="display:block;margin:0 0 10px">${L({ ja:'責任者の方が行ってください。変更すると、ほかの端末は入り直しになります（この端末はそのまま）。新しいパスワードはスタッフに伝えてください。', en:'For the manager. Other devices will need to sign in again (this one stays). Share the new password with staff.', vi:'Dành cho người phụ trách. Các thiết bị khác phải đăng nhập lại (thiết bị này vẫn dùng được). Báo mật khẩu mới cho nhân viên.' })}</p>
+        <label class="fld"><span>${L({ ja:'いまのパスワード', en:'Current password', vi:'Mật khẩu hiện tại' })}</span><input type="password" id="pw_old" autocomplete="current-password"></label>
+        <label class="fld"><span>${L({ ja:'新しいパスワード（6文字以上）', en:'New password (6+)', vi:'Mật khẩu mới (6+)' })}</span><input type="password" id="pw_new1" autocomplete="new-password"></label>
+        <label class="fld"><span>${L({ ja:'新しいパスワード（もう一度）', en:'New password (again)', vi:'Nhập lại' })}</span><input type="password" id="pw_new2" autocomplete="new-password"></label>
+        <button class="btn-primary" data-pwsave="1" style="margin-top:6px">${L({ ja:'変更する', en:'Change', vi:'Đổi' })}</button>
+        <div id="pw_msg" class="hint" style="display:none;margin-top:6px"></div>
+        <button class="mini" data-pwclose="1" style="margin-top:10px">${L({ ja:'閉じる', en:'Close', vi:'Đóng' })}</button>
+      </div>`;
+    mask.addEventListener('click', (e) => { if (e.target === mask) { mask.remove(); } });
+    document.body.appendChild(mask);
+    const pc = mask.querySelector('[data-pwclose]'); if (pc) pc.onclick = () => mask.remove();
+      const pws = mask.querySelector('[data-pwsave]');
+    if (pws) pws.onclick = () => {
+      const msg = mask.querySelector('#pw_msg'); const say = (t2, ok) => { if (msg) { msg.textContent = t2; msg.style.display = 'block'; msg.style.color = ok ? '#2a7' : '#B5533C'; } };
+      const o = (mask.querySelector('#pw_old') || {}).value || '', n1 = (mask.querySelector('#pw_new1') || {}).value || '', n2 = (mask.querySelector('#pw_new2') || {}).value || '';
+      if (!o) return say(L({ ja:'いまのパスワードを入れてください', en:'Enter the current password.', vi:'Nhập mật khẩu hiện tại.' }), false);
+      if (n1.length < 6) return say(L({ ja:'新しいパスワードは6文字以上にしてください', en:'New password must be 6+ characters.', vi:'Mật khẩu mới phải từ 6 ký tự.' }), false);
+      if (n1 !== n2) return say(L({ ja:'新しいパスワードが2回で違います', en:'The two entries do not match.', vi:'Hai lần nhập không khớp.' }), false);
+      if (n1 === o) return say(L({ ja:'いまと同じパスワードです。別のものにしてください', en:'Same as the current password.', vi:'Trùng mật khẩu hiện tại.' }), false);
+      pws.disabled = true; say(L({ ja:'変更しています…', en:'Changing…', vi:'Đang đổi…' }), true);
+      fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: 'chpw', token: authToken(), oldPw: o, newPw: n1, kickOthers: true }) }).then(r => r.json()).then(d => {
+        pws.disabled = false;
+        if (!d || !d.ok) { return say(d && d.error === 'OLDPW_WRONG' ? L({ ja:'いまのパスワードが違います', en:'Current password is wrong.', vi:'Mật khẩu hiện tại sai.' }) : L({ ja:'変更できませんでした。通信を確かめてもう一度', en:'Could not change. Check the connection and retry.', vi:'Không đổi được. Kiểm tra mạng và thử lại.' }), false); }
+        const a = getAuth(); if (a) { a.pwYm = d.pwYm || new Date().toISOString().slice(0, 7); a.mustChange = false; setAuth(a); }
+        say(L({ ja:'変更しました。ほかの端末はログアウトされました。新しいパスワードを在籍スタッフに伝えてください', en:'Changed. Other devices were signed out. Share the new password with current staff.', vi:'Đã đổi. Các thiết bị khác đã đăng xuất. Hãy báo mật khẩu mới cho nhân viên.' }), true);
+        ['#pw_old', '#pw_new1', '#pw_new2'].forEach(id => { const el = mask.querySelector(id); if (el) el.value = ''; });
+        toast(L({ ja:'パスワードを変更しました', en:'Password changed', vi:'Đã đổi mật khẩu' }));
+        setTimeout(() => { mask.remove(); render(); }, 1200);
+      }).catch(() => { pws.disabled = false; say(L({ ja:'通信できませんでした。もう一度お試しください', en:'Network error. Try again.', vi:'Lỗi mạng. Thử lại.' }), false); });
+    };
+    const f = mask.querySelector('#pw_old'); if (f) setTimeout(() => f.focus(), 50);
+  }
   function openIdentitySheet(first) {
     const buildHTML = () => {
       const role = getRole(), sel = getStoreSel();
@@ -6863,15 +6902,7 @@
           </button>`).join('')}
         <button class="btn-primary" data-done="1" style="margin-top:10px">${first ? L({ ja:'この設定ではじめる', en:'Start with this', vi:'Bắt đầu' }) : L({ ja:'完了', en:'Done', vi:'Xong' })}</button>
         ${auth ? `<button class="mini" data-logout="1" style="margin-top:10px">${L({ ja:'ログアウト', en:'Sign out', vi:'Đăng xuất' })}</button>` : ''}
-        ${auth ? `<details id="pwChange" style="margin-top:12px"${pwChangeDue_() ? ' open' : ''}><summary style="cursor:pointer;font-weight:700;color:var(--suou)">${L({ ja:'パスワードを変更', en:'Change password', vi:'Đổi mật khẩu' })}${pwChangeDue_() ? ` <span class="pill warn" style="font-size:10px">${L({ ja:'今月まだ', en:'due', vi:'đến hạn' })}</span>` : ''}</summary>
-          <div style="padding:8px 0 0">
-            <p class="hint" style="display:block;margin:0 0 8px">${L({ ja:'責任者の方が行ってください。変更した瞬間に、ほかの端末（スタッフのスマホ・別のiPad）はログインできなくなります。この端末はそのまま使えます。新しいパスワードは在籍しているスタッフに伝えてください。', en:'For the manager. Other devices are signed out the moment you change it; this device stays signed in. Share the new password with current staff.', vi:'Dành cho người phụ trách. Các thiết bị khác sẽ bị đăng xuất ngay; thiết bị này vẫn dùng được. Hãy báo mật khẩu mới cho nhân viên hiện tại.' })}</p>
-            <label class="fld"><span>${L({ ja:'いまのパスワード', en:'Current password', vi:'Mật khẩu hiện tại' })}</span><input type="password" id="pw_old" autocomplete="current-password"></label>
-            <label class="fld"><span>${L({ ja:'新しいパスワード（6文字以上）', en:'New password (6+)', vi:'Mật khẩu mới (6+)' })}</span><input type="password" id="pw_new1" autocomplete="new-password"></label>
-            <label class="fld"><span>${L({ ja:'新しいパスワード（もう一度）', en:'New password (again)', vi:'Nhập lại' })}</span><input type="password" id="pw_new2" autocomplete="new-password"></label>
-            <button class="btn-primary" data-pwsave="1" style="margin-top:6px">${L({ ja:'変更する（ほかの端末はログアウト）', en:'Change (sign out other devices)', vi:'Đổi (đăng xuất thiết bị khác)' })}</button>
-            <div id="pw_msg" class="hint" style="display:none;margin-top:6px"></div>
-          </div></details>` : ''}
+        ${auth ? `<button class="mini" data-pwopen="1" style="margin-top:10px;margin-left:8px">${L({ ja:'パスワードを変更', en:'Change password', vi:'Đổi mật khẩu' })}</button>` : ''}
       </div>`;
     };
     const mask = el(`<div class="sheet-mask">${buildHTML()}</div>`);
@@ -6886,26 +6917,9 @@
       });
       const lo = mask.querySelector('[data-logout]');
       if (lo) lo.onclick = () => { mask.remove(); logoutAuth_(); };
-      /* ★パスワードの変更（2026-10-02）＝いまのPW＋新PW（6文字以上・2回）→ chpw（kickOthers）→ この端末はそのまま */
-      const pws = mask.querySelector('[data-pwsave]');
-      if (pws) pws.onclick = () => {
-        const msg = mask.querySelector('#pw_msg'); const say = (t2, ok) => { if (msg) { msg.textContent = t2; msg.style.display = 'block'; msg.style.color = ok ? '#2a7' : '#B5533C'; } };
-        const o = (mask.querySelector('#pw_old') || {}).value || '', n1 = (mask.querySelector('#pw_new1') || {}).value || '', n2 = (mask.querySelector('#pw_new2') || {}).value || '';
-        if (!o) return say(L({ ja:'いまのパスワードを入れてください', en:'Enter the current password.', vi:'Nhập mật khẩu hiện tại.' }), false);
-        if (n1.length < 6) return say(L({ ja:'新しいパスワードは6文字以上にしてください', en:'New password must be 6+ characters.', vi:'Mật khẩu mới phải từ 6 ký tự.' }), false);
-        if (n1 !== n2) return say(L({ ja:'新しいパスワードが2回で違います', en:'The two entries do not match.', vi:'Hai lần nhập không khớp.' }), false);
-        if (n1 === o) return say(L({ ja:'いまと同じパスワードです。別のものにしてください', en:'Same as the current password.', vi:'Trùng mật khẩu hiện tại.' }), false);
-        pws.disabled = true; say(L({ ja:'変更しています…', en:'Changing…', vi:'Đang đổi…' }), true);
-        fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: 'chpw', token: authToken(), oldPw: o, newPw: n1, kickOthers: true }) }).then(r => r.json()).then(d => {
-          pws.disabled = false;
-          if (!d || !d.ok) { return say(d && d.error === 'OLDPW_WRONG' ? L({ ja:'いまのパスワードが違います', en:'Current password is wrong.', vi:'Mật khẩu hiện tại sai.' }) : L({ ja:'変更できませんでした。通信を確かめてもう一度', en:'Could not change. Check the connection and retry.', vi:'Không đổi được. Kiểm tra mạng và thử lại.' }), false); }
-          const a = getAuth(); if (a) { a.pwYm = d.pwYm || new Date().toISOString().slice(0, 7); a.mustChange = false; setAuth(a); }
-          say(L({ ja:'変更しました。ほかの端末はログアウトされました。新しいパスワードを在籍スタッフに伝えてください', en:'Changed. Other devices were signed out. Share the new password with current staff.', vi:'Đã đổi. Các thiết bị khác đã đăng xuất. Hãy báo mật khẩu mới cho nhân viên.' }), true);
-          ['#pw_old', '#pw_new1', '#pw_new2'].forEach(id => { const el = mask.querySelector(id); if (el) el.value = ''; });
-          toast(L({ ja:'パスワードを変更しました', en:'Password changed', vi:'Đã đổi mật khẩu' }));
-          setTimeout(() => { mask.remove(); render(); }, 1200);
-        }).catch(() => { pws.disabled = false; say(L({ ja:'通信できませんでした。もう一度お試しください', en:'Network error. Try again.', vi:'Lỗi mạng. Thử lại.' }), false); });
-      };
+      const po = mask.querySelector('[data-pwopen]');
+      if (po) po.onclick = () => { mask.remove(); openPwChangeSheet_(); };
+
       mask.querySelectorAll('[data-store]').forEach(b => b.onclick = () => { setStoreSel(b.dataset.store); rebuild(); });
       // お名前＝入力のたびに保存（役割・店舗を切り替えてシートを作り直しても消えない）
       const nameInput = mask.querySelector('#idName');
