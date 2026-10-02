@@ -2083,7 +2083,7 @@
     } catch (e) {}
     return Object.values(by).sort((a, b) => a._t - b._t).map(p => ({
       v: p.v || '', a8: p.a8 != null ? String(p.a8) : '', a10: p.a10 != null ? String(p.a10) : '',
-      total: p.total != null ? Number(p.total) : 0, conf: p.conf || 'low', photo: p.photo || '', src: 'ocr' }));
+      total: p.total != null ? Number(p.total) : 0, conf: p.conf || 'low', photo: p.photo || '', src: 'ocr', raw: p.raw ? String(p.raw) : '' }));
   };
   let skSlips_ = [];
   const skSlipsLoad_ = (store, dk, rec) => {
@@ -2111,6 +2111,7 @@
         <input type="text" inputmode="numeric" data-s8="${i}" placeholder="${L({ ja:'8%対象（税込）', en:'8% (incl.)', vi:'8% (gồm thuế)' })}" value="${esc(s.a8 || '')}" style="min-width:0">
         <input type="text" inputmode="numeric" data-s10="${i}" placeholder="${L({ ja:'10%対象（税込）', en:'10% (incl.)', vi:'10% (gồm thuế)' })}" value="${esc(s.a10 || '')}" style="min-width:0">
         <button type="button" class="btn-sm" data-sdel="${i}" aria-label="delete">×</button>
+        ${s.raw ? `<details style="grid-column:1/-1;margin:-2px 0 2px"><summary class="muted" style="font-size:11px;cursor:pointer">${L({ ja:'読み取った文字を見る（数字が違うときの照合用）', en:'Show recognized text', vi:'Xem chữ đã đọc' })}</summary><pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;max-height:160px;overflow:auto;margin:4px 0 0;padding:6px;background:#faf8f4;border-radius:6px">${esc(s.raw)}</pre></details>` : ''}
       </div>`;
   }).join('');
   const skSlipsHtml_ = () => `
@@ -7943,7 +7944,7 @@
     // ★牛カツ長堀橋店トライアル（2026-09-01）：LINEアルバム運用をアプリへ
     yoyaku:       { ja:'その日の予約が分かるもの（予約表・予約画面など）を撮ってください。', en:'Photograph today’s reservation list or screen.', vi:'Chụp danh sách hoặc màn hình đặt bàn hôm nay.' },
     nikkei_idle:  { ja:'レジから出した日計レポート（取引別・商品別）を、文字が読める距離で撮ってください。', en:'Photograph the printed daily report so the text is readable.', vi:'Chụp báo cáo doanh thu đã in, chữ đọc được rõ.' },
-    nouhin:       { ja:'納品書・レシートを1枚ずつ、金額と日付が読めるように撮ってください。', en:'Photograph each slip/receipt so the amount and date are readable.', vi:'Chụp từng phiếu/hóa đơn, thấy rõ số tiền và ngày.' },
+    nouhin:       { ja:'納品書・レシートは1枚の写真に1枚ずつ。真上から伝票全体が入るように、影を入れずに撮ってください（合計と税率の行が読める距離で）。', en:'One slip per photo. Shoot straight down with the whole slip in frame and no shadows, close enough to read the total and tax lines.', vi:'Mỗi ảnh một phiếu. Chụp thẳng từ trên, cả phiếu trong khung, không bóng, đủ gần để đọc tổng và dòng thuế.' },
     zaiko_photo:  { ja:'記入後の在庫チェック表を1枚ずつ撮ってください（食材①②・ドリンク・消耗品）。', en:'Photograph each filled stock sheet (ingredients ①②, drinks, supplies).', vi:'Chụp từng bảng kiểm kho đã điền (nguyên liệu ①②, đồ uống, vật tư).' },
     nikkei_close: { ja:'クローズの日計レポート3枚と現金売上の封筒を撮ってください。', en:'Photograph the three closing reports and the cash envelope.', vi:'Chụp 3 báo cáo đóng ca và phong bì tiền mặt.' }
   };

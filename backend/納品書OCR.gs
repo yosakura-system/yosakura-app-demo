@@ -22,18 +22,21 @@
 var NOUHIN_DRAFT_KIND = 'nouhindraft';
 var NOUHIN_MAX_PHOTOS = 6;
 var NOUHIN_MAX_YEN = 10000000;        // 1,000万円以上は誤読として捨てる
+/* keys＝本文のどこかにあれば採用。社名はOCRで化けやすい（「オーディエー」→「才一工一」）ので、
+   登録番号（T＋13桁）・電話番号も鍵にする（2026-10-02 実物13枚で確認）。
+   total＝税率の行が無く「合計」だけ読めたときの扱い。'excl'＝合計は税抜（×税率で税込に）／'incl'＝合計は税込のまま */
 var NOUHIN_VENDORS_DEFAULT = [
-  { name: '西原商会',     keys: ['西原'],                   k8: 'food',  k10: 'food' },
-  { name: 'フレッシュ青果', keys: ['フレッシュ'],             k8: 'food',  k10: 'food' },
-  { name: '銘洋',         keys: ['銘洋'],                   k8: 'food',  k10: 'food' },
-  { name: '魚伸',         keys: ['魚伸'],                   k8: 'food',  k10: 'food' },
-  { name: '名畑',         keys: ['名畑'],                   k8: 'drink', k10: 'alc' },
-  { name: 'リカーマウンテン', keys: ['リカーマウンテン', 'リカマン'], k8: 'drink', k10: 'alc' },
-  { name: '日本食研',     keys: ['日本食研'],               k8: 'food',  k10: 'food' },
-  { name: 'オーディエー', keys: ['オーディエー', 'ODA'],     k8: 'food',  k10: 'food' },
-  { name: 'イオン',       keys: ['イオン', 'AEON'],          k8: 'food',  k10: 'alc' },
-  { name: 'ローソン',     keys: ['ローソン', 'LAWSON'],      k8: 'food',  k10: 'alc' },
-  { name: '本部',         keys: ['Utec', 'ユーテック', 'utechnologies', '世桜'], k8: 'food', k10: 'alc' }   // 和牛・鰻＝8%／梅酒＝10%
+  { name: '西原商会',     keys: ['西原', '06-6552-8880', '6552-8880'],                         k8: 'food',  k10: 'food', total: 'excl' },
+  { name: 'フレッシュ青果', keys: ['フレッシュ', '7340001003812', '06-6656-3170', '6656 3170', '6656-3170'], k8: 'food', k10: 'food', total: 'incl' },
+  { name: '銘洋',         keys: ['銘洋', 'メイヨウ'],                                          k8: 'food',  k10: 'food', total: 'excl' },
+  { name: '魚伸',         keys: ['魚伸'],                                                      k8: 'food',  k10: 'food', total: 'excl' },
+  { name: '名畑',         keys: ['名畑'],                                                      k8: 'drink', k10: 'alc',  total: 'incl' },
+  { name: 'リカーマウンテン', keys: ['リカーマウンテン', 'リカマン'],                               k8: 'drink', k10: 'alc',  total: 'incl' },
+  { name: '日本食研',     keys: ['日本食研'],                                                  k8: 'food',  k10: 'food', total: 'excl' },
+  { name: 'オーディエー', keys: ['オーディエー', 'ODA', '8-1200-0103-7617', '81200010376', '06-6251-1061', '6251-1061'], k8: 'food', k10: 'food', total: 'incl' },
+  { name: 'イオン',       keys: ['イオン', 'AEON', 'EON FOOD', '14140001005666', '06-6252-4147', '6252-4147'], k8: 'food', k10: 'alc', total: 'incl' },
+  { name: 'ローソン',     keys: ['ローソン', 'LAWSON', '7810930211230', '06-6241-1963', '6241-1963'], k8: 'food', k10: 'alc', total: 'incl' },
+  { name: '本部',         keys: ['Utec', 'ユーテック', 'utechnologies', '世桜'],                 k8: 'food',  k10: 'alc',  total: 'excl' }   // 和牛・鰻＝8%／梅酒＝10%
 ];
 function nouhin_vendors_() {
   var raw = getSetting_('NOUHIN_VENDORS', '');
@@ -57,6 +60,7 @@ function nouhin_ocr_hook_(data, photoIds) {
       var p = nouhin_parse_(text);
       if (!p) continue;                                  // 金額が1つも読めない＝下書きを作らない（0で埋めない）
       p.src = 'ocr'; p.photo = ids[i]; p.by = String(data.note && data.note.by || '');
+      p.raw = String(text).replace(/\r?\n\s*\n/g, '\n').slice(0, 1500);   // 読み取った文字（照合用・2026-10-02）
       sh.appendRow([Utilities.getUuid(), Date.now(), NOUHIN_DRAFT_KIND, String(data.store || ''), "'" + dateKey, '', JSON.stringify(p), '[]']);
     }
   } catch (e) {
@@ -76,65 +80,102 @@ function nouhin_ocr_hook_(data, photoIds) {
 function nouhin_parse_(text) {
   var src = String(text || '');
   if (!src.replace(/\s/g, '')) return null;
+  /* ★OCRの崩れを先にそろえる（2026-10-02 実物13枚）：
+     「13.730」「11..630」「5. 835」＝桁区切りがピリオドやスペースに化ける → 「13,730」に
+     「13, 730」＝カンマの後に空白 → 「13,730」に */
+  src = src.replace(/(\d)\.{1,2}\s?(\d{3})(?!\d)/g, '$1,$2').replace(/(\d),\s+(\d{3})(?!\d)/g, '$1,$2');
   var lines = src.split(/\r?\n/).map(function (s) { return s.replace(/\s+$/, '').replace(/^\s+/, ''); }).filter(String);
   var flat = lines.join(' ');
+  var flatKey = flat.replace(/[\s　]/g, '');   // 鍵の照合用（空白を除く＝「06-6656 3170」も「6656-3170」も当たる）
   var out = {};
 
-  // 仕入先
-  var vendors = nouhin_vendors_();
-  for (var i = 0; i < vendors.length && !out.v; i++) {
+  // 仕入先＝社名か、登録番号・電話番号の鍵
+  var vendors = nouhin_vendors_(); var vendor = null;
+  for (var i = 0; i < vendors.length && !vendor; i++) {
     var ks = vendors[i].keys || [vendors[i].name];
     for (var j = 0; j < ks.length; j++) {
-      if (ks[j] && flat.indexOf(ks[j]) !== -1) { out.v = vendors[i].name; break; }
+      var k = String(ks[j] || '').replace(/[\s　]/g, '');
+      if (k && (flat.indexOf(ks[j]) !== -1 || flatKey.indexOf(k) !== -1)) { vendor = vendors[i]; break; }
     }
   }
+  if (vendor) out.v = vendor.name;
 
   var num = function (s) { var n = Number(String(s).replace(/[^\d]/g, '')); return (isNaN(n) || n <= 0 || n >= NOUHIN_MAX_YEN) ? null : n; };
-  var yenIn = function (s) {                           // 行の中の金額候補＝¥付きを優先、無ければ桁区切りか4桁以上の数字
-    var m = s.match(/[¥￥]\s*[\d,]+/g);
-    if (m) return num(m[m.length - 1]);
-    var m2 = s.match(/\d{1,3}(?:,\d{3})+|\d{3,}/g);          // 桁区切り無しの3桁（消費税701 など）も拾う
+  /* 行の中の金額候補＝¥付きを優先（¥はOCRで W・V・$・# に化けるので同じ扱い）、無ければ桁区切りか3桁以上の数字 */
+  var yenIn = function (s) {
+    var m = s.match(/[¥￥WV$#]\s*[\d,]+/g);
+    if (m) { var v0 = num(m[m.length - 1]); if (v0 != null) return v0; }
+    var m2 = s.match(/\d{1,3}(?:,\d{3})+|\d{3,}/g);
     return m2 ? num(m2[m2.length - 1]) : null;
   };
   var rateRe = { 8: /(^|[^\d])8\s*[%％]/, 10: /(^|[^\d])10\s*[%％]/ };
-  var isTaxLine = function (s) { return /(消費税|税額|内税|内消費税)/.test(s) && !/対象|課税額|小計/.test(s); };
-  var base = {}, tax = {};
+  var isTaxLine = function (s) { return /(消費税|消费税|税額|稅額|内税|内消費税|外税)/.test(s) && !/対象|对象|課税額|小計/.test(s); };
+  var isIdLine = function (s) { return /(番号|No\.|NO\.|TEL|FAX|電話|登録|〒|AID|承認)/.test(s); };   // 伝票番号・電話・登録番号＝金額ではない
+  var numFirst = /^[¥￥WV$#]?\s*[\d,]{3,}\s*(消費税|消费税|税額|稅額)/;                             // 「2,340 稅額10%」＝数字は前の見出し（対象額）の値
+  var base = {}, tax = {}, taxSeen = {};
+  [8, 10].forEach(function (r) { taxSeen[r] = lines.some(function (l) { return rateRe[r].test(l) && /(税額|稅額|消費税|消费税)/.test(l) && !/軽減|輕減|印は/.test(l); }); });   // 税額の見出し（「2,340 稅額10%」）がある税率＝対象額は税抜
   [8, 10].forEach(function (r) {
     for (var i2 = 0; i2 < lines.length; i2++) {
       if (!rateRe[r].test(lines[i2])) continue;
+      if (/軽減税率|輕減税率|軽印|印は/.test(lines[i2])) continue;        // 「※印は軽減税率8%対象商品」＝金額の行ではない
       var win = lines.slice(i2, i2 + 3);
       for (var w = 0; w < win.length; w++) {
-        var line = win[w].replace(/\b(8|10)\s*[%％]/g, '');   // 税率の数字そのものは金額候補から外す
-        if (w > 0 && (rateRe[8].test(win[w]) || rateRe[10].test(win[w])) && !rateRe[r].test(win[w])) break;   // 別の税率の行に入った
+        if (isIdLine(win[w])) continue;
+        var line = win[w].replace(/\b(8|10)\s*[%％]/g, '');
+        if (w > 0 && (rateRe[8].test(win[w]) || rateRe[10].test(win[w])) && !rateRe[r].test(win[w])) break;
         var v = yenIn(line);
         if (v == null) continue;
-        if (isTaxLine(win[w])) { if (tax[r] == null) tax[r] = v; }
+        if (numFirst.test(win[w])) { if (base[r] == null) base[r] = v; }
+        else if (isTaxLine(win[w])) { if (tax[r] == null) tax[r] = v; }
         else if (base[r] == null) base[r] = v;
       }
       if (base[r] != null) break;
     }
   });
-
-  // 合計（税込）
-  for (var i3 = 0; i3 < lines.length; i3++) {
-    if (/(合計|合　計|お買上|御買上|ご請求|請求金額|総額|計)\s*[¥￥]?\s*[\d,]/.test(lines[i3]) && !/小計|対象|税額|消費税|点数|数量/.test(lines[i3])) {
-      var tv = yenIn(lines[i3]); if (tv != null) out.total = tv;    // 最後に出た合計を採る（総合計が最後に来る）
+  /* 「外税対象額」「課税対象額」のように税率の数字が落ちた行＝本文に 8% しか無ければ 8% の行とみなす（イオンのレシート） */
+  if (base[8] == null && /8\s*[%％]/.test(flat)) {
+    for (var i4 = 0; i4 < lines.length; i4++) {
+      if (!/(外税|課税)?(対象額|对象額)/.test(lines[i4]) || /[%％]/.test(lines[i4]) || /小計/.test(lines[i4])) continue;
+      var win4 = lines.slice(i4, i4 + 3);
+      for (var w4 = 0; w4 < win4.length; w4++) { if (isIdLine(win4[w4]) || /[%％]/.test(win4[w4])) continue; var v4 = yenIn(win4[w4]); if (v4 != null) { base[8] = v4; break; } }
+      if (base[8] != null) break;
     }
+  }
+
+  // 合計（税込）＝「合計」の行。数字が次の行に落ちていることがあるので2行見る
+  for (var i3 = 0; i3 < lines.length; i3++) {
+    if (!/(合計|合　計|お買上|御買上|ご請求|請求金額|総額|買上金額)/.test(lines[i3]) || /小計|対象|税額|消費税|点数|数量|取扱|商品数/.test(lines[i3])) continue;
+    var tv = yenIn(lines[i3].replace(/(合計|合　計|お買上|御買上|ご請求|請求金額|総額|買上金額)/g, ''));
+    if (tv == null && lines[i3 + 1]) tv = yenIn(lines[i3 + 1]);
+    if (tv != null) out.total = tv;    // 最後に出た合計を採る（総合計が最後に来る）
+  }
+  /* 合計の行が無い伝票（西原＝「合計」の文字が無く金額だけ並ぶ）＝桁区切り付きか¥付きの数字の最大を合計とみなす */
+  if (out.total == null) {
+    var cands = flat.match(/[¥￥WV$#]?\s*\d{1,3}(?:,\d{3})+(?!\d)/g) || [];
+    var mx = null; cands.forEach(function (c) { var n = num(c); if (n != null && (mx == null || n > mx)) mx = n; });
+    if (mx != null) { out.total = mx; out.totalGuess = true; }
   }
 
   var gotRate = base[8] != null || base[10] != null;
   if (!gotRate && out.total == null) return null;
 
   var inclusive = /(内税|内消費税|税込)/.test(flat) && !/税抜|外税/.test(flat);
-  var sumBase = (base[8] || 0) + (base[10] || 0);
-  var sumTax = (tax[8] || 0) + (tax[10] || 0);
   var conf = 'high';
   if (gotRate) {
+    /* 税額の行は誤読しやすい（「76」が「476」）＝税率×対象額から大きく外れていたら計算値に置き換える */
+    [8, 10].forEach(function (r) {
+      if (base[r] == null) return;
+      var calc = Math.floor(base[r] * r / 100);
+      if (tax[r] != null && Math.abs(tax[r] - calc) > Math.max(3, calc * 0.05)) tax[r] = calc;
+    });
+    var sumBase = (base[8] || 0) + (base[10] || 0);
+    var sumTax = (tax[8] || 0) + (tax[10] || 0);
     var mode;
-    if (out.total != null && Math.abs(sumBase - out.total) <= 2) mode = 'incl';
+    if (out.total != null && !out.totalGuess && Math.abs(sumBase - out.total) <= 2) mode = 'incl';
     else if (out.total != null && sumTax && Math.abs(sumBase + sumTax - out.total) <= 2) mode = 'excl';
     else if (inclusive) mode = 'incl';
-    else if (/(税抜|外税)/.test(flat)) mode = 'excl';
+    else if (/(税抜|外税)/.test(flat) || taxSeen[8] || taxSeen[10]) mode = 'excl';
+    else if (vendor && vendor.total) mode = vendor.total;
     else { mode = 'excl'; conf = 'low'; }
     [8, 10].forEach(function (r) {
       if (base[r] == null) return;
@@ -142,10 +183,19 @@ function nouhin_parse_(text) {
       if (mode === 'excl') g = tax[r] != null ? base[r] + tax[r] : base[r] + Math.floor(base[r] * r / 100);
       out[r === 8 ? 'a8' : 'a10'] = g;
     });
-    if (out.total == null) out.total = (out.a8 || 0) + (out.a10 || 0);
+    out.total = (out.a8 || 0) + (out.a10 || 0);
   } else {
-    conf = 'low';   // 合計だけ＝税率はアプリ側で仕入先の既定に
+    /* 合計だけ＝仕入先が分かっていれば、その仕入先の既定（税抜→税込に直す／税込のまま）で 8% か 10% に入れる */
+    if (vendor) {
+      var rate = (vendor.k8 === 'food' || vendor.k8 === 'drink') ? 8 : 10;
+      if (/^(名畑|リカーマウンテン)$/.test(vendor.name)) rate = 10;       // 酒屋＝金額の大半はお酒
+      var g2 = vendor.total === 'excl' ? out.total + Math.floor(out.total * rate / 100) : out.total;
+      out[rate === 8 ? 'a8' : 'a10'] = g2; out.total = g2;
+      conf = out.totalGuess ? 'low' : 'high';
+    } else conf = 'low';
   }
+  if (!vendor) conf = 'low';
+  delete out.totalGuess;
   out.conf = conf;
   return out;
 }
