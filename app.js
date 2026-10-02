@@ -2605,6 +2605,8 @@
           <div style="max-width:250px;margin:12px auto;background:#fff;padding:12px;border-radius:14px;border:1px solid var(--line)">${q.svg}</div>
           <p style="font-size:16px;font-weight:800;margin:8px 0 2px">${L({ ja:'ご来店アンケートにご協力ください', en:'Please scan for our guest survey', vi:'Vui lòng quét mã để làm khảo sát' })}</p>
           <p class="muted" style="font-size:12px;letter-spacing:.04em">Scan me!　·　스캔해 주세요　·　请扫码</p>
+          <!-- ★QRの下にリンク先（2026-10-02 神田さん「スマホから直接とべるように、全体の流れを見たい」）＝押せば同じページが開く -->
+          <p style="font-size:12px;margin:6px 0 0;word-break:break-all"><a href="${esc(q.url)}" target="_blank" rel="noopener" style="color:var(--accent,#1a73e8)">${esc(q.url)}</a></p>
           <div class="hint" style="display:block;text-align:left;margin-top:12px">${L({
             ja:'※ 回答の最後に、この店舗のGoogle口コミのボタンが表示されます（星の点数に関係なく全員同じご案内）。自動では進まないので、完了画面が見えたら青いボタンを指さして、あと押しをお願いします。',
             en:'At the end of the survey, a Google review button for this store appears (same for everyone, regardless of rating). It does not open automatically — when you see the finish screen, point to the blue button.',

@@ -4771,6 +4771,9 @@ console.log('== サーベイQR＝1回の読み取りで回答→Google口コミ�
   // 本部＝店舗を切り替えられる
   h = renderView('surveyqr', 'hq', 'all', 'ja');
   ok(/svqrStore/.test(h), '本部は店舗の切り替えができる');
+  // QRの下にリンク先（2026-10-02 神田さん＝スマホから直接とべる）
+  h = renderView('surveyqr', 'staff', '牛カツ世桜 長堀橋店', 'ja');
+  ok(/<a href="https:\/\/yosakura-system\.github\.io\/yosakura-survey\/store2\.html" target="_blank"[^>]*>https:\/\/yosakura-system\.github\.io\/yosakura-survey\/store2\.html<\/a>/.test(h), 'QRの下に同じリンク先が文字で出て、押せば開く');
   // 全店ぶんのQRが正しいURLを指している（アプリ本体にURLが埋まっている）
   const srcQ2 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ['index.html','store2.html','store3.html','store5.html','store6.html','store7.html','store8.html','store9.html'].forEach(p => {
