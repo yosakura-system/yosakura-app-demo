@@ -604,8 +604,8 @@
   /* ★開発者ビュー（本部の確認用）で店舗iPadの表示にしているときは、見本として同じ帯を出す（2026-10-02 神田さん「こちらから店舗iPadの画面を見られないか」）。
      押すと端末設定が開き、同じ「パスワードを変更」の欄が見える（変えるのは自分のIDのパスワード） */
   const pwChangeBanner_ = () => (pwChangeDue_() || (inDevView() && getRole() === 'staff'))
-    ? `<button type="button" class="devview-bar pwchange-bar" data-pwchange="1">${pwChangeDue_() ? '' : L({ ja:'【見本・開発者ビュー】', en:'[Sample / developer view] ', vi:'[Mẫu] ' })}${L({
-        ja:'今月のパスワードがまだ変更されていません。責任者の方は、ここを押して「いまのパスワード」と「新しいパスワード」を入れてください（ほかの端末は入り直しになります）',
+    ? `<button type="button" class="devview-bar pwchange-bar" data-pwchange="1">${pwChangeDue_() ? '' : L({ ja:'【見本】', en:'[Sample] ', vi:'[Mẫu] ' })}${L({
+        ja:'今月のパスワードが未変更です。責任者の方はここを押して変更してください',
         en:'This month’s password has not been changed yet. Manager: tap here to set a new password (other devices will need to sign in again).',
         vi:'Mật khẩu tháng này chưa được đổi. Người phụ trách: chạm để đặt mật khẩu mới (các thiết bị khác phải đăng nhập lại).' })}</button>`
     : '';
@@ -617,7 +617,7 @@
   document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pwchange]') : null; if (b) { e.preventDefault(); try { openIdentitySheet(false); } catch (e2) {} } });
   const devViewBanner = () => inDevView()
     ? `<button type="button" class="devview-bar" data-devexit="1">${L({
-        ja:'開発者ビュー：店舗側の表示を確認中（権限は本部のまま）・タップで本部に戻る',
+        ja:'開発者ビュー（店舗側の表示を確認中）・タップで本部に戻る',
         en:'Developer view: store-side display (HQ account). Tap to return to HQ.',
         vi:'Chế độ phát triển: đang xem như cửa hàng (tài khoản HQ). Chạm để về HQ.' })}</button>`
     : '';

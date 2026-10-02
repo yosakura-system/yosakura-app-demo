@@ -3615,7 +3615,7 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   // ⓪ 店舗IDのパスワード＝月初に責任者が店舗iPadで変える（2026-10-02 神田さん）
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'ipad-gyukatsu', name: '牛カツ長堀橋 iPad', role: 'staff', stores: [S], pwYm: '2026-09' })); });
   location.hash = '#/app/kyou';
-  ok(/data-pwchange="1"/.test(registry.app.innerHTML) && /今月のパスワードがまだ変更されていません/.test(registry.app.innerHTML), '共有の店舗ID＝最後に変えた月が今月より前なら「今月のパスワードがまだ変更されていません」のバナーが全画面に出る');
+  ok(/data-pwchange="1"/.test(registry.app.innerHTML) && /今月のパスワードが未変更です/.test(registry.app.innerHTML), '共有の店舗ID＝最後に変えた月が今月より前なら「今月のパスワードが未変更です」のバナーが全画面に出る');
   run(() => { localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'ipad-gyukatsu', name: '牛カツ長堀橋 iPad', role: 'staff', stores: [S], pwYm: new Date().toISOString().slice(0, 7) })); });
   location.hash = '#/app/kyou?x=pw2';
   ok(!/data-pwchange="1"/.test(registry.app.innerHTML), '今月すでに変えていればバナーは出ない');
@@ -3631,10 +3631,10 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   // ① 対象アカウント（kanda・本部）が店舗表示に切り替えると、戻るバナーが全画面に出る
   seedAuth('kanda', 'hq', 'staff');
   location.hash = '#/home';
-  ok(/開発者ビュー：店舗側の表示を確認中/.test(registry.app.innerHTML), '店舗表示中はホームに戻るバナーが出る');
+  ok(/開発者ビュー（店舗側の表示を確認中）/.test(registry.app.innerHTML), '店舗表示中はホームに戻るバナーが出る');
   ok(!/本部メニュー/.test(registry.app.innerHTML), '店舗表示中は本部メニューが消える（見え方が本当に店舗側になる）');
   location.hash = '#/app/kizuki';
-  ok(/開発者ビュー：店舗側の表示を確認中/.test(registry.app.innerHTML), 'アプリ画面にも戻るバナーが出る');
+  ok(/開発者ビュー（店舗側の表示を確認中）/.test(registry.app.innerHTML), 'アプリ画面にも戻るバナーが出る');
   // ② 本部の表示に戻っているときはバナーを出さない
   seedAuth('kanda', 'hq', 'hq');
   location.hash = '#/home';
@@ -3642,7 +3642,7 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   // ②' 増田さんも対象（2026-09-03 ご要望＝本部・加盟店の両目線）
   seedAuth('masuda', 'hq', 'staff');
   location.hash = '#/home';
-  ok(/開発者ビュー：店舗側の表示を確認中/.test(registry.app.innerHTML), '増田さんのアカウントでも店舗表示に切り替えられる');
+  ok(/開発者ビュー（店舗側の表示を確認中）/.test(registry.app.innerHTML), '増田さんのアカウントでも店舗表示に切り替えられる');
   // ③ 対象でない本部アカウントには何も起きない（切替の入口も開かない）
   seedAuth('takahara', 'hq', 'staff');
   location.hash = '#/home';
