@@ -281,7 +281,7 @@ td.b{color:var(--suou-ink);font-weight:500}
         <tr><td>仕入</td><td class="now">食材・酒・飲料の合計を税抜に直して入力</td><td class="b">納品書ごとに仕入先を選び、8％対象と10％対象の税込額を写すだけ。食材・酒・飲料の振り分けと税抜は自動</td></tr>
         <tr><td>日報の項目</td><td class="now">約30項目が一列</td><td class="b">毎日触るのは5つ。残りは「本部が使う項目」に畳む</td></tr>
         <tr><td>入力にかかる時間</td><td class="now">測っていない</td><td class="b">画面ごとに測り、本部の画面に店舗別で出す</td></tr>
-        <tr><td>提出物</td><td class="now">全店ほぼ同じ</td><td class="b">店ごとに 必須／推奨／不要 を本部が設定</td></tr>
+        <tr><td>提出物</td><td class="now">全店ほぼ同じ</td><td class="b">本部提出必須／店舗内実施必須／推奨／不要 の4区分を本部が店ごとに設定（10/2 構築MTG）。店内実施は本部へ提出しない</td></tr>
         <tr><td>お知らせ・返答</td><td class="now">別のペインに見に行く</td><td class="b">「きょう」のいちばん上に1行。未読のときだけ</td></tr>
         <tr><td>レシピ</td><td class="now">ドライブのカード（docx）を開く</td><td class="b">完成写真・5工程・焼き加減がアプリの中で1枚</td></tr>
         <tr><td>管理（数字・棚卸・設定）</td><td class="now">総括表の画面の中のタブ・月次数値・提出物の設定が別々</td><td class="b">「管理」タブ。今日・今月・原価率・お客様の声が1画面</td></tr>
@@ -370,13 +370,17 @@ td.b{color:var(--suou-ink);font-weight:500}
     pos:{ at:'8:05', sales:186400, gross:205040, s10:195040, s8:10000, groups:24, guests:64, cash:48000, card:132400, emoney:21500, point:0, disc:3140, diff:-1000, drawer:98000, float:50000, reason:'' },   // USENレジから毎朝入る（見本・レジクローズ情報の項目）
     slips:[ { v:'西原', a8:'42120', a10:'' }, { v:'名畑', a8:'6480', a10:'11880' } ],
     stock:[ ['米（kg）',12,10,null],['鰻（尾）',18,15,'yakiOk'],['パン粉（袋）',3,4,'scale'],['ミニトマト（袋）',2,3,'fridge'],['固形燃料（個）',40,30,null] ],
-    ck:{}, started:null, oblig:{ openphoto:'必須', ck_idle:'推奨', kinshu:'不要', chukan:'推奨' }
+    ck:{}, started:null,
+    /* 提出物の4区分（10/2 構築MTG）＝本部提出／店内実施／推奨／不要。本部が店ごとに設定する。「店舗で実施する」＝「本部へ毎回提出する」ではない */
+    oblig:{ openphoto:'店内実施', ck_open:'店内実施', ck_idle:'店内実施', ck_sakura:'店内実施', ck_close:'店内実施', zaiko:'店内実施', nippou:'本部提出', kizuki:'推奨', chukan:'不要', kinshu:'不要' }
   };
   const FLOW = [
     { slot:'開店前', rows:[ ['openphoto','オープン写真','見本と同じ画角で2枚',1,'photo','cam','hiroshima'], ['ck_open','OPENチェック','12項目・お手本つき',3,'check','list',null] ] },
     { slot:'営業中', rows:[ ['ck_idle','お手すきチェック','6項目',2,'check','list',null], ['ck_sakura','桜（トイレ）','4項目・14時までに',2,'check','list',null] ] },
     { slot:'締め', rows:[ ['ck_close','CLOSEチェック','10項目',3,'check','list',null], ['zaiko','在庫の数','5品目。少ないものは発注リストへ',3,'stock','box','scale'], ['nippou','日報','売上・客数・現金はPOSから。入れるのは納品書と一言',3,'nippou','yen',null], ['kizuki','気づき','任意。良かったことも',1,'kizuki','pen',null] ] }
   ];
+  const OBL_KINDS = ['本部提出','店内実施','推奨','不要'];
+  const OBL_ITEMS = [['openphoto','オープン写真'],['ck_open','OPENチェック'],['ck_idle','お手すきチェック'],['ck_sakura','桜（トイレ）'],['ck_close','CLOSEチェック'],['zaiko','在庫の数'],['nippou','日報'],['kizuki','気づき'],['chukan','中間報告'],['kinshu','金種別入力']];
   const toast = (t) => { const e = $('#toast'); e.textContent = t; e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 1700); };
   const now = () => { const d = new Date(); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); };
   const yen = (n) => '¥' + Math.round(n).toLocaleString('ja-JP');
@@ -398,7 +402,7 @@ td.b{color:var(--suou-ink);font-weight:500}
         const d = S.done[id]; const late = id === 'ck_sakura' && !d && new Date().getHours() >= 14;
         const lead = d ? `<span class="st">${ICONS.check}</span>` : (th ? `<img class="th" src="${P[th]}" alt="">` : `<span class="st">${ICONS[ic]}</span>`);
         return `<button class="row ${d ? 'done' : ''} ${late ? 'late' : ''}" data-open="${sc}" data-id="${id}">${lead}
-          <span><span class="nm">${nm}</span>${S.oblig[id] === '推奨' ? ' <span class="pill info" style="font-size:10px">推奨</span>' : ''}<br><span class="sub">${d ? '出しました ' + d : late ? '14時を過ぎています ・ ' + sub : sub}</span></span>
+          <span><span class="nm">${nm}</span>${S.oblig[id] === '推奨' ? ' <span class="pill info" style="font-size:10px">推奨</span>' : S.oblig[id] === '本部提出' ? ' <span class="pill" style="font-size:10px">本部へ</span>' : ''}<br><span class="sub">${d ? '出しました ' + d : late ? '14時を過ぎています ・ ' + sub : sub}</span></span>
           <span class="rt">${d ? '' : '目安<b>' + m + '分</b>'}</span></button>`;
       }).join('');
     }).join('');
@@ -585,8 +589,8 @@ td.b{color:var(--suou-ink);font-weight:500}
       ${mgr ? `<div class="card" style="margin-top:8px"><div class="bar"><span>売上</span><i style="width:100%"></i><b>100</b></div><div class="bar"><span>原価</span><i style="width:34%;background:var(--kaki)"></i><b>33.8</b></div><div class="bar"><span>人件費</span><i style="width:28%;background:var(--hai)"></i><b>28.1</b></div><div class="bar"><span>粗利</span><i style="width:38%;background:var(--matsu)"></i><b>38.1</b></div><div class="note">店長・オーナーだけに出る行</div></div>` : ''}
       <div class="sec"><h2>お客様の声</h2><small>自動</small></div>
       <button class="card" data-go="voice" style="width:100%;text-align:left;cursor:pointer"><div class="kpi" style="margin:0"><div><div class="l">サーベイ満足度</div><div class="v">4.6</div><div class="d">今月 38件 ・ 低評価 2件</div></div><div><div class="l">Google口コミ</div><div class="v">4.7</div><div class="d">通算 1,284件 ・ 今月 +12</div></div></div><div class="muted" style="font-size:12px;margin-top:8px">押すと、回答の一覧・来店国・来店経路・口コミの推移</div></button>
-      ${S.role === 'manager' ? `<div class="sec"><h2>この店の提出物</h2><small>必須／推奨／不要 ・ 店長が決める</small></div>
-      <div class="card"><div class="seg3">${[['openphoto','オープン写真'],['ck_idle','お手すきチェック'],['chukan','中間報告'],['kinshu','金種別入力']].map(([id, nm]) => `<span>${nm}</span><span class="opts">${['必須','推奨','不要'].map(o => `<button data-ob="${id}:${o}" class="${S.oblig[id] === o ? 'on' : ''}">${o}</button>`).join('')}</span>`).join('')}</div><div class="note">変えると、この店の「きょう」がすぐ変わります</div></div>` : ''}
+      ${S.role === 'manager' ? `<div class="sec"><h2>この店の提出物</h2><small>本部が4区分で設定 ・ 店は見るだけ</small></div>
+      <div class="card"><div class="seg3">${OBL_ITEMS.map(([id, nm]) => `<span>${nm}</span><span class="opts"><button class="on" style="flex:1;cursor:default">${S.oblig[id] || '店内実施'}</button></span>`).join('')}</div><div class="note">「店内実施」＝店で必ずやるが本部への提出はない（店長が店内で確認）。「本部へ」の印がある行だけ本部に届きます</div></div>` : ''}
       <div class="note">数字は見るだけ。入力する場所は「きょう」の日報だけです。</div>`;
   }
   function drawSpark(){
@@ -625,8 +629,8 @@ td.b{color:var(--suou-ink);font-weight:500}
       </div>
       <div class="sec"><h2>日報の入力時間</h2><small>今週の中央値 ・ 分</small></div>
       <div class="card">${times.map(([s, m]) => `<div class="bar"><span>${s}</span><i style="width:${m / 8 * 100}%"></i><b>${m.toFixed(1)}</b></div>`).join('')}<div class="note">長い店から減らす。「10分が5分になったか」をここで見ます</div></div>
-      <div class="sec"><h2>提出物の設定 ・ 長堀橋</h2><small>必須／推奨／不要</small></div>
-      <div class="card"><div class="seg3">${[['openphoto','オープン写真'],['ck_idle','お手すきチェック'],['chukan','中間報告'],['kinshu','金種別入力']].map(([id, nm]) => `<span>${nm}</span><span class="opts">${['必須','推奨','不要'].map(o => `<button data-ob="${id}:${o}" class="${S.oblig[id] === o ? 'on' : ''}">${o}</button>`).join('')}</span>`).join('')}</div><div class="note">変えると、その店の「きょう」がすぐ変わります（左で店舗に切り替えて確認）</div></div>
+      <div class="sec"><h2>提出物の設定 ・ 長堀橋</h2><small>本部提出／店内実施／推奨／不要</small></div>
+      <div class="card"><div class="seg3">${OBL_ITEMS.map(([id, nm]) => `<span>${nm}</span><span class="opts">${OBL_KINDS.map(o => `<button data-ob="${id}:${o}" class="${S.oblig[id] === o ? 'on' : ''}">${o}</button>`).join('')}</span>`).join('')}</div><div class="note">10/2 構築MTGの4区分。「店内実施」＝店で必ずやるが本部への提出はない。「本部提出」だけが全店の一枚表と返答待ちに出ます。変えると、その店の「きょう」がすぐ変わります（左で店舗に切り替えて確認）</div></div>
       <button class="big" data-toast="お知らせを書く画面（見本）">お知らせを出す</button>`;
   }
 
