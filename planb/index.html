@@ -503,8 +503,11 @@ td.b{color:var(--suou-ink);font-weight:500}
       <div class="card">
         <div class="fld"><label>売上（税抜）<small>POS ${S.pos.at} 取込</small></label><div class="auto">${yen(S.pos.sales)}<small>自動</small></div></div>
         <div class="fld"><label>客数<small>POS</small></label><div class="auto">${S.pos.guests}<small>自動</small></div></div>
-        <div class="fld"><label>現金 ・ カード ・ 電子マネー<small>POS</small></label><div class="auto">${yen(S.pos.cash)} ・ ${yen(S.pos.card)} ・ ${yen(S.pos.emoney)}<small>自動</small></div></div>
-        <div class="fld"><label>値引き ・ 組数<small>POS</small></label><div class="auto">${yen(S.pos.disc)} ・ ${S.pos.groups}組<small>自動</small></div></div>
+        <div class="fld"><label>現金<small>POS</small></label><div class="auto">${yen(S.pos.cash)}<small>自動</small></div></div>
+        <div class="fld"><label>カード<small>POS</small></label><div class="auto">${yen(S.pos.card)}<small>自動</small></div></div>
+        <div class="fld"><label>電子マネー<small>POS</small></label><div class="auto">${yen(S.pos.emoney)}<small>自動</small></div></div>
+        <div class="fld"><label>値引き<small>POS</small></label><div class="auto">${yen(S.pos.disc)}<small>自動</small></div></div>
+        <div class="fld"><label>組数<small>POS</small></label><div class="auto">${S.pos.groups}組<small>自動</small></div></div>
       </div>
       <div class="sec"><h2>今日の納品書</h2><small>${S.slips.length}枚 ・ 写真も撮れます</small></div>
       ${rowsHtml}
