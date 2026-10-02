@@ -1439,6 +1439,27 @@
         <p class="news-body">${L({ ja:'日報の数字で「変だな」を自動で拾いました（個数で入っている・合計が合わない など）。店長・オーナーは自店の分です。', en:'Auto-flagged suspicious daily-report numbers.', vi:'Đã tự phát hiện số liệu bất thường trong báo cáo ngày.' })}</p>
         <span class="news-more">${L({ ja:'一覧を開く', en:'Open list', vi:'Mở danh sách' })} ${svg('chev')}</span>
       </button>` : '';
+    /* ★サーベイの低い評価（2026-10-02 神田さん「低い評価が入ったら店長の『きょう』に出す」）
+       ＝「普通」以下（★3以下）の回答で、昨日・今日ぶん（JST）。店長・オーナーは自店、本部は見ている店舗（全店なら店舗ごとの件数）。
+       押すと「サーベイ・集計」の「お声」タブ（低い評価から順・原文のまま）へ */
+    const svLowCard = (() => {
+      if (!['hq', 'manager', 'owner'].includes(role)) return '';
+      const dk = (ms) => new Date(Number(ms) + 9 * 3600e3).toISOString().slice(0, 10);
+      const today = dk(Date.now()), yest = dk(Date.now() - 864e5);
+      const stores = hqAll ? STORES : visibleStores();
+      const rows = getSurvey().filter(r => r && r.sat >= 1 && r.sat <= 3 && stores.includes(r.store) && (dk(r.t) === today || dk(r.t) === yest));
+      if (!rows.length) return '';
+      const nY = rows.filter(r => dk(r.t) === yest).length, nT = rows.length - nY;
+      const byStore = {}; rows.forEach(r => { byStore[r.store] = (byStore[r.store] || 0) + 1; });
+      const stLine = hqAll ? Object.keys(byStore).map(s => `${esc(storeShort(s))} ${byStore[s]}`).join('　') : '';
+      return `
+      <button class="card news-card news-card--btn" data-open="survey?tab=voice" data-svlow="${rows.length}">
+        <div class="news-h"><span class="news-ic">${svg('star')}</span><b>${L({ ja:'サーベイに低い評価の回答があります', en:'Low survey ratings came in', vi:'Có đánh giá thấp trong khảo sát' })}</b></div>
+        <div class="news-title">${rows.length} ${L({ ja:'件', en:'answer(s)', vi:'câu trả lời' })} <small style="font-weight:400;color:#8a8478">${L({ ja:'（昨日 ' + nY + '・今日 ' + nT + '）', en:'(yesterday ' + nY + ' / today ' + nT + ')', vi:'(hôm qua ' + nY + ' / hôm nay ' + nT + ')' })}</small></div>
+        <p class="news-body">${stLine ? stLine + '<br>' : ''}${L({ ja:'「普通」以下を選んだお客様の回答です。原文を読んで、きょうの営業に活かしてください。回答は匿名で、1時間ごとに届きます。', en:'Answers rated “average” or below. Read them as written and use them today. Answers are anonymous and arrive hourly.', vi:'Câu trả lời “bình thường” trở xuống. Đọc nguyên văn và áp dụng hôm nay. Ẩn danh, cập nhật mỗi giờ.' })}</p>
+        <span class="news-more">${L({ ja:'お声を読む（低い評価から順）', en:'Read voices (lowest first)', vi:'Đọc góp ý (thấp trước)' })} ${svg('chev')}</span>
+      </button>`;
+    })();
     const dutyBlock = `<div class="homelinks">
         ${dutyRow('kyou', { ja:'日次業務', en:'Daily tasks', vi:'Hàng ngày' }, remainOf(['daily']))}
         ${dutyRow('shukan', { ja:'週次業務', en:'Weekly tasks', vi:'Hàng tuần' }, remainOf(['weekly']))}
@@ -1545,7 +1566,7 @@
         })();
     const handoverHot = /news-card--imp/.test(handoverCard);
     const homeTab = homeTabSel_();
-    const hot = { today: !!remind || !!numCard || handoverHot, news: !!(latest && latest.level === 'important') };
+    const hot = { today: !!remind || !!numCard || !!svLowCard || handoverHot, news: !!(latest && latest.level === 'important') };
     const homeTabs = `<div class="home-tabs" role="tablist">
       ${[['today', { ja:'きょう', en:'Today', vi:'Hôm nay' }], ['news', { ja:'お知らせ', en:'News', vi:'Thông báo' }], ['menu', { ja:'メニュー', en:'Menu', vi:'Menu' }]]
         .map(([v, t]) => `<button type="button" class="htab${homeTab === v ? ' on' : ''}" data-htab="${v}">${esc(L(t))}${hot[v] ? '<span class="hdot"></span>' : ''}</button>`).join('')}
@@ -1557,9 +1578,9 @@
         ${homeTabs}
         <section class="hpane" data-hpane="today"${homeTab === 'today' ? '' : ' hidden'}>
           ${handoverCard}
-          ${remind}${numCard}
+          ${remind}${numCard}${svLowCard}
           ${dutySection}
-          ${!remind && !numCard && !handoverHot ? `<p class="hint" style="display:block">${L({ ja:'いま急ぎの確認はありません。', en:'Nothing urgent right now.', vi:'Hiện không có việc gấp.' })}</p>` : ''}
+          ${!remind && !numCard && !svLowCard && !handoverHot ? `<p class="hint" style="display:block">${L({ ja:'いま急ぎの確認はありません。', en:'Nothing urgent right now.', vi:'Hiện không có việc gấp.' })}</p>` : ''}
         </section>
         <section class="hpane" data-hpane="news"${homeTab === 'news' ? '' : ' hidden'}>
           ${newsSection || `<p class="hint" style="display:block">${L({ ja:'お知らせはまだありません。', en:'No news yet.', vi:'Chưa có thông báo.' })}</p>`}
