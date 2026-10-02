@@ -917,3 +917,6 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 /* 本部ダッシュボードのタブ＝件数の小さな数（2026-09-22） */
 .htab .tcount { margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--gray); background: var(--kinari, #f3efe8); border-radius: 10px; padding: 1px 7px; vertical-align: 1px; }
 .htab.on .tcount { color: #fff; background: var(--suou); }
+
+/* 月初のパスワード変更のお願い（共有の店舗IDだけ・2026-10-02）＝開発者ビューのバナーと同じ置き方・色だけ変える */
+.pwchange-bar { background: #8a6d3b; }
