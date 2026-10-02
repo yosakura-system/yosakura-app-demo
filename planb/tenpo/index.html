@@ -367,7 +367,7 @@ td.b{color:var(--suou-ink);font-weight:500}
     role:'staff', tab:'today', screen:null, sid:'',
     done:{ openphoto:'9:42', ck_open:'9:55' },
     handover:[{ id:1, txt:'鰻のタレ、残り1本。明日の納品まで使い切らないように。', by:'昼のシフト ・ 14:10', open:true }],
-    replies:[{ k:'気づき', t:'ガリの盛りが高くて良い。写真ありがとうございます。', ago:'2時間前' }],
+    replies:[{ k:'気づき', t:'「ご飯の量を聞かれることが増えた」の件、ありがとうございます。大盛り無料の一言POPを作って来週の便で送ります。', ago:'2時間前' }],
     buy:{ food:{ v:'', r:8 }, alc:{ v:'', r:10 }, drink:{ v:'', r:8 } },
     pos:{ at:'8:05', sales:186400, gross:205040, s10:195040, s8:10000, groups:24, guests:64, cash:48000, card:132400, emoney:21500, point:0, disc:3140, diff:-1000, drawer:98000, float:50000, reason:'' },   // USENレジから毎朝入る（見本・レジクローズ情報の項目）
     slips:[ { v:'西原', a8:'42120', a10:'' }, { v:'名畑', a8:'6480', a10:'11880' } ],
@@ -448,7 +448,7 @@ td.b{color:var(--suou-ink);font-weight:500}
   function replies(){
     return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">本部から</div><p class="lead">返答とお知らせ。読んだら消えます。</p>
       ${S.replies.map(r => `<div class="card" style="margin-bottom:8px"><span class="pill info">${r.k}への返答</span><div style="margin-top:6px">${r.t}</div><div class="note">${r.ago}</div></div>`).join('')}
-      <div class="card"><span class="pill ok">お知らせ</span><div style="margin-top:6px">10/14（火）勉強会。アプリの回は15:00から10分です。</div><div class="note">昨日</div></div>
+      <div class="card"><span class="pill ok">お知らせ</span><div style="margin-top:6px">10/14（水）勉強会。アプリの回は10分です。</div><div class="note">昨日</div></div>
       <button class="big" data-readall="1">すべて読みました</button>`;
   }
   function write(){
