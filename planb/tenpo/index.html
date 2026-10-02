@@ -496,7 +496,7 @@ td.b{color:var(--suou-ink);font-weight:500}
     S.slips.forEach(s => { sums[VKIND(s.v, 8)] += taxNet(s.a8, 8); sums[VKIND(s.v, 10)] += taxNet(s.a10, 10); });
     const total = sums.food + sums.alc + sums.drink;
     const rowsHtml = S.slips.map((s, i) => `<div class="slip">
-        <div class="slip-h"><select data-sv="${i}">${VENDORS.map(v => `<option ${s.v === v ? 'selected' : ''}>${v}</option>`).join('')}</select><span class="pill info">${s.v === '名畑' ? '酒 10％ ・ 飲料 8％' : '食材 8％'}</span><button class="mini" data-sdel="${i}">消す</button></div>
+        <div class="slip-h"><select data-sv="${i}">${VENDORS.map(v => `<option ${s.v === v ? 'selected' : ''}>${v}</option>`).join('')}</select><span class="pill info">${s.v === '名畑' ? '酒 10％ ・ 飲料 8％' : '食材 8％'}</span>${s.ocr ? `<span class="pill ${s.conf === 'low' ? 'warn' : 'ok'}">${s.conf === 'low' ? '写真から ・ 要確認' : '写真から読み取り'}</span>` : ''}<button class="mini" data-sdel="${i}">消す</button></div>
         <div class="slip-b"><label>8％対象<small>税込</small><input id="s8_${i}" inputmode="numeric" placeholder="¥" value="${s.a8}" data-s8="${i}"></label><label>10％対象<small>税込</small><input id="s10_${i}" inputmode="numeric" placeholder="¥" value="${s.a10}" data-s10="${i}"></label><div class="slip-net">税抜<b>${yen(taxNet(s.a8, 8) + taxNet(s.a10, 10))}</b></div></div>
       </div>`).join('');
     return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">日報</div><p class="lead">売上・客数・現金・カードはUSENレジから入っています。入れるのは今日届いた納品書だけ。伝票の「8％対象」「10％対象」の税込額をそのまま写します。</p>
@@ -509,9 +509,10 @@ td.b{color:var(--suou-ink);font-weight:500}
         <div class="fld"><label>値引き<small>POS</small></label><div class="auto">${yen(S.pos.disc)}<small>自動</small></div></div>
         <div class="fld"><label>組数<small>POS</small></label><div class="auto">${S.pos.groups}組<small>自動</small></div></div>
       </div>
-      <div class="sec"><h2>今日の納品書</h2><small>${S.slips.length}枚 ・ 写真も撮れます</small></div>
+      <div class="sec"><h2>今日の納品書</h2><small>${S.slips.length}枚 ・ 撮れば自動で読みます</small></div>
       ${rowsHtml}
-      <button class="chip" data-sadd="1" style="width:100%;margin-top:6px">＋ 納品書を足す<small>仕入先を選んで金額を写すだけ</small></button>
+      <div class="chips" style="margin-top:6px"><button class="chip" data-socr="1">📷 納品書を撮る<small>仕入先と8％・10％を自動で読む（下書き）</small></button><button class="chip" data-sadd="1">＋ 手で足す<small>仕入先を選んで金額を写す</small></button></div>
+      <div class="note">写真から読んだ分は下書きです。違うところだけ直して、送るのは人が押します（読み違いが静かに混ざらないように）。税込か税抜か迷う伝票は「要確認」の印が付きます</div>
       <div class="card" style="margin-top:10px">
         <div class="fld"><label>食材（税抜）<small>西原・フレッシュ・銘洋・魚伸・その他</small></label><div class="auto">${yen(sums.food)}<small>自動</small></div></div>
         <div class="fld"><label>酒（税抜）<small>名畑の10％分</small></label><div class="auto">${yen(sums.alc)}<small>自動</small></div></div>
@@ -734,6 +735,7 @@ td.b{color:var(--suou-ink);font-weight:500}
     else if (d.st) { const [i, dv] = d.st.split(':').map(Number); S.stock[i][1] = Math.max(0, S.stock[i][1] + dv); }
     else if (d.rate) { const [k, r] = d.rate.split(':'); S.buy[k].r = Number(r); }
     else if (d.sadd) { S.slips.push({ v:'西原', a8:'', a10:'' }); }
+    else if (d.socr) { toast('読み取り中…'); const n = S.slips.filter(s => s.ocr).length; setTimeout(() => { S.slips.push(n % 2 === 0 ? { v:'フレッシュ', a8:'18360', a10:'', ocr:true, conf:'high' } : { v:'その他', a8:'9720', a10:'2200', ocr:true, conf:'low' }); render(); toast('読み取りました。違うところだけ直してください'); }, 900); return; }
     else if (d.sdel) { S.slips.splice(Number(d.sdel), 1); }
     else if (d.ob) { const [id, o] = d.ob.split(':'); S.oblig[id] = o; toast('長堀橋の「きょう」に反映しました'); }
     else if (d.toast) { toast(d.toast); return; }
