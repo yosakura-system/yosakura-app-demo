@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>世桜アプリ 案B</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
@@ -369,7 +370,7 @@ td.b{color:var(--suou-ink);font-weight:500}
     handover:[{ id:1, txt:'鰻のタレ、残り1本。明日の納品まで使い切らないように。', by:'昼のシフト ・ 14:10', open:true }],
     replies:[{ k:'気づき', t:'「ご飯の量を聞かれることが増えた」の件、ありがとうございます。大盛り無料の一言POPを作って来週の便で送ります。', ago:'2時間前' }],
     buy:{ food:{ v:'', r:8 }, alc:{ v:'', r:10 }, drink:{ v:'', r:8 } },
-    pos:{ at:'8:05', sales:186400, gross:205040, s10:195040, s8:10000, groups:24, guests:64, cash:48000, card:132400, emoney:21500, point:0, disc:3140, diff:-1000, drawer:98000, float:50000, reason:'' },   // USENレジから毎朝入る（見本・レジクローズ情報の項目）
+    pos:{ at:'8:05', sales:186400, gross:205040, s10:195040, s8:10000, groups:24, guests:64, cash:48000, card:132400, emoney:21500, point:0, disc:3140, diff:-1000, drawer:98000, float:50000, reason:'', laborHrs:34.4, laborCost:46200 },   // USENレジから毎朝入る（見本・レジクローズ情報の項目）
     slips:[ { v:'西原', a8:'42120', a10:'' }, { v:'名畑', a8:'6480', a10:'11880' } ],
     stock:[ ['米（kg）',12,10,null],['鰻（尾）',18,15,'yakiOk'],['パン粉（袋）',3,4,'scale'],['ミニトマト（袋）',2,3,'fridge'],['固形燃料（個）',40,30,null] ],
     ck:{}, started:null,
@@ -379,6 +380,11 @@ td.b{color:var(--suou-ink);font-weight:500}
        pin＝店長がとめた注意事項（期限つき・上に固定）／本部から／みんなの投稿（拍手だけ・返信なし）。本部は見られるが管理しない */
     boardSeen: 2, bw:{ kind:'共有', pin:false, until:'', photo:false }, ownKind:'店内実施', ownSlot:'営業中',
     photoExtra:[ { nm:'レジまわり', sample:'counter', today:null } ],
+    /* ロス（2026-10-04 神田さん「日々のロス管理と人件費管理が重要。種類別に蓄積して何のロスが多いか検証できるように」）。
+       種類＝9/9 勉強会で田中さんが挙げた理由（揚げすぎ・焼きすぎ・作りすぎ・オーダーミス・仕込み過多・食材期限）を6つにまとめた。無い日は押さない */
+    loss:[ { kind:'期限切れ・廃棄', item:'ミニトマト（袋）', qty:'1', amt:280, by:'昼のシフト ・ 11:20' } ],
+    lossMonth:[ ['作りすぎ・仕込み過多',6,7420], ['期限切れ・廃棄',4,3860], ['調理ミス',3,2940], ['オーダーミス',2,1980], ['お客様からの返品',1,1380], ['その他',1,400] ],
+    lw:{ kind:'期限切れ・廃棄', item:'', qty:'', amt:'', photo:false },
     board:[
       { id:1, kind:'注意', pin:true, until:'10/15', txt:'土日はテイクアウトの容器が足りなくなりやすい。木曜に在庫を見て発注。', by:'店長 ・ 10/1', clap:0 },
       { id:2, kind:'本部から', pin:false, txt:'10月の定期衛生＝製氷機まわり。月末までに写真を1枚。', by:'本部 ・ 10/1', clap:0 },
@@ -393,6 +399,8 @@ td.b{color:var(--suou-ink);font-weight:500}
     { slot:'締め', rows:[ ['ck_close','CLOSEチェック','10項目',3,'check','list',null], ['zaiko','在庫の数','5品目。少ないものは発注リストへ',3,'stock','box','scale'], ['nippou','日報','売上・客数・現金はPOSから。入れるのは納品書と一言',3,'nippou','yen',null], ['kizuki','気づき','任意。良かったことも',1,'kizuki','pen',null] ] }
   ];
   const OBL_KINDS = ['本部提出','店内実施','推奨','不要'];
+  const LOSS_KINDS = ['期限切れ・廃棄','作りすぎ・仕込み過多','調理ミス','オーダーミス','お客様からの返品','その他'];
+  const lossToday = () => S.loss.reduce((a, l) => a + (Number(l.amt) || 0), 0);
   const OBL_ITEMS = [['openphoto','オープン写真'],['ck_open','OPENチェック'],['ck_idle','お手すきチェック'],['ck_sakura','桜（トイレ）'],['ck_close','CLOSEチェック'],['zaiko','在庫の数'],['nippou','日報'],['kizuki','気づき'],['chukan','中間報告'],['kinshu','金種別入力']];
   const toast = (t) => { const e = $('#toast'); e.textContent = t; e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 1700); };
   const now = () => { const d = new Date(); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); };
@@ -427,7 +435,7 @@ td.b{color:var(--suou-ink);font-weight:500}
         <div class="st"><span>${left.length ? `残り ${left.length}件 ・ 目安 ${mins}分` : 'お疲れさまでした'}</span><span>${rows.length - 1 - left.length}／${rows.length - 1} 済</span></div>
         <div class="prog"><i style="width:${pct}%"></i></div></div></div>`;
     const pos = S.pos; const sgn = (n) => (n < 0 ? '−' : '+') + '¥' + Math.abs(n).toLocaleString('ja-JP');
-    const posCard = `<div class="card"><div class="ho"><div><div class="txt">売上 ${yen(pos.sales)}（税抜）・ ${pos.guests}人 ・ 現金 ${yen(pos.cash)} ・ カード ${yen(pos.card)}</div><div class="by">${pos.diff === 0 ? '現金の過不足 0円。入れることはありません' : pos.reason ? `現金の過不足 ${sgn(pos.diff)} ・ 理由「${pos.reason}」＝本部に届きました` : `現金の過不足 <b style="color:var(--kaki)">${sgn(pos.diff)}</b>。理由だけ選んでください`}</div></div>${pos.diff === 0 || pos.reason ? '' : `<select data-reason="1" style="font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff"><option value="">理由</option>${['両替','釣銭の渡し間違い','レジ外で支払い','分からない'].map(o => `<option>${o}</option>`).join('')}</select>`}</div></div>`;
+    const posCard = `<div class="card"><div class="ho"><div><div class="txt">売上 ${yen(pos.sales)}（税抜）・ ${pos.guests}人 ・ 現金 ${yen(pos.cash)} ・ カード ${yen(pos.card)}</div><div class="by">人件費 ${yen(pos.laborCost)}（総括表の勤怠 ${pos.laborHrs}h・入力なし）・ 人件費率 ${(pos.laborCost / pos.sales * 100).toFixed(1)}％ ・ 人時売上 ${yen(pos.sales / pos.laborHrs)}</div><div class="by">${pos.diff === 0 ? '現金の過不足 0円。入れることはありません' : pos.reason ? `現金の過不足 ${sgn(pos.diff)} ・ 理由「${pos.reason}」＝本部に届きました` : `現金の過不足 <b style="color:var(--kaki)">${sgn(pos.diff)}</b>。理由だけ選んでください`}</div></div>${pos.diff === 0 || pos.reason ? '' : `<select data-reason="1" style="font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff"><option value="">理由</option>${['両替','釣銭の渡し間違い','レジ外で支払い','分からない'].map(o => `<option>${o}</option>`).join('')}</select>`}</div></div>`;
     const mgrStrip = S.role === 'manager' ? `<button class="strip" data-tab="num" style="margin-top:8px"><b>店長</b>スタッフの提出 ${rows.length - 1 - left.length}／${rows.length - 1} ・ 返答待ち ${S.replies.length} ・ 昨日の原価率 33.8%<span class="n">管理へ</span></button>` : '';
     return `${cover}${rep ? '<div style="height:8px"></div>' + rep : ''}${bStrip}${mgrStrip}
       <div class="sec"><h2>昨日のレジ締め</h2><small>POS ${pos.at} 取込 ・ 入力なし</small></div>${posCard}
@@ -435,7 +443,7 @@ td.b{color:var(--suou-ink);font-weight:500}
       <div class="sec"><h2>今日の流れ</h2><small>時間帯の順</small></div>
       <div class="card">${flow}</div>
       <div class="sec"><h2>いつでも</h2></div>
-      <div class="chips"><button class="chip" data-open="kizuki">気づき<small>良かったことも困ったことも</small></button><button class="chip" data-open="waste">食べ残し<small>写真1枚で</small></button><button class="chip" data-open="qr">サーベイQR<small>お会計のときにお見せする</small></button><button class="chip" data-go="write">引き継ぎを書く<small>次の人へ</small></button></div>
+      <div class="chips"><button class="chip" data-open="kizuki">気づき<small>良かったことも困ったことも</small></button><button class="chip" data-open="loss">ロス<small>${S.loss.length ? `きょう ${S.loss.length}件 ・ ${yen(lossToday())}` : 'あれば ・ 種類と品目だけ'}</small></button><button class="chip" data-open="waste">食べ残し<small>写真1枚で</small></button><button class="chip" data-open="qr">サーベイQR<small>お会計のときにお見せする</small></button><button class="chip" data-go="write">引き継ぎを書く<small>次の人へ</small></button></div>
       <div class="sec"><h2>今夜・今月</h2><small>棚卸 22:30 ・ 週POP 金曜まで</small></div>
       <button class="photocard" data-go="tana"><img src="${P.count}" alt=""><div class="cap"><b>今夜 22:30 月末棚卸</b><span>品目と単価は入っています。数えて入れるだけ。原価率はその場で出ます</span></div></button>`;
   }
@@ -570,6 +578,21 @@ td.b{color:var(--suou-ink);font-weight:500}
       <div class="card"><div class="fld"><label>メニュー</label><input value="鰻ひつまぶし 上" style="text-align:left"></div><div class="fld"><label>残り具合</label><div class="taxrow"><button>少し</button><button class="on">半分</button><button>ほぼ全部</button></div></div></div>
       <button class="big" data-toast="送りました（見本）">写真を撮って送る</button>`;
   }
+  function screenLoss(){
+    const w = S.lw; const items = S.stock.map(r => r[0]);
+    const chips = LOSS_KINDS.map(k => `<button class="chip" data-lkind="${k}" style="flex:1 1 44%;white-space:nowrap;padding:10px 6px;${w.kind === k ? 'background:var(--suou);color:#fff;border-color:var(--suou)' : ''}">${k}</button>`).join('');
+    const list = S.loss.length ? S.loss.map((l, i) => `<div class="ho" style="padding:8px 0;border-top:1px solid var(--line)"><div style="flex:1"><div class="txt">${l.item} ${l.qty ? l.qty + ' ・ ' : ''}${l.amt ? yen(l.amt) : '金額なし'}</div><div class="by"><span class="pill warn" style="font-size:10px">${l.kind}</span> ${l.by}</div></div><button class="mini" data-ldel="${i}">消す</button></div>`).join('') : '<div class="ho"><div class="txt" style="color:var(--hai)">きょうはまだありません</div></div>';
+    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">ロス</div><p class="lead">ロスはゼロにならない。大事なのは「なぜ」を残すこと（調理ミス＝揚げすぎ・焼きすぎ）。種類と品目を選ぶだけ。金額は分かれば。無い日は何もしなくてよい。</p>
+      <div class="card"><label style="font-size:12px;color:var(--hai)">種類</label><div class="chips" style="margin-top:4px;flex-wrap:wrap">${chips}</div>
+        <label style="font-size:12px;color:var(--hai);display:block;margin-top:10px">品目<small style="margin-left:6px">在庫の一覧から。無ければ書く</small></label>
+        <input id="lw_item" class="ta" list="lw_items" style="min-height:0;padding:10px;width:100%;box-sizing:border-box" placeholder="例：ミニトマト（袋）" value="${w.item || ''}"><datalist id="lw_items">${items.map(n => `<option value="${n}">`).join('')}</datalist>
+        <div style="display:flex;gap:8px;margin-top:10px"><label style="flex:1;font-size:12px;color:var(--hai)">数量<input id="lw_qty" class="ta" style="min-height:0;padding:10px;margin-top:4px" inputmode="decimal" placeholder="例：2" value="${w.qty || ''}"></label><label style="flex:1;font-size:12px;color:var(--hai)">金額（円・任意）<input id="lw_amt" class="ta" style="min-height:0;padding:10px;margin-top:4px" inputmode="numeric" placeholder="単価があれば自動" value="${w.amt || ''}"></label></div>
+        <button class="mini" data-lphoto="1" style="margin-top:8px">${w.photo ? '📷 写真 1枚（押すと外す）' : '📷 写真を1枚つける（任意）'}</button>
+        <div class="note">日報の「ロス金額」はこの合計が自動で入ります。期限切れは、ここに上げてから廃棄（棚卸マニュアルと同じ入口）</div></div>
+      <button class="big" data-lsave="1">記録する</button>
+      <div class="sec"><h2>きょうのロス</h2><small>${S.loss.length}件 ・ ${yen(lossToday())}</small></div>
+      <div class="card" style="padding-top:0">${list}</div>${timer()}`;
+  }
   function timer(){ return `<div class="timer" id="timer">この画面を開いてから 0:00 ・ 入力時間は本部の改善に使います</div>`; }
 
   /* ---------- 調べる ---------- */
@@ -613,7 +636,16 @@ td.b{color:var(--suou-ink);font-weight:500}
       <div class="card"><canvas id="spark" width="800" height="200"></canvas><div class="note" style="display:flex;justify-content:space-between"><span>9/1</span><span>着地見込み ¥5.62M（先月 ¥5.31M）</span><span>9/30</span></div></div>
       <div class="kpi" style="margin-top:8px"><div class="card"><div class="l">原価率</div><div class="v">33.8<span style="font-size:14px">％</span></div><div class="d">月初＋仕入−月末。棚卸のあと確定</div></div><div class="card"><div class="l">日報の入力時間</div><div class="v">3.1<span style="font-size:14px"> 分</span></div><div class="d">今週の中央値。POS取込前は 7.8分</div></div></div>
       <div class="kpi" style="margin-top:8px"><div class="card"><div class="l">現金の過不足 ・ 今月</div><div class="v">−¥3,200</div><div class="d">3日。理由あり 3日</div></div><div class="card"><div class="l">POSと日報のずれ</div><div class="v">0<span style="font-size:14px"> 日</span></div><div class="d">売上は自動なので、ずれは起きない</div></div></div>
-      ${mgr ? `<div class="card" style="margin-top:8px"><div class="bar"><span>売上</span><i style="width:100%"></i><b>100</b></div><div class="bar"><span>原価</span><i style="width:34%;background:var(--kaki)"></i><b>33.8</b></div><div class="bar"><span>人件費</span><i style="width:28%;background:var(--hai)"></i><b>28.1</b></div><div class="bar"><span>粗利</span><i style="width:38%;background:var(--matsu)"></i><b>38.1</b></div><div class="note">店長・オーナーだけに出る行</div></div>` : ''}
+      ${mgr ? `<div class="card" style="margin-top:8px"><div class="bar"><span>売上</span><i style="width:100%"></i><b>100</b></div><div class="bar"><span>原価</span><i style="width:34%;background:var(--kaki)"></i><b>33.8</b></div><div class="bar"><span>人件費</span><i style="width:28%;background:var(--hai)"></i><b>28.1</b></div><div class="bar"><span>ロス</span><i style="width:1%;background:var(--kaki)"></i><b>0.4</b></div><div class="bar"><span>粗利</span><i style="width:38%;background:var(--matsu)"></i><b>38.1</b></div><div class="note">店長・オーナーだけに出る行</div></div>` : ''}
+      ${(() => { const buy = S.slips.reduce((a, sl) => a + taxNet(sl.a8, 8) + taxNet(sl.a10, 10), 0); const lt = lossToday(); const rest = P_.sales - buy - lt - P_.laborCost;
+        return `<div class="sec"><h2>今日の目安</h2><small>売上 − 仕入 − ロス − 人件費 ・ 確定ではない</small></div>
+      <div class="card" style="--bc:56px 1fr 84px"><div class="bar" style="grid-template-columns:var(--bc)"><span>売上</span><i style="width:100%"></i><b>${yen(P_.sales)}</b></div><div class="bar" style="grid-template-columns:var(--bc)"><span>仕入</span><i style="width:${Math.round(buy / P_.sales * 100)}%;background:var(--kaki)"></i><b>${yen(buy)}</b></div><div class="bar" style="grid-template-columns:var(--bc)"><span>ロス</span><i style="width:${Math.max(1, Math.round(lt / P_.sales * 100))}%;background:var(--kaki)"></i><b>${yen(lt)}</b></div><div class="bar" style="grid-template-columns:var(--bc)"><span>人件費</span><i style="width:${Math.round(P_.laborCost / P_.sales * 100)}%;background:var(--hai)"></i><b>${yen(P_.laborCost)}</b></div><div class="bar" style="grid-template-columns:var(--bc)"><span>残り</span><i style="width:${Math.max(0, Math.round(rest / P_.sales * 100))}%;background:var(--matsu)"></i><b>${yen(rest)}</b></div>
+        <div class="note">仕入は今日の納品書（届いた日の金額＝使った日ではない）。人件費は総括表の勤怠から。ならして見るのは月の原価率（棚卸のあと）</div></div>
+      <div class="kpi" style="margin-top:8px"><div class="card"><div class="l">人件費率 ・ 今日</div><div class="v">${(P_.laborCost / P_.sales * 100).toFixed(1)}<span style="font-size:14px">％</span></div><div class="d">${P_.laborHrs}h ・ 人時売上 ${yen(P_.sales / P_.laborHrs)}</div></div><div class="card"><div class="l">人件費率 ・ 今月</div><div class="v">28.1<span style="font-size:14px">％</span></div><div class="d">先月 29.4％ ・ 勤怠は総括表から</div></div></div>`; })()}
+      ${(() => { const rows = S.lossMonth.map(([k, n, a]) => [k, n, a]); const t = S.loss.reduce((m, l) => { const r = rows.find(x => x[0] === l.kind); if (r) { r[1] += 1; r[2] += Number(l.amt) || 0; } return m; }, 0); const tot = rows.reduce((a, r) => a + r[2], 0); const mx = Math.max(...rows.map(r => r[2]));
+        return `<div class="sec"><h2>ロス ・ 今月</h2><small>${rows.reduce((a, r) => a + r[1], 0)}件 ・ ${yen(tot)} ・ 売上の ${(tot / 5200000 * 100).toFixed(2)}％</small></div>
+      <div class="card">${rows.map(([k, n, a]) => `<div class="bar" style="grid-template-columns:118px 1fr 96px"><span style="font-size:12px">${k}</span><i style="width:${Math.round(a / mx * 100)}%;background:var(--kaki)"></i><b style="font-size:12px">${yen(a)} ・ ${n}件</b></div>`).join('')}
+        <div class="note">多い種類から直す。「作りすぎ」が多い月は仕込み量、「期限切れ」が多い月は発注と先入先出を見る。原価率と並べて月末に見返す（棚卸の④）</div></div>`; })()}
       <div class="sec"><h2>お客様の声</h2><small>自動</small></div>
       <button class="card" data-go="voice" style="width:100%;text-align:left;cursor:pointer"><div class="kpi" style="margin:0"><div><div class="l">サーベイ満足度</div><div class="v">4.6</div><div class="d">今月 38件 ・ 低評価 2件</div></div><div><div class="l">Google口コミ</div><div class="v">4.7</div><div class="d">通算 1,284件 ・ 今月 +12</div></div></div><div class="muted" style="font-size:12px;margin-top:8px">押すと、回答の一覧・来店国・来店経路・口コミの推移</div></button>
       ${S.role === 'manager' ? `<div class="sec"><h2>この店の提出物</h2><small>本部が4区分で設定 ・ 店は見るだけ</small></div>
@@ -685,6 +717,8 @@ td.b{color:var(--suou-ink);font-weight:500}
       <div class="card"><div class="hqgrid"><span></span>${items.map(i => `<span class="h">${i}</span>`).join('')}${stores.map((s, i) => `<span class="s">${s}</span>` + pat[i].slice(1).map(v => `<span class="dot ${cls(v)}"></span>`).join('')).join('')}</div><div class="note">点線＝その店では不要にした項目、またはUSENレジが無い店（本店・日本鰻の2店＝売上は手入力）。レジ締めの赤＝現金の過不足あり</div></div>
       <div class="sec"><h2>レジ締め</h2><small>USENから毎朝 ・ 7店</small></div>
       <div class="card"><div class="bar"><span>長堀橋</span><i style="width:20%;background:var(--kaki)"></i><b>−1,000</b></div><div class="bar"><span>難波</span><i style="width:40%;background:var(--kaki)"></i><b>−2,000</b></div><div class="bar"><span>富士山 牛カツ</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>浅草橋</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>心斎橋</span><i style="width:0%"></i><b>0</b></div><div class="bar"><span>広島</span><i style="width:0%"></i><b>0</b></div><div class="note">昨日の現金の過不足。理由の無い日だけ本部が聞く。全店の締め方をそろえるところから</div></div>
+      <div class="sec"><h2>ロス率 ・ 人件費率 ・ 今月</h2><small>店別 ・ 増減で評価しない</small></div>
+      <div class="card">${(() => { const st = [['長堀橋',0.35,28.1],['本店',0.62,31.0],['難波',0.21,26.4],['心斎橋',0.48,27.2],['広島',0.90,33.5]]; return `<div class="note" style="margin:0 0 4px">ロス率（ロス÷売上）</div>${st.map(([n, l]) => `<div class="bar" style="grid-template-columns:72px 1fr 52px"><span>${n}</span><i style="width:${Math.round(l / 1.0 * 100)}%;background:var(--kaki)"></i><b>${l.toFixed(2)}％</b></div>`).join('')}<div class="note" style="margin:8px 0 4px">人件費率</div>${st.map(([n, l, r]) => `<div class="bar" style="grid-template-columns:72px 1fr 52px"><span>${n}</span><i style="width:${Math.round(r / 40 * 100)}%;background:var(--hai)"></i><b>${r.toFixed(1)}％</b></div>`).join('')}`; })()}<div class="note">多い店は数字でなく「種類」と「理由」を読む（押すとその店のロス一覧）。人件費は総括表の勤怠から＝勤怠が入っていない店は「—」</div></div>
       <div class="sec"><h2>返答待ち</h2><small>3件</small></div>
       <div class="card">
         <div class="inboxrow"><img src="${P.unagiT}" alt=""><div><div class="k">気づき ・ 難波</div><div class="t">ご飯の量を聞かれることが増えた。POPに書けないか</div><div class="by">1時間前</div></div><button class="mini pri">返す</button></div>
@@ -704,7 +738,7 @@ td.b{color:var(--suou-ink);font-weight:500}
     const m = $('#main'); let html = '';
     if (S.tab === 'today') {
       const sc = S.screen;
-      html = !sc ? today() : sc === 'replies' ? replies() : sc === 'write' ? write() : sc === 'tana' ? tana() : sc === 'photo' ? screenPhoto(S.sid) : sc === 'check' ? screenCheck(S.sid) : sc === 'stock' ? screenStock(S.sid) : sc === 'nippou' ? screenNippou(S.sid) : sc === 'kizuki' ? screenKizuki() : sc === 'qr' ? screenQr() : sc === 'photoadd' ? photoAdd() : sc === 'own' ? screenOwn(S.sid) : screenWaste();
+      html = !sc ? today() : sc === 'replies' ? replies() : sc === 'write' ? write() : sc === 'tana' ? tana() : sc === 'photo' ? screenPhoto(S.sid) : sc === 'check' ? screenCheck(S.sid) : sc === 'stock' ? screenStock(S.sid) : sc === 'nippou' ? screenNippou(S.sid) : sc === 'kizuki' ? screenKizuki() : sc === 'qr' ? screenQr() : sc === 'loss' ? screenLoss() : sc === 'photoadd' ? photoAdd() : sc === 'own' ? screenOwn(S.sid) : screenWaste();
     } else if (S.tab === 'board') { if (S.screen === 'bwrite') html = boardWrite(); else { html = board(); S.boardSeen = S.board.length; } } else if (S.tab === 'search') html = search(); else if (S.tab === 'num') html = S.screen === 'regi' ? screenRegi() : S.screen === 'voice' ? screenVoice() : S.screen === 'qr' ? screenQr() : S.screen === 'ownadd' ? ownAdd() : numbers(); else html = hq();
     /* 同じ画面の中の操作（提出物の設定・拍手・在庫の±・チェック）では、描き直しても上に戻さない（2026-10-02 神田さん「設定を押すたびに上の画面にいくのやめて」）。
        画面が変わったときだけ上から */
@@ -738,6 +772,10 @@ td.b{color:var(--suou-ink);font-weight:500}
     else if (d.socr) { toast('読み取り中…'); const n = S.slips.filter(s => s.ocr).length; setTimeout(() => { S.slips.push(n % 2 === 0 ? { v:'フレッシュ', a8:'18360', a10:'', ocr:true, conf:'high' } : { v:'その他', a8:'9720', a10:'2200', ocr:true, conf:'low' }); render(); toast('読み取りました。違うところだけ直してください'); }, 900); return; }
     else if (d.sdel) { S.slips.splice(Number(d.sdel), 1); }
     else if (d.ob) { const [id, o] = d.ob.split(':'); S.oblig[id] = o; toast('長堀橋の「きょう」に反映しました'); }
+    else if (d.lkind) { S.lw.kind = d.lkind; S.lw.item = ($('#lw_item') || {}).value || ''; S.lw.qty = ($('#lw_qty') || {}).value || ''; S.lw.amt = ($('#lw_amt') || {}).value || ''; }
+    else if (d.lphoto) { S.lw.photo = !S.lw.photo; S.lw.item = ($('#lw_item') || {}).value || ''; S.lw.qty = ($('#lw_qty') || {}).value || ''; S.lw.amt = ($('#lw_amt') || {}).value || ''; }
+    else if (d.lsave) { const item = ($('#lw_item').value || '').trim(); if (!item) { toast('品目を入れてください'); return; } S.loss.push({ kind: S.lw.kind, item, qty: ($('#lw_qty').value || '').trim(), amt: Number(($('#lw_amt').value || '').replace(/[^0-9]/g, '')) || 0, by: '店舗iPad ・ ' + now(), photo: S.lw.photo }); S.lw = { kind: S.lw.kind, item:'', qty:'', amt:'', photo:false }; toast('記録しました。日報のロス金額に入ります'); }
+    else if (d.ldel) { S.loss.splice(Number(d.ldel), 1); }
     else if (d.toast) { toast(d.toast); return; }
     else if (d.clap) { const b = S.board.find(x => x.id == d.clap); if (b) b.clap = (b.clap || 0) + 1; }
     else if (d.bkind) { S.bw.kind = d.bkind; const ta = $('#bw_txt'); if (ta) S.bw.txt = ta.value; }
