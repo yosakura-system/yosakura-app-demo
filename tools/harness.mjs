@@ -6158,5 +6158,22 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
   ok(/\[data-seg="whcat"\] button \{ flex: 1 1 42%; min-width: 0; \}/.test(css), '公益通報の種類ボタン＝1つ42%幅で2列に折り返す（右端が切れない）');
 }
+// ==== 営業日の切替＝朝5時（2026-10-05 構築MTG。0時を跨ぐ締めが「翌日」扱いになっていた） ====
+{
+  ok(/const BIZ_DAY_START_H = 5;/.test(code), '営業日の切替は5時＝BIZ_DAY_START_H に書いてある');
+  ok(code.includes('const bizTs = (ts) => (Number(ts) || Date.now()) - BIZ_DAY_START_H * 3600e3;'), '時刻を5時間ずらす共通の関数がある');
+  ok(code.includes('const todayKey = () => { const d = new Date(bizTs());'), 'todayKey（日報の既定日・今日の表示）が営業日で出る');
+  ok(code.includes('const d = new Date(bizTs(ts));'), 'dateKeyFor（店舗ごとの営業日）が営業日で出る');
+  ok(code.includes('const today = calTodayKey(), latest = {};'), '未来日の番人だけは暦の日付のまま（0〜5時に当日分を落とさない）');
+  ok(code.includes('return h < BIZ_DAY_START_H ? String(h + 24) + hm.slice(2) : hm;'), '0〜5時のいまの時刻は「24時台」として返す（締切超過・時間帯が前の営業日のまま）');
+  const biz = (iso) => new Date(new Date(iso).getTime() - 5 * 3600e3).toLocaleDateString('en-CA');
+  ok(biz('2026-10-05T00:30:00+09:00') === '2026-10-04', '10/5 0:30 の締めは 10/4分');
+  ok(biz('2026-10-05T04:59:00+09:00') === '2026-10-04', '10/5 4:59 までは 10/4分');
+  ok(biz('2026-10-05T05:00:00+09:00') === '2026-10-05', '10/5 5:00 からは 10/5分');
+  ok(biz('2026-10-05T23:59:00+09:00') === '2026-10-05', '10/5 23:59 は 10/5分（日中は今までどおり）');
+  const hm24 = (h, m) => (h < 5 ? String(h + 24) : String(h).padStart(2, '0')) + ':' + String(m).padStart(2, '0');
+  ok(hm24(0, 30) > '11:00' && hm24(0, 30) > '23:00', '0:30 はどの締切よりも後＝締め忘れが赤くなる');
+  ok(hm24(10, 0) < '11:00', '10:00 は 11:00 の締切より前（日中は今までどおり）');
+}
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

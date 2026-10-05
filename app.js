@@ -678,13 +678,20 @@
   const getFP = () => lsJson('yosakura_demo_fp');
   const saveFP = (a) => localStorage.setItem('yosakura_demo_fp', JSON.stringify(a));
   // 端末の現地日付（YYYY-MM-DD）。toISOString はUTCのため、日本時間の午前9時前に「前日」になってしまう
-  const todayKey = () => { try { return new Date().toLocaleDateString('en-CA'); } catch (e) { return new Date().toISOString().slice(0, 10); } };
+  const calTodayKey = () => { try { return new Date().toLocaleDateString('en-CA'); } catch (e) { return new Date().toISOString().slice(0, 10); } };
+  /* ★営業日の切替＝朝5時（2026-10-05 構築MTG で決定。0:00案→3:00案→5:00で合意）。
+     深夜0時を超えて締め作業をすると、チェックや日報が「翌日」扱いになっていた（本店ほか）。
+     例：10/4の営業を 10/5 0:30 に締める → 10/4分。5:00以降 → 10/5分。朝営業は8〜9時なので5時で支障なし。
+     ここを通らない日付の計算を増やさない（増やすと「どっちの日か」が画面ごとに変わる）。 */
+  const BIZ_DAY_START_H = 5;
+  const bizTs = (ts) => (Number(ts) || Date.now()) - BIZ_DAY_START_H * 3600e3;
+  const todayKey = () => { const d = new Date(bizTs()); try { return d.toLocaleDateString('en-CA'); } catch (e) { return d.toISOString().slice(0, 10); } };
   /* 総括表の正規化（表示・集計はすべてこれを通す）
      ① 店舗×日付は「最新の提出」が正 ＝ 出し直しで上書きできる／同じ日が二重に並ばない
      ② 売上0以下は「取消・未提出」扱いで出さない ＝ 誤りは0で出し直せば消える（追記式バックエンドでも訂正できる）
      ③ 未来の日付は無効 ＝ まだ来ていない日の日報は存在しえない（誤入力・取込ミスの流入を止める） */
   function skClean(arr) {
-    const today = todayKey(), latest = {};
+    const today = calTodayKey(), latest = {};   // ★未来日の番人は暦の日付のまま（営業日で絞ると 0〜5時に当日分を落とす）
     /* ★同じ店×同じ日に「アプリ提出」と「シート取込（src:'drive'）」の両方があるときは、
        アプリ提出を勝たせる（2026-09-04 ユンさんの実機報告＝累計が動かない）。
        取込行は売上・客数しか持たないため、時刻の新しい取込行が勝つと、
@@ -7028,13 +7035,19 @@
   // 店舗の現地時間での日付キー（YYYY-MM-DD）
   function dateKeyFor(name, ts) {
     const tz = storeMeta(name).tz;
-    try { return new Date(ts || Date.now()).toLocaleDateString('en-CA', { timeZone: tz }); }
-    catch { return new Date(ts || Date.now()).toISOString().slice(0, 10); }
+    const d = new Date(bizTs(ts));   // ★朝5時までは前の営業日（2026-10-05 構築MTG）
+    try { return d.toLocaleDateString('en-CA', { timeZone: tz }); }
+    catch { return d.toISOString().slice(0, 10); }
   }
   function nowHMFor(name) {
     const tz = storeMeta(name).tz;
-    try { return new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' }); }
-    catch { return new Date().toTimeString().slice(0, 5); }
+    let hm;
+    try { hm = new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' }); }
+    catch { hm = new Date().toTimeString().slice(0, 5); }
+    /* ★営業日が朝5時で切り替わるので、0:00〜4:59 は前の営業日の「24時台」として返す（2026-10-05 構築MTG）。
+       そのままだと 0:30 が「00:30」＝どの締切より前になり、締め忘れが赤くならない／時間帯が「朝」に戻ってしまう */
+    const h = Number(hm.slice(0, 2));
+    return h < BIZ_DAY_START_H ? String(h + 24) + hm.slice(2) : hm;
   }
 
   // 提出物マスタ（本部が設定）。obligation: required(必須)/store(店舗運用)/off(対象外)
