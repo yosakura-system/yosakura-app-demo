@@ -322,7 +322,7 @@
     /* サーベイQR＝お客様に見せる画面（2026-09-11 神田さんのご指示＝1回のQRで回答→口コミまで完結） */
     { id:'surveyqr', group:'genba', icon:'qr', roles:['staff','manager','owner','hq'],
       name:{ ja:'サーベイQR（お客様用）', en:'Guest Survey QR', vi:'Mã QR khảo sát' },
-      desc:{ ja:'読み取り→回答→そのままGoogle口コミへ', en:'Scan → survey → Google reviews', vi:'Quét → khảo sát → đánh giá Google' } },
+      desc:{ ja:'読み取り→ご回答（富士山2店は最後に口コミのボタン）', en:'Scan → survey (review button at the end: Fujiyama 2 stores)', vi:'Quét → khảo sát (nút đánh giá: 2 cửa hàng Fujiyama)' } },
     /* 金種別入力＝長堀橋トライアル（2026-09-08 秋定さんのご要望）。「今日出すもの」の行から開く */
     { id:'kinshu', group:'genba', icon:'yen', tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'金種別入力（レジクローズ）', en:'Cash Denomination Count', vi:'Kiểm đếm mệnh giá' },
