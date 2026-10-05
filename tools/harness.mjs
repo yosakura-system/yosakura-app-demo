@@ -4761,9 +4761,15 @@ console.log('== サーベイQR＝1回の読み取りで回答→Google口コミ�
   // 店舗ページのある店＝QRと案内が出る
   let h = renderView('surveyqr', 'staff', '牛カツ世桜 長堀橋店', 'ja');
   ok(/<svg/.test(h) && /yskなし|ご来店アンケートにご協力ください/.test(h), 'QR（埋め込みSVG）と声かけ文が出る');
-  ok(/Google口コミのボタンが表示されます/.test(h) && /星の点数に関係なく/.test(h), '仕組みの説明（全員同じ案内＝ポリシー準拠）が書いてある');
-  ok(/自動では進まない/.test(h) && /青いボタンを指さして/.test(h), '自動移動なし＝指さしのあと押し、が書いてある（2026-09-11 v3導線に一致）');
-  ok(/data-openurl="https:\/\/yosakura-system\.github\.io\/yosakura-survey\/talk-script\.pdf"/.test(h) && /お声かけの例文を開く/.test(h),
+  /* ★2026-10-05 常山さん＝口コミのご案内は富士山2店だけ。長堀橋では出ないので、説明は富士山の店で確かめる */
+  const hFj = renderView('surveyqr', 'staff', '牛カツ世桜 富士山店', 'ja');
+  ok(/Google口コミのボタンが表示されます/.test(hFj) && /星の点数に関係なく/.test(hFj), '仕組みの説明（全員同じ案内＝ポリシー準拠）が書いてある');
+  ok(/自動では進まない/.test(hFj) && /青いボタンを指さして/.test(hFj), '自動移動なし＝指さしのあと押し、が書いてある（2026-09-11 v3導線に一致）');
+  ok(!/Google口コミのボタンが表示されます/.test(h), '長堀橋（出さない店）には口コミのボタンの説明が出ない');
+  /* ★2026-10-05 お声かけ例文は「最後にGoogleのボタンまで」と言い切る中身＝口コミが出る店だけに出す */
+  ok(!/talk-script\.pdf/.test(h), '出さない店（長堀橋）にはお声かけ例文のボタンを出さない＝事実と違う案内を防ぐ');
+  ok(/1分だけアンケートにご協力ください/.test(h), '出さない店には、アンケートだけのお声かけの一文が出る');
+  ok(/data-openurl="https:\/\/yosakura-system\.github\.io\/yosakura-survey\/talk-script\.pdf"/.test(hFj) && /お声かけの例文を開く/.test(hFj),
      'お声かけ例文PDFをQR画面から開ける（マニュアルの奥に埋めない）');
   // ページ未整備の店＝準備中（QRの声かけ文が出ない）
   h = renderView('surveyqr', 'staff', '手巻き寿司世桜 難波店', 'ja');
@@ -6174,6 +6180,27 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   const hm24 = (h, m) => (h < 5 ? String(h + 24) : String(h).padStart(2, '0')) + ':' + String(m).padStart(2, '0');
   ok(hm24(0, 30) > '11:00' && hm24(0, 30) > '23:00', '0:30 はどの締切よりも後＝締め忘れが赤くなる');
   ok(hm24(10, 0) < '11:00', '10:00 は 11:00 の締切より前（日中は今までどおり）');
+}
+// ==== サーベイQR画面＝口コミのご案内が出る店と出ない店で説明文が変わる（2026-10-05 常山さん） ====
+{
+  ok(code.includes("const SURVEY_REVIEW_STORES = ['牛カツ世桜 富士山店', '日本鰻世桜 富士山店'];"), '口コミのご案内が出る店＝富士山2店だけ、が1か所に書いてある');
+  ok(/const rv = SURVEY_REVIEW_STORES\.includes\(store\);/.test(code), '店によって説明文を変えている');
+  ok(code.includes('読み取り→アンケート→最後にGoogle口コミのボタン'), '出る店の帯＝口コミのボタンが出ると書いてある');
+  ok(code.includes('読み取り→アンケートのご回答まで'), '出ない店の帯＝アンケートまで、と書いてある');
+  ok(code.includes('この店舗は、ご回答のあとのお礼画面までです（口コミのご案内は出ません）'), '出ない店の注意書きがある');
+  ok(!/◆ お客様にこの画面のQRをお見せください（読み取り→アンケート→そのままGoogleの口コミ画面へ）/.test(code), '全店に「そのままGoogleへ」と書く古い文が残っていない');
+  // 画面を実際に描いて確かめる
+  run(() => { setLS('manager', '牛カツ世桜 富士山店', 'ja'); });
+  location.hash = '#/app/surveyqr';
+  const hFuji = registry.app.innerHTML;
+  ok(/最後にGoogle口コミのボタン/.test(hFuji), '富士山の店＝口コミのボタンが出る案内');
+  ok(!/口コミのご案内は出ません/.test(hFuji), '富士山の店に「出ません」が出ていない');
+  run(() => { setLS('manager', '日本料理世桜本店', 'ja'); });
+  location.hash = '#/app/surveyqr';
+  const hHonten = registry.app.innerHTML;
+  ok(/アンケートのご回答まで/.test(hHonten), '本店＝アンケートまで、の案内');
+  ok(/口コミのご案内は出ません/.test(hHonten), '本店＝口コミのご案内は出ない、と書いてある');
+  ok(!/最後にGoogle口コミのボタン/.test(hHonten), '本店に口コミのボタンの案内が出ていない');
 }
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
