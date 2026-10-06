@@ -4294,7 +4294,7 @@
   const svSig = (a, st) => JSON.stringify([a.v || '', a.memo || '', (a.photos || []).map(p => isDataUrl(p) ? p.length : p), a.by || '', st ? [st.text || '', (st.photos || []).map(p => isDataUrl(p) ? p.length : p)] : null]);
   function svItemHtml(it) {
     const a = svAns(it.no) || {};
-    const showMemo = !!a.v || (a.memo || '').trim() || (a.photos || []).length;   // 対象外でもメモ可（2026-09-17）
+    const showMemo = true;   // ★メモ欄は常に出す（2026-10-06 神田さん「コメント欄が無かったらダメ」＝○×の前でも書ける。対象外でも可）
     const phs = Array.isArray(a.photos) ? a.photos.filter(Boolean) : [];
     return `<div class="svit ${a.v ? 'v-' + a.v : ''}" data-svno="${esc(String(it.no))}" data-sig="${esc(svSig(a, svStdOf(it.no)))}">
         <div class="svit-h"><span class="svit-no">${typeof it.no === 'number' ? 'No.' + it.no : '体験'}</span>${it.pt ? `<span class="svit-pt pt${it.pt}">${it.pt}点</span>` : ''}${it.tag ? `<span class="svit-tag">${esc(it.tag)}</span>` : ''}${a.by ? `<span class="svit-by">${esc(a.by)}</span>` : ''}</div>
@@ -4330,10 +4330,13 @@
       const it = SV_ITEMS.find(i => String(i.no) === b.dataset.svno); if (!it) return;
       const cur = svAns(it.no) || {};
       svPushLocal(it.no, { v: cur.v === b.dataset.svv ? '' : b.dataset.svv });   // 同じ印をもう一度＝取り消し
+      svApplyDomFor_(it.no);   // ★押した項目は必ず差し替える（基準を開いていても・2026-10-06）
       svApplyDom();
     });
     document.querySelectorAll('[data-svmemo]').forEach(ta => {
       ta.onchange = () => { const it = SV_ITEMS.find(i => String(i.no) === ta.dataset.svmemo); if (it) { svPushLocal(it.no, { memo: ta.value }); const el = ta.closest('.svit'); if (el) el.dataset.sig = svSig(svAns(it.no) || {}); const pre = byId('svText'); if (pre) pre.textContent = svReportText(); } };
+      /* ★打っている途中も2秒止まったら保存（2026-10-06）＝欄から出る前に画面を閉じてもメモが消えない */
+      ta.oninput = () => { clearTimeout(ta._svT); ta._svT = setTimeout(() => { try { ta.onchange(); } catch (e) {} }, 2000); };
     });
     /* 写真＝1回に1枚（iPhoneの複数選択は届かないことがある＝2026-08-25）。押すたびに足せる・最大6枚。
        写真そのものはこの行と一緒に送り、サーバーが保存したIDに置き換わる（端末にはサムネイル用の縮小版だけ残す） */
@@ -4353,7 +4356,7 @@
       const next = Object.assign({}, cur, { photos: phsLocal, by: (a && a.name) || '本部', t: Date.now() });
       all[k] = next; saveSv(all);
       postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phsLocal.length })), photos: photosForSend_(phsLocal), t: next.t });
-      svApplyDom();
+      svApplyDomFor_(it.no); svApplyDom();
     });
     /* 基準（あるべき姿）の登録＝本部共通。No ごとに1行（最新が正） */
     const svStdPush = (no, patch, phs, phsSend) => {
@@ -4390,7 +4393,7 @@
       const next = Object.assign({}, cur, { photos: phs, by: (a && a.name) || '本部', t: Date.now() });
       all[k] = next; saveSv(all);
       postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phs.length })), photos: photosForSend_(phs), t: next.t });
-      svApplyDom();
+      svApplyDomFor_(it.no); svApplyDom();
     });
   }
   /* 1項目だけ強制的に差し替える（基準欄を開いたままでも）。差し替え後に基準欄は開いたままにする */
