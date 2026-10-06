@@ -4411,7 +4411,9 @@
         const a = svAns(it.no) || {};
         if (el.querySelector('details.svstd[open]')) return;   // 基準を開いて見ている項目は差し替えない
         if (el.dataset.sig === svSig(a, svStdOf(it.no))) return;
-        if (ae && el.contains(ae)) return;
+        /* ★入力中（メモ・基準の欄に文字を打っている）項目だけ触らない。ボタンは対象外＝PCは押したボタンに
+           フォーカスが残るため、押した項目そのものが差し替えられず「○×が反映しない・メモ欄が出ない」になっていた（2026-10-06 神田さん） */
+        if (ae && el.contains(ae) && /^(TEXTAREA|INPUT|SELECT)$/.test(ae.tagName || '') && ae.type !== 'file') return;
         const tmp = document.createElement('div'); tmp.innerHTML = svItemHtml(it);
         el.replaceWith(tmp.firstElementChild);
       });
