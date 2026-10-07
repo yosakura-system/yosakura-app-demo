@@ -721,7 +721,39 @@
       USEN_FIELDS.forEach(f => { if (u[f] != null && u[f] !== '') m[f] = u[f]; });
       latest[k] = m;
     });
-    return Object.values(latest).filter(r => (Number(r.sales) || 0) > 0);
+    const out = Object.values(latest).filter(r => (Number(r.sales) || 0) > 0).map(r => Object.assign({}, r));
+    /* ★自動で取れている数字を、日報の記録に補う（2026-10-07 神田さん＝前日の中身を見たら、USENで拾った数字も
+       アプリが自動で取っている数字も入っていない）。これまでは「人が日報を出した日」にだけ、口コミ当日（毎晩の
+       Google口コミ取得）・口コミ累計・月累計売上が入っていた＝USENや総括表取込だけの日は「—」のまま。
+       保存はしない（表示の計算）。補った欄には auto の印を付け、明細では「（自動）」と出す。
+       ★累計の起点（skCumBase の lastApp）は auto.mtd の行を起点にしない＝チップ・キャンセルの累計が0に戻らないように */
+    const gs = {};
+    try {
+      getReports().forEach(x => {
+        if (!x || x.kind !== 'gsnap') return;
+        const p = parseNote(x.note); if (!p || p.src !== 'places' || typeof p.gained !== 'number') return;
+        const k = x.store + '||' + dateKeyOfItem(x.item);
+        if (!gs[k] || (Number(x.t) || 0) > gs[k].t) gs[k] = { t: Number(x.t) || 0, g: p.gained };
+      });
+    } catch (e) {}
+    const has = (v) => v != null && v !== '' && !(typeof v === 'number' && isNaN(v));
+    const byM = {};
+    out.forEach(r => { const k = r.store + '||' + String(r.date).slice(0, 7); (byM[k] = byM[k] || []).push(r); });
+    Object.values(byM).forEach(arr => {
+      arr.sort((a, b) => a.date < b.date ? -1 : 1);
+      let sumS = 0, rvaBase = 0, rvaAcc = 0;   // 口コミ累計＝人が出した行の値を起点に、そのあとの日の口コミ当日を足す（skCumBase と同じ鎖）
+      arr.forEach(r => {
+        const auto = {};
+        if (!has(r.rvt)) { const g = gs[r.store + '||' + r.date]; if (g) { r.rvt = g.g; auto.rvt = 'gsnap'; } }
+        sumS += Number(r.sales) || 0;
+        if (!has(r.mtd)) { r.mtd = sumS; auto.mtd = 'calc'; }
+        if (has(r.rva)) { rvaBase = Number(r.rva) || 0; rvaAcc = 0; }
+        else { rvaAcc += Number(r.rvt) || 0; r.rva = rvaBase + rvaAcc; auto.rva = 'calc'; }
+        if (r.pos && !has(r.disc)) { r.disc = 0; auto.disc = 'pos'; }   // レジの値割引0＝「—」でなく0
+        if (Object.keys(auto).length) r.auto = auto;
+      });
+    });
+    return out;
   }
   /* ★日報の出どころ（2026-09-30 神田さん「アプリ入力なのか、USENなのか、総括表取込なのか分かるように」）
      app＝アプリ入力／drive＝総括表取込／usen＝USENレジ／app+usen・drive+usen＝行のもとはアプリ（総括表）で
@@ -757,7 +789,7 @@
     const inM = rows.filter(r => String(r.date).slice(0, 7) === ym);
     /* 起点にできるのは累計欄を持つ行（＝アプリ提出。取込・旧形式は売上・客数のみ）。
        月累計売上が入っていれば累計欄を持つ行と見なす（提出があれば当日売上ぶんは必ず入る） */
-    const lastApp = (arr) => { let x = null; arr.forEach(r => { if ((Number(r.mtd) || 0) > 0 && (!x || r.date > x.date)) x = r; }); return x; };
+    const lastApp = (arr) => { let x = null; arr.forEach(r => { if ((Number(r.mtd) || 0) > 0 && !(r.auto && r.auto.mtd) && (!x || r.date > x.date)) x = r; }); return x; };   // ★表示で補った mtd（auto）は起点にしない（2026-10-07）
     const am = lastApp(inM);    // 月内の起点（チップ・キャンセル・口コミ＝月が替わると0から）
     /* ★月累計売上は「前回のmtd欄の引き継ぎ」をやめ、当月のΣ当日売上で毎回計算し直す
        （2026-09-05 ユンさんの実機報告＝売上の累計が前日の値のまま増えない）。
@@ -777,7 +809,9 @@
       mtd,
       tipa:   am ? Number(am.tipa)   || 0 : 0,
       cancel: am ? Number(am.cancel) || 0 : 0,
-      rva:    am ? Number(am.rva)    || 0 : 0,   // 口コミ累計＝月間（総括表の定義・2026-10-01）
+      /* 口コミ累計＝月間（総括表の定義・2026-10-01）。★起点のあとに「人が出していない日」（USEN・総括表取込だけの日）が
+         あれば、その日の口コミ当日（毎晩の自動取得で補った値）も足す＝明細の表示（skClean の補い）と同じ値になる（2026-10-07） */
+      rva:    (am ? Number(am.rva) || 0 : 0) + inM.filter(r => !am || r.date > am.date).reduce((t, r) => t + (Number(r.rvt) || 0), 0),
       buym
     };
   }
@@ -5585,6 +5619,10 @@
        現場が「シートと違う」と感じる箇所を減らすために合わせた。 */
     { k:'cash',    t:{ ja:'現金売上', en:'Cash sales', vi:'DT tiền mặt' },      f:'yen' },
     { k:'card',    t:{ ja:'カード売上', en:'Card sales', vi:'DT thẻ' },         f:'yen' },
+    /* ★USENレジから入る項目（2026-10-07 神田さん「USENで拾ったデータが全部入っていない」＝記録にはあったが欄が無く見えなかった）。
+       入力欄は作らない（レジから自動）。値がある日だけ明細に出す */
+    { k:'emoney',  t:{ ja:'電子マネー売上（レジ）', en:'E-money sales (POS)', vi:'DT ví điện tử (POS)' }, f:'yen', opt:true },
+    { k:'point',   t:{ ja:'ポイント利用（レジ）', en:'Points used (POS)', vi:'Điểm đã dùng (POS)' },     f:'yen', opt:true },
     { k:'lunch',   t:{ ja:'昼のみ売上', en:'Lunch-only sales', vi:'DT buổi trưa' }, f:'yen' },
     { k:'buy',     t:{ ja:'仕入金額（当日・税抜）', en:'Purchases today (excl. tax)', vi:'Nhập hàng hôm nay (chưa thuế)' }, f:'yen' },
     /* 画面304＝税込の3欄（入力した日だけ出す） */
@@ -5649,7 +5687,7 @@
   function skFieldGrid(r) {
     // legacy＝旧形式の項目・opt＝店舗トライアルの項目。どちらも値が入っている日報でだけ表示する
     const flds = SK_FIELDS.filter(f => (!f.legacy && !f.opt) || hasVal(r[f.k]));
-    const filled = flds.filter(f => hasVal(r[f.k])).length;
+    const filled = flds.filter(f => hasVal(r[f.k]) && !(r.auto && r.auto[f.k])).length;   // ★表示で補った欄（自動）は「入力済み」に数えない（2026-10-07）
     const per = numOr0(r.guests) ? Math.round(numOr0(r.sales) / numOr0(r.guests)) : 0;
     const fl = hasVal(r.food) ? (numOr0(r.food) + numOr0(r.labor)).toFixed(1) + '%' : '';
     return `
@@ -5663,7 +5701,7 @@
       ${fl ? `<p class="hint" style="display:block">FL ${esc(fl)}（${L({ ja:'原価', en:'Food', vi:'Giá vốn' })} ${esc(numOr0(r.food).toFixed(1))}% ＋ ${L({ ja:'人件費', en:'Labor', vi:'Nhân sự' })} ${esc(numOr0(r.labor).toFixed(1))}%）</p>` : ''}
       ${(numOr0(r.hours) && numOr0(r.sales)) ? `<p class="hint" style="display:block">${L({ ja:'人時生産性（自動計算）', en:'Sales per hour (auto)', vi:'DT/giờ (tự động)' })} ¥${Math.round(numOr0(r.sales)/numOr0(r.hours)).toLocaleString('en-US')}/h${(numOr0(r.laborcost)) ? `　/　${L({ ja:'人件費率（自動計算）', en:'Labor % (auto)', vi:'% NS (tự động)' })} ${(numOr0(r.laborcost)/numOr0(r.sales)*100).toFixed(1)}%` : ''}</p>` : ''}
       <div class="dgrid">
-        ${flds.map(f => `<div class="dcell${hasVal(r[f.k]) ? '' : ' off'}"><span class="dk">${esc(L(f.t))}</span><b class="dv">${hasVal(r[f.k]) ? skFmtVal(f.f, r[f.k]) : '—'}</b></div>`).join('')}
+        ${flds.map(f => `<div class="dcell${hasVal(r[f.k]) ? '' : ' off'}"><span class="dk">${esc(L(f.t))}${(r.auto && r.auto[f.k]) ? L({ ja:'（自動）', en:' (auto)', vi:' (tự động)' }) : ''}</span><b class="dv">${hasVal(r[f.k]) ? skFmtVal(f.f, r[f.k]) : '—'}</b></div>`).join('')}
       </div>
       ${Object.keys(ctyOf(r)).length ? `
         <div class="idlabel" style="margin-top:14px">${L({ ja:'お客様の内訳（国別）', en:'Guests by country', vi:'Khách theo quốc gia' })}
@@ -6883,24 +6921,24 @@
     mask.addEventListener('click', (e) => { if (e.target === mask) { mask.remove(); } });
     document.body.appendChild(mask);
     const pc = mask.querySelector('[data-pwclose]'); if (pc) pc.onclick = () => mask.remove();
-      const pws = mask.querySelector('[data-pwsave]');
-    if (pws) pws.onclick = () => {
-      const msg = mask.querySelector('#pw_msg'); const say = (t2, ok) => { if (msg) { msg.textContent = t2; msg.style.display = 'block'; msg.style.color = ok ? '#2a7' : '#B5533C'; } };
-      const o = (mask.querySelector('#pw_old') || {}).value || '', n1 = (mask.querySelector('#pw_new1') || {}).value || '', n2 = (mask.querySelector('#pw_new2') || {}).value || '';
-      if (!o) return say(L({ ja:'いまのパスワードを入れてください', en:'Enter the current password.', vi:'Nhập mật khẩu hiện tại.' }), false);
-      if (n1.length < 6) return say(L({ ja:'新しいパスワードは6文字以上にしてください', en:'New password must be 6+ characters.', vi:'Mật khẩu mới phải từ 6 ký tự.' }), false);
-      if (n1 !== n2) return say(L({ ja:'新しいパスワードが2回で違います', en:'The two entries do not match.', vi:'Hai lần nhập không khớp.' }), false);
-      if (n1 === o) return say(L({ ja:'いまと同じパスワードです。別のものにしてください', en:'Same as the current password.', vi:'Trùng mật khẩu hiện tại.' }), false);
-      pws.disabled = true; say(L({ ja:'変更しています…', en:'Changing…', vi:'Đang đổi…' }), true);
-      fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: 'chpw', token: authToken(), oldPw: o, newPw: n1, kickOthers: true }) }).then(r => r.json()).then(d => {
-        pws.disabled = false;
-        if (!d || !d.ok) { return say(d && d.error === 'OLDPW_WRONG' ? L({ ja:'いまのパスワードが違います', en:'Current password is wrong.', vi:'Mật khẩu hiện tại sai.' }) : L({ ja:'変更できませんでした。通信を確かめてもう一度', en:'Could not change. Check the connection and retry.', vi:'Không đổi được. Kiểm tra mạng và thử lại.' }), false); }
-        const a = getAuth(); if (a) { a.pwYm = d.pwYm || new Date().toISOString().slice(0, 7); a.mustChange = false; setAuth(a); }
-        say(L({ ja:'変更しました。ほかの端末はログアウトされました。新しいパスワードを在籍スタッフに伝えてください', en:'Changed. Other devices were signed out. Share the new password with current staff.', vi:'Đã đổi. Các thiết bị khác đã đăng xuất. Hãy báo mật khẩu mới cho nhân viên.' }), true);
-        ['#pw_old', '#pw_new1', '#pw_new2'].forEach(id => { const el = mask.querySelector(id); if (el) el.value = ''; });
-        toast(L({ ja:'パスワードを変更しました', en:'Password changed', vi:'Đã đổi mật khẩu' }));
-        setTimeout(() => { mask.remove(); render(); }, 1200);
-      }).catch(() => { pws.disabled = false; say(L({ ja:'通信できませんでした。もう一度お試しください', en:'Network error. Try again.', vi:'Lỗi mạng. Thử lại.' }), false); });
+      const pws = mask.querySelector('[data-pwsave]');
+    if (pws) pws.onclick = () => {
+      const msg = mask.querySelector('#pw_msg'); const say = (t2, ok) => { if (msg) { msg.textContent = t2; msg.style.display = 'block'; msg.style.color = ok ? '#2a7' : '#B5533C'; } };
+      const o = (mask.querySelector('#pw_old') || {}).value || '', n1 = (mask.querySelector('#pw_new1') || {}).value || '', n2 = (mask.querySelector('#pw_new2') || {}).value || '';
+      if (!o) return say(L({ ja:'いまのパスワードを入れてください', en:'Enter the current password.', vi:'Nhập mật khẩu hiện tại.' }), false);
+      if (n1.length < 6) return say(L({ ja:'新しいパスワードは6文字以上にしてください', en:'New password must be 6+ characters.', vi:'Mật khẩu mới phải từ 6 ký tự.' }), false);
+      if (n1 !== n2) return say(L({ ja:'新しいパスワードが2回で違います', en:'The two entries do not match.', vi:'Hai lần nhập không khớp.' }), false);
+      if (n1 === o) return say(L({ ja:'いまと同じパスワードです。別のものにしてください', en:'Same as the current password.', vi:'Trùng mật khẩu hiện tại.' }), false);
+      pws.disabled = true; say(L({ ja:'変更しています…', en:'Changing…', vi:'Đang đổi…' }), true);
+      fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: 'chpw', token: authToken(), oldPw: o, newPw: n1, kickOthers: true }) }).then(r => r.json()).then(d => {
+        pws.disabled = false;
+        if (!d || !d.ok) { return say(d && d.error === 'OLDPW_WRONG' ? L({ ja:'いまのパスワードが違います', en:'Current password is wrong.', vi:'Mật khẩu hiện tại sai.' }) : L({ ja:'変更できませんでした。通信を確かめてもう一度', en:'Could not change. Check the connection and retry.', vi:'Không đổi được. Kiểm tra mạng và thử lại.' }), false); }
+        const a = getAuth(); if (a) { a.pwYm = d.pwYm || new Date().toISOString().slice(0, 7); a.mustChange = false; setAuth(a); }
+        say(L({ ja:'変更しました。ほかの端末はログアウトされました。新しいパスワードを在籍スタッフに伝えてください', en:'Changed. Other devices were signed out. Share the new password with current staff.', vi:'Đã đổi. Các thiết bị khác đã đăng xuất. Hãy báo mật khẩu mới cho nhân viên.' }), true);
+        ['#pw_old', '#pw_new1', '#pw_new2'].forEach(id => { const el = mask.querySelector(id); if (el) el.value = ''; });
+        toast(L({ ja:'パスワードを変更しました', en:'Password changed', vi:'Đã đổi mật khẩu' }));
+        setTimeout(() => { mask.remove(); render(); }, 1200);
+      }).catch(() => { pws.disabled = false; say(L({ ja:'通信できませんでした。もう一度お試しください', en:'Network error. Try again.', vi:'Lỗi mạng. Thử lại.' }), false); });
     };
     const f = mask.querySelector('#pw_old'); if (f) setTimeout(() => f.focus(), 50);
   }

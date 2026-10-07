@@ -4292,6 +4292,45 @@ console.log('== 写真はあるのに読めなかった夜を、黙って「何�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 自動で取れている数字を日報の記録に補う（2026-10-07 神田さん＝前日の中身にUSEN・自動取得の数字が入っていない）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const dOff = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toLocaleDateString('en-CA'); };
+  const t0 = dOff(0), d1 = dOff(2), d2 = dOff(1);
+  if ([d1, d2].every(d => d.slice(0, 7) === t0.slice(0, 7))) {
+    const seed = (tab) => run(() => {
+      setLS('manager', S, 'ja');
+      localStorage.setItem('yosakura_soukatsu_tab', tab);
+      localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+        // 人が出した日報（口コミ当日1・累計1・チップ累計5000）
+        { store: S, date: d1, sales: 100000, guests: 30, mtd: 100000, rvt: 1, rva: 1, tipa: 5000, t: Date.now() - 2 * 86400e3 },
+        // USENレジだけの日（人は出していない）＝電子マネー8,600・値引きは0なので無い
+        { store: S, date: d2, sales: 120000, net: 109091, guests: 40, cash: 50000, card: 61400, emoney: 8600, src: 'usen', t: Date.now() - 86400e3 }
+      ]));
+      // 毎晩のGoogle口コミ取得（gsnap）＝USENだけの日に2件
+      localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+        { kind: 'gsnap', store: S, item: d2, note: JSON.stringify({ src: 'places', total: 400, rating: 4.6, gained: 2 }), photos: [], t: Date.now() - 3600e3 }
+      ]));
+    });
+    seed('input');
+    location.hash = '#/store?s=' + encodeURIComponent(S) + '&x=auto1';   // 明細（全項目）は店舗ページに出る
+    const h = registry.app.innerHTML;
+    ok(/口コミ 当日（自動）<\/span><b class="dv">2</.test(h), 'USENだけの日＝口コミ当日は毎晩の自動取得から補われ「（自動）」と出る');
+    ok(/月累計売上（自動）<\/span><b class="dv">[^<]*220,000/.test(h), 'USENだけの日＝月累計売上はΣ当日売上（10万＋12万）で補われる');
+    ok(/口コミ 累計（自動）<\/span><b class="dv">3</.test(h), 'USENだけの日＝口コミ累計は前回の累計1＋当日2＝3');
+    ok(/電子マネー売上（レジ）<\/span><b class="dv">[^<]*8,600/.test(h), 'レジの電子マネーが明細に出る（欄が無くて見えなかった）');
+    ok(/値引き（自動）<\/span><b class="dv">[^<]*0</.test(h), 'レジの値引き0は「—」でなく0');
+    ok(/<b>6 \/ \d+<\/b>/.test(h), '補った欄（口コミ当日・累計・月累計・値引き0）は「入力済み」に数えない＝レジから入った6項目だけ');
+    seed('input');
+    location.hash = '#/app/soukatsu?tab=input&x=auto2';
+    const h2 = registry.app.innerHTML;
+    ok(/id="sk_tipa"[^>]*value="5000"/.test(h2), '累計の起点＝補った行を起点にしない（チップ累計5000が残る）');
+    ok(/id="sk_mtd"[^>]*value="220000"/.test(h2), '月累計売上の起点＝Σ当日売上');
+    ok(/id="sk_rva"[^>]*value="3"/.test(h2), '口コミ累計の起点＝明細の表示と同じ3（起点1＋USENだけの日の自動2）');
+    run(() => { localStorage.removeItem('yosakura_demo_reports'); });
+  } else ok(true, '（月初のため省略）');
+}
+
 console.log('== 月累計売上＝当月のΣ当日売上で毎回計算し直す（2026-09-05 ユンさんの実機報告＝壊れた累計が引き継がれ続ける）==');
 {
   const S = '日本料理世桜本店';
