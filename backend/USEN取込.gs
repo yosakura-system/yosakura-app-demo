@@ -163,6 +163,7 @@ function usen_readFolder_() {
    Code.gs の doPost の先頭で usen_api_(data) を呼ぶ。kind:'usen_import' のときだけ動き、それ以外は null（通常の提出へ）。
    合言葉＝Script Properties の USEN_POST_KEY（英字まじり）。受け取った表を「USEN貼付」シートに置き換えてから取込を走らせ、結果を返す */
 function usen_api_(data) {
+  if (data && data.kind === 'skwb' && typeof skwb_api_ === 'function') return skwb_api_(data);   // ★2026-10-07 総括表への書き戻し（総括表書き戻し.gs）
   if (!data || data.kind !== 'usen_import') return null;
   var key = String(getSetting_('USEN_POST_KEY', '') || '');
   if (!key || String(data.key || '') !== key) return { ok: false, error: 'USEN_KEY' };
@@ -178,7 +179,8 @@ function usen_api_(data) {
     rows = rows.map(function (r) { while (r.length < w) r.push(''); return r; });
     sh.getRange(1, 1, rows.length, w).setValues(rows);
     var 結果 = usen_実行_(data.dryRun ? false : true);
-    return { ok: true, rows: rows.length - 1, result: 結果 };
+    var 書き戻し = (!data.dryRun && typeof skwb_afterUsen_ === 'function') ? skwb_afterUsen_() : null;   // SKWB_ENABLED=true のときだけ動く
+    return { ok: true, rows: rows.length - 1, result: 結果, skwb: 書き戻し };
   } finally { lock.releaseLock(); }
 }
 

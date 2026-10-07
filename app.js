@@ -7435,13 +7435,32 @@
     sum:   { ja:'フード＋ドリンク≠売上', en:'Food+drink ≠ sales', vi:'Món+đồ uống ≠ doanh thu' },
     count: { ja:'フードが小さすぎ（個数？）', en:'Food too small (count?)', vi:'Món ăn quá nhỏ (số lượng?)' },
     guest: { ja:'客数が空', en:'No guest count', vi:'Thiếu số khách' },
-    unit:  { ja:'客単価が普段と違う', en:'Unit price off', vi:'Đơn giá bất thường' },
+    // ★客単価（普段の±40%外）は外した（2026-10-07 神田さん「日々結構波が多いので、もう警告しなくていい」）
+    pos:   { ja:'総括表とPOSが違う', en:'Sheet ≠ POS', vi:'Bảng tổng hợp ≠ POS' },
     reg:   { ja:'レジ差が0でない', en:'Register diff ≠ 0', vi:'Lệch két' },
     lunch: { ja:'昼の売上＞合計', en:'Lunch > total', vi:'Trưa > tổng' },
     cc:    { ja:'現金＋カード＞売上', en:'Cash+card > sales', vi:'Tiền mặt+thẻ > doanh thu' },
     swap:  { ja:'フードとドリンクが逆では？', en:'Food/drink swapped?', vi:'Món/đồ uống bị đảo?' }
   };
   const numN_ = (v) => { const n = Number(String(v == null ? '' : v).replace(/[,円\s]/g, '')); return (v === '' || v == null || isNaN(n)) ? null : n; };
+  /* ★総括表とPOS（USENレジ）のずれ（2026-10-07 神田さん＝C案）。
+     skClean は店×日を1行にまとめてしまうので、取込の生の行から「総括表（src:'drive'）の最新」と「USEN の最新」を並べて比べる。
+     総括表が空欄（取込行に項目が無い）はずれにしない＝空欄は総括表書き戻し.gs が埋める。総括表側のセルには同じずれがメモで付く。
+     書き戻しを始めた 10月から（9月はレジ締めの誤りがあり、一覧が埋まるため） */
+  const NUM_POS_SINCE = '2026-10-01';
+  const NUM_POS_FIELDS = [['cash', '現金', '円'], ['card', 'カード', '円'], ['net', '純売上', '円'], ['guests', '客数', '人'], ['disc', '値引き', '円']];
+  let _numPosCache = null;
+  function numPosPairs_() {
+    let raw = null; try { raw = localStorage.getItem('yosakura_demo_soukatsu'); } catch (e) { return {}; }
+    if (_numPosCache && _numPosCache.raw === raw) return _numPosCache.val;   // 描画のたびに読み直さない
+    const val = {}; let arr = []; try { arr = JSON.parse(raw) || []; } catch (e) { arr = []; }
+    arr.forEach(r => {
+      if (!r || !r.store || !r.date || r.date < NUM_POS_SINCE || (r.src !== 'drive' && r.src !== 'usen')) return;
+      const k = r.store + '||' + r.date; const o = val[k] || (val[k] = {});
+      if (!o[r.src] || (Number(r.t) || 0) >= (Number(o[r.src].t) || 0)) o[r.src] = r;
+    });
+    _numPosCache = { raw, val }; return val;
+  }
   function getNumAck() { try { return JSON.parse(localStorage.getItem(NUM_ACK_LS) || '{}') || {}; } catch (e) { return {}; } }
   function saveNumAck(o) { try { localStorage.setItem(NUM_ACK_LS, JSON.stringify(o)); } catch (e) {} }
   /* 直近 days 日の日報を店舗ごとに検査して、要確認の一覧を返す */
@@ -7472,7 +7491,12 @@
         // 個数疑い＝1,000円未満だけ（増田さん 2026-09-17＝海外のお客様が多くキャッシュレス中心。フードが4桁の日もあるので4桁以上は拾わない）
         if (food != null && food > 0 && food < 1000) add('count', `フード${food.toLocaleString()}・ドリンク${drink == null ? '—' : drink.toLocaleString()}／売上${sales.toLocaleString()}`);
         if (!guests) add('guest', `売上${sales.toLocaleString()}・客数なし`);
-        if (guests && med) { const u = sales / guests; if (u < med * 0.6 || u > med * 1.4) add('unit', `客単価${Math.round(u).toLocaleString()}円（普段${Math.round(med).toLocaleString()}円）`); }
+        { const pr = numPosPairs_()[st + '||' + r.date];
+          if (pr && pr.drive && pr.usen) {
+            const diff = NUM_POS_FIELDS.filter(f => { const a = numN_(pr.drive[f[0]]); if (a == null || a === 0) return false; const b = numN_(pr.usen[f[0]]) || 0; return Math.abs(a - b) > (f[0] === 'net' ? 1 : 0); })
+              .map(f => `${f[1]} 総括表${numN_(pr.drive[f[0]]).toLocaleString()}${f[2]}／POS${(numN_(pr.usen[f[0]]) || 0).toLocaleString()}${f[2]}`);
+            if (diff.length) out.push({ store: st, date: r.date, code: 'pos', vals: diff.join('・'), src: 'drive' });
+          } }
         // 前週同曜日との比較は外した（2026-09-17 神田さん＝インバウンドが中心で同じお客様が来るわけではない。売上の増減は異常ではない）
         if (err != null && err !== 0) add('reg', `レジ差${err.toLocaleString()}円`);
         if (lunch != null && lunch > sales) add('lunch', `昼${lunch.toLocaleString()}／合計${sales.toLocaleString()}`);
@@ -7520,7 +7544,7 @@
           <span class="ksum-i ok"><b>${list.length - open.length}</b>${L({ ja:'件 確認済み', en:' checked', vi:' đã xác nhận' })}</span>
           <button type="button" class="mini" data-numall="${showAll ? '0' : '1'}">${showAll ? L({ ja:'未確認だけ表示', en:'Open only', vi:'Chỉ chưa xác nhận' }) : L({ ja:'確認済みも表示', en:'Show checked', vi:'Hiện cả đã xác nhận' })}</button>
         </div>
-        <p class="hint" style="display:block">${L({ ja:'※ 検査は8つ＝フード＋ドリンク≠売上／フードとドリンクが逆（普段のフード比の半分未満）／フードが1,000円未満（個数の疑い）／客数が空／客単価が普段（直近の中央値）の±40%外／レジ差≠0／昼＞合計／現金＋カード＞売上（コード決済の行が総括表に無いため、少ない分は拾いません）。売上の増減そのものは見ません（お客様は日によって違うため）。アプリ提出もシート取込も同じ基準です。「確認済み」は本部・店長の端末で共有されます（同期で届きます）。店長・オーナーは自店の分だけが出ます。', en:'7 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'7 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
+        <p class="hint" style="display:block">${L({ ja:'※ 検査は8つ＝フード＋ドリンク≠売上／フードとドリンクが逆（普段のフード比の半分未満）／フードが1,000円未満（個数の疑い）／客数が空／総括表とPOS（USENレジ）が違う（10月から・総括表に入っている項目だけ。総括表のそのセルにも同じ内容のメモが付きます）／レジ差≠0／昼＞合計／現金＋カード＞売上（コード決済の行が総括表に無いため、少ない分は拾いません）。売上・客単価の増減そのものは見ません（お客様は日によって違うため）。アプリ提出もシート取込も同じ基準です。「確認済み」は本部・店長の端末で共有されます（同期で届きます）。店長・オーナーは自店の分だけが出ます。', en:'7 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'7 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
       </div>
       ${rows || `<div class="card"><p class="muted">${L({ ja:'要確認の数字はありません', en:'Nothing to check', vi:'Không có gì cần xác nhận' })}</p></div>`}`;
   };
