@@ -4201,6 +4201,23 @@
   const svKey = (no) => `${svState.store}|${svState.date}|${no}`;
   const svAns = (no) => getSv()[svKey(no)] || null;
   const svMeta = () => getSv()[svKey('meta')] || {};
+  /* ★前回の続き（2026-10-09 増田さん「スマホを数分閉じると店舗の選び直し・日付が今日に戻る・入力中の画面に戻らない」）。
+     端末の保存が消えても、本部データから同期した svcheck の記録（店舗|日付|No）は手元にあるので、
+     いま選んでいる店舗・日付と違う「直近に入力した店舗×日付」を探して「続き」ボタンに出す。14日より前は出さない */
+  function svResume_() {
+    const all = getSv(); const groups = {};
+    Object.keys(all).forEach((k) => {
+      const parts = k.split('|'); if (parts.length < 3) return;
+      const st = parts[0], d = parts[1], no = parts.slice(2).join('|'); const e = all[k] || {};
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+      const g = groups[st + '|' + d] = groups[st + '|' + d] || { store: st, date: d, t: 0, ans: 0 };
+      if (Number(e.t) > g.t) g.t = Number(e.t);
+      if (no !== 'meta' && e.v) g.ans += 1;
+    });
+    const cut = Date.now() - 14 * 24 * 3600 * 1000;
+    const cand = Object.values(groups).filter(g => g.t > cut && g.ans > 0 && !(g.store === svState.store && g.date === svState.date)).sort((a, b) => b.t - a.t);
+    return cand.length ? Object.assign(cand[0], { total: SV_ITEMS.length }) : null;
+  }
   /* 参考スコア＝対象外を除いた配点の合計が分母（見本アプリと同じ考え方）。体験（pt=0）は数えない */
   function svScore() { return svScoreOf(svAns); }
   function svScoreOf(getA) {
@@ -4765,6 +4782,7 @@
           <select id="sv_store" style="flex:2;min-width:150px">${stores.map(st => `<option${st === svState.store ? ' selected' : ''}>${esc(st)}</option>`).join('')}</select>
           <input id="sv_date" type="date" value="${esc(svState.date)}" style="flex:1;min-width:130px">
         </div>
+        ${(() => { const r = svResume_(); if (!r) return ''; const md = r.date.slice(5).replace('-', '/'); return `<button type="button" class="btn" data-svresume="${esc(r.store)}|${esc(r.date)}" style="margin-top:6px;width:100%;text-align:left">↩ ${esc(L({ ja:'前回の続き', en:'Resume', vi:'Tiếp tục' }))}：${esc(storeShort(r.store))} ${esc(md)}（${r.ans}/${r.total}）</button>`; })()}
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
           <label class="svhl">${esc(L({ ja:'実施時間', en:'Time', vi:'Giờ' }))}<input id="sv_time" type="time" value="${esc(m.time || '')}"></label>
           <label class="svhl">${esc(L({ ja:'確認方法', en:'Method', vi:'Cách kiểm tra' }))}<select id="sv_method">${SV_METHODS.map(([k, l]) => `<option value="${k}"${(m.method || 'onsite') === k ? ' selected' : ''}>${esc(L(l))}</option>`).join('')}</select></label>
@@ -10677,6 +10695,11 @@
     document.querySelectorAll('[data-vctab]').forEach(b => b.onclick = () => { svState.tab = b.dataset.vctab; try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {} 最後の入力時刻 = 0; render(); });   // ※data-svtab はサーベイのタブで使用済み
     const svStore = byId('sv_store'); if (svStore) svStore.onchange = () => { svState.store = svStore.value; svSelSave_(); render(true); };
     const svDate = byId('sv_date'); if (svDate) svDate.onchange = () => { svState.date = svDate.value || svTodayStr(); svSelSave_(); render(true); };
+    document.querySelectorAll('[data-svresume]').forEach(b => b.onclick = () => {   // ★前回の続き（2026-10-09）
+      const i = b.dataset.svresume.lastIndexOf('|'); const st = b.dataset.svresume.slice(0, i), d = b.dataset.svresume.slice(i + 1);
+      if (visibleStores().includes(st)) svState.store = st; if (/^\d{4}-\d{2}-\d{2}$/.test(d)) svState.date = d;
+      svSelSave_(); render(true); toast(L({ ja:'前回の続きを開きました', en:'Resumed', vi:'Đã mở lại' }));
+    });
     bindSvItems_();
     ['sv_menu', 'sv_orderAt', 'sv_servedAt', 'sv_summary', 'sv_time', 'sv_method'].forEach(id => {
       const el = byId(id); if (!el) return;
