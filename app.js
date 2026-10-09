@@ -588,6 +588,9 @@
   // ログイン成功時：役割・店舗をサーバーの返答どおりに合わせる（以後この端末の表示が確定する）
   function applyAuth_(a) {
     setAuth(a); markAuthRequired(true);
+    /* ★2026-10-09 増田さん（Android Chrome）「スマホを閉じるとログインから・店舗と日付が戻る」＝端末側で保存が消されている疑い。
+       ブラウザに「このサイトの保存は消さないで」と頼む（対応していない端末では何も起きない。ホーム画面に追加すると確実） */
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
     try { localStorage.removeItem('yosakura_auth_dropped'); } catch (e) {}   // ログインし直したら案内を消す
     setRole(a.role);
     if (a.role === 'hq') setStoreSel('all');
@@ -4780,7 +4783,7 @@
       <div class="card svhead">
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <select id="sv_store" style="flex:2;min-width:150px">${stores.map(st => `<option${st === svState.store ? ' selected' : ''}>${esc(st)}</option>`).join('')}</select>
-          <input id="sv_date" type="date" value="${esc(svState.date)}" style="flex:1;min-width:130px">
+          <input id="sv_date" type="date" value="${esc(svState.date)}" style="flex:1 1 160px;min-width:160px;font-size:14px;letter-spacing:0">
         </div>
         ${(() => { const r = svResume_(); if (!r) return ''; const md = r.date.slice(5).replace('-', '/'); return `<button type="button" class="btn" data-svresume="${esc(r.store)}|${esc(r.date)}" style="margin-top:6px;width:100%;text-align:left">↩ ${esc(L({ ja:'前回の続き', en:'Resume', vi:'Tiếp tục' }))}：${esc(storeShort(r.store))} ${esc(md)}（${r.ans}/${r.total}）</button>`; })()}
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
