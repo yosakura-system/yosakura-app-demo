@@ -3019,6 +3019,8 @@ console.log('== ログイン：役割と店舗を、サーバーの返答で固�
   ok(/function svResume_\(\)/.test(code) && /14 \* 24 \* 3600 \* 1000/.test(code), '★svResume_＝直近14日の入力済み店舗×日付を探す');
   ok(/data-svresume="\$\{esc\(r\.store\)\}\|\$\{esc\(r\.date\)\}"/.test(code), '★店舗・日付の下に「前回の続き」ボタン');
   ok(/\[data-svresume\]'\)\.forEach\(b => b\.onclick/.test(code) && /svSelSave_\(\); render\(true\); toast\(L\(\{ ja:'前回の続きを開きました'/.test(code), '★押すと店舗と日付が戻り、端末にも保存される');
+  ok(/id="sv_date" type="date" value="\$\{esc\(svState\.date\)\}" style="flex:1 1 160px;min-width:160px;font-size:14px/.test(code), '★日付入力は160px以上・14px＝Android Chromeで末尾の桁が切れない（10/9 増田さん）');
+  ok(/navigator\.storage\.persist\(\)\.catch/.test(code), '★ログイン時に保存の永続化を頼む（端末側で保存が消されにくくする）');
   ok(/const files = Array\.from\(fi\.files \|\| \[\]\);\s*if \(!files\.length\) return false;\s*取り込み中 = true;\s*fi\.value = '';/.test(code),
      '取り込み時に fi.value を消す＝changeと拾い直しが両方来ても二重にならない');
 }
