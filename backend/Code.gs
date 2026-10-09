@@ -441,7 +441,9 @@ function doPost(e) {
     /* ★書き込みの門番。ENABLE_AUTH=false のあいだは素通し＝挙動不変 */
     if (typeof auth_gate_post_ === 'function') {
       var gp = auth_gate_post_(data);
-      if (!gp.ok) return json({ ok: false, error: gp.error || 'AUTH_REQUIRED', needLogin: true });
+      /* ★2026-10-09 needLogin（端末をログイン画面へ戻す合図）は「トークンが無効」のときだけ。
+         権限の不足（HQ_ONLY・STORE_NOT_ALLOWED）はログインし直しても変わらないので、合図にしない */
+      if (!gp.ok) { var ge = gp.error || 'AUTH_REQUIRED'; return json({ ok: false, error: ge, needLogin: ge === 'AUTH_REQUIRED' }); }
     }
     var sh = getSheet();
     /* ★同じ提出を二重に足さない（2026-09-03 実機で発覚）。

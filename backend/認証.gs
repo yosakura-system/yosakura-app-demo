@@ -284,9 +284,12 @@ function auth_row_ok_(u, kind, store, item) {
 /* ===== 書き（doPost）の門番 ===== */
 function auth_gate_post_(data) {
   if (!authOn_()) return { ok: true, u: null };      // ★フラグOFF＝従来どおり素通し
+  var kind = String(data.kind || '');
+  /* ★2026-10-09 画面エラーの控え（apperr）だけはトークンが無効でも受ける＝ログインが外れた瞬間の記録（AUTHDROP）を残すため。
+     中身は端末の状態の文字列だけ（写真なし・他の種類には適用しない） */
+  if (kind === 'apperr') return { ok: true, u: null };
   var u = auth_verify_(data && data.token);
   if (!u) return { ok: false, error: 'AUTH_REQUIRED' };
-  var kind = String(data.kind || '');
   /* ★個人タスクは本人（item=自分のuid）しか書けない。本部でも他人のぶんは書けない */
   if (kind === 'hqtask' && (u.role !== 'hq' || String(data.item || '') !== String(u.uid || ''))) return { ok: false, error: 'HQ_ONLY' };
   if (u.role !== 'hq') {

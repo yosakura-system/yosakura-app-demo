@@ -3004,10 +3004,17 @@ console.log('== ログイン：役割と店舗を、サーバーの返答で固�
      && /return a\.role;   \/\/ ★ログイン済み＝役割はサーバーが返したもので固定/.test(code),
      '★getRole はログイン情報を最優先で見る（開発者ビューの許可リストだけ見え方を切替可）');
   ok(/data-logout="1"/.test(code), 'ログアウトの入口がある');
-  ok(/if \(d && d\.needLogin\) \{ onNeedLogin_\(\); return; \}/.test(code),
+  ok(/if \(d && d\.needLogin\) \{ onNeedLogin_\('get'\); return; \}/.test(code),
      '同期が needLogin を受けたらログイン画面へ');
-  ok(/const q = getPending_\(\); q\.push\(rep\);\s*if \(!savePending_\(q\)\) toast[\s\S]{0,500}onNeedLogin_\(\); return;/.test(code.replace(/\r\n/g, '\n')),
+  ok(/const q = getPending_\(\); q\.push\(rep\);\s*if \(!savePending_\(q\)\) toast[\s\S]{0,500}onNeedLogin_\('post:'[^;]*\); return;/.test(code.replace(/\r\n/g, '\n')),
      '★needLogin で弾かれた提出は保留箱に残る＝ログイン後に自動で再送される（保存確認つき）');
+  // ★2026-10-09 増田さん＝店舗運営チェックの途中でログイン画面と行き来。1回の needLogin で落とさず、authping で有効なら続ける
+  { const m = code.replace(/\r\n/g, '\n').match(/function onNeedLogin_\(why\) \{[\s\S]*?\n  \}\n/); const body = m ? m[0] : '';
+    ok(/action: 'authping'/.test(body), '★ログアウトの前に authping でサーバーに有効か聞く（増田さんの行き来対策）');
+    ok(/d\.auth && d\.auth\.uid\) \{ _needLoginBusy = false; authLog_\('AUTHKEEP'/.test(body), '★有効なら落とさず続ける＋AUTHKEEP を残す');
+    ok(/catch\(\(\) => \{ _needLoginBusy = false; authLog_\('AUTHKEEP'/.test(body), '★聞けなかったときも落とさない');
+    ok(/const drop = \(\) => \{ authLog_\('AUTHDROP', why\)/.test(body), '★落とすときは AUTHDROP を本部データへ（どの通信が合図かも）'); }
+  ok(/function authLog_\(code, why\)/.test(code) && /kind:'apperr', store: e\.store, item: code/.test(code), 'authLog_ は apperr として本部データへ送る');
   ok(/const files = Array\.from\(fi\.files \|\| \[\]\);\s*if \(!files\.length\) return false;\s*取り込み中 = true;\s*fi\.value = '';/.test(code),
      '取り込み時に fi.value を消す＝changeと拾い直しが両方来ても二重にならない');
 }

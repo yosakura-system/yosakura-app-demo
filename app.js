@@ -520,6 +520,7 @@
      ★体験版（TAIKEN）は保存先を持たないため、ログインの仕組みごと無関係。 */
   const LS_AUTH = 'yosakura_auth';
   const LS_AUTH_REQ = 'yosakura_auth_required';
+  const ERR_LS = 'yosakura_errlog';   // 画面エラーの控え（apperr）＝onNeedLogin_ からも使うので先に定義
   const getAuth = () => { if (TAIKEN) return null; try { return JSON.parse(localStorage.getItem(LS_AUTH)) || null; } catch (e) { return null; } };
   const setAuth = (a) => { try { if (a) localStorage.setItem(LS_AUTH, JSON.stringify(a)); else localStorage.removeItem(LS_AUTH); } catch (e) {} };
   const authToken = () => { const a = getAuth(); return a && a.token ? a.token : ''; };
@@ -626,10 +627,32 @@
      ★時間切れではない。1つのIDで同時に使える端末数に上限があり、上限を超えて
        ログインすると**いちばん古い端末のログインが外れる**（本部が利用者を登録し直したときも外れる）。
      何も出ないと故障に見えるため、理由と「入力した内容は残っている」ことを画面に出す。 */
-  function onNeedLogin_() {
-    markAuthRequired(true); setAuth(null);
-    try { localStorage.setItem('yosakura_auth_dropped', '1'); } catch (e) {}
-    render();
+  /* ★2026-10-09 増田さんの実機（店舗運営チェックの途中で、ログイン画面とチェック画面を行き来して最後まで進めない）。
+     本部データには増田さんのチェックの行が届き続けていた＝トークンは生きているのに、どこかの返事1回の needLogin で
+     即ログアウトしていた。1回の返事だけで落とさず、先にサーバーへ「このログインはまだ有効か」を聞く（authping）。
+     有効なら落とさずそのまま続ける／無効と返ってきたときだけログイン画面へ。どちらも本部データへ番号つきで残す
+     （AUTHKEEP＝落とさなかった／AUTHDROP＝落とした。どの通信が合図だったかを why に） */
+  let _needLoginBusy = false;
+  function onNeedLogin_(why) {
+    if (_needLoginBusy) return; _needLoginBusy = true;
+    const tok = authToken();
+    const drop = () => { authLog_('AUTHDROP', why); _needLoginBusy = false; markAuthRequired(true); setAuth(null); try { localStorage.setItem('yosakura_auth_dropped', '1'); } catch (e) {} render(); };
+    if (!tok || !useBackend()) { drop(); return; }
+    fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: 'authping', token: tok }) }).then(r => r.json()).then(d => {
+      if (d && d.ok && d.auth && d.auth.uid) { _needLoginBusy = false; authLog_('AUTHKEEP', why); return; }   // まだ有効＝落とさない
+      drop();
+    }).catch(() => { _needLoginBusy = false; authLog_('AUTHKEEP', String(why || '') + ' ping-failed'); });   // 聞けなかった＝落とさない（次の通信でもう一度判定される）
+  }
+  function authLog_(code, why) {
+    try {
+      const a = getAuth() || {}; const u = lsUsage_(); const t = Date.now();
+      const e = { code, t, path: String(location.hash || '').replace(/^#/, ''), msg: 'needLogin: ' + String(why || ''),
+                  detail: ('uid=' + (a.uid || '') + ' tok=' + String(a.token || '').slice(-4) + ' ls=' + Math.round(u.total / 1024) + 'KB ' + u.top).slice(0, 600),
+                  ua: String((navigator && navigator.userAgent) || '').slice(0, 160), store: (visibleStores()[0] || ''), role: getRole(), by: getUserName() || '' };
+      let log = []; try { log = JSON.parse(localStorage.getItem(ERR_LS) || '[]'); } catch (x) { log = []; }
+      log.push(e); while (log.length > 30) log.shift(); try { localStorage.setItem(ERR_LS, JSON.stringify(log)); } catch (x) {}
+      if (useBackend()) fetch(getApiUrl(), { method:'POST', body: JSON.stringify(Object.assign({ token: authToken() }, { kind:'apperr', store: e.store, item: code, level:'', note: JSON.stringify(e), photos: [], t })) }).catch(() => {});
+    } catch (x) {}
   }
   // ★オーナー様の所有店舗＝ログイン済みならサーバーが返したもの／未ログイン（デモ・プレビュー）は従来の見本
   const ownerStores_ = () => {
@@ -1002,7 +1025,6 @@
   /* ★画面のエラーを黙って消さない（2026-09-21 牛カツ長堀橋「アプリのバグで入力できない」＝何が起きたか遠隔で分からず、原因を特定できなかった）。
      エラーを端末に控え（最新30件）、本部データへ kind:'apperr' で送り、画面には短い番号を出す。店舗は番号を伝えるだけでよい。
      控え＝localStorage の yosakura_errlog（本部メニューやサポート時に読める） */
-  const ERR_LS = 'yosakura_errlog';
   function reportAppError(msg, detail) {
     try {
       const t = Date.now(); const code = 'E' + String(t).slice(-5);
@@ -9805,7 +9827,7 @@
           render(); return;
         }
         byId('au_chpw').disabled = false;
-        if (d && d.needLogin) { onNeedLogin_(); return; }
+        if (d && d.needLogin) { onNeedLogin_('chpw'); return; }
         showErr(d && d.error === 'OLDPW_WRONG'
           ? L({ ja:'仮パスワードが違います', en:'Temporary password is wrong.', vi:'Mật khẩu tạm không đúng.' })
           : L({ ja:'変更できませんでした。もう一度お試しください', en:'Could not change. Please retry.', vi:'Không đổi được. Thử lại.' }));
@@ -11599,7 +11621,7 @@
       await flushPending_();   // ★保留中の提出を、読む前に必ず送る（送る前に読むと、未達の提出が消える）
       const res = await fetch(getApiUrl() + (authToken() ? ('?token=' + encodeURIComponent(authToken())) : ''));
       const d = await res.json();
-      if (d && d.needLogin) { onNeedLogin_(); return; }   // ★ログインが要る配信先＝ログイン画面へ（トークン切れも含む）
+      if (d && d.needLogin) { onNeedLogin_('get'); return; }   // ★ログインが要る配信先＝ログイン画面へ（トークン切れも含む）
       if (d && d.ok && Array.isArray(d.reports)) {
         /* ★変更の検知は「行の目印一覧」で行う（2026-09-09 神田さんの実機報告＝受信箱が昨日で止まったまま）。
            以前はサーバー応答の全文コピー（yosakura_demo_raw）を丸ごと保存して比較していたが、
@@ -11713,7 +11735,7 @@
           if (!savePending_(q)) toast(L({ ja:'⚠ 端末の保存領域がいっぱいで、この提出を保留できませんでした。ログイン後にもう一度送信してください',
                                           en:'⚠ Device storage is full; this submission could not be kept. Please resend after signing in.',
                                           vi:'⚠ Bộ nhớ máy đầy, không giữ được mục này. Vui lòng gửi lại sau khi đăng nhập.' }));
-          onNeedLogin_(); return;
+          onNeedLogin_('post:' + String((rep && rep.kind) || '') + ':' + String((d && d.error) || '')); return;
         }
         return syncReports(true);
       })
