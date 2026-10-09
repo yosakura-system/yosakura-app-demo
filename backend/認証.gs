@@ -255,10 +255,34 @@ function auth_api_locked_(data) {
   return null;
 }
 
+/* ★2026-10-09 増田さんの実機＝有効なトークンなのに、提出の返事1回だけ「見つからない」が出た（12:37 AUTHKEEP×2。
+   直後の authping では有効）。読み直しで戻る揺れとみて、見つからなければ少し待って読み直す。
+   それでも無ければ AUTHMISS として本部データへ残す（uidは分からないのでトークン末尾と件数だけ） */
+function auth_verify_retry_(token, why) {
+  var u = auth_verify_(token);
+  if (u) return u;
+  var t = String(token || '').trim();
+  if (!t) return null;
+  Utilities.sleep(250);
+  try { SpreadsheetApp.flush(); } catch (e) {}
+  u = auth_verify_(token);
+  if (u) { auth_logMiss_('AUTHRETRY', t, why); return u; }   // 読み直しで見つかった＝揺れ
+  auth_logMiss_('AUTHMISS', t, why);                           // 2回とも無い＝本当に無効
+  return null;
+}
+function auth_logMiss_(code, token, why) {
+  try {
+    if (typeof getSheet !== 'function') return;
+    var rows = 0; try { rows = auth_rows_().length; } catch (e) {}
+    var note = JSON.stringify({ code: code, why: String(why || ''), tok: String(token).slice(-4), users: rows, t: Date.now() });
+    getSheet().appendRow([Utilities.getUuid(), Date.now(), 'apperr', '本部', code, '', note, '[]']);
+  } catch (e) {}
+}
+
 /* ===== 読み（doGet）の門番 ===== */
 function auth_gate_get_(e) {
   if (!authOn_()) return { ok: true, u: null };      // ★フラグOFF＝従来どおり素通し
-  var u = auth_verify_(e && e.parameter && e.parameter.token);
+  var u = auth_verify_retry_(e && e.parameter && e.parameter.token, 'get');
   return u ? { ok: true, u: u } : { ok: false };
 }
 /* その行を、この利用者に返してよいか */
@@ -288,7 +312,7 @@ function auth_gate_post_(data) {
   /* ★2026-10-09 画面エラーの控え（apperr）だけはトークンが無効でも受ける＝ログインが外れた瞬間の記録（AUTHDROP）を残すため。
      中身は端末の状態の文字列だけ（写真なし・他の種類には適用しない） */
   if (kind === 'apperr') return { ok: true, u: null };
-  var u = auth_verify_(data && data.token);
+  var u = auth_verify_retry_(data && data.token, 'post:' + kind);
   if (!u) return { ok: false, error: 'AUTH_REQUIRED' };
   /* ★個人タスクは本人（item=自分のuid）しか書けない。本部でも他人のぶんは書けない */
   if (kind === 'hqtask' && (u.role !== 'hq' || String(data.item || '') !== String(u.uid || ''))) return { ok: false, error: 'HQ_ONLY' };
