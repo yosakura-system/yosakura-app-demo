@@ -3015,6 +3015,10 @@ console.log('== ログイン：役割と店舗を、サーバーの返答で固�
     ok(/catch\(\(\) => \{ _needLoginBusy = false; authLog_\('AUTHKEEP'/.test(body), '★聞けなかったときも落とさない');
     ok(/const drop = \(\) => \{ authLog_\('AUTHDROP', why\)/.test(body), '★落とすときは AUTHDROP を本部データへ（どの通信が合図かも）'); }
   ok(/function authLog_\(code, why\)/.test(code) && /kind:'apperr', store: e\.store, item: code/.test(code), 'authLog_ は apperr として本部データへ送る');
+  // ★2026-10-09 増田さん＝店舗運営チェック「前回の続き」ボタン（端末の保存が消えても本部データの記録から戻れる）
+  ok(/function svResume_\(\)/.test(code) && /14 \* 24 \* 3600 \* 1000/.test(code), '★svResume_＝直近14日の入力済み店舗×日付を探す');
+  ok(/data-svresume="\$\{esc\(r\.store\)\}\|\$\{esc\(r\.date\)\}"/.test(code), '★店舗・日付の下に「前回の続き」ボタン');
+  ok(/\[data-svresume\]'\)\.forEach\(b => b\.onclick/.test(code) && /svSelSave_\(\); render\(true\); toast\(L\(\{ ja:'前回の続きを開きました'/.test(code), '★押すと店舗と日付が戻り、端末にも保存される');
   ok(/const files = Array\.from\(fi\.files \|\| \[\]\);\s*if \(!files\.length\) return false;\s*取り込み中 = true;\s*fi\.value = '';/.test(code),
      '取り込み時に fi.value を消す＝changeと拾い直しが両方来ても二重にならない');
 }
