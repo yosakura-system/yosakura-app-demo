@@ -354,9 +354,9 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
         <tr><td>レジ締め</td><td class="now">金種別入力・誤差を手で</td><td class="b">POSのまま。過不足の日だけ理由を1つ</td></tr>
         <tr><td>提出物</td><td class="now">全店ほぼ同じ</td><td class="b">4区分を本部が店ごとに設定</td></tr>
         <tr><td>緊急のとき</td><td class="now">メニューの奥</td><td class="b">「見る・注文する」の1つ。クレーム・火事・けがをまとめて</td></tr>
-        <tr><td>資料を探す</td><td class="now">本部の目次の番号から</td><td class="b">「レシピを見る」「食物アレルギーを確認する」など、やりたいことの言葉から</td></tr>
+        <tr><td>資料を探す</td><td class="now">本部の目次の番号から</td><td class="b">「レシピ」「マニュアル」「発注」「その他」の4つの入口と、言葉で探す</td></tr>
         <tr><td>店の中の共有</td><td class="now">LINE</td><td class="b">LINEのまま（アプリに掲示板は作らない）</td></tr>
-        <tr><td>店長の数字</td><td class="now">ばらばらの画面</td><td class="b">レジの数字・今月の売上・お客様の声だけ。原価・ロス・人件費は数字がそろってから</td></tr>
+        <tr><td>店長の数字</td><td class="now">ばらばらの画面</td><td class="b">レジの数字・今月の売上・仕入率（毎日）・原価率（月末棚卸のあと確定）・お客様の声</td></tr>
         <tr><td>見た目</td><td class="now">文字と枠</td><td class="b">本部の商品写真とロゴ</td></tr>
       </tbody>
     </table>
@@ -376,7 +376,7 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
         <li>「きょうやること」の行を押す → 出す → 済になる</li>
         <li>「見る・注文する」→ やりたいことを押す</li>
         <li>日報で「納品書を撮る」→ 仕入先と金額が入る</li>
-        <li>店長にして「店の数字」→ レジの数字・今月の売上・お客様の声</li>
+        <li>店長にして「店の数字」→ レジの数字・今月の売上・仕入率・原価率・お客様の声</li>
         <li class="hqonly">本部にして「本部」→ 全店の一枚表・提出物の設定</li>
       </ol>
     </div>
@@ -441,7 +441,7 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
     /* 掲示板（2026-10-02 神田さん「LINEだと流れる。注意事項も嬉しい情報も残る場所を下のタブに」）＝店の中だけ。
        pin＝店長がとめた注意事項（期限つき・上に固定）／本部から／みんなの投稿（拍手だけ・返信なし）。本部は見られるが管理しない */
     boardSeen: 2, bw:{ kind:'共有', pin:false, until:'', photo:false }, ownKind:'店内実施', ownSlot:'営業中',
-    photoExtra:[ { nm:'レジまわり', sample:'counter', today:null } ],
+    photoExtra:[],   // 2026-10-10 店舗独自の写真は入れない（機能一覧「なし」と合わせる）
     /* ロス（2026-10-04 神田さん「日々のロス管理と人件費管理が重要。種類別に蓄積して何のロスが多いか検証できるように」）。
        種類＝9/9 勉強会で田中さんが挙げた理由（揚げすぎ・焼きすぎ・作りすぎ・オーダーミス・仕込み過多・食材期限）を6つにまとめた。無い日は押さない */
     loss:[ { kind:'期限切れ・廃棄', item:'ミニトマト（袋）', qty:'1', amt:280, by:'昼のシフト ・ 11:20' } ],
@@ -533,7 +533,7 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
       <div class="card"><textarea class="ta" id="ho_txt" placeholder="例：氷が少ない。19時までに製氷機を確認"></textarea></div><button class="big" data-hosave="1">次の人へ残す</button>`;
   }
   function screenPhoto(id){
-    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">オープン写真</div><p class="lead">左が店長の登録した見本、右が今日。同じ画角で撮るだけ。外観と内観の2つは必須、ほかは店が自由に足せます（10/2 神田さん）。店長が店内で見る写真で、本部には出しません。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">オープン写真</div><p class="lead">左が店長の登録した見本、右が今日。同じ画角で撮るだけ。外観と内観の2つ。店長が店内で見る写真で、本部には出しません。</p>
       <div class="card"><div class="twins">
         <figure><div class="empty">${ICONS.cam}　見本を登録</div><figcaption>外観の見本<span class="pill warn">必須 ・ 店長が登録</span></figcaption></figure>
         <figure><div class="empty">${ICONS.cam}　撮る</div><figcaption>今日の外観<span class="pill warn">未</span></figcaption></figure>
@@ -541,7 +541,7 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
         <figure><img src="${P.hiroshima}" alt="" style="filter:saturate(.9)"><figcaption>今日の内観<span class="pill ok">9:41</span></figcaption></figure>
         ${S.photoExtra.map((x, i) => `<figure><img src="${P[x.sample]}" alt=""><figcaption>${x.nm}の見本<span class="pill info">この店だけ</span></figcaption></figure>
         <figure>${x.today ? `<img src="${P[x.sample]}" alt="" style="filter:saturate(.9)">` : `<button class="empty" data-shot="${i}" style="width:100%">${ICONS.cam}　撮る</button>`}<figcaption>今日の${x.nm}${x.today ? `<span class="pill ok">${x.today}</span>` : '<span class="pill warn">未</span>'}</figcaption></figure>`).join('')}
-      </div><button class="mini" data-open="photoadd" style="margin-top:10px">＋ この店だけの写真を足す</button></div>
+      </div></div>
       <button class="big" data-done="${id}">送る</button>${timer()}`;
   }
   function photoAdd(){
@@ -617,7 +617,7 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
       <div class="card" style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap">
         <tr style="color:var(--hai)"><th style="text-align:left;padding:4px">日</th><th style="text-align:right;padding:4px">純売上</th><th style="text-align:right;padding:4px">客数</th><th style="text-align:right;padding:4px">現金</th><th style="text-align:right;padding:4px">カード</th><th style="text-align:right;padding:4px">差異</th></tr>
         ${days.map(d => `<tr style="border-top:1px solid var(--line)"><td style="padding:5px 4px">${d[0]}</td><td style="text-align:right;padding:5px 4px">${yen(d[1])}</td><td style="text-align:right;padding:5px 4px">${d[2]}</td><td style="text-align:right;padding:5px 4px">${yen(d[3])}</td><td style="text-align:right;padding:5px 4px">${yen(d[4])}</td><td style="text-align:right;padding:5px 4px;color:${d[5] ? 'var(--kaki)' : 'inherit'}">${sgn(d[5])}</td></tr>`).join('')}
-      </table><div class="note">差異が「現金売上と同じ額の不足」の日は、締めで準備金だけを入力した日です（9/30 増田さんの展開どおり直ると0になります）</div></div>`;
+      </table><div class="note">差異が「現金売上と同じ額の不足」の日は、締めで準備金だけを入力した日です（レジの設定が直ると0になります）</div></div>`;
   }
   function screenVoice(){
     const answers = [['4', '韓国', 'Instagram', '牛カツが柔らかくて感動。店員さんの説明も丁寧'], ['5', '台湾', 'Google検索', 'いくら丼が最高。また来ます'], ['2', '日本', '通りがかり', '提供まで25分待った。味は良い'], ['5', 'アメリカ', 'TripAdvisor', 'Best katsu in Osaka'], ['3', '韓国', '友人の紹介', '量が少し少ない']];
@@ -823,7 +823,7 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
       <button class="card" data-go="voice" style="width:100%;text-align:left;cursor:pointer"><div class="kpi" style="margin:0"><div><div class="l">サーベイ満足度</div><div class="v">4.6</div><div class="d">今月 38件 ・ 低評価 2件</div></div><div><div class="l">Google口コミ</div><div class="v">4.7</div><div class="d">通算 1,284件 ・ 今月 +12</div></div></div><div class="muted" style="font-size:12px;margin-top:8px">押すと、回答の一覧・来店国・来店経路・口コミの推移</div></button>
       ${S.role === 'manager' ? `<div class="sec"><h2>この店の提出物</h2><small>本部が4区分で設定 ・ 店は見るだけ</small></div>
       <div class="card"><div class="seg3">${OBL_ITEMS.map(([id, nm]) => `<span>${nm}</span><span class="opts"><button class="on" style="flex:1;cursor:default">${S.oblig[id] || '店内実施'}</button></span>`).join('')}${S.own.map(([nm, k]) => `<span>${nm} <span class="pill info" style="font-size:10px">この店だけ</span></span><span class="opts"><button class="on" style="flex:1;cursor:default">${k}</button></span>`).join('')}</div><div class="note">「店内実施」＝店で必ずやるが本部への提出はない（店長が店内で確認）。「本部へ」の印がある行だけ本部に届きます</div>
-      <button class="mini" data-go="ownadd" style="margin-top:8px">＋ この店だけの項目を足す</button><div class="note">店が自分で足せます（店内実施か推奨だけ）。本部の表には出ず、この店の「きょうやること」にだけ出ます</div></div>` : ''}
+</div>` : ''}
       <div class="note">数字は見るだけ。入力する場所は「きょうやること」の日報だけです。原価率は月末棚卸のあと翌月5日までに確定して出します。それまでは仕入率が目安です。</div></div></div>`;
   }
   function drawSpark(){
