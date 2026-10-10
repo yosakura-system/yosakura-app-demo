@@ -441,7 +441,8 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
     /* 掲示板（2026-10-02 神田さん「LINEだと流れる。注意事項も嬉しい情報も残る場所を下のタブに」）＝店の中だけ。
        pin＝店長がとめた注意事項（期限つき・上に固定）／本部から／みんなの投稿（拍手だけ・返信なし）。本部は見られるが管理しない */
     boardSeen: 2, bw:{ kind:'共有', pin:false, until:'', photo:false }, ownKind:'店内実施', ownSlot:'営業中',
-    photoExtra:[],   // 2026-10-10 店舗独自の写真は入れない（機能一覧「なし」と合わせる）
+    photoExtra:[],
+    uwFmt:'牛カツ', uw:null, uwDone:null, popDone:null,   // 器の数（週1回・曜日は店で）／卓上POP交換（牛カツのみ・週1回）   // 2026-10-10 店舗独自の写真は入れない（機能一覧「なし」と合わせる）
     /* ロス（2026-10-04 神田さん「日々のロス管理と人件費管理が重要。種類別に蓄積して何のロスが多いか検証できるように」）。
        種類＝9/9 勉強会で田中さんが挙げた理由（揚げすぎ・焼きすぎ・作りすぎ・オーダーミス・仕込み過多・食材期限）を6つにまとめた。無い日は押さない */
     loss:[ { kind:'期限切れ・廃棄', item:'ミニトマト（袋）', qty:'1', amt:280, by:'昼のシフト ・ 11:20' } ],
@@ -469,7 +470,23 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
   const yen = (n) => '¥' + Math.round(n).toLocaleString('ja-JP');
   const taxNet = (g, r) => { g = Math.round(Number(g) || 0); if (!g || !r) return g; return g - Math.floor(g * r / (100 + r)); };
 
-  /* ---------- きょう ---------- */
+  /* ---------- 器の数（週1回）＝本番の業態別の器（ZK_TABLEWARE）と同じ品目・基準 ---------- */
+  const UTSUWA = {
+    '牛カツ': [['茶碗','個',24],['汁椀','個',''],['牛カツ皿（運ぶ皿）','枚',''],['サラダ皿','枚',''],['卓上薬味入れ','個',''],['湯呑','個',''],['グラス','個',''],['ビールグラス','個',''],['箸置き','個','']],
+    '鰻': [['３連皿','枚',50],['茶碗','個',50],['どんぶり','個',50],['汁椀','個',''],['卓上薬味入れ','個',22],['卓上タレ入れ','個',11],['湯呑','個',''],['グラス','個',''],['ビールグラス','個',''],['箸置き','個','']],
+    '寿司': [['海鮮丼皿','枚',14],['手巻き寿司食器（こめ）','個',14],['手巻き食器（いくら）','個',14],['手巻き寿司（トレー）','枚',14],['手巻き寿司（醤油入れ）','個',14],['手巻き寿司（ミニスプーン）','本',14],['味噌汁容器（朱色）','個',14],['抹茶容器','個',14],['お茶用コップ（陶器）','個',14],['箸置き','個',14],['グラス','個',14],['ビールグラス','個',14]],
+    '共通（和牛・日本料理・手巻き）': [['茶碗','個',''],['汁椀','個',''],['湯呑','個',''],['グラス','個',''],['ビールグラス','個',''],['箸置き','個','']],
+  };
+  function uwRows(){ if (!S.uw || S.uw.fmt !== S.uwFmt) S.uw = { fmt:S.uwFmt, n:UTSUWA[S.uwFmt].map(r => (r[2] === '' ? 0 : r[2])) }; return S.uw.n; }
+  function screenUtsuwa(){
+    const items = UTSUWA[S.uwFmt]; const n = uwRows();
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">器の数</div><p class="lead">週に1回、都合のよい日に。業態の器を数えて入れるだけ。欠け・ひびは数に入れず、ロスに上げてください。</p>
+      <div class="seg">${Object.keys(UTSUWA).map(k => `<button class="${S.uwFmt === k ? 'on' : ''}" data-uwfmt="${k}">${k}</button>`).join('')}</div>
+      <div class="note" style="margin:0 0 8px">業態の切替は見本のためのものです。実際は、その店の業態の器だけが出ます。</div>
+      <div class="card">${items.map((r, i) => `<div class="fld"><label>${r[0]}<small>${r[1]}${r[2] !== '' ? ' ・ 基準 ' + r[2] : ''}</small></label><div class="stepper"><button data-uw="${i}:-1">−</button><b style="${r[2] !== '' && n[i] < r[2] ? 'color:var(--kaki)' : ''}">${n[i]}</b><button data-uw="${i}:1">＋</button></div></div>`).join('')}</div>
+      <div class="note">基準より少ない器は赤。補充が要るものは、本部に届きます（見本）。</div>
+      <button class="big" data-uwsave="1">出す</button>${timer()}`;
+  }
   function today(){
     const rows = FLOW.flatMap(f => f.rows).filter(r => S.oblig[r[0]] !== '不要');
     const left = rows.filter(r => !S.done[r[0]] && r[0] !== 'kizuki');
@@ -505,9 +522,10 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
       <div class="sec"><h2>今日の流れ</h2><small>時間帯の順</small></div>
       <div class="card">${flow}</div>
       <div class="chips" style="margin-top:12px"><button class="chip" data-open="kizuki">気づき<small>良かったことも困ったことも</small></button><button class="chip" data-open="qr">サーベイQR<small>お会計のときにお見せする</small></button><button class="chip" data-open="loss">ロス<small>無い日は何もしない</small></button><button class="chip" data-go="write">引き継ぎを書く<small>次の人へ</small></button></div>
-      <div class="sec"><h2>今週</h2><small>週に1回のもの ・ 期日が近いものだけ出ます</small></div>
+      <div class="sec"><h2>今週</h2><small>週に1回 ・ 曜日は店で決めてよい ・ 済むと消えます</small></div>
       <div class="card">
-        <button class="row" data-open="stock" data-id="zaiko"><span class="st">${ICONS.box}</span><span><span class="nm">器の数</span> <span class="pill" style="font-size:10px">本部へ</span><br><span class="sub">水曜に数える ・ 在庫の数と同じ画面（3連皿・茶碗・どんぶり…）</span></span><span class="rt">水曜まで</span></button>
+        <button class="row ${S.uwDone ? 'done' : ''}" data-open="utsuwa"><span class="st">${S.uwDone ? ICONS.check : ICONS.box}</span><span><span class="nm">器の数</span> <span class="pill" style="font-size:10px">本部へ</span><br><span class="sub">${S.uwDone ? '出しました ' + S.uwDone : '週に1回、都合のよい日に。業態の器を数えるだけ'}</span></span><span class="rt">${S.uwDone ? '' : '今週中'}</span></button>
+        <button class="row ${S.popDone ? 'done' : ''}" data-popdone="1"><span class="st">${S.popDone ? ICONS.check : ICONS.pen}</span><span><span class="nm">卓上POPの交換</span> <span class="pill info" style="font-size:10px">牛カツ店のみ</span><br><span class="sub">${S.popDone ? '交換しました ' + S.popDone : '週に1回。交換したら、この行を押すだけ'}</span></span><span class="rt">${S.popDone ? '' : '今週中'}</span></button>
       </div>
       <div class="sec"><h2>今月</h2><small>月に1回のもの ・ 期日が近いものだけ出ます ・ 入れるものは増えません</small></div>
       <div class="card">
@@ -740,7 +758,8 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
     ['きょうやること', 'CLOSEチェック', '10項目', null, 'open="check" data-id="ck_close"', ['close','クローズ','締め','閉店']],
     ['きょうやること', '日報', '納品書を撮るだけ', null, 'open="nippou" data-id="nippou"', ['日報','納品書','売上','仕入','レジ']],
     ['きょうやること', '在庫の数', '少ないものは発注リストへ', 'scale', 'open="stock" data-id="zaiko"', ['在庫','発注リスト','数']],
-    ['今週', '器の数（水曜）', '週に1回・在庫の数と同じ画面', 'scale', 'open="stock" data-id="zaiko"', ['器','うつわ','皿','茶碗','週']],
+    ['今週', '器の数', '週に1回・業態の器を数える（曜日は店で）', 'scale', 'open="utsuwa"', ['器','うつわ','皿','茶碗','週','グラス']],
+    ['今週', '卓上POPの交換（牛カツ店のみ）', '週に1回・交換したら行を押すだけ', null, 'go="today"', ['pop','ポップ','卓上','交換']],
     ['きょうやること', 'ロス', '種類と品目を選ぶだけ', null, 'open="loss"', ['ロス','廃棄','捨て']],
     ['きょうやること', '気づき', '良かったことも困ったことも', null, 'open="kizuki"', ['気づき','報告','相談']],
     ['お客様の声', 'Google口コミ・サーベイ', '件数・星・今日の獲得数（自動）', null, 'go="voice"', ['口コミ','くちこみ','google','グーグル','サーベイ','評価','星','お客様の声']],
@@ -911,7 +930,7 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
     const m = $('#main'); let html = '';
     if (S.tab === 'today') {
       const sc = S.screen;
-      html = !sc ? today() : sc === 'replies' ? replies() : sc === 'write' ? write() : sc === 'tana' ? tana() : sc === 'photo' ? screenPhoto(S.sid) : sc === 'check' ? screenCheck(S.sid) : sc === 'stock' ? screenStock(S.sid) : sc === 'nippou' ? screenNippou(S.sid) : sc === 'kizuki' ? screenKizuki() : sc === 'qr' ? screenQr() : sc === 'loss' ? screenLoss() : sc === 'photoadd' ? photoAdd() : sc === 'own' ? screenOwn(S.sid) : screenWaste();
+      html = !sc ? today() : sc === 'replies' ? replies() : sc === 'write' ? write() : sc === 'tana' ? tana() : sc === 'photo' ? screenPhoto(S.sid) : sc === 'check' ? screenCheck(S.sid) : sc === 'stock' ? screenStock(S.sid) : sc === 'nippou' ? screenNippou(S.sid) : sc === 'kizuki' ? screenKizuki() : sc === 'qr' ? screenQr() : sc === 'loss' ? screenLoss() : sc === 'utsuwa' ? screenUtsuwa() : sc === 'photoadd' ? photoAdd() : sc === 'own' ? screenOwn(S.sid) : screenWaste();
     } else if (S.tab === 'board') { if (S.screen === 'bwrite') html = boardWrite(); else { html = board(); S.boardSeen = S.board.length; } } else if (S.tab === 'search') html = search(); else if (S.tab === 'num') html = S.screen === 'regi' ? screenRegi() : S.screen === 'voice' ? screenVoice() : S.screen === 'qr' ? screenQr() : S.screen === 'ownadd' ? ownAdd() : numbers(); else html = hq();
     /* 同じ画面の中の操作（提出物の設定・拍手・在庫の±・チェック）では、描き直しても上に戻さない（2026-10-02 神田さん「設定を押すたびに上の画面にいくのやめて」）。
        画面が変わったときだけ上から */
@@ -951,6 +970,10 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
     else if (d.done) { if (b.classList.contains('dim')) { toast('まだ項目が残っています'); return; } if (d.done !== 'kizuki') S.done[d.done] = now(); S.screen = null; toast(S.oblig[d.done] === '本部提出' ? '出しました。本部に届きました' : 'できました。この店の記録に残りました'); }
     else if (d.ck) { const [id, i] = d.ck.split(':'); S.ck[id] = S.ck[id] || {}; S.ck[id][i] = !S.ck[id][i]; }
     else if (d.st) { const [i, dv] = d.st.split(':').map(Number); S.stock[i][1] = Math.max(0, S.stock[i][1] + dv); }
+    else if (d.uw) { const [i, dv] = d.uw.split(':').map(Number); const n = uwRows(); n[i] = Math.max(0, n[i] + dv); }
+    else if (d.uwfmt) { S.uwFmt = d.uwfmt; }
+    else if (d.uwsave) { S.uwDone = now(); S.screen = null; toast('出しました。器の数は本部に届きます（見本）'); }
+    else if (d.popdone) { if (S.popDone) { S.popDone = null; toast('取り消しました'); } else { S.popDone = now(); toast('卓上POPの交換、ありがとうございます'); } }
     else if (d.rate) { const [k, r] = d.rate.split(':'); S.buy[k].r = Number(r); }
     else if (d.sadd) { S.slips.push({ v:'西原', a8:'', a10:'' }); }
     else if (d.socr) { toast('読み取り中…'); const n = S.slips.filter(s => s.ocr).length; setTimeout(() => { S.slips.push(n % 2 === 0 ? { v:'フレッシュ', a8:'18360', a10:'', ocr:true, conf:'high' } : { v:'その他', a8:'9720', a10:'2200', ocr:true, conf:'low' }); render(); toast('読み取りました。違うところだけ直してください'); }, 900); return; }
