@@ -3820,7 +3820,7 @@ console.log('== 牛カツ長堀橋店トライアル：LINEアルバムの提出
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
-console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月末・食材のみ・0.25刻み＝8/18デモMTG決定どおり）==');
+console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-10-10 新ルール＝未開封のみ・和牛kg・鰻尾・数量は小数2桁まで）==');
 {
   const S = '牛カツ世桜 長堀橋店';
   const ymNow2 = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
@@ -3831,8 +3831,9 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   h = registry.app.innerHTML;
-  ok(/棚卸（月末・食材のみ）/.test(h), '棚卸タブが開き「月末・食材のみ」と明記');
-  ok(/0\.25／0\.5／0\.75／1/.test(h), '開封済みの0.25刻みルールが画面に書いてある');
+  ok(/棚卸（月末・食材・飲料・酒）/.test(h), '棚卸タブが開き「月末・食材・飲料・酒」と明記（Ver0.8）');
+  ok(/数えるのは未開封だけ（開封済みは 0）/.test(h) && /和牛（はかりで量って kg/.test(h) && /鰻（尾）/.test(h), '未開封のみ・和牛kg・鰻尾のルールが画面に書いてある（Ver0.8）');
+  ok(!/0\.25／0\.5／0\.75／1/.test(h), '旧「0.25/0.5/0.75/1で概算」の説明文は出ない');
   ok(/包材や消耗品は数えません/.test(h), '包材・消耗品は対象外（PL別項目）と明記');
   ok(/id="tn_f0_n"/.test(h) && /id="tn_d0_n"/.test(h), '食材・飲料の品目行がある');
   // ② 入力→保存＝月次数値の月末在庫（close）に合計が入り、内訳（closeDetail）が残る
@@ -3844,14 +3845,17 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答＝月�
   const mon = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
   ok(!!mon && mon.close === (7500 - 555) + (600 - 44) + (6000 - 545), '保存で月末在庫＝品目合計を税抜に直した値（画面304＝米7500→6945・パン粉600→556・ビール6000（10%）→5455＝12956）');
   ok(mon.closeDetail[0].r === 8 && mon.closeDetail[2].r === 10 && mon.closeDetail[2].a === 5455, '税率＝食材8%・飲料10%が既定で保存される');
-  ok(Array.isArray(mon.closeDetail) && mon.closeDetail.length === 3 && mon.closeDetail[0].q === 2.5, '品目の内訳（数量0.25刻み）が保存される');
-  // ③ 0.25刻みでない数量は寄せる（②の入力欄が残っているので明示的に空へ）
+  ok(Array.isArray(mon.closeDetail) && mon.closeDetail.length === 3 && mon.closeDetail[0].q === 2.5, '品目の内訳（数量）が保存される');
+  // ③ 和牛のkg＝1.3 はそのまま保存される（旧＝0.25刻みへ寄せていた。②の入力欄が残っているので明示的に空へ）
   doc.getElementById('tn_f1_n').value = ''; doc.getElementById('tn_d0_n').value = '';
-  doc.getElementById('tn_f0_n').value = '米'; doc.getElementById('tn_f0_u').value = '1000'; doc.getElementById('tn_f0_q').value = '1.3';
+  doc.getElementById('tn_f0_n').value = '和牛（kg）'; doc.getElementById('tn_f0_u').value = '1000'; doc.getElementById('tn_f0_q').value = '1.3';
   doc.getElementById('tn_ym').value = ymNow2;
   doc.getElementById('tnSave').onclick();
   const mon2 = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
-  ok(mon2.closeDetail[0].q === 1.25 && mon2.close === 1250 - 92, '1.3のような端数は0.25単位へ寄せる（→1.25・税込1250→税抜1158）');
+  ok(mon2.closeDetail[0].q === 1.3 && mon2.close === 1300 - 96, '1.3kg は 1.3 のまま保存（0.25へ寄せない・税込1300→税抜1204）（Ver0.8・2026-10-10）');
+  doc.getElementById('tn_f0_q').value = '0.555'; doc.getElementById('tnSave').onclick();
+  const mon2kg = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
+  ok(mon2kg.closeDetail[0].q === 0.56, '小数は2桁まで（0.555→0.56）');
   // ③c 画面305＝長堀橋は品目と単価が最初から入っている（保存も下書きも前月も無いとき）
   run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
