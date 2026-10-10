@@ -6287,8 +6287,10 @@
   /* ---------- 棚卸（2026-09-01 長田さんのご質問「棚卸しもアプリから作業可能になるか」への回答）----------
      ★ルールは 2026-08-18 アプリデモMTGで確定済みのものに合わせる：
        ①月末に実施 ②対象は【食材のみ】（包材・消耗品は数えない＝PLで別項目）
-       ③開封済み・使いかけは残量を 0.25／0.5／0.75／1 の4段階で概算カウント
-     ★入力＝品目リスト方式：品目名・単価・数量（0.25刻み）→ 金額を自動計算 → 合計が「月末在庫（棚卸）」。
+       ③（旧）開封済み・使いかけは残量を 0.25／0.5／0.75／1 の4段階で概算カウント
+       → ★2026-10-31施行（10/9 構築MTG・マニュアルVer0.8）＝未開封だけ数える・開封済みは0。仕込み前の和牛（kg）・鰻（尾）だけ開封済みも数える。
+         対象は食材・飲料・酒（包材・消耗品は数えない）。数量は小数2桁まで（kg対応）
+     ★入力＝品目リスト方式：品目名・単価・数量 → 金額を自動計算 → 合計が「月末在庫（棚卸）」。
        品目リストは店舗ごとに自由（各店が何をカウントしているかは店ごとに違うため、決め打ちしない）。
        前月に数えた品目は名前と単価を引き継いで出す＝毎月は数量を入れるだけ。
      ★保存＝既存の月次数値レコード（kind:'monthly'）の close と closeDetail に持たせる＝新しいkindを作らない
@@ -6410,9 +6412,11 @@
     const tnGuideRow = tnGuides.length ? `<div class="seg-chips" style="margin:2px 0 8px">${tnGuides.map(l => `<button type="button" class="chip" data-openurl="${esc(l.url)}">📖 ${esc(l.title)}</button>`).join('')}</div>` : '';
     return `
       <div class="card" id="tnForm">
-        <h3>${L({ ja:'棚卸（月末・食材のみ）', en:'Stocktake (month-end, food only)', vi:'Kiểm kê (cuối tháng, thực phẩm)' })} — ${esc(storeShort(store))}</h3>
+        <h3>${L({ ja:'棚卸（月末・食材・飲料・酒）', en:'Stocktake (month-end: food, drinks, alcohol)', vi:'Kiểm kê (cuối tháng: thực phẩm, đồ uống, rượu)' })} — ${esc(storeShort(store))}</h3>
         ${tnGuideRow}
-        <p class="hint" style="display:block">${L({ ja:'月末に、店の食材を数えて入力してください。開封済み・使いかけは 0.25／0.5／0.75／1 のどれかで概算します（例：粉が半分→0.5）。包材や消耗品は数えません（PLで別に管理します）。', en:'Count food items at month end. Opened/partial items are estimated as 0.25 / 0.5 / 0.75 / 1 (e.g. half a bag = 0.5). Packaging and supplies are not counted (managed separately in P&L).', vi:'Cuối tháng đếm thực phẩm. Hàng đã mở ước lượng 0.25/0.5/0.75/1. Không đếm bao bì, vật tư.' })}</p>
+        ${/* ★2026-10-31施行の新ルール（10/9 構築MTG決定・月末棚卸マニュアル Ver0.8）＝未開封だけ数える・開封済みは0。
+             仕込み前の和牛（kg）・鰻（尾）だけは開封済みも数える。旧「0.25/0.5/0.75/1で概算」（8/18決定）は廃止 */''}
+        <p class="hint" style="display:block">${L({ ja:'月末に数えて入力してください。数えるのは未開封だけ（開封済みは 0）。仕込み前の和牛（はかりで量って kg・例 500g＝0.5）と鰻（尾）だけは、開封済みも数えます。数量は単価の単位に合わせてください。包材や消耗品は数えません（PLで別に管理します）。', en:'Count at month end. Count unopened items only (opened = 0). Only raw wagyu (weigh in kg, e.g. 500g = 0.5) and eel (pieces) are counted even if opened. Use the same unit as the unit price. Packaging and supplies are not counted (managed separately in P&L).', vi:'Cuối tháng đếm và nhập. Chỉ đếm hàng chưa mở (đã mở = 0). Riêng bò wagyu chưa sơ chế (cân, kg; 500g = 0.5) và lươn (con) đếm cả khi đã mở. Dùng cùng đơn vị với đơn giá. Không đếm bao bì, vật tư.' })}</p>
         <label class="fld"><span>${L({ ja:'対象月', en:'Month', vi:'Tháng' })}</span><input type="month" id="tn_ym" value="${esc(nowYm)}"></label>
         <input type="hidden" id="tn_fcount" value="${fRows.length}"><input type="hidden" id="tn_dcount" value="${dRows.length}">
         ${tnEmpty ? tnPaste : ''}
@@ -10041,7 +10045,7 @@
       };
     }
 
-    // 棚卸（品目×数量0.25刻み→月末在庫へ。2026-09-01）
+    // 棚卸（品目×数量→月末在庫へ。2026-09-01。数量は小数2桁まで＝2026-10-10）
     const tnForm = byId('tnForm');
     if (tnForm) {
       /* 行数は描画時に確定した数（貼り付け取り込みで既定より増えることがある） */
@@ -10123,8 +10127,9 @@
         tnIds.forEach(k => {
           const r = tnRow(k);
           if (!r.name) return;
-          /* 数量は0.25刻みへ丸める（8/18決定＝0.25/0.5/0.75/1の概算カウント。1.3のような端数は0.25単位に寄せる） */
-          const q = Math.round(r.q / 0.25) * 0.25;
+          /* 数量は小数2桁まで（2026-10-10 マニュアルVer0.8＝和牛は kg で入れる。1.3kg が 1.25 に丸まらないように。
+             旧＝0.25刻みへ寄せる（8/18決定の概算カウント）は 10/31 の新ルールで廃止） */
+          const q = Math.round(r.q * 100) / 100;
           detail.push({ n: r.name, t: k[0], u: r.u, q, r: r.r, a: taxNet(Math.round(r.u * q), r.r) });   // 画面304＝u は税込単価・a は税抜金額
         });
         if (!detail.length) { toast(L({ ja:'品目を1つ以上入力してください', en:'Enter at least one item', vi:'Nhập ít nhất 1 mặt hàng' })); return; }
