@@ -253,6 +253,31 @@ body.ipad main{grid-column:2;grid-row:3;padding:16px 26px 28px}
 body.ipad .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 26px;align-items:start}
 body.ipad .mgrid.use{grid-template-columns:repeat(4,1fr)}
 body.ipad .cover{min-height:150px}
+/* ===== 写真のタイル（見る・注文する）2026-10-10 ===== */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tiles button{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:4/3;padding:0;text-align:left;box-shadow:0 6px 18px rgba(43,39,36,.14);background:var(--usu)}
+.tiles img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tiles .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,15,12,0) 30%,rgba(20,15,12,.72) 100%)}
+.tiles .t{position:absolute;left:13px;right:10px;bottom:10px;color:#fff}
+.tiles .t b{display:block;font-family:var(--fd);font-size:19px;letter-spacing:.04em;line-height:1.15}
+.tiles .t small{display:block;font-size:11.5px;opacity:.92;margin-top:3px}
+body.ipad .tiles{grid-template-columns:repeat(4,1fr)}
+body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
+/* ===== スマホ実機＝枠を出さず画面いっぱい（2026-10-10 神田さん「縦の画面でもキツい」） ===== */
+@media (max-width:640px){
+  body{padding:0;background:var(--kinari)}
+  .banner,.devsw,.notes,aside{display:none!important}
+  .wrap{display:block;max-width:none}
+  .devwrap{margin:0}
+  .device{padding:0;border-radius:0;box-shadow:none;background:transparent}
+  .screen{height:100vh;height:100dvh;max-height:none;min-height:0;border-radius:0}
+  .status{display:none}
+  main{padding:12px 14px 28px}
+  .row{padding:12px 4px}
+  .chip{padding:13px 8px;font-size:13.5px}
+  .mgrid button{padding:13px 12px;font-size:14px}
+  .tabbar button{padding:11px 4px 9px;font-size:12px}
+}
 </style>
 
 <div class="wrap">
@@ -602,11 +627,11 @@ body.ipad .cover{min-height:150px}
   /* ---------- 調べる ---------- */
   /* ---------- 2026-10-08 やりたいことの言葉で入口を6つ（「調べる」は何を調べるか分からない） ---------- */
   /* 2026-10-09 構築MTG後 神田さん＝入口は「レシピ／マニュアル／発注／その他」の4つ。中身は整備できたものから増やす */
-  const USES = [
-    ['go="recipes"', 'レシピ', '作り方・合格の形'],
-    ['go="manual"', 'マニュアル', '手順・衛生・アレルギー・緊急'],
-    ['go="order"', '発注', '注文先へ'],
-    ['go="other"', 'その他', '勉強会・使い方・相談'],
+  const USES = [   // 2026-10-10 写真のタイルに（神田さん「素っ気ない。代表の写真を」）
+    ['go="recipes"', 'レシピ', '作り方・合格の形', 'unagi'],
+    ['go="manual"', 'マニュアル', '手順・衛生・アレルギー・緊急', 'labels'],
+    ['go="order"', '発注', '注文先へ', 'count'],
+    ['go="other"', 'その他', '勉強会・使い方・相談', 'counter'],
   ];
   function emergency(){
     const back = `<button class="back" data-go="manual">${ICONS.back} マニュアル</button>`;
@@ -660,8 +685,10 @@ body.ipad .cover{min-height:150px}
     if (S.screen === 'emergency') return emergency();
     const ok = q && /鰻|うなぎ|ひつ|上|レシピ|和牛/.test(q);
     return `<div class="search">${ICONS.search}<input id="q" placeholder="言葉で探す（例：鰻　焼き加減）" value="${q}"></div>
-      ${q ? '' : `<div class="mgrid use">${USES.map(([k, t, sub]) => `<button data-${k}><b>${t}</b><small>${sub}</small></button>`).join('')}</div>
-      <div class="note">入口は4つ。レシピ・マニュアルは、整備できたものから増えます。</div>`}
+      ${q ? '' : `<div class="tiles">${USES.map(([k, t, sub, im]) => `<button data-${k}><img src="${P[im]}" alt=""><div class="veil"></div><div class="t"><b>${t}</b><small>${sub}</small></div></button>`).join('')}</div>
+      <div class="sec"><h2>よく見るレシピ</h2><small>この店の品</small></div>
+      <div class="rlist">${[['ikuraDon','いくら丼セット'],['wagyuDon','和牛丼セット'],['sand','牛カツサンド'],['yakiTare','焼きひつまぶし'],['aburi','炙りの出し方'],['taiyaki','たい焼き']].map(([im, nm]) => `<button data-go="recipes"><img src="${P[im]}" alt=""><span>${nm}</span></button>`).join('')}</div>
+      <div class="note">レシピ・マニュアルは、整備できたものから増えます。</div>`}
       ${ok ? `<div class="sec"><h2>見つかったもの</h2><small>レシピ</small></div>${heroCard()}` : q ? `<div class="note">見つかりませんでした。「マニュアル」の目次から探してください。</div>` : ''}`;
   }
   function recipe(){
