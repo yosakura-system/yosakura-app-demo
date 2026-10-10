@@ -485,23 +485,23 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
       </div></div></div>`;
   }
   function tana(){
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">月末棚卸</div><p class="lead">単価は税込のまま。8％／10％を押すと税抜は自動。数えた順に入れていけます。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">月末棚卸</div><p class="lead">単価は税込のまま。8％／10％を押すと税抜は自動。数えた順に入れていけます。</p>
       <div class="card">${[['米（kg）',7371,8,'2'],['白だし（本）',2101,8,'5'],['鰻（g）',3.834,8,'2,400'],['ビール（本）',201,10,'26']].map(([n, u, r, q]) => `<div class="fld"><label>${n}<small>税込 ${u.toLocaleString('ja-JP')} ・ ${r}％</small></label><input value="${q}" inputmode="decimal"></div>`).join('')}</div>
       <div class="kpi" style="margin-top:8px"><div class="card"><div class="l">当月原価（見込）</div><div class="v">¥2.62<span style="font-size:14px">M</span></div><div class="d">月初＋仕入−月末</div></div><div class="card"><div class="l">原価率</div><div class="v">33.8<span style="font-size:14px">％</span></div><div class="d">入れた瞬間に更新</div></div></div>
       <button class="big" data-toast="保存しました（見本）">棚卸を保存する</button>${timer()}`;
   }
   function replies(){
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">本部から</div><p class="lead">返答とお知らせ。読んだら消えます。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">本部から</div><p class="lead">返答とお知らせ。読んだら消えます。</p>
       ${S.replies.map(r => `<div class="card" style="margin-bottom:8px"><span class="pill info">${r.k}への返答</span><div style="margin-top:6px">${r.t}</div><div class="note">${r.ago}</div></div>`).join('')}
       <div class="card"><span class="pill ok">お知らせ</span><div style="margin-top:6px">10/14（水）勉強会。アプリの回は10分です。</div><div class="note">昨日</div></div>
       <button class="big" data-readall="1">すべて読みました</button>`;
   }
   function write(){
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">引き継ぎを書く</div><p class="lead">次の人が出勤して最初に見ます。「確認しました」を押すまで残ります。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">引き継ぎを書く</div><p class="lead">次の人が出勤して最初に見ます。「確認しました」を押すまで残ります。</p>
       <div class="card"><textarea class="ta" id="ho_txt" placeholder="例：氷が少ない。19時までに製氷機を確認"></textarea></div><button class="big" data-hosave="1">次の人へ残す</button>`;
   }
   function screenPhoto(id){
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">オープン写真</div><p class="lead">左が店長の登録した見本、右が今日。同じ画角で撮るだけ。外観と内観の2つは必須、ほかは店が自由に足せます（10/2 神田さん）。店長が店内で見る写真で、本部には出しません。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">オープン写真</div><p class="lead">左が店長の登録した見本、右が今日。同じ画角で撮るだけ。外観と内観の2つは必須、ほかは店が自由に足せます（10/2 神田さん）。店長が店内で見る写真で、本部には出しません。</p>
       <div class="card"><div class="twins">
         <figure><div class="empty">${ICONS.cam}　見本を登録</div><figcaption>外観の見本<span class="pill warn">必須 ・ 店長が登録</span></figcaption></figure>
         <figure><div class="empty">${ICONS.cam}　撮る</div><figcaption>今日の外観<span class="pill warn">未</span></figcaption></figure>
@@ -522,13 +522,13 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
     const items = { ck_open:[['冷蔵庫の温度を記録','庫内温度計を見て','fridge'],['開封日のラベルがある','容器に日付','labels'],['看板の点灯',null,null],['レジの釣銭を確認',null,null],['桜（トイレ）の紙・石鹸',null,null],['テーブルの拭き上げ',null,null]], ck_idle:[['ガリ・わさびの補充','高く盛れる量','unagiT'],['箸・おしぼりの補充',null,null],['床のチェック',null,null],['ゴミ箱の袋交換',null,null],['蛍（プレート）の準備',null,null],['入口の靴・傘立て',null,null]], ck_sakura:[['便器・床',null,null],['紙・石鹸',null,null],['鏡・手洗い',null,null],['ゴミ箱',null,null]], ck_close:[['火元の確認',null,null],['冷蔵庫の扉','閉まっているか','fridge'],['鰻・肉を冷凍庫へ','1尾ずつラップ','yakiOk'],['レジ締めの現金を金庫へ',null,null],['電気・エアコン',null,null],['戸締り',null,null]] }[id] || [];
     const nm = { ck_open:'OPENチェック', ck_idle:'お手すきチェック', ck_sakura:'桜（トイレ）', ck_close:'CLOSEチェック' }[id];
     const on = S.ck[id] || {}; const n = Object.values(on).filter(Boolean).length;
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">${nm}</div><p class="lead">${n}／${items.length}　右の写真がお手本。項目はこの店の店長が外せます。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">${nm}</div><p class="lead">${n}／${items.length}　右の写真がお手本。項目はこの店の店長が外せます。</p>
       <div class="card">${items.map(([t, s, ph], i) => `<button class="ck ${on[i] ? 'on' : ''}" data-ck="${id}:${i}"><span class="box">${on[i] ? ICONS.check : ''}</span><span class="t">${t}${s ? `<small>${s}</small>` : ''}</span>${ph ? `<img class="ph" src="${P[ph]}" alt="">` : '<span></span>'}</button>`).join('')}</div>
       <button class="big ${n < items.length ? 'dim' : ''}" data-done="${id}">${n < items.length ? `あと ${items.length - n}項目` : '出す'}</button>${timer()}`;
   }
   function screenStock(id){
     const low = S.stock.filter(s => s[1] < s[2]);
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">在庫の数</div><p class="lead">締めに数えて入れるだけ。基準より少ない品目は発注リストに出ます。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">在庫の数</div><p class="lead">締めに数えて入れるだけ。基準より少ない品目は発注リストに出ます。</p>
       <div class="card">${S.stock.map((s, i) => `<div class="fld" style="grid-template-columns:44px 1fr 120px"><span>${s[3] ? `<img class="th" src="${P[s[3]]}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--line)">` : '<span class="st" style="width:44px;height:44px;border-radius:10px;background:var(--kinari);border:1px solid var(--line);display:grid;place-items:center;color:var(--hai)">' + ICONS.box + '</span>'}</span><label>${s[0]}<small>基準 ${s[2]}</small></label><div class="stepper"><button data-st="${i}:-1">−</button><b style="${s[1] < s[2] ? 'color:var(--kaki)' : ''}">${s[1]}</b><button data-st="${i}:1">＋</button></div></div>`).join('')}</div>
       <div class="sec"><h2>発注リスト</h2><small>${low.length}品目</small></div>
       <div class="card" style="font-size:14px">${low.length ? low.map(s => `<div style="display:flex;justify-content:space-between;padding:3px 0">${s[0]}<span class="pill warn">あと ${s[2] - s[1]}</span></div>`).join('') : '<span style="color:var(--hai)">いまは無し</span>'}</div>
@@ -544,7 +544,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
         <div class="slip-h"><select data-sv="${i}">${VENDORS.map(v => `<option ${s.v === v ? 'selected' : ''}>${v}</option>`).join('')}</select><span class="pill info">${s.v === '名畑' ? '酒 10％ ・ 飲料 8％' : '食材 8％'}</span>${s.ocr ? `<span class="pill ${s.conf === 'low' ? 'warn' : 'ok'}">${s.conf === 'low' ? '写真から ・ 要確認' : '写真から読み取り'}</span>` : ''}<button class="mini" data-sdel="${i}">消す</button></div>
         <div class="slip-b"><label>8％対象<small>税込</small><input id="s8_${i}" inputmode="numeric" placeholder="¥" value="${s.a8}" data-s8="${i}"></label><label>10％対象<small>税込</small><input id="s10_${i}" inputmode="numeric" placeholder="¥" value="${s.a10}" data-s10="${i}"></label><div class="slip-net">税抜<b>${yen(taxNet(s.a8, 8) + taxNet(s.a10, 10))}</b></div></div>
       </div>`).join('');
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">日報</div><p class="lead">売上・客数・現金・カードはUSENレジから入っています。入れるのは今日届いた納品書だけ。伝票の「8％対象」「10％対象」の税込額をそのまま写します。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">日報</div><p class="lead">売上・客数・現金・カードはUSENレジから入っています。入れるのは今日届いた納品書だけ。伝票の「8％対象」「10％対象」の税込額をそのまま写します。</p>
       <div class="card">
         <div class="fld"><label>売上（税抜）<small>POS ${S.pos.at} 取込</small></label><div class="auto">${yen(S.pos.sales)}<small>自動</small></div></div>
         <div class="fld"><label>客数<small>POS</small></label><div class="auto">${S.pos.guests}<small>自動</small></div></div>
@@ -569,7 +569,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
       <button class="big" data-done="${id}">出す</button>${timer()}`;
   }
   function screenKizuki(){
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">気づき</div><p class="lead">良かったことも困ったことも、そのままの言葉で。本部から返答が来ます。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">気づき</div><p class="lead">良かったことも困ったことも、そのままの言葉で。本部から返答が来ます。</p>
       <div class="card"><textarea class="ta" placeholder="例：ご飯の量を聞かれることが増えた。POPに書けないか"></textarea><div class="twins" style="margin-top:8px"><figure><img src="${P.unagiT}" alt=""><figcaption>写真 1枚目<span class="pill ok">追加済</span></figcaption></figure><figure><div class="empty">${ICONS.cam}　追加</div><figcaption>写真 2枚目<span style="color:var(--hai)">任意</span></figcaption></figure></div></div>
       <button class="big" data-done="kizuki">送る</button>`;
   }
@@ -601,7 +601,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
       <button class="chip" data-open="qr" style="width:100%;margin-top:6px">サーベイQRを見せる<small>お会計のときに</small></button>`;
   }
   function screenQr(){
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">サーベイQR</div><p class="lead">お会計のときに、この画面をお客様にお見せください。読み取り→アンケート→そのままGoogle口コミのご案内へ。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">サーベイQR</div><p class="lead">お会計のときに、この画面をお客様にお見せください。読み取り→アンケート→そのままGoogle口コミのご案内へ。</p>
       <div class="card" style="text-align:center">
         <div style="max-width:230px;margin:6px auto;background:#fff;padding:12px;border-radius:14px;border:1px solid var(--line)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 37 37" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h37v37H0z"/><path stroke="#000000" d="M2 2.5h7m1 0h5m1 0h1m3 0h1m2 0h1m4 0h7M2 3.5h1m5 0h1m1 0h2m3 0h1m2 0h2m1 0h2m1 0h1m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m2 0h2m1 0h1m1 0h1m1 0h2m2 0h2m1 0h1m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h3m3 0h1m1 0h2m1 0h1m1 0h2m3 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m2 0h1m1 0h1m1 0h1m3 0h1m5 0h1m2 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M13 9.5h4m1 0h1m2 0h1m2 0h3M2 10.5h1m2 0h6m1 0h1m1 0h1m4 0h1m1 0h2m3 0h2m2 0h1m1 0h3M2 11.5h2m2 0h2m2 0h1m1 0h1m1 0h4m2 0h2m3 0h1m4 0h3M3 12.5h3m2 0h1m5 0h2m1 0h1m2 0h1m4 0h1m4 0h3m1 0h1M5 13.5h1m4 0h1m2 0h1m1 0h1m2 0h4m2 0h6m2 0h3M8 14.5h2m4 0h2m2 0h1m2 0h1m3 0h1m2 0h2M3 15.5h1m3 0h1m2 0h1m1 0h2m2 0h5m3 0h2m3 0h1m1 0h1M2 16.5h4m1 0h3m2 0h1m1 0h1m1 0h3m2 0h2m1 0h1m3 0h1m1 0h2M5 17.5h1m1 0h1m1 0h1m2 0h5m4 0h2m1 0h1m2 0h1m2 0h3m1 0h1M2 18.5h1m2 0h2m1 0h1m2 0h3m3 0h1m2 0h1m3 0h1m1 0h5M4 19.5h3m3 0h1m1 0h4m1 0h1m1 0h4m1 0h1m2 0h2m1 0h1m1 0h1m1 0h1M3 20.5h3m2 0h1m1 0h1m1 0h2m1 0h5m1 0h1m3 0h1m2 0h2m1 0h2m1 0h1M2 21.5h1m2 0h3m3 0h1m3 0h1m2 0h1m2 0h2m2 0h2m1 0h1m1 0h3m1 0h1M3 22.5h3m1 0h2m1 0h1m3 0h2m1 0h1m1 0h2m1 0h1m3 0h1m2 0h1m1 0h1m1 0h2M2 23.5h3m2 0h1m1 0h1m3 0h2m1 0h2m1 0h1m1 0h1m2 0h4m1 0h2M2 24.5h1m1 0h2m2 0h1m1 0h1m1 0h1m1 0h1m1 0h2m5 0h1m1 0h1m4 0h1m1 0h3M2 25.5h1m2 0h2m2 0h3m1 0h1m1 0h1m2 0h5m2 0h3m2 0h1m1 0h2M2 26.5h2m1 0h2m1 0h1m1 0h1m2 0h1m1 0h2m7 0h8M10 27.5h1m3 0h1m2 0h2m1 0h1m4 0h2m3 0h1m1 0h2M2 28.5h7m1 0h6m1 0h1m1 0h5m1 0h2m1 0h1m1 0h1m1 0h1M2 29.5h1m5 0h1m1 0h1m1 0h3m1 0h1m1 0h1m1 0h3m2 0h2m3 0h3M2 30.5h1m1 0h3m1 0h1m1 0h5m1 0h1m3 0h1m1 0h1m1 0h7m2 0h1M2 31.5h1m1 0h3m1 0h1m1 0h3m3 0h2m1 0h3m1 0h1m3 0h1m1 0h1m3 0h2M2 32.5h1m1 0h3m1 0h1m2 0h1m1 0h2m2 0h2m2 0h1m1 0h1m3 0h1m1 0h2m2 0h2M2 33.5h1m5 0h1m2 0h1m2 0h1m1 0h3m2 0h2m1 0h1m2 0h8M2 34.5h7m1 0h2m4 0h1m1 0h2m2 0h1m2 0h7"/></svg></div>
         <p style="font-size:16px;font-weight:700;margin:8px 0 2px">ご来店アンケートにご協力ください</p>
@@ -611,7 +611,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
       <button class="chip" data-toast="お声かけの例文（韓・英・中＋読みがな）を開く（見本）" style="width:100%;margin-top:6px">お声かけの例文を開く<small>韓・英・中＋読みがな</small></button>`;
   }
   function screenWaste(){
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">食べ残し</div><p class="lead">下げたお皿を1枚。残されやすい商品を本部が見ます。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">食べ残し</div><p class="lead">下げたお皿を1枚。残されやすい商品を本部が見ます。</p>
       <div class="card"><div class="fld"><label>メニュー</label><input value="鰻ひつまぶし 上" style="text-align:left"></div><div class="fld"><label>残り具合</label><div class="taxrow"><button>少し</button><button class="on">半分</button><button>ほぼ全部</button></div></div></div>
       <button class="big" data-toast="送りました（見本）">写真を撮って送る</button>`;
   }
@@ -619,7 +619,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
     const w = S.lw; const items = S.stock.map(r => r[0]);
     const chips = LOSS_KINDS.map(k => `<button class="chip" data-lkind="${k}" style="flex:1 1 44%;min-width:0;padding:10px 6px;${w.kind === k ? 'background:var(--suou);color:#fff;border-color:var(--suou)' : ''}">${k}</button>`).join('');
     const list = S.loss.length ? S.loss.map((l, i) => `<div class="ho" style="padding:8px 0;border-top:1px solid var(--line)"><div style="flex:1"><div class="txt">${l.item} ${l.qty ? l.qty + ' ・ ' : ''}${l.amt ? yen(l.amt) : '金額なし'}</div><div class="by"><span class="pill warn" style="font-size:10px">${l.kind}</span> ${l.by}</div></div><button class="mini" data-ldel="${i}">消す</button></div>`).join('') : '<div class="ho"><div class="txt" style="color:var(--hai)">きょうはまだありません</div></div>';
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">ロス</div><p class="lead">ロスはゼロにならない。大事なのは「なぜ」を残すこと（調理ミス＝揚げすぎ・焼きすぎ）。種類と品目を選ぶだけ。金額は分かれば。無い日は何もしなくてよい。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">ロス</div><p class="lead">ロスはゼロにならない。大事なのは「なぜ」を残すこと（調理ミス＝揚げすぎ・焼きすぎ）。種類と品目を選ぶだけ。金額は分かれば。無い日は何もしなくてよい。</p>
       <div class="card"><label style="font-size:12px;color:var(--hai)">種類</label><div class="chips" style="margin-top:4px;flex-wrap:wrap">${chips}</div>
         <label style="font-size:12px;color:var(--hai);display:block;margin-top:10px">品目<small style="margin-left:6px">在庫の一覧から。無ければ書く</small></label>
         <input id="lw_item" list="lw_items" style="padding:10px;margin-top:4px;width:100%;box-sizing:border-box;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--kinari);font-size:14px" placeholder="例：ミニトマト（袋）" value="${w.item || ''}"><datalist id="lw_items">${items.map(n => `<option value="${n}">`).join('')}</datalist>
@@ -701,13 +701,13 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
     ['マニュアル', '仕事の手順', '開店・締め・掃除', null, 'toast="本部の目次の「仕事の手順」を開きます（見本）"', ['手順','開店','締め','掃除','レジ締め','閉店']],
     ['マニュアル', '月末棚卸', '未開封だけ数える・うなぎ和牛は仕込み前', 'count', 'go="tana"', ['棚卸','たなおろし','在庫','未開封']],
     ['マニュアル', 'パスワード変更', '責任者が店舗iPadで変える', null, 'toast="パスワード変更の手順を開きます（見本）"', ['パスワード','ログイン','退職','辞め']],
-    ['きょう', 'OPENチェック', '12項目・お手本つき', null, 'open="check" data-id="ck_open"', ['open','オープン','チェック','開店']],
-    ['きょう', '桜（トイレ）', '4項目・14時までに', null, 'open="check" data-id="ck_sakura"', ['桜','トイレ','さくら']],
-    ['きょう', 'CLOSEチェック', '10項目', null, 'open="check" data-id="ck_close"', ['close','クローズ','締め','閉店']],
-    ['きょう', '日報', '納品書を撮るだけ', null, 'open="nippou" data-id="nippou"', ['日報','納品書','売上','仕入','レジ']],
-    ['きょう', '在庫の数', '少ないものは発注リストへ', 'scale', 'open="stock" data-id="zaiko"', ['在庫','発注リスト','数']],
-    ['きょう', 'ロス', '種類と品目を選ぶだけ', null, 'open="loss"', ['ロス','廃棄','捨て']],
-    ['きょう', '気づき', '良かったことも困ったことも', null, 'open="kizuki"', ['気づき','報告','相談']],
+    ['きょうやること', 'OPENチェック', '12項目・お手本つき', null, 'open="check" data-id="ck_open"', ['open','オープン','チェック','開店']],
+    ['きょうやること', '桜（トイレ）', '4項目・14時までに', null, 'open="check" data-id="ck_sakura"', ['桜','トイレ','さくら']],
+    ['きょうやること', 'CLOSEチェック', '10項目', null, 'open="check" data-id="ck_close"', ['close','クローズ','締め','閉店']],
+    ['きょうやること', '日報', '納品書を撮るだけ', null, 'open="nippou" data-id="nippou"', ['日報','納品書','売上','仕入','レジ']],
+    ['きょうやること', '在庫の数', '少ないものは発注リストへ', 'scale', 'open="stock" data-id="zaiko"', ['在庫','発注リスト','数']],
+    ['きょうやること', 'ロス', '種類と品目を選ぶだけ', null, 'open="loss"', ['ロス','廃棄','捨て']],
+    ['きょうやること', '気づき', '良かったことも困ったことも', null, 'open="kizuki"', ['気づき','報告','相談']],
     ['発注', '備品・食材を注文する', '注文先へ', 'count', 'go="order"', ['発注','注文','備品','食材','仕入先']],
     ['その他', '勉強会・使い方・ルール集・相談通報', '', 'counter', 'go="other"', ['勉強会','使い方','ルール','通報','相談']],
   ];
@@ -763,7 +763,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
       <button class="card" data-go="voice" style="width:100%;text-align:left;cursor:pointer"><div class="kpi" style="margin:0"><div><div class="l">サーベイ満足度</div><div class="v">4.6</div><div class="d">今月 38件 ・ 低評価 2件</div></div><div><div class="l">Google口コミ</div><div class="v">4.7</div><div class="d">通算 1,284件 ・ 今月 +12</div></div></div><div class="muted" style="font-size:12px;margin-top:8px">押すと、回答の一覧・来店国・来店経路・口コミの推移</div></button>
       ${S.role === 'manager' ? `<div class="sec"><h2>この店の提出物</h2><small>本部が4区分で設定 ・ 店は見るだけ</small></div>
       <div class="card"><div class="seg3">${OBL_ITEMS.map(([id, nm]) => `<span>${nm}</span><span class="opts"><button class="on" style="flex:1;cursor:default">${S.oblig[id] || '店内実施'}</button></span>`).join('')}${S.own.map(([nm, k]) => `<span>${nm} <span class="pill info" style="font-size:10px">この店だけ</span></span><span class="opts"><button class="on" style="flex:1;cursor:default">${k}</button></span>`).join('')}</div><div class="note">「店内実施」＝店で必ずやるが本部への提出はない（店長が店内で確認）。「本部へ」の印がある行だけ本部に届きます</div>
-      <button class="mini" data-go="ownadd" style="margin-top:8px">＋ この店だけの項目を足す</button><div class="note">店が自分で足せます（店内実施か推奨だけ）。本部の表には出ず、この店の「きょう」にだけ出ます</div></div>` : ''}
+      <button class="mini" data-go="ownadd" style="margin-top:8px">＋ この店だけの項目を足す</button><div class="note">店が自分で足せます（店内実施か推奨だけ）。本部の表には出ず、この店の「きょうやること」にだけ出ます</div></div>` : ''}
       <div class="note">数字は見るだけ。入力する場所は「きょうやること」の日報だけです。原価率は月末棚卸のあと翌月5日までに確定して出します。それまでは仕入率が目安です。</div></div></div>`;
   }
   function drawSpark(){
@@ -782,7 +782,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
   }
   function ownAdd(){
     const seg = (key, opts) => `<div class="chips">${opts.map(o => `<button class="chip" data-${key}="${o}" style="${S[key] === o ? 'background:var(--suou);color:#fff;border-color:var(--suou)' : ''}">${o}</button>`).join('')}</div>`;
-    return `<button class="back" data-go="numtop">${ICONS.back} 店の数字</button><div class="ttl">この店だけの項目を足す</div><p class="lead">名前・時間帯・区分の3つだけ。足すとこの店の「きょう」に出ます。本部の表には出ません。</p>
+    return `<button class="back" data-go="numtop">${ICONS.back} 店の数字</button><div class="ttl">この店だけの項目を足す</div><p class="lead">名前・時間帯・区分の3つだけ。足すとこの店の「きょうやること」に出ます。本部の表には出ません。</p>
       <div class="card"><label style="font-size:12px;color:var(--hai)">名前</label><input id="own_nm" class="ta" style="min-height:0;padding:10px" placeholder="例：製氷機の点検" value="${S.ownNm || ''}">
         <label style="font-size:12px;color:var(--hai);display:block;margin-top:10px">時間帯</label>${seg('ownSlot', ['開店前','営業中','締め'])}
         <label style="font-size:12px;color:var(--hai);display:block;margin-top:10px">区分</label>${seg('ownKind', ['店内実施','推奨'])}
@@ -791,7 +791,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
   }
   function screenOwn(id){
     const r = FLOW.flatMap(f => f.rows).find(x => x[0] === id) || [];
-    return `<button class="back" data-go="today">${ICONS.back} きょう</button><div class="ttl">${r[1] || ''}</div><p class="lead">この店で足した項目。やったら押すだけ。本部には出ません。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">${r[1] || ''}</div><p class="lead">この店で足した項目。やったら押すだけ。本部には出ません。</p>
       <button class="big" data-done="${id}">できました</button>${timer()}`;
   }
   /* ---------- 掲示板（店の中だけ） ---------- */
@@ -825,7 +825,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
     const times = [['本店',5.2],['長堀橋',7.8],['難波',4.1],['心斎橋',3.6],['広島',6.4]];
     const cards = [['長堀橋','牛カツ','ikuraDon',2,false],['富士山','日本鰻','fujiDon',0,true],['広島','和牛','hiroshima',1,false],['心斎橋','寿司','counter',3,false],['本店','日本料理','course',0,true],['浅草橋','日本鰻','fujiClose',4,false]];
     const storeCards = `<div class="stores">${cards.map(([n, g, ph, k, ok]) => `<button><img src="${P[ph]}" alt=""><span class="b ${ok ? 'ok' : ''}">${ok ? '完了' : '残 ' + k}</span><span class="n">${n}</span><span class="s">${g}</span></button>`).join('')}</div>`;
-    return `<div class="sec"><h2>店舗</h2><small>押すとその店の「きょう」</small></div>${storeCards}
+    return `<div class="sec"><h2>店舗</h2><small>押すとその店の「きょうやること」</small></div>${storeCards}
       <div class="sec"><h2>全店 きょう</h2><small>22:10 ・ 赤＝締切超過</small></div>
       <div class="card"><div class="hqgrid"><span></span>${items.map(i => `<span class="h">${i}</span>`).join('')}${stores.map((s, i) => `<span class="s">${s}</span>` + pat[i].slice(1).map(v => `<span class="dot ${cls(v)}"></span>`).join('')).join('')}</div><div class="note">点線＝その店では不要にした項目、またはUSENレジが無い店（本店・日本鰻の2店＝売上は手入力）。レジ締めの赤＝現金の過不足あり</div></div>
       <div class="sec"><h2>レジ締め</h2><small>USENから毎朝 ・ 7店</small></div>
@@ -841,7 +841,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
       <div class="sec"><h2>日報の入力時間</h2><small>今週の中央値 ・ 分</small></div>
       <div class="card">${times.map(([s, m]) => `<div class="bar"><span>${s}</span><i style="width:${m / 8 * 100}%"></i><b>${m.toFixed(1)}</b></div>`).join('')}<div class="note">長い店から減らす。「10分が5分になったか」をここで見ます</div></div>
       <div class="sec"><h2>提出物の設定 ・ 長堀橋</h2><small>本部提出／店内実施／推奨／不要</small></div>
-      <div class="card"><div class="seg3">${OBL_ITEMS.map(([id, nm]) => `<span>${nm}</span><span class="opts">${OBL_KINDS.map(o => `<button data-ob="${id}:${o}" class="${S.oblig[id] === o ? 'on' : ''}">${o}</button>`).join('')}</span>`).join('')}</div><div class="note">10/2 構築MTGの4区分。「店内実施」＝店で必ずやるが本部への提出はない。「本部提出」だけが全店の一枚表と返答待ちに出ます。変えると、その店の「きょう」がすぐ変わります（左で店舗に切り替えて確認）。店が自分で足した項目（店内実施・推奨）はこの表には出ません</div></div>
+      <div class="card"><div class="seg3">${OBL_ITEMS.map(([id, nm]) => `<span>${nm}</span><span class="opts">${OBL_KINDS.map(o => `<button data-ob="${id}:${o}" class="${S.oblig[id] === o ? 'on' : ''}">${o}</button>`).join('')}</span>`).join('')}</div><div class="note">10/2 構築MTGの4区分。「店内実施」＝店で必ずやるが本部への提出はない。「本部提出」だけが全店の一枚表と返答待ちに出ます。変えると、その店の「きょうやること」がすぐ変わります（左で店舗に切り替えて確認）。店が自分で足した項目（店内実施・推奨）はこの表には出ません</div></div>
       <button class="big" data-toast="お知らせを書く画面（見本）">お知らせを出す</button>`;
   }
 
@@ -893,7 +893,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
     else if (d.sadd) { S.slips.push({ v:'西原', a8:'', a10:'' }); }
     else if (d.socr) { toast('読み取り中…'); const n = S.slips.filter(s => s.ocr).length; setTimeout(() => { S.slips.push(n % 2 === 0 ? { v:'フレッシュ', a8:'18360', a10:'', ocr:true, conf:'high' } : { v:'その他', a8:'9720', a10:'2200', ocr:true, conf:'low' }); render(); toast('読み取りました。違うところだけ直してください'); }, 900); return; }
     else if (d.sdel) { S.slips.splice(Number(d.sdel), 1); }
-    else if (d.ob) { const [id, o] = d.ob.split(':'); S.oblig[id] = o; toast('長堀橋の「きょう」に反映しました'); }
+    else if (d.ob) { const [id, o] = d.ob.split(':'); S.oblig[id] = o; toast('長堀橋の「きょうやること」に反映しました'); }
     else if (d.lkind) { S.lw.kind = d.lkind; S.lw.item = ($('#lw_item') || {}).value || ''; S.lw.qty = ($('#lw_qty') || {}).value || ''; S.lw.amt = ($('#lw_amt') || {}).value || ''; }
     else if (d.lphoto) { S.lw.photo = !S.lw.photo; S.lw.item = ($('#lw_item') || {}).value || ''; S.lw.qty = ($('#lw_qty') || {}).value || ''; S.lw.amt = ($('#lw_amt') || {}).value || ''; }
     else if (d.lsave) { const item = ($('#lw_item').value || '').trim(); if (!item) { toast('品目を入れてください'); return; } S.loss.push({ kind: S.lw.kind, item, qty: ($('#lw_qty').value || '').trim(), amt: Number(($('#lw_amt').value || '').replace(/[^0-9]/g, '')) || 0, by: '店舗iPad ・ ' + now(), photo: S.lw.photo }); S.lw = { kind: S.lw.kind, item:'', qty:'', amt:'', photo:false }; toast('記録しました。日報のロス金額に入ります'); }
@@ -908,7 +908,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
     else if (d.bsend) { const b = S.board.find(x => x.id == d.bsend); if (b) b.sent = true; toast('「みんなの投稿」へ送りました。本部が確認してから全店に出ます'); }
     else if (d.ownSlot) { S.ownSlot = d.ownSlot; const n = $('#own_nm'); if (n) S.ownNm = n.value; }
     else if (d.ownKind) { S.ownKind = d.ownKind; const n = $('#own_nm'); if (n) S.ownNm = n.value; }
-    else if (d.ownsave) { const nm = ($('#own_nm').value || '').trim(); if (!nm) { toast('名前を入れてください'); return; } const id = 'own_' + Date.now(); const slot = FLOW.find(f => f.slot === S.ownSlot) || FLOW[1]; slot.rows.push([id, nm, 'この店で足した項目', 1, 'own', 'list', null]); S.oblig[id] = S.ownKind; S.own.push([nm, S.ownKind]); S.ownNm = ''; S.screen = null; toast('「きょう」の' + S.ownSlot + 'に出ます'); }
+    else if (d.ownsave) { const nm = ($('#own_nm').value || '').trim(); if (!nm) { toast('名前を入れてください'); return; } const id = 'own_' + Date.now(); const slot = FLOW.find(f => f.slot === S.ownSlot) || FLOW[1]; slot.rows.push([id, nm, 'この店で足した項目', 1, 'own', 'list', null]); S.oblig[id] = S.ownKind; S.own.push([nm, S.ownKind]); S.ownNm = ''; S.screen = null; toast('「きょうやること」の' + S.ownSlot + 'に出ます'); }
     else if (d.pasample) { S.paSample = d.pasample; const n = $('#pa_nm'); if (n) S.paNm = n.value; }
     else if (d.photosave) { const nm = ($('#pa_nm').value || '').trim(); if (!nm) { toast('名前を入れてください'); return; } S.photoExtra.push({ nm, sample: S.paSample || 'counter', today: null }); S.screen = 'photo'; S.sid = 'openphoto'; toast('オープン写真に「' + nm + '」を足しました'); }
     else if (d.shot != null) { S.photoExtra[Number(d.shot)].today = now(); toast('撮りました'); }
