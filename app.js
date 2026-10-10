@@ -6412,11 +6412,11 @@
     const tnGuideRow = tnGuides.length ? `<div class="seg-chips" style="margin:2px 0 8px">${tnGuides.map(l => `<button type="button" class="chip" data-openurl="${esc(l.url)}">📖 ${esc(l.title)}</button>`).join('')}</div>` : '';
     return `
       <div class="card" id="tnForm">
-        <h3>${L({ ja:'棚卸（月末・食材・飲料・酒）', en:'Stocktake (month-end: food, drinks, alcohol)', vi:'Kiểm kê (cuối tháng: thực phẩm, đồ uống, rượu)' })} — ${esc(storeShort(store))}</h3>
+        <h3>${L({ ja:'棚卸（月末・口に入れる物すべて）', en:'Stocktake (month-end: everything edible)', vi:'Kiểm kê (cuối tháng: mọi thứ ăn uống được)' })} — ${esc(storeShort(store))}</h3>
         ${tnGuideRow}
         ${/* ★2026-10-31施行の新ルール（10/9 構築MTG決定・月末棚卸マニュアル Ver0.8）＝未開封だけ数える・開封済みは0。
              仕込み前の和牛（kg）・鰻（尾）だけは開封済みも数える。旧「0.25/0.5/0.75/1で概算」（8/18決定）は廃止 */''}
-        <p class="hint" style="display:block">${L({ ja:'月末に数えて入力してください。数えるのは未開封だけ（開封済みは 0）。仕込み前の和牛（はかりで量って kg・例 500g＝0.5）と鰻（尾）だけは、開封済みも数えます。数量は単価の単位に合わせてください。包材や消耗品は数えません（PLで別に管理します）。', en:'Count at month end. Count unopened items only (opened = 0). Only raw wagyu (weigh in kg, e.g. 500g = 0.5) and eel (pieces) are counted even if opened. Use the same unit as the unit price. Packaging and supplies are not counted (managed separately in P&L).', vi:'Cuối tháng đếm và nhập. Chỉ đếm hàng chưa mở (đã mở = 0). Riêng bò wagyu chưa sơ chế (cân, kg; 500g = 0.5) và lươn (con) đếm cả khi đã mở. Dùng cùng đơn vị với đơn giá. Không đếm bao bì, vật tư.' })}</p>
+        <p class="hint" style="display:block">${L({ ja:'月末に数えて入力してください。対象は口に入れる物すべて（食材・飲料・酒・油・調味料）。数えるのは未開封だけ（開封済みは 0）。仕込み前の和牛（はかりで量って kg・例 500g＝0.5）と鰻（尾）だけは、開封済みも数えます。数量は単価の単位に合わせてください。包材や消耗品は数えません（PLで別に管理します）。', en:'Count at month end. Everything edible counts (food, drinks, alcohol, oil, seasonings). Count unopened items only (opened = 0). Only raw wagyu (weigh in kg, e.g. 500g = 0.5) and eel (pieces) are counted even if opened. Use the same unit as the unit price. Packaging and supplies are not counted (managed separately in P&L).', vi:'Cuối tháng đếm và nhập. Chỉ đếm hàng chưa mở (đã mở = 0). Riêng bò wagyu chưa sơ chế (cân, kg; 500g = 0.5) và lươn (con) đếm cả khi đã mở. Dùng cùng đơn vị với đơn giá. Không đếm bao bì, vật tư.' })}</p>
         <label class="fld"><span>${L({ ja:'対象月', en:'Month', vi:'Tháng' })}</span><input type="month" id="tn_ym" value="${esc(nowYm)}"></label>
         <input type="hidden" id="tn_fcount" value="${fRows.length}"><input type="hidden" id="tn_dcount" value="${dRows.length}">
         ${tnEmpty ? tnPaste : ''}
