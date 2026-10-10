@@ -156,6 +156,14 @@ textarea.ta{width:100%;min-height:96px;padding:10px;border:1px solid var(--line)
 .twins figcaption{padding:7px 10px;font-size:12px;display:flex;justify-content:space-between;align-items:center}
 .search{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px 13px;color:var(--hai)}
 .search .ic{width:20px;height:20px;flex:none}
+.search input{font-size:16px}
+.hit{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding:10px 4px;border-top:1px solid var(--line);width:100%;text-align:left}
+.hit img{width:52px;height:52px;object-fit:cover;border-radius:10px}
+.hit .k{font-size:11px;color:var(--hai)}
+.hit .nm{font-size:15px;font-weight:600}
+.hit .sub{font-size:12px;color:var(--hai)}
+.hit .go{font-size:12px;color:var(--suou);white-space:nowrap}
+.hit mark{background:#F6E3A6;color:inherit;padding:0 1px;border-radius:2px}
 .search input{flex:1;border:0;background:none;font-size:15px;color:var(--sumi);min-width:0}
 .recipe{padding:0;overflow:hidden;width:100%}
 .recipe .hero{position:relative}
@@ -674,6 +682,44 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
     return `<button class="back" data-go="searchtop">${ICONS.back} 見る・注文する</button><div class="ttl">その他</div>
       <div class="chips"><button class="chip">勉強会<small>10/14 15:00</small></button><button class="chip">使い方<small>1分</small></button><button class="chip">ルール集<small>迷ったら</small></button><button class="chip">相談・通報<small>本部へ直接</small></button></div>`;
   }
+  /* ---------- 言葉で探す（見本の索引）2026-10-10 ---------- */
+  const INDEX = [
+    ['レシピ', '鰻ひつまぶし 上（1尾）', '275℃ 3分45秒・合格の焼き色', 'unagi', 'go="recipe"', ['うなぎ','鰻','ひつまぶし','焼き加減','焼き','上']],
+    ['レシピ', '鰻ひつまぶし 木箱', '盛り付け・薬味', 'unagiKibako', 'go="recipes"', ['うなぎ','鰻','木箱']],
+    ['レシピ', 'いくら丼セット', 'この店の品', 'ikuraDon', 'go="recipes"', ['いくら','丼']],
+    ['レシピ', '和牛丼セット', 'この店の品', 'wagyuDon', 'go="recipes"', ['和牛','丼','牛']],
+    ['レシピ', '牛カツサンド', 'この店の品', 'sand', 'go="recipes"', ['牛カツ','サンド','カツ']],
+    ['レシピ', '焼きひつまぶし', 'この店の品', 'yakiTare', 'go="recipes"', ['焼き','ひつまぶし','タレ']],
+    ['レシピ', '炙りの出し方', '提供のしかた', 'aburi', 'go="recipes"', ['炙り','あぶり','出し方']],
+    ['レシピ', 'たい焼き', 'この店の品', 'taiyaki', 'go="recipes"', ['たい焼き','たいやき']],
+    ['レシピ', '神戸牛ひつまぶし 極', 'ほかの業態', 'kobe', 'go="recipes"', ['神戸牛','極']],
+    ['レシピ', '和牛すき焼き丼', 'ほかの業態', 'sukiyaki', 'go="recipes"', ['すき焼き','和牛']],
+    ['レシピ', 'にぎり', 'ほかの業態', 'sushi', 'go="recipes"', ['寿司','にぎり','鮨']],
+    ['マニュアル', '食物アレルギーを確認する', '本部の正式な表', 'labels', 'go="allergy"', ['アレルギー','あれるぎー','小麦','卵','えび','そば','乳']],
+    ['マニュアル', '緊急のとき', '火事・けが・お申し出・停電', null, 'go="emergency"', ['緊急','火事','けが','地震','食中毒','クレーム','停電','断水','救急']],
+    ['マニュアル', '衛生のきまり', '温度・手洗い・期限', 'fridge', 'toast="衛生管理のマニュアルを開きます（見本）"', ['衛生','温度','手洗い','期限','冷蔵','冷凍','消毒']],
+    ['マニュアル', '仕事の手順', '開店・締め・掃除', null, 'toast="本部の目次の「仕事の手順」を開きます（見本）"', ['手順','開店','締め','掃除','レジ締め','閉店']],
+    ['マニュアル', '月末棚卸', '未開封だけ数える・うなぎ和牛は仕込み前', 'count', 'go="tana"', ['棚卸','たなおろし','在庫','未開封']],
+    ['マニュアル', 'パスワード変更', '責任者が店舗iPadで変える', null, 'toast="パスワード変更の手順を開きます（見本）"', ['パスワード','ログイン','退職','辞め']],
+    ['きょう', 'OPENチェック', '12項目・お手本つき', null, 'open="check" data-id="ck_open"', ['open','オープン','チェック','開店']],
+    ['きょう', '桜（トイレ）', '4項目・14時までに', null, 'open="check" data-id="ck_sakura"', ['桜','トイレ','さくら']],
+    ['きょう', 'CLOSEチェック', '10項目', null, 'open="check" data-id="ck_close"', ['close','クローズ','締め','閉店']],
+    ['きょう', '日報', '納品書を撮るだけ', null, 'open="nippou" data-id="nippou"', ['日報','納品書','売上','仕入','レジ']],
+    ['きょう', '在庫の数', '少ないものは発注リストへ', 'scale', 'open="stock" data-id="zaiko"', ['在庫','発注リスト','数']],
+    ['きょう', 'ロス', '種類と品目を選ぶだけ', null, 'open="loss"', ['ロス','廃棄','捨て']],
+    ['きょう', '気づき', '良かったことも困ったことも', null, 'open="kizuki"', ['気づき','報告','相談']],
+    ['発注', '備品・食材を注文する', '注文先へ', 'count', 'go="order"', ['発注','注文','備品','食材','仕入先']],
+    ['その他', '勉強会・使い方・ルール集・相談通報', '', 'counter', 'go="other"', ['勉強会','使い方','ルール','通報','相談']],
+  ];
+  const norm = (t) => (t || '').toLowerCase().replace(/[\s　]+/g, '');
+  function searchResults(q){
+    const nq = norm(q);
+    if (!nq) return '';
+    const hits = INDEX.filter(([k, nm, sub, im, act, kws]) => norm(nm).includes(nq) || norm(sub).includes(nq) || kws.some(w => norm(w).includes(nq) || nq.includes(norm(w))));
+    if (!hits.length) return `<div class="note" style="margin-top:14px">「${q}」は見つかりませんでした。「マニュアル」の目次から探すか、本部へ気づきで聞いてください。</div><div class="chips" style="margin-top:10px"><button class="chip" data-go="manual">マニュアルの目次<small>全部の資料</small></button><button class="chip" data-open="kizuki">本部へ聞く<small>気づきで</small></button></div>`;
+    const hl = (t) => t.replace(new RegExp(q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), (m) => `<mark>${m}</mark>`);
+    return `<div class="sec"><h2>見つかったもの</h2><small>${hits.length}件</small></div><div class="card" style="padding-top:0">${hits.map(([k, nm, sub, im, act]) => `<button class="hit" data-${act}>${im ? `<img src="${P[im]}" alt="">` : `<span class="st">${ICONS.search}</span>`}<span><span class="k">${k}</span><br><span class="nm">${hl(nm)}</span><br><span class="sub">${sub}</span></span><span class="go">開く ›</span></button>`).join('')}</div>`;
+  }
   function search(){
     const q = (S.q || '').trim();
     if (S.screen === 'recipe') return recipe();
@@ -683,13 +729,11 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
     if (S.screen === 'allergy') return allergy();
     if (S.screen === 'order') return order();
     if (S.screen === 'emergency') return emergency();
-    const ok = q && /鰻|うなぎ|ひつ|上|レシピ|和牛/.test(q);
-    return `<div class="search">${ICONS.search}<input id="q" placeholder="言葉で探す（例：鰻　焼き加減）" value="${q}"></div>
+    return `<div class="search">${ICONS.search}<input id="q" placeholder="言葉で探す（例：鰻　アレルギー　棚卸）" value="${q}" autocomplete="off" enterkeyhint="search"></div><div id="qres">${searchResults(q)}</div>
       ${q ? '' : `<div class="tiles">${USES.map(([k, t, sub, im]) => `<button data-${k}><img src="${P[im]}" alt=""><div class="veil"></div><div class="t"><b>${t}</b><small>${sub}</small></div></button>`).join('')}</div>
       <div class="sec"><h2>よく見るレシピ</h2><small>この店の品</small></div>
       <div class="rlist">${[['ikuraDon','いくら丼セット'],['wagyuDon','和牛丼セット'],['sand','牛カツサンド'],['yakiTare','焼きひつまぶし'],['aburi','炙りの出し方'],['taiyaki','たい焼き']].map(([im, nm]) => `<button data-go="recipes"><img src="${P[im]}" alt=""><span>${nm}</span></button>`).join('')}</div>
-      <div class="note">レシピ・マニュアルは、整備できたものから増えます。</div>`}
-      ${ok ? `<div class="sec"><h2>見つかったもの</h2><small>レシピ</small></div>${heroCard()}` : q ? `<div class="note">見つかりませんでした。「マニュアル」の目次から探してください。</div>` : ''}`;
+      <div class="note">レシピ・マニュアルは、整備できたものから増えます。</div>`}`;
   }
   function recipe(){
     return `<button class="back" data-go="recipes">${ICONS.back} レシピ</button>
@@ -819,7 +863,11 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
     /* 右上の役割ボタン＝いまの役割を塗る（2026-10-02 神田さん「切り替えたらボタンも切り替わるように」）。切替で下のタブ・店名・中身も同時に変わる */
     document.querySelectorAll('#roles button').forEach(b => b.classList.toggle('on', b.dataset.role === S.role));
     if (S.screen && !['replies','write','kizuki','waste','recipe'].includes(S.screen)) S.started = S.started || Date.now(); else S.started = null;
-    const q = $('#q'); if (q) q.oninput = (e) => { S.q = e.target.value; const pos = e.target.selectionStart; render(); const q2 = $('#q'); q2.focus(); q2.setSelectionRange(pos, pos); };
+    const q = $('#q'); if (q) {
+      /* 2026-10-10 入力のたびに全体を描き直すと日本語の変換中に壊れる（実機iPhone）→ 変換中は何もしない・確定したら結果の枠だけ差し替える */
+      const upd = (e) => { if (e.isComposing) return; S.q = e.target.value; const r = $('#qres'); if (r) r.innerHTML = searchResults(S.q); const tiles = $('.tiles'); if (tiles) tiles.parentElement.querySelectorAll('.tiles,.rlist,.sec,.note').forEach(x => { if (x.id !== 'qres') x.style.display = S.q.trim() ? 'none' : ''; }); };
+      q.oninput = upd; q.addEventListener('compositionend', upd);
+    }
     drawSpark();
   }
   setInterval(() => { const t = $('#timer'); if (t && S.started) { const s = Math.floor((Date.now() - S.started) / 1000); t.textContent = `この画面を開いてから ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} ・ 入力時間は本部の改善に使います`; } const c = $('#clock'); if (c) c.textContent = now(); }, 1000);
