@@ -151,8 +151,8 @@ main{flex:1;overflow:auto;padding:12px 14px 22px;-webkit-overflow-scrolling:touc
 textarea.ta{width:100%;min-height:96px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--kinari);resize:vertical}
 .twins{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .twins figure{margin:0;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--paper)}
-.twins img{width:100%;height:110px;object-fit:cover}
-.twins .empty{height:110px;display:grid;place-items:center;color:var(--hai);font-size:12px;background:var(--kinari);border-bottom:1px solid var(--line)}
+.twins img{width:100%;aspect-ratio:4/3;height:auto;object-fit:cover}
+.twins .empty{aspect-ratio:4/3;display:grid;place-items:center;color:var(--hai);font-size:12px;background:var(--kinari);border-bottom:1px solid var(--line)}
 .twins figcaption{padding:7px 10px;font-size:12px;display:flex;justify-content:space-between;align-items:center}
 .search{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px 13px;color:var(--hai)}
 .search .ic{width:20px;height:20px;flex:none}
@@ -262,6 +262,8 @@ body.ipad main{grid-column:2;grid-row:3;padding:16px 26px 28px}
 body.ipad .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 26px;align-items:start}
 body.ipad .mgrid.use{grid-template-columns:repeat(4,1fr)}
 body.ipad .cover{min-height:150px}
+body.ipad .twins{grid-template-columns:repeat(4,1fr)}
+body.ipad .photocard img{height:180px}
 /* ===== 写真のタイル（見る・注文する）2026-10-10 ===== */
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tiles button{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:4/3;padding:0;text-align:left;box-shadow:0 6px 18px rgba(43,39,36,.14);background:var(--usu)}
