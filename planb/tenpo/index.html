@@ -800,7 +800,8 @@ body.ipad .cover{min-height:150px}
   /* 端末の切替（スマホ縦／店舗iPad横）。?ipad を付けて開くと最初からiPad */
   const setDev = (k) => { document.body.classList.toggle('ipad', k === 'ipad'); document.querySelectorAll('.devsw button').forEach(x => x.classList.toggle('on', x.dataset.dev === k)); };
   document.querySelectorAll('.devsw button').forEach(b => b.onclick = () => { setDev(b.dataset.dev); render(); });
-  if (/[?&#]ipad/.test(location.search + location.hash)) setDev('ipad');
+  /* 2026-10-10 石本さん「加盟店はiPadで使う方が多い。その画面で説明した方が分かりやすい」→ 画面が広ければ最初からiPad表示（?phone で縦に固定） */
+  if (/[?&#]ipad/.test(location.search + location.hash) || (window.innerWidth >= 900 && !/[?&#]phone/.test(location.search + location.hash))) setDev('ipad');
   $('#device').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
     if (d.role) { S.role = d.role; if (S.role !== 'hq' && S.tab === 'hq') S.tab = 'today'; if (S.role === 'staff' && S.tab === 'num') S.tab = 'today'; if (S.role === 'hq' && S.tab === 'today') S.tab = 'hq'; S.screen = null; }
