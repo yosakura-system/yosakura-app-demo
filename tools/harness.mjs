@@ -3820,6 +3820,27 @@ console.log('== 牛カツ長堀橋店トライアル：LINEアルバムの提出
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== 棚卸を保存すると月次業務「総括表の締め」が提出済みになる（マニュアルVer0.8 ④の記載どおりか・2026-10-10）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const ymNowT = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
+  // 行＝<span class="kind a|b">未提出|提出済</span> の直後に <div class="l1">総括表の締め… が来る（subItemRow の並び）
+  const rowOf = (h) => { const m = h.match(/<span class="kind [ab]">(提出済|未提出)<\/span>\s*<div class="body"><div class="l1">総括表の締め/); return m ? m[1] : ''; };
+  run(() => { setLS('manager', S, 'ja'); localStorage.removeItem('yosakura_demo_monthly'); });
+  let g = renderView('getsuji', 'manager', S, 'ja');
+  ok(/総括表の締め/.test(g), '月次業務に「総括表の締め」が並ぶ');
+  ok(rowOf(g) === '未提出', '棚卸を保存する前は「未提出」');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); localStorage.setItem('yosakura_tn_ym', ymNowT); });
+  location.hash = '#/app/pl';
+  doc.getElementById('tn_f0_n').value = '米'; doc.getElementById('tn_f0_u').value = '3000'; doc.getElementById('tn_f0_q').value = '2';
+  doc.getElementById('tn_ym').value = ymNowT;
+  doc.getElementById('tnSave').onclick();
+  location.hash = '#/app/getsuji';   // renderView は localStorage を消すので、同じ画面のまま月次業務へ移って見る
+  g = registry.app.innerHTML;
+  ok(rowOf(g) === '提出済', '店長が棚卸を保存すると「総括表の締め」が提出済みになる（別の提出操作は要らない）');
+  run(() => { localStorage.removeItem('yosakura_demo_monthly'); localStorage.removeItem('yosakura_tn_ym'); });
+}
+
 console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-10-10 新ルール＝未開封のみ・和牛kg・鰻尾・数量は小数2桁まで）==');
 {
   const S = '牛カツ世桜 長堀橋店';
