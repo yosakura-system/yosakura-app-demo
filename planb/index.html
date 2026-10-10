@@ -477,7 +477,11 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
       <div class="sec"><h2>今日の流れ</h2><small>時間帯の順</small></div>
       <div class="card">${flow}</div>
       <div class="chips" style="margin-top:12px"><button class="chip" data-open="kizuki">気づき<small>良かったことも困ったことも</small></button><button class="chip" data-open="qr">サーベイQR<small>お会計のときにお見せする</small></button><button class="chip" data-open="loss">ロス<small>無い日は何もしない</small></button><button class="chip" data-go="write">引き継ぎを書く<small>次の人へ</small></button></div>
-      <div class="sec"><h2>今月</h2><small>期日が近いものだけ出ます ・ 入れるものは増えません</small></div>
+      <div class="sec"><h2>今週</h2><small>週に1回のもの ・ 期日が近いものだけ出ます</small></div>
+      <div class="card">
+        <button class="row" data-open="stock" data-id="zaiko"><span class="st">${ICONS.box}</span><span><span class="nm">器の数</span> <span class="pill" style="font-size:10px">本部へ</span><br><span class="sub">水曜に数える ・ 在庫の数と同じ画面（3連皿・茶碗・どんぶり…）</span></span><span class="rt">水曜まで</span></button>
+      </div>
+      <div class="sec"><h2>今月</h2><small>月に1回のもの ・ 期日が近いものだけ出ます ・ 入れるものは増えません</small></div>
       <div class="card">
         <button class="row" data-go="tana"><img class="th" src="${P.count}" alt=""><span><span class="nm">月末棚卸</span> <span class="pill" style="font-size:10px">本部へ</span><br><span class="sub">今夜 22:30 ・ 品目と単価は入っています。数えて入れるだけ</span></span><span class="rt">月末</span></button>
         <button class="row" data-toast="定期衛生の写真画面を開きます（見本）"><span class="st">${ICONS.cam}</span><span><span class="nm">定期衛生</span> <span class="pill" style="font-size:10px">本部へ</span><br><span class="sub">今月の箇所＝製氷機・冷蔵庫の裏 ・ 写真1枚</span></span><span class="rt">15日まで</span></button>
@@ -589,7 +593,7 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
   }
   function screenVoice(){
     const answers = [['4', '韓国', 'Instagram', '牛カツが柔らかくて感動。店員さんの説明も丁寧'], ['5', '台湾', 'Google検索', 'いくら丼が最高。また来ます'], ['2', '日本', '通りがかり', '提供まで25分待った。味は良い'], ['5', 'アメリカ', 'TripAdvisor', 'Best katsu in Osaka'], ['3', '韓国', '友人の紹介', '量が少し少ない']];
-    return `<button class="back" data-go="numtop">${ICONS.back} 店の数字</button><div class="ttl">お客様の声</div><p class="lead">サーベイの回答とGoogle口コミ。どちらも自動で集まります。低評価は本部にも届きます。</p>
+    return `<button class="back" data-go="${S.tab === 'search' ? 'searchtop' : 'numtop'}">${ICONS.back} ${S.tab === 'search' ? '見る・注文する' : '店の数字'}</button><div class="ttl">お客様の声</div><p class="lead">サーベイの回答とGoogle口コミ。どちらも自動で集まります。低評価は本部にも届きます。</p>
       <div class="kpi"><div class="card"><div class="l">サーベイ ・ 今月</div><div class="v">4.6</div><div class="d">38件 ・ 低評価（1〜2）2件</div></div><div class="card"><div class="l">Google口コミ ・ 通算</div><div class="v">1,284<span style="font-size:14px"> 件</span></div><div class="d">星 4.7 ・ 今月 +12件</div></div></div>
       <div class="sec"><h2>来店国 ・ 来店経路</h2><small>今月のサーベイから</small></div>
       <div class="card"><div class="bar"><span>日本</span><i style="width:40%"></i><b>40%</b></div><div class="bar"><span>韓国</span><i style="width:25%"></i><b>25%</b></div><div class="bar"><span>台湾</span><i style="width:15%"></i><b>15%</b></div><div class="bar"><span>アメリカ</span><i style="width:10%"></i><b>10%</b></div><div class="bar"><span>その他</span><i style="width:10%"></i><b>10%</b></div>
@@ -706,8 +710,10 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
     ['きょうやること', 'CLOSEチェック', '10項目', null, 'open="check" data-id="ck_close"', ['close','クローズ','締め','閉店']],
     ['きょうやること', '日報', '納品書を撮るだけ', null, 'open="nippou" data-id="nippou"', ['日報','納品書','売上','仕入','レジ']],
     ['きょうやること', '在庫の数', '少ないものは発注リストへ', 'scale', 'open="stock" data-id="zaiko"', ['在庫','発注リスト','数']],
+    ['今週', '器の数（水曜）', '週に1回・在庫の数と同じ画面', 'scale', 'open="stock" data-id="zaiko"', ['器','うつわ','皿','茶碗','週']],
     ['きょうやること', 'ロス', '種類と品目を選ぶだけ', null, 'open="loss"', ['ロス','廃棄','捨て']],
     ['きょうやること', '気づき', '良かったことも困ったことも', null, 'open="kizuki"', ['気づき','報告','相談']],
+    ['お客様の声', 'Google口コミ・サーベイ', '件数・星・今日の獲得数（自動）', null, 'go="voice"', ['口コミ','くちこみ','google','グーグル','サーベイ','評価','星','お客様の声']],
     ['発注', '備品・食材を注文する', '注文先へ', 'count', 'go="order"', ['発注','注文','備品','食材','仕入先']],
     ['その他', '勉強会・使い方・ルール集・相談通報', '', 'counter', 'go="other"', ['勉強会','使い方','ルール','通報','相談']],
   ];
@@ -729,10 +735,13 @@ body.ipad .rlist{grid-template-columns:repeat(6,1fr)}
     if (S.screen === 'allergy') return allergy();
     if (S.screen === 'order') return order();
     if (S.screen === 'emergency') return emergency();
+    if (S.screen === 'voice') return screenVoice();
     return `<div class="search">${ICONS.search}<input id="q" placeholder="言葉で探す（例：鰻　アレルギー　棚卸）" value="${q}" autocomplete="off" enterkeyhint="search"></div><div id="qres">${searchResults(q)}</div>
       ${q ? '' : `<div class="tiles">${USES.map(([k, t, sub, im]) => `<button data-${k}><img src="${P[im]}" alt=""><div class="veil"></div><div class="t"><b>${t}</b><small>${sub}</small></div></button>`).join('')}</div>
       <div class="sec"><h2>よく見るレシピ</h2><small>この店の品</small></div>
       <div class="rlist">${[['ikuraDon','いくら丼セット'],['wagyuDon','和牛丼セット'],['sand','牛カツサンド'],['yakiTare','焼きひつまぶし'],['aburi','炙りの出し方'],['taiyaki','たい焼き']].map(([im, nm]) => `<button data-go="recipes"><img src="${P[im]}" alt=""><span>${nm}</span></button>`).join('')}</div>
+      <div class="sec"><h2>お客様の声</h2><small>自動 ・ 毎晩記録</small></div>
+      <button class="card" data-go="voice" style="width:100%;text-align:left;cursor:pointer"><div class="kpi" style="margin:0"><div><div class="l">Google口コミ</div><div class="v">4.7</div><div class="d">通算 1,284件 ・ 今月 +12 ・ きょう +1</div></div><div><div class="l">サーベイ満足度</div><div class="v">4.6</div><div class="d">今月 38件 ・ 低評価 2件</div></div></div><div class="muted" style="font-size:12px;margin-top:8px">押すと、口コミの推移・回答の一覧・来店国・来店経路（スタッフも見られます）</div></button>
       <div class="note">レシピ・マニュアルは、整備できたものから増えます。</div>`}`;
   }
   function recipe(){
