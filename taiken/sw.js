@@ -1,7 +1,7 @@
 /* 世桜アプリ（デモ）Service Worker
    ネットワーク優先（オンライン時は常に最新を取得／オフライン時のみキャッシュ）。
    → iPhone等でも更新が即反映される。オフラインでも起動可能。 */
-const CACHE = 'yosakura-taiken-v152';
+const CACHE = 'yosakura-taiken-v153';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
   './icons/logo-full.png', './icons/icon-192.png', './icons/icon-512.png',
@@ -26,7 +26,8 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const sameOrigin = new URL(req.url).origin === self.location.origin;
-  const doFetch = sameOrigin ? fetch(req, { cache: 'no-store' }) : fetch(req);
+  if (!sameOrigin) return;   // ★2026-10-12 外部（バックエンドの返事・Driveの写真・フォント）はSWを通さない＝端末のキャッシュに提出データを残さない
+  const doFetch = fetch(req, { cache: 'no-store' });
   e.respondWith(
     doFetch.then((res) => {
       const copy = res.clone();
