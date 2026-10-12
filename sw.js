@@ -26,7 +26,8 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const sameOrigin = new URL(req.url).origin === self.location.origin;
-  const doFetch = sameOrigin ? fetch(req, { cache: 'no-store' }) : fetch(req);
+  if (!sameOrigin) return;   // ★2026-10-12 外部（バックエンドの返事・Driveの写真・フォント）はSWを通さない＝端末のキャッシュに提出データを残さない
+  const doFetch = fetch(req, { cache: 'no-store' });
   e.respondWith(
     doFetch.then((res) => {
       const copy = res.clone();

@@ -81,11 +81,15 @@ function 偽環境を作る({ プロパティ初期値 = {} } = {}) {
       computeDigest: (alg, s) => Array.from(crypto.createHash('sha256').update(String(s), 'utf8').digest()),
       base64Encode: (bytes) => Buffer.from(bytes).toString('base64'),
       base64Decode: (s) => Array.from(Buffer.from(s, 'base64')),
-      getUuid: () => `uuid-${++uuid}`
+      getUuid: () => `uuid-${++uuid}`,
+      sleep: () => {}
     },
     ContentService: { MimeType: { JSON: 'JSON' },
       createTextOutput: (s) => ({ _s: s, setMimeType() { return this; }, getContent() { return this._s; } }) },
     ScriptApp: { getProjectTriggers: () => [] },
+    /* ★2026-09-20 のロック（LockService）と 2026-10-12 の総当たり対策（CacheService）の代わり＝机上ではそのまま通す／メモリに覚える */
+    LockService: { getScriptLock: () => ({ waitLock() {}, tryLock() { return true; }, releaseLock() {} }) },
+    CacheService: (() => { const m = new Map(); return { getScriptCache: () => ({ get: k => (m.has(k) ? m.get(k) : null), put: (k, v) => m.set(k, String(v)), remove: k => m.delete(k) }) }; })(),
     Session: { getEffectiveUser: () => ({ getEmail: () => 'yosakura.fc@gmail.com' }) },
     DriveApp: { getFolderById: () => { throw new Error('通し実行ではDriveを使わない'); },
                 getFoldersByName: () => ({ hasNext: () => false }), createFolder: () => { throw new Error('通し実行ではDriveを使わない'); } }
@@ -203,6 +207,8 @@ console.log('\n===== ⑥ 書きの門番（フラグON） =====\n');
   const env = 偽環境を作る({ プロパティ初期値: { ENABLE_AUTH: 'true' } });
   実行(env, `認証_利用者を登録('hiroshima-ipad', '広島 iPad', 'staff', '和牛世桜 広島店', 'sakura01')`);
   実行(env, `認証_利用者を登録('honbu', '本部', 'hq', '', 'sakura99')`);
+  /* ★2026-10-12 仮パスワードのままでは提出できなくなった（PW_CHANGE_REQUIRED）＝この節は初回変更を済ませた前提にする */
+  実行(env, `['hiroshima-ipad', 'honbu'].forEach(function (u) { var r = auth_find_(u); r.must_change = 'false'; auth_write_(r); })`);
   const st = POST(env, { action: 'login', uid: 'hiroshima-ipad', pw: 'sakura01' }).auth.token;
   const hq = POST(env, { action: 'login', uid: 'honbu', pw: 'sakura99' }).auth.token;
   const 無 = POST(env, { kind: 'kizuki', store: '和牛世桜 広島店', item: 'x', note: '', photos: [], t: Date.now() });
@@ -255,6 +261,53 @@ console.log('\n===== ⑦ 再発行＝全端末からログアウト =====\n');
   確認('★再発行すると古いトークンは無効（全端末からログアウト）', GET(env, { token: t1 }).ok === false);
   const re = POST(env, { action: 'login', uid: 'hara', pw: 'saihakko03' });
   確認('新しい仮パスワードで入り直せる／初回変更が再び必要', re.ok && re.auth.mustChange === true, re.auth);
+}
+
+console.log('\n===== ⑧ 2026-10-12 の門番の追加（総当たりロック・apperrの写真拒否・店舗の枠・本部専用の書き込み） =====\n');
+{
+  const env = 偽環境を作る({ プロパティ初期値: { ENABLE_AUTH: 'true' } });
+  データを入れる(env);
+  実行(env, `認証_利用者を登録('hara', '原さん', 'manager', '寿司世桜 心斎橋店', 'sakura02')`);
+  実行(env, `認証_利用者を登録('honbu', '本部', 'hq', '', 'sakura99')`);
+  for (let i = 0; i < 10; i++) POST(env, { action: 'login', uid: 'hara', pw: 'machigai' });
+  const locked = POST(env, { action: 'login', uid: 'hara', pw: 'sakura02' });
+  確認('★10回失敗したら正しいパスワードでもしばらく入れない（LOGIN_LOCKED）', locked.ok === false && locked.error === 'LOGIN_LOCKED', locked);
+  const env2 = 偽環境を作る({ プロパティ初期値: { ENABLE_AUTH: 'true' } });
+  データを入れる(env2);
+  実行(env2, `認証_利用者を登録('hara', '原さん', 'manager', '寿司世桜 心斎橋店', 'sakura02')`);
+  実行(env2, `認証_利用者を登録('honbu', '本部', 'hq', '', 'sakura99')`);
+  for (let i = 0; i < 3; i++) POST(env2, { action: 'login', uid: 'hara', pw: 'machigai' });
+  const a = POST(env2, { action: 'login', uid: 'hara', pw: 'sakura02' });
+  確認('9回以下なら正しいパスワードで入れる（失敗の数は成功で消える）', a.ok === true && a.auth.api === 2, a);
+  const mc = POST(env2, { kind: 'kizuki', token: a.auth.token, store: '寿司世桜 心斎橋店', item: 'x', note: '', photos: [], t: Date.now() });
+  確認('★仮パスワードのまま（初回変更前）は提出できない（PW_CHANGE_REQUIRED）', mc.ok === false && mc.error === 'PW_CHANGE_REQUIRED', mc);
+  POST(env2, { action: 'chpw', token: a.auth.token, oldPw: 'sakura02', newPw: 'watashi-no-pw' });
+  const ok1 = POST(env2, { kind: 'kizuki', token: a.auth.token, store: '寿司世桜 心斎橋店', item: 'x', note: '', photos: [], t: Date.now() });
+  確認('変更後は自店へ提出できる', ok1.ok === true, ok1);
+  const star = POST(env2, { kind: 'ckitem', token: a.auth.token, store: '*', item: 'x', note: '{}', photos: [], t: Date.now() });
+  確認("★店舗の端末は store:'*'（全店）に書けない", star.ok === false && star.error === 'STORE_NOT_ALLOWED', star);
+  const empty = POST(env2, { kind: 'ckitem', token: a.auth.token, store: '', item: 'x', note: '{}', photos: [], t: Date.now() });
+  確認("店舗の端末は store:'' に書けない（公益通報・numack を除く）", empty.ok === false && empty.error === 'STORE_NOT_ALLOWED', empty);
+  const wh = POST(env2, { kind: 'whistle', token: a.auth.token, store: '', item: '', note: '{"anon":true}', photos: [], t: Date.now() });
+  確認('匿名の公益通報（store空）は書ける', wh.ok === true, wh);
+  const ack = POST(env2, { kind: 'hqack', token: a.auth.token, store: '寿司世桜 心斎橋店', item: 'kizuki|1|和牛世桜 広島店', note: '{}', photos: [], t: Date.now() });
+  確認('★店舗の端末は hqack（本部の対応済み）を書けない', ack.ok === false && ack.error === 'HQ_ONLY', ack);
+  const src = POST(env2, { kind: 'soukatsu', token: a.auth.token, store: '寿司世桜 心斎橋店', item: '2026-10-01', note: JSON.stringify({ sales: 1, src: 'usen' }), photos: [], t: Date.now() });
+  const sheet = env2.シート群['reports']; const lastRow = sheet.getLastRow(); const lastNote = sheet.getRange(lastRow, 7, 1, 1).getValues()[0][0];
+  確認("★店舗の端末からの src:'usen' は外して保存される", src.ok === true && !JSON.parse(lastNote).src, lastNote);
+  const ap = POST(env2, { kind: 'apperr', store: '寿司世桜 心斎橋店', item: 'E', note: 'x', photos: ['data:image/jpeg;base64,AAAA'], t: Date.now() });
+  確認('★ログインなしの apperr は写真を受けない（NO_PHOTO）', ap.ok === false && ap.error === 'NO_PHOTO', ap);
+  const ap2 = POST(env2, { kind: 'apperr', store: '寿司世桜 心斎橋店', item: 'E', note: 'x'.repeat(5000), photos: [], t: Date.now() });
+  確認('写真なしの apperr は受ける（本文は1500字まで）', ap2.ok === true, ap2);
+  const hb = POST(env2, { action: 'login', uid: 'honbu', pw: 'sakura99' });
+  const lst = POST(env2, { action: 'list', token: hb.auth.token });
+  確認('★読みもPOSTで取れる（本部＝全行）', lst.ok && Array.isArray(lst.reports) && lst.reports.length >= 11, lst.reports && lst.reports.length);
+  const lst2 = POST(env2, { action: 'list', token: a.auth.token });
+  確認('店舗の端末のPOST読み＝自店＋全体のものだけ（公益通報は返らない）', lst2.ok && lst2.reports.every(r => r.kind !== 'whistle'), lst2.reports && lst2.reports.map(r => r.kind));
+  const v1 = GET(env2, { action: 'validate', token: a.auth.token });
+  確認('★保守用の action は店舗の端末からは叩けない（HQ_ONLY）', v1.ok === false && v1.error === 'HQ_ONLY', v1);
+  const v0 = GET(env2, { action: 'validate' });
+  確認('★保守用の action はログインなしでは叩けない（AUTH_REQUIRED）', v0.ok === false && v0.error === 'AUTH_REQUIRED', v0);
 }
 
 console.log(`\n----- ${通過} 項目 PASS ／ ${失敗.length} 項目 FAIL -----`);

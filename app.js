@@ -510,7 +510,7 @@
   };
   const setStoreSel = (s) => localStorage.setItem(LS.store, s);
   // 複数店舗オーナーの所有店舗（デモ用。実運用では本部の「権限設定表」で置き換える）
-  // 例：富士山のオーナー（オーナーさん）＝鰻・牛カツの2店を所有
+  // 例：富士山のオーナー＝鰻・牛カツの2店を所有
   const OWNER_STORES = ['日本鰻世桜 富士山店', '牛カツ世桜 富士山店'];
 
   /* ====== ログイン（認証）の状態 ======（2026-08-25 追加）
@@ -524,6 +524,17 @@
   const getAuth = () => { if (TAIKEN) return null; try { return JSON.parse(localStorage.getItem(LS_AUTH)) || null; } catch (e) { return null; } };
   const setAuth = (a) => { try { if (a) localStorage.setItem(LS_AUTH, JSON.stringify(a)); else localStorage.removeItem(LS_AUTH); } catch (e) {} };
   const authToken = () => { const a = getAuth(); return a && a.token ? a.token : ''; };
+  /* ★2026-10-12 配信先が「読みもPOSTで受ける版（api:2）」なら、トークンをURLに載せない。古い配信先には従来どおりGET */
+  const apiVer = () => { const a = getAuth(); return a && Number(a.api) >= 2 ? 2 : 1; };
+  const apiGet_ = (params) => {
+    if (useBackend() && authToken() && apiVer() >= 2) {
+      return fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(Object.assign({ token: authToken() }, params)) });
+    }
+    const q = Object.assign({}, params); if (q.action === 'list') delete q.action;
+    if (authToken()) q.token = authToken();
+    const qs = Object.keys(q).filter(k => q[k] != null && q[k] !== '').map(k => encodeURIComponent(k) + '=' + encodeURIComponent(q[k])).join('&');
+    return fetch(getApiUrl() + (qs ? '?' + qs : ''));
+  };
   /* ★起動時に旧の全文コピーを掃除（2026-09-14 本店iPadの実機障害）。
      v216で書き込みはやめたが、古い端末には数MBの旧キーが残ったままで、
      保存領域を圧迫し続ける。もう読まないキーなので毎回消してよい。 */
@@ -599,7 +610,18 @@
     if (a.name && !getUserName() && a.role !== 'staff') setUserName(a.name); // 店舗iPad（共用）は各自が名前を入れる
     try { localStorage.setItem(SETUP_KEY, '1'); } catch (e) {} // はじめの設定（役割選び）はもう不要
   }
-  function logoutAuth_() { setAuth(null); render(); }
+  /* ★2026-10-12 ログアウト＝端末を空にする（共有iPadに前の人の名前・提出・下書き・写真・通報を残さない）。
+     残すのは接続先・言語・テーマ・「はじめの設定済み」など端末の設定だけ。未送信があれば先に送る */
+  const LOGOUT_KEEP = new Set([LS_API, LS_AUTH_REQ, 'yosakura_theme', 'yosakura_demo_lang', 'yosakura_installed', 'yosakura_install_hide', 'yosakura_auth_dropped']);
+  async function logoutAuth_() {
+    try { await flushPending_(); } catch (e) {}
+    setAuth(null);
+    try { Object.keys(localStorage).filter(k => k.startsWith('yosakura_') && !LOGOUT_KEEP.has(k) && k !== SETUP_KEY).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+    try { Object.keys(photoMem).forEach(k => delete photoMem[k]); } catch (e) {}
+    try { indexedDB.deleteDatabase('yosakura_photos'); } catch (e) {}
+    try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) {}
+    render();
+  }
   /* ★店舗IDのパスワードは月初に責任者が店舗iPadで変える（2026-10-02 神田さん）。
      本部からの強制リセットではなく、「今月のパスワードをまだ変更していません」と出す→責任者が端末設定で
      いまのパスワードと新しいパスワードを入れる→その時点でほかの端末（スタッフのスマホ・別のiPad）はログインできなくなる。
@@ -642,7 +664,7 @@
     const drop = () => { authLog_('AUTHDROP', why); _needLoginBusy = false; markAuthRequired(true); setAuth(null); try { localStorage.setItem('yosakura_auth_dropped', '1'); } catch (e) {} render(); };
     if (!tok || !useBackend()) { drop(); return; }
     fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: 'authping', token: tok }) }).then(r => r.json()).then(d => {
-      if (d && d.ok && d.auth && d.auth.uid) { _needLoginBusy = false; authLog_('AUTHKEEP', why); return; }   // まだ有効＝落とさない
+      if (d && d.ok && d.auth && d.auth.uid) { _needLoginBusy = false; authLog_('AUTHKEEP', why); try { const a = getAuth(); if (a && d.auth.api && a.api !== d.auth.api) { a.api = d.auth.api; setAuth(a); } } catch (e) {} return; }   // まだ有効＝落とさない（api の版も覚える・2026-10-12）
       drop();
     }).catch(() => { _needLoginBusy = false; authLog_('AUTHKEEP', String(why || '') + ' ping-failed'); });   // 聞けなかった＝落とさない（次の通信でもう一度判定される）
   }
@@ -1169,10 +1191,28 @@
     } catch (e) {}
   }
   const isLocalPhoto = (p) => typeof p === 'string' && p.slice(0, 4) === 'idb:';
+  /* ★2026-10-12 お金の写真（日計レポート・納品書）はサーバーが「p:ID」で返す＝公開リンクが無いので、ログイン経由でbase64を取って表示する。
+     読み込みが終わるまでは薄い枠（置き場所ごとに違うSVG）を出し、終わったら同じ枠の img を差し替える */
+  const isPrivPhoto = (p) => typeof p === 'string' && p.slice(0, 2) === 'p:';
+  const privPh_ = (p) => "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='4' height='3'><rect width='4' height='3' fill='#eee'/><!--" + p + "--></svg>");
+  const privLoading_ = {};
+  function privPhotoSrc_(p) {
+    if (photoMem[p]) return photoMem[p];
+    const ph = privPh_(p);
+    if (!privLoading_[p] && useBackend()) {
+      privLoading_[p] = true;
+      apiGet_({ action: 'photo', id: p.slice(2) }).then(r => r.json()).then(d => {
+        if (!(d && d.ok && d.data)) return;
+        photoMem[p] = 'data:' + (d.mime || 'image/jpeg') + ';base64,' + d.data;
+        document.querySelectorAll('img').forEach(im => { if (im.getAttribute('src') === ph) im.src = photoMem[p]; if (im.getAttribute('data-full') === ph) im.setAttribute('data-full', photoMem[p]); });
+      }).catch(() => {}).finally(() => { privLoading_[p] = false; });
+    }
+    return ph;
+  }
   const photoSrc_ = (p) => isLocalPhoto(p) ? (photoMem[p] || '') : p;
   const photosForSend_ = (arr) => (arr || []).map(p => isLocalPhoto(p) ? photoMem[p] : p).filter(Boolean);
-  const photoThumb = (p) => (isDataUrl(p) || isLocalPhoto(p)) ? photoSrc_(p) : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w400';
-  const photoFull  = (p) => (isDataUrl(p) || isLocalPhoto(p)) ? photoSrc_(p) : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w1600';
+  const photoThumb = (p) => isPrivPhoto(p) ? privPhotoSrc_(p) : (isDataUrl(p) || isLocalPhoto(p)) ? photoSrc_(p) : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w400';
+  const photoFull  = (p) => isPrivPhoto(p) ? privPhotoSrc_(p) : (isDataUrl(p) || isLocalPhoto(p)) ? photoSrc_(p) : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w1600';
 
   /* ---------- 使い方ガイド（アプリ内チュートリアル）---------- */
   /* 使い方＝役割ごとに分ける。
@@ -4519,7 +4559,7 @@
       const done = (src) => { if (!src) return resolve(null); const im = new Image(); im.onload = () => resolve(im); im.onerror = () => resolve(null); im.src = src; };
       if (isDataUrl(p) || isLocalPhoto(p)) return done(photoSrc_(p));
       if (!useBackend()) return resolve(null);
-      fetch(getApiUrl() + '?action=photo&id=' + encodeURIComponent(p) + (authToken() ? '&token=' + encodeURIComponent(authToken()) : ''))
+      apiGet_({ action: 'photo', id: String(p).replace(/^p:/, '') })
         .then(r => r.json()).then(d => done(d && d.ok && d.data ? 'data:' + (d.mime || 'image/jpeg') + ';base64,' + d.data : ''))
         .catch(() => resolve(null));
     });
@@ -7267,7 +7307,7 @@
      本部ドライブの各店フォルダ →「◾️コンプラチェックシート」の中にある1枚を、そのまま開く。
      ★ここに持たせる理由＝本部が13店舗ぶんのURLを画面から手入力しなくても、開いた時点で使えるようにするため。
        本部が画面から設定した場合は、そちらが優先される（getMasterStoreUrls の合成順）。
-     ⚠️ 2026-04-16 に作られた古い同名シート（外部の旧所有者 所有）とは別物。
+     ⚠️ 2026-04-16 に作られた古い同名シート（外部の旧所有者）とは別物。
         こちらは 2026-08-18 に yosakura.fc 配下へコピーされた新しいほうを指している。 */
   const COMPLIANCE_SHEETS = {
     '日本料理世桜本店':      'https://docs.google.com/spreadsheets/d/1O0aWmfHEXlIl_mBYXh3PDcqtJ9AuoQrppfq0PQGwRfQ/edit',
@@ -9077,7 +9117,7 @@
       { id:'mn121', title:'U-1 TOひつまぶしマニュアル', url:'https://docs.google.com/presentation/d/1NzpfFbPRp8KWoh41fvtGtQjnkNKEB-mDD979iiqNoPM/edit?usp=sharing', mcat:'unagi', desc:'スライド' },
       /* ★2026-08-28＝本部の目次「レシピ表」の2件。目次には業態が入っているが番号が無いため、
          MANUAL_GYOTAI ではタイトルで結んでいる。ファイルは yosakura.fc 所有のものを指す
-         （同名で 外部の旧所有者 所有の旧版＝_20260218 付きがあるが、そちらは指さない）。 */
+         （同名で 外部の旧所有者の旧版＝_20260218 付きがあるが、そちらは指さない）。 */
       { id:'mn122', title:'【日本料理】ドリンク早見表（コース）', url:'https://docs.google.com/spreadsheets/d/1po6eRa22nFzbk2Xo582GUTK0tTB59gVs7dEnziuSUEo/edit?usp=sharing', mcat:'recipe', desc:'スプレッドシート' },
       { id:'mn123', title:'【世桜】ドリンク早見表（アラカルト）', url:'https://docs.google.com/spreadsheets/d/1ObdkIN-gzhqD2WIJWP74-G-KMC1f3bh6PdpjLngq8kE/edit?usp=sharing', mcat:'recipe', desc:'スプレッドシート' },
       /* ★2026-08-28＝本部の目次に「提供時のあるべき姿」という節があり、盛り付けPOP3件が並んでいる
@@ -10227,8 +10267,7 @@
       const store = anon ? '' : visibleStores()[0];
       const t = Date.now();
       const kind2 = whistleKindOf(cat);
-      const arr = getWhistle(); arr.push({ store, cat, kind2, body, anon, t });
-      try { saveWhistle(arr.slice(-200)); } catch (e) { saveWhistle(arr.slice(-60)); }
+      /* ★2026-10-12 通報の本文は端末に残さない（共有iPadで第三者が読めないように）。本部には同期で届く */
       lastSync = t;
       toast(L({ ja:'本部へ送信しました。ありがとうございます。', en:'Sent to HQ. Thank you.', vi:'Đã gửi tới HQ. Cảm ơn.' }));
       render();
@@ -11650,7 +11689,7 @@
     lastSync = Date.now();
     try {
       await flushPending_();   // ★保留中の提出を、読む前に必ず送る（送る前に読むと、未達の提出が消える）
-      const res = await fetch(getApiUrl() + (authToken() ? ('?token=' + encodeURIComponent(authToken())) : ''));
+      const res = await apiGet_({ action: 'list' });   // ★2026-10-12 読みもPOST（api:2）＝トークンをURLに載せない
       const d = await res.json();
       if (d && d.needLogin) { onNeedLogin_('get'); return; }   // ★ログインが要る配信先＝ログイン画面へ（トークン切れも含む）
       if (d && d.ok && Array.isArray(d.reports)) {

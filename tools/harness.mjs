@@ -1562,7 +1562,7 @@ console.log('== 総点検：設定の整合（IDの重複・リンク先の存�
   const known = new Set([...storeList.matchAll(/'([^']+)'/g)].map(m => m[1]));
   const bad = csStores.filter(s => !known.has(s));
   ok(bad.length === 0, 'すべて実在する店舗名と一致している' + (bad.length ? '（不一致: ' + bad.join(',') + '）' : ''));
-  // 古いほう（2026-04-16 外部の旧所有者 所有）のIDを掴んでいないこと
+  // 古いほう（2026-04-16 外部の旧所有者）のIDを掴んでいないこと
   for (const old of ['1mKwnYeS24TL8lPhL12S4EkBJFsroQF2_GtVEU6ithfA',
                      '1GKHy8CK_u-Z_uO5LdG5Ac_GhCOOfHog2do4s_RpUVNQ', '17D934vNqvWlGOEZEnxX9QNkm03JKNRXjsOuy6KcX1Vw',
                      '11ETg1HRMFc5d0LWtzsapgf0b4RT-x2Nyv0lnc-ZjwIs', '1JprJ8KKzeOc917D_PzS-uMKeZUOZNY7WGo2RuFfDPE8']) {
@@ -1968,7 +1968,7 @@ console.log('== 本部ドライブの公式マニュアル14分類が、その�
   }
 
   /* ★移行フォルダの古いコピーを掴み直さないこと（2026-08-18 判明）。
-     世桜10訓は、公式（yosakura.fc 所有）と古いコピー（外部の旧所有者 所有）で別物だった。 */
+     世桜10訓は、公式（yosakura.fc 所有）と古いコピー（外部の旧所有者）で別物だった。 */
   ok(!/1mKwnYeS24TL8lPhL12S4EkBJFsroQF2_GtVEU6ithfA/.test(src), '世桜10訓の古いコピーを掴んでいない');
   ok(/10GPRuB_eUaa5JysAfyknaKAStafDkIPi7PkFzU2i_yA/.test(src), '世桜10訓は公式のほうを指している');
 }
@@ -2938,7 +2938,7 @@ console.log('== 電波が無いときの提出を、黙って失わない（2026
      '送れなかった提出は保留箱に入れる（保存できたかも確かめる＝2026-09-14強化）');
   ok(/この提出はいったん端末に保留しました/.test(code) && /Saved on this device/.test(code) && /sẽ tự gửi lại/.test(code),
      '保留したことを、その場で3言語で伝える（「提出しました」のまま黙らない）');
-  ok(/await flushPending_\(\);[\s\S]{0,300}const res = await fetch\(getApiUrl\(\) \+ \(authToken\(\)/.test(code),
+  ok(/await flushPending_\(\);[\s\S]{0,300}const res = await apiGet_\(\{ action: 'list' \}\)/.test(code),
      '★同期は「読む前に、保留分を必ず送る」＝送る前に読むと未達の提出が消える（トークン付き）');
   ok(/for \(let i = 0; i < q\.length; i\+\+\) \{[\s\S]{0,300}await fetch\(getApiUrl\(\), \{ method: 'POST', body: JSON\.stringify\(Object\.assign\(\{ token: authToken\(\) \}, q\[i\]\)\)/.test(code),
      '保留分は1件ずつ・送る時点のトークンを付けて送る（ログインし直し後の再送でも通る）');
@@ -3600,7 +3600,7 @@ console.log('== 本部のコメントが店舗に届く（2026-08-31 神田さ�
   ok(/kind === 'hqack'/.test(gsrc) && /ks\.slice\(2\)\.join\('\|'\)/.test(gsrc),
      '認証側＝hqackは対象店舗にだけ返す（他店のコメントは見えない）');
   const csrc = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
-  ok(/auth_row_ok_\(gate\.u, String\(r\[2\] \|\| ''\), String\(r\[3\] \|\| ''\), String\(r\[4\] \|\| ''\)\)/.test(csrc),
+  ok(/auth_row_ok_\(u, String\(r\[2\] \|\| ''\), String\(r\[3\] \|\| ''\), String\(r\[4\] \|\| ''\)\)/.test(csrc),
      'doGetがitem（キー）を認証判定へ渡している');
 
   // ⑦ ホームで気づける（2026-08-31 神田さんのご指摘＝一覧の奥までたどらないと返答に気づけない）
@@ -5379,7 +5379,7 @@ console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要�
   ok(/navigator\.share\(\{ title: '世桜 巡回チェック', text \}\)/.test(srcH), 'LINE共有＝共有シート（navigator.share）。使えない端末はコピーに落ちる');
   ok(/function svJpegsToPdf_\(jpegs\)/.test(srcH) && /\/Filter \/DCTDecode/.test(srcH), 'A4のPDF（1〜2枚・写真つき）を外部ライブラリなしで作る');
   ok(/navigator\.canShare\(\{ files \}\)/.test(srcH), 'PDF・画像は共有シートに添付して送る（LINEを選べる）');
-  ok(/action=photo&id=/.test(srcH), 'レポートの写真はサーバー経由で取る（画像URL直読みは書き出せない）');
+  ok(/apiGet_\(\{ action: 'photo', id: String\(p\)\.replace\(\/\^p:\/, ''\) \}\)/.test(srcH), 'レポートの写真はサーバー経由で取る（画像URL直読みは書き出せない）＝2026-10-12 からPOST');
   ok(/const lt = Number\(\(curS\[k\] \|\| \{\}\)\.t\) \|\| 0; if \(lt > \(svcT\[k\] \|\| 0\)\) return;/.test(srcH), '★合流＝端末のほうが新しい入力は古い行で巻き戻さない（×が元に戻る不具合の再発防止）');
   ok(/indexOf\('\/app\/hqcheck'\) !== -1\) \{ try \{ svApplyDom\(\); \}/.test(srcH), '合流のときは画面を作り直さず項目だけ差し替える（プツプツ対策）');
   ok(/data-svphoto=/.test(srcH) && /\.slice\(0, 5\); phsLocal\.push\(key\)/.test(srcH), '写真は項目ごとに複数（最大6枚・1回1枚）');
@@ -5686,7 +5686,7 @@ console.log('== 巡回チェックの写真＝localStorage に置かない（Ind
   ok(/indexedDB\.open\('yosakura_photos', 1\)/.test(code) && /async function photoLocalPut_/.test(code), '写真の中身は IndexedDB へ');
   ok((code.match(/const key = await photoLocalPut_\(d\)/g) || []).length === 2 && !/写真を縮小_\(d, 480\)/.test(code), '指摘写真・基準写真とも行には idb:キー だけ持つ');
   ok((code.match(/photos: photosForSend_\(/g) || []).length >= 3 && /const send = photosForSend_\(/.test(code), '送るときは中身に戻す（行の送り直し・追加・削除・基準）');
-  ok(/const photoThumb = \(p\) => \(isDataUrl\(p\) \|\| isLocalPhoto\(p\)\) \? photoSrc_\(p\)/.test(code) && /if \(isDataUrl\(p\) \|\| isLocalPhoto\(p\)\) return done\(photoSrc_\(p\)\);/.test(code), '表示・レポートは idb: を中身に解決する');
+  ok(/const photoThumb = \(p\) => isPrivPhoto\(p\) \? privPhotoSrc_\(p\) : \(isDataUrl\(p\) \|\| isLocalPhoto\(p\)\) \? photoSrc_\(p\)/.test(code) && /if \(isDataUrl\(p\) \|\| isLocalPhoto\(p\)\) return done\(photoSrc_\(p\)\);/.test(code), '表示・レポートは idb: を中身に解決する（お金の写真 p: はログイン経由）');
   ok(!/端末の保存領域がいっぱいのため/.test(code), '「保存領域がいっぱい」の通知は出さない');
   ok(/photoLocalLoadAll_\(\)\.then/.test(code), '起動時に IndexedDB から読み込む');
 }
@@ -6286,5 +6286,24 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   ok(/口コミのご案内は出ません/.test(hHonten), '本店＝口コミのご案内は出ない、と書いてある');
   ok(!/最後にGoogle口コミのボタン/.test(hHonten), '本店に口コミのボタンの案内が出ていない');
 }
+console.log('== 2026-10-12 セキュリティ＝第三者に流れない仕組み（神田さん） ==');
+{
+  const sw = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  ok(/if \(!sameOrigin\) return;/.test(sw), '★SWは同一オリジンだけ＝バックエンドの返事・Driveの写真を端末のキャッシュに残さない');
+  ok(/async function logoutAuth_\(\)/.test(code) && /indexedDB\.deleteDatabase\('yosakura_photos'\)/.test(code) && /caches\.delete\(k\)/.test(code)
+     && /k\.startsWith\('yosakura_'\) && !LOGOUT_KEEP\.has\(k\)/.test(code), '★ログアウトで端末を空にする（yosakura_*・IndexedDB・Cache）');
+  ok(!/\?token=' \+ encodeURIComponent\(authToken\(\)\)\)\)/.test(code.replace(/apiGet_[\s\S]*?\n  \};/, '')), '★一覧の読みはトークンをURLに載せない（api:2 はPOST）');
+  ok(/const isPrivPhoto = \(p\) => typeof p === 'string' && p\.slice\(0, 2\) === 'p:'/.test(code) && /privPhotoSrc_\(p\)/.test(code), '★お金の写真（p:）はログイン経由で表示');
+  ok(!/const arr = getWhistle\(\); arr\.push\(/.test(code), '★公益通報の本文を端末に残さない');
+  ok(!/オーナー/.test(code), '配布JSに実名のフルネームが無い');
+  const csrc2 = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
+  const asrc2 = fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8');
+  ok(/var gate = \(typeof auth_gate_get_ === 'function'\)[\s\S]{0,200}return json\(apiRead_\(/.test(csrc2) && /if \(u && u\.role !== 'hq'\) return \{ ok: false, error: 'HQ_ONLY' \};/.test(csrc2), '★保守用GETは門番のあと・本部だけ');
+  ok(/if \(!priv\) file\.setSharing\(DriveApp\.Access\.ANYONE_WITH_LINK/.test(csrc2) && /function isPrivatePhotoRow_/.test(csrc2), '★お金の写真は公開リンクにしない');
+  ok(/if \(Array\.isArray\(data\.photos\) && data\.photos\.length\) return \{ ok: false, error: 'NO_PHOTO' \};/.test(asrc2), '★apperr は写真を受けない');
+  ok(/LOGIN_LOCKED/.test(asrc2) && /AUTH_LOCK_FAILS/.test(asrc2), '★ログインの総当たりロック');
+  ok(/'hqack', 'gsnap'\]/.test(asrc2) && /if \(store === '\*'\) return \{ ok: false, error: 'STORE_NOT_ALLOWED' \};/.test(asrc2), "★hqack は本部だけ・店舗は '*' に書けない");
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

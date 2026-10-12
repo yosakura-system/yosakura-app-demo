@@ -48,7 +48,13 @@ var AUTH_PUBLIC_KINDS = ['community', 'commlike', 'commmod', 'commroll', 'commtr
 /* 本部だけが読めるkind（★公益通報は店舗端末に返さない＝通報者を守る） */
 var AUTH_HQ_READ_KINDS = ['whistle', 'appfb', 'hqtask', 'svcheck', 'svstd'];   // svcheck＝巡回チェック（本部の評価＝店舗端末には返さない）   // hqtask＝本部の個人タスク（試行）。さらに本人のuidにしか返さない（auth_row_ok_）
 /* 本部だけが書けるkind（設定・判定・配信もの） */
-var AUTH_HQ_WRITE_KINDS = ['submaster', 'substat', 'subholiday', 'news', 'linkset', 'faqset', 'study', 'commmod', 'commroll', 'hqtask', 'svcheck', 'svstd'];
+var AUTH_HQ_WRITE_KINDS = ['submaster', 'substat', 'subholiday', 'news', 'linkset', 'faqset', 'study', 'commmod', 'commroll', 'hqtask', 'svcheck', 'svstd',
+                           'hqack', 'gsnap'];   // ★2026-10-12 hqack（本部の対応済み・コメント）と gsnap（口コミの控え）は店舗の端末から書けない
+/* 店舗の端末が店舗名なし（store=''）で書いてよいkind＝公益通報（匿名）と、数字の要確認の確認済み（まとめ送り）だけ。'*' は本部のみ（2026-10-12） */
+var AUTH_NOSTORE_OK_KINDS = ['whistle', 'numack'];
+/* ログインの総当たり対策（2026-10-12）＝同じIDで15分に10回失敗したら、15分のあいだ受けない */
+var AUTH_LOCK_FAILS = 10; var AUTH_LOCK_SEC = 900;
+function auth_cache_() { try { return CacheService.getScriptCache(); } catch (e) { return null; } }
 
 function authOn_() { return getSetting_('ENABLE_AUTH', false) === true; }
 
@@ -86,9 +92,25 @@ function auth_write_(rec) {
 }
 
 /* ===== ハッシュ（平文は保存しない） ===== */
-function auth_hash_(uid, pw) {
+/* ★2026-10-12 Script Properties の AUTH_PEPPER（秘密の文字列）があれば HMAC にする＝_users が流出してもコードだけでは照合できない。
+   無ければ従来どおり。従来のハッシュの行は、次に正しいパスワードで入ったときに新しい形へ置き換わる（auth_pw_ok_） */
+function auth_pepper_() { try { return PropertiesService.getScriptProperties().getProperty('AUTH_PEPPER') || ''; } catch (e) { return ''; } }
+function auth_hash_legacy_(uid, pw) {
   var d = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(uid) + '|' + String(pw), Utilities.Charset.UTF_8);
   return Utilities.base64Encode(d);
+}
+function auth_hash_(uid, pw) {
+  var pep = auth_pepper_();
+  if (!pep) return auth_hash_legacy_(uid, pw);
+  var d = Utilities.computeHmacSha256Signature(String(uid) + '|' + String(pw), pep, Utilities.Charset.UTF_8);
+  return Utilities.base64Encode(d);
+}
+/* 照合＝新しい形→従来の形の順。従来の形で合ったら新しい形に書き換えて保存する（rec は呼び出し側が auth_write_ する） */
+function auth_pw_ok_(rec, uid, pw) {
+  if (!rec) return false;
+  if (rec.hash === auth_hash_(uid, pw)) return true;
+  if (auth_pepper_() && rec.hash === auth_hash_legacy_(uid, pw)) { rec.hash = auth_hash_(uid, pw); return true; }
+  return false;
 }
 
 /* ===== 神田の操作 ===== */
@@ -138,7 +160,7 @@ function 認証_店舗IDを月次リセット() {
   var rows = auth_rows_().filter(function (r) { return String(r.uid).indexOf('ipad-') === 0 && String(r.role) === 'staff'; });
   var lines = [], done = [];
   rows.forEach(function (rec) {
-    var pw = String(rec.uid).replace(/^ipad-/, '') + '-' + ym + '-' + String(Math.floor(1000 + Math.random() * 9000));
+    var pw = String(rec.uid).replace(/^ipad-/, '') + '-' + ym + '-' + Utilities.getUuid().replace(/-/g, '').slice(0, 8);   // ★2026-10-12 4桁の数字→英数8桁（総当たり対策）
     rec.hash = auth_hash_(rec.uid, pw); rec.must_change = 'false'; rec.tokens = '[]'; rec.updated = now; rec.pw_at = now;
     auth_write_(rec);
     lines.push(rec.stores + '　ID: ' + rec.uid + '　新パスワード: ' + pw);
@@ -222,22 +244,28 @@ function auth_api_(data) {
 function auth_api_locked_(data) {
   if (data.action === 'login') {
     var rec = auth_find_(data.uid);
-    if (!rec || rec.hash !== auth_hash_(data.uid, data.pw)) {
+    /* ★2026-10-12 総当たり対策＝同じIDで失敗が続いたら、しばらく受けない（成功で解除） */
+    var cache = auth_cache_(); var lk = 'lf:' + String(data.uid || '').trim().toLowerCase();
+    var fails = 0; try { fails = Number((cache && cache.get(lk)) || 0); } catch (e) {}
+    if (fails >= AUTH_LOCK_FAILS) return { ok: false, error: 'LOGIN_LOCKED', retryMin: Math.ceil(AUTH_LOCK_SEC / 60) };
+    if (!rec || !auth_pw_ok_(rec, data.uid, data.pw)) {
+      try { if (cache) cache.put(lk, String(fails + 1), AUTH_LOCK_SEC); } catch (e) {}
       return { ok: false, error: 'LOGIN_FAILED' };   // uidが無いのかパスワード違いかは区別して返さない
     }
+    try { if (cache) cache.remove(lk); } catch (e) {}
     var list = []; try { list = JSON.parse(rec.tokens || '[]'); } catch (e) {}
     var token = Utilities.getUuid();
     list.push(token); while (list.length > AUTH_TOKEN_MAX) list.shift();
     rec.tokens = JSON.stringify(list); rec.updated = new Date();
     auth_write_(rec);
     return { ok: true, auth: { token: token, uid: rec.uid, name: rec.name, role: rec.role,
-             stores: String(rec.stores || '').split('／').filter(String), mustChange: String(rec.must_change) === 'true', pwYm: auth_pwYm_(rec) } };
+             stores: String(rec.stores || '').split('／').filter(String), mustChange: String(rec.must_change) === 'true', pwYm: auth_pwYm_(rec), api: 2 } };   // api:2＝読みもPOSTで受ける版（2026-10-12）
   }
   if (data.action === 'chpw') {
     var u = auth_verify_(data.token);
     if (!u) return { ok: false, error: 'AUTH_REQUIRED', needLogin: true };
     var rec2 = auth_find_(u.uid);
-    if (rec2.hash !== auth_hash_(u.uid, data.oldPw)) return { ok: false, error: 'OLDPW_WRONG' };
+    if (!auth_pw_ok_(rec2, u.uid, data.oldPw)) return { ok: false, error: 'OLDPW_WRONG' };
     if (!data.newPw || String(data.newPw).length < 6) return { ok: false, error: 'NEWPW_TOO_SHORT' };  // 自分で決める方は6文字以上
     rec2.hash = auth_hash_(u.uid, data.newPw);
     rec2.must_change = 'false'; rec2.updated = new Date(); rec2.pw_at = new Date();
@@ -250,7 +278,7 @@ function auth_api_locked_(data) {
   if (data.action === 'authping') {
     var u2 = auth_verify_(data.token);
     return { ok: true, auth: u2 ? { uid: u2.uid, name: u2.name, role: u2.role, stores: u2.stores,
-             mustChange: u2.mustChange, pwYm: u2.pwYm, enabled: authOn_() } : { enabled: authOn_() } };
+             mustChange: u2.mustChange, pwYm: u2.pwYm, enabled: authOn_(), api: 2 } : { enabled: authOn_(), api: 2 } };
   }
   return null;
 }
@@ -273,6 +301,9 @@ function auth_verify_retry_(token, why) {
 function auth_logMiss_(code, token, why) {
   try {
     if (typeof getSheet !== 'function') return;
+    /* ★2026-10-12 偽トークンを連打されても行が増え続けないように、同じ末尾4桁は1時間に1回だけ記録する */
+    var c = auth_cache_(); var ck = 'miss:' + code + ':' + String(token || '').slice(-4);
+    try { if (c && c.get(ck)) return; if (c) c.put(ck, '1', 3600); } catch (e) {}
     var rows = 0; try { rows = auth_rows_().length; } catch (e) {}
     var note = JSON.stringify({ code: code, why: String(why || ''), tok: String(token).slice(-4), users: rows, t: Date.now() });
     getSheet().appendRow([Utilities.getUuid(), Date.now(), 'apperr', '本部', code, '', note, '[]']);
@@ -311,15 +342,30 @@ function auth_gate_post_(data) {
   var kind = String(data.kind || '');
   /* ★2026-10-09 画面エラーの控え（apperr）だけはトークンが無効でも受ける＝ログインが外れた瞬間の記録（AUTHDROP）を残すため。
      中身は端末の状態の文字列だけ（写真なし・他の種類には適用しない） */
-  if (kind === 'apperr') return { ok: true, u: null };
+  if (kind === 'apperr') {
+    /* ★2026-10-12 ログインなしで受けるぶん、中身を絞る＝写真は受けない・本文は1500字まで（本部Driveに置かせない・行を膨らませない） */
+    if (Array.isArray(data.photos) && data.photos.length) return { ok: false, error: 'NO_PHOTO' };
+    data.photos = []; data.note = String(data.note || '').slice(0, 1500);
+    return { ok: true, u: null };
+  }
   var u = auth_verify_retry_(data && data.token, 'post:' + kind);
   if (!u) return { ok: false, error: 'AUTH_REQUIRED' };
+  /* ★2026-10-12 仮パスワードのまま（初回変更がまだ）では提出できない。先にパスワードを変える（アプリは変更画面を出す） */
+  if (u.mustChange) return { ok: false, error: 'PW_CHANGE_REQUIRED' };
   /* ★個人タスクは本人（item=自分のuid）しか書けない。本部でも他人のぶんは書けない */
   if (kind === 'hqtask' && (u.role !== 'hq' || String(data.item || '') !== String(u.uid || ''))) return { ok: false, error: 'HQ_ONLY' };
   if (u.role !== 'hq') {
     if (AUTH_HQ_WRITE_KINDS.indexOf(kind) !== -1) return { ok: false, error: 'HQ_ONLY' };
     var store = String(data.store || '');
-    if (store && store !== '*' && u.stores.indexOf(store) === -1) return { ok: false, error: 'STORE_NOT_ALLOWED' };
+    /* ★2026-10-12 店舗の端末は「自店」だけ。'*'（全店）は本部のみ、空は公益通報（匿名）と numack のまとめ送りだけ */
+    if (store === '*') return { ok: false, error: 'STORE_NOT_ALLOWED' };
+    if (!store) { if (AUTH_NOSTORE_OK_KINDS.indexOf(kind) === -1) return { ok: false, error: 'STORE_NOT_ALLOWED' }; }
+    else if (u.stores.indexOf(store) === -1) return { ok: false, error: 'STORE_NOT_ALLOWED' };
+    /* ★2026-10-12 「レジ取込（usen）」「総括表取込（drive）」の印は本部の仕組みだけが付ける。店舗の端末からの印は外す */
+    try {
+      var n = (typeof data.note === 'string') ? JSON.parse(data.note) : data.note;
+      if (n && typeof n === 'object' && !Array.isArray(n) && (n.src === 'usen' || n.src === 'drive')) { delete n.src; data.note = JSON.stringify(n); }
+    } catch (e) {}
   }
   return { ok: true, u: u };
 }

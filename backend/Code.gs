@@ -331,80 +331,122 @@ function getPhotoFolder() {
 }
 
 // base64のdataURLを受け取りDriveへ保存してファイルIDを返す。既にID/URLならそのまま返す。
-function savePhoto(p) {
+/* ★2026-10-12 お金の写真（日計レポート・納品書）は「リンクを知っている全員」にしない＝ログイン済みの自店か本部にだけ返す（photoAction_）。
+   他の写真（オープン写真・見本など）は従来どおりリンクで表示する。 */
+function isPrivatePhotoRow_(kind, item) {
+  if (String(kind || '') !== 'subrec') return false;
+  var mid = String(item || '').split('|')[0];
+  if (mid === 'nouhin') return true;
+  try { if (typeof NIKKEI_TARGETS !== 'undefined' && NIKKEI_TARGETS[mid]) return true; } catch (e) {}
+  return false;
+}
+function savePhoto(p, meta) {
   var m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/.exec(String(p || ''));
   if (!m) return p; // dataURLでなければ（既存のID等）そのまま
   var blob = Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], 'photo.jpg');
   var file = getPhotoFolder().createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  var priv = !!(meta && isPrivatePhotoRow_(meta.kind, meta.item));
+  if (!priv) file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  try { file.setDescription(JSON.stringify({ store: String((meta && meta.store) || ''), kind: String((meta && meta.kind) || ''), item: String((meta && meta.item) || '') })); } catch (e) {}
   return file.getId();
+}
+/* 神田の操作（エディタから1回）＝これまでに提出された お金の写真（日計・納品書）の公開リンクを外し、店舗名を控える。
+   アプリは「p:」付きのIDをログイン経由で取りにくるので、表示は変わらない */
+function 写真_金銭系を非公開にする() {
+  var sh = getSheet(); var last = sh.getLastRow(); var done = 0, skip = 0, miss = 0;
+  if (last < 2) return { 結果: '行なし' };
+  var vals = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  for (var i = 0; i < vals.length; i++) {
+    var r = vals[i]; if (!isPrivatePhotoRow_(r[2], r[4])) continue;
+    var ids = parsePhotos(r[7]);
+    for (var j = 0; j < ids.length; j++) {
+      var id = String(ids[j] || ''); if (!/^[a-zA-Z0-9_-]{10,}$/.test(id)) continue;
+      try {
+        var f = DriveApp.getFileById(id);
+        if (f.getSharingAccess() !== DriveApp.Access.PRIVATE) { f.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); done++; } else skip++;
+        try { if (!f.getDescription()) f.setDescription(JSON.stringify({ store: String(r[3] || ''), kind: String(r[2] || ''), item: String(r[4] || '') })); } catch (e) {}
+      } catch (e) { miss++; }
+    }
+  }
+  var out = { 結果: 'お金の写真の公開リンクを外した', 非公開にした: done, 既に非公開: skip, 見つからない: miss };
+  Logger.log(JSON.stringify(out)); return out;
+}
+/* ★2026-10-12 外向きのエラーは番号だけ（フォルダIDや設定名を返さない）。中身は実行ログに残す */
+function serverError_(err) {
+  var ref = Utilities.getUuid().slice(0, 8);
+  try { Logger.log('[' + ref + '] ' + String(err && err.stack ? err.stack : err)); } catch (e) {}
+  return { ok: false, error: 'SERVER_ERROR', ref: ref };
 }
 
 // 報告一覧を返す（新しい順）。?store=店舗名 で絞り込み可、?store=all は全件。
 // ★シート末尾の直近 READ_TAIL 行だけを読むので、行数が増えても速度が一定。
 function doGet(e) {
   try {
-    // 保存期間の確認用：?action=purgeTargets は「削除される予定」を返すだけ（削除しない）
-    if (e && e.parameter && e.parameter.action === 'purgeTargets') {
-      return json({ ok: true, purge: listPurgeTargets() });
-    }
-    // 容量の確認：?action=storage で使用量・増加ペース・90日/60日の見込みを返す
-    if (e && e.parameter && e.parameter.action === 'storage') {
-      return json({ ok: true, storage: storageReport() });
-    }
-    // 構成の点検：?action=validate（変更しません）
-    if (e && e.parameter && e.parameter.action === 'validate') {
-      return json({ ok: true, validate: validateBackendConfiguration() });
-    }
-    // トリガーの確認：?action=triggers（変更しません）
-    if (e && e.parameter && e.parameter.action === 'triggers') {
-      return json({ ok: true, triggers: listTriggers() });
-    }
-    // トリガーの設定：?action=setupTrigger（毎日の自動削除を有効化。重複は作りません）
-    if (e && e.parameter && e.parameter.action === 'setupTrigger') {
-      return json({ ok: true, setup: ensureDailyPurgeTrigger() });
-    }
-    /* ★認証の門番（2026-08-25 追加）。ENABLE_AUTH=false のあいだは素通し＝挙動不変。
-       認証.gs を貼っていないプロジェクトでも壊れないよう、関数の有無を見てから呼ぶ。 */
+    /* ★2026-10-12 まず門番。保守用の action も門番のあと（本部だけ）に移した＝ログインなしで構成情報を読まれない・トリガーを作られない */
     var gate = (typeof auth_gate_get_ === 'function') ? auth_gate_get_(e) : { ok: true, u: null };
     if (!gate.ok) return json({ ok: false, error: 'AUTH_REQUIRED', needLogin: true });
-    /* ★写真をbase64で返す（巡回チェックのレポート用・2026-09-16）。画像URLを直接 canvas に描くと書き出せないため、
-       ログイン済みの本部にだけ、写真フォルダのファイルを中身ごと返す（他のフォルダのファイルは返さない） */
-    if (e && e.parameter && e.parameter.action === 'photo') {
-      if (gate.u && gate.u.role !== 'hq') return json({ ok: false, error: 'HQ_ONLY' });
-      try {
-        var pf = DriveApp.getFileById(String(e.parameter.id || ''));
-        var inPhoto = false; var parents = pf.getParents(); var photoFolderId = getPhotoFolder().getId();
-        while (parents.hasNext()) { if (parents.next().getId() === photoFolderId) inPhoto = true; }
-        if (!inPhoto) return json({ ok: false, error: 'NOT_PHOTO' });
-        var pb = pf.getBlob();
-        return json({ ok: true, mime: pb.getContentType(), data: Utilities.base64Encode(pb.getBytes()) });
-      } catch (perr) { return json({ ok: false, error: String(perr) }); }
-    }
-    var sh = getSheet();
-    var lastRow = sh.getLastRow();
-    var store = e && e.parameter ? e.parameter.store : '';
-    var out = [];
-    if (lastRow >= 2) {
-      var startRow = Math.max(2, lastRow - READ_TAIL + 1);
-      var numRows = lastRow - startRow + 1;
-      var values = sh.getRange(startRow, 1, numRows, HEADERS.length).getValues();
-      for (var i = values.length - 1; i >= 0; i--) {
-        var r = values[i];
-        if (!r[0]) continue;
-        if (store && store !== 'all' && r[3] !== store) continue;
-        if (gate.u && typeof auth_row_ok_ === 'function' && !auth_row_ok_(gate.u, String(r[2] || ''), String(r[3] || ''), String(r[4] || ''))) continue; // ★自店の分だけ返す（hqackはitem内の店舗名で判定）
-        out.push({
-          id: r[0], t: Number(r[1]) || 0, kind: r[2], store: r[3],
-          item: r[4], level: r[5], note: r[6], photos: parsePhotos(r[7])
-        });
-        if (out.length >= RETURN_MAX) break;
-      }
-    }
-    return json({ ok: true, reports: out });
+    return json(apiRead_((e && e.parameter) || {}, gate.u));
   } catch (err) {
-    return json({ ok: false, error: String(err) });
+    return json(serverError_(err));
   }
+}
+
+/* 読み（doGet のクエリ／doPost の action:'list'|'photo' の両方から来る）。u＝ログイン済みの利用者（認証OFFのときは null） */
+function apiRead_(p, u) {
+  var action = String((p && p.action) || '');
+  /* ★写真をbase64で返す（巡回チェックのレポート用・2026-09-16／お金の写真の表示用・2026-10-12）。
+     本部は写真フォルダの全部、店舗は自店の写真（保存時に控えた店舗名が一致するもの）だけ */
+  if (action === 'photo') return photoAction_(p, u);
+  if (action) {
+    if (u && u.role !== 'hq') return { ok: false, error: 'HQ_ONLY' };
+    if (action === 'purgeTargets') return { ok: true, purge: listPurgeTargets() };   // 削除される予定を返すだけ（削除しない）
+    if (action === 'storage') return { ok: true, storage: storageReport() };          // 使用量・増加ペース
+    if (action === 'validate') return { ok: true, validate: validateBackendConfiguration() };   // 構成の点検（変更しません）
+    if (action === 'triggers') return { ok: true, triggers: listTriggers() };
+    if (action === 'setupTrigger') return { ok: true, setup: ensureDailyPurgeTrigger() };   // 毎日の自動削除を有効化（重複は作らない）
+    return { ok: false, error: 'UNKNOWN_ACTION' };
+  }
+  var sh = getSheet();
+  var lastRow = sh.getLastRow();
+  var store = p ? p.store : '';
+  var out = [];
+  if (lastRow >= 2) {
+    var startRow = Math.max(2, lastRow - READ_TAIL + 1);
+    var numRows = lastRow - startRow + 1;
+    var values = sh.getRange(startRow, 1, numRows, HEADERS.length).getValues();
+    for (var i = values.length - 1; i >= 0; i--) {
+      var r = values[i];
+      if (!r[0]) continue;
+      if (store && store !== 'all' && r[3] !== store) continue;
+      if (u && typeof auth_row_ok_ === 'function' && !auth_row_ok_(u, String(r[2] || ''), String(r[3] || ''), String(r[4] || ''))) continue; // ★自店の分だけ返す（hqackはitem内の店舗名で判定）
+      var photos = parsePhotos(r[7]);
+      /* ★お金の写真はIDに「p:」を付けて返す＝アプリはリンクでなくログイン経由（action:'photo'）で取りにくる */
+      if (isPrivatePhotoRow_(r[2], r[4])) photos = photos.map(function (x) { return /^[a-zA-Z0-9_-]{10,}$/.test(String(x || '')) ? 'p:' + x : x; });
+      out.push({
+        id: r[0], t: Number(r[1]) || 0, kind: r[2], store: r[3],
+        item: r[4], level: r[5], note: r[6], photos: photos
+      });
+      if (out.length >= RETURN_MAX) break;
+    }
+  }
+  return { ok: true, reports: out };
+}
+
+function photoAction_(p, u) {
+  try {
+    var id = String((p && p.id) || '').replace(/^p:/, '');
+    if (!/^[a-zA-Z0-9_-]{10,}$/.test(id)) return { ok: false, error: 'NOT_PHOTO' };
+    var pf = DriveApp.getFileById(id);
+    var inPhoto = false; var parents = pf.getParents(); var photoFolderId = getPhotoFolder().getId();
+    while (parents.hasNext()) { if (parents.next().getId() === photoFolderId) inPhoto = true; }
+    if (!inPhoto) return { ok: false, error: 'NOT_PHOTO' };
+    if (u && u.role !== 'hq') {
+      var ds = ''; try { ds = String(JSON.parse(pf.getDescription() || '{}').store || ''); } catch (e) {}
+      if (!ds || u.stores.indexOf(ds) === -1) return { ok: false, error: 'NOT_YOURS' };   // 店舗名の控えが無い古い写真は店舗には返さない
+    }
+    var pb = pf.getBlob();
+    return { ok: true, mime: pb.getContentType(), data: Utilities.base64Encode(pb.getBytes()) };
+  } catch (perr) { return serverError_(perr); }
 }
 
 /* 直近の行に「同じ提出」があれば、その行のidを返す（無ければ空文字）。
@@ -438,6 +480,12 @@ function doPost(e) {
       var ar = auth_api_(data);
       if (ar) return json(ar);
     }
+    /* ★2026-10-12 読みもPOSTで受ける（トークンをURLに載せない＝ログやキャッシュに残さない）。doGet と同じ門番・同じ中身 */
+    if (data && (data.action === 'list' || data.action === 'photo')) {
+      var g2 = (typeof auth_gate_get_ === 'function') ? auth_gate_get_({ parameter: { token: data.token } }) : { ok: true, u: null };
+      if (!g2.ok) return json({ ok: false, error: 'AUTH_REQUIRED', needLogin: true });
+      return json(apiRead_({ action: data.action === 'list' ? '' : 'photo', id: data.id, store: data.store }, g2.u));
+    }
     /* ★書き込みの門番。ENABLE_AUTH=false のあいだは素通し＝挙動不変 */
     if (typeof auth_gate_post_ === 'function') {
       var gp = auth_gate_post_(data);
@@ -457,7 +505,7 @@ function doPost(e) {
     var id = Utilities.getUuid();
     var ts = data.t || Date.now();
     var input = Array.isArray(data.photos) ? data.photos.slice(0, 6) : [];
-    var photoIds = input.map(savePhoto);
+    var photoIds = input.map(function (x) { return savePhoto(x, data); });   // ★お金の写真は公開リンクにしない（2026-10-12）
     sh.appendRow([id, ts, data.kind || '', data.store || '', data.item || '', data.level || '', normNote(data.note), JSON.stringify(photoIds)]);
     // ★公益通報は本部へメールで知らせる（通報通知.gs・通知先はスクリプト プロパティ WHISTLE_MAIL_TO。未設定なら何もしない・2026-09-24）
     try { if (typeof notifyWhistle_ === 'function' && String(data.kind || '') === 'whistle') notifyWhistle_(data, id); } catch (e) {}
@@ -469,7 +517,7 @@ function doPost(e) {
     if (typeof nouhin_ocr_hook_ === 'function') { try { nouhin_ocr_hook_(data, photoIds); } catch (ocrErr2) {} }
     return json({ ok: true, id: id });
   } catch (err) {
-    return json({ ok: false, error: String(err) });
+    return json(serverError_(err));
   }
 }
 
