@@ -351,26 +351,59 @@ function savePhoto(p, meta) {
   return file.getId();
 }
 /* 神田の操作（エディタから1回）＝これまでに提出された お金の写真（日計・納品書）の公開リンクを外し、店舗名を控える。
-   アプリは「p:」付きのIDをログイン経由で取りにくるので、表示は変わらない */
+   アプリは「p:」付きのIDをログイン経由で取りにくるので、表示は変わらない。
+   ★2026-10-12 1回で6分の上限に当たった（写真が多い）＝途中の位置をプロパティに控え、4分半で区切って、
+     終わっていなければ1分後の自分のトリガーを作って続ける。全部終わると控えとトリガーを消す。進み具合は実行ログで分かる */
+var PHOTO_PRIVATE_CURSOR = 'PHOTO_PRIVATE_CURSOR';
 function 写真_金銭系を非公開にする() {
-  var sh = getSheet(); var last = sh.getLastRow(); var done = 0, skip = 0, miss = 0;
-  if (last < 2) return { 結果: '行なし' };
-  var vals = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
-  for (var i = 0; i < vals.length; i++) {
-    var r = vals[i]; if (!isPrivatePhotoRow_(r[2], r[4])) continue;
-    var ids = parsePhotos(r[7]);
-    for (var j = 0; j < ids.length; j++) {
-      var id = String(ids[j] || ''); if (!/^[a-zA-Z0-9_-]{10,}$/.test(id)) continue;
-      try {
-        var f = DriveApp.getFileById(id);
-        if (f.getSharingAccess() !== DriveApp.Access.PRIVATE) { f.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); done++; } else skip++;
-        try { if (!f.getDescription()) f.setDescription(JSON.stringify({ store: String(r[3] || ''), kind: String(r[2] || ''), item: String(r[4] || '') })); } catch (e) {}
-      } catch (e) { miss++; }
+  var sp = PropertiesService.getScriptProperties();
+  var started = Date.now(); var BUDGET = 270 * 1000;   // 4分30秒で区切る（上限6分）
+  var cur = Number(sp.getProperty(PHOTO_PRIVATE_CURSOR) || 0);   // 次に見る行番号（0＝最初から）
+  var sh = getSheet(); var last = sh.getLastRow();
+  var done = 0, skip = 0, miss = 0, seen = 0;
+  if (last >= 2) {
+    var from = Math.max(2, cur || 2);
+    var vals = sh.getRange(from, 1, last - from + 1, HEADERS.length).getValues();
+    for (var i = 0; i < vals.length; i++) {
+      var r = vals[i];
+      if (isPrivatePhotoRow_(r[2], r[4])) {
+        var ids = parsePhotos(r[7]);
+        for (var j = 0; j < ids.length; j++) {
+          var id = String(ids[j] || ''); if (!/^[a-zA-Z0-9_-]{10,}$/.test(id)) continue;
+          seen++;
+          try {
+            var f = DriveApp.getFileById(id);
+            if (f.getSharingAccess() !== DriveApp.Access.PRIVATE) { f.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); done++; } else skip++;
+            try { if (!f.getDescription()) f.setDescription(JSON.stringify({ store: String(r[3] || ''), kind: String(r[2] || ''), item: String(r[4] || '') })); } catch (e) {}
+          } catch (e) { miss++; }
+        }
+      }
+      if (Date.now() - started > BUDGET) {
+        var next = from + i + 1;
+        sp.setProperty(PHOTO_PRIVATE_CURSOR, String(next));
+        photoPrivate_trigger_(true);
+        var mid = { 結果: '途中（時間で区切った・1分後に自動で続きを回す）', 次の行: next, 全行: last, この回: { 見た: seen, 非公開にした: done, 既に非公開: skip, 見つからない: miss } };
+        Logger.log(JSON.stringify(mid)); return mid;
+      }
     }
   }
-  var out = { 結果: 'お金の写真の公開リンクを外した', 非公開にした: done, 既に非公開: skip, 見つからない: miss };
+  sp.deleteProperty(PHOTO_PRIVATE_CURSOR);
+  photoPrivate_trigger_(false);
+  var out = { 結果: '完了＝お金の写真の公開リンクを外した（最後まで見た）', 全行: last, この回: { 見た: seen, 非公開にした: done, 既に非公開: skip, 見つからない: miss } };
   Logger.log(JSON.stringify(out)); return out;
 }
+function photoPrivate_trigger_(on) {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === '写真_金銭系を非公開にする') ScriptApp.deleteTrigger(t); });
+  if (on) ScriptApp.newTrigger('写真_金銭系を非公開にする').timeBased().after(60 * 1000).create();
+}
+/* 進み具合を見る（変更しない） */
+function 写真_非公開の進み具合() {
+  var sp = PropertiesService.getScriptProperties(); var cur = sp.getProperty(PHOTO_PRIVATE_CURSOR);
+  var trig = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === '写真_金銭系を非公開にする'; }).length;
+  var out = { 次の行: cur ? Number(cur) : '（控えなし＝未実行か完了）', 全行: getSheet().getLastRow(), 続きのトリガー: trig };
+  Logger.log(JSON.stringify(out)); return out;
+}
+
 /* ★2026-10-12 外向きのエラーは番号だけ（フォルダIDや設定名を返さない）。中身は実行ログに残す */
 function serverError_(err) {
   var ref = Utilities.getUuid().slice(0, 8);
