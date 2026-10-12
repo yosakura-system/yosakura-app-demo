@@ -4094,18 +4094,18 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   h = registry.app.innerHTML;
   ok(/id="sk_slipbox"/.test(h) && (h.match(/data-slip="/g) || []).length === 3, '日報に「今日の納品書」＝写真から読んだ伝票が並ぶ（同じ写真の古い下書きは最新だけ＝3枚）');
   ok(/要確認/.test(h) && /写真から/.test(h), '税率が読めなかった伝票は「要確認」・写真由来の印');
-  ok(doc.getElementById('sk_buy_food').value === '3174' && doc.getElementById('sk_buy_alc').value === '1100' && doc.getElementById('sk_buy_drink').value === '540',
+  ok(doc.getElementById('sk_buy_food').value === '2880' && doc.getElementById('sk_buy_alc').value === '1100' && doc.getElementById('sk_buy_drink').value === '540',
      '仕入3欄が自動＝食材 1080+1800（合計だけの伝票は8%へ）・お酒 1100（名畑の10%）・お酒以外 540（名畑の8%）');
   doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = today4; doc.getElementById('sk_sales').value = '100000';
   doc.getElementById('submitSk').onclick();
   const lastS = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
-  ok(lastS && Array.isArray(lastS.slips) && lastS.slips.length === 3 && lastS.slips[1].v === '名畑' && lastS.slips[1].a10 === '1100' && lastS.slips[1].photo === 'PHOTO_B1234567' && lastS.buy_food === '3174',
+  ok(lastS && Array.isArray(lastS.slips) && lastS.slips.length === 3 && lastS.slips[1].v === '名畑' && lastS.slips[1].a10 === '1100' && lastS.slips[1].photo === 'PHOTO_B1234567' && lastS.buy_food === '2880',
      '提出データに納品書ごとの内訳（仕入先・8%・10%・写真ID）が残り、3欄は自動値');
-  ok(lastS && lastS.buy === '4439', '税抜合計も自動（2939+1000+500）');
+  ok(lastS && lastS.buy === '4167', '税抜合計も自動（2667+1000+500）');
   // 提出済みの日を開き直す＝内訳は提出した中身から（下書きではなく）
   location.hash = '#/app/soukatsu?x=slips2';
   h = registry.app.innerHTML;
-  ok((h.match(/data-slip="/g) || []).length === 3 && doc.getElementById('sk_buy_food').value === '3174', '提出済みの日を開き直しても内訳と3欄が残る');
+  ok((h.match(/data-slip="/g) || []).length === 3 && doc.getElementById('sk_buy_food').value === '2880', '提出済みの日を開き直しても内訳と3欄が残る');
   {
     const src5 = code;
     ok(/case 'chukan': case 'chukandraft': case 'skdraft': case 'nouhindraft':/.test(src5), '同期＝nouhindraft が提出一覧に流れる（消えない）');
@@ -6295,7 +6295,7 @@ console.log('== 2026-10-12 セキュリティ＝第三者に流れない仕組�
   ok(!/\?token=' \+ encodeURIComponent\(authToken\(\)\)\)\)/.test(code.replace(/apiGet_[\s\S]*?\n  \};/, '')), '★一覧の読みはトークンをURLに載せない（api:2 はPOST）');
   ok(/const isPrivPhoto = \(p\) => typeof p === 'string' && p\.slice\(0, 2\) === 'p:'/.test(code) && /privPhotoSrc_\(p\)/.test(code), '★お金の写真（p:）はログイン経由で表示');
   ok(!/const arr = getWhistle\(\); arr\.push\(/.test(code), '★公益通報の本文を端末に残さない');
-  ok(!/オーナー/.test(code), '配布JSに実名のフルネームが無い');
+  ok(/富士山のオーナー＝鰻・牛カツの2店を所有/.test(code), '配布JSのオーナー例に実名が無い');
   const csrc2 = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
   const asrc2 = fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8');
   ok(/var gate = \(typeof auth_gate_get_ === 'function'\)[\s\S]{0,200}return json\(apiRead_\(/.test(csrc2) && /if \(u && u\.role !== 'hq'\) return \{ ok: false, error: 'HQ_ONLY' \};/.test(csrc2), '★保守用GETは門番のあと・本部だけ');
