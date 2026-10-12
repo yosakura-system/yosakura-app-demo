@@ -11,7 +11,9 @@
  *      （E＝画面のエラー／AUTHDROP＝ログインが外れた／AUTHKEEP＝外れかけたが続行／LSFULL＝端末の保存領域いっぱい）
  *   ② 同じIDのログインし直しが24時間に3回以上（_users の tokens の増え方で数える）
  *   ③ 10時台だけ：USENレジの店で、昨日の営業日の行（src:'usen'）が無い店 → 取込漏れ
- *   ④ 23時台だけ：きのう提出のあった店で、きょう1件も提出（ckdone／subrec／zaiko／soukatsu）が無い店 → 止まっている可能性
+ *   ④ 10時台だけ：おととい提出のあった店で、きのう1件も提出（ckdone／subrec／zaiko／soukatsu）が無い店 → 止まっている可能性
+ *      ★2026-10-12 営業日は「朝4時〜翌朝4時」で数える。23時台に「きょう」で判定していたため、
+ *        閉店が0時を回る店（手巻き寿司難波店＝10/9分を10/10 1:01に提出）が毎晩引っかかった＝空振り。朝の回（③と同じ）へ移した
  *
  * ■ 知らせ方＝見つかったときだけメール（何も無ければ送らない）。送り先＝Script Properties の MIMAMORI_MAIL_TO
  *   （未設定なら、このGASを動かしている人のアドレス）。無料・外部サービスなし。
@@ -49,7 +51,7 @@ function 見守り_毎時() {
 function mimamori_run_(sinceTs, isTest) {
   var now = new Date();
   var hour = Number(Utilities.formatDate(now, 'Asia/Tokyo', 'H'));
-  var rows = mimamori_recentRows_(Math.min(sinceTs, Date.now() - 2 * 24 * 3600 * 1000));   // 直近2日は必ず読む（③④の比較用）
+  var rows = mimamori_recentRows_(Math.min(sinceTs, Date.now() - 3 * 24 * 3600 * 1000));   // 直近3日は必ず読む（③④の比較用＝④は「おととい」の営業日まで見る）
   var found = [];
 
   /* ① エラーの控え */
@@ -75,10 +77,10 @@ function mimamori_run_(sinceTs, isTest) {
     if (miss.length) found.push('【USENレジの行が無い店（' + miss[0].date + '）】\n' + miss.map(function (x) { return '・' + x.store; }).join('\n') + '\n→ 「USEN更新」が走っていないか、USEN側に営業日の行が無いか');
   }
 
-  /* ④ 提出が止まった店（23時台） */
-  if (isTest || hour === 23) {
+  /* ④ 提出が止まった店（10時台・営業日＝朝4時区切り） */
+  if (isTest || hour === 10) {
     var stopped = mimamori_stopped_(rows, now);
-    if (stopped.length) found.push('【きのうは提出があったのに、きょう1件も無い店】\n' + stopped.map(function (x) { return '・' + x; }).join('\n') + '\n→ 休業か、端末が止まっているか（ログイン・容量・電波）');
+    if (stopped.length) found.push('【おとといは提出があったのに、きのう（' + mimamori_bizDay_(now.getTime() - 24 * 3600 * 1000) + '）1件も無い店】\n' + stopped.map(function (x) { return '・' + x; }).join('\n') + '\n→ 休業か、端末が止まっているか（ログイン・容量・電波）。営業日は朝4時〜翌朝4時で数えています');
   }
 
   if (!found.length) return { ok: true, found: 0 };
@@ -148,17 +150,21 @@ function mimamori_usenMissing_(rows, now) {
   }).map(function (s) { return { store: s, date: ymd }; });
 }
 
-/* ④ きのう提出があって、きょう無い店 */
+/* 営業日（朝4時〜翌朝4時）＝ 4時間引いた時刻の日付。0:00〜3:59 の提出は前日の営業日に数える */
+var MIMAMORI_BIZ_CUT_H = 4;
+function mimamori_bizDay_(ts) { return Utilities.formatDate(new Date(Number(ts) - MIMAMORI_BIZ_CUT_H * 3600 * 1000), 'Asia/Tokyo', 'yyyy-MM-dd'); }
+
+/* ④ おととい（営業日）提出があって、きのう（営業日）無い店。朝10時台に動かす＝きのうの営業日は閉まっている */
 function mimamori_stopped_(rows, now) {
-  var today = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd');
-  var yday = Utilities.formatDate(new Date(now.getTime() - 24 * 3600 * 1000), 'Asia/Tokyo', 'yyyy-MM-dd');
+  var yday = mimamori_bizDay_(now.getTime() - 24 * 3600 * 1000);
+  var dby = mimamori_bizDay_(now.getTime() - 2 * 24 * 3600 * 1000);
   var y = {}, t = {};
   rows.forEach(function (r) {
     if (MIMAMORI_SUBMIT_KINDS.indexOf(r.kind) === -1 || !r.store || r.store === '本部' || r.store === 'all') return;
     var n = {}; try { n = JSON.parse(r.note || '{}'); } catch (e) {}
     if (n.src === 'usen' || n.src === 'drive') return;   // 取込は店の操作ではない
-    var d = Utilities.formatDate(new Date(r.ts), 'Asia/Tokyo', 'yyyy-MM-dd');
-    if (d === yday) y[r.store] = true; if (d === today) t[r.store] = true;
+    var d = mimamori_bizDay_(r.ts);
+    if (d === dby) y[r.store] = true; if (d === yday) t[r.store] = true;
   });
   return Object.keys(y).filter(function (s) { return !t[s]; });
 }
