@@ -9143,7 +9143,8 @@
     const now = Date.now();
     saveStudy([
       { id:'st1786011551522', date:'2026-06', title:'2026年6月勉強会', t: now - 63 * 864e5, video:'https://drive.google.com/file/d/1yFPYu-8hPN9RAAJuXU4AY55IrpJqHWdU/view', body:'',
-        docs:[{ title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/14P3hyKBbXp1Qn0DVx64W24EcygYtbJO2dbrCbnxyZgU/edit?slide=id.g3e76fcf952b_0_0#slide=id.g3e76fcf952b_0_0' }, { title:'テーマスライド', url:'https://docs.google.com/presentation/d/14riX3QM07yufNlZ5jYgcVcdm0vZum9lP-k7CuW2W_wk/edit?slide=id.p1#slide=id.p1' }] },
+        docs:[{ title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/1qzD4aSV7qGjdbWxBiRdm1Oi5OFneOfs7zATpMY9BlEA/edit' }, { title:'テーマスライド', url:'https://docs.google.com/presentation/d/1lU85dSEtF5ObVAEFs44uas6iz7lafiZ07X0DryJbYOI/edit' }] },
+      /* ★2026-10-12 6月の2つは、外部の会社が所有する原本（リンクで誰でも編集）を指していた → 世桜FC所有のコピー（共有は本部の顔ぶれだけ）へ切替。原本には触れない */
       { id:'st1786011745177', date:'2026-07', title:'2026年7月勉強会', t: now - 35 * 864e5, video:'https://drive.google.com/file/d/1f-b4t_7ED-YuWF9tYqO-Va2pUVtdyote/view', body:'',
         docs:[{ title:'アジェンダスライド', url:'https://docs.google.com/presentation/d/1gy9IXkoDfvG28sK_IWXvzpfgTAV_Fbx8q65LoUKD55c/edit?slide=id.g3e76fcf952b_0_0#slide=id.g3e76fcf952b_0_0' }] },
       /* ★2026-08-21：勉強会の録画は、本部が「勉強会／2026年共有」フォルダへ上げてくださっている。
