@@ -3089,7 +3089,7 @@
         {ja:'食器類のケース・破損確認',d:{ja:'食器を出してケース内をアルコールで拭く／戻してテプラを貼り直す／ひび割れや破損がないか確認'}},
         {ja:'冷凍庫（内部・外部）',d:{ja:'中身を全部出す／ダスターを湿らせアルコールで拭く／ストック用ケースはシンクで洗浄／外側の扉も'}},
         {ja:'冷凍庫（フィルター）',d:{ja:'取り外してシンクで洗い流す／乾かしてから戻す'}},
-        {ja:'器の数と欠け（チップ）',en:'Tableware count & chips',vi:'Đếm bát đĩa & đồ mẻ',go:'/app/zaiko',goT:{ja:'在庫数を入力へ',en:'Open Stock count',vi:'Mở Tồn kho'},d:{ja:'種類ごとに数えて「在庫数」の器の欄へ／欠け・ひびは取り除く（怪我のもと）',en:'Count each type into Stock (tableware); remove chipped or cracked pieces.',vi:'Đếm từng loại vào Tồn kho (bát đĩa); loại bỏ đồ mẻ/nứt.'}} ] },
+        {ja:'器の数と欠け（チップ）',en:'Tableware count & chips',vi:'Đếm bát đĩa & đồ mẻ',go:'/app/zaiko',goT:{ja:'在庫数を入力へ',en:'Open Stock count',vi:'Mở Tồn kho'},d:{ja:'週に1回が最低。曜日は店で決めてよい（水曜は目安。変えるときは、この項目を外して、やりたい曜日に足す）／種類ごとに数えて「在庫数」の器の欄へ／数えるときに欠け・ひびをしっかり見て、ある器は取り除いて使わない（怪我のもと・報告は不要）',en:'At least once a week; the store picks the day (Wednesday is just a guide — hide this item and add it to another day if you prefer). Count each type into Stock (tableware). While counting, check carefully for chips and cracks and remove those pieces (no report needed).',vi:'Ít nhất 1 lần/tuần; cửa hàng tự chọn ngày (thứ Tư chỉ là gợi ý — có thể ẩn mục này và thêm vào ngày khác). Đếm từng loại vào Tồn kho (bát đĩa). Khi đếm, kiểm tra kỹ đồ mẻ/nứt và loại bỏ (không cần báo cáo).'}} ] },   /* ★2026-10-12 神田さん「チップは報告いらない。器の棚卸のときにしっかり確認。曜日は固定せず店舗に委ねる。週1回が最低」 */
       { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
         {ja:'レジカウンター周辺',d:{ja:'レジ周りの埃／整理整頓／アルコールで全体を拭く／金銭トレイ・チラシ立ても／カウンターの後ろも／傘立ては水を捨てて掃除'}},
         {ja:'バックヤード',d:{ja:'何がどこにあるか見て分かるように整理し、名称を表示／昼と夜の物を分ける／使ったものは必ず元に戻す'}},

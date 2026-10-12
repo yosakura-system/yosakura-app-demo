@@ -480,11 +480,11 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
   function uwRows(){ if (!S.uw || S.uw.fmt !== S.uwFmt) S.uw = { fmt:S.uwFmt, n:UTSUWA[S.uwFmt].map(r => (r[2] === '' ? 0 : r[2])) }; return S.uw.n; }
   function screenUtsuwa(){
     const items = UTSUWA[S.uwFmt]; const n = uwRows();
-    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">器の数</div><p class="lead">週に1回、都合のよい日に。業態の器を数えて入れるだけ。欠け・ひびは数に入れず、ロスに上げてください。</p>
+    return `<button class="back" data-go="today">${ICONS.back} きょうやること</button><div class="ttl">器の数</div><p class="lead">週に1回が最低。曜日は店で決めてよい。業態の器を数えて入れるだけ。数えるときに欠け・ひびをしっかり見て、ある器は取り除いて使わない（報告は不要）。</p>
       <div class="seg">${Object.keys(UTSUWA).map(k => `<button class="${S.uwFmt === k ? 'on' : ''}" data-uwfmt="${k}">${k}</button>`).join('')}</div>
       <div class="note" style="margin:0 0 8px">業態の切替は見本のためのものです。実際は、その店の業態の器だけが出ます。</div>
       <div class="card">${items.map((r, i) => `<div class="fld"><label>${r[0]}<small>${r[1]}${r[2] !== '' ? ' ・ 基準 ' + r[2] : ''}</small></label><div class="stepper"><button data-uw="${i}:-1">−</button><b style="${r[2] !== '' && n[i] < r[2] ? 'color:var(--kaki)' : ''}">${n[i]}</b><button data-uw="${i}:1">＋</button></div></div>`).join('')}</div>
-      <div class="note">基準より少ない器は赤。補充が要るものは、本部に届きます（見本）。</div>
+      <div class="note">基準より少ない器は赤く出ます。</div>
       <button class="big" data-uwsave="1">出す</button>${timer()}`;
   }
   function today(){
@@ -524,7 +524,7 @@ body.ipad .rgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:0 22px;align-
       <div class="chips" style="margin-top:12px"><button class="chip" data-open="kizuki">気づき<small>良かったことも困ったことも</small></button><button class="chip" data-open="qr">サーベイQR<small>お会計のときにお見せする</small></button><button class="chip" data-open="loss">ロス<small>無い日は何もしない</small></button><button class="chip" data-go="write">引き継ぎを書く<small>次の人へ</small></button></div>
       <div class="sec"><h2>今週</h2><small>週に1回 ・ 曜日は店で決めてよい ・ 済むと消えます</small></div>
       <div class="card">
-        <button class="row ${S.uwDone ? 'done' : ''}" data-open="utsuwa"><span class="st">${S.uwDone ? ICONS.check : ICONS.box}</span><span><span class="nm">器の数</span> <span class="pill" style="font-size:10px">本部へ</span><br><span class="sub">${S.uwDone ? '出しました ' + S.uwDone : '週に1回、都合のよい日に。業態の器を数えるだけ'}</span></span><span class="rt">${S.uwDone ? '' : '今週中'}</span></button>
+        <button class="row ${S.uwDone ? 'done' : ''}" data-open="utsuwa"><span class="st">${S.uwDone ? ICONS.check : ICONS.box}</span><span><span class="nm">器の数</span><br><span class="sub">${S.uwDone ? '出しました ' + S.uwDone : '週に1回が最低・曜日は店で。業態の器を数えるだけ'}</span></span><span class="rt">${S.uwDone ? '' : '今週中'}</span></button>
         <button class="row ${S.popDone ? 'done' : ''}" data-popdone="1"><span class="st">${S.popDone ? ICONS.check : ICONS.pen}</span><span><span class="nm">卓上POPの交換</span> <span class="pill info" style="font-size:10px">牛カツ店のみ</span><br><span class="sub">${S.popDone ? '交換しました ' + S.popDone : '週に1回。交換したら、この行を押すだけ'}</span></span><span class="rt">${S.popDone ? '' : '今週中'}</span></button>
       </div>
       <div class="sec"><h2>今月</h2><small>月に1回のもの ・ 期日が近いものだけ出ます ・ 入れるものは増えません</small></div>

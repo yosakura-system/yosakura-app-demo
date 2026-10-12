@@ -6127,7 +6127,8 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   ok(/器の数と欠け（チップ）/.test(dayItems(3)) && /食器類のケース・破損確認/.test(dayItems(3)), '水曜：器の数と欠け（①②）＝既存の食器項目は残す');
   ok(/見えない所の埃（トイレ換気扇・棚の上）/.test(dayItems(4)), '木曜：トイレ換気扇・棚の上（④）');
   ok(/スタッフルーム・厨房の整理整頓/.test(dayItems(6)), '土曜：スタッフルーム・厨房の整理整頓（④）');
-  ok(/「在庫数」の器の欄へ／欠け・ひびは取り除く（怪我のもと）/.test(code), '器の項目の説明＝在庫数の器の欄へ・欠けは取り除く（短く）');
+  ok(/「在庫数」の器の欄へ／数えるときに欠け・ひびをしっかり見て、ある器は取り除いて使わない（怪我のもと・報告は不要）/.test(code), '器の項目の説明＝在庫数の器の欄へ・欠けは取り除く（報告は不要）');
+  ok(/ja:'週に1回が最低。曜日は店で決めてよい/.test(code), '★2026-10-12 器の数＝週1回が最低・曜日は店で（水曜は目安）');
   run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_ckmode', 'hygiene'); localStorage.setItem('yosakura_hygall', '1'); });
   location.hash = '#/app/checklist';
   const hw = registry.app.innerHTML;
