@@ -97,11 +97,29 @@ function pl_重複を除く_(books) {
   });
   return { list: Object.keys(byYm).sort().map(function (k) { return byYm[k]; }), dup: dup };
 }
-function pl_cache_() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty(PL_CACHE) || '{}'); } catch (e) { return {}; } }
+/* ★2026-10-12 控えの置き場を Script Properties → 本部データの隠しタブ `_pl_cache` へ。
+   理由＝控えが2万字×3版（V1/V2/V3）で約6万字あり、Script Properties の画面が保存を受け付けなくなっていた
+   （神田さん「削除したやつが復活する」「編集して保存しても変わらない」「上限」）。1セル5万字まで＝超えたら捨てて読み直す。
+   初回は旧プロパティ（PL_CACHE_V3）があれば読み取って移し、プロパティ側は消す */
+var PL_CACHE_SHEET = '_pl_cache';
+function pl_cacheCell_() {
+  var ss = getSS_(); var sh = ss.getSheetByName(PL_CACHE_SHEET);
+  if (!sh) { sh = ss.insertSheet(PL_CACHE_SHEET); sh.getRange(1, 1).setValue('key'); sh.getRange(1, 2).setValue('json（月次PLの控え・コードが書く・手で触らない）'); try { sh.hideSheet(); } catch (e) {} }
+  return sh;
+}
+function pl_cache_() {
+  try {
+    var sh = pl_cacheCell_(); var key = String(sh.getRange(2, 1).getValue() || ''); var s = String(sh.getRange(2, 2).getValue() || '');
+    if (key === PL_CACHE && s) return JSON.parse(s);
+    var sp = PropertiesService.getScriptProperties(); var old = sp.getProperty(PL_CACHE);   // 旧置き場からの移し替え（1回だけ）
+    if (old) { var c = JSON.parse(old); pl_cacheSave_(c); ['PL_CACHE_V1', 'PL_CACHE_V2', PL_CACHE].forEach(function (k) { try { sp.deleteProperty(k); } catch (e) {} }); return c; }
+    return {};
+  } catch (e) { return {}; }
+}
 function pl_cacheSave_(c) {
   var s = JSON.stringify(c);
-  if (s.length > 400000) { s = '{}'; }
-  PropertiesService.getScriptProperties().setProperty(PL_CACHE, s);
+  if (s.length > 45000) { s = '{}'; }   // セルの上限（5万字）手前で捨てる＝次回は全部読み直す
+  var sh = pl_cacheCell_(); sh.getRange(2, 1).setValue(PL_CACHE); sh.getRange(2, 2).setValue(s);
 }
 /* 数字にする。sk_num_ に加えて「675名」「25尾」「59件」も拾う。％は拾わない（率の列を値と取り違えないため） */
 function pl_num_(v) {

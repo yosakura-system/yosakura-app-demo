@@ -12,11 +12,13 @@
  * ============================================================ */
 
 /* コードが自分で書き直すもの（消しても次の実行で戻る＝正常。消す必要も無い） */
-var PROP_WRITTEN_BY_CODE = ['MIMAMORI_LAST_TS', 'MIMAMORI_TOKEN_SNAPSHOT', 'PL_CACHE_V3', 'PHOTO_PRIVATE_CURSOR', 'REVIEW_LAST', 'SK_ZENKIKAN_DONE', 'PHOTO_FOLDER_ID', 'WHISTLE_LOG_ID', 'AGG_SHEET_ID'];
+var PROP_WRITTEN_BY_CODE = ['MIMAMORI_LAST_TS', 'MIMAMORI_TOKEN_SNAPSHOT', 'PHOTO_PRIVATE_CURSOR', 'REVIEW_LAST', 'SK_ZENKIKAN_DONE', 'PHOTO_FOLDER_ID', 'WHISTLE_LOG_ID', 'AGG_SPREADSHEET_ID'];
 /* 無いとアプリが止まる・危ないもの */
 var PROP_REQUIRED = ['AUTH_PEPPER', 'USEN_POST_KEY', 'PHOTO_FOLDER_ID'];
-/* 今のコードが読まないもの（残っていても害は無いが、消しても画面の古い保存で戻る） */
-var PROP_UNUSED = ['READ_TAIL', 'RETURN_MAX', 'PL_CACHE_V1', 'PL_CACHE_V2'];
+/* 今のコードが読まないもの（残っていても害は無いが、消しても画面の古い保存で戻る）
+   ★PL_CACHE_V1〜V3＝月次PLの控え。各2万字で合計6万字＝これが設定画面を重くして保存できなくしていた。
+     2026-10-12 から控えは本部データの隠しタブ `_pl_cache` に置く（総括表_月次PL.gs）＝プロパティ側は消してよい */
+var PROP_UNUSED = ['READ_TAIL', 'RETURN_MAX', 'PL_CACHE_V1', 'PL_CACHE_V2', 'PL_CACHE_V3'];
 
 function prop_fp_(v) {
   var d = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(v), Utilities.Charset.UTF_8);
