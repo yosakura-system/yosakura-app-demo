@@ -114,6 +114,17 @@ function auth_pw_ok_(rec, uid, pw) {
 }
 
 /* ===== 神田の操作 ===== */
+/* ★2026-10-12 スクリプト プロパティの画面が上限で足せないとき用＝コードから AUTH_PEPPER を1回だけ作る（既にあれば何もしない）。
+   エディタでこの関数を実行。画面の上限は「表示の行数」なので、コードからなら入ることが多い。それでも入らなければ省略でよい（任意の強化） */
+function 認証_ペッパーを設定() {
+  var sp = PropertiesService.getScriptProperties();
+  if (sp.getProperty('AUTH_PEPPER')) { Logger.log('AUTH_PEPPER は既にあります（変えない）'); return '既にあり'; }
+  var pep = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  sp.setProperty('AUTH_PEPPER', pep);
+  var n = Object.keys(sp.getProperties()).length;
+  Logger.log('AUTH_PEPPER を設定しました（プロパティ数 ' + n + '）。値は表示しません。以後ログインした人から順に新しい形のハッシュに置き換わります');
+  return 'OK（プロパティ数 ' + n + '）';
+}
 function 認証_利用者を登録(uid, name, role, storesSlash, tempPw) {
   uid = String(uid || '').trim();
   if (!uid) throw new Error('uid が空です');
