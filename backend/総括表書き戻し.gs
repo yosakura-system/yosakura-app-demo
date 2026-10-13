@@ -9,6 +9,7 @@
  *
  * ■ 決めごと（増田さんと合意 2026-10-07）
  *   ・書くのは「USENで取れる項目」だけ。書く店は SKWB_STORES に入れた店だけ（まず長堀橋で試す）
+ *     → ★2026-10-13 増田さんの依頼で**全店**に。SKWB_STORES が無ければ SOUKATSU_SOURCES にある店すべて（USENの行がある店だけ実際に書く）
  *   ・書いてよいのは「空欄」か「前回こちらが書いた値のまま」のセルだけ
  *   ・店の方が違う数字を打ち込んでいたら、上書きしない＝「ずれ」として記録する（黙って消さない）
  *   ・式が入っているセルには書かない
@@ -19,7 +20,7 @@
  *     本部はアプリの「数字の要確認」（総括表とPOSが違う）で全店の一覧を見る＝C案（アプリ側で計算・GASは関わらない）
  *
  * ■ 設定（Script Properties）
- *   SKWB_STORES  ＝ 書き戻す店（JSONの配列）。無ければ ["牛カツ世桜 長堀橋店"]
+ *   SKWB_STORES  ＝ 書き戻す店（JSONの配列）。無ければ全店（SOUKATSU_SOURCES の店すべて）。絞りたいときだけ入れる
  *   SKWB_ENABLED ＝ true にすると「USEN更新」の取り込みのあとに自動で書き戻す。既定は false（手で動かす）
  *   SKWB_DAYS    ＝ 自動のときに遡る日数（既定 7）
  *   総括表の場所は、総括表取り込み.gs と同じ SOUKATSU_SOURCES（店舗→フォルダ）を使う
@@ -28,7 +29,9 @@
  *   1. 総括表書き戻し_下見() … どのセルに何を書くかの一覧だけ（書き込みなし）
  *   2. 総括表に書き戻す()     … 書き込み実行
  *   3. うまくいったら SKWB_ENABLED=true（毎朝の「USEN更新」のあとに自動）
- *   ※ Claude Code からは POST {kind:'skwb', key:USEN_POST_KEY, write:false|true, days:N} でも動かせる
+ *   ※ Claude Code からは POST {kind:'skwb', key:USEN_POST_KEY, write:false|true, days:N, stores:[...]} でも動かせる
+ *     stores を付けるとその店だけ（全店を1回で回すと6分の上限に当たるので、1店ずつ呼ぶ用）。
+ *     {kind:'skwb', key, enable:true|false} で SKWB_ENABLED を書き換える（設定画面は保存が効かないことがあるためコードから）
  */
 
 var SKWB_LOG_SHEET = '_総括表書き戻し';
@@ -44,10 +47,12 @@ var SKWB_ITEMS = [
 var SKWB_NOTE_TAG = '【USEN照合】';   // こちらが付けたメモの印。これで始まらないメモ（店や増田さんのメモ）には触らない
 var SKWB_VALUE_OFFSET = 5;   // ラベルの5列右が当日の値（G14←B14／W13←R13）。違う形の総括表は「位置が違う」で止まる
 
-function skwb_stores_() {
+function skwb_stores_(only) {
+  if (only && only.length) return only;                                  // POST の stores（1店ずつ回す用）
   var raw = getSetting_('SKWB_STORES', '');
-  if (!raw) return ['牛カツ世桜 長堀橋店'];
-  try { var a = JSON.parse(raw); return a.length ? a : ['牛カツ世桜 長堀橋店']; } catch (e) { return ['牛カツ世桜 長堀橋店']; }
+  var all = sk_設定_().map(function (s) { return s.store; });            // ★2026-10-13 既定＝全店（増田さんの依頼）
+  if (!raw || raw === 'all') return all;
+  try { var a = JSON.parse(raw); return a.length ? a : all; } catch (e) { return all; }
 }
 function skwb_num_(v) {
   if (v == null || v === '') return null;
@@ -106,9 +111,9 @@ function skwb_cells_(vals) {
   return out;
 }
 
-function skwb_実行_(書き込む, days) {
+function skwb_実行_(書き込む, days, only) {
   var 開始 = Date.now();
-  var stores = skwb_stores_();
+  var stores = skwb_stores_(only);
   var srcs = sk_設定_();                                           // 総括表取り込み.gs と同じ店舗→フォルダ
   var from = new Date(); from.setDate(from.getDate() - (days || 40));
   var fromDate = Utilities.formatDate(from, 'Asia/Tokyo', 'yyyy-MM-dd');
@@ -186,7 +191,12 @@ function skwb_afterUsen_() {
 function skwb_api_(data) {
   var key = String(getSetting_('USEN_POST_KEY', '') || '');
   if (!key || String(data.key || '') !== key) return { ok: false, error: 'USEN_KEY' };
+  if (data.enable === true || data.enable === false) {                   // 自動の入／切をコードから（設定画面を使わない）
+    PropertiesService.getScriptProperties().setProperty('SKWB_ENABLED', data.enable ? 'true' : 'false');
+    return { ok: true, SKWB_ENABLED: getSetting_('SKWB_ENABLED', false) };
+  }
+  var only = Array.isArray(data.stores) ? data.stores.map(String) : null;
   var lock = LockService.getScriptLock(); lock.waitLock(30000);
-  try { return { ok: true, result: skwb_実行_(data.write === true, Number(data.days) || 40) }; }
+  try { return { ok: true, result: skwb_実行_(data.write === true, Number(data.days) || 40, only) }; }
   finally { lock.releaseLock(); }
 }
