@@ -8,9 +8,11 @@
  *   ★2026-10-15 増田さんの意向（神田さん経由）＝**アプリの日報で入力された数字も総括表へ**。
  *     本部の認識＝「アプリ入力・USENレジ・総括表の直接入力、3つとも最終的に総括表に入っている」に合わせる。
  *   書く項目：
- *     ・レジがある項目（現金売上・カード売上・電子マネー売上・純売上（税抜）・客数・値引き）
+ *     ・レジがある項目（現金売上・カード売上・電子マネー売上・掛売売上・純売上（税抜）・客数・値引き・過不足（現金）＝差異合計）
  *       → その日のUSEN行があればUSENの値（レジが正）。無ければアプリ日報の値
- *     ・アプリにしかない項目（本日の口コミ・フード金額・ドリンク金額・チップ・昼のみ売上・過不足（現金）と理由）
+ *       ★2026-10-15 神田さん「レジから取れるデータは全て総括表に流し込む。レジで自動で入るものはアプリで入力しない」
+ *         （アプリ側＝レジ店では売上まわりの欄を出さない。過不足はレジの締めが正しく入っている日だけ＝USEN取込.gs の closeng）
+ *     ・アプリにしかない項目（本日の口コミ・フード金額・ドリンク金額・チップ・昼のみ売上・過不足の理由）
  *       → アプリ日報の値
  *     ・書けないもの＝仕入金額・人件費・労働時間（総括表側が内訳の合計の式）／国別・勤怠の個人別・仕入先内訳（アプリに無い）
  *
@@ -55,12 +57,13 @@ var SKWB_ITEMS = [
   { k: 'net',      label: '純売上（税抜）',          dr: 0, dc: 5, usen: true,  unit: '円' },
   { k: 'guests',   label: '客数',                   dr: 0, dc: 5, usen: true,  unit: '人' },
   { k: 'disc',     label: '値引き',                 dr: 0, dc: 5, usen: true,  unit: '円' },
+  { k: 'kake',     label: '掛売売上',               dr: 0, dc: 5, usen: true,  unit: '円' },
+  { k: 'err',      label: /^過不足[（(]現金[)）]$/,  dr: 0, dc: 4, usen: true,  unit: '円', appFallback: true },   // レジの差異合計。締め未統一（closeng）の日はアプリの値
   { k: 'rvt',      label: /^本日の口コミ獲得/,       dr: 0, dc: 6, usen: false, unit: '件' },
   { k: 'foodamt',  label: 'フード',                 dr: 0, dc: 5, usen: false, unit: '円', ctx: true },
   { k: 'drinkamt', label: 'ドリンク',               dr: 0, dc: 5, usen: false, unit: '円', ctx: true },
   { k: 'tipt',     label: 'チップ',                 dr: 0, dc: 5, usen: false, unit: '円', ctx: true },
   { k: 'lunch',    label: '昼のみ売上',             dr: 1, dc: 4, usen: false, unit: '円' },
-  { k: 'err',      label: /^過不足[（(]現金[)）]$/,  dr: 0, dc: 4, usen: false, unit: '円' },
   { k: 'errnote',  label: /過不足理由記載/,          dr: 1, dc: 0, usen: false, text: true }
 ];
 var SKWB_NOTE_TAGS = { usen: '【USEN照合】', app: '【アプリ照合】' };   // こちらが付けたメモの印。これで始まらないメモ（店や増田さんのメモ）には触らない
@@ -158,7 +161,11 @@ function skwb_want_(it, e) {
     if (it.text) { v = String(v == null ? '' : v).trim(); return v ? v : null; }
     v = skwb_num_(v); return v == null || v === 0 ? null : v;
   };
-  if (it.usen && e.usen) { var u = pick(e.usen); return { v: u == null ? 0 : u, src: 'usen', zero: u == null }; }   // USENが0＝空欄のまま（同じ（0））
+  if (it.usen && e.usen) {
+    var u = pick(e.usen);
+    if (u != null) return { v: u, src: 'usen', zero: false };
+    if (!it.appFallback) return { v: 0, src: 'usen', zero: true };     // USENが0＝空欄のまま（同じ（0））
+  }
   var a = pick(e.app);
   if (a == null) return null;
   return { v: a, src: 'app', zero: false };

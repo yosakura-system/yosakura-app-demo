@@ -6,7 +6,7 @@
  *   USENレジ FOOD オーナー画面 → 帳票管理 → レジクローズ情報 → 店舗ALL・当月 → CSV で落としたファイルを読み、
  *   店舗×営業日ごとに、アプリの soukatsu 行（日報）へ写す。印は src:'usen'。
  *   写す項目＝売上（税込）→sales／純売上（税抜）→net／客数→guests／現金→cash／クレジット→card／
- *             電子マネー→emoney／ポイント→point／値割引→disc／差異合計→err
+ *             電子マネー→emoney／ポイント→point／掛売→kake／値割引→disc／差異合計→err（締めの入力漏れの日は closeng:true の印だけ）
  *
  * ■ 読む場所（どちらでもよい・両方でもよい）
  *   A. ドライブのフォルダ（Script Properties: USEN_FOLDER_ID）に置かれた CSV（Shift_JIS／UTF-8 どちらも可）
@@ -48,7 +48,9 @@ var USEN_COLS = [
   ['emoney', ['電子マネー']],
   ['point',  ['ポイント']],
   ['disc',   ['値割引']],
-  ['err',    ['差異合計']]
+  ['kake',   ['掛売']],                 // ★2026-10-15 掛売売上（総括表の日別タブに入力セルがある）
+  ['err',    ['差異合計']],
+  ['open',   ['レジオープン時現金']]    // 差異合計の見立てにだけ使う（レコードには残さない）
 ];
 var USEN_PASTE_SHEET = 'USEN貼付';
 
@@ -110,18 +112,26 @@ function usen_parseTable_(table, label) {
     var store = map[code] || (cName >= 0 ? map[String(row[cName] || '').trim()] : '') || '';
     if (!store) { out.push({ skip: '店舗の対応が無い：' + code + ' ' + (cName >= 0 ? row[cName] : '') }); continue; }
     var d = { date: date, src: USEN_SRC_TAG, usenCode: code };
-    /* ★差異合計（レジ誤差）は既定で取り込まない（2026-09-30 9月分で確認＝長堀橋・手巻きは締めで「入力現金」に釣銭準備金しか入れておらず、
-       差異＝−現金売上になっている日が大半。レジ誤差として日報に入れると全店の要確認が誤差で埋まる）。
-       締めの運用が整った店から Script Properties USEN_IMPORT_ERR=true で有効にする */
-    var importErr = getSetting_('USEN_IMPORT_ERR', false) === true;
-    cols.forEach(function (c) { if (c[1] < 0) return; if (c[0] === 'err' && !importErr) return; var n = usen_num_(row[c[1]]); if (n != null && n !== 0) d[c[0]] = n; });
+    /* ★差異合計（レジ誤差）＝2026-10-15 神田さん「レジから取れるデータは全て総括表に流し込む」で既定で取り込む。
+       ただし 2026-09-30 に見つけた「締めの入力が釣銭準備金だけ（または空）」の日は、差異＝−現金売上（−現金売上−オープン時現金）になる。
+       これはレジ誤差でなく締めの入力漏れなので、その日は err を入れず closeng:true（締め未統一）の印だけ残す。
+       Script Properties USEN_IMPORT_ERR=false で従来どおり取り込まない動きに戻せる */
+    var importErr = getSetting_('USEN_IMPORT_ERR', true) !== false;
+    var raw = {};
+    cols.forEach(function (c) { if (c[1] < 0) return; var n = usen_num_(row[c[1]]); if (n != null) raw[c[0]] = n; });
+    cols.forEach(function (c) { if (c[1] < 0 || c[0] === 'err' || c[0] === 'open') return; var n = raw[c[0]]; if (n != null && n !== 0) d[c[0]] = n; });
+    if (importErr && raw.err != null && raw.err !== 0) {
+      var cash = raw.cash || 0, open = raw.open || 0, e = raw.err;
+      var closeNG = cash > 0 && e < 0 && (Math.abs(e + cash) <= 100 || Math.abs(e + cash + open) <= 100);
+      if (closeNG) d.closeng = true; else d.err = e;
+    }
     if (!d.sales && !d.guests) continue;                                   // 休業・未入力
     out.push({ store: store, date: date, p: d });
   }
   return out;
 }
 function usen_canon_(p) {
-  var o = {}; ['date', 'sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'disc', 'err'].forEach(function (k) { if (p && p[k] != null && p[k] !== '') o[k] = p[k]; });
+  var o = {}; ['date', 'sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'kake', 'disc', 'err', 'closeng'].forEach(function (k) { if (p && p[k] != null && p[k] !== '') o[k] = p[k]; });
   return JSON.stringify(o);
 }
 /* いまアプリに入っている「店×日付→最新の soukatsu 行」 */

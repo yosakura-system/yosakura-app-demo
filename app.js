@@ -752,7 +752,7 @@
        行の勝ち負けは従来どおり（アプリ提出が勝つ＝仕入・一言・累計はアプリの値を残す）が、
        レジが持つ項目＝売上・純売上・客数・現金・カード・電子マネー・ポイント・値引き は USEN の値で上書きする。
        上書きした行には pos:true の印（画面では「POS」と出す） */
-    const USEN_FIELDS = ['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'disc'];
+    const USEN_FIELDS = ['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'kake', 'disc', 'err'];   // ★2026-10-15 掛売・レジ誤差（差異合計）も（神田さん「レジから取れるものは全て」）
     const usenBy = {};
     (arr || []).forEach(r => {
       if (!r || !r.date || r.date > today) return;
@@ -760,6 +760,15 @@
       const cur = latest[k];
       if (!cur || rank(r) > rank(cur) || (rank(r) === rank(cur) && (Number(r.t) || 0) >= (Number(cur.t) || 0))) latest[k] = r;
       if (r.src === 'usen' && (!usenBy[k] || (Number(r.t) || 0) >= (Number(usenBy[k].t) || 0))) usenBy[k] = r;
+    });
+    /* ★アプリの日報が売上を持たない（posWait）とき、総括表取込（src:'drive'）の行があればレジの項目をそこから重ねる（2026-10-15）。USEN行があれば下でUSENが勝つ */
+    const driveBy = {};
+    (arr || []).forEach(r => { if (r && r.src === 'drive' && r.date && r.date <= today) { const k = (r.store || '') + '||' + r.date; if (!driveBy[k] || (Number(r.t) || 0) >= (Number(driveBy[k].t) || 0)) driveBy[k] = r; } });
+    Object.keys(driveBy).forEach(k => {
+      const base = latest[k]; if (!base || !base.posWait || base.src) return;
+      const m = Object.assign({}, base, { sheet: true });
+      USEN_FIELDS.forEach(f => { const v = driveBy[k][f]; if (v != null && v !== '') m[f] = v; });
+      latest[k] = m;
     });
     Object.keys(usenBy).forEach(k => {
       const u = usenBy[k]; const base = latest[k];
@@ -769,7 +778,8 @@
       USEN_FIELDS.forEach(f => { if (u[f] != null && u[f] !== '') m[f] = u[f]; });
       latest[k] = m;
     });
-    const out = Object.values(latest).filter(r => (Number(r.sales) || 0) > 0).map(r => Object.assign({}, r));
+    /* ★レジ店の日報（posWait:true＝売上はレジから翌朝入る）は売上0でも残す（2026-10-15）。レジの行が来ると上の overlay で売上が入る */
+    const out = Object.values(latest).filter(r => (Number(r.sales) || 0) > 0 || r.posWait).map(r => Object.assign({}, r));
     /* ★自動で取れている数字を、日報の記録に補う（2026-10-07 神田さん＝前日の中身を見たら、USENで拾った数字も
        アプリが自動で取っている数字も入っていない）。これまでは「人が日報を出した日」にだけ、口コミ当日（毎晩の
        Google口コミ取得）・口コミ累計・月累計売上が入っていた＝USENや総括表取込だけの日は「—」のまま。
@@ -806,11 +816,17 @@
   /* ★日報の出どころ（2026-09-30 神田さん「アプリ入力なのか、USENなのか、総括表取込なのか分かるように」）
      app＝アプリ入力／drive＝総括表取込／usen＝USENレジ／app+usen・drive+usen＝行のもとはアプリ（総括表）で
      売上・客数などレジの項目だけUSENの値（skClean の pos:true） */
-  const skSrcKey = (r) => !r ? '' : r.src === 'usen' ? 'usen' : r.src === 'drive' ? (r.pos ? 'drive+usen' : 'drive') : (r.pos ? 'app+usen' : 'app');
+  const skSrcKey = (r) => !r ? '' : r.src === 'usen' ? 'usen' : r.src === 'drive' ? (r.pos ? 'drive+usen' : 'drive') : (r.pos ? 'app+usen' : r.sheet ? 'app+drive' : r.posWait ? 'app-wait' : 'app');
   const skSrcLabel = (key) => ({
     app: L({ ja:'アプリ', en:'app', vi:'app' }), drive: L({ ja:'総括表', en:'sheet', vi:'sheet' }), usen: L({ ja:'POS', en:'POS', vi:'POS' }),
-    'app+usen': L({ ja:'アプリ＋POS', en:'app+POS', vi:'app+POS' }), 'drive+usen': L({ ja:'総括表＋POS', en:'sheet+POS', vi:'sheet+POS' })
+    'app+usen': L({ ja:'アプリ＋POS', en:'app+POS', vi:'app+POS' }), 'drive+usen': L({ ja:'総括表＋POS', en:'sheet+POS', vi:'sheet+POS' }),
+    'app+drive': L({ ja:'アプリ＋総括表', en:'app+sheet', vi:'app+sheet' }),
+    'app-wait': L({ ja:'アプリ（売上は自動待ち）', en:'app (sales pending)', vi:'app (chờ doanh thu)' })
   })[key] || '';
+  /* ★レジの項目（売上・客数・純売上・レジ誤差・値引き・現金・カード）はアプリで入力しない＝全店（2026-10-15 神田さん
+     「USENレジで回収できる項目はアプリ側からも削除。ややこしいので」）。レジ店はUSENの取込、レジの無い店は総括表の取込から入る。
+     日報の行は posWait:true の印＝売上が無くても消さず、レジ（総括表）の行が来たらその値を重ねる（skClean） */
+  const SK_POS_FIELDS = ['sales', 'guests', 'net', 'err', 'disc', 'cash', 'card'];
   // 総括表＝正規化（skClean）まで含めて1回で済ませる（日付が変わったら作り直す）
   let _skCache = null;
   const getSk = () => {
@@ -5123,24 +5139,23 @@
         ${/* ★提出済みの日を開いているときに出す案内（2026-09-03 ユンさんのご要望＝後から直したい）。
               中身は画面を作ったあとに入れる（その日の日報があるかは日付を変えても変わるため） */''}
         <p class="hint" id="sk_editnote" style="display:none;margin:-2px 0 8px;color:#8a6d3b"></p>
+        <p class="hint" id="sk_posnote" style="display:block;margin:-2px 0 8px;color:#2d6a4f">${L({
+          ja:'※ 売上・客数・純売上・現金・カード・値引き・レジ誤差は、アプリでは入力しません。USENレジのある店舗はレジの締めの数字から翌朝、レジの無い店舗は総括表に入力された数字から自動で入ります。ここでは残りの項目＝口コミ・フード/ドリンク金額・チップ・昼のみ売上・過不足の理由・仕入・勤怠・所感を入れて提出してください。',
+          en:'Sales, guests, net sales, cash, card, discount and register error are not entered in the app. Stores with a USEN POS get them from the POS close-out the next morning; other stores from the summary sheet. Fill in the rest: reviews, food/drink amounts, tips, lunch-only sales, cash-difference reason, purchases, staffing and notes.',
+          vi:'Doanh thu, số khách, DT thuần, tiền mặt, thẻ, giảm giá và sai lệch quầy không nhập trong ứng dụng. Cửa hàng có POS USEN sẽ tự điền từ số chốt ca vào sáng hôm sau; cửa hàng khác từ bảng tổng kết. Hãy nhập phần còn lại: đánh giá, tiền món/đồ uống, tip, DT buổi trưa, lý do chênh lệch, nhập hàng, nhân sự và cảm nhận.' })}</p>
         ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの総括表から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
-        ${skDraft._t ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ レジクローズの日計レポート写真から読み取った数字（売上・客数・現金・カード）が入っています。確認して、違うところは直してから提出してください。', en:'Sales, guests, cash and card were read from the register-close photo. Check and correct before submitting.', vi:'Doanh thu, khách, tiền mặt, thẻ đọc từ ảnh đóng ca. Kiểm tra trước khi gửi.' })}（${timeAgo(skDraft._t)}）</p>` : ''}
-        ${skOcrMiss ? `<p class="hint" style="display:block;margin:-2px 0 8px;color:#a23b3b">${L({ ja:'※ 日計レポートの写真は届いていますが、数字を読み取れませんでした（封筒やメモで数字の行が隠れていると読めません）。お手数ですが手入力をお願いします。次回は、レポートの数字が全部見えるように撮っていただくと自動で入ります。', en:'The register-close photo arrived but the numbers could not be read (rows may be covered by the envelope or a note). Please enter them manually; next time keep all numbers visible in the photo.', vi:'Đã nhận ảnh đóng ca nhưng không đọc được số (có thể bị phong bì/ghi chú che). Vui lòng nhập tay; lần sau chụp sao cho thấy rõ các con số.' })}</p>` : ''}
         ${gsnap ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:`※ 「口コミ 当日」は、Googleの口コミ件数（前日との差）から自動で入っています（対象日 ${gsnap._d}・現在の総数 ${gsnap.total}件）。違うときは直してから提出してください。`, en:`Reviews today was filled from the Google review count (day-over-day, as of ${gsnap._d}, total ${gsnap.total}). Correct if needed.`, vi:`Ô đánh giá hôm nay được điền từ số review Google (so với hôm trước, ${gsnap._d}, tổng ${gsnap.total}). Sửa nếu sai.` })}</p>` : ''}
-        ${kcDraft ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:`※ 「レジ誤差」は、金種別入力（レジクローズ）の差異から自動で入っています（レジ内現金 ¥${(Number(kcDraft.total) || 0).toLocaleString('en-US')}）。違うときは直してから提出してください。`, en:`Register error was filled from the cash denomination count (drawer total ¥${(Number(kcDraft.total) || 0).toLocaleString('en-US')}). Correct if needed.`, vi:`Ô sai lệch quầy được điền từ kiểm đếm mệnh giá. Sửa nếu sai.` })}</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
           <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || today}" max="${today}"></label>
-          <label class="fld"><span>${L({ja:'当日売上',en:'Sales',vi:'Doanh thu'})}</span><input type="text" inputmode="numeric" id="sk_sales" placeholder="186817"${skDraft.total != null ? ` value="${skDraft.total}"` : ''}></label>
-          <label class="fld"><span>${L({ja:'客数',en:'Guests',vi:'Khách'})}</span><input type="text" inputmode="numeric" id="sk_guests" placeholder="16"${skDraft.kyaku != null ? ` value="${skDraft.kyaku}"` : ''}></label>
+          <input type="hidden" id="sk_sales"><input type="hidden" id="sk_guests">
         </div>
-        <div class="stat-row" style="margin:2px 0 10px">
+        <div class="stat-row" style="margin:2px 0 10px;display:none">
           <div class="stat"><div class="n" id="sk_avg">¥0</div><div class="k">${L({ja:'客単価（自動計算）',en:'Per guest (auto)',vi:'BQ/khách (tự động)'})}</div></div>
           <div class="stat"><div class="n" id="sk_rate">—</div><div class="k">${L({ja:'到達度（自動計算）',en:'To goal (auto)',vi:'Đạt mục tiêu (auto)'})}</div></div>
         </div>
         <div class="sk-grid">
-          <label class="fld"><span>${L({ja:'純売上',en:'Net sales',vi:'Doanh thu thuần'})}</span><input type="text" inputmode="numeric" id="sk_net" placeholder="129136"></label>
-          <label class="fld"><span>${L({ja:'レジ誤差',en:'Register error',vi:'Sai lệch quầy'})}</span><input type="text" inputmode="numeric" id="sk_err" placeholder="0"${kcDraft ? ` value="${kcDraft.diff}"` : ''}></label>
+          <input type="hidden" id="sk_net"><input type="hidden" id="sk_err">
           <label class="fld"><span>${L({ja:'月累計売上（自動計算）',en:'Month-to-date (auto)',vi:'Lũy kế tháng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_mtd" placeholder="2146145" value="${skCum0.mtd || ''}"></label>
           <label class="fld"><span>${L({ja:'売上目標（月）',en:'Monthly goal',vi:'Mục tiêu tháng'})}</span><input type="text" inputmode="numeric" id="sk_goal" placeholder="3000000"></label>
           <label class="fld"><span>${L({ja:'フード金額',en:'Food sales (¥)',vi:'Tiền món ăn'})}</span><input type="text" inputmode="numeric" id="sk_foodamt" placeholder="88400"></label>
@@ -5154,7 +5169,7 @@
           <label class="fld"><span>${L({ja:'口コミ 当日',en:'Reviews today',vi:'Đánh giá nay'})}</span><input type="text" inputmode="numeric" id="sk_rvt" placeholder="2"${gsnap ? ` value="${gsnap.gained}"` : ''}></label>
           <label class="fld"><span>${L({ja:'口コミ 累計（自動計算）',en:'Reviews total (auto)',vi:'Đánh giá tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_rva" placeholder="70" value="${skCum0.rva || ''}"></label>
           <label class="fld"><span>${L({ja:'ヒアリング 当日',en:'Hearings today',vi:'Phỏng vấn nay'})}</span><input type="text" inputmode="numeric" id="sk_hear" placeholder="9"></label>
-          <label class="fld"><span>${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})}</span><input type="text" inputmode="numeric" id="sk_disc" placeholder="0"></label>
+          <input type="hidden" id="sk_disc">
           <label class="fld"><span>${L({ja:'人件費率 %',en:'Labor %',vi:'Nhân sự %'})}</span><input type="text" inputmode="decimal" id="sk_labor" placeholder="23.6"></label>
           <label class="fld"><span>${L({ja:'チップ 当日',en:'Tips today',vi:'Tip nay'})}</span><input type="text" inputmode="numeric" id="sk_tipt" placeholder="21000"></label>
           <label class="fld"><span>${L({ja:'チップ 累計（自動計算）',en:'Tips total (auto)',vi:'Tip tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_tipa" placeholder="84541" value="${skCum0.tipa || ''}"></label>
@@ -5164,8 +5179,7 @@
         </div>
         ${(skSlipsLoad_(vis[0], todayKey(), null), skSlipsHtml_())}
         <div class="sk-grid">
-          <label class="fld"><span>${L({ja:'現金売上',en:'Cash sales',vi:'DT tiền mặt'})}</span><input type="text" inputmode="numeric" id="sk_cash" placeholder="96800"${skDraft.cash != null ? ` value="${skDraft.cash}"` : ''}></label>
-          <label class="fld"><span>${L({ja:'カード売上',en:'Card sales',vi:'DT thẻ'})}</span><input type="text" inputmode="numeric" id="sk_card" placeholder="251700"${skDraft.card != null ? ` value="${skDraft.card}"` : ''}></label>
+          <input type="hidden" id="sk_cash"><input type="hidden" id="sk_card">
           <label class="fld"><span>${L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'})}</span><input type="text" inputmode="numeric" id="sk_lunch" placeholder="186400" value="${skChukanToday(vis[0]) != null ? skChukanToday(vis[0]) : ''}"></label>
           <label class="fld"><span>${L({ja:'仕入 食材（税込・8%）',en:'Purchases: food (tax incl., 8%)',vi:'Nhập hàng: thực phẩm (gồm thuế 8%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_food" placeholder="7560"></label>
           <label class="fld"><span>${L({ja:'仕入 飲料 お酒（税込・10%）',en:'Purchases: alcohol (tax incl., 10%)',vi:'Nhập hàng: rượu bia (gồm thuế 10%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_alc" placeholder="0"></label>
@@ -5726,6 +5740,7 @@
        入力欄は作らない（レジから自動）。値がある日だけ明細に出す */
     { k:'emoney',  t:{ ja:'電子マネー売上（レジ）', en:'E-money sales (POS)', vi:'DT ví điện tử (POS)' }, f:'yen', opt:true },
     { k:'point',   t:{ ja:'ポイント利用（レジ）', en:'Points used (POS)', vi:'Điểm đã dùng (POS)' },     f:'yen', opt:true },
+    { k:'kake',    t:{ ja:'掛売売上（レジ）', en:'Credit sales (POS)', vi:'DT bán nợ (POS)' },           f:'yen', opt:true },
     { k:'lunch',   t:{ ja:'昼のみ売上', en:'Lunch-only sales', vi:'DT buổi trưa' }, f:'yen' },
     { k:'buy',     t:{ ja:'仕入金額（当日・税抜）', en:'Purchases today (excl. tax)', vi:'Nhập hàng hôm nay (chưa thuế)' }, f:'yen' },
     /* 画面304＝税込の3欄（入力した日だけ出す） */
@@ -11418,7 +11433,6 @@
     const subSk = byId('submitSk');
     if (subSk) subSk.onclick = () => {
       const v = (id) => { const e = byId(id); return e ? e.value.trim() : ''; };
-      if (!v('sk_sales')) { toast(L({ ja:'当日売上を入力してください', en:'Please enter sales', vi:'Vui lòng nhập doanh thu' })); return; }
       /* 画面304＝仕入の税込3欄が入っていれば、提出の直前にも税抜合計を入れ直す（入力イベントを取りこぼしても保存値は正しい） */
       if (byId('sk_buy') && ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'].some(id => v(id) !== '')) {
         const n_ = (id) => Number(v(id)) || 0;
@@ -11454,6 +11468,7 @@
         }, {}),
         by: submitterLabel(), t: Date.now()
       };
+      SK_POS_FIELDS.forEach(k => { delete rec[k]; }); rec.posWait = true;   // ★レジの項目はアプリで持たない（2026-10-15 神田さん「USENで取れる項目はアプリから削除」）＝売上はレジ／総括表から入る
       const 直した = getSk().some(r => r.store === rec.store && r.date === rec.date);   // 同じ日の提出があった＝直し
       const arr = getSk(); arr.push(rec);
       try { saveSk(arr.slice(-60)); } catch (e) { saveSk(arr.slice(-20)); }
