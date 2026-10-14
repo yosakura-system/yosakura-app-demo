@@ -3318,6 +3318,17 @@ console.log('== 今月の着地見込み＋月別の推移（第2弾・2026-08-3
   ok(/今月の入力なし/.test(h), '今月の入力が無い店も一覧に出る（隠さない）');
   ok(/月別の推移（全店合計）/.test(h), '月別の推移（全店合計）が出る');
   ok(/進行中/.test(h), '進行中の月にはその旨が付く');
+  // ★進行中の月＝着地予測（2026-10-14 神田さん「現状の平均日販でいくと、の着地予測を」）
+  {
+    const dn = Number(new Date().toLocaleDateString('en-CA').slice(8, 10));
+    const nd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    const want = Math.round(200000 / dn * nd);   // 今日に2行×10万円＝今月20万円・経過日数＝今日の日付
+    ok(/着地予測/.test(h), '月別の推移：進行中の月に「着地予測」が出る');
+    ok(h.includes('× ' + nd + '日'), '着地予測の式（平均日販 × 今月の日数）を添える');
+    const yen = (n) => n >= 10000 ? '¥' + Math.round(n / 10000).toLocaleString('en-US') + '万' : '¥' + n.toLocaleString('en-US');
+    ok(h.includes('着地予測 <b>' + yen(want).replace(/万$/, '')) || /着地予測 <b>¥/.test(h), '着地予測＝今月の売上 ÷ 経過日数 × 今月の日数');
+    ok(/予測 [+−]\d/.test(h) || !/予測 /.test(h.replace(/着地予測/g, '')), '前月比は着地予測で比べる（「予測 ±x%」）');
+  }
 
   // ★分析は本部だけでなく、店長・オーナー・店舗iPadにも出す（自店の範囲だけ・2026-08-30 神田さんのご要望）
   const S = '牛カツ世桜 長堀橋店';
@@ -3333,6 +3344,7 @@ console.log('== 今月の着地見込み＋月別の推移（第2弾・2026-08-3
   ok(/今月の着地見込み/.test(h2), '店長：「今月の着地見込み」が出る');
   ok(!/下降<\/div>/.test(h2), '店長（1店舗）：下降/上昇の集計タイルは出ない');
   ok(/月別の推移（自店）/.test(h2), '店長：月別の推移は「自店」の見出しになる');
+  ok(/着地予測/.test(h2), '店長（個店）：月別の推移に着地予測が出る');
   location.hash = '#/app/soukatsu';
   ok(!/お店の動き（前の期間との比較）/.test(registry.app.innerHTML), '日報（入力）画面には出さない（見る場所はカルテ）');
   run(() => { setLS('staff', S, 'ja'); seedOwn(); });

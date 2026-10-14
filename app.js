@@ -5526,7 +5526,11 @@
     const byYm = {};
     all.forEach(r => { const k = ymOfDate(r.date); if (k) byYm[k] = (byYm[k] || 0) + numOr0(r.sales); });
     const yms = Object.keys(byYm).sort().slice(-6);
-    const maxYm = Math.max(1, ...yms.map(k => byYm[k]));
+    // 今月の経過日数＝1日〜売上が入っている最後の日（USENは翌朝入る＝今日の分はまだ無いことが多い）
+    const curDates = all.filter(r => ymOfDate(r.date) === ym && numOr0(r.sales) > 0).map(r => r.date).sort();
+    const mtdDays = curDates.length ? Number(curDates[curDates.length - 1].slice(8, 10)) : 0;
+    const fcCur = (byYm[ym] && mtdDays) ? Math.round(byYm[ym] / mtdDays * mDays.length) : 0;
+    const maxYm = Math.max(1, fcCur, ...yms.map(k => byYm[k]));
     return `
       <div class="card">
         <h3>${L({ ja:'今月の着地見込み', en:'This month: projected close', vi:'Dự kiến chốt tháng này' })}</h3>
@@ -5553,16 +5557,32 @@
           : L({ ja:'月別の推移（所有店舗の合計）', en:'Monthly trend (your stores)', vi:'Xu hướng theo tháng (các cửa hàng của bạn)' })}</h3>
         ${yms.map((k, i) => {
           const prev = i > 0 ? byYm[yms[i - 1]] : 0;
-          const d = prev > 0 ? (byYm[k] - prev) / prev * 100 : null;
           const cur = k === ym;
+          /* ★進行中の月＝着地予測（2026-10-14 神田さん「現状の平均日販でいくとこれだけの売上になる、を出して」）
+             平均日販＝今月の売上 ÷ 経過日数（1日〜売上が入っている最後の日。定休日の0も含む）。着地予測＝平均日販 × 今月の日数。
+             前月比は着地予測で比べる（途中の実績で比べると毎月大きなマイナスに見える） */
+          if (cur && mtdDays > 0) {
+            const avg = byYm[k] / mtdDays, fcM = Math.round(avg * mDays.length);
+            const d = prev > 0 ? (fcM - prev) / prev * 100 : null;
+            const sub = [L({ ja:'進行中', en:'in progress', vi:'đang diễn ra' }),
+                         d == null ? '' : L({ ja:'予測', en:'proj.', vi:'dự kiến' }) + ' ' + (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(1) + '%'].filter(Boolean).join(' ・ ');
+            return `
+    <div class="bar-row"><div class="bl"><span>${esc(ymLabel(k))} <span class="muted">${esc(sub)}</span></span><b>${esc(yenShort(byYm[k]))}</b></div>
+    <div class="bar-track" style="position:relative"><div class="bar-fill" style="width:${Math.round(Math.min(fcM, maxYm) / maxYm * 100)}%;opacity:.28;position:absolute;left:0;top:0;bottom:0"></div><div class="bar-fill" style="width:${Math.round(byYm[k] / maxYm * 100)}%;position:relative"></div></div>
+    <div class="hint" style="display:block;margin:3px 0 0;text-align:left">${L({
+      ja:`着地予測 <b>${esc(yenShort(fcM))}</b>（平均日販 ${esc(yenShort(Math.round(avg)))} × ${mDays.length}日）`,
+      en:`Projected close <b>${esc(yenShort(fcM))}</b> (avg ${esc(yenShort(Math.round(avg)))}/day × ${mDays.length})`,
+      vi:`Dự kiến chốt <b>${esc(yenShort(fcM))}</b>（TB ${esc(yenShort(Math.round(avg)))}/ngày × ${mDays.length}）` })}</div></div>`;
+          }
+          const d = prev > 0 ? (byYm[k] - prev) / prev * 100 : null;
           const sub = [cur ? L({ ja:'進行中', en:'in progress', vi:'đang diễn ra' }) : '',
                        d == null ? '' : (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(1) + '%'].filter(Boolean).join(' ・ ');
           return hBar(ymLabel(k), { n: byYm[k], txt: yenShort(byYm[k]) }, maxYm, sub);
         }).join('')}
         <div class="hint" style="display:block;margin-top:6px">${L({
-          ja:'※ 進行中の月は月末に向けて伸びていきます（前月比は月が締まってから見てください）。',
-          en:'The current month grows until month-end.',
-          vi:'Tháng hiện tại sẽ tăng đến cuối tháng.' })}</div>
+          ja:`※ 進行中の月は、薄い棒が着地予測です（今月の平均日販 × ${mDays.length}日）。前月比も着地予測で比べています。`,
+          en:'For the current month, the light bar is the projected close (avg daily × days in month).',
+          vi:'Tháng hiện tại: thanh nhạt là dự kiến chốt tháng.' })}</div>
       </div>` : ''}`;
   }
 
