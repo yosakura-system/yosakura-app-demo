@@ -104,7 +104,8 @@ function skwb_rows_(stores, fromDate, withApp) {
     /* ★Googleの口コミ件数（毎晩の取得・kind:'gsnap'・item＝日付・note {src:'places', gained}）＝「本日の口コミ獲得」の出どころ（2026-10-15） */
     if (kindRow === 'gsnap') {
       var gStore = String(vals[i][3]); if (stores.indexOf(gStore) === -1) continue;
-      var gDate = String(vals[i][4] || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(gDate) || gDate < fromDate) continue;
+      var gRaw = vals[i][4]; var gDate = (gRaw && gRaw.getTime) ? Utilities.formatDate(gRaw, 'Asia/Tokyo', 'yyyy-MM-dd') : String(gRaw || '').slice(0, 10);   // item の日付はシートが Date に変えていることがある
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(gDate) || gDate < fromDate) continue;
       var gp; try { gp = JSON.parse(vals[i][6] || '{}'); } catch (e2) { continue; }
       if (!gp || gp.src !== 'places' || typeof gp.gained !== 'number') continue;
       var gt = Number(vals[i][1]) || 0; var gk = gStore + '|' + gDate;
