@@ -638,7 +638,7 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
   await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/soukatsu';
   const html = registry.app.innerHTML;
-  ok(/店舗比較（総括表より）/.test(html), '本部の総括表に店舗比較カードが出る');
+  ok(/店舗比較（日報より）/.test(html), '本部の総括表に店舗比較カードが出る');
   ok(/class="colchart"/.test(html), '日別カラムチャートが描画される');
   if (CAN_SPARK) ok(/class="spark"/.test(html), '店舗行にスパークライン（推移）が出る');
   else console.log('  － スパークラインは対象外（今日が月の1日＝履歴が1日ぶんのため推移線を引けない）');
@@ -656,7 +656,7 @@ console.log('== 総括表：店舗比較グラフ（本部・全店）==');
   const st = registry.app.innerHTML;
   ok(/長堀橋店/.test(st), '個店カルテが開く');
   ok(/曜日別の平均売上/.test(st), '曜日別の平均売上が出る');
-  ok(/最新の総括表（全項目）/.test(st) && /レジ締め担当/.test(st) && /田中/.test(st), '売上・客数以外の全項目（口コミ・原価率・締め担当等）が表示される');
+  ok(/最新の日報（全項目）/.test(st) && /レジ締め担当/.test(st) && /田中/.test(st), '売上・客数以外の全項目（口コミ・原価率・締め担当等）が表示される');
   ok(/厨房の床を清掃/.test(st) && /豆乳6/.test(st), '特記事項・翌日発注も表示される');
   ok(/入力済みの項目/.test(st) && /<b>18 \/ \d+<\/b>/.test(st), '入力済み項目数（アップされた分だけ表示）が分かる');
   ok(/目標到達/.test(st), '月間目標への到達度が出る');
@@ -936,7 +936,7 @@ console.log('== 8/7 増田さんご要望：入口の整理 ==');
   ok(!/開局/.test(genba), '「報告する」タブにも開局が出ない');
 
   // 総括表は日次業務へ集約＝タブ一覧には出さないが、機能としては開ける
-  ok(!/総括表の入力/.test(genba), '「報告する」タブから総括表が消えている（日次業務へ集約）');
+  ok(!/日報の入力/.test(genba), '「報告する」タブから総括表が消えている（日次業務へ集約）');
   const sk = renderView('soukatsu','manager',S_HIROSHIMA,'ja');
   ok(/id="submitSk"|総括表/.test(sk), '総括表そのものは開ける（今日出すものから入る）');
 
@@ -1126,7 +1126,7 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
   const S_GYU = '牛カツ世桜 長堀橋店';
   const kyou = renderView('kyou','manager',S_GYU,'ja');
   // 出す順＝開店前 → 営業中 → 閉店後
-  const order = ['オープン写真','オープンチェックリスト','総括表','アイドルタイムチェックリスト','桜チェックリスト','クローズチェックリスト'];   // 総括表＝前日分を開店前に（2026-10-15）
+  const order = ['オープン写真','オープンチェックリスト','日報','アイドルタイムチェックリスト','桜チェックリスト','クローズチェックリスト'];   // 総括表＝前日分を開店前に（2026-10-15）
   let prev = -1, ordered = true;
   order.forEach(name => { const i = kyou.indexOf(name); if (i < 0 || i < prev) ordered = false; prev = i; });
   ok(ordered, '日次の提出物が「出す順」に並ぶ（開店前→営業中→閉店後）');
@@ -1475,7 +1475,7 @@ console.log('== 使い方が役割ごとに変わる（紙のガイドと同じ�
   ok(/お名前を登録/.test(staff) && /開いて提出/.test(staff), '店舗＝出すことだけが書いてある');
   ok(!/本部ダッシュボード/.test(staff) && !/資料をマニュアルにひも付/.test(staff),
      '店舗に、本部だけの話は出さない');
-  ok(/総括表を出す/.test(mgr) && /実施状況を確認/.test(mgr), '店長＝出す＋確かめるまで');
+  ok(/日報を出す/.test(mgr) && /実施状況を確認/.test(mgr), '店長＝出す＋確かめるまで');
   ok(/所有店舗すべて|見る店舗を切り替え/.test(own), 'オーナー＝複数店の見方が書いてある');
   ok(/加盟店・提出物管理/.test(hq) && /お知らせを配る/.test(hq) && /勉強会を登録/.test(hq),
      '本部＝全店の管理・配信・登録が書いてある');
@@ -2201,9 +2201,9 @@ console.log('== 気づきの報告を、日報から切り離して1日の最後
   location.hash = '#/app/kyou';
   const kyouHtml = registry.app.innerHTML;
   ok(/気づきの報告/.test(kyouHtml), '日次業務に「気づきの報告」が出る');
-  const iNippou = kyouHtml.indexOf('総括表');
+  const iNippou = kyouHtml.search(/日報 <small/);
   const iKizuki = kyouHtml.indexOf('気づきの報告');
-  ok(iKizuki > iNippou && iNippou >= 0, '総括表より後ろ＝1日の最後に並んでいる');
+  ok(iKizuki > iNippou && iNippou >= 0, '日報より後ろ＝1日の最後に並んでいる');
 
   // 出したら提出済みになる
   FETCH_ROWS = { ok:true, reports:[
@@ -3307,7 +3307,7 @@ console.log('== 今月の着地見込み＋月別の推移（第2弾・2026-08-3
   ok(/data-dtab="num"/.test(h) && /data-dtab="loss"/.test(h) && /data-dtab="kz"/.test(h), 'ダッシュボードに「数字」「食べ残し」「気づき」の3タブがある');
   ok(/data-dpane="num">/.test(h), '最初は「数字」の面が開いている');
   ok(/data-dpane="loss" hidden/.test(h) && /data-dpane="kz" hidden/.test(h), '食べ残しと気づきの面は隠れている（DOMには残る＝検索に引っかかる）');
-  ok(/最新の総括表（店舗別）/.test(h) && /店舗別の報告数/.test(h), 'それぞれの面に中身がある');
+  ok(/最新の日報（店舗別）/.test(h) && /店舗別の報告数/.test(h), 'それぞれの面に中身がある');
   try { localStorage.setItem('yosakura_dash_tab', 'kz'); } catch (e) {}
   location.hash = '#/app/menu'; location.hash = '#/app/dashboard';   // 開き直す（hash の代入で描画される）
   const hDash = registry.app.innerHTML;
@@ -4064,7 +4064,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   // ① 入力フォーム＝金額の欄と自動計算の表示。点数と原価率の手入力は無い
   location.hash = '#/app/soukatsu?x=amt';
   let h = registry.app.innerHTML;
-  ok(/<input type="hidden" id="sk_foodamt">/.test(h) && /<input type="hidden" id="sk_drinkamt">/.test(h), 'フード金額・ドリンク金額の欄は無い（レジの伝票明細から・2026-10-15。保存の形は金額のまま）');
+  ok(/<input type="text"[^>]*id="sk_foodamt"/.test(h) && /<input type="text"[^>]*id="sk_drinkamt"/.test(h), 'フード金額・ドリンク金額の欄（本店＝レジが無いので見える・保存の形は金額のまま・2026-10-15）');
   ok(!/id="sk_foodct"/.test(h) && !/id="sk_drinkct"/.test(h), '点数の入力欄は無い');
   ok(!/id="sk_food"/.test(h), '原価率の手入力欄は無い');
   ok(/id="sk_buyrate"/.test(h) && !/仕入率＝当月の仕入合計÷売上合計/.test(h), '仕入率（自動計算）の表示がある・長い説明は出さない（2026-10-15）');
@@ -4118,6 +4118,25 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   location.hash = '#/app/soukatsu?x=slips2';
   h = registry.app.innerHTML;
   ok((h.match(/data-slip="/g) || []).length === 3 && doc.getElementById('sk_buy_food').value === '2880', '提出済みの日を開き直しても内訳と3欄が残る');
+  // ②e レジの無い店＝売上関連と国別を日報で受ける（2026-10-15 神田さん「日本鰻富士山もアプリの日報で入力すれば総括表に入れる必要はない」）
+  { const S6 = '日本鰻世桜 富士山店';
+    run(() => { setLS('staff', S6, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); localStorage.setItem('yosakura_demo_reports', '[]'); });
+    location.hash = '#/app/soukatsu?x=nousen';
+    const h6 = registry.app.innerHTML;
+    ok(/id="sk_posgrid"/.test(h6) && /<input type="text"[^>]*id="sk_cash"/.test(h6) && /id="sk_emoney"/.test(h6) && /id="sk_kake"/.test(h6) && !/type="hidden" id="sk_sales"/.test(h6), 'レジの無い店の日報＝売上の欄（現金・カード・電子マネー・掛売・売上・純売上・客数・値引き・過不足）が見える');
+    ok(/id="sk_ctygrid"/.test(h6) && /id="sk_cty_kr_g"/.test(h6) && /id="sk_cty_kr_p"/.test(h6), 'レジの無い店の日報＝国別の組数・人数の欄が見える');
+    ok(/売上はレジの日計を見て入れてください/.test(h6) && !/売上・国別・口コミは自動で入ります/.test(h6), '案内＝「口コミは自動・売上はレジの日計から」');
+    doc.getElementById('sk_store').value = S6; doc.getElementById('sk_date').value = today4;
+    doc.getElementById('sk_sales').value = '123700'; doc.getElementById('sk_cash').value = '40600'; doc.getElementById('sk_card').value = '75300'; doc.getElementById('sk_emoney').value = '7800'; doc.getElementById('sk_guests').value = '21'; doc.getElementById('sk_net').value = '112461';
+    doc.getElementById('sk_cty_kr_g').value = '2'; doc.getElementById('sk_cty_kr_p').value = '5';
+    doc.getElementById('submitSk').onclick();
+    const r6 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
+    ok(r6 && !r6.posWait && r6.sales === 123700 && r6.cash === '40600' && r6.emoney === '7800' && r6.guests === 21 && r6.net === 112461 && r6.cty && r6.cty.kr && r6.cty.kr.g === 2 && r6.cty.kr.p === 5, 'レジの無い店の提出＝売上関連と国別がそのまま残る（posWait を付けない）');
+    run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); });
+    location.hash = '#/app/soukatsu?x=usen';
+    const h7 = registry.app.innerHTML;
+    ok(!/id="sk_posgrid"/.test(h7) && /type="hidden" id="sk_sales"/.test(h7) && /売上・国別・口コミは自動で入ります/.test(h7), 'レジのある店は変わらない（売上の欄は無い・自動）');
+    ok(/SKWB_CTY_APPKEYS/.test(fs.readFileSync(new URL('../backend/総括表書き戻し.gs', import.meta.url), 'utf8')), '書き戻し＝レジの無い店の国別は日報の値から（skwb_cty_）'); }
   // ②d 返品伝票＝仕入から引く（2026-10-15 神田さん「返品伝票もアプリでマイナス処理」）＝OCRが ret:true を付けた下書きは最初からチェック済み・3欄で引かれ・提出に ret が残る
   run(() => { localStorage.setItem('yosakura_demo_soukatsu', '[]'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([
     { kind:'nouhindraft', store:S, item: today4, note: JSON.stringify({ src:'ocr', v:'西原商会', a8:1080, total:1080, conf:'high', photo:'PHOTO_E1234567' }), photos:[], t: Date.now() - 5000, id:'r1' },
@@ -4539,7 +4558,7 @@ console.log('== シートの日付セル化（ISO文字列）でも突き合わ�
   ok(/1,291/.test(h) && /\+6/.test(h), '総数・今月の獲得数も従来どおり出る');
   // 棒タップ＝その日の件数ポップアップ（2026-09-08 神田さんのご要望）
   ok(new RegExp('data-grday="' + S + '\\|\\|' + tk + '"').test(h), '口コミグラフの棒にタップの目印（data-grday）が付く');
-  ok(/その日の口コミ件数が見られます/.test(h) && !/その日の総括表（全項目）が開きます/.test(h), '案内文が口コミ用に変わる（総括表用の文は出ない）');
+  ok(/その日の口コミ件数が見られます/.test(h) && !/その日の日報（全項目）が開きます/.test(h), '案内文が口コミ用に変わる（総括表用の文は出ない）');
   const srcG = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/function openGreviewDaySheet/.test(srcG) && /data-grday\]'\)/.test(srcG), '棒タップ→件数ポップアップが配線されている');
   ok(/この日の獲得数/.test(srcG) && /総口コミ数（この日時点）/.test(srcG), 'ポップアップに獲得数・総数・星が出る');
@@ -4937,7 +4956,7 @@ console.log('== 総括表の特記が受信箱に出る（2026-09-10 神田さ�
   });
   location.hash = '#/app/inbox';
   const h = registry.app.innerHTML;
-  ok(/総括表の特記/.test(h), '受信箱に「総括表の特記」カードが出る');
+  ok(/日報の特記/.test(h), '受信箱に「日報の特記」カードが出る');
   ok(/清掃・特記事項：製氷機の奥を清掃しました/.test(h) && /課題：おしぼりの在庫が少ない/.test(h), '欄の名前つきで本文が読める');
   ok(!/store内の引き継ぎ文/.test(h) && !/豆乳6本/.test(h), '店内で完結する欄（引き継ぎ・翌日の発注）は出さない');
   // 対応キー（sknote|時刻|店舗名）で数える＝文章の無い日報・取込行の店舗はキー自体が作られない
@@ -5729,7 +5748,7 @@ console.log('== 今日出すもの＝時間帯（朝／昼／夜／締め）で�
   const pos = (re) => { const m = re.exec(h); return m ? m.index : -1; };
   ok(pos(/data-kslot="asa"/) < pos(/オープン写真/) && pos(/オープン写真/) < pos(/data-kslot="hiru"/), 'オープン写真は「朝」の帯に入る');
   ok(pos(/data-kslot="shime"/) < pos(/クローズチェックリスト/), 'クローズチェックリストは「締め」の帯に入る');
-  ok(pos(/data-kslot="asa"/) < pos(/総括表/) && pos(/総括表/) < pos(/data-kslot="hiru"/), '総括表（翌日12時まで）は「OPEN業務（開店前）」の帯に入る（2026-10-15）');
+  ok(pos(/data-kslot="asa"/) < pos(/日報 <small/) && pos(/日報 <small/) < pos(/data-kslot="hiru"/), '日報（翌日12時まで）は「OPEN業務（開店前）」の帯に入る（2026-10-15）');
   ok(pos(/data-kslot="hiru"/) < pos(/アイドルタイムチェックリスト/) && pos(/アイドルタイムチェックリスト/) < pos(/data-kslot="yoru"/), 'アイドルタイムは「昼」の帯に入る');
   ok(/kslot-n/.test(h), '畳んだ帯にも残り件数が見える（隠して漏らさない）');
   const w = renderView('shukan', 'manager', S, 'ja');
@@ -5843,7 +5862,7 @@ console.log('== 月次数値・棚卸＝売上・仕入は総括表の月合計�
   let h = registry.app.innerHTML;
   ok(/id="pl_sales"[^>]*value="500000"/.test(h) && /id="pl_purchase"[^>]*value="150000"/.test(h), '月次数値＝売上・仕入が日報の月合計で自動で入る（500,000／150,000）');
   ok(/id="pl_open"[^>]*value="40000"/.test(h), '月初在庫＝前月の棚卸（40,000）');
-  ok(/総括表（日報）の月合計から自動で入っています/.test(h), '自動で入っている旨の注記が出る');
+  ok(/日報の月合計から自動で入っています/.test(h), '自動で入っている旨の注記が出る');
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(sk)); localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store:S, ym: pv, close: 40000, t: Date.now() - 30 * 86400e3 }])); });
   location.hash = '#/app/pl';
   doc.getElementById('tn_f0_n').value = '牛肉'; doc.getElementById('tn_f0_u').value = '4000'; doc.getElementById('tn_f0_q').value = '5';
@@ -6371,16 +6390,16 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   run(() => { setLS('staff', S2, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); });
   location.hash = '#/app/soukatsu';
   h = registry.app.innerHTML;
-  ok(/id="sk_posnote"/.test(h) && /<input type="hidden" id="sk_sales">/.test(h) && !/>当日売上<\/span>/.test(h), 'レジの無い店も同じ＝売上の欄は無い（全店一律）');
+  ok(/id="sk_posnote"/.test(h) && /id="sk_posgrid"/.test(h) && /<input type="text"[^>]*id="sk_sales"/.test(h), 'レジの無い店＝日報に売上の欄が出る（2026-10-15 神田さん「アプリの日報で入力すれば総括表に入れる必要はない」）');
   doc.getElementById('sk_store').value = S2; doc.getElementById('sk_date').value = yest; doc.getElementById('sk_memo').value = '雨';
   doc.getElementById('submitSk').onclick();
   const all2 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]');
-  ok(all2.length === 1 && all2[0].posWait === true && all2[0].memo === '雨', 'レジの無い店も売上が空で提出できる');
+  ok(all2.length === 1 && !all2[0].posWait && all2[0].memo === '雨', 'レジの無い店も売上が空で提出できる（posWait は付かない）');
   const driveRow = { store: S2, date: yest, sales: 300000, net: 272727, guests: 50, cash: 100000, card: 200000, src: 'drive', t: Date.now() + 1 };
   run(() => { setLS('staff', S2, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(all2.concat([driveRow]))); });
   location.hash = '#/store?s=' + encodeURIComponent(S2);
   h = registry.app.innerHTML;
-  ok(/300,000/.test(h) && /雨/.test(h), '総括表取込の行が来ると、日報の売上は総括表の値・所感はアプリの値（1行に重なる）');
+  ok(/300,000/.test(h) && /雨/.test(h), '売上が空の日報に総括表取込の行が来ると、売上は総括表の値・所感はアプリの値（1行に重なる）');
   ok(/r\.sheet \? 'app\+drive'/.test(code) && /'app\+drive': L\(\{ ja:'アプリ＋総括表'/.test(code), '出どころ＝「アプリ＋総括表」の名前がある');
   // ⑥ GAS側＝USEN取込に掛売・差異合計（締め未統一の日は closeng）／書き戻しに掛売売上・過不足（レジ優先・無ければアプリ）
   const usrc = fs.readFileSync(new URL('../backend/USEN取込.gs', import.meta.url), 'utf8');

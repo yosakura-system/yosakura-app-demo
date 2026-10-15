@@ -267,6 +267,7 @@ function skwb_実行_(書き込む, days, only) {
       if (e.app && Array.isArray(e.app.kintai) && e.app.kintai.length) skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);
       /* ★国別（レジの客層「国籍」＝伝票明細の集計 pcty）→ 顧客情報の「国」の行の下の組数・人数へ（2026-10-15 神田さん「レジ客層が主・転記するだけ」） */
       if (e.usen && e.usen.pcty) skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);
+      else if (e.app && e.app.cty && typeof e.app.cty === 'object') skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);   // ★レジの無い店＝日報の国別（2026-10-15）
       /* ★仕入の内訳（アプリ日報の納品書 slips）→ 仕入れ内訳の仕入先の行へ（2026-10-15） */
       if (e.app && Array.isArray(e.app.slips) && e.app.slips.length && e.date >= String(getSetting_('SKWB_SLIPS_SINCE', '2026-10-16'))) skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果, 記録, 書き込む);
     });
@@ -314,6 +315,8 @@ function skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記�
 }
 /* 国別＝「国」のラベル行（B列）の右に国名、その下の行が「組数」「人数」。国名は半角カナ混じりなので NFKC でそろえて比べる。
    レジの客層の区分（例：欧米）が総括表の国の列に無いときは書かず、止めたに1回だけ出す（増田さんに区分の対応を決めてもらう） */
+/* 日報の国別のキー（app.js SK_COUNTRIES）→ 総括表の国名 */
+var SKWB_CTY_APPKEYS = { jp: '日本', kr: '韓国', cn: '中国', hk: '香港', tw: '台湾', sea: '東南アジア', eu: 'ヨーロッパ', au: 'オーストラリア', us: 'アメリカ', ca: 'カナダ', mx: 'メキシコ', br: 'ブラジル', latam: '中南米', sasia: '南アジア', casia: '中央アジア', me: '中東', af: 'アフリカ' };
 var SKWB_CTY_ALIAS = { '米国': 'アメリカ', 'USA': 'アメリカ', '欧州': 'ヨーロッパ', 'イタリア': 'ヨーロッパ', 'フランス': 'ヨーロッパ', 'イギリス': 'ヨーロッパ', 'ドイツ': 'ヨーロッパ', 'スペイン': 'ヨーロッパ', '豪州': 'オーストラリア', 'ベトナム': '東南アジア', 'タイ': '東南アジア', 'フィリピン': '東南アジア', 'インドネシア': '東南アジア', 'マレーシア': '東南アジア', 'シンガポール': '東南アジア', 'インド': '南アジア' };
 function skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む) {
   var norm = function (v) { return String(v == null ? '' : v).normalize('NFKC').replace(/[\s　]/g, ''); };
@@ -324,14 +327,21 @@ function skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 
     for (var c = 2; c < vals[r].length; c++) { var h = norm(vals[r][c]); if (h && !cols[h]) cols[h] = { c: c, rG: r + 1, rP: r + 2 }; }
   }
   if (!Object.keys(cols).length) { 結果.止めた.push(store + ' ' + book.name + '：顧客情報の「国」の行が見つからない'); return; }
-  Object.keys(e.usen.pcty).forEach(function (label) {
-    var v = e.usen.pcty[label] || {}; var g = skwb_num_(v.g) || 0, pn = skwb_num_(v.p) || 0; if (!g && !pn) return;
+  /* 元＝レジの客層（pcty＝国名→{g,p}）。レジが無い店は日報の cty（jp/kr… → {g,p}）を国名に直して同じ道へ */
+  var src = (e.usen && e.usen.pcty) ? e.usen.pcty : {};
+  var srcName = 'USENレジ';
+  if (!(e.usen && e.usen.pcty) && e.app && e.app.cty) {
+    srcName = 'アプリ日報'; src = {};
+    Object.keys(e.app.cty).forEach(function (k) { var nm = SKWB_CTY_APPKEYS[k]; if (nm) src[nm] = e.app.cty[k]; });
+  }
+  Object.keys(src).forEach(function (label) {
+    var v = src[label] || {}; var g = skwb_num_(v.g) || 0, pn = skwb_num_(v.p) || 0; if (!g && !pn) return;
     var key = norm(label); var col = cols[key] || cols[SKWB_CTY_ALIAS[key] || ''];
     if (!col) { var why = store + ' ' + e.date + '：レジの客層「' + label + '」は総括表の国の列に無い（組' + g + '・人' + pn + '）'; if (結果.止めた.indexOf(why) === -1) 結果.止めた.push(why); return; }
     [['組数', col.rG, g, '組'], ['人数', col.rP, pn, '人']].forEach(function (x) {
       var want = x[2]; if (!want) return;
       var rr = x[1], cc = col.c; var a1 = skwb_a1_(rr, cc); var cur = vals[rr][cc]; var k2 = book.name + '|' + day + '|' + a1;
-      var row = { 店舗: store, 日付: e.date, 項目: '国別 ' + label + ' ' + x[0], セル: day + '!' + a1, いま: cur === '' ? '（空欄）' : cur, 書く値: want, 出どころ: 'USENレジ' };
+      var row = { 店舗: store, 日付: e.date, 項目: '国別 ' + label + ' ' + x[0], セル: day + '!' + a1, いま: cur === '' ? '（空欄）' : cur, 書く値: want, 出どころ: srcName };
       if (fmls[rr][cc]) { row.結果 = '式なので書かない'; 結果.一覧.push(row); return; }
       if (cur === '' || cur == null) { row.結果 = '書く'; 結果.書く++; }
       else if (skwb_num_(cur) === want) { row.結果 = '同じ'; 結果.同じ++; 結果.一覧.push(row); return; }
@@ -340,7 +350,7 @@ function skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 
       結果.一覧.push(row);
       var 済 = row.結果 === '書く' ? '書いた' : row.結果 === '書き直す' ? '書き直した' : 'ずれ';
       if (書き込む && 済 !== 'ずれ') sh.getRange(rr + 1, cc + 1).setValue(want);
-      if (書き込む) 記録.push([new Date(), store, e.date, row.項目, book.name, String(day), a1, cur, want, 済, 'USENレジ']);
+      if (書き込む) 記録.push([new Date(), store, e.date, row.項目, book.name, String(day), a1, cur, want, 済, srcName]);
     });
   });
 }

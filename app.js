@@ -413,7 +413,7 @@
       desc:{ ja:'このアプリの使い方（1分）', en:'Quick app guide (1 min)', vi:'Hướng dẫn nhanh (1 phút)' } },
     // 8/7 増田さん: 日次業務と重複するため「報告する」タブには出さない。日次業務（今日出すもの）から開く
     { id:'soukatsu', group:'storeops', icon:'table', tabHide:true, roles:['staff','manager','owner','hq'], // 日報は店舗iPad（現場）でも入力可（上原さんご要望）
-      name:{ ja:'総括表の入力', en:'Summary Sheet', vi:'Bảng tổng kết' },
+      name:{ ja:'日報の入力', en:'Daily report', vi:'Báo cáo ngày' },
       desc:{ ja:'日次の売上・客数・分析（店舗iPadでも入力可）', en:'Daily sales, guests, review', vi:'Doanh thu, khách, phân tích' } },
     /* 2026-08-12 神田さんのご要望：実施は一部の店舗でも、今後実施する店舗もあるため、
        自店のスタッフさんが過去の回をアーカイブとして確認できるようにする。 */
@@ -776,7 +776,8 @@
     const driveBy = {};
     (arr || []).forEach(r => { if (r && r.src === 'drive' && r.date && r.date <= today) { const k = (r.store || '') + '||' + r.date; if (!driveBy[k] || (Number(r.t) || 0) >= (Number(driveBy[k].t) || 0)) driveBy[k] = r; } });
     Object.keys(driveBy).forEach(k => {
-      const base = latest[k]; if (!base || !base.posWait || base.src) return;
+      const base = latest[k]; if (!base || base.src) return;
+      if (!base.posWait && (Number(base.sales) || 0) > 0) return;   // ★レジの無い店でアプリに売上を入れた日＝アプリが正。売上が空の日だけ総括表の値を重ねる（2026-10-15）
       const m = Object.assign({}, base, { sheet: true });
       USEN_FIELDS.forEach(f => { const v = driveBy[k][f]; if (v != null && v !== '') m[f] = v; });
       latest[k] = m;
@@ -837,7 +838,11 @@
   /* ★レジの項目（売上・客数・純売上・レジ誤差・値引き・現金・カード）はアプリで入力しない＝全店（2026-10-15 神田さん
      「USENレジで回収できる項目はアプリ側からも削除。ややこしいので」）。レジ店はUSENの取込、レジの無い店は総括表の取込から入る。
      日報の行は posWait:true の印＝売上が無くても消さず、レジ（総括表）の行が来たらその値を重ねる（skClean） */
-  const SK_POS_FIELDS = ['sales', 'guests', 'net', 'err', 'disc', 'cash', 'card'];
+  const SK_POS_FIELDS = ['sales', 'guests', 'net', 'err', 'disc', 'cash', 'card', 'emoney', 'kake'];
+  /* ★USENレジのある店（backend/USEN取込.gs の USEN_STORE_MAP_DEFAULT と同じ7店）。それ以外の店はレジから自動で入らないので、
+     売上関連と国別の欄を日報に出して、アプリから総括表へ流す（2026-10-15 神田さん「日本鰻富士山もアプリの日報で入力すれば総括表に入れる必要はない」） */
+  const USEN_STORES = ['牛カツ世桜 長堀橋店', '牛カツ世桜 富士山店', '手巻き寿司世桜 難波店', '寿司世桜 心斎橋店', '日本鰻世桜 京都祇園店', '日本鰻世桜 浅草橋店', '和牛世桜 広島店'];
+  const skNoUsen_ = (store) => !USEN_STORES.includes(String(store || ''));
   /* ★勤怠（任意）＝総括表の勤怠と同じ形（氏名・出勤・退勤）。合計時間・外時間・金額は総括表の式が出す＝アプリでは持たない。
      氏名の候補は総括表「勤怠表」タブの名簿（総括表取り込み.gs が kind:'staffm' で写す）。
      2026-10-15 神田さん「勤怠は完全任意。総括表に直接入力して使っている方もいたので、アプリでも同じように準備したらアプリだけで完結する」 */
@@ -1285,7 +1290,7 @@
         b:{ ja:'右上の「店長 ・ ○○店」から。出したものに、どなたが出したかが残ります。', en:'From the chip at the top right. Submissions record who sent them.', vi:'Từ chip góc trên phải. Ghi lại ai đã nộp.' } },
       { icon:'check', t:{ ja:'今日出すものを確認して出す', en:'Check and submit today’s items', vi:'Kiểm tra và nộp hôm nay' },
         b:{ ja:'ホームの「日次業務」から。締切を過ぎたものがあると、ホームの上にお知らせが出ます。', en:'From “Daily tasks”. Overdue items appear at the top of Home.', vi:'Từ “Hàng ngày”. Quá hạn sẽ hiện ở đầu Trang chủ.' } },
-      { icon:'report', t:{ ja:'総括表を出す', en:'Send the summary sheet', vi:'Gửi bảng tổng kết' },
+      { icon:'report', t:{ ja:'日報を出す', en:'Send the daily report', vi:'Gửi báo cáo ngày' },
         b:{ ja:'前日分を翌日のお昼までに。出すと、本部の数字にそのまま反映されます。二重に書く必要はありません。', en:'Yesterday’s figures by noon. They flow straight into HQ’s numbers.', vi:'Số liệu hôm trước trước trưa. Tự vào số liệu HQ.' } },
       { icon:'gauge', t:{ ja:'自店の数字を見る', en:'See your store’s numbers', vi:'Xem số liệu cửa hàng' },
         b:{ ja:'売上・客数・客単価・原価率と、月の目標に対する達成率が見られます。', en:'Sales, guests, spend per guest, cost rate and progress to target.', vi:'Doanh thu, khách, chi tiêu, tỷ lệ giá vốn và tiến độ.' } },
@@ -1308,7 +1313,7 @@
       { icon:'inbox', t:{ ja:'加盟店・提出物管理', en:'Submissions', vi:'Quản lý nộp' },
         b:{ ja:'誰が何を出していないかを自動で抽出します。「未提出の連絡文をコピー」で、そのままLINEへ貼れる文面ができます。', en:'Missing items are extracted automatically; copy a ready-made message for LINE.', vi:'Tự trích mục còn thiếu; sao chép tin nhắn cho LINE.' } },
       { icon:'gauge', t:{ ja:'本部ダッシュボード', en:'HQ dashboard', vi:'Bảng điều khiển HQ' },
-        b:{ ja:'総括表が出ると、そのまま全店の数字になります。転記は要りません。店舗名から個店カルテへ入れます。', en:'Daily reports become HQ numbers automatically. No re-entry.', vi:'Báo cáo ngày tự thành số liệu HQ. Không nhập lại.' } },
+        b:{ ja:'日報が出ると、そのまま全店の数字になります。転記は要りません。店舗名から個店カルテへ入れます。', en:'Daily reports become HQ numbers automatically. No re-entry.', vi:'Báo cáo ngày tự thành số liệu HQ. Không nhập lại.' } },
       { icon:'bell', t:{ ja:'お知らせを配る', en:'Send announcements', vi:'Gửi thông báo' },
         b:{ ja:'全店にも、特定の店舗にも配れます。画像と動画リンクを添えられ、重要にすると各店のホーム上部に出ます。', en:'Send to all or selected stores, with images and video links.', vi:'Gửi tất cả hoặc chọn cửa hàng, kèm ảnh và video.' } },
       { icon:'link', t:{ ja:'資料をマニュアルにひも付ける', en:'Link materials to manuals', vi:'Gắn tài liệu vào cẩm nang' },
@@ -1850,12 +1855,12 @@
       b:{ ja:'画面が古いときは、いちばん下の「最新にする」。分からないときは「よくある質問」か店長へ。', en:'Tap “Refresh” at the bottom if the screen looks old. Ask FAQ or your manager.', vi:'Nhấn “Cập nhật” ở cuối màn hình. Hỏi FAQ hoặc quản lý.' } }
   ] : [
     { t:{ ja:'毎日の報告は、アプリへ一本化していきます', en:'Reports are moving into the app', vi:'Báo cáo đang chuyển vào ứng dụng' },
-      b:{ ja:'提出物・写真・総括表を順次アプリへ統一していきます。移行の時期・対象は本部からご案内します。', en:'Submissions, photos and daily reports are being unified here. HQ will announce the schedule.', vi:'Các báo cáo sẽ thống nhất tại đây. HQ sẽ thông báo lộ trình.' } },
+      b:{ ja:'提出物・写真・日報を順次アプリへ統一していきます。移行の時期・対象は本部からご案内します。', en:'Submissions, photos and daily reports are being unified here. HQ will announce the schedule.', vi:'Các báo cáo sẽ thống nhất tại đây. HQ sẽ thông báo lộ trình.' } },
     { t:{ ja:'はじめかた（最初に1回だけ）', en:'Getting started (once)', vi:'Bắt đầu (một lần)' },
       b:{ ja:'本部からお渡ししたIDと仮パスワードでログインし、ご自分のパスワードへ変更してください（6文字以上）。ホーム画面に追加しておくと、次からワンタップです。', en:'Sign in with the HQ-issued ID and temporary password, then set your own (6+ chars). Add to home screen for one-tap access.', vi:'Đăng nhập bằng ID và mật khẩu tạm, sau đó đổi mật khẩu riêng (6+ ký tự).' } },
     { t:{ ja:'今日出すもの・写真', en:'Today’s items & photos', vi:'Việc hôm nay & ảnh' }, go:'/app/kyou',
       b:{ ja:'今日出すものが上から並びます。写真は撮って送るだけで、送り先を選びません。', en:'Everything due today, top to bottom. Photos: just shoot and send.', vi:'Việc hôm nay từ trên xuống. Ảnh chỉ cần chụp và gửi.' } },
-    { t:{ ja:'総括表は一度入れるだけ', en:'Summary sheet: enter once', vi:'Bảng tổng kết: nhập một lần' }, go:'/app/soukatsu',
+    { t:{ ja:'日報は一度入れるだけ', en:'Daily report: enter once', vi:'Báo cáo ngày: nhập một lần' }, go:'/app/soukatsu',
       b:{ ja:'「入力」タブに入れた数字が、そのままグラフ・月次のまとめ・本部の集計になります。転記のやり直しはありません。', en:'Numbers entered once feed the graphs, monthly summary and HQ view.', vi:'Nhập một lần, tự động thành biểu đồ và tổng hợp.' } },
     { t:{ ja:'お店の数字を見る', en:'See your numbers', vi:'Xem số liệu' }, go:'/app/soukatsu?tab=summary',
       b:{ ja:'お店の動き（前の期間との比較・客数と客単価の分解）、今月の着地見込み、月別の推移、曜日別が見られます。', en:'Movement vs previous period, projected month-end, monthly and weekday trends.', vi:'Biến động, dự kiến chốt tháng, xu hướng theo tháng/thứ.' } },
@@ -2262,6 +2267,19 @@
         ${s.raw ? `<details style="grid-column:1/-1;margin:-2px 0 2px"><summary class="muted" style="font-size:11px;cursor:pointer">${L({ ja:'読み取った文字を見る（数字が違うときの照合用）', en:'Show recognized text', vi:'Xem chữ đã đọc' })}</summary><pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;max-height:160px;overflow:auto;margin:4px 0 0;padding:6px;background:#faf8f4;border-radius:6px">${esc(s.raw)}</pre></details>` : ''}
       </div>`;
   }).join('');
+  /* ★レジの無い店の日報＝売上関連と国別の欄（2026-10-15）。欄の並びは総括表の日別タブと同じ */
+  const skPosGridHtml_ = () => `
+        <div class="idlabel" style="margin-top:6px">${L({ ja:'売上（レジの日計から）', en:'Sales (from the register report)', vi:'Doanh thu (từ báo cáo máy tính tiền)' })}</div>
+        <div class="sk-grid" id="sk_posgrid">
+          ${[['sk_cash', { ja:'現金売上', en:'Cash', vi:'Tiền mặt' }, '40600'], ['sk_card', { ja:'カード売上', en:'Card', vi:'Thẻ' }, '75300'], ['sk_emoney', { ja:'電子マネー売上', en:'E-money', vi:'Tiền điện tử' }, '7800'], ['sk_kake', { ja:'掛売売上', en:'On account', vi:'Bán chịu' }, '0'],
+             ['sk_sales', { ja:'売上合計（税込）', en:'Total sales (incl.)', vi:'Tổng DT (gồm thuế)' }, '123700'], ['sk_net', { ja:'純売上（税抜）', en:'Net sales (excl.)', vi:'DT thuần (chưa thuế)' }, '112461'], ['sk_guests', { ja:'客数', en:'Guests', vi:'Số khách' }, '21'], ['sk_disc', { ja:'値引き', en:'Discounts', vi:'Giảm giá' }, '0'],
+             ['sk_err', { ja:'過不足（現金）', en:'Cash over/short', vi:'Thừa/thiếu tiền mặt' }, '0'], ['sk_foodamt', { ja:'フード金額', en:'Food amount', vi:'Tiền món ăn' }, '98000'], ['sk_drinkamt', { ja:'ドリンク金額', en:'Drink amount', vi:'Tiền đồ uống' }, '25700']]
+            .map(f => `<label class="fld"><span>${L(f[1])}</span><input type="text" inputmode="numeric" id="${f[0]}" placeholder="${f[2]}"></label>`).join('')}
+        </div>
+        <div class="idlabel" style="margin-top:10px">${L({ ja:'国別のお客様（組数／人数）', en:'Guests by country (groups / people)', vi:'Khách theo quốc gia (nhóm / người)' })}</div>
+        <div class="sk-grid" id="sk_ctygrid">
+          ${SK_COUNTRIES.map(cn => `<label class="fld"><span>${L(cn.t)}</span><div style="display:flex;gap:6px"><input type="text" inputmode="numeric" id="sk_cty_${cn.k}_g" placeholder="${L({ ja:'組', en:'grp', vi:'nhóm' })}" style="min-width:0"><input type="text" inputmode="numeric" id="sk_cty_${cn.k}_p" placeholder="${L({ ja:'人', en:'ppl', vi:'người' })}" style="min-width:0"></div></label>`).join('')}
+        </div>`;
   const skSlipsHtml_ = () => `
         <div class="card" id="sk_slipbox" style="margin:0 0 10px">
           <div class="idlabel" style="margin-top:0">${L({ ja:'この日の納品書', en:'Delivery slips for this day', vi:'Phiếu giao hàng của ngày này' })} <span class="muted" style="font-weight:400">${L({ ja:'（写真から自動・確認して直せます）', en:'(auto from photos · editable)', vi:'(tự động từ ảnh · có thể sửa)' })}</span></div>
@@ -2733,7 +2751,7 @@
         <label class="fld"><span>${L({ ja:'名前', en:'Your name', vi:'Tên bạn' })}</span>
           <input type="text" id="kc_by" value="${esc(getUserName() || '')}"></label>
         <button class="btn-primary" id="submitKc">${L({ ja:'確定して提出する', en:'Submit', vi:'Xác nhận & gửi' })}</button>
-        <div class="hint">${L({ ja:'※ 提出すると本部に届き、差異は総括表の「レジ誤差」に自動で入ります（違うときは直せます）。', en:'Sent to HQ; the difference pre-fills the daily report’s register-error field.', vi:'Gửi đến HQ; chênh lệch tự điền vào báo cáo ngày.' })}</div>
+        <div class="hint">${L({ ja:'※ 提出すると本部に届き、差異は日報の過不足に自動で入ります（違うときは直せます）。', en:'Sent to HQ; the difference pre-fills the daily report’s register-error field.', vi:'Gửi đến HQ; chênh lệch tự điền vào báo cáo ngày.' })}</div>
       </div>
       <div class="card">
         <h3>${L({ ja:'最近の記録', en:'Recent records', vi:'Bản ghi gần đây' })}</h3>
@@ -5132,7 +5150,7 @@
     const SKT = [
       { v:'input',   t:{ ja:'入力', en:'Enter', vi:'Nhập' } },
       { v:'summary', t: vis.length > 1 ? { ja:'店舗の状況', en:'Stores', vi:'Cửa hàng' } : { ja:'今月の推移', en:'This month', vi:'Tháng này' } },
-      { v:'recent',  t:{ ja:'最近の総括表', en:'Recent', vi:'Gần đây' } }
+      { v:'recent',  t:{ ja:'最近の日報', en:'Recent', vi:'Gần đây' } }
     ];
     // タブはURL（?tab=）が最優先＝ガイド等からタブ指定で飛べる。無ければ前回選んだタブ、初回は入力
     const urlSkTab = currentRoute().params.get('tab');
@@ -5164,11 +5182,14 @@
       ${skTabSeg}
       ${head}
       ${skTab !== 'input' ? '' : (() => { const skCum0 = skCumBase(vis[0], today); return `<div class="card" id="skForm">
-        <h3>${L({ ja:'本日の総括表', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
+        <h3>${L({ ja:'本日の日報', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
         ${/* ★提出済みの日を開いているときに出す案内（2026-09-03 ユンさんのご要望＝後から直したい）。
               中身は画面を作ったあとに入れる（その日の日報があるかは日付を変えても変わるため） */''}
         <p class="hint" id="sk_editnote" style="display:none;margin:-2px 0 8px;color:#8a6d3b"></p>
-        <p class="hint" id="sk_posnote" style="display:block;margin:-2px 0 8px;color:#2d6a4f">${L({
+        <p class="hint" id="sk_posnote" style="display:block;margin:-2px 0 8px;color:#2d6a4f">${skNoUsen_(vis[0]) ? L({
+          ja:'※ 口コミは自動で入ります。売上はレジの日計を見て入れてください。',
+          en:'Reviews are filled automatically. Enter sales from the register report.',
+          vi:'Đánh giá tự điền. Nhập doanh thu từ báo cáo máy tính tiền.' }) : L({
           ja:'※ 売上・国別・口コミは自動で入ります。',
           en:'Sales, guests by country and reviews are filled automatically.',
           vi:'Doanh thu, khách theo quốc gia và đánh giá tự điền.' })}</p>
@@ -5176,17 +5197,18 @@
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
           <label class="fld"><span>${L({ ja:'日付（営業日）', en:'Date (business day)', vi:'Ngày (ngày kinh doanh)' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || skDefaultDate_(vis[0])}" max="${today}"></label>
-          <input type="hidden" id="sk_sales"><input type="hidden" id="sk_guests">
+          ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_sales"><input type="hidden" id="sk_guests">'}
         </div>
+        ${skNoUsen_(vis[0]) ? skPosGridHtml_() : ''}
         <div class="stat-row" style="margin:2px 0 10px;display:none">
           <div class="stat"><div class="n" id="sk_avg">¥0</div><div class="k">${L({ja:'客単価（自動計算）',en:'Per guest (auto)',vi:'BQ/khách (tự động)'})}</div></div>
           <div class="stat"><div class="n" id="sk_rate">—</div><div class="k">${L({ja:'到達度（自動計算）',en:'To goal (auto)',vi:'Đạt mục tiêu (auto)'})}</div></div>
         </div>
         <div class="sk-grid">
-          <input type="hidden" id="sk_net"><input type="hidden" id="sk_err">
+          ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_net"><input type="hidden" id="sk_err">'}
           <label class="fld"><span>${L({ja:'月累計売上（自動計算）',en:'Month-to-date (auto)',vi:'Lũy kế tháng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_mtd" placeholder="2146145" value="${skCum0.mtd || ''}"></label>
           <label class="fld"><span>${L({ja:'売上目標（月）',en:'Monthly goal',vi:'Mục tiêu tháng'})}</span><input type="text" inputmode="numeric" id="sk_goal" placeholder="3000000"></label>
-          <input type="hidden" id="sk_foodamt"><input type="hidden" id="sk_drinkamt">
+          ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_foodamt"><input type="hidden" id="sk_drinkamt">'}
         </div>
         <div class="stat-row" style="margin:2px 0 10px;display:none">
           <div class="stat"><div class="n" id="sk_foodpct">—</div><div class="k">${L({ja:'フード構成比（自動計算）',en:'Food share (auto)',vi:'Tỷ trọng món ăn (tự động)'})}</div></div>
@@ -5195,7 +5217,7 @@
         <div class="sk-grid">
           <input type="hidden" id="sk_rvt"><input type="hidden" id="sk_rva" value="${skCum0.rva || ''}">
           <label class="fld"><span>${L({ja:'ヒアリング 当日',en:'Hearings today',vi:'Phỏng vấn nay'})}</span><input type="text" inputmode="numeric" id="sk_hear" placeholder="9"></label>
-          <input type="hidden" id="sk_disc">
+          ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_disc">'}
           <label class="fld"><span>${L({ja:'人件費率 %',en:'Labor %',vi:'Nhân sự %'})}</span><input type="text" inputmode="decimal" id="sk_labor" placeholder="23.6"></label>
           <label class="fld"><span>${L({ja:'チップ 当日',en:'Tips today',vi:'Tip nay'})}</span><input type="text" inputmode="numeric" id="sk_tipt" placeholder="21000"></label>
           <label class="fld"><span>${L({ja:'チップ 累計（自動計算）',en:'Tips total (auto)',vi:'Tip tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_tipa" placeholder="84541" value="${skCum0.tipa || ''}"></label>
@@ -5205,7 +5227,7 @@
         </div>
         ${(skSlipsLoad_(vis[0], todayKey(), null), skSlipsHtml_())}
         <div class="sk-grid">
-          <input type="hidden" id="sk_cash"><input type="hidden" id="sk_card">
+          ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_cash"><input type="hidden" id="sk_card">'}
           <label class="fld"><span>${L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'})}</span><input type="text" inputmode="numeric" id="sk_lunch" placeholder="186400" value="${skChukanToday(vis[0]) != null ? skChukanToday(vis[0]) : ''}"></label>
           <label class="fld"><span>${L({ja:'仕入 食材（税込・8%）',en:'Purchases: food (tax incl., 8%)',vi:'Nhập hàng: thực phẩm (gồm thuế 8%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_food" placeholder="7560"></label>
           <label class="fld"><span>${L({ja:'仕入 飲料 お酒（税込・10%）',en:'Purchases: alcohol (tax incl., 10%)',vi:'Nhập hàng: rượu bia (gồm thuế 10%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_alc" placeholder="0"></label>
@@ -5277,7 +5299,7 @@
         <div class="hint">${L({ja:'出すと本部に届きます',en:'Submitting sends it to HQ',vi:'Gửi là đến HQ'})}</div>
       </div>`; })()}
       ${skTab !== 'recent' ? '' : `<div class="card">
-        <h3>${L({ ja:'最近の総括表', en:'Recent daily reports', vi:'Báo cáo gần đây' })}</h3>
+        <h3>${L({ ja:'最近の日報', en:'Recent daily reports', vi:'Báo cáo gần đây' })}</h3>
         <div id="skList">${recent.length ? recent.map(skRow).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}</div>
         ${vis.length === 1 ? `<button class="btn-primary" data-go="/skprint?s=${encodeURIComponent(vis[0])}&ym=${todayYm()}" style="margin-top:12px">${L({ ja:'総括表の形で出力（印刷・CSV）', en:'Export as summary sheet (print / CSV)', vi:'Xuất dạng bảng tổng kết (in / CSV)' })}</button>` : ''}
       </div>`}`;
@@ -5409,7 +5431,7 @@
         <div class="colaxis"><span>${esc(mdLabel(days[0]))}</span><span>${esc(mdLabel(days[Math.floor(days.length / 2)]))}</span><span>${esc(mdLabel(days[days.length - 1]))}</span></div>
         ${opt.svday ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の回答（★・コメント）が見られます', en:'Tap a bar to see that day\'s answers', vi:'Chạm vào cột để xem phản hồi ngày đó' })}</div>`
           : opt.grday ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の口コミ件数が見られます', en:'Tap a bar to see that day\'s review counts', vi:'Chạm vào cột để xem số review ngày đó' })}</div>`
-          : opt.store ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の総括表（全項目）が開きます', en:'Tap a bar to open that day\'s full report', vi:'Chạm vào cột để mở báo cáo ngày đó' })}</div>` : ''}
+          : opt.store ? `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 棒をタップすると、その日の日報（全項目）が開きます', en:'Tap a bar to open that day\'s full report', vi:'Chạm vào cột để mở báo cáo ngày đó' })}</div>` : ''}
       </div>`;
   }
   // 横棒（曜日別など・タップなし）
@@ -5444,7 +5466,7 @@
     const totalByDay = (d) => all.filter(r => r.date === d).reduce((s, r) => s + numOr0(r.sales), 0);
     return `
       <div class="card">
-        <h3>${L({ ja:'店舗比較（総括表より）', en:'Store comparison (from daily reports)', vi:'So sánh cửa hàng' })}</h3>
+        <h3>${L({ ja:'店舗比較（日報より）', en:'Store comparison (from daily reports)', vi:'So sánh cửa hàng' })}</h3>
         <div class="seg-chips">${PERIODS.map(o => chip(o, 'p', p)).join('')}</div>
         <div class="stat-row">
           <div class="stat"><div class="n">${esc(yenShort(total.sales))}</div><div class="k">${L({ ja:'全店 売上合計', en:'Total sales', vi:'Tổng doanh thu' })}</div></div>
@@ -5584,7 +5606,7 @@
             <div class="cmp-sub"><span style="display:block;white-space:normal;line-height:1.7">${L({ ja:'ここまで', en:'MTD', vi:'Lũy kế' })} ${esc(yenShort(r.mtd))}（${r.days}${L({ ja:'日', en:'d', vi:'n' })}） ・ ${L({ ja:'直近ペース', en:'Pace', vi:'Tốc độ' })} ${esc(yenShort(r.pace))}/${L({ ja:'日', en:'day', vi:'ngày' })}${r.goal ? ` ・ ${L({ ja:'目標', en:'Goal', vi:'Mục tiêu' })} ${esc(yenShort(r.goal))}（<b style="color:${r.fc >= r.goal ? '#2a7' : '#a23b3b'}">${Math.round(r.fc / r.goal * 100)}%</b>）` : ''}</span></div>
           </button>`).join('')}
         <div class="hint" style="display:block;margin-top:8px">${L({
-          ja:'※ 見込みはいまのペースが続いた場合の目安です。目標は総括表に入力がある店舗のみ表示します。',
+          ja:'※ 見込みはいまのペースが続いた場合の目安です。目標は日報に入力がある店舗のみ表示します。',
           en:'A guide assuming current pace continues. Goals shown only where entered.',
           vi:'Chỉ là ước tính theo tốc độ hiện tại.' })}</div>
       </div>
@@ -5858,7 +5880,7 @@
       ${hasVal(r.note) ? `<div class="idlabel" style="margin-top:14px">${L({ ja:'清掃・特記事項', en:'Cleaning & notes', vi:'Vệ sinh & ghi chú' })}</div><p class="dtext">${esc(r.note)}</p>` : ''}
       ${hasVal(r.order) ? `<div class="idlabel">${L({ ja:'翌日の食材発注', en:'Tomorrow order', vi:'Đặt NL ngày mai' })}</div><p class="dtext">${esc(r.order)}</p>` : ''}
       ${hasVal(r.by) ? `<div class="idlabel" style="margin-top:14px">${L({ ja:'提出者', en:'Submitted by', vi:'Người nộp' })}</div><p class="dtext">${esc(r.by)}</p>` : ''}
-      <p class="hint" style="display:block;margin-top:10px">${L({ ja:'※「—」は未入力の項目です。総括表に入力されると、ここに自動で表示されます。', en:'“—” means not entered yet; it fills in automatically once the daily report is submitted.', vi:'“—” là chưa nhập; sẽ tự hiển thị khi báo cáo được nộp.' })}</p>`;
+      <p class="hint" style="display:block;margin-top:10px">${L({ ja:'※「—」は未入力の項目です。日報に入力されると、ここに自動で表示されます。', en:'“—” means not entered yet; it fills in automatically once the daily report is submitted.', vi:'“—” là chưa nhập; sẽ tự hiển thị khi báo cáo được nộp.' })}</p>`;
   }
   // その日の日報を開く（シート）
   function openSkDay(key) {
@@ -5869,10 +5891,10 @@
       <div class="grip"></div>
       <h3>${esc(mdLabel(date))}（${esc(L(WDAYS[wdOf(date)]))}）　${esc(storeLabel(store))}</h3>
       <div class="sub">${esc(store)}</div>
-      ${r ? skFieldGrid(r) : `<p class="muted">${L({ ja:'この日はまだ総括表が提出されていません。', en:'No daily report submitted for this day yet.', vi:'Chưa có báo cáo cho ngày này.' })}</p>`}
+      ${r ? skFieldGrid(r) : `<p class="muted">${L({ ja:'この日はまだ日報が提出されていません。', en:'No daily report submitted for this day yet.', vi:'Chưa có báo cáo cho ngày này.' })}</p>`}
       ${/* ★提出した日報を後から直せるように（2026-09-03 ユンさんのご要望）。
             入力画面をこの日の内容で開き直す＝出し直すと最新の内容に置き換わる */''}
-      ${(r && visibleStores().includes(store)) ? `<button class="btn-primary" data-skedit="${esc(store + '||' + date)}" style="margin-top:14px">${L({ ja:'この総括表を直す', en:'Edit this report', vi:'Sửa báo cáo này' })}</button>` : ''}
+      ${(r && visibleStores().includes(store)) ? `<button class="btn-primary" data-skedit="${esc(store + '||' + date)}" style="margin-top:14px">${L({ ja:'この日報を直す', en:'Edit this report', vi:'Sửa báo cáo này' })}</button>` : ''}
       <button class="btn-primary" data-close="1" style="margin-top:14px">${L({ ja:'閉じる', en:'Close', vi:'Đóng' })}</button>
     </div></div>`);
     mask.addEventListener('click', (e) => { if (e.target === mask || (e.target.closest && e.target.closest('[data-close]'))) mask.remove(); });
@@ -5918,12 +5940,12 @@
     const gByDate = {}; gInYm.forEach(x => { gByDate[x._d] = x; });
     const inner = `
       <main class="screen">
-        <div class="appbar"><button class="back" data-go="/app/soukatsu">${svg('back')}${L({ ja:'総括表', en:'Daily reports', vi:'Báo cáo' })}</button></div>
+        <div class="appbar"><button class="back" data-go="/app/soukatsu">${svg('back')}${L({ ja:'日報', en:'Daily reports', vi:'Báo cáo' })}</button></div>
         <div class="app-head">
           <div class="ico">${svg('table')}</div>
           <div><h1>${esc(storeLabel(store))}</h1><p>${esc(store)}${storeGyotai(store) ? '　/　' + esc(gyotaiLabel(storeGyotai(store))) : ''}</p></div>
         </div>
-        ${NOTE({ ja:'◆ 総括表に入力された内容を、この店舗ぶんだけまとめています', en:'◆ Everything submitted in this store\'s daily reports, in one place', vi:'◆ Tổng hợp báo cáo ngày của cửa hàng này' })}
+        ${NOTE({ ja:'◆ 日報に入力された内容を、この店舗ぶんだけまとめています', en:'◆ Everything submitted in this store\'s daily reports, in one place', vi:'◆ Tổng hợp báo cáo ngày của cửa hàng này' })}
         <div class="card">
           <div class="mnav">
             <button class="chip" data-go="${esc(nav(-1))}">‹</button>
@@ -5964,8 +5986,8 @@
             : `<div class="muted">${L({ ja:'この月はまだ入力がありません', en:'No entries this month', vi:'Chưa có dữ liệu tháng này' })}</div>`}
         </div>
         <div class="card">
-          <h3>${L({ ja:'最新の総括表（全項目）', en:'Latest daily report (all fields)', vi:'Báo cáo mới nhất (tất cả)' })}${latest ? `　<span class="muted">${esc(mdLabel(latest.date))}</span>` : ''}</h3>
-          ${latest ? skFieldGrid(latest) : `<p class="muted">${L({ ja:'この月の総括表がまだありません。提出されると、売上・客数のほか、口コミ・ヒアリング・仕入・チップ・発注など全項目がここに表示されます。', en:'No report yet this month. Once submitted, all fields appear here.', vi:'Chưa có báo cáo tháng này.' })}</p>`}
+          <h3>${L({ ja:'最新の日報（全項目）', en:'Latest daily report (all fields)', vi:'Báo cáo mới nhất (tất cả)' })}${latest ? `　<span class="muted">${esc(mdLabel(latest.date))}</span>` : ''}</h3>
+          ${latest ? skFieldGrid(latest) : `<p class="muted">${L({ ja:'この月の日報がまだありません。提出されると、売上・客数のほか、口コミ・ヒアリング・仕入・チップ・発注など全項目がここに表示されます。', en:'No report yet this month. Once submitted, all fields appear here.', vi:'Chưa có báo cáo tháng này.' })}</p>`}
         </div>
         <div class="card">
           <h3>${L({ ja:'この店舗の他のデータ', en:'Other data for this store', vi:'Dữ liệu khác' })}</h3>
@@ -6368,7 +6390,7 @@
         </div>
         ${cur.purchaseFrom === 'drive' && cur.purchaseAt ? `<p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 当月仕入は、総括表の仕入台帳から取り込んだ値です（' + new Date(cur.purchaseAt).toLocaleDateString('ja-JP', { month:'numeric', day:'numeric' }) + ' 時点）。台帳に後から足された分は、取り込みのたびに自動で追いつきます。手で直した値は上書きされません。', en:'Purchases were imported from the summary sheet (as of ' + new Date(cur.purchaseAt).toLocaleDateString('en-US', { month:'numeric', day:'numeric' }) + '). Later additions follow automatically; a hand-edited value is kept.', vi:'Nhập hàng lấy từ bảng tổng kết (tính đến ' + new Date(cur.purchaseAt).toLocaleDateString('vi-VN', { month:'numeric', day:'numeric' }) + ').' })}</p>` : ''}
         ${cur.closeFrom === 'drive' && cur.closeAt ? `<p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 月末在庫は、総括表の棚卸表から取り込んだ値です（' + new Date(cur.closeAt).toLocaleDateString('ja-JP', { month:'numeric', day:'numeric' }) + ' 時点）。アプリの棚卸で保存した値があれば、そちらが優先されます。', en:'Closing stock was imported from the summary sheet stocktake (as of ' + new Date(cur.closeAt).toLocaleDateString('en-US', { month:'numeric', day:'numeric' }) + '). A stocktake saved in the app takes precedence.', vi:'Tồn cuối kỳ lấy từ bảng kiểm kê của bảng tổng kết (tính đến ' + new Date(cur.closeAt).toLocaleDateString('vi-VN', { month:'numeric', day:'numeric' }) + '). Kiểm kê lưu trong ứng dụng được ưu tiên.' })}</p>` : ''}
-        ${autoUsed ? `<p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 売上・仕入は総括表（日報）の月合計から自動で入っています（違うときは直せます）。月初在庫は前月の棚卸から。', en:'Sales and purchases are pre-filled from the daily reports (editable). Opening stock from last month’s stocktake.', vi:'Doanh thu & nhập hàng tự điền từ báo cáo ngày (có thể sửa). Tồn đầu kỳ từ kiểm kê tháng trước.' })}</p>` : ''}
+        ${autoUsed ? `<p class="hint" style="display:block;margin:-2px 0 6px">${L({ ja:'※ 売上・仕入は日報の月合計から自動で入っています（違うときは直せます）。月初在庫は前月の棚卸から。', en:'Sales and purchases are pre-filled from the daily reports (editable). Opening stock from last month’s stocktake.', vi:'Doanh thu & nhập hàng tự điền từ báo cáo ngày (có thể sửa). Tồn đầu kỳ từ kiểm kê tháng trước.' })}</p>` : ''}
         <p class="hint" style="display:block;margin:2px 0 8px">${L({ ja:'※ 売上目標は本部・オーナー・店長が設定します。設定すると各店の画面に「目標到達」と進捗バーが出ます。', en:'The sales goal is set by HQ/owner/manager and appears as progress on each store screen.', vi:'Mục tiêu do HQ/chủ/quản lý đặt; hiển thị tiến độ trên màn hình cửa hàng.' })}</p>
         <div class="stat-row" style="margin-top:8px">
           <div class="stat"><div class="n" id="pl_cost">¥0</div><div class="k">${L({ ja:'当月原価', en:'Cost', vi:'Giá vốn' })}</div></div>
@@ -6546,11 +6568,11 @@
     // 面①「数字」＝総括表（店舗の動き・着地見込み・比較・最新）
     const sk = getSk().filter(r => vis.includes(r.store));
     const paneNum = (() => {
-      if (!sk.length) return `<p class="hint" style="display:block">${L({ ja:'総括表の数字はまだありません。', en:'No daily report numbers yet.', vi:'Chưa có số liệu báo cáo.' })}</p>`;
+      if (!sk.length) return `<p class="hint" style="display:block">${L({ ja:'日報の数字はまだありません。', en:'No daily report numbers yet.', vi:'Chưa có số liệu báo cáo.' })}</p>`;
       const latest = {}; sk.slice().sort((a,b)=>a.t-b.t).forEach(r => latest[r.store] = r);
       const lrows = Object.values(latest).sort((a,b)=>b.t-a.t).slice(0,6);
       return `${vis.length > 1 ? skMovement(vis, '/app/dashboard') + skOutlook(vis) + skCompare(vis, '/app/dashboard') : ''}
-        <div class="card"><h3>${L({ ja:'最新の総括表（店舗別）', en:'Latest daily report by store', vi:'Báo cáo mới theo cửa hàng' })}</h3>${lrows.map(skRow).join('')}</div>`;
+        <div class="card"><h3>${L({ ja:'最新の日報（店舗別）', en:'Latest daily report by store', vi:'Báo cáo mới theo cửa hàng' })}</h3>${lrows.map(skRow).join('')}</div>`;
     })();
     // 面②「食べ残し」＝現場の報告（自動集約）
     const paneLoss = `
@@ -6594,7 +6616,7 @@
     [{ja:'日本鰻世桜 浅草橋店',en:'Unagi Yosakura Asakusabashi',vi:'Unagi Yosakura Asakusabashi'}, '第4水 15:00',
       [{ja:'和牛',en:'Wagyu',vi:'Wagyu'},{ja:'ガスバーナーケース',en:'Gas burner case',vi:'Hộp đèn khò'},{ja:'サーベイ',en:'Survey',vi:'Khảo sát'},{ja:'TIP BOX',en:'Tip box',vi:'Hộp tip'},{ja:'ハラール状況',en:'Halal status',vi:'Tình hình Halal'},{ja:'マニュアル見直し',en:'Manual review',vi:'Rà soát cẩm nang'}]],
     [{ja:'和牛世桜 広島店',en:'Wagyu Yosakura Hiroshima',vi:'Wagyu Yosakura Hiroshima'}, '第4木 18:00',
-      [{ja:'Google口コミ',en:'Google reviews',vi:'Đánh giá Google'},{ja:'総括表の記入',en:'Daily summary entry',vi:'Nhập tổng kết'},{ja:'商品別売上構成比',en:'Sales mix by item',vi:'Cơ cấu doanh thu'},{ja:'盛付・一食目共有',en:'Plating / first-plate',vi:'Trình bày / món đầu'},{ja:'店内動画共有',en:'In-store video',vi:'Video trong quán'},{ja:'藁焼きの声がけ',en:'Straw-grill call-out',vi:'Mời khách nướng rơm'},{ja:'サーベイ',en:'Survey',vi:'Khảo sát'}]]
+      [{ja:'Google口コミ',en:'Google reviews',vi:'Đánh giá Google'},{ja:'日報の記入',en:'Daily report entry',vi:'Nhập báo cáo ngày'},{ja:'商品別売上構成比',en:'Sales mix by item',vi:'Cơ cấu doanh thu'},{ja:'盛付・一食目共有',en:'Plating / first-plate',vi:'Trình bày / món đầu'},{ja:'店内動画共有',en:'In-store video',vi:'Video trong quán'},{ja:'藁焼きの声がけ',en:'Straw-grill call-out',vi:'Mời khách nướng rơm'},{ja:'サーベイ',en:'Survey',vi:'Khảo sát'}]]
   ];
   const whenL = (w) => w.replace('第4木', L({ja:'毎月 第4木',en:'4th Thu',vi:'Thứ 5 tuần 4'})).replace('第4水', L({ja:'毎月 第4水',en:'4th Wed',vi:'Thứ 4 tuần 4'}));
   // 店舗 → MTGインデックス（自店の議題のみ表示するため）
@@ -6767,7 +6789,7 @@
     { v:'promo',   t:{ ja:'販促物・制作物', en:'Promotional items', vi:'Vật phẩm quảng bá' },
                    s:{ ja:'POP・印刷物・撮影の依頼', en:'POP, printing, and photo requests', vi:'POP, in ấn, chụp ảnh' } },
     { v:'submit',  t:{ ja:'提出物・報告', en:'Submissions & reports', vi:'Nộp bài & báo cáo' },
-                   s:{ ja:'総括表・月次・LINEでの報告の出し方', en:'Daily/monthly reports and LINE reporting', vi:'Báo cáo ngày/tháng và báo cáo qua LINE' } },
+                   s:{ ja:'日報・月次・LINEでの報告の出し方', en:'Daily/monthly reports and LINE reporting', vi:'Báo cáo ngày/tháng và báo cáo qua LINE' } },
     { v:'staff',   t:{ ja:'採用・シフト・スタッフ', en:'Hiring, shifts & staff', vi:'Tuyển dụng, ca làm & nhân viên' },
                    s:{ ja:'募集・面接・勤怠・キャリアアップ', en:'Recruiting, interviews, attendance, career path', vi:'Tuyển dụng, phỏng vấn, chấm công, thăng tiến' } },
     { v:'trouble', t:{ ja:'トラブル・緊急時', en:'Trouble & emergencies', vi:'Sự cố & khẩn cấp' },
@@ -7293,7 +7315,7 @@
         how:{ja:'記入した在庫チェック表（食材①②・ドリンク・消耗品）を撮影して提出してください',en:'Photograph the filled stock check sheets (ingredients, drinks, supplies)',vi:'Chụp các bảng kiểm kho đã điền (nguyên liệu, đồ uống, vật tư)'} },
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
       { id:'nikkei_close', name:{ja:'日計レポート（レジクローズ）',en:'Daily sales report (register close)',vi:'Báo cáo doanh thu (đóng ca)'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
-        how:{ja:'レジクローズ時に日計レポートを出力し、現金売上の封筒と合わせて撮影・提出してください（★封筒やメモでレポートの数字を隠さないでください＝写真から数字を自動で読み取り、総括表の入力に入れます）',en:'Print the daily report at register close and submit it with the cash envelope (keep all numbers visible — they are read automatically into the summary sheet)',vi:'In báo cáo lúc đóng ca và nộp ảnh cùng phong bì tiền mặt (không che các con số — số sẽ được đọc tự động vào bảng tổng kết)'} },
+        how:{ja:'レジクローズ時に日計レポートを出力し、現金売上の封筒と合わせて撮影・提出してください（★封筒やメモでレポートの数字を隠さないでください＝写真から数字を自動で読み取り、日報の入力に入れます）',en:'Print the daily report at register close and submit it with the cash envelope (keep all numbers visible — they are read automatically into the summary sheet)',vi:'In báo cáo lúc đóng ca và nộp ảnh cùng phong bì tiền mặt (không che các con số — số sẽ được đọc tự động vào bảng tổng kết)'} },
       /* ★現金売上・チップの写真（2026-09-02 常山さん経由・m.taigaさんのご要望）。
          これまでオープン写真の欄に相乗りで上げられていた＝専用の項目を用意し、中間報告の画面からも飛べるようにする */
       { id:'genkin_photo', name:{ja:'現金売上の写真',en:'Cash sales photo',vi:'Ảnh tiền mặt'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
@@ -7305,7 +7327,7 @@
          （最初は写真置き場で作ったが、実物のレジ画面を見て「入力そのものの置き換え」と判明→フォームに変更） */
       { id:'kinshu', name:{ja:'金種別入力（レジクローズ）',en:'Cash denomination count',vi:'Kiểm đếm mệnh giá'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'kinshu', linkApp:'kinshu',
         how:{ja:'レジクローズ時に、お札・硬貨の枚数を入力してください（合計と差異は自動で計算されます）',en:'Enter bill and coin counts at register close (totals auto-calculated)',vi:'Nhập số tờ/đồng lúc đóng ca (tự tính tổng)'} },
-      { id:'nippou',     name:{ja:'総括表',en:'Summary sheet',vi:'Bảng tổng kết'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
+      { id:'nippou',     name:{ja:'日報',en:'Daily report',vi:'Báo cáo ngày'},                oblig:'required', freq:'daily', due:'12:00', dueNextDay:true, target:'all', hqReview:'each', detect:'sk', linkApp:'soukatsu' }, // 閉店後〜翌日午前中まで（店舗ごとに開店時間が違うため一律「翌日午前中」）
       /* ★気づきの報告を、1日の最後に置く（2026-08-12 神田さんのご指摘）。
          これまで日報の中に「清掃・特記事項」という自由入力があり、
          「気づきの報告」と同じことを2か所で書く形になっていた。日報側を外し、こちらに一本化する。
@@ -7954,7 +7976,7 @@
       <div class="card">
         <h3>${L({ ja:'日次・必須の提出状況（店舗別・直近7日）', en:'Daily required submissions (last 7 days)', vi:'Mục bắt buộc hằng ngày (7 ngày)' })}</h3>
         <div class="hint" style="display:block;margin:2px 0 8px">${L({
-          ja:'必須の日次提出物だけを数えています（任意（店舗運用）と週次・月次は分母に入れません。週次・月次は下のカード、任意の提出は提出履歴で見られます）。●=全部提出（総括表もアプリ入力）／○=全部提出（総括表はシートからの取込）／数字=提出できた数（緑系=総括表は取込）／✗=ゼロ／休=定休日。右の率は今日を除いた6日ぶんです。',
+          ja:'必須の日次提出物だけを数えています（任意（店舗運用）と週次・月次は分母に入れません。週次・月次は下のカード、任意の提出は提出履歴で見られます）。●=全部提出（日報もアプリ入力）／○=全部提出（日報はシートからの取込）／数字=提出できた数（緑系=日報は取込）／✗=ゼロ／休=定休日。右の率は今日を除いた6日ぶんです。',
           en:'Required daily items only (optional/weekly/monthly are not in the denominator). ●=all (report via app) / ○=all (report imported from sheet) / number=partial / ✗=none / –=holiday. Rate excludes today.',
           vi:'Chỉ mục bắt buộc hằng ngày. ●=đủ (app) / ○=đủ (nhập từ bảng) / số=một phần / ✗=không / –=nghỉ.' })}</div>
         <div style="display:flex;align-items:center;gap:2px;padding:4px 0 6px;border-bottom:1px solid #eee">
@@ -8444,7 +8466,7 @@
           if (Array.isArray(r.kintai) && r.kintai.length) parts.push(L({ ja:'勤怠', en:'Attendance', vi:'Chấm công' }) + '：' + skKintaiText_(r.kintai));
         }
         if (!parts.length) return;
-        add('sknote', { ja:'総括表の特記', en:'Report notes', vi:'Ghi chú báo cáo' },
+        add('sknote', { ja:'日報の特記', en:'Report notes', vi:'Ghi chú báo cáo' },
           Number(r.t) || 0, r.store, mdLabel(r.date), parts.join('\n'), []);
       });
       // 金種別入力（レジクローズ・長堀橋トライアル）＝レジ内現金と差異の要約
@@ -8580,7 +8602,7 @@
         ${list.length ? rowsHtml : `<div class="muted">${L({ja:'ありません',en:'None',vi:'Không có'})}</div>`}
         ${!showDone ? `<p class="hint" style="display:block;margin-top:8px">${L({ja:'※ 未対応はすべて表示しています（古いものは下にあります）。対応済みは上のチェックで表示できます。',en:'All unhandled items are shown (older ones below). Toggle above to include done.',vi:'Hiển thị tất cả mục chưa xử lý.'})}</p>` : ''}
       </div>
-      <p class="hint" style="display:block">${L({ja:'※ 提出物（1食目写真・総括表など）の提出状況は「加盟店・提出物管理」でご確認ください。',en:'For submission status, see “Submissions”.',vi:'Xem trạng thái nộp tại “Nộp tài liệu”.'})}</p>`;
+      <p class="hint" style="display:block">${L({ja:'※ 提出物（1食目写真・日報など）の提出状況は「加盟店・提出物管理」でご確認ください。',en:'For submission status, see “Submissions”.',vi:'Xem trạng thái nộp tại “Nộp tài liệu”.'})}</p>`;
   };
 
   /* ---------- 本部：バックエンド設定（専用の保存先へ切り替える） ---------- */
@@ -10699,7 +10721,7 @@
       const rep = { kind:'kinshu', store, item: dateKeyFor(store, t), note: JSON.stringify(payload), photos: [], t };
       try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
       lastSync = t; // 直後の重複同期を抑止（postReportがforce同期）
-      toast(L({ ja:'金種別入力を提出しました。差異は総括表の「レジ誤差」に自動で入ります。', en:'Submitted. The difference pre-fills the daily report.', vi:'Đã gửi. Chênh lệch tự điền vào báo cáo ngày.' }));
+      toast(L({ ja:'金種別入力を提出しました。差異は日報の過不足に自動で入ります。', en:'Submitted. The difference pre-fills the daily report.', vi:'Đã gửi. Chênh lệch tự điền vào báo cáo ngày.' }));
       go('/app/kyou');
       postReport(rep);
     };
@@ -11488,7 +11510,8 @@
         }, {}),
         by: submitterLabel(), t: Date.now()
       };
-      SK_POS_FIELDS.forEach(k => { delete rec[k]; }); rec.posWait = true;
+      if (skNoUsen_(rec.store)) { rec.emoney = v('sk_emoney'); rec.kake = v('sk_kake'); }   // ★レジの無い店＝売上関連は日報の値がそのまま総括表へ（2026-10-15）
+      else { SK_POS_FIELDS.forEach(k => { delete rec[k]; }); rec.posWait = true; }
       { const kt = Array.from({ length: SK_KT_ROWS }, (_, i) => ({ n: v(`sk_kt${i}_n`), s: v(`sk_kt${i}_s`), e: v(`sk_kt${i}_e`) })).filter(k => k.n && (k.s || k.e));
         if (kt.length) { rec.kintai = kt; if (!rec.staffct) rec.staffct = String(kt.length); if (!rec.hours) { const hh = skKintaiHours_(kt); if (hh > 0) rec.hours = String(hh); } } }   // ★レジの項目はアプリで持たない（2026-10-15 神田さん「USENで取れる項目はアプリから削除」）＝売上はレジ／総括表から入る
       const 直した = getSk().some(r => r.store === rec.store && r.date === rec.date);   // 同じ日の提出があった＝直し
@@ -11497,8 +11520,8 @@
       lastSync = rec.t;
       skEditClear_();   // 「直す」で開いていた指定を外す＝次に開くときは本日の入力に戻る
       toast(直した
-        ? L({ ja:'総括表を直しました。最新の内容に置き換わりました', en:'Daily report updated.', vi:'Đã cập nhật báo cáo.' })
-        : L({ ja:'総括表を提出しました。ありがとうございます！', en:'Daily report submitted. Thank you!', vi:'Đã nộp báo cáo. Cảm ơn!' }));
+        ? L({ ja:'日報を直しました。最新の内容に置き換わりました', en:'Daily report updated.', vi:'Đã cập nhật báo cáo.' })
+        : L({ ja:'日報を提出しました。ありがとうございます！', en:'Daily report submitted. Thank you!', vi:'Đã nộp báo cáo. Cảm ơn!' }));
       render();
       const skStore = rec.store, skT = rec.t, skPayload = Object.assign({}, rec); delete skPayload.store; delete skPayload.t;
       postReport({ kind:'soukatsu', store: skStore, note: JSON.stringify(skPayload), t: skT });
