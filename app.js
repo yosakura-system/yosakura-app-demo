@@ -7804,7 +7804,7 @@
   const KYOU_SPLIT_MID = ['牛カツ世桜 長堀橋店'];   // 中間業務を lunch後／dinner前 に分ける店
   const kyouSlotOf = (m) => {
     if (m.slot && KYOU_SLOTS.some(x => x[0] === m.slot)) return m.slot;
-    if (m.dueNextDay) return 'shime';
+    if (m.dueNextDay) return 'asa';   // ★翌日締切（総括表＝翌日12時まで）は朝に出す＝OPEN業務（開店前）の帯（2026-10-15 神田さん「閉店後の中にある」）
     const ck = { open:'asa', idle:'hiru', sakura:'yoru', hygiene:'yoru', close:'shime' };
     if (m.ckMode && ck[m.ckMode]) return ck[m.ckMode];
     const byId = { openphoto:'asa', chukan:'hiru', nikkei_idle:'hiru', nikkei_close:'shime', genkin_photo:'shime', tip_photo:'shime', kinshu:'shime', kizuki:'shime', zaiko:'shime' };

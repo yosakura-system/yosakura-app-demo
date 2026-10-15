@@ -1126,7 +1126,7 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
   const S_GYU = '牛カツ世桜 長堀橋店';
   const kyou = renderView('kyou','manager',S_GYU,'ja');
   // 出す順＝開店前 → 営業中 → 閉店後
-  const order = ['オープン写真','オープンチェックリスト','アイドルタイムチェックリスト','桜チェックリスト','クローズチェックリスト','総括表'];
+  const order = ['オープン写真','オープンチェックリスト','総括表','アイドルタイムチェックリスト','桜チェックリスト','クローズチェックリスト'];   // 総括表＝前日分を開店前に（2026-10-15）
   let prev = -1, ordered = true;
   order.forEach(name => { const i = kyou.indexOf(name); if (i < 0 || i < prev) ordered = false; prev = i; });
   ok(ordered, '日次の提出物が「出す順」に並ぶ（開店前→営業中→閉店後）');
@@ -5715,7 +5715,8 @@ console.log('== 今日出すもの＝時間帯（朝／昼／夜／締め）で�
   ok((h.match(/<details class="kslot"[^>]* open>/g) || []).length === 1, 'いまの時間帯だけが開いている（ほかは畳む）');
   const pos = (re) => { const m = re.exec(h); return m ? m.index : -1; };
   ok(pos(/data-kslot="asa"/) < pos(/オープン写真/) && pos(/オープン写真/) < pos(/data-kslot="hiru"/), 'オープン写真は「朝」の帯に入る');
-  ok(pos(/data-kslot="shime"/) < pos(/クローズチェックリスト/) && pos(/data-kslot="shime"/) < pos(/総括表/), 'クローズチェックリスト・総括表は「締め」の帯に入る');
+  ok(pos(/data-kslot="shime"/) < pos(/クローズチェックリスト/), 'クローズチェックリストは「締め」の帯に入る');
+  ok(pos(/data-kslot="asa"/) < pos(/総括表/) && pos(/総括表/) < pos(/data-kslot="hiru"/), '総括表（翌日12時まで）は「OPEN業務（開店前）」の帯に入る（2026-10-15）');
   ok(pos(/data-kslot="hiru"/) < pos(/アイドルタイムチェックリスト/) && pos(/アイドルタイムチェックリスト/) < pos(/data-kslot="yoru"/), 'アイドルタイムは「昼」の帯に入る');
   ok(/kslot-n/.test(h), '畳んだ帯にも残り件数が見える（隠して漏らさない）');
   const w = renderView('shukan', 'manager', S, 'ja');
