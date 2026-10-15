@@ -377,6 +377,30 @@ function sk_棚卸表合計_(ss) {
   }
   return n ? sum : null;
 }
+/* ★2026-10-15 勤怠の名簿（総括表「勤怠表」タブ S9:T59＝氏名・雇用形態）をアプリへ写す（kind:'staffm'・店舗×月・最新が正）。
+   アプリの日報「勤怠（任意）」で氏名を名簿から選ぶため。★時給の列（U）は読まない（給与に関わるため） */
+function sk_名簿を読む_(ss, ym) {
+  var sheets = ss.getSheets(), sh = null;
+  for (var i = 0; i < sheets.length; i++) if (sheets[i].getName().indexOf('勤怠表') !== -1) { sh = sheets[i]; break; }
+  if (!sh || sh.getLastRow() < 9) return null;
+  var vals = sh.getRange(9, 19, 51, 2).getValues();
+  var names = [];
+  vals.forEach(function (r) { var n = String(r[0] == null ? '' : r[0]).trim(); if (n) names.push({ n: n, ty: String(r[1] == null ? '' : r[1]).trim() }); });
+  if (!names.length) return null;
+  return { ym: ym.slice(0, 4) + '-' + ym.slice(4, 6), names: names, src: SK_SRC_TAG };
+}
+function sk_名簿既存_() {
+  var sh = getSheet(); var last = sh.getLastRow(); var map = {};
+  if (last < 2) return map;
+  var vals = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i][2]) !== 'staffm') continue;
+    var t = Number(vals[i][1]) || 0; var p; try { p = JSON.parse(vals[i][6] || '{}'); } catch (e) { continue; }
+    var k = String(vals[i][3]) + '|' + (p.ym || String(vals[i][4]));
+    if (!map[k] || t >= map[k].t) map[k] = { t: t, canon: JSON.stringify(p.names || []) };
+  }
+  return map;
+}
 function sk_月次既存_() {
   var sh = getSheet();
   var last = sh.getLastRow();
@@ -406,6 +430,7 @@ function sk_実行_(書き込む, 全期間, 予算ms) {
   var list = sk_設定_();
   var 既存 = sk_既存の値_();
   var 月次既存 = sk_月次既存_();
+  var 名簿既存 = sk_名簿既存_();
   var sh = 書き込む ? getSheet() : null;
   var 結果 = { 新規: 0, 更新: 0, 変わらず: 0, 月次: { 新規: 0, 更新: 0, 変わらず: 0, アプリ優先: 0 }, 店舗: {}, エラー: [] };
   var 済み = (全期間 && 書き込む) ? sk_済み_() : [];
@@ -443,6 +468,12 @@ function sk_実行_(書き込む, 全期間, 予算ms) {
             }
           }
         } catch (e) { 結果.エラー.push({ 店舗: src.store, 理由: '月次（棚卸）: ' + String(e.message || e) }); }
+        /* ★勤怠の名簿（勤怠表タブ）＝ブックごとに1件・変わったときだけ追記（2026-10-15） */
+        try {
+          var nm = sk_名簿を読む_(ss, b.ym);
+          if (nm) { var nk = src.store + '|' + nm.ym, ncanon = JSON.stringify(nm.names);
+            if (!名簿既存[nk] || 名簿既存[nk].canon !== ncanon) { 結果.名簿 = (結果.名簿 || 0) + 1; if (書き込む) { 追記.push([Utilities.getUuid(), Date.now(), 'staffm', src.store, nm.ym, '', JSON.stringify(nm), '[]']); 名簿既存[nk] = { t: Date.now(), canon: ncanon }; } } }
+        } catch (e) { 結果.エラー.push({ 店舗: src.store, 理由: '勤怠の名簿: ' + String(e.message || e) }); }
         sk_台帳を読む_(ss, b.ym).forEach(function (d) {
           /* ★日別タブの詳細は「直近3日」だけ毎時読む（31タブ×全店を毎時読むと時間切れになるため）。
              全期間の取り込みでは全日読む＝過去日の項目もこの1回で埋まる */

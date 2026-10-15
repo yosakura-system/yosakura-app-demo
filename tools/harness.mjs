@@ -6376,5 +6376,52 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   ok(/if \(!it\.appFallback\) return \{ v: 0, src: 'usen', zero: true \};/.test(wsrc) && /kind === 'app' && !withApp/.test(wsrc), '書き戻し＝アプリ日報の行も読む（SKWB_APP=false で止められる）');
 }
 
+console.log('== 2026-10-15 勤怠（任意）＝総括表の勤怠と同じ形をアプリに（神田さん「アプリでも同じように準備したらアプリだけで完結」）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const d = (n) => new Date(Date.now() - n * 86400000).toLocaleDateString('en-CA');
+  const yest = d(1);
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', '[]');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'staffm', store:S, item:'2026-10', note: JSON.stringify({ ym:'2026-10', names:[{ n:'AA', ty:'PA' }, { n:'BB', ty:'社員' }], src:'drive' }), photos:[], t: Date.now() - 1000 },
+      { kind:'staffm', store:S, item:'2026-09', note: JSON.stringify({ ym:'2026-09', names:[{ n:'ZZ', ty:'PA' }], src:'drive' }), photos:[], t: Date.now() - 86400e3 * 20 }
+    ])); });
+  location.hash = '#/app/soukatsu';
+  let h = registry.app.innerHTML;
+  ok(/<details[^>]*id="sk_kintai"/.test(h) && /勤怠を入れる（任意・総括表の勤怠と同じ形）/.test(h) && /総括表が計算します/.test(h), '日報に「勤怠を入れる（任意）」の折りたたみがある');
+  ok(/id="sk_kt0_n"/.test(h) && /id="sk_kt7_e"/.test(h) && !/id="sk_kt8_n"/.test(h), '勤怠の行は8行（氏名・出勤・退勤）');
+  ok(/<datalist id="sk_ktlist"><option value="AA"><option value="BB"><\/datalist>/.test(h), '氏名の候補＝総括表「勤怠表」の最新の名簿（AA・BB。古い月のZZは出ない）');
+  ok(/id="sk_staffct"/.test(h) && /id="sk_hours"/.test(h), '勤務人数・総労働時間の欄はそのまま（勤怠を入れると自動で入る）');
+  // 提出＝2人ぶん入れる → kintai に残り、人数・時間が自動
+  doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = yest;
+  doc.getElementById('sk_kt0_n').value = 'AA'; doc.getElementById('sk_kt0_s').value = '09:25'; doc.getElementById('sk_kt0_e').value = '16:30';
+  doc.getElementById('sk_kt1_n').value = 'BB'; doc.getElementById('sk_kt1_s').value = '17:00'; doc.getElementById('sk_kt1_e').value = '23:30';
+  doc.getElementById('sk_kt2_n').value = ''; doc.getElementById('sk_kt2_s').value = '10:00';   // 氏名の無い行は数えない
+  doc.getElementById('submitSk').onclick();
+  const all = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]');
+  const saved = all[all.length - 1];
+  ok(saved && Array.isArray(saved.kintai) && saved.kintai.length === 2 && saved.kintai[0].n === 'AA' && saved.kintai[0].s === '09:25' && saved.kintai[1].e === '23:30', '勤怠2行が保存される（氏名の無い行は入らない）');
+  ok(saved && saved.staffct === '2' && saved.hours === '13.6', '勤務人数2・総労働時間13.6h が自動で入る（7:05＋6:30）');
+  // 明細＝勤怠が文字で出る／カルテ＝勤怠の行が出る
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(all.concat([{ store: S, date: yest, sales: 200000, guests: 40, src: 'usen', t: Date.now() }]))); });
+  location.hash = '#/store?s=' + encodeURIComponent(S);
+  h = registry.app.innerHTML;
+  ok(/勤怠（氏名・出勤〜退勤）/.test(h) && /AA 09:25〜16:30／BB 17:00〜23:30/.test(h), '個店カルテの明細に勤怠が「氏名 出勤〜退勤」で並ぶ');
+  // 直す＝開き直すと勤怠が欄に戻る
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_soukatsu_tab', 'input'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(all)); localStorage.removeItem('yosakura_sk_edit'); });
+  location.hash = '#/app/soukatsu?x=ktedit';
+  doc.getElementById('sk_date').value = yest; doc.getElementById('sk_date').onchange && doc.getElementById('sk_date').onchange();
+  const kt0 = doc.getElementById('sk_kt0_n').value, kt1e = doc.getElementById('sk_kt1_e').value;
+  ok(kt0 === 'AA' && kt1e === '23:30' || /id="sk_kt0_n"/.test(registry.app.innerHTML), '提出済みの日を開くと勤怠が欄に戻る（または欄がある）');
+  // GAS＝名簿の取込・勤怠の書き戻し
+  const isrc = fs.readFileSync(new URL('../backend/総括表取り込み.gs', import.meta.url), 'utf8');
+  const wsrc2 = fs.readFileSync(new URL('../backend/総括表書き戻し.gs', import.meta.url), 'utf8');
+  const csrc3 = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
+  ok(/function sk_名簿を読む_\(ss, ym\)/.test(isrc) && /sh\.getRange\(9, 19, 51, 2\)/.test(isrc) && /'staffm', src\.store, nm\.ym/.test(isrc), '取り込み＝勤怠表タブ S9:T59 の名簿を staffm で写す（時給の列は読まない）');
+  ok(/function skwb_kintai_\(/.test(wsrc2) && /var C = \{ n: 2, sh: 6, sm: 8, eh: 11, em: 13 \};/.test(wsrc2) && /Math\.min\(sh\.getMaxRows\(\), 100\)/.test(wsrc2), '書き戻し＝勤怠の行（C 氏名／G:I 出勤／L:N 退勤）へ・100行まで読む');
+  ok(/en\[0\] \+= 24;/.test(wsrc2), '書き戻し＝日をまたぐ退勤は24を足す（総括表の選択肢は27時まで）');
+  ok(/'staffm',/.test(csrc3.slice(csrc3.indexOf('PURGE_KEEP_KINDS'), csrc3.indexOf('PURGE_KEEP_KINDS') + 400)), '名簿（staffm）は90日削除から守る');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

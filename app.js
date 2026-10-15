@@ -827,6 +827,13 @@
      「USENレジで回収できる項目はアプリ側からも削除。ややこしいので」）。レジ店はUSENの取込、レジの無い店は総括表の取込から入る。
      日報の行は posWait:true の印＝売上が無くても消さず、レジ（総括表）の行が来たらその値を重ねる（skClean） */
   const SK_POS_FIELDS = ['sales', 'guests', 'net', 'err', 'disc', 'cash', 'card'];
+  /* ★勤怠（任意）＝総括表の勤怠と同じ形（氏名・出勤・退勤）。合計時間・外時間・金額は総括表の式が出す＝アプリでは持たない。
+     氏名の候補は総括表「勤怠表」タブの名簿（総括表取り込み.gs が kind:'staffm' で写す）。
+     2026-10-15 神田さん「勤怠は完全任意。総括表に直接入力して使っている方もいたので、アプリでも同じように準備したらアプリだけで完結する」 */
+  const SK_KT_ROWS = 8;
+  const skStaffNames_ = (store) => { try { const rows = getReports().filter(x => x && x.kind === 'staffm' && x.store === store).sort((a, b) => (Number(b.t) || 0) - (Number(a.t) || 0)); const p = rows.length ? parseNote(rows[0].note) : null; return (p && Array.isArray(p.names)) ? p.names.map(x => String(x.n || '').trim()).filter(Boolean) : []; } catch (e) { return []; } };
+  const skKintaiText_ = (arr) => Array.isArray(arr) ? arr.map(k => `${k.n || ''} ${k.s || ''}〜${k.e || ''}`.trim()).join('／') : '';
+  const skKintaiHours_ = (arr) => { let h = 0; (arr || []).forEach(k => { const a = /^(\d{1,2}):(\d{2})$/.exec(k.s || ''), b = /^(\d{1,2}):(\d{2})$/.exec(k.e || ''); if (!a || !b) return; let m = (Number(b[1]) * 60 + Number(b[2])) - (Number(a[1]) * 60 + Number(a[2])); if (m < 0) m += 1440; h += m / 60; }); return Math.round(h * 10) / 10; };
   // 総括表＝正規化（skClean）まで含めて1回で済ませる（日付が変わったら作り直す）
   let _skCache = null;
   const getSk = () => {
@@ -5196,6 +5203,16 @@
         <p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 仕入率＝当月の仕入合計÷売上合計。毎日、仕入の3欄（税込）を入れると税抜合計から自動で出ます（率の手入力は不要です）。在庫まで含めた正式な原価率は、月締めの「数値・原価率」画面で計算します。', en:'Purchase ratio = month purchases ÷ month sales, calculated automatically from the daily purchase amounts. The official cost ratio including stock is calculated on the monthly Numbers & Cost screen.', vi:'Tỷ lệ nhập hàng = tổng nhập ÷ tổng doanh thu trong tháng, tự tính từ số nhập hàng mỗi ngày. Giá vốn chính thức (gồm tồn kho) tính ở màn hình số liệu tháng.' })}</p>
         <label class="fld"><span>${L({ ja:'過不足（現金）の理由', en:'Reason for cash difference', vi:'Lý do chênh lệch tiền mặt' })}</span><input type="text" id="sk_errnote" placeholder="${L({ja:'差がある場合のみ',en:'only if there is a difference',vi:'chỉ khi có chênh lệch'})}"></label>
 
+        <details class="card-sub" id="sk_kintai" style="margin:10px 0">
+          <summary style="cursor:pointer;font-weight:600">${L({ ja:'勤怠を入れる（任意・総括表の勤怠と同じ形）', en:'Attendance (optional, same as the summary sheet)', vi:'Chấm công (tùy chọn, giống bảng tổng kết)' })}</summary>
+          <p class="hint" style="display:block;margin:6px 0 8px">${L({ ja:'氏名を選んで、出勤・退勤の時刻を入れてください。合計時間・外時間・金額は総括表が計算します。別で人件費を管理している店舗は入れなくて大丈夫です。', en:'Pick the name and enter clock-in / clock-out. Hours and pay are calculated by the summary sheet. Skip if labor is managed elsewhere.', vi:'Chọn tên và nhập giờ vào / ra. Giờ và tiền lương do bảng tổng kết tính. Bỏ qua nếu quản lý nhân sự ở nơi khác.' })}</p>
+          <datalist id="sk_ktlist">${skStaffNames_(vis[0]).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+          ${Array.from({ length: SK_KT_ROWS }, (_, i) => `<div class="sk-grid">
+            <label class="fld"><span>${L({ ja:'氏名', en:'Name', vi:'Tên' })} ${i + 1}</span><input type="text" id="sk_kt${i}_n" list="sk_ktlist" placeholder="${L({ ja:'名簿から', en:'from roster', vi:'từ danh sách' })}"></label>
+            <label class="fld"><span>${L({ ja:'出勤', en:'In', vi:'Vào' })}</span><input type="time" id="sk_kt${i}_s"></label>
+            <label class="fld"><span>${L({ ja:'退勤', en:'Out', vi:'Ra' })}</span><input type="time" id="sk_kt${i}_e"></label>
+          </div>`).join('')}
+        </details>
         <div class="idlabel" style="margin-top:14px">${L({ ja:'勤怠・ロス（総括表の項目）', en:'Staffing & loss (summary-sheet items)', vi:'Nhân sự & hao hụt (mục bảng tổng kết)' })}</div>
         <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'入れるのは元の数字だけです。人時生産性・人件費率は自動で計算されます。', en:'Enter base numbers only; productivity and labor % are calculated automatically.', vi:'Chỉ nhập số gốc; năng suất và % nhân sự được tính tự động.' })}</p>
         <div class="sk-grid">
@@ -5750,6 +5767,7 @@
     { k:'supply',  t:{ ja:'消耗品金額', en:'Supplies', vi:'Vật tư tiêu hao' },  f:'yen' },
     { k:'unagi',   t:{ ja:'鰻の使用尾数', en:'Eel used', vi:'Số lươn đã dùng' }, f:'num' },
     { k:'errnote', t:{ ja:'過不足の理由', en:'Cash difference reason', vi:'Lý do chênh lệch' }, f:'txt' },
+    { k:'kintai',  t:{ ja:'勤怠（氏名・出勤〜退勤）', en:'Attendance (name, in–out)', vi:'Chấm công (tên, vào–ra)' }, f:'kintai', opt:true },
     /* 2026-08-26 構築MTGの決定「日報・総括表はアプリ入力を起点に一本化」で足した項目。
        入れるのは元の数字だけ。人時生産性・人件費率は計算で出す＝入力させない。 */
     { k:'staffct',   t:{ ja:'勤務人数', en:'Staff on duty', vi:'Số NV làm việc' },            f:'num' },
@@ -5800,7 +5818,7 @@
   // 合計は「国」だけを足す。新規・リピートは同じお客様を別の見方で数えたものなので、
   // 一緒に足すと人数が二重になる
   const ctySum = (r, f) => SK_COUNTRIES.reduce((a, cn) => a + numOr0((ctyOf(r)[cn.k] || {})[f]), 0);
-  const skFmtVal = (f, v) => f === 'yen' ? yen(numOr0(v)) : f === 'pct' ? (numOr0(v).toFixed(1) + '%') : f === 'num' ? numOr0(v).toLocaleString('en-US') : esc(String(v));
+  const skFmtVal = (f, v) => f === 'yen' ? yen(numOr0(v)) : f === 'pct' ? (numOr0(v).toFixed(1) + '%') : f === 'num' ? numOr0(v).toLocaleString('en-US') : f === 'kintai' ? esc(skKintaiText_(v)) : esc(String(v));
   // 日報1件の全項目（未入力は「—」＝アップされたら自動で埋まる）
   function skFieldGrid(r) {
     // legacy＝旧形式の項目・opt＝店舗トライアルの項目。どちらも値が入っている日報でだけ表示する
@@ -8415,6 +8433,7 @@
           addP({ ja:'改善アクション', en:'Improvements', vi:'Cải thiện' }, r.action);
           addP({ ja:'ロスの内容', en:'Loss details', vi:'Chi tiết hao hụt' }, r.lossnote);
           addP({ ja:'過不足（現金）の理由', en:'Cash difference reason', vi:'Lý do chênh lệch tiền' }, r.errnote);
+          if (Array.isArray(r.kintai) && r.kintai.length) parts.push(L({ ja:'勤怠', en:'Attendance', vi:'Chấm công' }) + '：' + skKintaiText_(r.kintai));
         }
         if (!parts.length) return;
         add('sknote', { ja:'総括表の特記', en:'Report notes', vi:'Ghi chú báo cáo' },
@@ -11355,7 +11374,7 @@
         if (!rec) {
           if (note) note.style.display = 'none';
           if (!空にしてよい) return;
-          SK_FIELDS.map(f => f.k).concat(['cancelt', 'order', 'note']).forEach(k => { const el = byId('sk_' + k); if (el) el.value = ''; });
+          SK_FIELDS.map(f => f.k).concat(['cancelt', 'order', 'note']).forEach(k => { const el = byId('sk_' + k); if (el) el.value = ''; }); for (let i = 0; i < SK_KT_ROWS; i++) ['n', 's', 'e'].forEach(x => { const el = byId(`sk_kt${i}_${x}`); if (el) el.value = ''; });
           SK_COUNTRIES.concat(SK_VISITKIND).forEach(cn => {
             ['g', 'p'].forEach(x => { const el = byId('sk_cty_' + cn.k + '_' + x); if (el) el.value = ''; });
           });
@@ -11370,7 +11389,7 @@
            取込行のときは売上・客数だけを下書きとして入れ、累計の自動入力・他の欄はそのまま生かす */
         if (rec.src === 'drive' || rec.src === 'usen') {   // 取込行（総括表・USENレジ）＝売上・客数だけ下書きに
           if (空にしてよい) {
-            SK_FIELDS.map(f => f.k).concat(['cancelt', 'order', 'note']).forEach(k => { const el = byId('sk_' + k); if (el) el.value = ''; });
+            SK_FIELDS.map(f => f.k).concat(['cancelt', 'order', 'note']).forEach(k => { const el = byId('sk_' + k); if (el) el.value = ''; }); for (let i = 0; i < SK_KT_ROWS; i++) ['n', 's', 'e'].forEach(x => { const el = byId(`sk_kt${i}_${x}`); if (el) el.value = ''; });
             SK_COUNTRIES.concat(SK_VISITKIND).forEach(cn => {
               ['g', 'p'].forEach(x => { const el = byId('sk_cty_' + cn.k + '_' + x); if (el) el.value = ''; });
             });
@@ -11394,6 +11413,7 @@
         }
         set('sk_date', rec.date); if (rec.store) sEl.value = rec.store;   // どの日・どの店舗を直しているかを欄にも出す
         SK_FIELDS.map(f => f.k).concat(['cancelt', 'order', 'note']).forEach(k => set('sk_' + k, rec[k]));
+        for (let i = 0; i < SK_KT_ROWS; i++) { const k = (Array.isArray(rec.kintai) ? rec.kintai[i] : null) || {}; set(`sk_kt${i}_n`, k.n || ''); set(`sk_kt${i}_s`, k.s || ''); set(`sk_kt${i}_e`, k.e || ''); }
         SK_COUNTRIES.concat(SK_VISITKIND).forEach(cn => {
           const c = (rec.cty && typeof rec.cty === 'object') ? rec.cty[cn.k] : null;
           set('sk_cty_' + cn.k + '_g', c ? c.g : ''); set('sk_cty_' + cn.k + '_p', c ? c.p : '');
@@ -11468,7 +11488,9 @@
         }, {}),
         by: submitterLabel(), t: Date.now()
       };
-      SK_POS_FIELDS.forEach(k => { delete rec[k]; }); rec.posWait = true;   // ★レジの項目はアプリで持たない（2026-10-15 神田さん「USENで取れる項目はアプリから削除」）＝売上はレジ／総括表から入る
+      SK_POS_FIELDS.forEach(k => { delete rec[k]; }); rec.posWait = true;
+      { const kt = Array.from({ length: SK_KT_ROWS }, (_, i) => ({ n: v(`sk_kt${i}_n`), s: v(`sk_kt${i}_s`), e: v(`sk_kt${i}_e`) })).filter(k => k.n && (k.s || k.e));
+        if (kt.length) { rec.kintai = kt; if (!rec.staffct) rec.staffct = String(kt.length); if (!rec.hours) { const hh = skKintaiHours_(kt); if (hh > 0) rec.hours = String(hh); } } }   // ★レジの項目はアプリで持たない（2026-10-15 神田さん「USENで取れる項目はアプリから削除」）＝売上はレジ／総括表から入る
       const 直した = getSk().some(r => r.store === rec.store && r.date === rec.date);   // 同じ日の提出があった＝直し
       const arr = getSk(); arr.push(rec);
       try { saveSk(arr.slice(-60)); } catch (e) { saveSk(arr.slice(-20)); }
@@ -11530,7 +11552,7 @@
         // ★2026-09-08 追加＝newslike/newsread/newscmt（お知らせへの反応）。KEEP判断＝お知らせ本体と同じく恒久（Code.gsに追加）
         // ★2026-09-08 追加＝kinshu（金種別入力・レジクローズ）。KEEP判断＝90日で消えてよい（差異は総括表のレジ誤差に恒久で残る）
         // ★2026-10-01 追加＝nouhindraft（納品書写真のOCR下書き＝日報の「今日の納品書」）。KEEP判断＝90日で消えてよい
-        case 'chukan': case 'chukandraft': case 'skdraft': case 'nouhindraft': case 'gsnap': case 'handover':
+        case 'staffm': case 'chukan': case 'chukandraft': case 'skdraft': case 'nouhindraft': case 'gsnap': case 'handover':
         case 'newslike': case 'newsread': case 'newscmt': case 'kinshu': case 'commcmt': case 'zaiko': case 'zaikomaster': case 'zaikoorder':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;

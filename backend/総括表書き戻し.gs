@@ -196,7 +196,7 @@ function skwb_実行_(書き込む, days, only) {
       var ss = ssCache[book.id] || (ssCache[book.id] = SpreadsheetApp.openById(book.id));
       var sh = ss.getSheetByName(String(day));
       if (!sh) { 結果.止めた.push(store + ' ' + e.date + '：タブ「' + day + '」が無い'); return; }
-      var rng = sh.getRange(1, 1, Math.min(sh.getMaxRows(), 40), Math.min(sh.getMaxColumns(), 34));
+      var rng = sh.getRange(1, 1, Math.min(sh.getMaxRows(), 100), Math.min(sh.getMaxColumns(), 34));   // 100行＝勤怠の行（77〜89）まで
       var vals = rng.getValues(), fmls = rng.getFormulas(), notes = rng.getNotes();
       var cells = skwb_cells_(vals);
       /* アプリに売上合計だけあって現金・カードの内訳が無い日＝売上合計は式なので書けない（1日1回だけ知らせる） */
@@ -238,6 +238,8 @@ function skwb_実行_(書き込む, days, only) {
         }
         if (書き込む) 記録.push([new Date(), store, e.date, labelName, book.name, String(day), a1, cur, want, 済, srcName]);
       });
+      /* ★勤怠（アプリの日報・任意）＝総括表の勤怠の行へ（氏名・出勤の時/分・退勤の時/分。合計・外時間・金額は式）2026-10-15 */
+      if (e.app && Array.isArray(e.app.kintai) && e.app.kintai.length) skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);
     });
   });
   if (記録.length) logSh.getRange(logSh.getLastRow() + 1, 1, 記録.length, 記録[0].length).setValues(記録);
@@ -246,6 +248,41 @@ function skwb_実行_(書き込む, days, only) {
   return 結果;
 }
 
+/* 勤怠の行＝「氏名」の見出し（同じ行に「勤務時間」）の下、最大13行。列＝C 氏名／G 出勤の時／I 出勤の分／L 退勤の時／N 退勤の分（総括表Ver.3.0 で確認）。
+   1行を1単位で扱う＝氏名が空なら書く・同じ氏名で時刻も同じなら同じ・前回こちらが書いた氏名なら書き直す・それ以外はずれ（上書きしない） */
+function skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む) {
+  var norm = function (v) { return String(v == null ? '' : v).replace(/[\s　]/g, ''); };
+  var hdr = -1;
+  for (var r = 40; r < vals.length; r++) if (norm(vals[r][1]) === '氏名' && vals[r].some(function (x) { return norm(x).indexOf('勤務時間') !== -1; })) { hdr = r; break; }
+  if (hdr < 0) { 結果.止めた.push(store + ' ' + book.name + '：勤怠の「氏名」の見出しが見つからない'); return; }
+  var rows = [];
+  for (var r2 = hdr + 1; r2 < vals.length && rows.length < 13; r2++) { if (norm(vals[r2][1]) === '当日計' || norm(vals[r2][6]) === '時間計') break; rows.push(r2); }
+  var C = { n: 2, sh: 6, sm: 8, eh: 11, em: 13 };
+  var hm = function (x) { var m = String(x || '').match(/^(\d{1,2}):(\d{2})$/); return m ? [Number(m[1]), Number(m[2])] : null; };
+  e.app.kintai.slice(0, rows.length).forEach(function (k, i) {
+    var rr = rows[i]; var name = String(k.n || '').trim(); if (!name) return;
+    var st = hm(k.s), en = hm(k.e);
+    if (st && en && (en[0] < st[0] || (en[0] === st[0] && en[1] < st[1]))) en[0] += 24;   // 日をまたぐ退勤＝24を足す（総括表の選択肢は27時まで）
+    var want = { sh: st ? st[0] : null, sm: st ? st[1] : null, eh: en ? en[0] : null, em: en ? en[1] : null };
+    var a1 = skwb_a1_(rr, C.n); var key = book.name + '|' + day + '|' + a1;
+    var curName = String(vals[rr][C.n] == null ? '' : vals[rr][C.n]).trim();
+    var cur = curName === '' ? '（空欄）' : curName + ' ' + vals[rr][C.sh] + ':' + vals[rr][C.sm] + '〜' + vals[rr][C.eh] + ':' + vals[rr][C.em];
+    var row = { 店舗: store, 日付: e.date, 項目: '勤怠' + (i + 1), セル: day + '!' + a1, いま: cur, 書く値: name + ' ' + (k.s || '') + '〜' + (k.e || ''), 出どころ: 'アプリ日報' };
+    if (fmls[rr][C.n]) { row.結果 = '式なので書かない'; 結果.一覧.push(row); return; }
+    var sameTimes = ['sh', 'sm', 'eh', 'em'].every(function (f) { var cv = vals[rr][C[f]]; return want[f] == null ? (cv === '' || cv == null) : skwb_num_(cv) === want[f]; });
+    if (curName === '') { row.結果 = '書く'; 結果.書く++; }
+    else if (curName === name && sameTimes) { row.結果 = '同じ'; 結果.同じ++; 結果.一覧.push(row); return; }
+    else if (前回[key] != null && String(前回[key]) === curName) { row.結果 = '書き直す'; 結果.書き直す++; }
+    else { row.結果 = 'ずれ（上書きしない）'; 結果.ずれ++; }
+    結果.一覧.push(row);
+    var 済 = row.結果 === '書く' ? '書いた' : row.結果 === '書き直す' ? '書き直した' : 'ずれ';
+    if (書き込む && 済 !== 'ずれ') {
+      sh.getRange(rr + 1, C.n + 1).setValue(name);
+      ['sh', 'sm', 'eh', 'em'].forEach(function (f) { if (fmls[rr][C[f]]) return; sh.getRange(rr + 1, C[f] + 1).setValue(want[f] == null ? '' : want[f]); });
+    }
+    if (書き込む) 記録.push([new Date(), store, e.date, '勤怠' + (i + 1), book.name, String(day), a1, curName, name, 済, 'アプリ日報']);
+  });
+}
 /* ① 下見（書き込みなし）＝今月と前月ぶん */
 function 総括表書き戻し_下見() { return skwb_実行_(false, 40); }
 /* ② 書き込み実行 */
