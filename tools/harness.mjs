@@ -6478,6 +6478,8 @@ console.log('== 2026-10-15 納品書の読み取り（実物11件の回帰）と
   location.hash = '#/app/soukatsu?x=two';
   const h = registry.app.innerHTML;
   ok((h.match(/data-slip="/g) || []).length === 2, '1枚の写真に伝票2枚＝2枚とも並ぶ（同じ写真で1枚目が消えない）');
+  ok(/id="sk_slipnote"[^>]*color:#c0392b[^>]*>写真から読んだ金額です。送信の前に、伝票の合計と同じか必ず確認してください。</.test(h), '今日の納品書＝赤字1行「送信の前に必ず確認」（最後は人の目・2026-10-15）');
+  ok(/target === 'nouhin' \? `<p class="hint" id="nouhin_rednote" style="display:block;color:#c0392b/.test(code) && /伝票は1枚ずつ、合計の金額まで写してください。/.test(code), '納品書の写真の画面＝赤字1行「1枚ずつ・合計まで」');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);

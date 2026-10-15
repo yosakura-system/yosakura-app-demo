@@ -2262,7 +2262,7 @@
           <div class="idlabel" style="margin-top:0">${L({ ja:'今日の納品書', en:'Today’s delivery slips', vi:'Phiếu giao hàng hôm nay' })} <span class="muted" style="font-weight:400">${L({ ja:'（写真から自動・確認して直せます）', en:'(auto from photos · editable)', vi:'(tự động từ ảnh · có thể sửa)' })}</span></div>
           <div id="sk_slips">${skSlipsRowsHtml_()}</div>
           <button type="button" class="btn-sm" id="sk_slipadd">${L({ ja:'＋ 納品書を足す', en:'+ Add slip', vi:'+ Thêm phiếu' })}</button>
-          <p class="hint" style="display:block;margin:6px 0 0">${L({ ja:'※ 納品書の写真を出すと、仕入先と「8％対象」「10％対象」の税込額を読み取ってここに並びます。仕入先ごとに 食材／お酒／お酒以外 へ自動で振り分け、下の仕入3欄に合計が入ります（税抜への換算も自動）。読み取りが違えば直してください。「要確認」は税込か税抜か迷った伝票です。', en:'Submitted slip photos are read automatically (vendor, 8% / 10% amounts incl. tax) and split into food / alcohol / soft drinks below. Fix any misreads.', vi:'Ảnh phiếu được đọc tự động (nhà cung cấp, 8%/10%) và chia vào thực phẩm / rượu / đồ uống khác bên dưới.' })}</p>
+          <p class="hint" id="sk_slipnote" style="display:block;margin:6px 0 0;color:#c0392b;font-weight:600">${L({ ja:'写真から読んだ金額です。送信の前に、伝票の合計と同じか必ず確認してください。', en:'Amounts read from photos. Always check them against the slip total before sending.', vi:'Số tiền đọc từ ảnh. Luôn đối chiếu với tổng trên phiếu trước khi gửi.' })}</p>
         </div>`;
   const skSlipsRender_ = () => { const el = document.getElementById('sk_slips'); if (el) el.innerHTML = skSlipsRowsHtml_(); };
   const skSlipsApply_ = () => {
@@ -8244,6 +8244,7 @@
       <div class="card">
         <h3>${esc(title)} — ${esc(storeShort(store))}</h3>
         ${done ? `<p class="hint" style="display:block;color:#2a7">${period}</p>` : `<p class="hint" style="display:block">${esc(hint)}</p>`}
+        ${target === 'nouhin' ? `<p class="hint" id="nouhin_rednote" style="display:block;color:#c0392b;font-weight:600">${L({ ja:'伝票は1枚ずつ、合計の金額まで写してください。', en:'One slip per photo, with the total visible.', vi:'Mỗi ảnh một phiếu, chụp rõ tổng tiền.' })}</p>` : ''}
         ${photoSubIds().length > 1 ? `<div class="seg" data-seg="phtarget" style="margin:2px 0 12px">${
           photoSubIds().map(id => { const mm = getMasters().find(x => x.id === id) || {}; return `<button type="button" data-phtarget="${esc(id)}" class="${id===target?'on':''}">${esc(L(mm.name || id))}</button>`; }).join('')}</div>` : ''}
         <label class="fld"><span>${L({ja:'店舗',en:'Store',vi:'Cửa hàng'})}</span><select id="op_store">${visibleStores().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
