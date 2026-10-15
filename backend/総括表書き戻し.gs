@@ -268,7 +268,7 @@ function skwb_実行_(書き込む, days, only) {
       /* ★国別（レジの客層「国籍」＝伝票明細の集計 pcty）→ 顧客情報の「国」の行の下の組数・人数へ（2026-10-15 神田さん「レジ客層が主・転記するだけ」） */
       if (e.usen && e.usen.pcty) skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);
       /* ★仕入の内訳（アプリ日報の納品書 slips）→ 仕入れ内訳の仕入先の行へ（2026-10-15） */
-      if (e.app && Array.isArray(e.app.slips) && e.app.slips.length) skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果, 記録, 書き込む);
+      if (e.app && Array.isArray(e.app.slips) && e.app.slips.length && e.date >= String(getSetting_('SKWB_SLIPS_SINCE', '2026-10-16'))) skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果, 記録, 書き込む);
     });
   });
   if (記録.length) logSh.getRange(logSh.getLastRow() + 1, 1, 記録.length, 記録[0].length).setValues(記録);
@@ -344,6 +344,8 @@ function skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 
     });
   });
 }
+/* ★書くのは SKWB_SLIPS_SINCE（既定 2026-10-16）以降の日だけ＝それより前の日報の納品書は、読み取りを直す前（2026-10-15）の誤読のまま提出されている（イオン2,026・西原5,292など）。
+   古い値で「写真では○○円」のメモを付けないため */
 /* 仕入の内訳＝日別タブの「＜仕入れ内訳＞」の下。左＝フード（B列に仕入先名・金額は同じブロックの「合計」行の金額の列）、右＝ドリンク（L列に「名畑（酒10％）」など）。
    総括表の決まり＝仕入れはすべて税込で入力（仕入れ台帳で税抜に換算）＝納品書の税込額をそのまま入れる。
    仕入先ごとに合計して入れる（同じ日に同じ仕入先の伝票が2枚なら足す）。
