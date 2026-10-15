@@ -841,6 +841,9 @@
   /* ★勤怠（任意）＝総括表の勤怠と同じ形（氏名・出勤・退勤）。合計時間・外時間・金額は総括表の式が出す＝アプリでは持たない。
      氏名の候補は総括表「勤怠表」タブの名簿（総括表取り込み.gs が kind:'staffm' で写す）。
      2026-10-15 神田さん「勤怠は完全任意。総括表に直接入力して使っている方もいたので、アプリでも同じように準備したらアプリだけで完結する」 */
+  /* ★日報の日付の初期値（2026-10-15 神田さん「15日が最初から入っていて、今日の分を出すのか迷う」）＝12時前に開いたら前日。
+     営業日は朝5時で切り替わる（todayKey）ので、0〜5時は todayKey 自体が前日＝そのまま */
+  const skDefaultDate_ = () => { const t = todayKey(); if (new Date().getHours() >= 12) return t; const d = new Date(t + 'T12:00:00'); d.setDate(d.getDate() - 1); try { return d.toLocaleDateString('en-CA'); } catch (e) { return d.toISOString().slice(0, 10); } };
   const SK_KT_ROWS = 8;
   const skStaffNames_ = (store) => { try { const rows = getReports().filter(x => x && x.kind === 'staffm' && x.store === store).sort((a, b) => (Number(b.t) || 0) - (Number(a.t) || 0)); const p = rows.length ? parseNote(rows[0].note) : null; return (p && Array.isArray(p.names)) ? p.names.map(x => String(x.n || '').trim()).filter(Boolean) : []; } catch (e) { return []; } };
   const skKintaiText_ = (arr) => Array.isArray(arr) ? arr.map(k => `${k.n || ''} ${k.s || ''}〜${k.e || ''}`.trim()).join('／') : '';
@@ -2874,6 +2877,9 @@
      項目名をチェック単位とし、シートの細目は説明として下に出す。 */
   const CHECK_GROUPS = [
     { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
+      /* ★2026-10-15 神田さん「総括表の報告は翌日12時までなら、クローズでなく開店前に入れておくべき」＝前日分を朝に出す */
+      {ja:'前日の日報（アプリ）を出す',en:'Submit yesterday’s daily report (app)',vi:'Gửi báo cáo ngày hôm qua (ứng dụng)',
+       d:{ja:'翌日12時まで。入れるのは口コミ・チップ・昼のみ売上・過不足の理由・納品書の写真・所感（勤怠は任意）。売上・客数・国別はレジから自動で入っています'}},
       {ja:'手洗い・身だしなみ',en:'Handwash & grooming',vi:'Rửa tay & tác phong',
        d:{ja:'タイムカード打刻／手洗い（洗い場の手洗いPOP参照）／スタッフ全員の身だしなみ・手洗いを確認／開店準備中にお客様が見えたらお声がけ'}},
       {ja:'外観準備',en:'Exterior',vi:'Bên ngoài',
@@ -2954,7 +2960,7 @@
       {ja:'ゴミ出し',en:'Take out trash',vi:'Đổ rác',
        d:{ja:'袋をしっかり閉じて店舗前へ／段ボールは畳んで出す'}},
       {ja:'レジ締め',en:'Register close',vi:'Chốt quầy',
-       d:{ja:'売上レシートとレジの金額を必ず合わせてから総括表へ入力／日計レポート（取引別・分類別）を印刷／現金売上と日計レポートを封筒へ／TIPは別の封筒／写真を撮り金庫に保管'}},
+       d:{ja:'売上レシートとレジの金額を必ず合わせる（レジの全現金を入れて締める。売上は翌朝レジから自動で総括表へ）／日計レポート（取引別・分類別）を印刷／現金売上と日計レポートを封筒へ／TIPは別の封筒／写真を撮り金庫に保管'}},
       // 2026-08-12 神田さんのご指摘：チェックリスト・日報・気づき・写真はアプリで提出すると本部へ届くため、
       // GLINEへ送り直す作業は不要になった。店舗内で確認が要るレジ関係だけを残す。
       {ja:'レジ締めの確認を店舗内で共有',en:'Share register close in store',vi:'Chia sẻ chốt quầy trong quán',
@@ -5161,11 +5167,12 @@
           ja:'※ 売上・客数・純売上・現金・カード・値引き・レジ誤差・フード/ドリンク金額・国別のお客様は、アプリでは入力しません。USENレジのある店舗はレジの数字から翌朝、レジの無い店舗は総括表に入力された数字から自動で入ります。ここでは残りの項目＝口コミ・チップ・昼のみ売上・過不足の理由・仕入・勤怠（任意）・所感を入れて提出してください。',
           en:'Sales, guests, net sales, cash, card, discount, register error, food/drink amounts and guests by country are not entered in the app. Stores with a USEN POS get them from the POS the next morning; other stores from the summary sheet. Fill in the rest: reviews, tips, lunch-only sales, cash-difference reason, purchases, attendance (optional) and notes.',
           vi:'Doanh thu, số khách, DT thuần, tiền mặt, thẻ, giảm giá, sai lệch quầy, tiền món/đồ uống và khách theo quốc gia không nhập trong ứng dụng. Cửa hàng có POS USEN sẽ tự điền từ POS vào sáng hôm sau; cửa hàng khác từ bảng tổng kết. Hãy nhập phần còn lại: đánh giá, tip, DT buổi trưa, lý do chênh lệch, nhập hàng, chấm công (tùy chọn) và cảm nhận.' })}</p>
+        ${(!skEditTarget_().date && skDefaultDate_() !== today) ? `<p class="hint" id="sk_datenote" style="display:block;margin:-2px 0 8px;color:#8a6d3b">${L({ ja:`※ 日付は前日（${skDefaultDate_().slice(5).replace('-', '/')}）になっています＝前日分の日報として出します。きょうの分を出すときは日付を変えてください。`, en:`The date is set to yesterday (${skDefaultDate_().slice(5)}). Change it if you are submitting today’s report.`, vi:`Ngày đang là hôm qua (${skDefaultDate_().slice(5)}). Đổi ngày nếu bạn nộp báo cáo hôm nay.` })}</p>` : ''}
         ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの総括表から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
         ${gsnap ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:`※ 「口コミ 当日」は、Googleの口コミ件数（前日との差）から自動で入っています（対象日 ${gsnap._d}・現在の総数 ${gsnap.total}件）。違うときは直してから提出してください。`, en:`Reviews today was filled from the Google review count (day-over-day, as of ${gsnap._d}, total ${gsnap.total}). Correct if needed.`, vi:`Ô đánh giá hôm nay được điền từ số review Google (so với hôm trước, ${gsnap._d}, tổng ${gsnap.total}). Sửa nếu sai.` })}</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
-          <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || today}" max="${today}"></label>
+          <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || skDefaultDate_()}" max="${today}"></label>
           <input type="hidden" id="sk_sales"><input type="hidden" id="sk_guests">
         </div>
         <div class="stat-row" style="margin:2px 0 10px;display:none">

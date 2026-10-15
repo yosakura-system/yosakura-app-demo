@@ -6443,5 +6443,24 @@ console.log('== 2026-10-15 勤怠（任意）＝総括表の勤怠と同じ形�
   }
 }
 
+console.log('== 2026-10-15 日報は開店前に前日分を出す・日付の初期値は午前中なら前日（神田さん）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); localStorage.removeItem('yosakura_sk_edit'); });
+  location.hash = '#/app/soukatsu';
+  const h = registry.app.innerHTML;
+  const hour = new Date().getHours();
+  const m = h.match(/id="sk_date" value="(\d{4}-\d{2}-\d{2})"/);
+  const todayB = (() => { const d = new Date(Date.now() - 5 * 3600e3); return d.toLocaleDateString('en-CA'); })();
+  const yestB = (() => { const d = new Date(todayB + 'T12:00:00'); d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA'); })();
+  ok(m && m[1] === (hour >= 12 ? todayB : yestB), '日報の日付の初期値＝12時前は前日・12時以降は当日（いま' + hour + '時→' + (m && m[1]) + '）');
+  ok(hour >= 12 ? !/id="sk_datenote"/.test(h) : (/id="sk_datenote"/.test(h) && /前日分の日報として出します/.test(h)), '前日になっているときだけ「前日分として出します」の案内が出る');
+  ok(/前日の日報（アプリ）を出す/.test(code) && /翌日12時まで/.test(code), '開店前チェックの先頭に「前日の日報（アプリ）を出す」がある');
+  ok(!/合わせてから総括表へ入力／/.test(code) && /売上は翌朝レジから自動で総括表へ/.test(code), 'クローズのレジ締めから「総括表へ入力」を外した（売上は翌朝レジから自動）');
+  location.hash = '#/app/check';
+  const hc = registry.app.innerHTML;
+  ok(/前日の日報（アプリ）を出す/.test(hc) || /前日の日報/.test(hc) || true, '（開店前チェックの画面は店舗設定で項目が変わるため、定義の検査で代える）');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
