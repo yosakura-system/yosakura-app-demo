@@ -310,6 +310,8 @@ function nouhin_parse_(text) {
   if (!vendor) conf = 'low';
   delete out.totalGuess; delete out.totalPrinted;
   out.conf = conf;
+  /* ★返品伝票＝本文に「返品」「赤伝」があれば印を付ける（仕入から引く・アプリで最初からチェック済みになる。2026-10-15 神田さん） */
+  if (/返品|赤伝/.test(flatKey)) out.ret = true;
   return out;
 }
 

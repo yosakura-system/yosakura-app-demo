@@ -2229,7 +2229,7 @@
     } catch (e) {}
     return Object.values(by).sort((a, b) => a._t - b._t).map(p => ({
       v: p.v || '', a8: p.a8 != null ? String(p.a8) : '', a10: p.a10 != null ? String(p.a10) : '',
-      total: p.total != null ? Number(p.total) : 0, conf: p.conf || 'low', photo: p.photo || '', src: 'ocr', raw: p.raw ? String(p.raw) : '' }));
+      total: p.total != null ? Number(p.total) : 0, conf: p.conf || 'low', photo: p.photo || '', src: 'ocr', raw: p.raw ? String(p.raw) : '', ret: !!p.ret }));
   };
   let skSlips_ = [];
   const skSlipsLoad_ = (store, dk, rec) => {
@@ -2241,7 +2241,8 @@
   const skSlipsSums_ = () => {
     const o = { food: 0, alc: 0, drink: 0 };
     skSlips_.forEach(s => {
-      const a8 = Math.round(Number(s.a8) || 0), a10 = Math.round(Number(s.a10) || 0);
+      const sg = s.ret ? -1 : 1;   // ★返品伝票＝仕入から引く（2026-10-15 神田さん）
+      const a8 = Math.round(Number(s.a8) || 0) * sg, a10 = Math.round(Number(s.a10) || 0) * sg;
       if (a8) o[nouhinKind(s.v, 8)] += a8;
       if (a10) o[nouhinKind(s.v, 10)] += a10;
     });
@@ -2251,9 +2252,10 @@
     const opts = NOUHIN_VENDORS.slice(); if (s.v && !opts.includes(s.v)) opts.unshift(s.v);
     const rateLbl = NOUHIN_ALC_VENDORS.some(x => String(s.v).includes(x)) ? L({ ja:'8%＝お酒以外・10%＝お酒', en:'8% soft / 10% alcohol', vi:'8% khác / 10% rượu' })
       : (NOUHIN_MIX_VENDORS.some(x => String(s.v).includes(x)) ? L({ ja:'8%＝食材・10%＝お酒', en:'8% food / 10% alcohol', vi:'8% thực phẩm / 10% rượu' }) : L({ ja:'食材', en:'food', vi:'thực phẩm' }));
-    return `<div class="sk-slip" data-slip="${i}" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto;gap:6px;align-items:center;margin:4px 0">
+    return `<div class="sk-slip" data-slip="${i}" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto;gap:6px;align-items:center;margin:4px 0${s.ret ? ';background:#fdecea;border-radius:6px;padding:2px 4px' : ''}">
         <div><select data-sv="${i}" style="width:100%;font-size:14px;padding:6px"><option value="">${L({ ja:'仕入先', en:'Vendor', vi:'Nhà cung cấp' })}</option>${opts.map(v => `<option${s.v === v ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select>
-          <div class="muted" style="font-size:11px;margin-top:2px">${rateLbl}${s.src === 'ocr' ? L({ ja:'・写真から', en:' · from photo', vi:' · từ ảnh' }) : ''}${s.conf === 'low' ? ` <span class="pill warn" style="font-size:10px">${L({ ja:'要確認', en:'check', vi:'kiểm tra' })}</span>` : ''}</div></div>
+          <div class="muted" style="font-size:11px;margin-top:2px">${rateLbl}${s.src === 'ocr' ? L({ ja:'・写真から', en:' · from photo', vi:' · từ ảnh' }) : ''}${s.conf === 'low' ? ` <span class="pill warn" style="font-size:10px">${L({ ja:'要確認', en:'check', vi:'kiểm tra' })}</span>` : ''}</div>
+          <label style="display:block;font-size:12px;margin-top:3px${s.ret ? ';color:#c0392b;font-weight:600' : ''}"><input type="checkbox" data-sret="${i}"${s.ret ? ' checked' : ''}> ${L({ ja:'返品（仕入から引く）', en:'Return (deduct)', vi:'Trả hàng (trừ)' })}</label></div>
         <input type="text" inputmode="numeric" data-s8="${i}" placeholder="${L({ ja:'8%対象（税込）', en:'8% (incl.)', vi:'8% (gồm thuế)' })}" value="${esc(s.a8 || '')}" style="min-width:0">
         <input type="text" inputmode="numeric" data-s10="${i}" placeholder="${L({ ja:'10%対象（税込）', en:'10% (incl.)', vi:'10% (gồm thuế)' })}" value="${esc(s.a10 || '')}" style="min-width:0">
         <button type="button" class="btn-sm" data-sdel="${i}" aria-label="delete">×</button>
@@ -11437,6 +11439,7 @@
         slipBox.addEventListener('change', (e) => {
           const d = e.target.dataset || {};
           if (d.sv != null) { skSlips_[Number(d.sv)].v = e.target.value; slipsRefresh(true); }
+          else if (d.sret != null) { skSlips_[Number(d.sret)].ret = !!e.target.checked; slipsRefresh(true); }   // ★返品の切り替え（2026-10-15）
         });
         slipBox.addEventListener('click', (e) => {
           const b = e.target.closest('button'); if (!b) return;
@@ -11468,7 +11471,7 @@
         // 画面304＝仕入の税込3欄（食材8%／お酒10%／お酒以外8%）。buy＝その税抜合計（自動）
         buy_food: v('sk_buy_food'), buy_alc: v('sk_buy_alc'), buy_drink: v('sk_buy_drink'),
         // 納品書ごとの内訳（2026-10-01）＝仕入先・8%税込・10%税込・写真ID。空なら持たない
-        slips: skSlips_.length ? skSlips_.map(s => ({ v: s.v || '', a8: s.a8 || '', a10: s.a10 || '', photo: s.photo || '', src: s.src || 'app' })) : undefined,
+        slips: skSlips_.length ? skSlips_.map(s => ({ v: s.v || '', a8: s.a8 || '', a10: s.a10 || '', photo: s.photo || '', src: s.src || 'app', ret: s.ret ? 1 : 0 })) : undefined,
         supply: v('sk_supply'), unagi: v('sk_unagi'), errnote: v('sk_errnote'),
         // 日報一本化（2026-08-26 決定）で足した項目＝元の数字だけ。率は計算で出す
         staffct: v('sk_staffct'), hours: v('sk_hours'), laborcost: v('sk_laborcost'),

@@ -4118,6 +4118,19 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   location.hash = '#/app/soukatsu?x=slips2';
   h = registry.app.innerHTML;
   ok((h.match(/data-slip="/g) || []).length === 3 && doc.getElementById('sk_buy_food').value === '2880', '提出済みの日を開き直しても内訳と3欄が残る');
+  // ②d 返品伝票＝仕入から引く（2026-10-15 神田さん「返品伝票もアプリでマイナス処理」）＝OCRが ret:true を付けた下書きは最初からチェック済み・3欄で引かれ・提出に ret が残る
+  run(() => { localStorage.setItem('yosakura_demo_soukatsu', '[]'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+    { kind:'nouhindraft', store:S, item: today4, note: JSON.stringify({ src:'ocr', v:'西原商会', a8:1080, total:1080, conf:'high', photo:'PHOTO_E1234567' }), photos:[], t: Date.now() - 5000, id:'r1' },
+    { kind:'nouhindraft', store:S, item: today4, note: JSON.stringify({ src:'ocr', v:'西原商会', a8:200, total:200, conf:'high', photo:'PHOTO_F1234567', ret:true }), photos:[], t: Date.now() - 4000, id:'r2' } ])); });
+  location.hash = '#/app/soukatsu?x=slips3';
+  h = registry.app.innerHTML;
+  ok(/data-sret="1" checked/.test(h) && !/data-sret="0" checked/.test(h) && /返品（仕入から引く）/.test(h), '伝票の行に「返品（仕入から引く）」のチェック＝写真で返品と読めた伝票は最初からチェック済み');
+  ok(doc.getElementById('sk_buy_food').value === '880', '返品の伝票は仕入3欄から引く（1080−200＝880）');
+  doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = today4; doc.getElementById('sk_sales').value = '100000';
+  doc.getElementById('submitSk').onclick();
+  { const r = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
+    ok(r && r.slips && r.slips.length === 2 && r.slips[1].ret === 1 && r.slips[0].ret === 0 && r.buy_food === '880', '提出データに返品の印（ret:1）が残り、3欄は引いた値'); }
+  ok(/x\.ret === true \|\| x\.ret === 1/.test(fs.readFileSync(new URL('../backend/総括表書き戻し.gs', import.meta.url), 'utf8')), '総括表の仕入内訳の書き戻しも返品を引く（skwb_slips_）');
   {
     const src5 = code;
     ok(/case 'chukan': case 'chukandraft': case 'skdraft': case 'nouhindraft':/.test(src5), '同期＝nouhindraft が提出一覧に流れる（消えない）');

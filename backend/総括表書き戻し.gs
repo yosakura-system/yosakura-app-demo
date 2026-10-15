@@ -392,7 +392,8 @@ function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果,
   var sum = {}; var order = [];
   var add = function (k, v) { if (!v) return; if (sum[k] == null) { sum[k] = 0; order.push(k); } sum[k] += v; };
   e.app.slips.forEach(function (x) {
-    var v = String(x.v || '').trim(); var a8 = skwb_num_(x.a8) || 0, a10 = skwb_num_(x.a10) || 0;
+    var v = String(x.v || '').trim(); var sg = (x.ret === true || x.ret === 1 || x.ret === '1') ? -1 : 1;   // ★返品伝票＝引く（2026-10-15）
+    var a8 = (skwb_num_(x.a8) || 0) * sg, a10 = (skwb_num_(x.a10) || 0) * sg;
     if (!v || (!a8 && !a10)) return;
     if (/^本部/.test(v)) { var why = store + ' ' + e.date + '：本部請求は仕入れ内訳に行が無いので書かない（' + (a8 + a10) + '円）'; if (結果.止めた.indexOf(why) === -1) 結果.止めた.push(why); return; }
     if (/名畑/.test(v)) { add('名畑|10', a10); add('名畑|8', a8); return; }

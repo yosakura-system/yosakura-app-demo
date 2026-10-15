@@ -32,5 +32,7 @@ if (process.argv[2]) {
     console.log(`${r.date} ${String(r.photo).slice(0, 7)} ${r.v}: 旧 ${r.a8 || 0}/${r.a10 || 0}=${r.total} (${r.conf}) → 新 ` + ps.map(p => `${p.v} ${p.a8 || 0}/${p.a10 || 0}=${p.total} (${p.conf})`).join(' ＋ '));
   }
 }
+{ const p0 = parse(FIX[0].raw) || {}, p1 = parse(FIX[0].raw + '\n返品伝票') || {}, p2 = parse(FIX[0].raw.replace('納品書', '赤伝')) || {};
+  ok(!p0.ret && p1.ret === true && p2.ret === true && p1.v === '名畑', '「返品」「赤伝」の文字がある伝票は ret:true（仕入から引く・2026-10-15）'); }
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
