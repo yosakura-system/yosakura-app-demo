@@ -1436,7 +1436,7 @@ console.log('== 日報を総括表 Ver.2.6 に合わせる（現金/カード・
   ok(!/>現金売上<\/span>/.test(sk) && !/>カード売上<\/span>/.test(sk) && /id="sk_posnote"/.test(sk), '現金・カードはアプリで入力しない（レジ／総括表から入る・2026-10-15）');
   ok(/昼のみ売上/.test(sk) && /消耗品金額/.test(sk) && /仕入 食材（税込・8%）/.test(sk) && /仕入 合計（税抜・自動計算）/.test(sk), '昼のみ売上・消耗品・当日仕入（税込3欄＋税抜合計）が入力できる');
   ok(/過不足（現金）の理由/.test(sk), '過不足の理由が書ける（金額だけでは後から分からないため）');
-  ok(!/お客様の内訳（国別・組数／人数）/.test(sk) && !/sk_cty_jp_g/.test(sk) && /国別は、翌朝レジから自動で入ります/.test(sk),
+  ok(!/お客様の内訳（国別・組数／人数）/.test(sk) && !/sk_cty_jp_g/.test(sk) && /国別・口コミは自動で入ります/.test(sk),
      '国別の入力欄は無い＝レジの客層（国籍）から総括表へ（2026-10-15 神田さん「レジ客層が主・転記するだけ」）');
   ok(!/sk_cty_new_g/.test(sk) && !/>フード金額<\/span>/.test(sk) && /<input type="hidden" id="sk_foodamt">/.test(sk), '新規・リピート・フード/ドリンク金額の欄も無い（レジから）');
   ok(!/鰻の使用尾数/.test(sk), '鰻を扱わない店舗には、鰻の使用尾数を出さない');
@@ -4421,8 +4421,8 @@ console.log('== Google口コミ件数の自動取得＝「口コミ 当日」へ
   });
   location.hash = '#/app/soukatsu?tab=input';
   let h = registry.app.innerHTML;
-  ok(/id="sk_rvt"[^>]*value="3"/.test(h), '「口コミ 当日」にGoogleの前日比が自動で入る');
-  ok(/Googleの口コミ件数（前日との差）から自動で入っています/.test(h) && /132件/.test(h), '出どころ・対象日・総数の説明が出る');
+  ok(/<input type="hidden" id="sk_rvt">/.test(h) && !/id="sk_rvt"[^>]*value=/.test(h) && !/「口コミ 当日」は、Googleの口コミ件数/.test(h), '「口コミ 当日」の欄は無い＝Googleの件数は総括表へ直接（2026-10-15）');
+  ok(!/Googleの口コミ件数（前日との差）から自動で入っています/.test(h), '口コミの下書きの説明は出ない（欄が無い・総括表へ直接）');
   // ② 獲得数がマイナスの日（削除があった日）は自動では入れない（手入力に譲る）
   run(() => {
     setLS('staff', S, 'ja');
@@ -4532,7 +4532,7 @@ console.log('== シートの日付セル化（ISO文字列）でも突き合わ�
   ok(/この日の獲得数/.test(srcG) && /総口コミ数（この日時点）/.test(srcG), 'ポップアップに獲得数・総数・星が出る');
   location.hash = '#/app/soukatsu?tab=input';
   h = registry.app.innerHTML;
-  ok(/id="sk_rvt"[^>]*value="6"/.test(h), 'ISO化した日付でも「口コミ 当日」に自動で入る');
+  ok(!/id="sk_rvt"[^>]*value=/.test(h), 'ISO化した日付でも「口コミ 当日」の欄には入れない（欄が無い）');
   // ② skdraft＝ISO形式でも総括表のプレフィルが効く（OCRの下書きが実機で効かない説明＝同じ罠）
   run(() => {
     setLS('staff', S, 'ja');
@@ -6330,10 +6330,10 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows)); });
   location.hash = '#/app/soukatsu';
   let h = registry.app.innerHTML;
-  ok(/id="sk_posnote"/.test(h) && /翌朝レジから自動で入ります/.test(h) && /レジの無い店舗は総括表から/.test(h) && h.match(/id="sk_posnote"[^<]*<\/p>/)[0].length < 260, '日報の案内＝短い2文（売上などは翌朝レジから自動・ここで入れるもの）');
+  ok(/id="sk_posnote"/.test(h) && /口コミは自動で入ります/.test(h) && /レジの無い店舗は売上を総括表から/.test(h) && h.match(/id="sk_posnote"[^<]*<\/p>/)[0].length < 260, '日報の案内＝短い2文（売上などは翌朝レジから自動・ここで入れるもの）');
   ok(/<input type="hidden" id="sk_sales">/.test(h) && !/>当日売上<\/span>/.test(h) && !/>客数<\/span>/.test(h) && !/>レジ誤差<\/span>/.test(h) && !/>現金売上<\/span>/.test(h) && !/>カード売上<\/span>/.test(h) && !/>値引き<\/span>/.test(h) && !/>純売上<\/span>/.test(h), 'レジの7項目の入力欄が出ない（売上・客数・純売上・レジ誤差・値引き・現金・カード）');
   ok(!/日計レポート写真から読み取った数字/.test(h) && !/金種別入力（レジクローズ）の差異から自動で入っています/.test(h), '売上・レジ誤差の下書きの案内（写真読み取り・金種別）も出ない');
-  ok(/id="sk_rvt"/.test(h) && /id="sk_foodamt"/.test(h) && /id="sk_tipt"/.test(h) && /id="sk_lunch"/.test(h) && /id="sk_errnote"/.test(h) && /id="sk_buy_food"/.test(h) && /id="sk_memo"/.test(h) && /id="sk_staffct"/.test(h), '店が入れる項目（口コミ・フード金額・チップ・昼のみ・過不足の理由・仕入・勤怠・所感）は残る');
+  ok(!/>口コミ 当日<\/span>/.test(h) && /id="sk_tipt"/.test(h) && /id="sk_lunch"/.test(h) && /id="sk_errnote"/.test(h) && /id="sk_buy_food"/.test(h) && /id="sk_memo"/.test(h) && /id="sk_staffct"/.test(h), '店が入れる項目（チップ・昼のみ・過不足の理由・仕入・勤怠・所感）は残り、口コミ当日の欄は無い');
   // ② 売上が空でも提出できる・レジの項目は保存しない・posWait の印
   doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = yest;
   doc.getElementById('sk_rvt').value = '2'; doc.getElementById('sk_tipt').value = '1000'; doc.getElementById('sk_errnote').value = '両替';
@@ -6374,6 +6374,7 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   ok(/getSetting_\('USEN_IMPORT_ERR', true\) !== false/.test(usrc), 'USEN取込＝差異合計は既定で取り込む（USEN_IMPORT_ERR=false で戻せる）');
   ok(/k: 'kake',\s+label: '掛売売上'/.test(wsrc) && /k: 'err',\s+label: \/\^過不足[^\n]*usen: true,\s+unit: '円', appFallback: true/.test(wsrc), '書き戻し＝掛売売上・過不足（現金）をレジの値で（過不足はレジに無い日だけアプリの値）');
   ok(/if \(!it\.appFallback && e\.usen\.sales != null\) return \{ v: 0, src: 'usen', zero: true \};/.test(wsrc) && /kind === 'app' && !withApp/.test(wsrc), '書き戻し＝アプリ日報の行も読む（SKWB_APP=false で止められる）・sales の無いUSEN行を0と見なさない');
+  ok(/if \(kindRow === 'gsnap'\)/.test(wsrc) && /gs: true \}/.test(wsrc) && /if \(it\.gs && e\.gs != null && e\.gs > 0\) return \{ v: e\.gs, src: 'gs'/.test(wsrc) && /gs: '【Google照合】'/.test(wsrc), '書き戻し＝本日の口コミ獲得はGoogleの件数（gsnap）から。無い日だけアプリ');
 }
 
 console.log('== 2026-10-15 勤怠（任意）＝総括表の勤怠と同じ形をアプリに（神田さん「アプリでも同じように準備したらアプリだけで完結」）==');
@@ -6455,7 +6456,7 @@ console.log('== 2026-10-15 日報は開店前に前日分を出す・日付の�
   const yestB = (() => { const d = new Date(todayB + 'T12:00:00'); d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA'); })();
   ok(m && m[1] === (hour >= 12 ? todayB : yestB), '日報の日付の初期値＝12時前は前日・12時以降は当日（いま' + hour + '時→' + (m && m[1]) + '）');
   ok(hour >= 12 ? !/id="sk_datenote"/.test(h) : (/id="sk_datenote"/.test(h) && /の日報です。きょうの分なら日付を変えてください/.test(h)), '前日になっているときだけ「前日分として出します」の案内が出る');
-  ok(/前日の日報（アプリ）を出す/.test(code) && /12時まで。口コミ/.test(code), '開店前チェックの先頭に「前日の日報（アプリ）を出す」がある');
+  ok(/前日の日報（アプリ）を出す/.test(code) && /12時まで。チップ/.test(code), '開店前チェックの先頭に「前日の日報（アプリ）を出す」がある');
   ok(!/合わせてから総括表へ入力／/.test(code) && /レジの全現金を入れて締める/.test(code), 'クローズのレジ締めから「総括表へ入力」を外した（売上は翌朝レジから自動）');
   location.hash = '#/app/check';
   const hc = registry.app.innerHTML;

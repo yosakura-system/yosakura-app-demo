@@ -59,15 +59,15 @@ var SKWB_ITEMS = [
   { k: 'disc',     label: '値引き',                 dr: 0, dc: 5, usen: true,  unit: '円' },
   { k: 'kake',     label: '掛売売上',               dr: 0, dc: 5, usen: true,  unit: '円' },
   { k: 'err',      label: /^過不足[（(]現金[)）]$/,  dr: 0, dc: 4, usen: true,  unit: '円', appFallback: true },   // レジの差異合計。締め未統一（closeng）の日はアプリの値
-  { k: 'rvt',      label: /^本日の口コミ獲得/,       dr: 0, dc: 6, usen: false, unit: '件' },
+  { k: 'rvt',      label: /^本日の口コミ獲得/,       dr: 0, dc: 6, usen: false, unit: '件', gs: true },   // 2026-10-15 Googleの口コミ件数（毎晩の取得 gsnap）が主。無い日だけアプリ
   { k: 'foodamt',  label: 'フード',                 dr: 0, dc: 5, usen: true,  unit: '円', ctx: true, appFallback: true },   // 2026-10-15 レジ（伝票明細のカテゴリ）が主
   { k: 'drinkamt', label: 'ドリンク',               dr: 0, dc: 5, usen: true,  unit: '円', ctx: true, appFallback: true },
   { k: 'tipt',     label: 'チップ',                 dr: 0, dc: 5, usen: false, unit: '円', ctx: true },
   { k: 'lunch',    label: '昼のみ売上',             dr: 1, dc: 4, usen: false, unit: '円' },
   { k: 'errnote',  label: /過不足理由記載/,          dr: 1, dc: 0, usen: false, text: true }
 ];
-var SKWB_NOTE_TAGS = { usen: '【USEN照合】', app: '【アプリ照合】' };   // こちらが付けたメモの印。これで始まらないメモ（店や増田さんのメモ）には触らない
-var SKWB_SRC_NAME = { usen: 'USENレジ', app: 'アプリ日報' };
+var SKWB_NOTE_TAGS = { usen: '【USEN照合】', app: '【アプリ照合】', gs: '【Google照合】' };   // こちらが付けたメモの印。これで始まらないメモ（店や増田さんのメモ）には触らない
+var SKWB_SRC_NAME = { usen: 'USENレジ', app: 'アプリ日報', gs: 'Google口コミ' };
 
 function skwb_stores_(only) {
   if (only && only.length) return only;                                  // POST の stores（1店ずつ回す用）
@@ -90,7 +90,7 @@ function skwb_a1_(r, c) {   // 0始まり → A1
 }
 function skwb_isOurNote_(note) {
   var s = String(note || '');
-  return s.indexOf(SKWB_NOTE_TAGS.usen) === 0 || s.indexOf(SKWB_NOTE_TAGS.app) === 0;
+  return Object.keys(SKWB_NOTE_TAGS).some(function (k) { return s.indexOf(SKWB_NOTE_TAGS[k]) === 0; });
 }
 
 /* 本部データから、店×日付ごとの「最新の USEN 行」と「最新のアプリ日報の行」。{store|date: {store, date, usen: p|null, app: p|null}}
@@ -100,14 +100,26 @@ function skwb_rows_(stores, fromDate, withApp) {
   if (last < 2) return map;
   var vals = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
   for (var i = 0; i < vals.length; i++) {
-    if (String(vals[i][2]) !== 'soukatsu') continue;
+    var kindRow = String(vals[i][2]);
+    /* ★Googleの口コミ件数（毎晩の取得・kind:'gsnap'・item＝日付・note {src:'places', gained}）＝「本日の口コミ獲得」の出どころ（2026-10-15） */
+    if (kindRow === 'gsnap') {
+      var gStore = String(vals[i][3]); if (stores.indexOf(gStore) === -1) continue;
+      var gDate = String(vals[i][4] || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(gDate) || gDate < fromDate) continue;
+      var gp; try { gp = JSON.parse(vals[i][6] || '{}'); } catch (e2) { continue; }
+      if (!gp || gp.src !== 'places' || typeof gp.gained !== 'number') continue;
+      var gt = Number(vals[i][1]) || 0; var gk = gStore + '|' + gDate;
+      var ge = map[gk] || (map[gk] = { store: gStore, date: gDate, usen: null, app: null, tUsen: -1, tApp: -1, usenBase: null, usenX: null, tUsenX: -1, gs: null, tGs: -1 });
+      if (gt >= ge.tGs) { ge.gs = gp.gained; ge.tGs = gt; }
+      continue;
+    }
+    if (kindRow !== 'soukatsu') continue;
     var store = String(vals[i][3]); if (stores.indexOf(store) === -1) continue;
     var p; try { p = JSON.parse(vals[i][6] || '{}'); } catch (e) { continue; }
     if (!p.date || p.date < fromDate) continue;
     var kind = p.src === 'usen' ? 'usen' : !p.src ? 'app' : null;   // null＝総括表取込の行
     if (!kind || (kind === 'app' && !withApp)) continue;
     var t = Number(vals[i][1]) || 0; var k = store + '|' + p.date;
-    var e = map[k] || (map[k] = { store: store, date: p.date, usen: null, app: null, tUsen: -1, tApp: -1, usenBase: null, usenX: null, tUsenX: -1 });
+    var e = map[k] || (map[k] = { store: store, date: p.date, usen: null, app: null, tUsen: -1, tApp: -1, usenBase: null, usenX: null, tUsenX: -1, gs: null, tGs: -1 });
     /* ★USEN行は2種類＝レジクローズ（sales あり）と伝票明細の集計（pcty・foodamt…）。sales のある最新行を土台に、集計の最新行の項目を重ねる（2026-10-15） */
     if (kind === 'usen') {
       if (p.sales != null && t >= e.tUsen) { e.usenBase = p; e.tUsen = t; }
@@ -172,6 +184,7 @@ function skwb_want_(it, e) {
     if (it.text) { v = String(v == null ? '' : v).trim(); return v ? v : null; }
     v = skwb_num_(v); return v == null || v === 0 ? null : v;
   };
+  if (it.gs && e.gs != null && e.gs > 0) return { v: e.gs, src: 'gs', zero: false };   // Googleの件数（前日比がプラスの日だけ）。無い日はアプリの値へ
   if (it.usen && e.usen) {
     var u = pick(e.usen);
     if (u != null) return { v: u, src: 'usen', zero: false };

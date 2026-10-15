@@ -2879,7 +2879,7 @@
     { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
       /* ★2026-10-15 神田さん「総括表の報告は翌日12時までなら、クローズでなく開店前に入れておくべき」＝前日分を朝に出す */
       {ja:'前日の日報（アプリ）を出す',en:'Submit yesterday’s daily report (app)',vi:'Gửi báo cáo ngày hôm qua (ứng dụng)',
-       d:{ja:'12時まで。口コミ・チップ・昼のみ売上・過不足の理由・納品書の写真・所感。売上や国別は自動で入ります'}},
+       d:{ja:'12時まで。チップ・昼のみ売上・過不足の理由・納品書の写真・所感。売上・国別・口コミは自動で入ります'}},
       {ja:'手洗い・身だしなみ',en:'Handwash & grooming',vi:'Rửa tay & tác phong',
        d:{ja:'タイムカード打刻／手洗い（洗い場の手洗いPOP参照）／スタッフ全員の身だしなみ・手洗いを確認／開店準備中にお客様が見えたらお声がけ'}},
       {ja:'外観準備',en:'Exterior',vi:'Bên ngoài',
@@ -5164,12 +5164,11 @@
               中身は画面を作ったあとに入れる（その日の日報があるかは日付を変えても変わるため） */''}
         <p class="hint" id="sk_editnote" style="display:none;margin:-2px 0 8px;color:#8a6d3b"></p>
         <p class="hint" id="sk_posnote" style="display:block;margin:-2px 0 8px;color:#2d6a4f">${L({
-          ja:'※ 売上・客数・レジの数字・フード/ドリンク・国別は、翌朝レジから自動で入ります（レジの無い店舗は総括表から）。ここで入れるのは、口コミ・チップ・昼のみ売上・過不足の理由・納品書の写真・所感です。',
-          en:'Sales, guests, POS figures, food/drink and guests by country come from the POS the next morning (or from the summary sheet). Enter here: reviews, tips, lunch-only sales, cash-difference reason, delivery-slip photos and notes.',
-          vi:'Doanh thu, số khách, số liệu POS, món/đồ uống và khách theo quốc gia tự điền từ POS vào sáng hôm sau (hoặc từ bảng tổng kết). Nhập ở đây: đánh giá, tip, DT buổi trưa, lý do chênh lệch, ảnh phiếu giao hàng và cảm nhận.' })}</p>
+          ja:'※ 売上・レジの数字・フード/ドリンク・国別・口コミは自動で入ります（レジの無い店舗は売上を総括表から）。ここで入れるのは、チップ・昼のみ売上・過不足の理由・納品書の写真・所感です。',
+          en:'Sales, POS figures, food/drink, guests by country and reviews are filled automatically. Enter here: tips, lunch-only sales, cash-difference reason, delivery-slip photos and notes.',
+          vi:'Doanh thu, số liệu POS, món/đồ uống, khách theo quốc gia và đánh giá tự điền. Nhập ở đây: tip, DT buổi trưa, lý do chênh lệch, ảnh phiếu giao hàng và cảm nhận.' })}</p>
         ${(!skEditTarget_().date && skDefaultDate_() !== today) ? `<p class="hint" id="sk_datenote" style="display:block;margin:-2px 0 8px;color:#8a6d3b">${L({ ja:`※ 前日（${skDefaultDate_().slice(5).replace('-', '/')}）の日報です。きょうの分なら日付を変えてください。`, en:`This is yesterday’s report (${skDefaultDate_().slice(5)}). Change the date for today’s.`, vi:`Đây là báo cáo hôm qua (${skDefaultDate_().slice(5)}). Đổi ngày nếu là hôm nay.` })}</p>` : ''}
         ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの総括表から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
-        ${gsnap ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:`※ 「口コミ 当日」は、Googleの口コミ件数（前日との差）から自動で入っています（対象日 ${gsnap._d}・現在の総数 ${gsnap.total}件）。違うときは直してから提出してください。`, en:`Reviews today was filled from the Google review count (day-over-day, as of ${gsnap._d}, total ${gsnap.total}). Correct if needed.`, vi:`Ô đánh giá hôm nay được điền từ số review Google (so với hôm trước, ${gsnap._d}, tổng ${gsnap.total}). Sửa nếu sai.` })}</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
           <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || skDefaultDate_()}" max="${today}"></label>
@@ -5190,8 +5189,7 @@
           <div class="stat"><div class="n" id="sk_drinkpct">—</div><div class="k">${L({ja:'ドリンク構成比（自動計算）',en:'Drink share (auto)',vi:'Tỷ trọng đồ uống (tự động)'})}</div></div>
         </div>
         <div class="sk-grid">
-          <label class="fld"><span>${L({ja:'口コミ 当日',en:'Reviews today',vi:'Đánh giá nay'})}</span><input type="text" inputmode="numeric" id="sk_rvt" placeholder="2"${gsnap ? ` value="${gsnap.gained}"` : ''}></label>
-          <label class="fld"><span>${L({ja:'口コミ 累計（自動計算）',en:'Reviews total (auto)',vi:'Đánh giá tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_rva" placeholder="70" value="${skCum0.rva || ''}"></label>
+          <input type="hidden" id="sk_rvt"><input type="hidden" id="sk_rva" value="${skCum0.rva || ''}">
           <label class="fld"><span>${L({ja:'ヒアリング 当日',en:'Hearings today',vi:'Phỏng vấn nay'})}</span><input type="text" inputmode="numeric" id="sk_hear" placeholder="9"></label>
           <input type="hidden" id="sk_disc">
           <label class="fld"><span>${L({ja:'人件費率 %',en:'Labor %',vi:'Nhân sự %'})}</span><input type="text" inputmode="decimal" id="sk_labor" placeholder="23.6"></label>
