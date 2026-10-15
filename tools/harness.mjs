@@ -6373,7 +6373,7 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   ok(/\['kake',\s+\['掛売'\]\]/.test(usrc) && /\['open',\s+\['レジオープン時現金'\]\]/.test(usrc) && /if \(closeNG\) d\.closeng = true; else d\.err = e;/.test(usrc), 'USEN取込＝掛売を写す・差異合計は締め未統一（差異≒−現金売上）の日を除いて写す');
   ok(/getSetting_\('USEN_IMPORT_ERR', true\) !== false/.test(usrc), 'USEN取込＝差異合計は既定で取り込む（USEN_IMPORT_ERR=false で戻せる）');
   ok(/k: 'kake',\s+label: '掛売売上'/.test(wsrc) && /k: 'err',\s+label: \/\^過不足[^\n]*usen: true,\s+unit: '円', appFallback: true/.test(wsrc), '書き戻し＝掛売売上・過不足（現金）をレジの値で（過不足はレジに無い日だけアプリの値）');
-  ok(/if \(!it\.appFallback\) return \{ v: 0, src: 'usen', zero: true \};/.test(wsrc) && /kind === 'app' && !withApp/.test(wsrc), '書き戻し＝アプリ日報の行も読む（SKWB_APP=false で止められる）');
+  ok(/if \(!it\.appFallback && e\.usen\.sales != null\) return \{ v: 0, src: 'usen', zero: true \};/.test(wsrc) && /kind === 'app' && !withApp/.test(wsrc), '書き戻し＝アプリ日報の行も読む（SKWB_APP=false で止められる）・sales の無いUSEN行を0と見なさない');
 }
 
 console.log('== 2026-10-15 勤怠（任意）＝総括表の勤怠と同じ形をアプリに（神田さん「アプリでも同じように準備したらアプリだけで完結」）==');
@@ -6424,11 +6424,23 @@ console.log('== 2026-10-15 勤怠（任意）＝総括表の勤怠と同じ形�
   // ⑦ 伝票明細の集計（usenx）＝国別・フード/ドリンクはレジから総括表へ（2026-10-15 神田さん「レジ客層が主」）
   const usrc3 = fs.readFileSync(new URL('../backend/USEN取込.gs', import.meta.url), 'utf8');
   ok(/function usenx_api_\(data\)/.test(usrc3) && /data\.kind === 'usenx'/.test(usrc3) && /var USENX_KEYS = \['pcty', 'proute', 'foodamt', 'drinkamt', 'lunch15', 'xslips', 'xguests'\];/.test(usrc3), 'USEN取込＝伝票明細の集計（国別 pcty・来店経路・フード/ドリンク）を受けてUSEN行に足す');
-  ok(/USENX_KEYS\.forEach\(function \(x\) \{ if \(cur\.p\[x\] != null && r\.p\[x\] == null\) r\.p\[x\] = cur\.p\[x\]; \}\);/.test(usrc3), 'レジクローズの行を書き直すとき伝票明細の項目を引き継ぐ');
+  ok(/if \(cur && cur\.usenXP\) USENX_KEYS\.forEach/.test(usrc3) && /var base = \(cur && cur\.usenP\) \? cur\.usenP/.test(usrc3) && /usenP: null, usenXT: 0, usenXP: null/.test(usrc3), 'レジクローズの行を書き直すとき伝票明細の項目を引き継ぐ・usenx の土台は sales のある最新USEN行（10/15 下見で見つけた0上書きの型を防ぐ）');
   ok(/function skwb_cty_\(/.test(wsrc2) && /SKWB_CTY_ALIAS/.test(wsrc2) && /normalize\('NFKC'\)/.test(wsrc2), '書き戻し＝国別（レジの客層）を顧客情報の組数・人数へ（半角カナの国名もそろえる・無い区分は止めたに）');
   ok(/k: 'foodamt',[^\n]*usen: true,[^\n]*appFallback: true/.test(wsrc2) && /k: 'drinkamt',[^\n]*usen: true/.test(wsrc2), '書き戻し＝フード/ドリンク金額はレジ（伝票明細）が主・無い日だけアプリ');
   const hsrc = fs.readFileSync(new URL('../../05_品質管理・仕組み構築/_生成スクリプト/usen_hanyou.py', import.meta.url), 'utf8');
   ok(/KIND = '売上データ\(伝票 \+ 伝票明細\)'/.test(hsrc) && /kk\.startswith\('国籍'\)/.test(hsrc) && /'kind': 'usenx'/.test(hsrc), 'usen_hanyou.py＝汎用検索の伝票明細を集計して usenx で送る');
+  // ⑧ 集計だけのUSEN行（sales 無し・新しい）が来ても、レジクローズの売上は消えず、フード金額は集計行の値になる（10/15 下見で見つけた型）
+  {
+    const S8 = '和牛世桜 広島店'; const d8 = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+    const rows8 = [
+      { store: S8, date: d8, sales: 200000, net: 181818, guests: 40, cash: 50000, card: 150000, src: 'usen', t: Date.now() - 7200e3 },
+      { store: S8, date: d8, pcty: { '韓国': { g: 3, p: 7 } }, foodamt: 150000, drinkamt: 50000, src: 'usen', t: Date.now() - 3600e3 }
+    ];
+    run(() => { setLS('staff', S8, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows8)); });
+    location.hash = '#/store?s=' + encodeURIComponent(S8);
+    const h8 = registry.app.innerHTML;
+    ok(/200,000/.test(h8) && /150,000/.test(h8), '売上はレジクローズの行・フード金額は集計の行＝両方が1行に重なる（集計だけの行で日が消えない）');
+  }
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);

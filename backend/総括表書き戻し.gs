@@ -107,10 +107,21 @@ function skwb_rows_(stores, fromDate, withApp) {
     var kind = p.src === 'usen' ? 'usen' : !p.src ? 'app' : null;   // null＝総括表取込の行
     if (!kind || (kind === 'app' && !withApp)) continue;
     var t = Number(vals[i][1]) || 0; var k = store + '|' + p.date;
-    var e = map[k] || (map[k] = { store: store, date: p.date, usen: null, app: null, tUsen: -1, tApp: -1 });
-    if (kind === 'usen' && t >= e.tUsen) { e.usen = p; e.tUsen = t; }
+    var e = map[k] || (map[k] = { store: store, date: p.date, usen: null, app: null, tUsen: -1, tApp: -1, usenBase: null, usenX: null, tUsenX: -1 });
+    /* ★USEN行は2種類＝レジクローズ（sales あり）と伝票明細の集計（pcty・foodamt…）。sales のある最新行を土台に、集計の最新行の項目を重ねる（2026-10-15） */
+    if (kind === 'usen') {
+      if (p.sales != null && t >= e.tUsen) { e.usenBase = p; e.tUsen = t; }
+      if ((p.pcty != null || p.foodamt != null || p.drinkamt != null) && t >= e.tUsenX) { e.usenX = p; e.tUsenX = t; }
+    }
     if (kind === 'app' && t >= e.tApp) { e.app = p; e.tApp = t; }
   }
+  Object.keys(map).forEach(function (k2) {
+    var e2 = map[k2]; if (!e2.usenBase && !e2.usenX) return;
+    var m = {}; var src = [e2.usenBase, e2.usenX];
+    src.forEach(function (q) { if (q) Object.keys(q).forEach(function (x) { m[x] = q[x]; }); });   // 集計の項目は集計行の値、
+    if (e2.usenBase) ['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'kake', 'disc', 'err', 'closeng'].forEach(function (x) { if (e2.usenBase[x] != null) m[x] = e2.usenBase[x]; else delete m[x]; });   // レジの項目は土台の値
+    e2.usen = m;
+  });
   return map;
 }
 
@@ -164,7 +175,7 @@ function skwb_want_(it, e) {
   if (it.usen && e.usen) {
     var u = pick(e.usen);
     if (u != null) return { v: u, src: 'usen', zero: false };
-    if (!it.appFallback) return { v: 0, src: 'usen', zero: true };     // USENが0＝空欄のまま（同じ（0））
+    if (!it.appFallback && e.usen.sales != null) return { v: 0, src: 'usen', zero: true };     // USENが0＝空欄のまま（同じ（0））。sales の無い行（集計だけ）は0と見なさない
   }
   var a = pick(e.app);
   if (a == null) return null;

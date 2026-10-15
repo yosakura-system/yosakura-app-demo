@@ -754,12 +754,23 @@
        上書きした行には pos:true の印（画面では「POS」と出す） */
     const USEN_FIELDS = ['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'kake', 'disc', 'err', 'foodamt', 'drinkamt'];   // 2026-10-15 フード/ドリンク金額もレジ（伝票明細のカテゴリ）が主   // ★2026-10-15 掛売・レジ誤差（差異合計）も（神田さん「レジから取れるものは全て」）
     const usenBy = {};
+    /* ★USEN行は2種類（2026-10-15）＝レジクローズ（sales あり）と伝票明細の集計（pcty・foodamt…）。sales のある最新行を土台に、集計の最新行の項目を重ねる */
+    const usenBaseBy = {}, usenXBy = {};
+    const USEN_BASE_KEYS = ['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'kake', 'disc', 'err', 'closeng'];
     (arr || []).forEach(r => {
       if (!r || !r.date || r.date > today) return;
       const k = (r.store || '') + '||' + r.date;
       const cur = latest[k];
       if (!cur || rank(r) > rank(cur) || (rank(r) === rank(cur) && (Number(r.t) || 0) >= (Number(cur.t) || 0))) latest[k] = r;
-      if (r.src === 'usen' && (!usenBy[k] || (Number(r.t) || 0) >= (Number(usenBy[k].t) || 0))) usenBy[k] = r;
+      if (r.src === 'usen') {
+        if (r.sales != null && (!usenBaseBy[k] || (Number(r.t) || 0) >= (Number(usenBaseBy[k].t) || 0))) usenBaseBy[k] = r;
+        if ((r.pcty != null || r.foodamt != null || r.drinkamt != null) && (!usenXBy[k] || (Number(r.t) || 0) >= (Number(usenXBy[k].t) || 0))) usenXBy[k] = r;
+      }
+    });
+    Object.keys(Object.assign({}, usenBaseBy, usenXBy)).forEach(k => {
+      const b = usenBaseBy[k], x = usenXBy[k];
+      if (b && x && b !== x) { const m = Object.assign({}, b, x, { t: Math.max(Number(b.t) || 0, Number(x.t) || 0) }); USEN_BASE_KEYS.forEach(f => { if (b[f] != null) m[f] = b[f]; else delete m[f]; }); usenBy[k] = m; }
+      else usenBy[k] = b || x;
     });
     /* ★アプリの日報が売上を持たない（posWait）とき、総括表取込（src:'drive'）の行があればレジの項目をそこから重ねる（2026-10-15）。USEN行があれば下でUSENが勝つ */
     const driveBy = {};

@@ -146,9 +146,14 @@ function usen_既存_() {
     var k = String(vals[i][3]) + '|' + p.date;
     /* ★「変わらず」の判定は同じ店×日の最新の USEN 行と比べる（2026-09-30 夜に判明＝総括表の毎時取込と
        USEN取込が同じ日を交互に書き直し、1時間に約400行ずつ増えていた）。any＝出どころを問わない最新行（新規／更新の表示用） */
-    if (!map[k]) map[k] = { t: 0, src: '', canon: '', p: null, usenT: 0, usenCanon: '' };
+    if (!map[k]) map[k] = { t: 0, src: '', canon: '', p: null, usenT: 0, usenCanon: '', usenP: null, usenXT: 0, usenXP: null };
     if (t >= map[k].t) { map[k].t = t; map[k].src = p.src || ''; map[k].canon = usen_canon_(p); map[k].p = p; }
-    if (p.src === USEN_SRC_TAG && t >= map[k].usenT) { map[k].usenT = t; map[k].usenCanon = usen_canon_(p); }
+    /* ★2026-10-15 USEN行は2種類ある＝レジクローズ（sales あり）と伝票明細の集計（pcty・foodamt…）。
+       「変わらず」の比較と usenx の土台は sales のある最新行（usenP）、伝票明細の項目の引き継ぎは最新の集計行（usenXP） */
+    if (p.src === USEN_SRC_TAG) {
+      if (p.sales != null && t >= map[k].usenT) { map[k].usenT = t; map[k].usenCanon = usen_canon_(p); map[k].usenP = p; }
+      if (USENX_KEYS.some(function (x) { return p[x] != null; }) && t >= map[k].usenXT) { map[k].usenXT = t; map[k].usenXP = p; }
+    }
   }
   return map;
 }
@@ -215,14 +220,16 @@ function usenx_api_(data) {
       var store = map[code] || map[String(r.name || '').trim()] || '';
       if (!store || !r.date) { var why = '店舗の対応が無い：' + code + ' ' + (r.name || ''); if (結果.飛ばした.indexOf(why) === -1) 結果.飛ばした.push(why); return; }
       var k = store + '|' + r.date; var cur = 既存[k];
-      var base = (cur && cur.p && cur.src === USEN_SRC_TAG) ? cur.p : { date: r.date, src: USEN_SRC_TAG, usenCode: code };
+      var base = (cur && cur.usenP) ? cur.usenP : { date: r.date, src: USEN_SRC_TAG, usenCode: code };   // 土台＝sales のある最新のUSEN行（無ければ集計だけの行）
       var p = {}; Object.keys(base).forEach(function (x) { p[x] = base[x]; });
       USENX_KEYS.forEach(function (x) { if (r[x] != null) p[x] = r[x]; });
       var st = 結果.店舗[store] || (結果.店舗[store] = { 新規: 0, 更新: 0, 変わらず: 0 });
-      if (cur && cur.p && cur.src === USEN_SRC_TAG && usenx_canon_(cur.p) === usenx_canon_(p)) { st.変わらず++; 結果.変わらず++; return; }
-      if (cur && cur.p && cur.src === USEN_SRC_TAG) { st.更新++; 結果.更新++; } else { st.新規++; 結果.新規++; }
+      /* 直す必要がある＝最新のUSEN行が集計だけ（sales 無し）なのに、sales のある行が別にあるとき（10/15 の下見で見つけた型）。そのときは同じ内容でも土台つきで足し直す */
+      var 直す = cur && cur.src === USEN_SRC_TAG && cur.p && cur.p.sales == null && cur.usenP;
+      if (!直す && cur && cur.usenXP && usenx_canon_(cur.usenXP) === usenx_canon_(p)) { st.変わらず++; 結果.変わらず++; return; }
+      if (cur && cur.usenXP) { st.更新++; 結果.更新++; } else { st.新規++; 結果.新規++; }
       if (書き込む) 追記.push([Utilities.getUuid(), Date.now(), 'soukatsu', store, '', '', JSON.stringify(p), '[]']);
-      既存[k] = { t: Date.now(), src: USEN_SRC_TAG, canon: usen_canon_(p), p: p, usenT: Date.now(), usenCanon: usen_canon_(p) };
+      既存[k] = { t: Date.now(), src: USEN_SRC_TAG, canon: usen_canon_(p), p: p, usenT: Date.now(), usenCanon: usen_canon_(p), usenP: p.sales != null ? p : (cur && cur.usenP) || null, usenXT: Date.now(), usenXP: p };
     });
     if (書き込む && 追記.length) { var 次行 = sh.getLastRow() + 1; sh.getRange(次行, 1, 追記.length, 追記[0].length).setValues(追記); }
     var 書き戻し = (書き込む && typeof skwb_afterUsen_ === 'function') ? skwb_afterUsen_() : null;
@@ -262,7 +269,7 @@ function usen_実行_(書き込む) {
       var st = 結果.店舗[r.store] || (結果.店舗[r.store] = { 新規: 0, 更新: 0, 変わらず: 0 });
       if (cur && cur.usenCanon && cur.usenCanon === canon) { st.変わらず++; 結果.変わらず++; return; }
       if (cur) { st.更新++; 結果.更新++; } else { st.新規++; 結果.新規++; }
-      if (cur && cur.p && cur.src === USEN_SRC_TAG) USENX_KEYS.forEach(function (x) { if (cur.p[x] != null && r.p[x] == null) r.p[x] = cur.p[x]; });   // 伝票明細の項目（国別など）は引き継ぐ
+      if (cur && cur.usenXP) USENX_KEYS.forEach(function (x) { if (cur.usenXP[x] != null && r.p[x] == null) r.p[x] = cur.usenXP[x]; });   // 伝票明細の項目（国別など）は最新の集計行から引き継ぐ
       if (書き込む) { 追記.push([Utilities.getUuid(), Date.now(), 'soukatsu', r.store, '', '', JSON.stringify(r.p), '[]']); }
       既存[k] = { t: Date.now(), src: USEN_SRC_TAG, canon: canon, p: r.p, usenT: Date.now(), usenCanon: canon };
     });
