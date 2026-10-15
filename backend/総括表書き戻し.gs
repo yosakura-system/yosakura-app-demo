@@ -267,6 +267,8 @@ function skwb_実行_(書き込む, days, only) {
       if (e.app && Array.isArray(e.app.kintai) && e.app.kintai.length) skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);
       /* ★国別（レジの客層「国籍」＝伝票明細の集計 pcty）→ 顧客情報の「国」の行の下の組数・人数へ（2026-10-15 神田さん「レジ客層が主・転記するだけ」） */
       if (e.usen && e.usen.pcty) skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);
+      /* ★仕入の内訳（アプリ日報の納品書 slips）→ 仕入れ内訳の仕入先の行へ（2026-10-15） */
+      if (e.app && Array.isArray(e.app.slips) && e.app.slips.length) skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果, 記録, 書き込む);
     });
   });
   if (記録.length) logSh.getRange(logSh.getLastRow() + 1, 1, 記録.length, 記録[0].length).setValues(記録);
@@ -340,6 +342,94 @@ function skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 
       if (書き込む && 済 !== 'ずれ') sh.getRange(rr + 1, cc + 1).setValue(want);
       if (書き込む) 記録.push([new Date(), store, e.date, row.項目, book.name, String(day), a1, cur, want, 済, 'USENレジ']);
     });
+  });
+}
+/* 仕入の内訳＝日別タブの「＜仕入れ内訳＞」の下。左＝フード（B列に仕入先名・金額は同じブロックの「合計」行の金額の列）、右＝ドリンク（L列に「名畑（酒10％）」など）。
+   総括表の決まり＝仕入れはすべて税込で入力（仕入れ台帳で税抜に換算）＝納品書の税込額をそのまま入れる。
+   仕入先ごとに合計して入れる（同じ日に同じ仕入先の伝票が2枚なら足す）。
+   ・名畑＝8%（お酒以外）と10%（お酒）を右のドリンクの2行へ分ける
+   ・それ以外＝伝票の合計（8%＋10%）を左のフードの、名前が合う行へ
+   ・名前の合う行が無い仕入先＝空いている「(予備)」の行に、仕入先名と金額を入れる（店が(予備)を書き換えて使っている型に合わせる）
+   ・本部請求＝総括表の内訳に行が無い（本部の請求書で月にまとめて計上）＝書かない
+   決めごとはほかの項目と同じ＝空欄だけ書く・同じなら何もしない・前回こちらが書いた値なら書き直す・違えば上書きせずメモ */
+var SKWB_SLIP_ROWS = [
+  { v: '西原商会',     re: /西原/ },
+  { v: 'フレッシュ青果', re: /フレッシュ/ },
+  { v: 'イオン',       re: /AEON|イオン/i },
+  { v: 'オーディエー', re: /ODA|オーディエー/i },
+  { v: 'ローソン',     re: /ローソン|LAWSON/i },
+  { v: '銘洋',         re: /メイヨウ|銘洋/ },
+  { v: '魚伸',         re: /魚伸/ },
+  { v: 'リカーマウンテン', re: /リカー|リカマン/ },
+  { v: '日本食研',     re: /日本食研/ }
+];
+function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果, 記録, 書き込む) {
+  var norm = function (v) { return String(v == null ? '' : v).normalize('NFKC').replace(/[\s　]/g, ''); };
+  /* ブロックを探す＝「仕入れ内訳」の見出しの行のあと、「フード」（左）と「ドリンク」（右）の見出しの行 */
+  var hr = -1;
+  for (var r = 30; r < Math.min(vals.length, 70); r++) if (vals[r].some(function (x) { return /仕入れ内訳|仕入内訳/.test(norm(x)); })) { hr = r; break; }
+  if (hr < 0) { 結果.止めた.push(store + ' ' + book.name + '：「仕入れ内訳」の見出しが見つからない'); return; }
+  var blocks = [];
+  for (var r2 = hr + 1; r2 < Math.min(vals.length, hr + 4); r2++) {
+    for (var c = 0; c < vals[r2].length; c++) {
+      var h = norm(vals[r2][c]);
+      if (h !== 'フード' && h !== 'ドリンク') continue;
+      var rows = [], amtCol = -1;
+      for (var r3 = r2 + 1; r3 < Math.min(vals.length, r2 + 25); r3++) {
+        var lab = norm(vals[r3][c]);
+        if (lab === '合計') { for (var c2 = c + 1; c2 < Math.min(vals[r3].length, c + 10); c2++) if (fmls[r3][c2] || vals[r3][c2] !== '') { amtCol = c2; break; } break; }
+        rows.push(r3);
+      }
+      if (amtCol >= 0) blocks.push({ kind: h, col: c, amt: amtCol, rows: rows });
+    }
+    if (blocks.length) break;
+  }
+  var food = blocks.filter(function (b) { return b.kind === 'フード'; })[0], drink = blocks.filter(function (b) { return b.kind === 'ドリンク'; })[0];
+  if (!food) { 結果.止めた.push(store + ' ' + book.name + '：仕入れ内訳の「フード」の欄が見つからない'); return; }
+  /* 仕入先ごとに合計（名畑だけ 8%／10% を分ける） */
+  var sum = {}; var order = [];
+  var add = function (k, v) { if (!v) return; if (sum[k] == null) { sum[k] = 0; order.push(k); } sum[k] += v; };
+  e.app.slips.forEach(function (x) {
+    var v = String(x.v || '').trim(); var a8 = skwb_num_(x.a8) || 0, a10 = skwb_num_(x.a10) || 0;
+    if (!v || (!a8 && !a10)) return;
+    if (/^本部/.test(v)) { var why = store + ' ' + e.date + '：本部請求は仕入れ内訳に行が無いので書かない（' + (a8 + a10) + '円）'; if (結果.止めた.indexOf(why) === -1) 結果.止めた.push(why); return; }
+    if (/名畑/.test(v)) { add('名畑|10', a10); add('名畑|8', a8); return; }
+    add(v, a8 + a10);
+  });
+  var used = {};
+  order.forEach(function (k) {
+    var want = Math.round(sum[k]); if (!want) return;
+    var rr = -1, cc = -1, labelFix = null, blk = food;
+    if (/^名畑\|/.test(k)) {
+      if (!drink) { 結果.止めた.push(store + ' ' + book.name + '：仕入れ内訳の「ドリンク」の欄が見つからない'); return; }
+      blk = drink; var ten = /\|10$/.test(k);
+      drink.rows.forEach(function (r4) { if (rr >= 0) return; var lab = norm(vals[r4][drink.col]); if (/名畑/.test(lab) && (ten ? /酒10/.test(lab) : /(酒以外|8)/.test(lab))) rr = r4; });
+    } else {
+      var m = SKWB_SLIP_ROWS.filter(function (x) { return x.v === k; })[0];
+      var reK = m ? m.re : new RegExp(k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      food.rows.forEach(function (r4) { if (rr >= 0 || used[r4]) return; if (reK.test(norm(vals[r4][food.col]))) rr = r4; });
+      if (rr < 0) {   // 名前の合う行が無い＝空いている(予備)の行
+        food.rows.forEach(function (r4) { if (rr >= 0 || used[r4]) return; var lab = norm(vals[r4][food.col]); if (/^\(予備\)$/.test(lab) && (vals[r4][food.amt] === '' || vals[r4][food.amt] == null) && !fmls[r4][food.col]) { rr = r4; labelFix = k; } });
+      }
+    }
+    if (rr < 0) { var why2 = store + ' ' + e.date + '：仕入れ内訳に「' + k.replace('|', ' ') + '」の行も空いている(予備)の行も無い（' + want + '円）'; if (結果.止めた.indexOf(why2) === -1) 結果.止めた.push(why2); return; }
+    used[rr] = 1; cc = blk.amt;
+    var a1 = skwb_a1_(rr, cc); var cur = vals[rr][cc]; var key = book.name + '|' + day + '|' + a1;
+    var itemName = '仕入 ' + k.replace('|10', '（酒10%）').replace('|8', '（酒以外8%）');
+    var row = { 店舗: store, 日付: e.date, 項目: itemName, セル: day + '!' + a1, いま: cur === '' ? '（空欄）' : cur, 書く値: want, 出どころ: 'アプリ日報（納品書）' };
+    if (fmls[rr][cc]) { row.結果 = '式なので書かない'; 結果.一覧.push(row); return; }
+    if (cur === '' || cur == null) { row.結果 = '書く'; 結果.書く++; }
+    else if (skwb_num_(cur) === want) { row.結果 = '同じ'; 結果.同じ++; 結果.一覧.push(row); return; }
+    else if (前回[key] != null && skwb_num_(前回[key]) === skwb_num_(cur)) { row.結果 = '書き直す'; 結果.書き直す++; }
+    else { row.結果 = 'ずれ（上書きしない）'; 結果.ずれ++; }
+    結果.一覧.push(row);
+    var 済 = row.結果 === '書く' ? '書いた' : row.結果 === '書き直す' ? '書き直した' : 'ずれ';
+    if (書き込む && 済 !== 'ずれ') { if (labelFix) sh.getRange(rr + 1, blk.col + 1).setValue(labelFix); sh.getRange(rr + 1, cc + 1).setValue(want); }
+    if (書き込む && 済 === 'ずれ') {
+      var txt = SKWB_NOTE_TAGS.app + '納品書の写真（アプリ）では ' + Number(want).toLocaleString() + '円です（' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'M/d') + ' 自動確認）。\nどちらが正しいか、ご確認ください。総括表の数字が正しければ、このままで大丈夫です。';
+      if (String(notes[rr][cc] || '') !== txt) sh.getRange(rr + 1, cc + 1).setNote(txt);
+    }
+    if (書き込む) 記録.push([new Date(), store, e.date, itemName, book.name, String(day), a1, cur, want, 済, 'アプリ日報（納品書）']);
   });
 }
 /* ① 下見（書き込みなし）＝今月と前月ぶん */
