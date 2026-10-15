@@ -2262,7 +2262,7 @@
   }).join('');
   const skSlipsHtml_ = () => `
         <div class="card" id="sk_slipbox" style="margin:0 0 10px">
-          <div class="idlabel" style="margin-top:0">${L({ ja:'今日の納品書', en:'Today’s delivery slips', vi:'Phiếu giao hàng hôm nay' })} <span class="muted" style="font-weight:400">${L({ ja:'（写真から自動・確認して直せます）', en:'(auto from photos · editable)', vi:'(tự động từ ảnh · có thể sửa)' })}</span></div>
+          <div class="idlabel" style="margin-top:0">${L({ ja:'この日の納品書', en:'Delivery slips for this day', vi:'Phiếu giao hàng của ngày này' })} <span class="muted" style="font-weight:400">${L({ ja:'（写真から自動・確認して直せます）', en:'(auto from photos · editable)', vi:'(tự động từ ảnh · có thể sửa)' })}</span></div>
           <div id="sk_slips">${skSlipsRowsHtml_()}</div>
           <button type="button" class="btn-sm" id="sk_slipadd">${L({ ja:'＋ 納品書を足す', en:'+ Add slip', vi:'+ Thêm phiếu' })}</button>
           <p class="hint" id="sk_slipnote" style="display:block;margin:6px 0 0;color:#c0392b;font-weight:600">${L({ ja:'写真から読んだ金額です。送信の前に、伝票の合計と同じか必ず確認してください。', en:'Amounts read from photos. Always check them against the slip total before sending.', vi:'Số tiền đọc từ ảnh. Luôn đối chiếu với tổng trên phiếu trước khi gửi.' })}</p>
