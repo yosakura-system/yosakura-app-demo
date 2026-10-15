@@ -6464,5 +6464,21 @@ console.log('== 2026-10-15 日報は開店前に前日分を出す・日付の�
   ok(/前日の日報（アプリ）を出す/.test(hc) || /前日の日報/.test(hc) || true, '（開店前チェックの画面は店舗設定で項目が変わるため、定義の検査で代える）');
 }
 
+console.log('== 2026-10-15 納品書の読み取り（実物11件の回帰）と、1枚の写真に伝票2枚 ==');
+{
+  const { execFileSync } = await import('node:child_process');
+  const { fileURLToPath } = await import('node:url');
+  let out = '', okRun = true;
+  try { out = execFileSync(process.execPath, [fileURLToPath(new URL('./nouhin-ocr-test.mjs', import.meta.url))], { encoding: 'utf8' }); } catch (e) { okRun = false; out = String(e.stdout || e.message); }
+  ok(okRun && / 0 failed/.test(out), '納品書OCRの回帰（長堀橋の実物11件）がすべて通る' + (okRun ? '' : '\n' + out.slice(-800)));
+  const S = '牛カツ世桜 長堀橋店'; const dk = new Date(Date.now() - 5 * 3600e3).toLocaleDateString('en-CA');
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+    { kind:'nouhindraft', store:S, item: dk, note: JSON.stringify({ src:'ocr', v:'フレッシュ青果', a8:1944, total:1944, conf:'low', photo:'PHOTO_TWO1234567', part:'1/2' }), photos:[], t: Date.now() - 2000, id:'m1' },
+    { kind:'nouhindraft', store:S, item: dk, note: JSON.stringify({ src:'ocr', v:'フレッシュ青果', a8:2160, total:2160, conf:'low', photo:'PHOTO_TWO1234567', part:'2/2' }), photos:[], t: Date.now() - 1999, id:'m2' } ])); });
+  location.hash = '#/app/soukatsu?x=two';
+  const h = registry.app.innerHTML;
+  ok((h.match(/data-slip="/g) || []).length === 2, '1枚の写真に伝票2枚＝2枚とも並ぶ（同じ写真で1枚目が消えない）');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

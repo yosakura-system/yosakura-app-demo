@@ -2220,7 +2220,7 @@
       getReports().forEach(r => {
         if (r.kind !== 'nouhindraft' || r.store !== store || dateKeyOfItem(r.item) !== dk) return;
         const p = parseNote(r.note); if (!p || p.src !== 'ocr') return;
-        const key = p.photo || r.id || String(r.t);
+        const key = (p.photo || r.id || String(r.t)) + (p.part ? '#' + String(p.part).split('/')[0] : '');   // ★1枚の写真に伝票が2枚（part '1/2'・'2/2'）＝別の伝票として並べる（2026-10-15）
         if (!by[key] || r.t > by[key]._t) by[key] = Object.assign({ _t: r.t }, p);
       });
     } catch (e) {}
