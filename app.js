@@ -752,7 +752,7 @@
        行の勝ち負けは従来どおり（アプリ提出が勝つ＝仕入・一言・累計はアプリの値を残す）が、
        レジが持つ項目＝売上・純売上・客数・現金・カード・電子マネー・ポイント・値引き は USEN の値で上書きする。
        上書きした行には pos:true の印（画面では「POS」と出す） */
-    const USEN_FIELDS = ['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'kake', 'disc', 'err'];   // ★2026-10-15 掛売・レジ誤差（差異合計）も（神田さん「レジから取れるものは全て」）
+    const USEN_FIELDS = ['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'kake', 'disc', 'err', 'foodamt', 'drinkamt'];   // 2026-10-15 フード/ドリンク金額もレジ（伝票明細のカテゴリ）が主   // ★2026-10-15 掛売・レジ誤差（差異合計）も（神田さん「レジから取れるものは全て」）
     const usenBy = {};
     (arr || []).forEach(r => {
       if (!r || !r.date || r.date > today) return;
@@ -5147,9 +5147,9 @@
               中身は画面を作ったあとに入れる（その日の日報があるかは日付を変えても変わるため） */''}
         <p class="hint" id="sk_editnote" style="display:none;margin:-2px 0 8px;color:#8a6d3b"></p>
         <p class="hint" id="sk_posnote" style="display:block;margin:-2px 0 8px;color:#2d6a4f">${L({
-          ja:'※ 売上・客数・純売上・現金・カード・値引き・レジ誤差は、アプリでは入力しません。USENレジのある店舗はレジの締めの数字から翌朝、レジの無い店舗は総括表に入力された数字から自動で入ります。ここでは残りの項目＝口コミ・フード/ドリンク金額・チップ・昼のみ売上・過不足の理由・仕入・勤怠・所感を入れて提出してください。',
-          en:'Sales, guests, net sales, cash, card, discount and register error are not entered in the app. Stores with a USEN POS get them from the POS close-out the next morning; other stores from the summary sheet. Fill in the rest: reviews, food/drink amounts, tips, lunch-only sales, cash-difference reason, purchases, staffing and notes.',
-          vi:'Doanh thu, số khách, DT thuần, tiền mặt, thẻ, giảm giá và sai lệch quầy không nhập trong ứng dụng. Cửa hàng có POS USEN sẽ tự điền từ số chốt ca vào sáng hôm sau; cửa hàng khác từ bảng tổng kết. Hãy nhập phần còn lại: đánh giá, tiền món/đồ uống, tip, DT buổi trưa, lý do chênh lệch, nhập hàng, nhân sự và cảm nhận.' })}</p>
+          ja:'※ 売上・客数・純売上・現金・カード・値引き・レジ誤差・フード/ドリンク金額・国別のお客様は、アプリでは入力しません。USENレジのある店舗はレジの数字から翌朝、レジの無い店舗は総括表に入力された数字から自動で入ります。ここでは残りの項目＝口コミ・チップ・昼のみ売上・過不足の理由・仕入・勤怠（任意）・所感を入れて提出してください。',
+          en:'Sales, guests, net sales, cash, card, discount, register error, food/drink amounts and guests by country are not entered in the app. Stores with a USEN POS get them from the POS the next morning; other stores from the summary sheet. Fill in the rest: reviews, tips, lunch-only sales, cash-difference reason, purchases, attendance (optional) and notes.',
+          vi:'Doanh thu, số khách, DT thuần, tiền mặt, thẻ, giảm giá, sai lệch quầy, tiền món/đồ uống và khách theo quốc gia không nhập trong ứng dụng. Cửa hàng có POS USEN sẽ tự điền từ POS vào sáng hôm sau; cửa hàng khác từ bảng tổng kết. Hãy nhập phần còn lại: đánh giá, tip, DT buổi trưa, lý do chênh lệch, nhập hàng, chấm công (tùy chọn) và cảm nhận.' })}</p>
         ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの総括表から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
         ${gsnap ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:`※ 「口コミ 当日」は、Googleの口コミ件数（前日との差）から自動で入っています（対象日 ${gsnap._d}・現在の総数 ${gsnap.total}件）。違うときは直してから提出してください。`, en:`Reviews today was filled from the Google review count (day-over-day, as of ${gsnap._d}, total ${gsnap.total}). Correct if needed.`, vi:`Ô đánh giá hôm nay được điền từ số review Google (so với hôm trước, ${gsnap._d}, tổng ${gsnap.total}). Sửa nếu sai.` })}</p>` : ''}
         <div class="sk-grid">
@@ -5165,10 +5165,9 @@
           <input type="hidden" id="sk_net"><input type="hidden" id="sk_err">
           <label class="fld"><span>${L({ja:'月累計売上（自動計算）',en:'Month-to-date (auto)',vi:'Lũy kế tháng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_mtd" placeholder="2146145" value="${skCum0.mtd || ''}"></label>
           <label class="fld"><span>${L({ja:'売上目標（月）',en:'Monthly goal',vi:'Mục tiêu tháng'})}</span><input type="text" inputmode="numeric" id="sk_goal" placeholder="3000000"></label>
-          <label class="fld"><span>${L({ja:'フード金額',en:'Food sales (¥)',vi:'Tiền món ăn'})}</span><input type="text" inputmode="numeric" id="sk_foodamt" placeholder="88400"></label>
-          <label class="fld"><span>${L({ja:'ドリンク金額',en:'Drink sales (¥)',vi:'Tiền đồ uống'})}</span><input type="text" inputmode="numeric" id="sk_drinkamt" placeholder="20100"></label>
+          <input type="hidden" id="sk_foodamt"><input type="hidden" id="sk_drinkamt">
         </div>
-        <div class="stat-row" style="margin:2px 0 10px">
+        <div class="stat-row" style="margin:2px 0 10px;display:none">
           <div class="stat"><div class="n" id="sk_foodpct">—</div><div class="k">${L({ja:'フード構成比（自動計算）',en:'Food share (auto)',vi:'Tỷ trọng món ăn (tự động)'})}</div></div>
           <div class="stat"><div class="n" id="sk_drinkpct">—</div><div class="k">${L({ja:'ドリンク構成比（自動計算）',en:'Drink share (auto)',vi:'Tỷ trọng đồ uống (tự động)'})}</div></div>
         </div>
@@ -5254,17 +5253,6 @@
         <label class="fld"><span>${L({ ja:'引き継ぎ（朝・昼 → 夜）', en:'Handover (day → night)', vi:'Bàn giao (ngày → tối)' })}</span><textarea id="sk_hikin"></textarea></label>
         <label class="fld"><span>${L({ ja:'引き継ぎ（夜 → 翌朝・昼）', en:'Handover (night → next morning)', vi:'Bàn giao (tối → sáng hôm sau)' })}</span><textarea id="sk_hikim"></textarea></label>`}
 
-        <div class="idlabel" style="margin-top:14px">${L({ ja:'お客様の内訳（国別・組数／人数）', en:'Guests by country (groups / people)', vi:'Khách theo quốc gia (nhóm / người)' })}</div>
-        <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'総括表と同じ区分です。分かるものだけで大丈夫です（空欄は0として扱いません）。', en:'Same categories as the summary sheet. Fill only what you know.', vi:'Cùng phân loại với bảng tổng kết. Chỉ điền phần bạn biết.' })}</p>
-        <div class="sk-grid">
-          ${SK_COUNTRIES.concat(SK_VISITKIND).map(cn => `
-            <label class="fld"><span>${L(cn.t)}</span>
-              <span style="display:flex;gap:6px">
-                <input type="text" inputmode="numeric" id="sk_cty_${cn.k}_g" placeholder="${L({ja:'組',en:'grp',vi:'nhóm'})}" style="width:50%">
-                <input type="text" inputmode="numeric" id="sk_cty_${cn.k}_p" placeholder="${L({ja:'人',en:'ppl',vi:'người'})}" style="width:50%">
-              </span>
-            </label>`).join('')}
-        </div>
         <label class="fld"><span>${L({ ja:'翌日の食材発注', en:'Tomorrow ingredient order', vi:'Đặt NL ngày mai' })}</span><textarea id="sk_order" placeholder="${L({ja:'例：豆乳6／寿司のエビ2／お米 …',en:'e.g. soy milk 6 / shrimp 2 / rice …',vi:'vd: sữa đậu 6 / tôm 2 / gạo …'})}"></textarea></label>
         <button class="btn-primary" id="submitSk">${L({ja:'提出する',en:'Submit',vi:'Nộp'})}</button>
         <div class="hint">${L({ja:'保存すると、「最近の総括表」タブと「本部ダッシュボード」に反映されます',en:'Saved to the Recent tab and the HQ Dashboard',vi:'Được lưu vào thẻ Gần đây và Bảng điều khiển'})}</div>

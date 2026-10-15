@@ -60,8 +60,8 @@ var SKWB_ITEMS = [
   { k: 'kake',     label: '掛売売上',               dr: 0, dc: 5, usen: true,  unit: '円' },
   { k: 'err',      label: /^過不足[（(]現金[)）]$/,  dr: 0, dc: 4, usen: true,  unit: '円', appFallback: true },   // レジの差異合計。締め未統一（closeng）の日はアプリの値
   { k: 'rvt',      label: /^本日の口コミ獲得/,       dr: 0, dc: 6, usen: false, unit: '件' },
-  { k: 'foodamt',  label: 'フード',                 dr: 0, dc: 5, usen: false, unit: '円', ctx: true },
-  { k: 'drinkamt', label: 'ドリンク',               dr: 0, dc: 5, usen: false, unit: '円', ctx: true },
+  { k: 'foodamt',  label: 'フード',                 dr: 0, dc: 5, usen: true,  unit: '円', ctx: true, appFallback: true },   // 2026-10-15 レジ（伝票明細のカテゴリ）が主
+  { k: 'drinkamt', label: 'ドリンク',               dr: 0, dc: 5, usen: true,  unit: '円', ctx: true, appFallback: true },
   { k: 'tipt',     label: 'チップ',                 dr: 0, dc: 5, usen: false, unit: '円', ctx: true },
   { k: 'lunch',    label: '昼のみ売上',             dr: 1, dc: 4, usen: false, unit: '円' },
   { k: 'errnote',  label: /過不足理由記載/,          dr: 1, dc: 0, usen: false, text: true }
@@ -240,6 +240,8 @@ function skwb_実行_(書き込む, days, only) {
       });
       /* ★勤怠（アプリの日報・任意）＝総括表の勤怠の行へ（氏名・出勤の時/分・退勤の時/分。合計・外時間・金額は式）2026-10-15 */
       if (e.app && Array.isArray(e.app.kintai) && e.app.kintai.length) skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);
+      /* ★国別（レジの客層「国籍」＝伝票明細の集計 pcty）→ 顧客情報の「国」の行の下の組数・人数へ（2026-10-15 神田さん「レジ客層が主・転記するだけ」） */
+      if (e.usen && e.usen.pcty) skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);
     });
   });
   if (記録.length) logSh.getRange(logSh.getLastRow() + 1, 1, 記録.length, 記録[0].length).setValues(記録);
@@ -281,6 +283,38 @@ function skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記�
       ['sh', 'sm', 'eh', 'em'].forEach(function (f) { if (fmls[rr][C[f]]) return; sh.getRange(rr + 1, C[f] + 1).setValue(want[f] == null ? '' : want[f]); });
     }
     if (書き込む) 記録.push([new Date(), store, e.date, '勤怠' + (i + 1), book.name, String(day), a1, curName, name, 済, 'アプリ日報']);
+  });
+}
+/* 国別＝「国」のラベル行（B列）の右に国名、その下の行が「組数」「人数」。国名は半角カナ混じりなので NFKC でそろえて比べる。
+   レジの客層の区分（例：欧米）が総括表の国の列に無いときは書かず、止めたに1回だけ出す（増田さんに区分の対応を決めてもらう） */
+var SKWB_CTY_ALIAS = { '米国': 'アメリカ', 'USA': 'アメリカ', '欧州': 'ヨーロッパ', 'イタリア': 'ヨーロッパ', 'フランス': 'ヨーロッパ', 'イギリス': 'ヨーロッパ', 'ドイツ': 'ヨーロッパ', 'スペイン': 'ヨーロッパ', '豪州': 'オーストラリア', 'ベトナム': '東南アジア', 'タイ': '東南アジア', 'フィリピン': '東南アジア', 'インドネシア': '東南アジア', 'マレーシア': '東南アジア', 'シンガポール': '東南アジア', 'インド': '南アジア' };
+function skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む) {
+  var norm = function (v) { return String(v == null ? '' : v).normalize('NFKC').replace(/[\s　]/g, ''); };
+  var cols = {};   // 国名（正規化）→ { c, rG, rP }
+  for (var r = 40; r < vals.length - 2; r++) {
+    if (norm(vals[r][1]) !== '国' && norm(vals[r][0]) !== '国') continue;
+    if (!/組数/.test(norm(vals[r + 1][1]) + norm(vals[r + 1][0])) || !/人数/.test(norm(vals[r + 2][1]) + norm(vals[r + 2][0]))) continue;
+    for (var c = 2; c < vals[r].length; c++) { var h = norm(vals[r][c]); if (h && !cols[h]) cols[h] = { c: c, rG: r + 1, rP: r + 2 }; }
+  }
+  if (!Object.keys(cols).length) { 結果.止めた.push(store + ' ' + book.name + '：顧客情報の「国」の行が見つからない'); return; }
+  Object.keys(e.usen.pcty).forEach(function (label) {
+    var v = e.usen.pcty[label] || {}; var g = skwb_num_(v.g) || 0, pn = skwb_num_(v.p) || 0; if (!g && !pn) return;
+    var key = norm(label); var col = cols[key] || cols[SKWB_CTY_ALIAS[key] || ''];
+    if (!col) { var why = store + ' ' + e.date + '：レジの客層「' + label + '」は総括表の国の列に無い（組' + g + '・人' + pn + '）'; if (結果.止めた.indexOf(why) === -1) 結果.止めた.push(why); return; }
+    [['組数', col.rG, g, '組'], ['人数', col.rP, pn, '人']].forEach(function (x) {
+      var want = x[2]; if (!want) return;
+      var rr = x[1], cc = col.c; var a1 = skwb_a1_(rr, cc); var cur = vals[rr][cc]; var k2 = book.name + '|' + day + '|' + a1;
+      var row = { 店舗: store, 日付: e.date, 項目: '国別 ' + label + ' ' + x[0], セル: day + '!' + a1, いま: cur === '' ? '（空欄）' : cur, 書く値: want, 出どころ: 'USENレジ' };
+      if (fmls[rr][cc]) { row.結果 = '式なので書かない'; 結果.一覧.push(row); return; }
+      if (cur === '' || cur == null) { row.結果 = '書く'; 結果.書く++; }
+      else if (skwb_num_(cur) === want) { row.結果 = '同じ'; 結果.同じ++; 結果.一覧.push(row); return; }
+      else if (前回[k2] != null && skwb_num_(前回[k2]) === skwb_num_(cur)) { row.結果 = '書き直す'; 結果.書き直す++; }
+      else { row.結果 = 'ずれ（上書きしない）'; 結果.ずれ++; }
+      結果.一覧.push(row);
+      var 済 = row.結果 === '書く' ? '書いた' : row.結果 === '書き直す' ? '書き直した' : 'ずれ';
+      if (書き込む && 済 !== 'ずれ') sh.getRange(rr + 1, cc + 1).setValue(want);
+      if (書き込む) 記録.push([new Date(), store, e.date, row.項目, book.name, String(day), a1, cur, want, 済, 'USENレジ']);
+    });
   });
 }
 /* ① 下見（書き込みなし）＝今月と前月ぶん */

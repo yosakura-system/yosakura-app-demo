@@ -1436,9 +1436,9 @@ console.log('== 日報を総括表 Ver.2.6 に合わせる（現金/カード・
   ok(!/>現金売上<\/span>/.test(sk) && !/>カード売上<\/span>/.test(sk) && /id="sk_posnote"/.test(sk), '現金・カードはアプリで入力しない（レジ／総括表から入る・2026-10-15）');
   ok(/昼のみ売上/.test(sk) && /消耗品金額/.test(sk) && /仕入 食材（税込・8%）/.test(sk) && /仕入 合計（税抜・自動計算）/.test(sk), '昼のみ売上・消耗品・当日仕入（税込3欄＋税抜合計）が入力できる');
   ok(/過不足（現金）の理由/.test(sk), '過不足の理由が書ける（金額だけでは後から分からないため）');
-  ok(/お客様の内訳（国別・組数／人数）/.test(sk) && /sk_cty_jp_g/.test(sk) && /sk_cty_af_p/.test(sk),
-     '国別の組数・人数が総括表と同じ区分で並ぶ');
-  ok(/sk_cty_new_g/.test(sk) && /sk_cty_rep_g/.test(sk), '新規・リピートも入力できる');
+  ok(!/お客様の内訳（国別・組数／人数）/.test(sk) && !/sk_cty_jp_g/.test(sk) && /国別のお客様は、アプリでは入力しません/.test(sk),
+     '国別の入力欄は無い＝レジの客層（国籍）から総括表へ（2026-10-15 神田さん「レジ客層が主・転記するだけ」）');
+  ok(!/sk_cty_new_g/.test(sk) && !/>フード金額<\/span>/.test(sk) && /<input type="hidden" id="sk_foodamt">/.test(sk), '新規・リピート・フード/ドリンク金額の欄も無い（レジから）');
   ok(!/鰻の使用尾数/.test(sk), '鰻を扱わない店舗には、鰻の使用尾数を出さない');
   ok(/鰻の使用尾数/.test(renderView('soukatsu', 'manager', S_UNAGI, 'ja')), '鰻の店舗にだけ、使用尾数が出る');
 
@@ -4064,7 +4064,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   // ① 入力フォーム＝金額の欄と自動計算の表示。点数と原価率の手入力は無い
   location.hash = '#/app/soukatsu?x=amt';
   let h = registry.app.innerHTML;
-  ok(/id="sk_foodamt"/.test(h) && /id="sk_drinkamt"/.test(h), '入力欄がフード金額・ドリンク金額になっている');
+  ok(/<input type="hidden" id="sk_foodamt">/.test(h) && /<input type="hidden" id="sk_drinkamt">/.test(h), 'フード金額・ドリンク金額の欄は無い（レジの伝票明細から・2026-10-15。保存の形は金額のまま）');
   ok(!/id="sk_foodct"/.test(h) && !/id="sk_drinkct"/.test(h), '点数の入力欄は無い');
   ok(!/id="sk_food"/.test(h), '原価率の手入力欄は無い');
   ok(/id="sk_buyrate"/.test(h) && /仕入率＝当月の仕入合計÷売上合計/.test(h), '仕入率（自動計算）の表示と説明がある');
@@ -6351,7 +6351,7 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   location.hash = '#/store?s=' + encodeURIComponent(S);
   h = registry.app.innerHTML;
   ok(/200,000/.test(h) && /掛売売上（レジ）/.test(h) && /3,000/.test(h), 'レジの行が来ると売上がレジの値で入り、掛売売上（レジ）も明細に出る');
-  ok(/USEN_FIELDS = \['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'kake', 'disc', 'err'\]/.test(code), 'レジが正の項目に掛売・レジ誤差も含む');
+  ok(/USEN_FIELDS = \['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'point', 'kake', 'disc', 'err', 'foodamt', 'drinkamt'\]/.test(code), 'レジが正の項目に掛売・レジ誤差・フード/ドリンク金額も含む');
   // ⑤ レジの無い店＝同じ日報（欄は同じ）。総括表取込（src:'drive'）の行が来ると売上がそこから入る＝出どころ「アプリ＋総括表」
   run(() => { setLS('staff', S2, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); });
   location.hash = '#/app/soukatsu';
@@ -6421,6 +6421,14 @@ console.log('== 2026-10-15 勤怠（任意）＝総括表の勤怠と同じ形�
   ok(/function skwb_kintai_\(/.test(wsrc2) && /var C = \{ n: 2, sh: 6, sm: 8, eh: 11, em: 13 \};/.test(wsrc2) && /Math\.min\(sh\.getMaxRows\(\), 100\)/.test(wsrc2), '書き戻し＝勤怠の行（C 氏名／G:I 出勤／L:N 退勤）へ・100行まで読む');
   ok(/en\[0\] \+= 24;/.test(wsrc2), '書き戻し＝日をまたぐ退勤は24を足す（総括表の選択肢は27時まで）');
   ok(/'staffm',/.test(csrc3.slice(csrc3.indexOf('PURGE_KEEP_KINDS'), csrc3.indexOf('PURGE_KEEP_KINDS') + 400)), '名簿（staffm）は90日削除から守る');
+  // ⑦ 伝票明細の集計（usenx）＝国別・フード/ドリンクはレジから総括表へ（2026-10-15 神田さん「レジ客層が主」）
+  const usrc3 = fs.readFileSync(new URL('../backend/USEN取込.gs', import.meta.url), 'utf8');
+  ok(/function usenx_api_\(data\)/.test(usrc3) && /data\.kind === 'usenx'/.test(usrc3) && /var USENX_KEYS = \['pcty', 'proute', 'foodamt', 'drinkamt', 'lunch15', 'xslips', 'xguests'\];/.test(usrc3), 'USEN取込＝伝票明細の集計（国別 pcty・来店経路・フード/ドリンク）を受けてUSEN行に足す');
+  ok(/USENX_KEYS\.forEach\(function \(x\) \{ if \(cur\.p\[x\] != null && r\.p\[x\] == null\) r\.p\[x\] = cur\.p\[x\]; \}\);/.test(usrc3), 'レジクローズの行を書き直すとき伝票明細の項目を引き継ぐ');
+  ok(/function skwb_cty_\(/.test(wsrc2) && /SKWB_CTY_ALIAS/.test(wsrc2) && /normalize\('NFKC'\)/.test(wsrc2), '書き戻し＝国別（レジの客層）を顧客情報の組数・人数へ（半角カナの国名もそろえる・無い区分は止めたに）');
+  ok(/k: 'foodamt',[^\n]*usen: true,[^\n]*appFallback: true/.test(wsrc2) && /k: 'drinkamt',[^\n]*usen: true/.test(wsrc2), '書き戻し＝フード/ドリンク金額はレジ（伝票明細）が主・無い日だけアプリ');
+  const hsrc = fs.readFileSync(new URL('../../05_品質管理・仕組み構築/_生成スクリプト/usen_hanyou.py', import.meta.url), 'utf8');
+  ok(/KIND = '売上データ\(伝票 \+ 伝票明細\)'/.test(hsrc) && /kk\.startswith\('国籍'\)/.test(hsrc) && /'kind': 'usenx'/.test(hsrc), 'usen_hanyou.py＝汎用検索の伝票明細を集計して usenx で送る');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);

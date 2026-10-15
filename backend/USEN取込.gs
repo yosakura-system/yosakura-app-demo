@@ -174,6 +174,7 @@ function usen_readFolder_() {
    合言葉＝Script Properties の USEN_POST_KEY（英字まじり）。受け取った表を「USEN貼付」シートに置き換えてから取込を走らせ、結果を返す */
 function usen_api_(data) {
   if (data && data.kind === 'skwb' && typeof skwb_api_ === 'function') return skwb_api_(data);   // ★2026-10-07 総括表への書き戻し（総括表書き戻し.gs）
+  if (data && data.kind === 'usenx') return usenx_api_(data);                               // ★2026-10-15 伝票明細の集計（国別・フード/ドリンク）
   if (!data || data.kind !== 'usen_import') return null;
   var key = String(getSetting_('USEN_POST_KEY', '') || '');
   if (!key || String(data.key || '') !== key) return { ok: false, error: 'USEN_KEY' };
@@ -194,6 +195,40 @@ function usen_api_(data) {
   } finally { lock.releaseLock(); }
 }
 
+/* ★2026-10-15 伝票明細の集計（usen_hanyou.py → {kind:'usenx', rows:[{code, name, date, pcty:{国:{g,p}}, proute:{経路:組数}, foodamt, drinkamt, lunch15, xslips, xguests}]}）。
+   その店×日の最新のUSEN行（src:'usen'）にこれらの項目を足した行を追記する（無ければ新しいUSEN行）。同じ内容なら足さない。
+   神田さん「レジ客層はUSENレジの客層が主。それを総括に転記するだけでいい」＝国別・フード/ドリンクは店が入力しない */
+var USENX_KEYS = ['pcty', 'proute', 'foodamt', 'drinkamt', 'lunch15', 'xslips', 'xguests'];
+function usenx_canon_(p) { var o = {}; USENX_KEYS.forEach(function (k) { if (p && p[k] != null) o[k] = p[k]; }); return JSON.stringify(o); }
+function usenx_api_(data) {
+  var key = String(getSetting_('USEN_POST_KEY', '') || '');
+  if (!key || String(data.key || '') !== key) return { ok: false, error: 'USEN_KEY' };
+  var rows = Array.isArray(data.rows) ? data.rows : [];
+  var 書き込む = data.dryRun ? false : true;
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    var map = usen_storeMap_(); var 既存 = usen_既存_(); var sh = getSheet();
+    var 結果 = { 書き込み: 書き込む ? '実行した' : '★下見のみ（書き込みなし）', 新規: 0, 更新: 0, 変わらず: 0, 飛ばした: [], 店舗: {} };
+    var 追記 = [];
+    rows.forEach(function (r) {
+      var code = ('00' + String(r.code || '').replace(/^0*(\d)/, '$1')).slice(-3);
+      var store = map[code] || map[String(r.name || '').trim()] || '';
+      if (!store || !r.date) { var why = '店舗の対応が無い：' + code + ' ' + (r.name || ''); if (結果.飛ばした.indexOf(why) === -1) 結果.飛ばした.push(why); return; }
+      var k = store + '|' + r.date; var cur = 既存[k];
+      var base = (cur && cur.p && cur.src === USEN_SRC_TAG) ? cur.p : { date: r.date, src: USEN_SRC_TAG, usenCode: code };
+      var p = {}; Object.keys(base).forEach(function (x) { p[x] = base[x]; });
+      USENX_KEYS.forEach(function (x) { if (r[x] != null) p[x] = r[x]; });
+      var st = 結果.店舗[store] || (結果.店舗[store] = { 新規: 0, 更新: 0, 変わらず: 0 });
+      if (cur && cur.p && cur.src === USEN_SRC_TAG && usenx_canon_(cur.p) === usenx_canon_(p)) { st.変わらず++; 結果.変わらず++; return; }
+      if (cur && cur.p && cur.src === USEN_SRC_TAG) { st.更新++; 結果.更新++; } else { st.新規++; 結果.新規++; }
+      if (書き込む) 追記.push([Utilities.getUuid(), Date.now(), 'soukatsu', store, '', '', JSON.stringify(p), '[]']);
+      既存[k] = { t: Date.now(), src: USEN_SRC_TAG, canon: usen_canon_(p), p: p, usenT: Date.now(), usenCanon: usen_canon_(p) };
+    });
+    if (書き込む && 追記.length) { var 次行 = sh.getLastRow() + 1; sh.getRange(次行, 1, 追記.length, 追記[0].length).setValues(追記); }
+    var 書き戻し = (書き込む && typeof skwb_afterUsen_ === 'function') ? skwb_afterUsen_() : null;
+    return { ok: true, rows: rows.length, result: 結果, skwb: 書き戻し };
+  } finally { lock.releaseLock(); }
+}
 /* B. 「USEN貼付」シート（画面の表を貼ったもの）。空白区切りでもタブ区切りでもよい */
 function usen_readPaste_() {
   var ss; try { ss = getSheet().getParent(); } catch (e) { return []; }
@@ -227,6 +262,7 @@ function usen_実行_(書き込む) {
       var st = 結果.店舗[r.store] || (結果.店舗[r.store] = { 新規: 0, 更新: 0, 変わらず: 0 });
       if (cur && cur.usenCanon && cur.usenCanon === canon) { st.変わらず++; 結果.変わらず++; return; }
       if (cur) { st.更新++; 結果.更新++; } else { st.新規++; 結果.新規++; }
+      if (cur && cur.p && cur.src === USEN_SRC_TAG) USENX_KEYS.forEach(function (x) { if (cur.p[x] != null && r.p[x] == null) r.p[x] = cur.p[x]; });   // 伝票明細の項目（国別など）は引き継ぐ
       if (書き込む) { 追記.push([Utilities.getUuid(), Date.now(), 'soukatsu', r.store, '', '', JSON.stringify(r.p), '[]']); }
       既存[k] = { t: Date.now(), src: USEN_SRC_TAG, canon: canon, p: r.p, usenT: Date.now(), usenCanon: canon };
     });
