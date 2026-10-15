@@ -4124,7 +4124,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
     { kind:'nouhindraft', store:S, item: today4, note: JSON.stringify({ src:'ocr', v:'西原商会', a8:200, total:200, conf:'high', photo:'PHOTO_F1234567', ret:true }), photos:[], t: Date.now() - 4000, id:'r2' } ])); });
   location.hash = '#/app/soukatsu?x=slips3';
   h = registry.app.innerHTML;
-  ok(/data-sret="1" checked/.test(h) && !/data-sret="0" checked/.test(h) && /返品（仕入から引く）/.test(h), '伝票の行に「返品（仕入から引く）」のチェック＝写真で返品と読めた伝票は最初からチェック済み');
+  ok(/data-sret="1" checked/.test(h) && !/data-sret="0" checked/.test(h) && /data-sret="0"[^>]*> 返品</.test(h), '伝票の行に「返品」のチェック＝写真で返品と読めた伝票は最初からチェック済み');
   ok(doc.getElementById('sk_buy_food').value === '880', '返品の伝票は仕入3欄から引く（1080−200＝880）');
   doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = today4; doc.getElementById('sk_sales').value = '100000';
   doc.getElementById('submitSk').onclick();
