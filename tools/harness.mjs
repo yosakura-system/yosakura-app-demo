@@ -6455,8 +6455,12 @@ console.log('== 2026-10-15 日報は開店前に前日分を出す・日付の�
   const m = h.match(/id="sk_date" value="(\d{4}-\d{2}-\d{2})"/);
   const todayB = (() => { const d = new Date(Date.now() - 5 * 3600e3); return d.toLocaleDateString('en-CA'); })();
   const yestB = (() => { const d = new Date(todayB + 'T12:00:00'); d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA'); })();
-  ok(m && m[1] === (hour >= 12 ? todayB : yestB), '日報の日付の初期値＝12時前は前日・12時以降は当日（いま' + hour + '時→' + (m && m[1]) + '）');
-  ok(hour >= 12 ? !/id="sk_datenote"/.test(h) : (/id="sk_datenote"/.test(h) && /の日報です。きょうの分なら日付を変えてください/.test(h)), '前日になっているときだけ「前日分として出します」の案内が出る');
+  ok(m && m[1] === yestB, '日報の日付の初期値＝前日の日報がまだ無ければ前日（時刻に関係なく・いま' + hour + '時→' + (m && m[1]) + '）');
+  ok(/id="sk_datenote"/.test(h) && /の日報です。きょうの分なら日付を変えてください/.test(h) && />日付（営業日）</.test(h), '前日になっているときは案内が出る・欄の名前は「日付（営業日）」');
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store: S, date: yestB, posWait: true, memo: '済', t: Date.now() - 3600e3 }])); localStorage.removeItem('yosakura_sk_edit'); });
+  location.hash = '#/app/soukatsu?x=dd2';
+  const h2d = registry.app.innerHTML; const m2 = h2d.match(/id="sk_date" value="(\d{4}-\d{2}-\d{2})"/);
+  ok(m2 && m2[1] === todayB && !/id="sk_datenote"/.test(h2d), '前日の日報を出し終えていれば当日の日付で開く（閉店後にその日の分を出す店）');
   ok(/前日の日報（アプリ）を出す/.test(code) && /12時まで。チップ/.test(code), '開店前チェックの先頭に「前日の日報（アプリ）を出す」がある');
   ok(!/合わせてから総括表へ入力／/.test(code) && /レジの全現金を入れて締める/.test(code), 'クローズのレジ締めから「総括表へ入力」を外した（売上は翌朝レジから自動）');
   location.hash = '#/app/check';

@@ -843,7 +843,10 @@
      2026-10-15 神田さん「勤怠は完全任意。総括表に直接入力して使っている方もいたので、アプリでも同じように準備したらアプリだけで完結する」 */
   /* ★日報の日付の初期値（2026-10-15 神田さん「15日が最初から入っていて、今日の分を出すのか迷う」）＝12時前に開いたら前日。
      営業日は朝5時で切り替わる（todayKey）ので、0〜5時は todayKey 自体が前日＝そのまま */
-  const skDefaultDate_ = () => { const t = todayKey(); if (new Date().getHours() >= 12) return t; const d = new Date(t + 'T12:00:00'); d.setDate(d.getDate() - 1); try { return d.toLocaleDateString('en-CA'); } catch (e) { return d.toISOString().slice(0, 10); } };
+  /* ★2026-10-15 改＝神田さん「日報は前日分なので、日付間違いを防ぐために前日の方がよい」。時刻ではなく『前日の日報が出ているか』で決める。
+     前日の日報（アプリの提出・自動の取込は除く）がまだ無ければ前日、出ていれば当日（閉店後にその日の分を出す店）。日付は営業日（朝5時切替） */
+  const skDefaultDate_ = (store) => { const t = todayKey(); const d = new Date(t + 'T12:00:00'); d.setDate(d.getDate() - 1); let y; try { y = d.toLocaleDateString('en-CA'); } catch (e) { y = d.toISOString().slice(0, 10); }
+    const st = store || visibleStores()[0]; const done = getSk().some(r => r && r.store === st && r.date === y && !r.src); return done ? t : y; };
   const SK_KT_ROWS = 8;
   const skStaffNames_ = (store) => { try { const rows = getReports().filter(x => x && x.kind === 'staffm' && x.store === store).sort((a, b) => (Number(b.t) || 0) - (Number(a.t) || 0)); const p = rows.length ? parseNote(rows[0].note) : null; return (p && Array.isArray(p.names)) ? p.names.map(x => String(x.n || '').trim()).filter(Boolean) : []; } catch (e) { return []; } };
   const skKintaiText_ = (arr) => Array.isArray(arr) ? arr.map(k => `${k.n || ''} ${k.s || ''}〜${k.e || ''}`.trim()).join('／') : '';
@@ -5167,11 +5170,11 @@
           ja:'※ 売上・レジの数字・フード/ドリンク・国別・口コミは自動で入ります（レジの無い店舗は売上を総括表から）。ここで入れるのは、チップ・昼のみ売上・過不足の理由・納品書の写真・所感です。',
           en:'Sales, POS figures, food/drink, guests by country and reviews are filled automatically. Enter here: tips, lunch-only sales, cash-difference reason, delivery-slip photos and notes.',
           vi:'Doanh thu, số liệu POS, món/đồ uống, khách theo quốc gia và đánh giá tự điền. Nhập ở đây: tip, DT buổi trưa, lý do chênh lệch, ảnh phiếu giao hàng và cảm nhận.' })}</p>
-        ${(!skEditTarget_().date && skDefaultDate_() !== today) ? `<p class="hint" id="sk_datenote" style="display:block;margin:-2px 0 8px;color:#8a6d3b">${L({ ja:`※ 前日（${skDefaultDate_().slice(5).replace('-', '/')}）の日報です。きょうの分なら日付を変えてください。`, en:`This is yesterday’s report (${skDefaultDate_().slice(5)}). Change the date for today’s.`, vi:`Đây là báo cáo hôm qua (${skDefaultDate_().slice(5)}). Đổi ngày nếu là hôm nay.` })}</p>` : ''}
+        ${(!skEditTarget_().date && skDefaultDate_(vis[0]) !== today) ? `<p class="hint" id="sk_datenote" style="display:block;margin:-2px 0 8px;color:#8a6d3b">${L({ ja:`※ 前日（${skDefaultDate_(vis[0]).slice(5).replace('-', '/')}）の日報です。きょうの分なら日付を変えてください。`, en:`This is yesterday’s report (${skDefaultDate_(vis[0]).slice(5)}). Change the date for today’s.`, vi:`Đây là báo cáo hôm qua (${skDefaultDate_(vis[0]).slice(5)}). Đổi ngày nếu là hôm nay.` })}</p>` : ''}
         ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの総括表から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
-          <label class="fld"><span>${L({ ja:'日付', en:'Date', vi:'Ngày' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || skDefaultDate_()}" max="${today}"></label>
+          <label class="fld"><span>${L({ ja:'日付（営業日）', en:'Date (business day)', vi:'Ngày (ngày kinh doanh)' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || skDefaultDate_(vis[0])}" max="${today}"></label>
           <input type="hidden" id="sk_sales"><input type="hidden" id="sk_guests">
         </div>
         <div class="stat-row" style="margin:2px 0 10px;display:none">
