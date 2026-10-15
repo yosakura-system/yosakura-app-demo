@@ -1436,7 +1436,7 @@ console.log('== 日報を総括表 Ver.2.6 に合わせる（現金/カード・
   ok(!/>現金売上<\/span>/.test(sk) && !/>カード売上<\/span>/.test(sk) && /id="sk_posnote"/.test(sk), '現金・カードはアプリで入力しない（レジ／総括表から入る・2026-10-15）');
   ok(/昼のみ売上/.test(sk) && /消耗品金額/.test(sk) && /仕入 食材（税込・8%）/.test(sk) && /仕入 合計（税抜・自動計算）/.test(sk), '昼のみ売上・消耗品・当日仕入（税込3欄＋税抜合計）が入力できる');
   ok(/過不足（現金）の理由/.test(sk), '過不足の理由が書ける（金額だけでは後から分からないため）');
-  ok(!/お客様の内訳（国別・組数／人数）/.test(sk) && !/sk_cty_jp_g/.test(sk) && /国別のお客様は、アプリでは入力しません/.test(sk),
+  ok(!/お客様の内訳（国別・組数／人数）/.test(sk) && !/sk_cty_jp_g/.test(sk) && /国別は、翌朝レジから自動で入ります/.test(sk),
      '国別の入力欄は無い＝レジの客層（国籍）から総括表へ（2026-10-15 神田さん「レジ客層が主・転記するだけ」）');
   ok(!/sk_cty_new_g/.test(sk) && !/>フード金額<\/span>/.test(sk) && /<input type="hidden" id="sk_foodamt">/.test(sk), '新規・リピート・フード/ドリンク金額の欄も無い（レジから）');
   ok(!/鰻の使用尾数/.test(sk), '鰻を扱わない店舗には、鰻の使用尾数を出さない');
@@ -6330,7 +6330,7 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows)); });
   location.hash = '#/app/soukatsu';
   let h = registry.app.innerHTML;
-  ok(/id="sk_posnote"/.test(h) && /アプリでは入力しません/.test(h) && /レジの無い店舗は総括表に入力された数字から/.test(h), '日報に「レジの項目はアプリでは入力しない（レジ店はレジから・レジの無い店は総括表から）」の案内が出る');
+  ok(/id="sk_posnote"/.test(h) && /翌朝レジから自動で入ります/.test(h) && /レジの無い店舗は総括表から/.test(h) && h.match(/id="sk_posnote"[^<]*<\/p>/)[0].length < 260, '日報の案内＝短い2文（売上などは翌朝レジから自動・ここで入れるもの）');
   ok(/<input type="hidden" id="sk_sales">/.test(h) && !/>当日売上<\/span>/.test(h) && !/>客数<\/span>/.test(h) && !/>レジ誤差<\/span>/.test(h) && !/>現金売上<\/span>/.test(h) && !/>カード売上<\/span>/.test(h) && !/>値引き<\/span>/.test(h) && !/>純売上<\/span>/.test(h), 'レジの7項目の入力欄が出ない（売上・客数・純売上・レジ誤差・値引き・現金・カード）');
   ok(!/日計レポート写真から読み取った数字/.test(h) && !/金種別入力（レジクローズ）の差異から自動で入っています/.test(h), '売上・レジ誤差の下書きの案内（写真読み取り・金種別）も出ない');
   ok(/id="sk_rvt"/.test(h) && /id="sk_foodamt"/.test(h) && /id="sk_tipt"/.test(h) && /id="sk_lunch"/.test(h) && /id="sk_errnote"/.test(h) && /id="sk_buy_food"/.test(h) && /id="sk_memo"/.test(h) && /id="sk_staffct"/.test(h), '店が入れる項目（口コミ・フード金額・チップ・昼のみ・過不足の理由・仕入・勤怠・所感）は残る');
@@ -6454,9 +6454,9 @@ console.log('== 2026-10-15 日報は開店前に前日分を出す・日付の�
   const todayB = (() => { const d = new Date(Date.now() - 5 * 3600e3); return d.toLocaleDateString('en-CA'); })();
   const yestB = (() => { const d = new Date(todayB + 'T12:00:00'); d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA'); })();
   ok(m && m[1] === (hour >= 12 ? todayB : yestB), '日報の日付の初期値＝12時前は前日・12時以降は当日（いま' + hour + '時→' + (m && m[1]) + '）');
-  ok(hour >= 12 ? !/id="sk_datenote"/.test(h) : (/id="sk_datenote"/.test(h) && /前日分の日報として出します/.test(h)), '前日になっているときだけ「前日分として出します」の案内が出る');
-  ok(/前日の日報（アプリ）を出す/.test(code) && /翌日12時まで/.test(code), '開店前チェックの先頭に「前日の日報（アプリ）を出す」がある');
-  ok(!/合わせてから総括表へ入力／/.test(code) && /売上は翌朝レジから自動で総括表へ/.test(code), 'クローズのレジ締めから「総括表へ入力」を外した（売上は翌朝レジから自動）');
+  ok(hour >= 12 ? !/id="sk_datenote"/.test(h) : (/id="sk_datenote"/.test(h) && /の日報です。きょうの分なら日付を変えてください/.test(h)), '前日になっているときだけ「前日分として出します」の案内が出る');
+  ok(/前日の日報（アプリ）を出す/.test(code) && /12時まで。口コミ/.test(code), '開店前チェックの先頭に「前日の日報（アプリ）を出す」がある');
+  ok(!/合わせてから総括表へ入力／/.test(code) && /レジの全現金を入れて締める/.test(code), 'クローズのレジ締めから「総括表へ入力」を外した（売上は翌朝レジから自動）');
   location.hash = '#/app/check';
   const hc = registry.app.innerHTML;
   ok(/前日の日報（アプリ）を出す/.test(hc) || /前日の日報/.test(hc) || true, '（開店前チェックの画面は店舗設定で項目が変わるため、定義の検査で代える）');
