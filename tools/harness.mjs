@@ -3790,7 +3790,7 @@ console.log('== 牛カツ長堀橋店トライアル：LINEアルバムの提出
   location.hash = '#/app/soukatsu?tab=input';
   h = registry.app.innerHTML;
   ok(/id="sk_lunch"[^>]*value="77600"/.test(h), '日報入力の昼のみ売上に本日の中間報告が自動で入る');
-  ok(/中間報告の総売り上げから自動で入っています/.test(h), '自動で入った旨の説明が出る');
+  ok(/昼のみ売上は中間報告から自動で入ります。/.test(h), '自動で入った旨の説明が出る（1行・2026-10-15）');
   // 最近の総括表タブから月次出力へ飛べる
   location.hash = '#/app/soukatsu?tab=recent';
   ok(/data-go="\/skprint\?s=/.test(registry.app.innerHTML), '「最近の総括表」から総括表の形の出力へ飛べる');
@@ -4067,7 +4067,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   ok(/<input type="hidden" id="sk_foodamt">/.test(h) && /<input type="hidden" id="sk_drinkamt">/.test(h), 'フード金額・ドリンク金額の欄は無い（レジの伝票明細から・2026-10-15。保存の形は金額のまま）');
   ok(!/id="sk_foodct"/.test(h) && !/id="sk_drinkct"/.test(h), '点数の入力欄は無い');
   ok(!/id="sk_food"/.test(h), '原価率の手入力欄は無い');
-  ok(/id="sk_buyrate"/.test(h) && /仕入率＝当月の仕入合計÷売上合計/.test(h), '仕入率（自動計算）の表示と説明がある');
+  ok(/id="sk_buyrate"/.test(h) && !/仕入率＝当月の仕入合計÷売上合計/.test(h), '仕入率（自動計算）の表示がある・長い説明は出さない（2026-10-15）');
   ok(/フード構成比/.test(h) && /ドリンク構成比/.test(h), '構成比（自動計算）の表示がある');
   // ② 提出＝金額のキーで保存され、旧キー（原価率手入力・点数）は保存しない
   doc.getElementById('sk_store').value = S;
@@ -4084,7 +4084,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   location.hash = '#/app/soukatsu?x=tax';
   h = registry.app.innerHTML;
   ok(/id="sk_buy_food"/.test(h) && /id="sk_buy_alc"/.test(h) && /id="sk_buy_drink"/.test(h) && /id="sk_buy"/.test(h), '仕入は税込3欄＋税抜合計（自動）');
-  ok(/税込金額をそのまま入れてください/.test(h) && /誤差が出ることがあります/.test(h), '税込のまま入れる説明と誤差の注意書きがある');
+  ok(/※ 仕入は税込のまま。税抜は自動で計算します。/.test(h), '税込のまま入れる説明が1行で出る（2026-10-15）');
   doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = today4; doc.getElementById('sk_sales').value = '100000';
   doc.getElementById('sk_buy_food').value = '1080'; doc.getElementById('sk_buy_alc').value = '1100'; doc.getElementById('sk_buy_drink').value = '540';
   doc.getElementById('sk_buy').value = '';
@@ -4840,7 +4840,7 @@ console.log('== シート取込の行を「提出済みの日報」扱いにし�
   ok(val('sk_net') === '' && val('sk_err') === '', '取込行に無い欄は空のまま＝全欄が取込行で上書きされない');
   if (prev) ok(val('sk_mtd') === String(2000000 + 106182), '月累計の自動入力が消えない（前日まで＋取込の当日売上）');
   const noteEl = doc.getElementById('sk_editnote');
-  ok(!!noteEl && /スプレッドシートに入力された数字/.test(String(noteEl.textContent || '')), '「スプシから自動で入った・提出はまだ」の案内が出る（提出済みと誤解させない）');
+  ok(!!noteEl && noteEl.style.display === 'none', '取込の日は「提出済み」の案内を出さない（提出済みと誤解させない・取込の注記は上の1行で足りる・2026-10-15）');
   ok(!/この日の総括表はすでに提出されています/.test(String(noteEl && noteEl.textContent || '')), '「提出済み」の文言は出さない');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
@@ -6331,7 +6331,8 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows)); });
   location.hash = '#/app/soukatsu';
   let h = registry.app.innerHTML;
-  ok(/id="sk_posnote"/.test(h) && /口コミは自動で入ります/.test(h) && /レジの無い店舗は売上を総括表から/.test(h) && h.match(/id="sk_posnote"[^<]*<\/p>/)[0].length < 260, '日報の案内＝短い2文（売上などは翌朝レジから自動・ここで入れるもの）');
+  ok(/id="sk_posnote"/.test(h) && /※ 売上・国別・口コミは自動で入ります。</.test(h), '日報の案内＝1行（売上・国別・口コミは自動・2026-10-15）');
+  ok(!/累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの総括表から自動/.test(h) && !/在庫まで含めた正式な原価率/.test(h), '長い注記（累計・仕入率の説明）は出さない（神田さん「見にくい」2026-10-15）');
   ok(/<input type="hidden" id="sk_sales">/.test(h) && !/>当日売上<\/span>/.test(h) && !/>客数<\/span>/.test(h) && !/>レジ誤差<\/span>/.test(h) && !/>現金売上<\/span>/.test(h) && !/>カード売上<\/span>/.test(h) && !/>値引き<\/span>/.test(h) && !/>純売上<\/span>/.test(h), 'レジの7項目の入力欄が出ない（売上・客数・純売上・レジ誤差・値引き・現金・カード）');
   ok(!/日計レポート写真から読み取った数字/.test(h) && !/金種別入力（レジクローズ）の差異から自動で入っています/.test(h), '売上・レジ誤差の下書きの案内（写真読み取り・金種別）も出ない');
   ok(!/>口コミ 当日<\/span>/.test(h) && /id="sk_tipt"/.test(h) && /id="sk_lunch"/.test(h) && /id="sk_errnote"/.test(h) && /id="sk_buy_food"/.test(h) && /id="sk_memo"/.test(h) && /id="sk_staffct"/.test(h), '店が入れる項目（チップ・昼のみ・過不足の理由・仕入・勤怠・所感）は残り、口コミ当日の欄は無い');
@@ -6456,7 +6457,7 @@ console.log('== 2026-10-15 日報は開店前に前日分を出す・日付の�
   const todayB = (() => { const d = new Date(Date.now() - 5 * 3600e3); return d.toLocaleDateString('en-CA'); })();
   const yestB = (() => { const d = new Date(todayB + 'T12:00:00'); d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA'); })();
   ok(m && m[1] === yestB, '日報の日付の初期値＝前日の日報がまだ無ければ前日（時刻に関係なく・いま' + hour + '時→' + (m && m[1]) + '）');
-  ok(/id="sk_datenote"/.test(h) && /の日報です。きょうの分なら日付を変えてください/.test(h) && />日付（営業日）</.test(h), '前日になっているときは案内が出る・欄の名前は「日付（営業日）」');
+  ok(/id="sk_datenote"/.test(h) && /）の日報です。</.test(h) && />日付（営業日）</.test(h), '前日になっているときは1行の案内が出る・欄の名前は「日付（営業日）」');
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store: S, date: yestB, posWait: true, memo: '済', t: Date.now() - 3600e3 }])); localStorage.removeItem('yosakura_sk_edit'); });
   location.hash = '#/app/soukatsu?x=dd2';
   const h2d = registry.app.innerHTML; const m2 = h2d.match(/id="sk_date" value="(\d{4}-\d{2}-\d{2})"/);

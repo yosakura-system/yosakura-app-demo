@@ -5158,7 +5158,7 @@
         </div>`;
     })();
     return `
-      ${NOTE({ ja:'◆ 実際の総括表の項目で入力→保存できます（履歴と本部集約に反映）', en:'◆ Enter in the real daily-report format; it saves to history & HQ', vi:'◆ Nhập theo mẫu báo cáo ngày thực tế; lưu vào lịch sử & HQ' })}
+      ${NOTE({ ja:'◆ 出すと本部に届きます', en:'Submitting sends it to HQ', vi:'Gửi là đến HQ' })}
       ${skTabSeg}
       ${head}
       ${skTab !== 'input' ? '' : (() => { const skCum0 = skCumBase(vis[0], today); return `<div class="card" id="skForm">
@@ -5167,11 +5167,10 @@
               中身は画面を作ったあとに入れる（その日の日報があるかは日付を変えても変わるため） */''}
         <p class="hint" id="sk_editnote" style="display:none;margin:-2px 0 8px;color:#8a6d3b"></p>
         <p class="hint" id="sk_posnote" style="display:block;margin:-2px 0 8px;color:#2d6a4f">${L({
-          ja:'※ 売上・レジの数字・フード/ドリンク・国別・口コミは自動で入ります（レジの無い店舗は売上を総括表から）。ここで入れるのは、チップ・昼のみ売上・過不足の理由・納品書の写真・所感です。',
-          en:'Sales, POS figures, food/drink, guests by country and reviews are filled automatically. Enter here: tips, lunch-only sales, cash-difference reason, delivery-slip photos and notes.',
-          vi:'Doanh thu, số liệu POS, món/đồ uống, khách theo quốc gia và đánh giá tự điền. Nhập ở đây: tip, DT buổi trưa, lý do chênh lệch, ảnh phiếu giao hàng và cảm nhận.' })}</p>
-        ${(!skEditTarget_().date && skDefaultDate_(vis[0]) !== today) ? `<p class="hint" id="sk_datenote" style="display:block;margin:-2px 0 8px;color:#8a6d3b">${L({ ja:`※ 前日（${skDefaultDate_(vis[0]).slice(5).replace('-', '/')}）の日報です。きょうの分なら日付を変えてください。`, en:`This is yesterday’s report (${skDefaultDate_(vis[0]).slice(5)}). Change the date for today’s.`, vi:`Đây là báo cáo hôm qua (${skDefaultDate_(vis[0]).slice(5)}). Đổi ngày nếu là hôm nay.` })}</p>` : ''}
-        ${(skCum0.mtd || skCum0.rva || skCum0.tipa || skCum0.cancel) ? `<p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'※ 累計の欄（月累計売上・口コミ・チップ・キャンセル）は前回までの総括表から自動で入っています。当日の数字を入れると自動で足し上がります（違うときは直せます）。', en:'Cumulative fields are pre-filled from previous reports and add up as you type today’s numbers (editable).', vi:'Các ô lũy kế tự điền từ báo cáo trước và tự cộng khi nhập số hôm nay.' })}</p>` : ''}
+          ja:'※ 売上・国別・口コミは自動で入ります。',
+          en:'Sales, guests by country and reviews are filled automatically.',
+          vi:'Doanh thu, khách theo quốc gia và đánh giá tự điền.' })}</p>
+        ${(!skEditTarget_().date && skDefaultDate_(vis[0]) !== today) ? `<p class="hint" id="sk_datenote" style="display:block;margin:-2px 0 8px;color:#8a6d3b">${L({ ja:`※ 前日（${skDefaultDate_(vis[0]).slice(5).replace('-', '/')}）の日報です。`, en:`Yesterday’s report (${skDefaultDate_(vis[0]).slice(5)}).`, vi:`Báo cáo hôm qua (${skDefaultDate_(vis[0]).slice(5)}).` })}</p>` : ''}
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
           <label class="fld"><span>${L({ ja:'日付（営業日）', en:'Date (business day)', vi:'Ngày (ngày kinh doanh)' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || skDefaultDate_(vis[0])}" max="${today}"></label>
@@ -5213,12 +5212,11 @@
           <label class="fld"><span>${L({ja:'消耗品金額',en:'Supplies',vi:'Vật tư'})}</span><input type="text" inputmode="numeric" id="sk_supply" placeholder="0"></label>
           ${storeGyotai(vis[0]) === 'unagi' ? `<label class="fld"><span>${L({ja:'鰻の使用尾数',en:'Eel used',vi:'Số lươn'})}</span><input type="text" inputmode="numeric" id="sk_unagi" placeholder="12"></label>` : ''}
         </div>
-        ${skChukanToday(vis[0]) != null ? `<p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 昼のみ売上は、本日の中間報告の総売り上げから自動で入っています（違うときは直してください）。', en:'Lunch-only sales is pre-filled from today’s midday report (edit if different).', vi:'Doanh thu buổi trưa được điền sẵn từ báo cáo giữa ngày hôm nay (sửa nếu khác).' })}</p>` : ''}
+        ${skChukanToday(vis[0]) != null ? `<p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 昼のみ売上は中間報告から自動で入ります。', en:'Lunch-only sales come from the midday report.', vi:'DT buổi trưa lấy từ báo cáo giữa ngày.' })}</p>` : ''}
         <div class="stat-row" style="margin:2px 0 10px">
           <div class="stat"><div class="n" id="sk_buyrate">—</div><div class="k">${L({ja:'仕入率（自動計算・当月）',en:'Purchase ratio (auto, month)',vi:'Tỷ lệ nhập hàng (tự động, tháng)'})}</div></div>
         </div>
-        <p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 仕入は、納品書やレシートの税込金額をそのまま入れてください（食材／お酒／お酒以外の飲料の3つ）。税抜への換算はアプリが行います（消費税を切り捨ててから引く）。自動計算のため誤差が出ることがあります。お茶などお酒以外の飲料は8%の欄へ。', en:'Enter purchases as the tax-inclusive amounts on the delivery slip (food / alcohol / soft drinks). The app converts to tax-exclusive (tax rounded down, then subtracted). Small rounding differences may occur.', vi:'Nhập số tiền gồm thuế trên phiếu giao hàng (thực phẩm / rượu bia / đồ uống khác). Ứng dụng tự quy đổi sang chưa thuế.' })}</p>
-        <p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 仕入率＝当月の仕入合計÷売上合計。毎日、仕入の3欄（税込）を入れると税抜合計から自動で出ます（率の手入力は不要です）。在庫まで含めた正式な原価率は、月締めの「数値・原価率」画面で計算します。', en:'Purchase ratio = month purchases ÷ month sales, calculated automatically from the daily purchase amounts. The official cost ratio including stock is calculated on the monthly Numbers & Cost screen.', vi:'Tỷ lệ nhập hàng = tổng nhập ÷ tổng doanh thu trong tháng, tự tính từ số nhập hàng mỗi ngày. Giá vốn chính thức (gồm tồn kho) tính ở màn hình số liệu tháng.' })}</p>
+        <p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 仕入は税込のまま。税抜は自動で計算します。', en:'Enter purchases tax-included. Tax-excluded is calculated.', vi:'Nhập giá gồm thuế. Giá chưa thuế tự tính.' })}</p>
         <label class="fld"><span>${L({ ja:'過不足（現金）の理由', en:'Reason for cash difference', vi:'Lý do chênh lệch tiền mặt' })}</span><input type="text" id="sk_errnote" placeholder="${L({ja:'差がある場合のみ',en:'only if there is a difference',vi:'chỉ khi có chênh lệch'})}"></label>
 
         <details class="card-sub" id="sk_kintai" style="margin:10px 0">
@@ -5232,7 +5230,7 @@
           </div>`).join('')}
         </details>
         <div class="idlabel" style="margin-top:14px">${L({ ja:'勤怠・ロス（総括表の項目）', en:'Staffing & loss (summary-sheet items)', vi:'Nhân sự & hao hụt (mục bảng tổng kết)' })}</div>
-        <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'入れるのは元の数字だけです。人時生産性・人件費率は自動で計算されます。', en:'Enter base numbers only; productivity and labor % are calculated automatically.', vi:'Chỉ nhập số gốc; năng suất và % nhân sự được tính tự động.' })}</p>
+        <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'人時生産性・人件費率は自動で出ます。', en:'Productivity and labor % are calculated.', vi:'Năng suất và % nhân sự tự tính.' })}</p>
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'勤務人数',en:'Staff on duty',vi:'Số NV làm việc'})}</span><input type="text" inputmode="numeric" id="sk_staffct" placeholder="5"></label>
           <label class="fld"><span>${L({ja:'総労働時間（h）',en:'Total work hours',vi:'Tổng giờ làm (h)'})}</span><input type="text" inputmode="decimal" id="sk_hours" placeholder="38.5"></label>
@@ -5250,7 +5248,7 @@
              別の提出物は作らない＝この総括表1本にすべて入れる（神田さんのご指示・2026-09-06）。
              昼売上＝「昼のみ売上」の欄・夜売上＝当日売上−昼＝再入力なしで昼夜の人時生産性を出す */''}
         <div class="idlabel" style="margin-top:14px">${L({ ja:'日報の項目（長堀橋店）', en:'Daily-report items (Nagahoribashi)', vi:'Mục nhật báo (Nagahoribashi)' })}</div>
-        <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'店舗の日報フォーマットの項目です。人数と時間を入れると、昼・夜の人時生産性が自動で出ます（昼売上＝昼のみ売上、夜売上＝当日売上−昼）。', en:'Items from the store’s daily-report format. Lunch/night productivity is calculated automatically.', vi:'Các mục theo mẫu nhật báo của cửa hàng. Năng suất trưa/tối được tính tự động.' })}</p>
+        <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'人数と時間で、昼・夜の人時生産性が出ます。', en:'Lunch/night productivity from staff and hours.', vi:'Năng suất trưa/tối từ số người và giờ.' })}</p>
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'昼の人数',en:'Lunch staff',vi:'NV ca trưa'})}</span><input type="text" inputmode="numeric" id="sk_lstaff" placeholder="3"></label>
           <label class="fld"><span>${L({ja:'昼の稼働時間（1人・h）',en:'Lunch hours/person',vi:'Giờ/người (trưa)'})}</span><input type="text" inputmode="decimal" id="sk_lhours" placeholder="4"></label>
@@ -5262,7 +5260,7 @@
           <div class="stat"><div class="n" id="sk_nprod">—</div><div class="k">${L({ja:'人時生産性・夜（自動計算）',en:'Night ¥/hour (auto)',vi:'DT/giờ tối (tự động)'})}</div></div>
           <div class="stat"><div class="n" id="sk_rvrate">—</div><div class="k">${L({ja:'口コミ獲得率（自動計算）',en:'Review rate (auto)',vi:'Tỷ lệ review (tự động)'})}</div></div>
         </div>
-        <p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 昼・夜の人数と時間を入れると「総労働時間」も自動で入ります（違うときは直せます）。口コミ獲得率＝当日口コミ÷客数。', en:'Total work hours is filled from these automatically (editable). Review rate = today’s reviews ÷ guests.', vi:'Tổng giờ làm tự điền từ các ô này (sửa được). Tỷ lệ review = review hôm nay ÷ khách.' })}</p>
+        <p class="hint" style="display:block;margin:-4px 0 8px">${L({ ja:'※ 総労働時間も自動で入ります。', en:'Total hours are filled too.', vi:'Tổng giờ cũng tự điền.' })}</p>
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'牛カツサンド販売個数',en:'Gyukatsu sandwiches sold',vi:'Số bánh mì đã bán'})}</span><input type="text" inputmode="numeric" id="sk_sand" placeholder="0"></label>
         </div>
@@ -5274,7 +5272,7 @@
 
         <label class="fld"><span>${L({ ja:'翌日の食材発注', en:'Tomorrow ingredient order', vi:'Đặt NL ngày mai' })}</span><textarea id="sk_order" placeholder="${L({ja:'例：豆乳6／寿司のエビ2／お米 …',en:'e.g. soy milk 6 / shrimp 2 / rice …',vi:'vd: sữa đậu 6 / tôm 2 / gạo …'})}"></textarea></label>
         <button class="btn-primary" id="submitSk">${L({ja:'提出する',en:'Submit',vi:'Nộp'})}</button>
-        <div class="hint">${L({ja:'保存すると、「最近の総括表」タブと「本部ダッシュボード」に反映されます',en:'Saved to the Recent tab and the HQ Dashboard',vi:'Được lưu vào thẻ Gần đây và Bảng điều khiển'})}</div>
+        <div class="hint">${L({ja:'出すと本部に届きます',en:'Submitting sends it to HQ',vi:'Gửi là đến HQ'})}</div>
       </div>`; })()}
       ${skTab !== 'recent' ? '' : `<div class="card">
         <h3>${L({ ja:'最近の総括表', en:'Recent daily reports', vi:'Báo cáo gần đây' })}</h3>
@@ -8184,7 +8182,7 @@
     // ★牛カツ長堀橋店トライアル（2026-09-01）：LINEアルバム運用をアプリへ
     yoyaku:       { ja:'その日の予約が分かるもの（予約表・予約画面など）を撮ってください。', en:'Photograph today’s reservation list or screen.', vi:'Chụp danh sách hoặc màn hình đặt bàn hôm nay.' },
     nikkei_idle:  { ja:'レジから出した日計レポート（取引別・商品別）を、文字が読める距離で撮ってください。', en:'Photograph the printed daily report so the text is readable.', vi:'Chụp báo cáo doanh thu đã in, chữ đọc được rõ.' },
-    nouhin:       { ja:'納品書・レシートは1枚の写真に1枚ずつ。真上から伝票全体が入るように、影を入れずに撮ってください（合計と税率の行が読める距離で）。', en:'One slip per photo. Shoot straight down with the whole slip in frame and no shadows, close enough to read the total and tax lines.', vi:'Mỗi ảnh một phiếu. Chụp thẳng từ trên, cả phiếu trong khung, không bóng, đủ gần để đọc tổng và dòng thuế.' },
+    nouhin:       { ja:'真上から、影を入れずに撮ってください。', en:'Shoot straight down, without shadows.', vi:'Chụp thẳng từ trên xuống, không có bóng.' },   // 1枚ずつ・合計まで＝下の赤字1行（2026-10-15 短く）
     zaiko_photo:  { ja:'記入後の在庫チェック表を1枚ずつ撮ってください（食材①②・ドリンク・消耗品）。', en:'Photograph each filled stock sheet (ingredients ①②, drinks, supplies).', vi:'Chụp từng bảng kiểm kho đã điền (nguyên liệu ①②, đồ uống, vật tư).' },
     nikkei_close: { ja:'クローズの日計レポート3枚と現金売上の封筒を撮ってください。', en:'Photograph the three closing reports and the cash envelope.', vi:'Chụp 3 báo cáo đóng ca và phong bì tiền mặt.' }
   };
@@ -11406,16 +11404,7 @@
           /* ★USENレジの行は、レジが持つ項目（純売上・現金・カード・値引き）も下書きに入れる（2026-10-07 勉強会のスクショで確認＝
              売上・客数しか入っておらず、注記も「総括表スプレッドシートから」のままだった。レジから入った日は出どころをそう言う） */
           if (rec.src === 'usen') ['net', 'cash', 'card', 'disc'].forEach(k => { if (rec[k] != null && rec[k] !== '') set('sk_' + k, rec[k]); });
-          if (note) {
-            note.textContent = rec.src === 'usen' ? L({
-              ja:'※ 売上・客数・現金・カードなどは、レジ（USEN）の締めの数字から自動で入っています（アプリからの提出はまだありません）。残りの項目を入れて提出してください。',
-              en:'Sales, guests, cash and card were auto-filled from the POS (USEN) close-out (no app submission yet). Fill in the rest and submit.',
-              vi:'Doanh thu, số khách, tiền mặt và thẻ tự điền từ số chốt ca của máy POS (USEN) (chưa có bản nộp từ ứng dụng). Điền phần còn lại và gửi.' }) : L({
-              ja:'※ 売上と客数は、総括表スプレッドシートに入力された数字から自動で入っています（アプリからの提出はまだありません）。残りの項目を入れて提出してください。',
-              en:'Sales and guests were auto-filled from the summary spreadsheet (no app submission yet). Fill in the rest and submit.',
-              vi:'Doanh thu và số khách tự điền từ bảng tính tổng kết (chưa có bản nộp từ ứng dụng). Điền phần còn lại và gửi.' });
-            note.style.display = 'block';
-          }
+          if (note) note.style.display = 'none';   // ★取込の注記は出さない（上の「自動で入ります」の1行で足りる・2026-10-15）
           cumUpd();   // 累計＝自動入力を入れ直す（取込の売上も足し上がる）
           return;
         }
@@ -11428,9 +11417,9 @@
         });
         if (note) {
           note.textContent = L({
-            ja:'※ この日の総括表はすでに提出されています。内容を直して「提出する」を押すと、最新の内容に置き換わります。',
-            en:'A report for this day already exists. Editing and submitting replaces it with the newer content.',
-            vi:'Đã có báo cáo cho ngày này. Sửa và gửi lại sẽ thay thế bằng nội dung mới.' });
+            ja:'※ 提出済みです。直して出し直せます。',
+            en:'Already submitted. You can fix and resend.',
+            vi:'Đã nộp. Có thể sửa và gửi lại.' });
           note.style.display = 'block';
         }
         skAuto_();
