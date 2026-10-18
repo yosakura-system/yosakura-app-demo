@@ -1062,3 +1062,11 @@ html[data-theme="pb"] .pb-maint, .pb-maint { display: flex; flex-direction: colu
   html[data-theme="pb"] .pb-cover { min-height: 200px; }
 }
 html[data-theme="pb"] .app-head .ico.pb-headimg { width: 54px; height: 54px; border-radius: 15px; object-fit: cover; border: 1px solid var(--line); display: block; }
+
+/* 2026-10-18 案Bの日報＝自動で入った数字（見るだけ）・お店で入れること・そのほか（畳む） */
+html[data-theme="pb"] .pb-skauto { background: var(--paper, #fbf8f3); border: 1px solid rgba(0,0,0,.08); border-radius: 14px; padding: 12px 14px; margin: 6px 0 4px; }
+html[data-theme="pb"] .pb-skauto__r { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed rgba(0,0,0,.08); font-size: 14px; }
+html[data-theme="pb"] .pb-skauto__r:last-child { border-bottom: 0; }
+html[data-theme="pb"] .pb-skauto__r b { font-weight: 700; text-align: right; }
+html[data-theme="pb"] .pb-skmore { margin: 14px 0; padding: 10px 12px; border-radius: 12px; }
+html[data-theme="pb"] #sk_errsel { width: 100%; margin-bottom: 6px; }
