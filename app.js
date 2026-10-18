@@ -1649,13 +1649,8 @@
        押すと「サーベイ・集計」の「お声」タブ（低い評価から順・原文のまま）へ */
     const svLowCard = (() => {
       if (!['hq', 'manager', 'owner'].includes(role)) return '';
-      const dk = (ms) => new Date(Number(ms) + 9 * 3600e3).toISOString().slice(0, 10);
-      const today = dk(Date.now()), yest = dk(Date.now() - 864e5);
-      const stores = hqAll ? STORES : visibleStores();
-      const rows = getSurvey().filter(r => r && r.sat >= 1 && r.sat <= 3 && stores.includes(r.store) && (dk(r.t) === today || dk(r.t) === yest));
-      if (!rows.length) return '';
-      const nY = rows.filter(r => dk(r.t) === yest).length, nT = rows.length - nY;
-      const byStore = {}; rows.forEach(r => { byStore[r.store] = (byStore[r.store] || 0) + 1; });
+      const sv = svLowData_(role, hqAll); if (!sv) return '';
+      const { rows, nY, nT, byStore } = sv;
       const stLine = hqAll ? Object.keys(byStore).map(s => `${esc(storeShort(s))} ${byStore[s]}`).join('　') : '';
       return `
       <button class="card news-card news-card--btn" data-open="survey?tab=voice" data-svlow="${rows.length}">
@@ -1700,24 +1695,7 @@
     /* ★本部からの返答＝ホームのお知らせ欄で気づけるように（2026-08-31 神田さんのご指摘＝
        気づき一覧の奥までたどらないと返答に気づけない）。
        コメントの無い「確認済み」だけは出さない（毎日のオープン写真の確認で埋まるため）。直近7日・3件まで。 */
-    const HQR_ROUTE = { kizuki:'/app/kizuki', waste:'/app/tabemono', firstphoto:'/app/firstphoto', openphoto:'/app/openphoto' };
-    const HQR_LABEL = {
-      kizuki:{ ja:'気づき', en:'Insight', vi:'Ghi nhận' }, waste:{ ja:'食べ残し', en:'Waste', vi:'Đồ thừa' },
-      firstphoto:{ ja:'1食目写真', en:'First plate', vi:'Ảnh món đầu' }, openphoto:{ ja:'オープン写真', en:'Opening photo', vi:'Ảnh mở cửa' } };
-    /* ★提出物マスタ由来の種類（日計レポート・納品書・中間報告など）も返答の対象にする（2026-09-02）。
-       v180で受信箱の表示を項目名に分けた際、対応済みの保存キーも項目idになったが、
-       ここが旧4種しか知らず、新しい項目へのコメントが店舗のホームに出ていなかった（神田さんの実機報告）。
-       写真系（linkApp=openphoto）は data-tsubphoto でその項目を開いた状態で写真画面へ飛ばす */
-    const HQR_PHOTO = {};
-    try { getMasters().forEach(m => { if (!HQR_ROUTE[m.id] && m.linkApp) {
-      HQR_ROUTE[m.id] = '/app/' + m.linkApp; HQR_LABEL[m.id] = m.name;
-      if (m.linkApp === 'openphoto') HQR_PHOTO[m.id] = true;
-    } }); } catch (e) {}
-    const hqReplies = role === 'hq' ? [] : Object.entries(getAckMap())
-      .map(([k, a]) => { const p = k.split('|'); return { kind: p[0], store: p.slice(2).join('|'), a }; })
-      .filter(x => x.a.state === 'done' && x.a.memo && HQR_ROUTE[x.kind] && visibleStores().includes(x.store)
-                   && Date.now() - (x.a.ts || 0) < 7 * 86400000)
-      .sort((x, y) => (y.a.ts || 0) - (x.a.ts || 0)).slice(0, 3);
+    const { ROUTE: HQR_ROUTE, LABEL: HQR_LABEL, PHOTO: HQR_PHOTO, rows: hqReplies } = hqReplyData_(role);
     const hqReplyCard = hqReplies.length ? `
       <div class="card news-card">
         <div class="news-h"><span class="news-ic">${svg('chat')}</span><b>${L({ ja:'本部からの返答', en:'Replies from HQ', vi:'Phản hồi từ HQ' })}</b><span class="news-ago">${timeAgo(hqReplies[0].a.ts)}</span></div>
@@ -1844,6 +1822,39 @@
     if (m.linkApp && !act) return `<button class="${cls}" data-tsub="${esc(m.linkApp)}"${openArg}>${inner}<span class="pb-rt">${done ? svg('tick') : svg('chev')}</span></button>`;
     return `<div class="${cls}">${inner}<span class="pb-rt">${act || (done ? svg('tick') : '')}</span></div>`;
   };
+  /* ★ホームで気づかせるもの（本部からの返答・サーベイの低い評価）の中身＝旧ホームと案Bのホームで同じものを使う（2026-10-19・案Bのホームで抜けていた） */
+  function svLowData_(role, hqAll) {
+    if (!['hq', 'manager', 'owner'].includes(role)) return null;
+    const dk = (ms) => new Date(Number(ms) + 9 * 3600e3).toISOString().slice(0, 10);
+    const today = dk(Date.now()), yest = dk(Date.now() - 864e5);
+    const stores = hqAll ? STORES : visibleStores();
+    const rows = getSurvey().filter(r => r && r.sat >= 1 && r.sat <= 3 && stores.includes(r.store) && (dk(r.t) === today || dk(r.t) === yest));
+    if (!rows.length) return null;
+    const nY = rows.filter(r => dk(r.t) === yest).length, nT = rows.length - nY;
+    const byStore = {}; rows.forEach(r => { byStore[r.store] = (byStore[r.store] || 0) + 1; });
+    return { rows, nY, nT, byStore };
+  }
+  function hqReplyData_(role) {
+    const HQR_ROUTE = { kizuki:'/app/kizuki', waste:'/app/tabemono', firstphoto:'/app/firstphoto', openphoto:'/app/openphoto' };
+    const HQR_LABEL = {
+      kizuki:{ ja:'気づき', en:'Insight', vi:'Ghi nhận' }, waste:{ ja:'食べ残し', en:'Waste', vi:'Đồ thừa' },
+      firstphoto:{ ja:'1食目写真', en:'First plate', vi:'Ảnh món đầu' }, openphoto:{ ja:'オープン写真', en:'Opening photo', vi:'Ảnh mở cửa' } };
+    /* ★提出物マスタ由来の種類（日計レポート・納品書・中間報告など）も返答の対象にする（2026-09-02）。
+       v180で受信箱の表示を項目名に分けた際、対応済みの保存キーも項目idになったが、
+       ここが旧4種しか知らず、新しい項目へのコメントが店舗のホームに出ていなかった（神田さんの実機報告）。
+       写真系（linkApp=openphoto）は data-tsubphoto でその項目を開いた状態で写真画面へ飛ばす */
+    const HQR_PHOTO = {};
+    try { getMasters().forEach(m => { if (!HQR_ROUTE[m.id] && m.linkApp) {
+      HQR_ROUTE[m.id] = '/app/' + m.linkApp; HQR_LABEL[m.id] = m.name;
+      if (m.linkApp === 'openphoto') HQR_PHOTO[m.id] = true;
+    } }); } catch (e) {}
+    const rows = role === 'hq' ? [] : Object.entries(getAckMap())
+      .map(([k, a]) => { const p = k.split('|'); return { kind: p[0], store: p.slice(2).join('|'), a }; })
+      .filter(x => x.a.state === 'done' && x.a.memo && HQR_ROUTE[x.kind] && visibleStores().includes(x.store)
+                   && Date.now() - (x.a.ts || 0) < 7 * 86400000)
+      .sort((x, y) => (y.a.ts || 0) - (x.a.ts || 0)).slice(0, 3);
+    return { ROUTE: HQR_ROUTE, LABEL: HQR_LABEL, PHOTO: HQR_PHOTO, rows };
+  }
   function pbHome_(role) {
     const store = visibleStores()[0];
     const items = todayItemsFor(store).filter(it => it.m.freq === 'daily');
@@ -1888,11 +1899,19 @@
         <button class="pb-row" data-open="getsuji">${pbImg_('kyou_tanaoroshi')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'月末棚卸・月に1回のもの',en:'Month-end',vi:'Cuối tháng'})}</span><span class="pb-sub">${L({ja:'棚卸・定期衛生の写真・パスワード変更',en:'Stock count, hygiene photos, password',vi:'Kiểm kê, ảnh vệ sinh, mật khẩu'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>
       </div>`;
     const nippouCard = pbNippouCard_(store, items.find(isNippou));
-    return `<main class="screen pb-home">${cover}${overStrip}${newsStrip}${nippouCard}
+    /* ★2026-10-19 旧ホームにあって案Bで抜けていた3つ＝サーベイの低い評価・数字の要確認（店長・オーナー）・本部からの返答（直近7日・3件まで）。中身は旧ホームと同じ関数 */
+    const sv = svLowData_(role, false);
+    const svStrip = sv ? `<button class="pb-strip" data-open="survey?tab=voice" data-svlow="${sv.rows.length}"><span><b>${L({ja:'サーベイに低い評価',en:'Low survey ratings',vi:'Đánh giá thấp'})}</b>${sv.rows.length} ${L({ja:'件',en:'answer(s)',vi:'câu'})}（${L({ja:'昨日',en:'yesterday',vi:'hôm qua'})} ${sv.nY}・${L({ja:'今日',en:'today',vi:'hôm nay'})} ${sv.nT}）${L({ja:'・お声を読む',en:' · read',vi:' · đọc'})}</span>${svg('chev')}</button>` : '';
+    const numN = ['manager', 'owner'].includes(role) ? numOpen_(visibleStores()).length : 0;
+    const numStrip = numN > 0 ? `<button class="pb-strip" data-open="numcheck"><span><b>${L({ja:'数字の要確認',en:'Numbers to check',vi:'Số liệu cần xác nhận'})}</b>${numN} ${L({ja:'件・日報の数字を見直してください',en:'item(s). Please recheck the daily report.',vi:'mục. Kiểm tra lại báo cáo.'})}</span>${svg('chev')}</button>` : '';
+    const rep = hqReplyData_(role);
+    const repCard = rep.rows.length ? `<div class="pb-sec"><h2>${L({ja:'本部からの返答',en:'Replies from HQ',vi:'Phản hồi từ HQ'})}</h2><small>${L({ja:'直近7日',en:'Last 7 days',vi:'7 ngày qua'})}</small></div>
+      <div class="pb-card pb-rep">${rep.rows.map(x => `<button class="pb-row" ${rep.PHOTO[x.kind] ? `data-tsub="openphoto" data-tsubphoto="${esc(x.kind)}"` : `data-go="${esc(rep.ROUTE[x.kind])}"`}><span class="pb-rowtx"><span class="pb-nm">${esc(L(rep.LABEL[x.kind]))}</span><span class="pb-sub">${esc(x.a.memo)} ・ ${timeAgo(x.a.ts)}</span></span><span class="pb-rt">${svg('chev')}</span></button>`).join('')}</div>` : '';
+    return `<main class="screen pb-home">${cover}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${nippouCard}
       <div class="pb-bands">${bands}</div>
       <div class="pb-card pb-flow">${flow || `<div class="muted">${L({ja:'今日の提出物はありません',en:'Nothing today',vi:'Hôm nay không có'})}</div>`}</div>
       ${chips}${hoCard}${wk}
-      <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}</div></main>`;
+      <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;   // ★2026-10-19 「最新にする」を案Bのホームにも（旧ホームと同じ位置＝画面の下）
   }
   /* 日報の専用カード＝前日分がまだ／今日の分を出した／これから、の3つの状態を1行で */
   function pbNippouCard_(store, it) {

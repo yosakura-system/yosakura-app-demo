@@ -1,6 +1,14 @@
 // Minimal DOM shim harness to render the 世桜app views without a browser.
 import fs from 'node:fs';
 import vm from 'node:vm';
+/* ★2026-10-19 時計＝深夜0〜6時に回すと「営業日の区切り」と「日報の日付の初期値（12時前は前日）」で日付依存の検査が40件ほど落ちる（アプリは正常）。
+   その時間帯だけ同じ日の14:00に寄せて回す。FAKE_NOW=2026-10-20T14:00:00+09:00 のように渡せば、その時刻で回す（切替日の前後を確かめる用） */
+{
+  const RD = Date; const h = new RD().getHours();
+  let T = process.env.FAKE_NOW ? new RD(process.env.FAKE_NOW).getTime() : null;
+  if (T == null && h < 6) { const d = new RD(); d.setHours(14, 0, 0, 0); T = d.getTime(); console.log('※ 深夜の実行のため、時計を同じ日の14:00に寄せて回します'); }
+  if (T != null) { const off = T - RD.now(); class FD extends RD { constructor(...a) { if (a.length) super(...a); else super(RD.now() + off); } static now() { return RD.now() + off; } } globalThis.Date = FD; if (process.env.FAKE_NOW) console.log('※ 時計＝' + new FD().toString()); }
+}
 /* ★2026-10-18 日報のチップは必須になった＝既存の提出テストは、チップが空なら0を入れてから押す */
 function skTipFill_(d) { const t = d.getElementById('sk_tipt'); if (t && !String(t.value || '').trim()) t.value = '0'; }
 
@@ -98,6 +106,9 @@ const setLS = (role, storeSel, lang) => {
   localStorage.setItem('yosakura_demo_lang', lang);
   localStorage.setItem('yosakura_tour_done', '1'); // suppress tour
   localStorage.setItem('yosakura_setup_done', '1'); // 初回の「はじめの設定」は出さない
+  /* ★2026-10-19 10/20 6:00 以降は既定が案B（pb）。これまでの検査は今までのホーム（hp）を見ているので、テーマを選んでいない検査は hp で回す。
+     既定（未設定）の検査は案Bの節で日付ごとに見る */
+  if (localStorage.getItem('yosakura_theme') == null) localStorage.setItem('yosakura_theme', 'hp');
 };
 
 // Render a given app view by role/store/lang, return innerHTML
@@ -6530,6 +6541,31 @@ console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース�
   ok(!/class="pb-cover"/.test(registry.app.innerHTML), 'hp を選んだ端末は今までの画面のまま（戻せる）');
   ok(/PB_LAUNCH_MS = Date.parse\('2026-10-19T21:00:00Z'\)/.test(code) && /PB_MAINT = \[Date.parse\('2026-10-19T15:00:00Z'\), Date.parse\('2026-10-19T21:00:00Z'\)\]/.test(code), '既定の切替＝10/20 6:00 JST・休止＝10/19 24:00〜10/20 6:00（?nomaint で通る）');
   ok(/data-theme-set="pb"/.test(code), '設定の「デザイン」に「新（10/20〜）」がある');
+  /* ★2026-10-19 旧ホームにあって案Bのホームで抜けていた4つ（本部からの返答・サーベイの低い評価・数字の要確認・画面下の「最新にする」） */
+  {
+    const sv = (code.match(/const APP_BUILD = '([^']+)'/) || [])[1] || 'dev';
+    const yd = new Date(Date.now() - 864e5).toLocaleDateString('en-CA');
+    run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+      localStorage.setItem('yosakura_demo_reports', JSON.stringify([{ kind:'hqack', store:S, item:`kizuki|${Date.now() - 7200e3}|${S}`, note: JSON.stringify({ state:'done', by:'本部', memo:'案Bの返答の確認' }), photos:[], t: Date.now() - 3600e3 }]));
+      localStorage.setItem('yosakura_demo_survey', JSON.stringify([{ store:S, sat:2, route:'Google', note:'', country:'日本', t: Date.now() - 3600e3, id:'pbsv1' }]));
+      localStorage.setItem('yosakura_demo_seed_ver:survey', sv);
+      localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store:S, date: yd, sales: 300000, guests: 50, foodamt:'30', drinkamt:'5', t: Date.now(), src:'drive' }]));
+    });
+    location.hash = '#/home';
+    const h2 = registry.app.innerHTML;
+    ok(/class="pb-cover"/.test(h2) && /本部からの返答/.test(h2) && /案Bの返答の確認/.test(h2) && /data-go="\/app\/kizuki"/.test(h2), 'pb：本部からの返答がホームに出て、押すと気づきへ（旧ホームと同じ・2026-10-19）');
+    ok(/data-svlow="1"/.test(h2) && /data-open="survey\?tab=voice"/.test(h2), 'pb：店長のホームにサーベイの低い評価（★3以下）が出る');
+    ok(/data-open="numcheck"/.test(h2) && /数字の要確認/.test(h2), 'pb：店長のホームに数字の要確認が出る');
+    ok(/id="appUpdate"/.test(h2), 'pb：ホームの画面下に「最新にする」がある');
+    run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_survey', JSON.stringify([{ store:S, sat:2, route:'Google', note:'', country:'日本', t: Date.now() - 3600e3, id:'pbsv2' }])); localStorage.setItem('yosakura_demo_seed_ver:survey', sv); });
+    location.hash = '#/home';
+    ok(!/data-svlow=/.test(registry.app.innerHTML) && !/data-open="numcheck"/.test(registry.app.innerHTML), 'pb：スタッフには低い評価・数字の要確認は出さない（旧ホームと同じ）');
+    // 既定（テーマ未設定）＝10/20 6:00 から案B、それまでは今までの画面
+    run(() => { setLS('staff', S, 'ja'); localStorage.removeItem('yosakura_theme'); });
+    location.hash = '#/home?nomaint';
+    const launched = Date.now() >= Date.parse('2026-10-19T21:00:00Z');
+    ok(/class="pb-cover"/.test(registry.app.innerHTML) === launched, '既定（未設定）＝' + (launched ? '切替後なので案B' : '切替前なので今までの画面'));
+  }
 }
 
 
