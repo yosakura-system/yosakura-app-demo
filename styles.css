@@ -368,6 +368,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
   background: var(--sumi); color: #fff; font-size: 13px; font-weight: 600; padding: 12px 18px; border-radius: 12px;
   box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: all .3s; z-index: 60; max-width: 88%; text-align: center;
 }
+.toast:not(.show) { visibility: hidden; }   /* 2026-10-18 空のときは枠ごと隠す（撮影の道具で空の黒い札が写った） */
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 .footer-note { text-align: center; font-size: 10.5px; color: #B0A79C; padding: 18px 0 6px; letter-spacing: .04em; }
