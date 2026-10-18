@@ -129,7 +129,7 @@ function skwb_rows_(stores, fromDate, withApp) {
     /* ★USEN行は2種類＝レジクローズ（sales あり）と伝票明細の集計（pcty・foodamt…）。sales のある最新行を土台に、集計の最新行の項目を重ねる（2026-10-15） */
     if (kind === 'usen') {
       if (p.sales != null && t >= e.tUsen) { e.usenBase = p; e.tUsen = t; }
-      if ((p.pcty != null || p.foodamt != null || p.drinkamt != null) && t >= e.tUsenX) { e.usenX = p; e.tUsenX = t; }
+      if ((p.pcty != null || p.foodamt != null || p.drinkamt != null || p.lunch15 != null) && t >= e.tUsenX) { e.usenX = p; e.tUsenX = t; }   // ★2026-10-18 17時の昼のみ売上だけの行も拾う（売上が無い＝レジ項目に0は書かない）
     }
     if (kind === 'app' && t >= e.tApp) { e.app = p; e.tApp = t; }
   }
