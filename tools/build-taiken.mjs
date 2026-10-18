@@ -109,6 +109,7 @@ fs.mkdirSync(path.join(OUT, 'icons'), { recursive: true });
 for (const f of gitFiles) {
   const buf = execSync(`git show HEAD:${f}`, { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 });
   if (!buf.length) throw new Error(`${f} の中身が空です`);
+  fs.mkdirSync(path.dirname(path.join(OUT, f)), { recursive: true });   // ★2026-10-18 icons/photo/ などの下のフォルダも作る（案Bの写真で止まった）
   fs.writeFileSync(path.join(OUT, f), buf);
 }
 
