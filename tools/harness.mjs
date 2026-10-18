@@ -1,6 +1,8 @@
 // Minimal DOM shim harness to render the 世桜app views without a browser.
 import fs from 'node:fs';
 import vm from 'node:vm';
+/* ★2026-10-18 日報のチップは必須になった＝既存の提出テストは、チップが空なら0を入れてから押す */
+function skTipFill_(d) { const t = d.getElementById('sk_tipt'); if (t && !String(t.value || '').trim()) t.value = '0'; }
 
 const APP = 'C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/app.js';
 const code = fs.readFileSync(APP, 'utf8');
@@ -4041,9 +4043,12 @@ console.log('== 日報の累計＝当日だけ入れれば自動で足し上が�
   doc.getElementById('sk_date').value = today3;
   doc.getElementById('sk_sales').value = '100000';
   doc.getElementById('sk_cancelt').value = '2000';
-  doc.getElementById('submitSk').onclick();
+  skTipFill_(doc); doc.getElementById('submitSk').onclick();
   const last3 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
   ok(last3 && last3.cancelt === '2000', '提出データに当日キャンセルが入る');
+  { const n0 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').length;
+    doc.getElementById('sk_tipt').value = ''; doc.getElementById('submitSk').onclick();
+    ok(JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').length === n0, 'チップが空なら提出しない（必須・無い日は0＝2026-10-18 神田さん）'); }
   // ④ ソース＝当日欄4つの入力と日付・店舗の変更で累計を足し上げ直す配線がある
   const src3 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/\['sk_sales', 'sk_rvt', 'sk_tipt', 'sk_cancelt', 'sk_buy', 'sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'\]\.forEach/.test(src3), '当日欄の入力で累計が自動で足し上がる（配線・仕入率も追従・税込3欄も）');
@@ -4076,7 +4081,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   doc.getElementById('sk_foodamt').value = '80000';
   doc.getElementById('sk_drinkamt').value = '20000';
   doc.getElementById('sk_buy').value = '18000';
-  doc.getElementById('submitSk').onclick();
+  skTipFill_(doc); doc.getElementById('submitSk').onclick();
   const last4 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
   ok(last4 && last4.foodamt === '80000' && last4.drinkamt === '20000' && last4.buy === '18000', '提出データにフード金額・ドリンク金額・仕入が入る');
   ok(last4 && !('food' in last4) && !('foodct' in last4) && !('drinkct' in last4), '旧キー（原価率手入力・点数）は保存しない');
@@ -4088,7 +4093,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = today4; doc.getElementById('sk_sales').value = '100000';
   doc.getElementById('sk_buy_food').value = '1080'; doc.getElementById('sk_buy_alc').value = '1100'; doc.getElementById('sk_buy_drink').value = '540';
   doc.getElementById('sk_buy').value = '';
-  doc.getElementById('submitSk').onclick();
+  skTipFill_(doc); doc.getElementById('submitSk').onclick();
   ok(doc.getElementById('sk_buy').value === '2500', '税抜合計＝1000+1000+500=2500（消費税を切り捨ててから引く・提出時にも入れ直す）');
   const last4b = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
   ok(last4b && last4b.buy === '2500' && last4b.buy_food === '1080' && last4b.buy_alc === '1100' && last4b.buy_drink === '540', '提出データ＝税抜合計（buy）と税込3欄が残る');
@@ -4109,7 +4114,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   ok(doc.getElementById('sk_buy_food').value === '2880' && doc.getElementById('sk_buy_alc').value === '1100' && doc.getElementById('sk_buy_drink').value === '540',
      '仕入3欄が自動＝食材 1080+1800（合計だけの伝票は8%へ）・お酒 1100（名畑の10%）・お酒以外 540（名畑の8%）');
   doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = today4; doc.getElementById('sk_sales').value = '100000';
-  doc.getElementById('submitSk').onclick();
+  skTipFill_(doc); doc.getElementById('submitSk').onclick();
   const lastS = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
   ok(lastS && Array.isArray(lastS.slips) && lastS.slips.length === 3 && lastS.slips[1].v === '名畑' && lastS.slips[1].a10 === '1100' && lastS.slips[1].photo === 'PHOTO_B1234567' && lastS.buy_food === '2880',
      '提出データに納品書ごとの内訳（仕入先・8%・10%・写真ID）が残り、3欄は自動値');
@@ -4129,7 +4134,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
     doc.getElementById('sk_store').value = S6; doc.getElementById('sk_date').value = today4;
     doc.getElementById('sk_sales').value = '123700'; doc.getElementById('sk_cash').value = '40600'; doc.getElementById('sk_card').value = '75300'; doc.getElementById('sk_emoney').value = '7800'; doc.getElementById('sk_guests').value = '21'; doc.getElementById('sk_net').value = '112461';
     doc.getElementById('sk_cty_kr_g').value = '2'; doc.getElementById('sk_cty_kr_p').value = '5';
-    doc.getElementById('submitSk').onclick();
+    skTipFill_(doc); doc.getElementById('submitSk').onclick();
     const r6 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
     ok(r6 && !r6.posWait && r6.sales === 123700 && r6.cash === '40600' && r6.emoney === '7800' && r6.guests === 21 && r6.net === 112461 && r6.cty && r6.cty.kr && r6.cty.kr.g === 2 && r6.cty.kr.p === 5, 'レジの無い店の提出＝売上関連と国別がそのまま残る（posWait を付けない）');
     run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); });
@@ -4146,7 +4151,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   ok(/data-sret="1" checked/.test(h) && !/data-sret="0" checked/.test(h) && /data-sret="0"[^>]*> 返品</.test(h), '伝票の行に「返品」のチェック＝写真で返品と読めた伝票は最初からチェック済み');
   ok(doc.getElementById('sk_buy_food').value === '880', '返品の伝票は仕入3欄から引く（1080−200＝880）');
   doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = today4; doc.getElementById('sk_sales').value = '100000';
-  doc.getElementById('submitSk').onclick();
+  skTipFill_(doc); doc.getElementById('submitSk').onclick();
   { const r = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
     ok(r && r.slips && r.slips.length === 2 && r.slips[1].ret === 1 && r.slips[0].ret === 0 && r.buy_food === '880', '提出データに返品の印（ret:1）が残り、3欄は引いた値'); }
   ok(/x\.ret === true \|\| x\.ret === 1/.test(fs.readFileSync(new URL('../backend/総括表書き戻し.gs', import.meta.url), 'utf8')), '総括表の仕入内訳の書き戻しも返品を引く（skwb_slips_）');
@@ -4330,7 +4335,7 @@ console.log('== 日報は総括表へ一本化＝長堀橋の日報項目を総�
   doc.getElementById('sk_sand').value = '12';
   doc.getElementById('sk_bad').value = '提供が遅れた時間帯があった';
   doc.getElementById('sk_hikin').value = 'キャベツ多めに仕込み済み';
-  doc.getElementById('submitSk').onclick();
+  skTipFill_(doc); doc.getElementById('submitSk').onclick();
   const rows = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]');
   const r = rows[rows.length - 1];
   ok(!!r && r.sand === '12' && r.bad === '提供が遅れた時間帯があった' && r.hikin === 'キャベツ多めに仕込み済み',
@@ -5133,7 +5138,7 @@ console.log('== 提出した日報を後から直せる（2026-09-03 ユンさ�
   ok(doc.getElementById('sk_editnote').style.display === 'block', '案内が表示される');
   // 出し直すと最新が正になる（同じ日が2行に増えない）
   doc.getElementById('sk_rvt').value = '5';
-  doc.getElementById('submitSk').onclick();
+  skTipFill_(doc); doc.getElementById('submitSk').onclick();
   const rows = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').filter(r => r.date === today5);
   ok(rows.length === 2, '出し直しは追記される（記録は消さない）');
   // ※ run() は保存を消すのでここでは使わない（画面だけ作り直して、入れ直されるかを見る）
@@ -6372,7 +6377,7 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   // ② 売上が空でも提出できる・レジの項目は保存しない・posWait の印
   doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = yest;
   doc.getElementById('sk_rvt').value = '2'; doc.getElementById('sk_tipt').value = '1000'; doc.getElementById('sk_errnote').value = '両替';
-  doc.getElementById('submitSk').onclick();
+  skTipFill_(doc); doc.getElementById('submitSk').onclick();
   const all = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]');
   const saved = all[all.length - 1];
   ok(all.length === rows.length + 1 && saved && saved.posWait === true && !('sales' in saved) && !('guests' in saved) && !('cash' in saved) && !('err' in saved) && !('disc' in saved) && saved.rvt === '2' && saved.errnote === '両替', '売上が空でも提出できる・レジの7項目は保存しない（posWait:true）');
@@ -6393,7 +6398,7 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   h = registry.app.innerHTML;
   ok(/id="sk_posnote"/.test(h) && /id="sk_posgrid"/.test(h) && /<input type="text"[^>]*id="sk_sales"/.test(h), 'レジの無い店＝日報に売上の欄が出る（2026-10-15 神田さん「アプリの日報で入力すれば総括表に入れる必要はない」）');
   doc.getElementById('sk_store').value = S2; doc.getElementById('sk_date').value = yest; doc.getElementById('sk_memo').value = '雨';
-  doc.getElementById('submitSk').onclick();
+  skTipFill_(doc); doc.getElementById('submitSk').onclick();
   const all2 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]');
   ok(all2.length === 1 && !all2[0].posWait && all2[0].memo === '雨', 'レジの無い店も売上が空で提出できる（posWait は付かない）');
   const driveRow = { store: S2, date: yest, sales: 300000, net: 272727, guests: 50, cash: 100000, card: 200000, src: 'drive', t: Date.now() + 1 };
@@ -6433,7 +6438,7 @@ console.log('== 2026-10-15 勤怠（任意）＝総括表の勤怠と同じ形�
   doc.getElementById('sk_kt0_n').value = 'AA'; doc.getElementById('sk_kt0_s').value = '09:25'; doc.getElementById('sk_kt0_e').value = '16:30';
   doc.getElementById('sk_kt1_n').value = 'BB'; doc.getElementById('sk_kt1_s').value = '17:00'; doc.getElementById('sk_kt1_e').value = '23:30';
   doc.getElementById('sk_kt2_n').value = ''; doc.getElementById('sk_kt2_s').value = '10:00';   // 氏名の無い行は数えない
-  doc.getElementById('submitSk').onclick();
+  skTipFill_(doc); doc.getElementById('submitSk').onclick();
   const all = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]');
   const saved = all[all.length - 1];
   ok(saved && Array.isArray(saved.kintai) && saved.kintai.length === 2 && saved.kintai[0].n === 'AA' && saved.kintai[0].s === '09:25' && saved.kintai[1].e === '23:30', '勤怠2行が保存される（氏名の無い行は入らない）');

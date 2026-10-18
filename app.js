@@ -11677,9 +11677,82 @@
       // 開いた時点＝すでに提出のある日なら、その内容を入れて「直せる」状態にする（無い日はそのまま）
       skFill_(false);
     }
+    /* ★2026-10-18 案B（pb）の日報＝「自動で入った数字を見る」＋「店がやることだけ」（神田さん「元々自動で取得したデータが一覧で上がってくるはず。
+       店舗がやることは、納品書と気づきの報告だけ」「チップはUSENで取れない場合は入力必須」「過不足の理由も選べる状態に」）。
+       欄・保存・総括表への流れは変えない＝要る欄を上に並べ替え、残りは「そのほかの項目」に畳むだけ。USENの無い店は今の形のまま（神田さん） */
+    if (byId('skForm') && typeof byId('skForm').insertBefore === 'function' && typeof document.createElement === 'function' && isPb() && !skNoUsen_((byId('sk_store') && byId('sk_store').value) || visibleStores()[0])) try {
+      const form = byId('skForm');
+      const lab = (id) => { const e = byId(id); return e ? e.closest('label') : null; };
+      const yenS = (v) => (v == null || v === '') ? '—' : '¥' + (Number(v) || 0).toLocaleString('en-US');
+      const numS = (v, u) => (v == null || v === '') ? '—' : (Number(v) || 0).toLocaleString('en-US') + (u || '');
+      /* 自動で入った数字（USENレジ＝レジ締め＋伝票明細、Google口コミ）。その店・その日の最新の取込行を重ねて見る */
+      const autoCard = document.createElement('div'); autoCard.className = 'card-sub pb-skauto'; autoCard.id = 'pb_skauto';
+      const drawAuto = () => {
+        const store = (byId('sk_store') && byId('sk_store').value) || visibleStores()[0];
+        const date = (byId('sk_date') && byId('sk_date').value) || todayKey();
+        let raw = []; try { raw = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]') || []; } catch (e) { raw = []; }
+        const us = raw.filter(r => r && r.src === 'usen' && r.store === store && r.date === date).sort((a, b) => (Number(a.t) || 0) - (Number(b.t) || 0));
+        const u = {}; us.forEach(r => Object.keys(r).forEach(k => { if (r[k] != null && r[k] !== '') u[k] = r[k]; }));
+        const merged = getSk().find(r => r.store === store && r.date === date) || {};
+        const rv = merged.rvt != null && merged.rvt !== '' ? merged.rvt : '';
+        const has = u.sales != null;
+        const cty = (u.pcty && typeof u.pcty === 'object') ? Object.keys(u.pcty).map(k => [k, Number((u.pcty[k] || {}).p) || 0]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 4) : [];
+        const row = (t, v) => `<div class="pb-skauto__r"><span>${t}</span><b>${v}</b></div>`;
+        autoCard.innerHTML = `<div class="idlabel" style="margin:0 0 6px">${L({ ja:'自動で入った数字（見るだけ）', en:'Filled automatically (view only)', vi:'Tự động (chỉ xem)' })}</div>` +
+          (has ? (row(L({ja:'売上',en:'Sales',vi:'Doanh thu'}), yenS(u.sales)) + row(L({ja:'客数',en:'Guests',vi:'Khách'}), numS(u.guests, L({ja:'人',en:'',vi:''}))) +
+                  row(L({ja:'現金 ／ カード',en:'Cash / Card',vi:'Tiền mặt / Thẻ'}), yenS(u.cash) + ' ／ ' + yenS(u.card)) +
+                  (u.emoney ? row(L({ja:'電子マネー',en:'E-money',vi:'Ví điện tử'}), yenS(u.emoney)) : '') +
+                  row(L({ja:'フード ／ ドリンク',en:'Food / Drink',vi:'Món / Đồ uống'}), yenS(u.foodamt) + ' ／ ' + yenS(u.drinkamt)) +
+                  (u.lunch15 != null && u.lunch15 !== '' ? row(L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'}), yenS(u.lunch15)) : '') +
+                  row(L({ja:'過不足（現金）',en:'Cash difference',vi:'Chênh lệch'}), yenS(u.err)) +
+                  (cty.length ? row(L({ja:'国別（多い順）',en:'By country',vi:'Theo quốc gia'}), cty.map(x => esc(x[0]) + ' ' + x[1]).join('・')) : ''))
+              : `<p class="hint" style="display:block;margin:0">${L({ ja:'この日のレジの数字は、翌朝4時に自動で入ります。いまは納品書・チップ・気づきだけ出せば大丈夫です。', en:'Register figures arrive automatically at 4:00 next morning. You can submit slips, tips and notes now.', vi:'Số liệu quầy tự động vào lúc 4:00 sáng hôm sau.' })}</p>`) +
+          row(L({ja:'口コミ（Google）',en:'Reviews (Google)',vi:'Đánh giá (Google)'}), rv === '' ? '—' : numS(rv, L({ja:'件',en:'',vi:''})));
+      };
+      drawAuto();
+      ['sk_date', 'sk_store'].forEach(id => { const e = byId(id); if (e) e.addEventListener('change', drawAuto); });
+      /* 店がやること＝チップ（必須）・納品書・過不足の理由（選ぶ）・気づき */
+      const must = document.createElement('div'); must.className = 'pb-skmust'; must.id = 'pb_skmust';
+      must.innerHTML = `<div class="idlabel" style="margin:12px 0 6px">${L({ ja:'お店で入れること', en:'What the store enters', vi:'Cửa hàng nhập' })}</div>`;
+      const tipL = lab('sk_tipt'); if (tipL) { const sp = tipL.querySelector('span'); if (sp) sp.innerHTML = L({ ja:'チップ 当日 <b style="color:var(--suou,#8b2e3a)">必須</b>（無い日は0）', en:'Tips today <b>required</b> (0 if none)', vi:'Tip hôm nay <b>bắt buộc</b> (0 nếu không có)' }); const ti = byId('sk_tipt'); if (ti) ti.placeholder = '0'; must.appendChild(tipL); }
+      const slip = byId('sk_slipbox'); if (slip) must.appendChild(slip);
+      const errL = lab('sk_errnote');
+      if (errL) {
+        const inp = byId('sk_errnote');
+        const opts = [{ja:'釣り銭の渡し間違い',en:'Wrong change',vi:'Thối tiền sai'}, {ja:'レジの打ち間違い',en:'Register entry error',vi:'Nhập sai quầy'}, {ja:'両替・入金の記録漏れ',en:'Exchange / deposit not recorded',vi:'Thiếu ghi đổi tiền'}, {ja:'原因が分からない',en:'Unknown',vi:'Không rõ'}];
+        const sel = document.createElement('select'); sel.id = 'sk_errsel';
+        sel.innerHTML = `<option value="">${L({ja:'差が無ければ選ばない',en:'Leave blank if none',vi:'Bỏ trống nếu không có'})}</option>` + opts.map(o => `<option>${esc(L(o))}</option>`).join('') + `<option value="__other">${L({ja:'その他（書く）',en:'Other (write)',vi:'Khác (ghi)'})}</option>`;
+        const sync = () => {
+          if (sel.value === '__other') { inp.style.display = ''; if (opts.some(o => L(o) === inp.value)) inp.value = ''; inp.placeholder = L({ja:'理由を書いてください',en:'Write the reason',vi:'Ghi lý do'}); }
+          else { inp.style.display = 'none'; inp.value = sel.value; }
+        };
+        const fromInp = () => { const v = inp.value.trim(); const hit = opts.find(o => L(o) === v); sel.value = !v ? '' : hit ? L(hit) : '__other'; inp.style.display = (sel.value === '__other') ? '' : 'none'; };
+        inp.parentNode.insertBefore(sel, inp); fromInp();
+        sel.addEventListener('change', sync);
+        ['sk_date', 'sk_store'].forEach(id => { const e = byId(id); if (e) e.addEventListener('change', () => setTimeout(fromInp, 0)); });
+        must.appendChild(errL);
+      }
+      const memoL = lab('sk_memo'); if (memoL) { const sp = memoL.querySelector('span'); if (sp) sp.textContent = L({ ja:'気づき（今日の所感）', en:'Notes on the day', vi:'Ghi nhận hôm nay' }); must.appendChild(memoL); }
+      /* 残り＝そのほかの項目（畳む）。店舗・日付の欄と案内文は上に残す */
+      const more = document.createElement('details'); more.className = 'card-sub pb-skmore'; more.id = 'pb_skmore';
+      more.innerHTML = `<summary style="cursor:pointer;font-weight:600">${L({ ja:'そのほかの項目（いつもは開かなくて大丈夫です）', en:'Other items (usually not needed)', vi:'Mục khác (thường không cần)' })}</summary>`;
+      const submit = byId('submitSk');
+      const firstGrid = form.querySelector('.sk-grid');   // 店舗・日付
+      const keep = new Set(['sk_editnote', 'sk_posnote', 'sk_datenote']);
+      Array.from(form.children).forEach(ch => {
+        if (ch === firstGrid || ch.tagName === 'H3' || keep.has(ch.id) || ch === submit || ch === must || ch === autoCard || ch === more) return;
+        if (ch.contains && submit && ch.contains(submit)) return;
+        more.appendChild(ch);
+      });
+      const anchor = firstGrid ? firstGrid.nextSibling : null;
+      form.insertBefore(autoCard, anchor); form.insertBefore(must, autoCard.nextSibling); form.insertBefore(more, must.nextSibling);
+      if (submit && submit.parentNode === form) form.insertBefore(submit, more.nextSibling);
+    } catch (e) { try { reportAppError('日報の並べ替え（案B）に失敗', String(e && e.stack || e)); } catch (x) {} }   // 並べ替えに失敗しても、元の並びのまま出せる
     const subSk = byId('submitSk');
     if (subSk) subSk.onclick = () => {
       const v = (id) => { const e = byId(id); return e ? e.value.trim() : ''; };
+      /* ★2026-10-18 チップは必須（USENで取れないため・神田さん）。無い日は0を入れる */
+      if (byId('sk_tipt') && v('sk_tipt') === '') { toast(L({ ja:'チップを入れてください（無い日は0）', en:'Enter tips (0 if none)', vi:'Nhập tip (0 nếu không có)' })); try { byId('sk_tipt').focus(); } catch (e) {} return; }
       /* 画面304＝仕入の税込3欄が入っていれば、提出の直前にも税抜合計を入れ直す（入力イベントを取りこぼしても保存値は正しい） */
       if (byId('sk_buy') && ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'].some(id => v(id) !== '')) {
         const n_ = (id) => Number(v(id)) || 0;
