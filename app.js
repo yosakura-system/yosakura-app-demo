@@ -217,6 +217,12 @@
     } catch (e) {}
   }
   const setTheme = (t) => { try { localStorage.setItem('yosakura_theme', t); } catch (e) {} applyTheme(); };
+  /* ★2026-10-18 URLの ?theme=pb｜hp｜classic でデザインを選べる（?theme=auto で既定＝10/20 6:00から案B に戻す）。
+     デザインの切替は本部の「バックエンド設定」にしか無く、店舗の役割で体験版を開いた神田さんが案Bを見られなかったため */
+  try {
+    const qm = String(location.search || '').match(/[?&]theme=(pb|hp|classic|auto)\b/);
+    if (qm) { if (qm[1] === 'auto') localStorage.removeItem('yosakura_theme'); else localStorage.setItem('yosakura_theme', qm[1]); }
+  } catch (e) {}
   /* 起動画面＝ロゴの下に「YOSAKURA APP／世界に、桜のように咲く和食体験を。」を添える（HPのコピー） */
   function hpSplash_() {
     try {
