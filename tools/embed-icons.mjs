@@ -66,7 +66,15 @@ if (CHECK_ONLY) {
   process.exit(okApp && okHtml && !usesFile ? 0 : 1);
 }
 
-app = between(app, 'embed-icons', `  const IMG_LOGO = '${LOGO}';\n  const IMG_ICON = '${ICON}';`);
+/* ★印の中に別の手順で足した画像（IMG_HERO・IMG_TAB など）は残す（2026-10-16 ロゴだけ書き戻して IMG_HERO が消えた） */
+const keepLines = (() => { const m = app.match(/\/\* <embed-icons> \*\/[\s\S]*?\/\* <\/embed-icons> \*\//); if (!m) return []; return m[0].split(/\r?\n/).filter(l => /const IMG_[A-Z_]+ =/.test(l) && !/const IMG_(LOGO|ICON) =/.test(l)).map(l => l.replace(/^\s*/, '  ')); })();
+app = between(app, 'embed-icons', [`  const IMG_LOGO = '${LOGO}';`, `  const IMG_ICON = '${ICON}';`].concat(keepLines).join('\n'));
+/* ★2026-10-16 案Bのボタン写真（icons/photo/*.webp・Geminiで生成）も同じ要領で埋め込む＝OneDriveが消しても画面は変わらない */
+const photoDir = path.join(ROOT, 'icons', 'photo');
+const photoFiles = fs.existsSync(photoDir) ? fs.readdirSync(photoDir).filter(f => f.endsWith('.webp')).sort() : [];
+const PHOTOS = photoFiles.map(f => `    ${JSON.stringify(f.replace(/\.webp$/, ''))}: 'data:image/webp;base64,${readIcon('icons/photo/' + f).toString('base64')}'`).join(',\n');
+app = between(app, 'embed-photos', `  const PHOTOS = {\n${PHOTOS}\n  };`);
+console.log(`　・ボタン写真（案B）　${photoFiles.length}枚`);
 fs.writeFileSync(appPath, app);
 
 html = html

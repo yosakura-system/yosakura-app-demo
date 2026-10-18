@@ -926,3 +926,138 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 
 /* 月初のパスワード変更のお願い（共有の店舗IDだけ・2026-10-02）＝開発者ビューのバナーと同じ置き方・色だけ変える */
 .pwchange-bar { background: #8a6d3b; }
+
+/* =====================================================================
+   案B（pb）＝10/20 全店リリースの見た目（2026-10-16 神田さん「10/20から見た目の画面も一新したい」）
+   色・字＝案Bの見本（05/_生成スクリプト/世桜アプリ_案B_テンプレート.html）と同じ定義。
+   蘇芳 #7A2E3E／生成り #F4F0E8／紙 #FFFDF9／墨 #2B2724／灰 #857C72／罫 #DDD5C7。書体＝Shippori Mincho（見出し）＋Noto Sans JP（本文）。
+   動き（入力・保存・同期）は変えない。本部（hq）の画面は配置そのまま・色と部品だけ揃う。
+   ===================================================================== */
+html[data-theme="pb"] {
+  --suou: #7A2E3E; --suou-d: #5E1F2E; --suou-t: #F1E3E6; --sumi: #2B2724; --gray: #857C72;
+  --kinari: #F4F0E8; --paper: #FFFDF9; --line: #DDD5C7; --gold: #B8681F; --moegi: #3C7A4E;
+  --matsu: #3C7A4E; --matsu-soft: #E3F0E6; --kaki: #B8681F; --kaki-soft: #F8EBDB; --beni: #B23A2E; --beni-soft: #F7E3E0; --usu: #E8E1D4;
+  --shadow: 0 10px 28px rgba(43,39,36,.12); --shadow-s: 0 2px 10px rgba(43,39,36,.07);
+  --serif: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif;
+  --sans: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", "YuGothic", system-ui, sans-serif;
+  --en: "Shippori Mincho", Georgia, serif;
+}
+html[data-theme="pb"][lang="vi"] { --serif: "Noto Sans JP", "Noto Sans", "Segoe UI", sans-serif; }
+html[data-theme="pb"] body { background: #E6DFD1; }
+html[data-theme="pb"] #app { background: var(--kinari); box-shadow: 0 0 60px rgba(43,39,36,.12); }
+html[data-theme="pb"] .splash { background: var(--paper); }
+html[data-theme="pb"] .hdr { background: var(--paper); backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 1px solid var(--line); }
+html[data-theme="pb"] .hdr__logo { border-radius: 9px; box-shadow: none; }
+html[data-theme="pb"] .hdr__brand { font-family: var(--serif); letter-spacing: .18em; }
+html[data-theme="pb"] .role-chip { background: var(--suou); border-radius: 999px; box-shadow: none; }
+html[data-theme="pb"] .lang-chip { border-radius: 999px; }
+html[data-theme="pb"] .screen { padding: 8px 14px 24px; }
+html[data-theme="pb"] h1, html[data-theme="pb"] h2, html[data-theme="pb"] h3, html[data-theme="pb"] .hero__title, html[data-theme="pb"] .app-head h1 { font-family: var(--serif); font-weight: 700; }
+html[data-theme="pb"] .card { border-radius: 16px; border: 1px solid var(--line); background: var(--paper); box-shadow: none; padding: 12px 14px; }
+html[data-theme="pb"] .tile { border-radius: 16px; border: 1px solid var(--line); background: var(--paper); box-shadow: none; }
+html[data-theme="pb"] .tile .ico, html[data-theme="pb"] .app-head .ico { border-radius: 12px; background: var(--suou-t); color: var(--suou-d); }
+html[data-theme="pb"] .btn-primary { border-radius: 14px; background: var(--suou); box-shadow: none; font-weight: 700; padding: 14px; font-size: 16px; }
+html[data-theme="pb"] .mini, html[data-theme="pb"] .kchip, html[data-theme="pb"] .svax { border-radius: 999px; background: var(--kinari); border-color: var(--line); min-height: 36px; }
+html[data-theme="pb"] .kchip.on, html[data-theme="pb"] .seg button.on, html[data-theme="pb"] .svax.on { background: var(--suou); border-color: var(--suou); color: #fff; }
+html[data-theme="pb"] .seg button { border-radius: 999px; }
+html[data-theme="pb"] .sec-h .bar { background: var(--suou); }
+html[data-theme="pb"] .sec-h h2 { font-family: var(--serif); letter-spacing: .1em; }
+html[data-theme="pb"] .homelink { border-radius: 14px; box-shadow: none; }
+html[data-theme="pb"] .rep .kind.a { background: var(--beni-soft); color: var(--beni); }
+html[data-theme="pb"] .rep .kind.b { background: var(--matsu-soft); color: var(--matsu); }
+html[data-theme="pb"] .kslot { border-radius: 14px; }
+html[data-theme="pb"] .kslot-n.over { background: var(--suou); }
+html[data-theme="pb"] .zk-grp { border-radius: 10px; }
+html[data-theme="pb"] input[type="text"], html[data-theme="pb"] input[type="search"], html[data-theme="pb"] input[type="number"], html[data-theme="pb"] input[type="date"], html[data-theme="pb"] input[type="time"], html[data-theme="pb"] select, html[data-theme="pb"] textarea { border-radius: 10px; border-color: var(--line); background: var(--paper); }
+html[data-theme="pb"] .toast { border-radius: 999px; background: var(--sumi); color: var(--paper); }
+html[data-theme="pb"] .sheet { border-radius: 22px 22px 0 0; }
+html[data-theme="pb"] .footer-note { font-family: var(--serif); letter-spacing: .14em; font-size: 11px; color: var(--gray); text-align: center; margin-top: 18px; }
+/* 下のタブ＝きょうやること／見る・注文する／その他 */
+html[data-theme="pb"] .tabbar { background: var(--paper); backdrop-filter: none; -webkit-backdrop-filter: none; border-top: 1px solid var(--line); padding-top: 7px; }
+html[data-theme="pb"] .tabbar button { color: var(--gray); font-size: 11.5px; letter-spacing: .04em; font-weight: 500; }
+html[data-theme="pb"] .tabbar button.on { color: var(--suou-d); font-weight: 700; }
+html[data-theme="pb"] .tabbar button.on svg { stroke: var(--suou); }
+/* ---- きょうやること ---- */
+html[data-theme="pb"] .pb-cover { position: relative; border-radius: 18px; overflow: hidden; min-height: 168px; display: flex; align-items: flex-end; box-shadow: 0 10px 28px rgba(43,39,36,.18); margin: 6px 0 10px; background: var(--sumi); }
+html[data-theme="pb"] .pb-coverimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+html[data-theme="pb"] .pb-veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,15,12,.05) 0%, rgba(20,15,12,.76) 100%); }
+html[data-theme="pb"] .pb-coverin { position: relative; padding: 14px 16px 12px; color: #fff; width: 100%; }
+html[data-theme="pb"] .pb-date { font-size: 11px; letter-spacing: .18em; opacity: .92; }
+html[data-theme="pb"] .pb-h { font-family: var(--serif); font-size: 23px; font-weight: 700; letter-spacing: .04em; line-height: 1.2; margin-top: 2px; }
+html[data-theme="pb"] .pb-st { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; margin-top: 8px; opacity: .95; }
+html[data-theme="pb"] .pb-prog { height: 6px; background: rgba(255,255,255,.3); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+html[data-theme="pb"] .pb-prog i { display: block; height: 100%; background: #fff; border-radius: 3px; }
+html[data-theme="pb"] .pb-strip { display: flex; align-items: center; gap: 10px; width: 100%; background: var(--suou-t); color: var(--suou-d); border: 0; border-radius: 14px; padding: 9px 12px; font: inherit; font-size: 13px; text-align: left; margin: 0 0 8px; cursor: pointer; }
+html[data-theme="pb"] .pb-strip span { flex: 1; min-width: 0; line-height: 1.4; }
+html[data-theme="pb"] .pb-strip b { display: block; font-size: 11px; letter-spacing: .1em; opacity: .85; }
+html[data-theme="pb"] .pb-strip svg { width: 18px; height: 18px; flex: none; }
+html[data-theme="pb"] .pb-strip--late { background: var(--beni-soft); color: var(--beni); }
+html[data-theme="pb"] .pb-strip--em { background: var(--paper); border: 1px solid var(--beni); color: var(--sumi); }
+html[data-theme="pb"] .pb-strip--em b { color: var(--beni); }
+html[data-theme="pb"] .pb-bands { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 6px 0 8px; background: var(--kinari); }
+html[data-theme="pb"] .pb-band { font: inherit; font-size: 13px; font-weight: 700; color: var(--gray); background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; min-height: 48px; }
+html[data-theme="pb"] .pb-band small { font-size: 11px; font-weight: 400; color: var(--gray); }
+html[data-theme="pb"] .pb-band.on { color: var(--suou-d); border-color: var(--suou); background: var(--suou-t); }
+html[data-theme="pb"] .pb-card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 6px 12px 10px; margin-bottom: 8px; }
+html[data-theme="pb"] .pb-slot { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .12em; color: var(--gray); margin: 12px 0 2px; scroll-margin-top: 70px; }
+html[data-theme="pb"] .pb-slot small { color: var(--suou); font-weight: 700; letter-spacing: .04em; }
+html[data-theme="pb"] .pb-slot::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+html[data-theme="pb"] .pb-row { display: grid; grid-template-columns: 48px 1fr auto; gap: 12px; align-items: center; width: 100%; padding: 9px 2px; border: 0; border-top: 1px solid var(--line); background: transparent; font: inherit; color: var(--sumi); text-align: left; cursor: pointer; min-height: 60px; }
+html[data-theme="pb"] .pb-slot + .pb-row, html[data-theme="pb"] .pb-card > .pb-row:first-child { border-top: 0; }
+html[data-theme="pb"] .pb-th { width: 48px; height: 48px; border-radius: 12px; object-fit: cover; border: 1px solid var(--line); background: var(--kinari); display: grid; place-items: center; color: var(--gray); flex: none; }
+html[data-theme="pb"] .pb-th svg { width: 22px; height: 22px; }
+html[data-theme="pb"] .pb-th--s { width: 36px; height: 36px; border-radius: 9px; }
+html[data-theme="pb"] .pb-rowtx { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+html[data-theme="pb"] .pb-nm { font-size: 15px; font-weight: 500; line-height: 1.35; }
+html[data-theme="pb"] .pb-sub { font-size: 12px; color: var(--gray); line-height: 1.4; }
+html[data-theme="pb"] .pb-row.done .pb-nm { color: var(--gray); font-weight: 400; }
+html[data-theme="pb"] .pb-row.done .pb-th { opacity: .75; }
+html[data-theme="pb"] .pb-row.late .pb-th { border-color: var(--beni); }
+html[data-theme="pb"] .pb-late { color: var(--beni); font-weight: 700; }
+html[data-theme="pb"] .pb-rt { color: var(--gray); display: flex; align-items: center; }
+html[data-theme="pb"] .pb-rt svg { width: 18px; height: 18px; }
+html[data-theme="pb"] .pb-row.done .pb-rt { color: var(--matsu); }
+html[data-theme="pb"] .pb-pill { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 999px; font-weight: 700; vertical-align: middle; background: var(--suou-t); color: var(--suou-d); margin-left: 4px; }
+html[data-theme="pb"] .pb-mini { font: inherit; font-size: 12px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--kinari); color: var(--sumi); white-space: nowrap; min-height: 36px; cursor: pointer; }
+html[data-theme="pb"] .pb-mini.pri { background: var(--suou); color: #fff; border-color: var(--suou); }
+html[data-theme="pb"] .pb-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 4px; }
+html[data-theme="pb"] .pb-chip { font: inherit; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 0 0 9px; text-align: center; color: var(--sumi); display: flex; flex-direction: column; align-items: center; gap: 4px; overflow: hidden; cursor: pointer; }
+html[data-theme="pb"] .pb-chipimg { width: 100%; height: 64px; object-fit: cover; display: block; margin-bottom: 4px; }
+html[data-theme="pb"] .pb-chip b { font-size: 13px; }
+html[data-theme="pb"] .pb-chip small { font-size: 10.5px; color: var(--gray); padding: 0 6px; line-height: 1.3; }
+html[data-theme="pb"] .pb-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 16px 2px 7px; }
+html[data-theme="pb"] .pb-sec h2 { font-family: var(--sans); font-size: 12px; letter-spacing: .14em; color: var(--gray); font-weight: 700; margin: 0; }
+html[data-theme="pb"] .pb-sec small { font-size: 11px; color: var(--gray); }
+html[data-theme="pb"] .pb-ho { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--line); }
+html[data-theme="pb"] .pb-ho:first-child { border-top: 0; }
+html[data-theme="pb"] .pb-hotx { flex: 1; font-size: 14px; white-space: pre-wrap; line-height: 1.5; }
+html[data-theme="pb"] .pb-hotx small { display: block; font-size: 11.5px; color: var(--gray); margin-top: 2px; white-space: normal; }
+/* ---- 見る・注文する ---- */
+html[data-theme="pb"] .pb-ttl { font-family: var(--serif); font-size: 23px; font-weight: 700; margin: 8px 2px 2px; letter-spacing: .02em; }
+html[data-theme="pb"] .pb-lead { font-size: 13px; color: var(--gray); margin: 0 2px 10px; }
+html[data-theme="pb"] .pb-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+html[data-theme="pb"] .pb-tile { font: inherit; color: var(--sumi); background: var(--paper); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; text-align: left; padding: 0; display: flex; flex-direction: column; cursor: pointer; }
+html[data-theme="pb"] .pb-tileimg { width: 100%; height: 108px; object-fit: cover; display: block; }
+html[data-theme="pb"] .pb-tiletx { padding: 9px 12px 11px; display: flex; flex-direction: column; gap: 2px; }
+html[data-theme="pb"] .pb-tiletx b { font-size: 15px; }
+html[data-theme="pb"] .pb-tiletx small { font-size: 11.5px; color: var(--gray); line-height: 1.4; }
+/* ---- 休止画面 ---- */
+html[data-theme="pb"] .pb-maint, .pb-maint { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; text-align: center; gap: 12px; padding: 24px; }
+.pb-maint .brandhead__logo { width: 56%; max-width: 220px; }
+.pb-maint .pb-ttl { font-size: 20px; }
+.pb-maint .pb-lead { max-width: 360px; line-height: 1.8; }
+/* ---- iPad・横（画面が広いとき）＝左にタブ・右に中身（案Bの見本と同じ） ---- */
+@media (min-width: 900px) {
+  html[data-theme="pb"] #app { max-width: 1120px; display: grid; grid-template-columns: 220px 1fr; grid-template-rows: auto auto 1fr; }
+  html[data-theme="pb"] #app > .devview-bar, html[data-theme="pb"] #app > .pwchange-bar { grid-column: 1 / -1; }
+  html[data-theme="pb"] .hdr, html[data-theme="pb"] .taiken-band { grid-column: 1 / -1; }
+  html[data-theme="pb"] .appmain { grid-column: 2; grid-row: 3; }
+  html[data-theme="pb"] .tabbar { grid-column: 1; grid-row: 3; flex-direction: column; justify-content: flex-start; align-items: stretch; gap: 4px; border-top: 0; border-right: 1px solid var(--line); padding: 14px 10px; }
+  html[data-theme="pb"] .tabbar button { flex: none; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 12px 14px; font-size: 14.5px; border-radius: 12px; width: 100%; }
+  html[data-theme="pb"] .tabbar button.on { background: var(--suou-t); }
+  html[data-theme="pb"] .screen { padding: 16px 26px 28px; max-width: 760px; }
+  html[data-theme="pb"] .pb-tiles { grid-template-columns: repeat(4, 1fr); }
+  html[data-theme="pb"] .pb-tileimg { height: 128px; }
+  html[data-theme="pb"] .pb-cover { min-height: 200px; }
+}
+html[data-theme="pb"] .app-head .ico.pb-headimg { width: 54px; height: 54px; border-radius: 15px; object-fit: cover; border: 1px solid var(--line); display: block; }

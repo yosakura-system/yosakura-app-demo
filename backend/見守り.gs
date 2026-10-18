@@ -10,7 +10,9 @@
  *   ① エラーの控え（kind:'apperr'）が増えた → 番号・店舗・画面・内容を列挙
  *      （E＝画面のエラー／AUTHDROP＝ログインが外れた／AUTHKEEP＝外れかけたが続行／LSFULL＝端末の保存領域いっぱい）
  *   ② 同じIDのログインし直しが24時間に3回以上（_users の tokens の増え方で数える）
- *   ③ 10時台だけ：USENレジの店で、昨日の営業日の行（src:'usen'）が無い店 → 取込漏れ
+ *   ③ 5時台と10時台：USENレジの店で、昨日の営業日のレジ締め（src:'usen' で sales がある行）が無い店 → 取込漏れ
+ *      ★2026-10-18 フード・ドリンクだけの行（伝票明細・sales なし）でも「ある」と数えていたため、レジ締めの送信が落ちても鳴らなかった
+ *        （10/17・10/18 原さんに言われて気づいた）。sales がある行だけ数え、4時の自動のすぐ後（5時台）にも見る
  *   ④ 10時台だけ：おととい提出のあった店で、きのう1件も提出（ckdone／subrec／zaiko／soukatsu）が無い店 → 止まっている可能性
  *      ★2026-10-12 営業日は「朝4時〜翌朝4時」で数える。23時台に「きょう」で判定していたため、
  *        閉店が0時を回る店（手巻き寿司難波店＝10/9分を10/10 1:01に提出）が毎晩引っかかった＝空振り。朝の回（③と同じ）へ移した
@@ -71,10 +73,10 @@ function mimamori_run_(sinceTs, isTest) {
   var relog = mimamori_relogins_(now);
   if (relog.length) found.push('【24時間に3回以上ログインし直したID】\n' + relog.map(function (x) { return '・' + x.uid + '（' + x.name + '）　' + x.count + '回'; }).join('\n'));
 
-  /* ③ USEN取込漏れ（10時台） */
-  if (isTest || hour === 10) {
+  /* ③ USEN取込漏れ（5時台＝4時の自動のすぐ後／10時台＝念のため） */
+  if (isTest || hour === 5 || hour === 10) {
     var miss = mimamori_usenMissing_(rows, now);
-    if (miss.length) found.push('【USENレジの行が無い店（' + miss[0].date + '）】\n' + miss.map(function (x) { return '・' + x.store; }).join('\n') + '\n→ 「USEN更新」が走っていないか、USEN側に営業日の行が無いか');
+    if (miss.length) found.push('【USENレジの締めが届いていない店（' + miss[0].date + '）】\n' + miss.map(function (x) { return '・' + x.store; }).join('\n') + '\n→ 総括表の現金・カード・客数が空のままです。06/USENレジ/_自動取込ログ.txt を見て「USEN更新」で送り直す（USEN側に営業日の行が無い日もある）');
   }
 
   /* ④ 提出が止まった店（10時台・営業日＝朝4時区切り） */
@@ -130,7 +132,7 @@ function mimamori_relogins_(now) {
   return out;
 }
 
-/* ③ USENの店＝直近14日に src:'usen' の行がある店。昨日（営業日）の行が無ければ漏れ */
+/* ③ USENの店＝直近の src:'usen' の行がある店。昨日（営業日）のレジ締め（sales あり）の行が無ければ漏れ */
 function mimamori_usenMissing_(rows, now) {
   var y = new Date(now.getTime() - 24 * 3600 * 1000);
   var ymd = Utilities.formatDate(y, 'Asia/Tokyo', 'yyyy-MM-dd');
@@ -141,7 +143,7 @@ function mimamori_usenMissing_(rows, now) {
     var n = {}; try { n = JSON.parse(r.note || '{}'); } catch (e) {}
     if (n.src !== 'usen') return;
     usenStores[r.store] = true;
-    if (String(n.date || '') === ymd) hasY[r.store] = true;
+    if (String(n.date || '') === ymd && n.sales != null && n.sales !== '') hasY[r.store] = true;   // ★2026-10-18 伝票明細だけの行（sales なし）は数えない
   });
   return Object.keys(usenStores).filter(function (s) {
     if (hasY[s]) return false;

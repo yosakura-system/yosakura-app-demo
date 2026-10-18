@@ -12,9 +12,12 @@
  *       → その日のUSEN行があればUSENの値（レジが正）。無ければアプリ日報の値
  *       ★2026-10-15 神田さん「レジから取れるデータは全て総括表に流し込む。レジで自動で入るものはアプリで入力しない」
  *         （アプリ側＝レジ店では売上まわりの欄を出さない。過不足はレジの締めが正しく入っている日だけ＝USEN取込.gs の closeng）
- *     ・アプリにしかない項目（本日の口コミ・フード金額・ドリンク金額・チップ・昼のみ売上・過不足の理由）
+ *     ・アプリにしかない項目（本日の口コミ・フード金額・ドリンク金額・チップ・過不足の理由・★所感（◎今日の感想）・★消耗品金額）
+ *     ・★昼のみ売上（2026-10-17）＝USENの伝票明細から「会計が店ごとの区切り時刻より前」の合計（心斎橋・長堀橋・難波＝17時／浅草橋・広島＝16時）。区切りの無い店はアプリの値
+ *       ★2026-10-16 所感と消耗品を追加（神田さん＝心斎橋の原さんが総括表の直接入力をやめてアプリ一本にするため）。
+ *         所感＝「◎今日の感想：」の右（原さんが書いていた列＝ラベルの3つ右）。消耗品＝当日計は式（＝内訳合計）なので「＜消耗品内訳＞」の空き行に 品目「消耗品（アプリ日報）」＋金額 を書く
  *       → アプリ日報の値
- *     ・書けないもの＝仕入金額・人件費・労働時間（総括表側が内訳の合計の式）／国別・勤怠の個人別・仕入先内訳（アプリに無い）
+ *     ・書けないもの＝仕入金額・人件費・労働時間（総括表側が内訳の合計の式）／天気・新規の組数・感想の小見出し（客足・ランチ…＝アプリに無い。所感は1欄にまとめて入る）
  *
  * ■ 決めごと（増田さんと合意 2026-10-07／アプリ分は 2026-10-15）
  *   ・書く店は SKWB_STORES に入れた店だけ。★2026-10-13 増田さんの依頼で**全店**が既定
@@ -26,7 +29,8 @@
  *   ・★ずれたセルには「メモ」を付ける（2026-10-07 神田さん＝A案）。右上の小さな三角＝乗せると「USENレジでは○○」「アプリの日報では○○」。
  *     値も書式も変えない・通知も飛ばない（コメントは使わない）。ずれが解消したら、こちらが付けたメモ（【USEN照合】【アプリ照合】で始まるもの）だけ消す。
  *     本部はアプリの「数字の要確認」（総括表とPOSが違う）で全店の一覧を見る＝C案（アプリ側で計算・GASは関わらない）
- *   ・値が0の項目は空欄のまま（0を書き込まない）
+ *   ・値が0の項目は **0 を書く**（★2026-10-17 神田さん「0は空欄にせず0と入力。空欄＝届いていない／エラー、0＝本当の0、が分かるように」。10/7の「空欄のまま」を置き換え）
+ *     対象＝レジの項目（USENの締めがあった日）と Google口コミ（その日の取得があった日）。アプリ日報の項目は空欄＝未入力なので0は書かない
  *
  * ■ 設定（Script Properties）
  *   SKWB_STORES  ＝ 書き戻す店（JSONの配列）。無ければ全店（SOUKATSU_SOURCES の店すべて）。絞りたいときだけ入れる
@@ -63,8 +67,9 @@ var SKWB_ITEMS = [
   { k: 'foodamt',  label: 'フード',                 dr: 0, dc: 5, usen: true,  unit: '円', ctx: true, appFallback: true },   // 2026-10-15 レジ（伝票明細のカテゴリ）が主
   { k: 'drinkamt', label: 'ドリンク',               dr: 0, dc: 5, usen: true,  unit: '円', ctx: true, appFallback: true },
   { k: 'tipt',     label: 'チップ',                 dr: 0, dc: 5, usen: false, unit: '円', ctx: true },
-  { k: 'lunch',    label: '昼のみ売上',             dr: 1, dc: 4, usen: false, unit: '円' },
-  { k: 'errnote',  label: /過不足理由記載/,          dr: 1, dc: 0, usen: false, text: true }
+  { k: 'lunch',    label: '昼のみ売上',             dr: 1, dc: 4, usen: false, unit: '円' },   // 2026-10-17 USENの lunch15（店ごとの区切り）があればそれ。skwb_want_ の先頭で分岐
+  { k: 'errnote',  label: /過不足理由記載/,          dr: 1, dc: 0, usen: false, text: true },
+  { k: 'memo',     label: /^◎今日の感想/,            dr: 0, dc: 3, usen: false, text: true, from: 85, to: 100 }   // ★2026-10-16 所感＝ラベル（C列）の3つ右（F列）。感想の欄は96行目あたり＝探す範囲を別に持つ
 ];
 var SKWB_NOTE_TAGS = { usen: '【USEN照合】', app: '【アプリ照合】', gs: '【Google照合】' };   // こちらが付けたメモの印。これで始まらないメモ（店や増田さんのメモ）には触らない
 var SKWB_SRC_NAME = { usen: 'USENレジ', app: 'アプリ日報', gs: 'Google口コミ' };
@@ -153,8 +158,11 @@ function skwb_lastWritten_(sh) {
   return map;
 }
 
-/* 日別タブで、ラベルの位置から当日の値のセルを探す。{item: {r, c}} */
-function skwb_cells_(vals) {
+/* 日別タブで、ラベルの位置から当日の値のセルを探す。{item: {r, c}}
+   ★2026-10-18 merges（0始まりの {r1,c1,r2,c2}）を渡すと、ずらした先がラベルと同じ結合の中なら、その結合の右隣へ寄せる。
+     難波店の総括表は「過不足(現金)」のラベルが R〜V の結合で、ほかの店より1列左から始まる＝4列右（V）がラベルの中になり、
+     書いた値が見えないまま毎朝「書く」が残った（10/16 の -41,760 円）。朝の点検で見つかった */
+function skwb_cells_(vals, merges) {
   var norm = function (v) { return String(v == null ? '' : v).replace(/[\s　]/g, ''); };
   var hit = function (v, label) { var s = norm(v); return label instanceof RegExp ? label.test(s) : s === label; };
   var hasCtx = function (r) {   // 上3行以内に「当日計」の見出しがある
@@ -164,11 +172,14 @@ function skwb_cells_(vals) {
   };
   var out = {};
   SKWB_ITEMS.forEach(function (it) {
-    for (var r = 8; r < Math.min(vals.length, 40); r++) {
+    for (var r = (it.from || 8); r < Math.min(vals.length, it.to || 40); r++) {
       for (var c = 0; c < Math.min(vals[r].length, 30); c++) {
         if (!hit(vals[r][c], it.label)) continue;
         if (it.ctx && !hasCtx(r)) continue;
         var rr = r + it.dr, cc = c + it.dc;
+        (merges || []).forEach(function (m) {
+          if (r >= m.r1 && r <= m.r2 && c >= m.c1 && c <= m.c2 && rr >= m.r1 && rr <= m.r2 && cc >= m.c1 && cc <= m.c2) cc = m.c2 + 1;
+        });
         if (rr < vals.length && cc < vals[rr].length) out[it.k] = { r: rr, c: cc };
         return;
       }
@@ -185,11 +196,13 @@ function skwb_want_(it, e) {
     if (it.text) { v = String(v == null ? '' : v).trim(); return v ? v : null; }
     v = skwb_num_(v); return v == null || v === 0 ? null : v;
   };
-  if (it.gs && e.gs != null && e.gs > 0) return { v: e.gs, src: 'gs', zero: false };   // Googleの件数（前日比がプラスの日だけ）。無い日はアプリの値へ
+  /* ★2026-10-17 昼のみ売上＝USENの伝票明細（会計が店ごとの区切り時刻より前）が主。区切りの無い店（富士山牛カツ・祇園）は送られてこないのでアプリの値へ */
+  if (it.k === 'lunch' && e.usen && e.usen.lunch15 != null && e.usen.lunch15 !== '') { var lv = skwb_num_(e.usen.lunch15) || 0; return { v: lv, src: 'usen', zero: lv === 0 }; }
+  if (it.gs && e.gs != null) return { v: e.gs, src: 'gs', zero: e.gs === 0 };   // Googleの件数（取得があった日は0も書く＝2026-10-17）。取得が無い日はアプリの値へ
   if (it.usen && e.usen) {
     var u = pick(e.usen);
     if (u != null) return { v: u, src: 'usen', zero: false };
-    if (!it.appFallback && e.usen.sales != null) return { v: 0, src: 'usen', zero: true };     // USENが0＝空欄のまま（同じ（0））。sales の無い行（集計だけ）は0と見なさない
+    if (!it.appFallback && e.usen.sales != null) return { v: 0, src: 'usen', zero: true };     // USENが0＝0を書く（2026-10-17）。sales の無い行（集計だけ）は0と見なさない
   }
   var a = pick(e.app);
   if (a == null) return null;
@@ -223,7 +236,8 @@ function skwb_実行_(書き込む, days, only) {
       if (!sh) { 結果.止めた.push(store + ' ' + e.date + '：タブ「' + day + '」が無い'); return; }
       var rng = sh.getRange(1, 1, Math.min(sh.getMaxRows(), 100), Math.min(sh.getMaxColumns(), 34));   // 100行＝勤怠の行（77〜89）まで
       var vals = rng.getValues(), fmls = rng.getFormulas(), notes = rng.getNotes();
-      var cells = skwb_cells_(vals);
+      var merges = rng.getMergedRanges().map(function (m) { return { r1: m.getRow() - 1, c1: m.getColumn() - 1, r2: m.getLastRow() - 1, c2: m.getLastColumn() - 1 }; });
+      var cells = skwb_cells_(vals, merges);
       /* アプリに売上合計だけあって現金・カードの内訳が無い日＝売上合計は式なので書けない（1日1回だけ知らせる） */
       if (!e.usen && e.app && skwb_num_(e.app.sales) && !skwb_num_(e.app.cash) && !skwb_num_(e.app.card) && !skwb_num_(e.app.emoney)) {
         結果.止めた.push(store + ' ' + e.date + '：アプリの日報に売上合計だけで現金・カードの内訳が無い（売上合計は式のため書けない）');
@@ -248,7 +262,7 @@ function skwb_実行_(書き込む, days, only) {
         var row = { 店舗: store, 日付: e.date, 項目: labelName, セル: day + '!' + a1, いま: cur === '' ? '（空欄）' : cur, 書く値: want, 出どころ: srcName };
         if (fmls[pos.r][pos.c]) { row.結果 = '式なので書かない'; 結果.止めた.push(store + ' ' + e.date + ' ' + labelName + '：' + a1 + ' は式'); 結果.一覧.push(row); return; }
         if (cur === '' || cur == null) {
-          if (w.zero) { row.結果 = '同じ（0）'; 結果.同じ++; 結果.一覧.push(row); clearNote(); return; }   // USENが0の項目は空欄のまま
+          // ★2026-10-17 0も書く（空欄＝届いていない、0＝本当の0、を区別する＝神田さん）。以前はここで「同じ（0）」として書かなかった
           row.結果 = '書く'; 結果.書く++;
         } else if (same) { row.結果 = '同じ'; 結果.同じ++; 結果.一覧.push(row); clearNote(); return; }
         else if (prevSame) { row.結果 = '書き直す'; 結果.書き直す++; }
@@ -270,6 +284,8 @@ function skwb_実行_(書き込む, days, only) {
       else if (e.app && e.app.cty && typeof e.app.cty === 'object') skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);   // ★レジの無い店＝日報の国別（2026-10-15）
       /* ★仕入の内訳（アプリ日報の納品書 slips）→ 仕入れ内訳の仕入先の行へ（2026-10-15） */
       if (e.app && Array.isArray(e.app.slips) && e.app.slips.length && e.date >= String(getSetting_('SKWB_SLIPS_SINCE', '2026-10-16'))) skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果, 記録, 書き込む);
+      /* ★消耗品金額（アプリ日報 supply）→ ＜消耗品内訳＞の空き行へ（当日計は内訳合計の式なので内訳に書く）2026-10-16 */
+      if (e.app && skwb_num_(e.app.supply)) skwb_supply_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果, 記録, 書き込む);
     });
   });
   if (記録.length) logSh.getRange(logSh.getLastRow() + 1, 1, 記録.length, 記録[0].length).setValues(記録);
@@ -444,6 +460,49 @@ function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果,
     }
     if (書き込む) 記録.push([new Date(), store, e.date, itemName, book.name, String(day), a1, cur, want, 済, 'アプリ日報（納品書）']);
   });
+}
+/* 消耗品金額（アプリの日報）→ ＜消耗品内訳＞の行へ。品目「消耗品（アプリ日報）」＋金額（税込）。
+   ・当日計のセル（消耗品金額）は内訳合計の式なので触らない
+   ・自分が書いた行（品目が「消耗品（アプリ日報）」）があればその行、無ければ品目も金額も空いている最初の行に書く
+   ・店が別の品目を書いていた行には触らない。空き行が無ければ「止めた」に1回だけ */
+var SKWB_SUPPLY_LABEL = '消耗品（アプリ日報）';
+function skwb_supply_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果, 記録, 書き込む) {
+  var norm = function (v) { return String(v == null ? '' : v).normalize('NFKC').replace(/[\s　]/g, ''); };
+  var want = Math.round(skwb_num_(e.app.supply) || 0); if (!want) return;
+  var hr = -1, hc = -1;
+  for (var r = 30; r < Math.min(vals.length, 70); r++) { for (var c = 0; c < vals[r].length; c++) if (/消耗品内訳/.test(norm(vals[r][c]))) { hr = r; hc = c; break; } if (hr >= 0) break; }
+  if (hr < 0) { var w0 = store + ' ' + book.name + '：「消耗品内訳」の見出しが見つからない'; if (結果.止めた.indexOf(w0) === -1) 結果.止めた.push(w0); return; }
+  var nameCol = -1, amtCol = -1, headRow = -1;
+  for (var r2 = hr + 1; r2 < Math.min(vals.length, hr + 3); r2++) {
+    for (var c2 = hc; c2 < Math.min(vals[r2].length, hc + 12); c2++) { var h = norm(vals[r2][c2]); if (h === '品目') nameCol = c2; if (h === '金額') amtCol = c2; }
+    if (nameCol >= 0 && amtCol >= 0) { headRow = r2; break; }
+  }
+  if (headRow < 0) { var w1 = store + ' ' + book.name + '：消耗品内訳の「品目」「金額」の見出しが見つからない'; if (結果.止めた.indexOf(w1) === -1) 結果.止めた.push(w1); return; }
+  var rr = -1, firstEmpty = -1;
+  for (var r3 = headRow + 1; r3 < Math.min(vals.length, headRow + 15); r3++) {
+    var nm = norm(vals[r3][nameCol]);
+    if (nm === '合計') break;
+    if (nm === norm(SKWB_SUPPLY_LABEL)) { rr = r3; break; }
+    if (firstEmpty < 0 && nm === '' && (vals[r3][amtCol] === '' || vals[r3][amtCol] == null) && !fmls[r3][nameCol] && !fmls[r3][amtCol]) firstEmpty = r3;
+  }
+  var isNew = false;
+  if (rr < 0) { rr = firstEmpty; isNew = true; }
+  if (rr < 0) { var w2 = store + ' ' + e.date + '：消耗品内訳に空き行が無い（' + want + '円）'; if (結果.止めた.indexOf(w2) === -1) 結果.止めた.push(w2); return; }
+  var a1 = skwb_a1_(rr, amtCol); var cur = vals[rr][amtCol]; var key = book.name + '|' + day + '|' + a1;
+  var row = { 店舗: store, 日付: e.date, 項目: '消耗品金額', セル: day + '!' + a1, いま: cur === '' ? '（空欄）' : cur, 書く値: want, 出どころ: 'アプリ日報' };
+  if (fmls[rr][amtCol]) { row.結果 = '式なので書かない'; 結果.一覧.push(row); return; }
+  if (cur === '' || cur == null) { row.結果 = '書く'; 結果.書く++; }
+  else if (skwb_num_(cur) === want) { row.結果 = '同じ'; 結果.同じ++; 結果.一覧.push(row); return; }
+  else if (前回[key] != null && skwb_num_(前回[key]) === skwb_num_(cur)) { row.結果 = '書き直す'; 結果.書き直す++; }
+  else { row.結果 = 'ずれ（上書きしない）'; 結果.ずれ++; }
+  結果.一覧.push(row);
+  var 済 = row.結果 === '書く' ? '書いた' : row.結果 === '書き直す' ? '書き直した' : 'ずれ';
+  if (書き込む && 済 !== 'ずれ') { if (isNew) sh.getRange(rr + 1, nameCol + 1).setValue(SKWB_SUPPLY_LABEL); sh.getRange(rr + 1, amtCol + 1).setValue(want); }
+  if (書き込む && 済 === 'ずれ') {
+    var txt = SKWB_NOTE_TAGS.app + 'アプリ日報では消耗品 ' + Number(want).toLocaleString() + '円です（' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'M/d') + ' 自動確認）。\nどちらが正しいか、ご確認ください。総括表の数字が正しければ、このままで大丈夫です。';
+    if (String(notes[rr][amtCol] || '') !== txt) sh.getRange(rr + 1, amtCol + 1).setNote(txt);
+  }
+  if (書き込む) 記録.push([new Date(), store, e.date, '消耗品金額', book.name, String(day), a1, cur, want, 済, 'アプリ日報']);
 }
 /* ① 下見（書き込みなし）＝今月と前月ぶん */
 function 総括表書き戻し_下見() { return skwb_実行_(false, 40); }

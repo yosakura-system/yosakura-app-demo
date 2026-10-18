@@ -4884,8 +4884,9 @@ console.log('== サーベイQR＝1回の読み取りで回答→Google口コミ�
   ok(/<svg/.test(h) && /yskなし|ご来店アンケートにご協力ください/.test(h), 'QR（埋め込みSVG）と声かけ文が出る');
   /* ★2026-10-05 常山さん＝口コミのご案内は富士山2店だけ。長堀橋では出ないので、説明は富士山の店で確かめる */
   const hFj = renderView('surveyqr', 'staff', '牛カツ世桜 富士山店', 'ja');
-  ok(/Google口コミのボタンが表示されます/.test(hFj) && /星の点数に関係なく/.test(hFj), '仕組みの説明（全員同じ案内＝ポリシー準拠）が書いてある');
-  ok(/自動では進まない/.test(hFj) && /青いボタンを指さして/.test(hFj), '自動移動なし＝指さしのあと押し、が書いてある（2026-09-11 v3導線に一致）');
+  ok(/Google口コミのボタン<\/b>が出ます/.test(hFj) && /全員同じ/.test(hFj), '仕組みの説明（全員同じ案内＝ポリシー準拠）が書いてある（2026-10-17 2文＋赤太字）');
+  ok(/青いボタンを指さしてあと押し/.test(hFj) && /color:#c0392b/.test(hFj), '指さしのあと押しが赤太字で書いてある（2026-10-17 神田さん「太字・色で、長くないか」）');
+  { const hintFj = (hFj.match(/<div class="hint"[^>]*>([^]*?)<\/div>/) || [,''])[1]; ok(hintFj.length > 0 && (hintFj.match(/。/g) || []).length <= 2, '注意書きは2文まで（2026-10-15 アプリの説明文は2文まで）'); }
   ok(!/Google口コミのボタンが表示されます/.test(h), '長堀橋（出さない店）には口コミのボタンの説明が出ない');
   /* ★2026-10-05 お声かけ例文は「最後にGoogleのボタンまで」と言い切る中身＝口コミが出る店だけに出す */
   ok(!/talk-script\.pdf/.test(h), '出さない店（長堀橋）にはお声かけ例文のボタンを出さない＝事実と違う案内を防ぐ');
@@ -6315,7 +6316,7 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   ok(/const rv = SURVEY_REVIEW_STORES\.includes\(store\);/.test(code), '店によって説明文を変えている');
   ok(code.includes('読み取り→アンケート→最後にGoogle口コミのボタン'), '出る店の帯＝口コミのボタンが出ると書いてある');
   ok(code.includes('読み取り→アンケートのご回答まで'), '出ない店の帯＝アンケートまで、と書いてある');
-  ok(code.includes('この店舗は、ご回答のあとのお礼画面までです（口コミのご案内は出ません）'), '出ない店の注意書きがある');
+  ok(code.includes('お礼画面まで</b>です（口コミのご案内は出ません）'), '出ない店の注意書きがある（2026-10-17 2文＋赤太字）');
   ok(!/◆ お客様にこの画面のQRをお見せください（読み取り→アンケート→そのままGoogleの口コミ画面へ）/.test(code), '全店に「そのままGoogleへ」と書く古い文が残っていない');
   ok(!/読み取り→回答→そのままGoogle口コミへ/.test(code), '画面一覧の説明にも「そのままGoogle口コミへ」が残っていない');
   ok(/読み取り→ご回答（富士山2店は最後に口コミのボタン）/.test(code), '画面一覧の説明が、富士山2店だけの形になっている');
@@ -6408,7 +6409,7 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   ok(/getSetting_\('USEN_IMPORT_ERR', true\) !== false/.test(usrc), 'USEN取込＝差異合計は既定で取り込む（USEN_IMPORT_ERR=false で戻せる）');
   ok(/k: 'kake',\s+label: '掛売売上'/.test(wsrc) && /k: 'err',\s+label: \/\^過不足[^\n]*usen: true,\s+unit: '円', appFallback: true/.test(wsrc), '書き戻し＝掛売売上・過不足（現金）をレジの値で（過不足はレジに無い日だけアプリの値）');
   ok(/if \(!it\.appFallback && e\.usen\.sales != null\) return \{ v: 0, src: 'usen', zero: true \};/.test(wsrc) && /kind === 'app' && !withApp/.test(wsrc), '書き戻し＝アプリ日報の行も読む（SKWB_APP=false で止められる）・sales の無いUSEN行を0と見なさない');
-  ok(/if \(kindRow === 'gsnap'\)/.test(wsrc) && /gs: true \}/.test(wsrc) && /if \(it\.gs && e\.gs != null && e\.gs > 0\) return \{ v: e\.gs, src: 'gs'/.test(wsrc) && /gs: '【Google照合】'/.test(wsrc), '書き戻し＝本日の口コミ獲得はGoogleの件数（gsnap）から。無い日だけアプリ');
+  ok(/if \(kindRow === 'gsnap'\)/.test(wsrc) && /gs: true \}/.test(wsrc) && /if \(it\.gs && e\.gs != null\) return \{ v: e\.gs, src: 'gs', zero: e\.gs === 0 \}/.test(wsrc) && /gs: '【Google照合】'/.test(wsrc), '書き戻し＝本日の口コミ獲得はGoogleの件数（gsnap）から。取得があった日は0も書く（2026-10-17）。無い日だけアプリ');
 }
 
 console.log('== 2026-10-15 勤怠（任意）＝総括表の勤怠と同じ形をアプリに（神田さん「アプリでも同じように準備したらアプリだけで完結」）==');
@@ -6488,18 +6489,44 @@ console.log('== 2026-10-15 日報は開店前に前日分を出す・日付の�
   const m = h.match(/id="sk_date" value="(\d{4}-\d{2}-\d{2})"/);
   const todayB = (() => { const d = new Date(Date.now() - 5 * 3600e3); return d.toLocaleDateString('en-CA'); })();
   const yestB = (() => { const d = new Date(todayB + 'T12:00:00'); d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA'); })();
-  ok(m && m[1] === yestB, '日報の日付の初期値＝前日の日報がまだ無ければ前日（時刻に関係なく・いま' + hour + '時→' + (m && m[1]) + '）');
-  ok(/id="sk_datenote"/.test(h) && /）の日報です。</.test(h) && />日付（営業日）</.test(h), '前日になっているときは1行の案内が出る・欄の名前は「日付（営業日）」');
-  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store: S, date: yestB, posWait: true, memo: '済', t: Date.now() - 3600e3 }])); localStorage.removeItem('yosakura_sk_edit'); });
-  location.hash = '#/app/soukatsu?x=dd2';
-  const h2d = registry.app.innerHTML; const m2 = h2d.match(/id="sk_date" value="(\d{4}-\d{2}-\d{2})"/);
-  ok(m2 && m2[1] === todayB && !/id="sk_datenote"/.test(h2d), '前日の日報を出し終えていれば当日の日付で開く（閉店後にその日の分を出す店）');
-  ok(/前日の日報（アプリ）を出す/.test(code) && /12時まで。チップ/.test(code), '開店前チェックの先頭に「前日の日報（アプリ）を出す」がある');
+  const expectB = hour < 12 ? yestB : todayB;   // 2026-10-16 神田さん決定＝12時より前で前日分が無ければ前日、それ以外は当日
+  ok(m && m[1] === expectB, '日報の日付の初期値＝12時より前で前日分がまだ無ければ前日・それ以外は当日（いま' + hour + '時→' + (m && m[1]) + '）');
   ok(!/合わせてから総括表へ入力／/.test(code) && /レジの全現金を入れて締める/.test(code), 'クローズのレジ締めから「総括表へ入力」を外した（売上は翌朝レジから自動）');
   location.hash = '#/app/check';
   const hc = registry.app.innerHTML;
   ok(/前日の日報（アプリ）を出す/.test(hc) || /前日の日報/.test(hc) || true, '（開店前チェックの画面は店舗設定で項目が変わるため、定義の検査で代える）');
 }
+
+console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/home';
+  const h = registry.app.innerHTML;
+  ok(/class="pb-cover"/.test(h) && /きょうやること/.test(h), 'pb：最初の画面は「きょうやること」の表紙');
+  ok(/id="pbslot-asa"/.test(h) && /data-jump="pbslot-/.test(h), 'pb：開店前／営業中／締めの区切りと、飛ぶための帯がある');
+  ok((h.match(/data-tab="/g) || []).length === 3 && /data-tab="miru"/.test(h) && !/data-tab="genba"/.test(h), 'pb：店舗側の下タブは3つ（きょうやること／見る・注文する／その他）');
+  ok(/data-tsubmode="open"/.test(h), 'pb：流れの行は今までと同じ印で開く（チェックは種類つき）');
+  ok(/data:image\/webp/.test(h), 'pb：ボタンに写真（埋め込みのwebp）が付いている');
+  ok(!/data-open="handover"/.test(h) && /data-open="emergency"/.test(h) && /data-open="surveyqr"/.test(h), 'pb：緊急・サーベイQRの入口がある。引き継ぎの入口は無い（2026-10-17 引き継ぎは店のLINEで＝神田さん）');
+  ok(/class="pb-card pb-nippou"/.test(h) && (h.match(/data-tsub="soukatsu"/g) || []).length === 1, 'pb：日報は時間帯の帯に入れず専用の枠（1か所だけ）（2026-10-16 神田さん「別枠で」）');
+  location.hash = '#/home?tab=miru';
+  const m = registry.app.innerHTML;
+  ok(/class="pb-tiles"/.test(m) && (m.match(/class="pb-tile"/g) || []).length === 4, 'pb：見る・注文するは4つの写真タイル');
+  ok(/data-open="gyotaiman"/.test(m) && /data-open="manual"/.test(m) && /data-tab="other"/.test(m), 'pb：レシピ・マニュアル・その他へつながる');
+  location.hash = '#/home?tab=other';
+  ok(/data-open="guide"|data-open="faq"/.test(registry.app.innerHTML), 'pb：その他は今までの一覧（使い方・ルール集）');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/home';
+  const hq = registry.app.innerHTML;
+  ok(!/class="pb-cover"/.test(hq) && /data-tab="hq"/.test(hq), 'pb：本部（hq）の画面と下タブはこれまでのまま');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'hp'); });
+  location.hash = '#/home';
+  ok(!/class="pb-cover"/.test(registry.app.innerHTML), 'hp を選んだ端末は今までの画面のまま（戻せる）');
+  ok(/PB_LAUNCH_MS = Date.parse\('2026-10-19T21:00:00Z'\)/.test(code) && /PB_MAINT = \[Date.parse\('2026-10-19T15:00:00Z'\), Date.parse\('2026-10-19T21:00:00Z'\)\]/.test(code), '既定の切替＝10/20 6:00 JST・休止＝10/19 24:00〜10/20 6:00（?nomaint で通る）');
+  ok(/data-theme-set="pb"/.test(code), '設定の「デザイン」に「新（10/20〜）」がある');
+}
+
 
 console.log('== 2026-10-15 納品書の読み取り（実物11件の回帰）と、1枚の写真に伝票2枚 ==');
 {
