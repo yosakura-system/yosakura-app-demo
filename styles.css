@@ -180,6 +180,11 @@ body {
 .devview-bar + .devview-bar { padding-top: 7px; top: 0; }
 .devview-bar { font-size: 11px; padding-bottom: 7px; line-height: 1.4; }
 .devview-bar ~ .hdr { padding-top: 10px; }
+/* ★2026-10-20 本部IDの見え方切替（本部｜店舗責任者｜スタッフ）＝帯の中に3つのボタン */
+.viewas-bar { display: flex; align-items: center; justify-content: center; gap: 6px; cursor: default; }
+.viewas-lb { opacity: .85; margin-right: 2px; }
+.viewas-btn { border: 1px solid rgba(255,255,255,.55); background: transparent; color: #fff; font: inherit; font-weight: 700; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.viewas-btn.on { background: #fff; color: #7a5c1e; }
 
 /* ===== アプリ詳細 ===== */
 .appbar { display: flex; align-items: center; gap: 10px; padding: 6px 0 4px; }

@@ -502,7 +502,7 @@
   const getRole = () => {
     const a = getAuth();
     if (a && a.role) {
-      if (a.role === 'hq' && DEV_VIEW_UIDS.includes(String(a.uid || ''))) {
+      if (a.role === 'hq') {   // ★2026-10-20 神田さん「本部のメンバーは全員、本部・店舗責任者・スタッフの3つが使えるように」＝本部IDなら誰でも見え方を切替（DEV_VIEW_UIDS は使わない）
         const rv = localStorage.getItem(LS.role) || 'hq';   // ★開発者ビュー＝見え方だけ端末の選択に従う
         return roleKeys().includes(rv) ? rv : 'hq';
       }
@@ -654,15 +654,17 @@
   /* ★開発者ビュー（2026-09-01 神田さんのご要望＝店舗側の見え方を自分の端末で確認したい）。
      対象は DEV_VIEW_UIDS（getRole の上で定義）にある本部アカウントだけ。ログイン・権限・保存はすべて本部のまま、
      「画面の見え方」だけを店舗iPad・店長・オーナーに切り替える。確認中は上部に戻るバナーを常時出す。 */
-  const devViewAllowed = () => { const a = getAuth(); return !!a && a.role === 'hq' && DEV_VIEW_UIDS.includes(String(a.uid || '')); };
+  const devViewAllowed = () => { const a = getAuth(); return !!a && a.role === 'hq'; };   // ★2026-10-20 本部IDは全員
   const inDevView = () => devViewAllowed() && getRole() !== 'hq';
   document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pwchange]') : null; if (b) { e.preventDefault(); try { openPwChangeSheet_(); } catch (e2) {} } });
-  const devViewBanner = () => inDevView()
-    ? `<button type="button" class="devview-bar" data-devexit="1">${L({
-        ja:'開発者ビュー・タップで本部に戻る',
-        en:'Developer view: store-side display (HQ account). Tap to return to HQ.',
-        vi:'Chế độ phát triển: đang xem như cửa hàng (tài khoản HQ). Chạm để về HQ.' })}</button>`
-    : '';
+  /* ★2026-10-20 本部IDのときは全画面の上に「表示：本部｜店舗責任者｜スタッフ」を常に出す（神田さん「本部のメンバーも新デザインを期待」）。
+     店舗責任者＝役割 manager の見え方。ログイン・権限・保存は本部のまま。押すとその見え方で描き直す */
+  const devViewBanner = () => {
+    if (!devViewAllowed()) return '';
+    const cur = getRole();
+    const opt = (r, lb) => `<button type="button" class="viewas-btn${cur === r ? ' on' : ''}" data-viewas="${r}">${L(lb)}</button>`;
+    return `<div class="devview-bar viewas-bar"><span class="viewas-lb">${L({ ja:'表示', en:'View', vi:'Xem' })}</span>${opt('hq', { ja:'本部', en:'HQ', vi:'HQ' })}${opt('manager', { ja:'店舗責任者', en:'Store lead', vi:'Quản lý' })}${opt('staff', { ja:'スタッフ', en:'Staff', vi:'Nhân viên' })}</div>`;
+  };
   // 通信が「ログインしてください」と言ってきたときの受け（トークン切れ・再発行後も含む）
   /* ログインが外れたとき（2026-09-03 神田さんの実機＝「急にログイン画面になった」）。
      ★時間切れではない。1つのIDで同時に使える端末数に上限があり、上限を超えて
@@ -8946,9 +8948,10 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
+      if (t.dataset.viewas) { const r = t.dataset.viewas; setRole(r); if (r === 'hq') setStoreSel('all'); else { const sl = getStoreSel(); if (sl === 'all' || sl === 'owned' || !STORES.includes(sl)) setStoreSel(STORES[0]); } render(); return; }
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
       if (t.dataset.inboxrefresh) { render(true); return; }  // 「新しい報告が届きました」＝押したときだけ描き直す
       if (t.dataset.refetch) { refetchAll_(); return; }       // 「表示を取り直す」＝目印を消して本部データから一覧を作り直す（2026-09-23）

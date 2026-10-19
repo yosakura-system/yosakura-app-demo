@@ -3679,22 +3679,22 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   // ① 対象アカウント（kanda・本部）が店舗表示に切り替えると、戻るバナーが全画面に出る
   seedAuth('kanda', 'hq', 'staff');
   location.hash = '#/home';
-  ok(/開発者ビュー・タップで本部に戻る/.test(registry.app.innerHTML), '店舗表示中はホームに戻るバナーが出る');
+  ok(/class="viewas-btn on" data-viewas="staff"/.test(registry.app.innerHTML), '店舗表示中はホームに切替の帯（本部｜店舗責任者｜スタッフ・スタッフが選択中）が出る');
   ok(!/本部メニュー/.test(registry.app.innerHTML), '店舗表示中は本部メニューが消える（見え方が本当に店舗側になる）');
   location.hash = '#/app/kizuki';
-  ok(/開発者ビュー・タップで本部に戻る/.test(registry.app.innerHTML), 'アプリ画面にも戻るバナーが出る');
+  ok(/data-viewas="hq"/.test(registry.app.innerHTML), 'アプリ画面にも切替の帯が出る');
   // ② 本部の表示に戻っているときはバナーを出さない
   seedAuth('kanda', 'hq', 'hq');
   location.hash = '#/home';
-  ok(!/開発者ビュー/.test(registry.app.innerHTML), '本部の表示ではバナーが出ない');
+  ok(/class="viewas-btn on" data-viewas="hq"/.test(registry.app.innerHTML), '本部の表示でも切替の帯が出る（本部が選択中）＝2026-10-20 神田さん「本部のメンバーは全員3つ使えるように」');
   // ②' 増田さんも対象（2026-09-03 ご要望＝本部・加盟店の両目線）
   seedAuth('masuda', 'hq', 'staff');
   location.hash = '#/home';
-  ok(/開発者ビュー・タップで本部に戻る/.test(registry.app.innerHTML), '増田さんのアカウントでも店舗表示に切り替えられる');
+  ok(/class="viewas-btn on" data-viewas="staff"/.test(registry.app.innerHTML), '増田さんのアカウントでも店舗表示に切り替えられる');
   // ③ 対象でない本部アカウントには何も起きない（切替の入口も開かない）
   seedAuth('takahara', 'hq', 'staff');
   location.hash = '#/home';
-  ok(!/開発者ビュー/.test(registry.app.innerHTML), '対象でないアカウントにはバナーを出さない');
+  ok(/class="viewas-btn on" data-viewas="staff"/.test(registry.app.innerHTML) && !/本部メニュー/.test(registry.app.innerHTML), '★2026-10-20 本部IDは全員（社長も）店舗表示に切り替えられる');
   // ④ ソース＝対象は許可リストのみ・ログイン済みの役割切替は開発者ビューだけ例外
   const dsrc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/const DEV_VIEW_UIDS = \['kanda', 'masuda', 'yosakura-fc', 'tsuneyama'\];/.test(dsrc), '対象は許可リスト（kanda・masuda・本部共有ID・tsuneyama）だけ');

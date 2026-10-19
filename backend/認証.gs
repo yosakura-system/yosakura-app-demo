@@ -380,3 +380,70 @@ function auth_gate_post_(data) {
   }
   return { ok: true, u: u };
 }
+
+/* ★2026-10-20 案Bの全店リリース（ベトナム2店以外の10店）で、店舗IDとパスワードをそろえて配る（神田さん決定）。
+   ・IDが無い5店＝新しく作る／IDがある5店＝新しいパスワードに変える（その5店の端末は一度ログアウト＝新しいパスワードで入り直し）
+   ・共有ID（初回変更なし）。店舗iPadでもスタッフのスマホでも同じIDで入れる
+   ・パスワードはシートに残らない（ハッシュのみ）。実行ログから写して、店ごとに個別のLINEで伝える
+   ・店長・オーナー・本部の個人IDは触らない
+   貼る場所＝「世桜アプリ_本部データ」のApps Script の 認証.gs の末尾。実行＝関数「認証_全店の店舗IDを配る」 */
+function 認証_全店の店舗IDを配る() {
+  var list = [
+    ['ipad-honten',            '日本料理世桜本店'],
+    ['ipad-unagi-nagahoribashi', '日本鰻世桜 長堀橋店'],
+    ['ipad-gyukatsu',          '牛カツ世桜 長堀橋店'],
+    ['ipad-namba',             '手巻き寿司世桜 難波店'],
+    ['ipad-shinsaibashi',      '寿司世桜 心斎橋店'],
+    ['ipad-gion',              '日本鰻世桜 京都祇園店'],
+    ['ipad-asakusabashi',      '日本鰻世桜 浅草橋店'],
+    ['ipad-hiroshima',         '和牛世桜 広島店'],
+    ['ipad-fuji-gyukatsu',     '牛カツ世桜 富士山店'],
+    ['ipad-fuji-unagi',        '日本鰻世桜 富士山店']
+  ];
+  var ym = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyMM');
+  var out = [];
+  list.forEach(function (x) {
+    var uid = x[0], store = x[1];
+    var pw = String(100000 + Math.floor(Math.random() * 900000));   // ★10/20 神田さん「もっと簡単に」＝6桁の数字（IDから推測できない・総当たりは15分10回で止まる・毎月変わる）
+    var had = !!auth_find_(uid);
+    if (!had) 認証_利用者を登録(uid, '店舗iPad（' + store + '）', 'staff', store, pw);
+    認証_共有パスワードを設定(uid, pw);
+    out.push(store + '｜' + (had ? '変更' : '新規') + '｜ID：' + uid + '｜パスワード：' + pw);
+  });
+  Logger.log('\n' + out.join('\n'));
+  return out;
+}
+
+/* ★2026-10-20 神田さん「全体LINEで送るので、そのあと必ずパスワードを変えるよう促して」
+   ＝店舗ID（ipad-*）の pw_at（最後に変えた日）を空にする→ログイン後の全画面に「今月のパスワードが未変更です。責任者の方はここを押して変更」の帯が出る。
+   責任者が変えると pw_at が入り、帯は消える。パスワード・ログイン中の端末は触らない */
+function 認証_店舗IDの変更を促す() {
+  var out = [];
+  auth_rows_().filter(function (r) { return String(r.uid).indexOf('ipad-') === 0 && String(r.role) === 'staff'; }).forEach(function (rec) {
+    rec.pw_at = ''; auth_write_(rec); out.push(rec.uid);
+  });
+  Logger.log('帯を出す：' + out.join(' / '));
+  return out;
+}
+
+/* ★2026-10-20 店舗責任者の個人ID（案Bの全店リリース）。神田さん「オーナー・店長で分けず店舗責任者で」
+   ＝1店舗だけを見る人は役割 manager（アプリ上の表示は「店長」）。長田さん（富士山2店）はオーナーのまま触らない。
+   すでにあるIDは飛ばす。仮パスワード（6桁）＝最初のログインで本人が自分のパスワードに変える */
+function 認証_店舗責任者を発行() {
+  var list = [
+    ['hara',     '原 和弘',   '寿司世桜 心斎橋店'],
+    ['ishimoto', '石本 正道', '日本鰻世桜 京都祇園店'],
+    ['kuratani', '倉谷 勇光', '和牛世桜 広島店'],
+    ['ido',      '井戸',      '日本鰻世桜 長堀橋店'],
+    ['dobashi',  '土橋 健太', '日本鰻世桜 浅草橋店']
+  ];
+  var out = [];
+  list.forEach(function (x) {
+    if (auth_find_(x[0])) { out.push(x[2] + '｜' + x[1] + '｜ID：' + x[0] + '｜すでにあるので飛ばした'); return; }
+    var pw = String(100000 + Math.floor(Math.random() * 900000));
+    認証_利用者を登録(x[0], x[1], 'manager', x[2], pw);
+    out.push(x[2] + '｜' + x[1] + '｜ID：' + x[0] + '｜仮パスワード：' + pw);
+  });
+  Logger.log(out.join(' ／ '));
+  return out;
+}
