@@ -106,6 +106,7 @@ const setLS = (role, storeSel, lang) => {
   localStorage.setItem('yosakura_demo_lang', lang);
   localStorage.setItem('yosakura_tour_done', '1'); // suppress tour
   localStorage.setItem('yosakura_setup_done', '1'); // 初回の「はじめの設定」は出さない
+  localStorage.setItem('yosakura_daily_all', '1'); // ★2026-10-20 毎日の提出物は全店8つに絞った。これまでの検査は全項目で回し、絞った形は案Bの節で見る
   localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); // ★2026-10-20 本部IDを最初に店舗責任者で開く切替は済みにする（検査は役割を明示して回す）
   /* ★2026-10-19 10/20 6:00 以降は既定が案B（pb）。これまでの検査は今までのホーム（hp）を見ているので、テーマを選んでいない検査は hp で回す。
      既定（未設定）の検査は案Bの節で日付ごとに見る */
@@ -6526,6 +6527,17 @@ console.log('== 2026-10-15 日報は開店前に前日分を出す・日付の�
   location.hash = '#/app/check';
   const hc = registry.app.innerHTML;
   ok(/前日の日報（アプリ）を出す/.test(hc) || /前日の日報/.test(hc) || true, '（開店前チェックの画面は店舗設定で項目が変わるため、定義の検査で代える）');
+}
+
+console.log('== 2026-10-20 毎日の提出物＝全店7つ＋日報（案Bの見本） ==');
+{
+  for (const S of ['牛カツ世桜 長堀橋店', '牛カツ世桜 富士山店', '日本料理世桜本店']) {
+    run(() => { setLS('staff', S, 'ja'); localStorage.removeItem('yosakura_daily_all'); localStorage.setItem('yosakura_theme', 'pb'); });
+    location.hash = '#/home';
+    const h = registry.app.innerHTML; const flow = h.slice(h.indexOf('pb-flow'));
+    ok(!/中間報告|日計レポート|現金売上の写真|チップの写真|金種別|予約状況の共有|納品書の写真/.test(flow), S + '：今日の流れに、絞った項目（中間報告・日計レポート・写真類・金種別・予約）が出ない');
+    ok(/オープン写真/.test(flow) && /OPENチェック/.test(flow) && /お手すきチェック/.test(flow) && /CLOSEチェック/.test(flow), S + '：オープン写真・OPEN・お手すき・CLOSEは出る（見本と同じ呼び名）');
+  }
 }
 
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');

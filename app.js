@@ -1841,6 +1841,8 @@
     return `${head}<div class="pb-card"><button class="pb-row pb-regi" data-tsub="soukatsu"><span class="pb-rowtx"><span class="pb-nm">${parts.join(' ・ ')}</span>${sub.length ? `<span class="pb-sub">${sub.join(' ・ ')}</span>` : ''}</span><span class="pb-rt">${svg('chev')}</span></button></div>`;
   }
   /* 1行＝写真・名前・いまの状態・開く。開く先と印（data-tsub / data-tsubmode / data-tsubphoto / data-tdid / data-openurl）は subItemRow と同じ＝反応は変えない */
+  /* ★2026-10-20 案Bの見本と同じ呼び名（ホームの行だけ。提出物の正式名と本部の画面はそのまま） */
+  const PB_NAMES_ = { ck_open:'OPENチェック', ck_idle:'お手すきチェック', ck_sakura:'桜（トイレ）', ck_close:'CLOSEチェック', zaiko:'在庫の数', kizuki:'気づき' };
   const pbFlowRow_ = (it) => {
     const m = it.m;
     const done = !it.manual && !!it.submitted;
@@ -1857,7 +1859,7 @@
       : isHttp(m.url) ? `<button class="pb-mini" data-openurl="${esc(openUrlFor(m.url))}">${L({ja:'開く',en:'Open',vi:'Mở'})}</button>` : '';
     const tag = m.oblig === 'required' ? ` <span class="pb-pill">${L({ja:'本部へ',en:'HQ',vi:'HQ'})}</span>` : '';
     const mins = (!done && !it.manual && !it.holiday) ? pbMins_(m) : 0;   // ★2026-10-20 案Bの見本と同じ＝行の右に「目安○分」
-    const inner = `${pbImg_(pbPhotoKey_(m))}<span class="pb-rowtx"><span class="pb-nm">${esc(L(m.name))}${tag}</span><span class="pb-sub">${sub}</span></span>`;
+    const inner = `${pbImg_(pbPhotoKey_(m))}<span class="pb-rowtx"><span class="pb-nm">${esc(LANG === 'ja' && PB_NAMES_[m.id] ? PB_NAMES_[m.id] : L(m.name))}${tag}</span><span class="pb-sub">${sub}</span></span>`;
     const cls = `pb-row${done ? ' done' : ''}${late ? ' late' : ''}`;
     const minTx = mins ? `<span class="pb-min">${L({ja:'目安',en:'~',vi:'~'})}<b>${mins}${L({ja:'分',en:'min',vi:'ph'})}</b></span>` : '';
     if (m.linkApp && !act) return `<button class="${cls}" data-tsub="${esc(m.linkApp)}"${openArg}>${inner}<span class="pb-rt">${done ? svg('tick') : (minTx || svg('chev'))}</span></button>`;
@@ -7847,8 +7849,14 @@
   }
 
   // この提出物がこの店舗に適用されるか（対象設定＋コース除外＋業態出し分け＋対象外オフ）
+  /* ★2026-10-20 神田さん「デモと同じ7つ＋日報に揃えて」＝毎日の提出物は全店この8つだけ（案Bの見本）。
+     中間報告・日計レポート・現金売上／チップ／納品書の写真・金種別・予約状況・一食目写真・定期衛生（曜日）・在庫表の写真は毎日の一覧に出さない
+     （レジの数字は毎朝自動・納品書は日報で入れる・定期衛生は「今週・今月」から）。チェックの中身は店ごとの設定（富士山2店の独自項目など）のまま */
+  const DAILY_KEEP_ = ['openphoto', 'ck_open', 'ck_idle', 'ck_sakura', 'ck_close', 'zaiko', 'kizuki', 'nippou'];
+  const dailyKeepOn_ = () => { try { return localStorage.getItem('yosakura_daily_all') !== '1'; } catch (e) { return true; } };   // 検査用＝これまでの全項目で回すときだけ '1'
   function appliesToStore(m, store) {
     if (m.oblig === 'off') return false;
+    if (m.freq === 'daily' && !DAILY_KEEP_.includes(m.id) && dailyKeepOn_()) return false;
     if (m.target === 'except_course' && storeMeta(store).course) return false;
     if (m.target === 'stores' && Array.isArray(m.stores) && !m.stores.includes(store)) return false;
     if (m.target === 'gyotai_in' && Array.isArray(m.gyotai) && !m.gyotai.includes(storeMeta(store).gyotai)) return false; // 指定業態のみ（例：牛カツのみ）
