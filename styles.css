@@ -1081,3 +1081,21 @@ html[data-theme="pb"] .pb-min { font-size: 11px; color: var(--gray); white-space
 html[data-theme="pb"] .pb-min b { display: block; font-size: 14px; color: inherit; font-weight: 600; }
 html[data-theme="pb"] .pb-regi { grid-template-columns: 1fr auto; }
 html[data-theme="pb"] .pb-regi .pb-nm { font-size: 15px; line-height: 1.5; }
+
+/* ★2026-10-20 店の数字（案Bの見本） */
+html[data-theme="pb"] .pb-numcard { display: block; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+html[data-theme="pb"] .pb-kpi { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; }
+html[data-theme="pb"] .pb-kpi2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+html[data-theme="pb"] .pb-kpi2 .pb-card { margin: 0; }
+html[data-theme="pb"] .pb-num .l { font-size: 12px; color: var(--gray); letter-spacing: .04em; }
+html[data-theme="pb"] .pb-num .v { font-family: var(--serif, serif); font-size: 30px; font-weight: 700; line-height: 1.15; margin: 4px 0 2px; }
+html[data-theme="pb"] .pb-num .v .u { font-size: 14px; margin-left: 2px; }
+html[data-theme="pb"] .pb-num .d { font-size: 12px; color: var(--gray); line-height: 1.45; }
+html[data-theme="pb"] .pb-numdet { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 13px; }
+html[data-theme="pb"] .pb-numfoot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--gray); margin-top: 6px; }
+html[data-theme="pb"] .pb-numgo { font-size: 12px; color: var(--gray); display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+html[data-theme="pb"] .pb-numgo svg { width: 16px; height: 16px; }
+html[data-theme="pb"] .pb-spark { display: block; width: 100%; height: 96px; }
+html[data-theme="pb"] .pb-spark .a { fill: var(--suou, #8E354A); opacity: .12; }
+html[data-theme="pb"] .pb-spark .l { fill: none; stroke: var(--suou, #8E354A); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+html[data-theme="pb"] .pb-spark .p { fill: var(--suou, #8E354A); }

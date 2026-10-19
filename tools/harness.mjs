@@ -6538,7 +6538,18 @@ console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース�
   ok(/id="pbslot-asa"/.test(h) && !/class="pb-band/.test(h) && /今日の流れ/.test(h), 'pb：今日の流れは1枚に開店前／営業中／締めの見出しで区切る（2026-10-20 案Bの見本どおり・時間帯のボタンは出さない）');
   ok(/昨日のレジ締め/.test(h) && h.indexOf('昨日のレジ締め') < h.indexOf('pb-nippou'), 'pb：表紙のすぐ下に「昨日のレジ締め」→日報の順（2026-10-20 神田さん「最初に昨日のレジ締めが出る方が分かりやすい」）');
   ok(/きょうの流れ/.test(h) && /目安/.test(h), 'pb：表紙は「きょうの流れ」と目安の分（案Bの見本）');
-  ok((h.match(/data-tab="/g) || []).length === 3 && /data-tab="miru"/.test(h) && !/data-tab="genba"/.test(h), 'pb：店舗側の下タブは3つ（きょうやること／見る・注文する／その他）');
+  { const nav = (h.match(/<nav class="tabbar">[\s\S]*?<\/nav>/) || [''])[0];
+    ok((nav.match(/data-tab="/g) || []).length === 2 && /data-tab="miru"/.test(nav) && !/data-tab="other"/.test(nav) && !/data-tab="num"/.test(nav), 'pb：スタッフの下タブは2つ（きょうやること／見る・注文する）＝2026-10-20 案Bの見本どおり'); }
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/home';
+  { const nav = (registry.app.innerHTML.match(/<nav class="tabbar">[\s\S]*?<\/nav>/) || [''])[0];
+    ok((nav.match(/data-tab="/g) || []).length === 3 && /data-tab="num"[^>]*>[\s\S]*?店の数字/.test(nav), 'pb：店長の下タブは3つ目が「店の数字」（2026-10-20 神田さん「その他を店の数字に」）'); }
+  location.hash = '#/home?tab=num';
+  ok(/class="screen pb-num"/.test(registry.app.innerHTML) && /今月の売上/.test(registry.app.innerHTML) && /仕入率 ・ 原価率/.test(registry.app.innerHTML) && /お客様の声/.test(registry.app.innerHTML), 'pb：店の数字＝レジ・今月の売上・仕入率と原価率・お客様の声（案Bの見本）');
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/home?tab=num';
+  ok(!/class="screen pb-num"/.test(registry.app.innerHTML), 'pb：スタッフは店の数字を開かない（ホームに戻る）');
+  location.hash = '#/home';
   ok(/data-tsubmode="open"/.test(h), 'pb：流れの行は今までと同じ印で開く（チェックは種類つき）');
   ok(/data:image\/webp/.test(h), 'pb：ボタンに写真（埋め込みのwebp）が付いている');
   ok(!/data-open="handover"/.test(h) && /data-open="emergency"/.test(h) && /data-open="surveyqr"/.test(h), 'pb：緊急・サーベイQRの入口がある。引き継ぎの入口は無い（2026-10-17 引き継ぎは店のLINEで＝神田さん）');

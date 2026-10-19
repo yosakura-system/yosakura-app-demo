@@ -153,6 +153,7 @@
     star:   '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9L12 3.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
     table:  '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 9.5h17M3.5 14.5h17M9 9.5v10M15 9.5v10" stroke="currentColor" stroke-width="1.5"/>',
     calendar:'<rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    chart:  '<path d="M4 20h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 17v-5M12 17V7M17 17v-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
     yen:    '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 8l3.5 4 3.5-4M12 12v5M9.5 13h5M9.5 15.2h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
     gauge:  '<path d="M4 15a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 15l4-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15" r="1.4" fill="currentColor"/>',
     inbox:  '<path d="M4 13l2-7h12l2 7v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 13h4l1 2h6l1-2h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
@@ -1532,10 +1533,12 @@
     ];
     if (roleKey === 'hq') tabs.push(['hq', { ja:'本部', en:'HQ', vi:'HQ' }, 'hq']); // 本部権限のみ
     /* ★案B（2026-10-16）＝店舗側の下のタブは3つ。きょうやること／見る・注文する／その他（今までの一覧＝使い方・設定・相談） */
+    /* ★2026-10-20 神田さん「その他を店の数字に変えて案Bの見本の仕様に」＝スタッフは2つ（きょうやること／見る・注文する）、
+       店長・オーナーは3つ目が「店の数字」。今までの「その他」（使い方・設定・相談）は「見る・注文する」の中の「その他」から開く */
     const tabsUse = (isPb() && roleKey !== 'hq') ? [
       ['home', { ja:'きょうやること', en:'Today', vi:'Hôm nay' }, 'check'],
       ['miru', { ja:'見る・注文する', en:'Look up', vi:'Tra cứu' }, 'book'],
-      ['other', { ja:'その他', en:'More', vi:'Khác' }, 'dots']
+      ...(['manager', 'owner'].includes(roleKey) ? [['num', { ja:'店の数字', en:'Numbers', vi:'Số liệu' }, 'chart']] : [])
     ] : tabs;
     return `
       <header class="hdr">
@@ -1967,6 +1970,86 @@
     return `<div class="pb-sec"><h2>${L({ja:'日報',en:'Daily report',vi:'Báo cáo ngày'})}</h2><small>${L({ja:'閉店後にその日の分 ・ 翌朝12時までなら前日分',en:'After closing, or by 12:00 next day',vi:'Sau đóng cửa, hoặc trước 12:00 hôm sau'})}</small></div><div class="pb-card pb-nippou">
       <button class="pb-row${cls}" data-tsub="soukatsu">${pbImg_('kyou_nippou')}<span class="pb-rowtx"><span class="pb-nm">${esc(L(m.name))} <span class="pb-pill">${L({ja:'本部へ',en:'HQ',vi:'HQ'})}</span></span><span class="pb-sub">${line}</span></span><span class="pb-rt">${cls === ' done' ? svg('tick') : svg('chev')}</span></button></div>`;
   }
+  /* ★2026-10-20 神田さん「その他を店舗管理 or 店の数字に変えて案Bの見本の仕様に」＝案Bの見本の「店の数字」。
+     数字は見るだけ（入力は日報だけ）。出どころ＝レジ：getSk の整えた1行（USEN＞総括表＞日報）／今月：skMonthData／原価率：月次（棚卸の確定後）／お客様の声：サーベイ */
+  function pbNum_(role) {
+    const sel = getStoreSel();
+    const store = STORES.includes(sel) ? sel : visibleStores()[0];
+    if (!store) return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div></main>`;
+    const today = dateKeyFor(store, Date.now());
+    const addD = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+    const val = (r) => r ? (r.net != null && r.net !== '' ? Number(r.net) : (r.sales != null && r.sales !== '' ? Number(r.sales) : null)) : null;
+    const recs = getSk().filter(r => r && r.store === store && r.date < today && val(r) != null).sort((a, b) => a.date < b.date ? 1 : -1);
+    const rec = recs[0] || null;
+    const hhmm = (t) => { const d = new Date(Number(t) || 0); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+    const md = (d) => { const [, m, dd] = String(d).split('-'); return `${Number(m)}/${Number(dd)}`; };
+    const short = (n) => n >= 1e6 ? '¥' + (n / 1e6).toFixed(2) + 'M' : yen(n);
+    const isPos = !!(rec && (rec.src === 'usen' || rec.pos));
+    const head = (t, sm) => `<div class="pb-sec"><h2>${t}</h2><small>${sm || ''}</small></div>`;
+    /* ① レジ（いちばん新しい締めの日） */
+    let regi = '';
+    if (rec) {
+      const net = val(rec), wk = recs.find(r => r.date === addD(rec.date, -7));
+      const g = Number(rec.guests) || 0;
+      const dayLb = rec.date === addD(today, -1) ? L({ja:'昨日',en:'Yesterday',vi:'Hôm qua'}) : md(rec.date);
+      const det = [];
+      if (rec.cash != null && rec.cash !== '') det.push(`${L({ja:'現金',en:'Cash',vi:'Tiền mặt'})} ${yen(rec.cash)}`);
+      if (rec.card != null && rec.card !== '') det.push(`${L({ja:'クレジット',en:'Card',vi:'Thẻ'})} ${yen(rec.card)}`);
+      if (rec.emoney) det.push(`${L({ja:'電子マネー',en:'E-money',vi:'Ví điện tử'})} ${yen(rec.emoney)}`);
+      if (rec.disc) det.push(`${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})} ${yen(rec.disc)}`);
+      if (rec.err != null && rec.err !== '' && Number(rec.err) !== 0) det.push(`${L({ja:'差異',en:'Diff.',vi:'Chênh lệch'})} ${Number(rec.err) < 0 ? '−' : ''}${yen(Math.abs(Number(rec.err)))}`);
+      regi = head(`${dayLb} ・ ${L({ja:'レジ',en:'Register',vi:'Két'})}${isPos ? '（USEN）' : ''}`, isPos ? `POS ${hhmm(rec.t)} ${L({ja:'取込 ・ 押すと日報',en:'imported',vi:'đã nhập'})}` : rec.src === 'drive' ? L({ja:'総括表から',en:'From the summary sheet',vi:'Từ bảng tổng hợp'}) : L({ja:'日報から',en:'From the daily report',vi:'Từ báo cáo ngày'}))
+        + `<button class="pb-card pb-numcard" data-tsub="soukatsu"><div class="pb-kpi"><div><div class="l">${L({ja:'売上',en:'Sales',vi:'Doanh thu'})}${rec.net != null && rec.net !== '' ? L({ja:'（税抜）',en:' (excl.)',vi:' (chưa thuế)'}) : ''}</div><div class="v">${yen(net)}</div><div class="d">${rec.net != null && rec.net !== '' && rec.sales ? `${L({ja:'税込',en:'incl.',vi:'gồm thuế'})} ${yen(rec.sales)}` : ''}${wk ? `${rec.net != null && rec.sales ? ' ・ ' : ''}${L({ja:'先週の同じ曜日',en:'Same day last week',vi:'Cùng thứ tuần trước'})} ${yen(val(wk))}` : ''}</div></div>`
+        + `<div><div class="l">${L({ja:'客数 ・ 客単価',en:'Guests / per guest',vi:'Khách / mỗi khách'})}</div><div class="v">${g || '—'}<span class="u">${L({ja:'人',en:'',vi:''})}</span></div><div class="d">${g ? `${yen(Math.round(net / g))}／${L({ja:'人',en:'guest',vi:'khách'})}` : ''}</div></div></div>`
+        + (det.length ? `<div class="pb-numdet">${det.map(x => `<span>${x}</span>`).join('')}</div>` : '') + `</button>`;
+    } else {
+      regi = head(L({ja:'レジ',en:'Register',vi:'Két'}), '') + `<div class="pb-card"><div class="muted">${L({ja:'まだ数字がありません。レジの数字は毎朝自動で入ります',en:'No numbers yet.',vi:'Chưa có số liệu.'})}</div></div>`;
+    }
+    /* ② 今月の売上（日別の線）＝最後に締めた日の月 */
+    const ym = ymOfDate(rec ? rec.date : addD(today, -1));
+    let mon = { days: [], tot: {} }; try { mon = skMonthData(store, ym); } catch (e) {}
+    const byD = {}; recs.forEach(r => { if (ymOfDate(r.date) === ym) byD[r.date] = val(r); });
+    const dl = daysOfYm(ym);
+    const pts = dl.map(d => byD[d] != null ? byD[d] : null);
+    const have = pts.filter(v => v != null);
+    const mtd = have.reduce((a, v) => a + v, 0);
+    const lastIdx = pts.reduce((a, v, i) => v != null ? i : a, -1);
+    const last7 = pts.slice(0, lastIdx + 1).filter(v => v != null).slice(-7);
+    const pace = last7.length ? last7.reduce((a, v) => a + v, 0) / last7.length : 0;
+    const fc = mtd + pace * Math.max(0, dl.length - 1 - lastIdx);
+    const pym = prevYm(ym); const prevTot = recs.filter(r => ymOfDate(r.date) === pym).reduce((a, r) => a + val(r), 0);
+    let spark = `<div class="muted">${L({ja:'今月の数字はまだありません',en:'No data this month yet',vi:'Chưa có số liệu tháng này'})}</div>`;
+    if (have.length >= 2) {
+      const W = 320, H = 96, mx = Math.max(...have), mn = Math.min(...have), rg = (mx - mn) || 1;
+      const X = (i) => 6 + i * (W - 12) / Math.max(1, dl.length - 1), Y = (v) => H - 10 - (v - mn) / rg * (H - 26);
+      const seq = pts.map((v, i) => v != null ? [X(i), Y(v)] : null).filter(Boolean);
+      const line = seq.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+      const area = line + ` L${seq[seq.length - 1][0].toFixed(1)} ${H - 4} L${seq[0][0].toFixed(1)} ${H - 4} Z`;
+      const lp = seq[seq.length - 1];
+      spark = `<svg class="pb-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path d="${area}" class="a"/><path d="${line}" class="l"/><circle cx="${lp[0].toFixed(1)}" cy="${lp[1].toFixed(1)}" r="3.5" class="p"/></svg>`;
+    }
+    const monCard = head(L({ja:'今月の売上',en:'Sales this month',vi:'Doanh thu tháng'}), `${md(dl[0])}〜${md(dl[dl.length - 1])} ・ ${L({ja:'日別',en:'daily',vi:'theo ngày'})}`)
+      + `<button class="pb-card pb-numcard" data-open="pl">${spark}<div class="pb-numfoot"><span>${L({ja:'累計',en:'MTD',vi:'Lũy kế'})} ${short(mtd)}</span>${have.length ? `<span>${L({ja:'着地見込み',en:'Forecast',vi:'Dự kiến'})} ${short(fc)}${prevTot ? `（${L({ja:'先月',en:'last month',vi:'tháng trước'})} ${short(prevTot)}）` : ''}</span>` : ''}</div></button>`;
+    /* ③ 仕入率・原価率 */
+    const t = mon.tot || {};
+    const buyRate = t.sales && t.buy ? (t.buy / t.sales * 100).toFixed(1) : null;
+    let cost = null; try { const pm = plMonthsOf(store).find(r => r.ym === pym); if (pm && pm.close != null && pm.close !== '' && Number(pm.sales)) cost = plCalc(pm).costRate; } catch (e) {}
+    const kpi2 = head(L({ja:'仕入率 ・ 原価率',en:'Purchase & cost rate',vi:'Tỷ lệ nhập & giá vốn'}), L({ja:'仕入率は毎日 ・ 原価率は前月分',en:'Purchase daily / cost last month',vi:'Nhập hằng ngày / giá vốn tháng trước'}))
+      + `<div class="pb-kpi2"><button class="pb-card pb-numcard" data-open="pl"><div class="l">${L({ja:'仕入率（今月1日〜）',en:'Purchase rate (MTD)',vi:'Tỷ lệ nhập (lũy kế)'})}</div><div class="v">${buyRate != null ? buyRate + '<span class="u">%</span>' : '—'}</div><div class="d">${buyRate != null ? `${L({ja:'仕入',en:'Purchases',vi:'Nhập'})} ${short(t.buy)} ÷ ${L({ja:'売上（税込）',en:'sales (incl.)',vi:'doanh thu (gồm thuế)'})} ${short(t.sales)}` : L({ja:'納品書が入ると出ます',en:'Shows once invoices are in',vi:'Hiện khi có hóa đơn'})}</div></button>`
+      + `<button class="pb-card pb-numcard" data-open="pl"><div class="l">${L({ja:'原価率（前月・確定）',en:'Cost rate (last month)',vi:'Giá vốn (tháng trước)'})}</div><div class="v">${cost != null ? cost.toFixed(1) + '<span class="u">%</span>' : '—'}</div><div class="d">${cost != null ? `${Number(pym.slice(5))}${L({ja:'月分 ・ 月初＋仕入−月末棚卸',en:' ・ open + purchases − close',vi:' ・ đầu kỳ + nhập − cuối kỳ'})}` : L({ja:'月末棚卸が入ると出ます',en:'Shows after month-end count',vi:'Hiện sau kiểm kê cuối tháng'})}</div></button></div>`;
+    /* ④ お客様の声（サーベイ・今月） */
+    const svM = getSurvey().filter(r => r && r.store === store && r.sat >= 1 && ymOfDate(dateKeyFor(store, r.t)) === ymOfDate(today));
+    const svAvg = svM.length ? (svM.reduce((a, r) => a + r.sat, 0) / svM.length).toFixed(1) : null;
+    const svLow = svM.filter(r => r.sat <= 3).length;
+    const voice = head(L({ja:'お客様の声',en:'Guest feedback',vi:'Ý kiến khách'}), L({ja:'サーベイ ・ 自動',en:'Survey, automatic',vi:'Khảo sát, tự động'}))
+      + `<button class="pb-card pb-numcard" data-open="survey?tab=voice"><div class="pb-kpi"><div><div class="l">${L({ja:'サーベイ満足度（今月）',en:'Survey score (month)',vi:'Điểm khảo sát (tháng)'})}</div><div class="v">${svAvg || '—'}</div><div class="d">${svM.length} ${L({ja:'件',en:'answers',vi:'câu'})}${svLow ? ` ・ ${L({ja:'低い評価',en:'low',vi:'thấp'})} ${svLow} ${L({ja:'件',en:'',vi:'câu'})}` : ''}</div></div><div class="pb-numgo">${L({ja:'回答の一覧へ',en:'See answers',vi:'Xem câu trả lời'})} ${svg('chev')}</div></div></button>`;
+    /* ⑤ くわしく（今までの画面へ） */
+    const more = head(L({ja:'くわしく',en:'Details',vi:'Chi tiết'}), '')
+      + `<div class="pb-card"><button class="pb-row" data-open="pl">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'数値・原価率',en:'Numbers & cost rate',vi:'Số liệu & giá vốn'})}</span><span class="pb-sub">${L({ja:'月ごとの売上・仕入・原価率の推移',en:'Monthly trend',vi:'Xu hướng theo tháng'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`
+      + `<button class="pb-row" data-tsub="soukatsu">${pbImg_('kyou_nippou')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'日報の一覧',en:'Daily reports',vi:'Báo cáo ngày'})}</span><span class="pb-sub">${L({ja:'日ごとの数字',en:'Numbers by day',vi:'Theo ngày'})}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
+    return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div><p class="pb-lead">${esc(storeShort(store))} ・ ${L({ja:'数字は見るだけ。入力は「きょうやること」の日報だけです',en:'View only. Enter numbers in the daily report.',vi:'Chỉ xem. Nhập ở báo cáo ngày.'})}</p>${regi}${monCard}${kpi2}${voice}${more}
+      <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;
+  }
   function pbMiru_(role) {
     const tile = (key, open, t, s, extra) => `<button class="pb-tile" ${extra || `data-open="${open}"`}>${pbImg_(key, 'pb-tileimg')}<span class="pb-tiletx"><b>${L(t)}</b><small>${L(s)}</small></span></button>`;
     const tiles = [
@@ -1996,6 +2079,8 @@
     if (isPb() && role !== 'hq') {
       if (tab === 'home') return shell(pbHome_(role), 'home');
       if (tab === 'miru') return shell(pbMiru_(role), 'miru');
+      if (tab === 'num' && ['manager', 'owner'].includes(role)) return shell(pbNum_(role), 'num');   // ★2026-10-20 店の数字（案Bの見本）
+      if (tab === 'num') return shell(pbHome_(role), 'home');
     }
     if (tab === 'miru') tab = 'learn';
 
@@ -2070,7 +2155,7 @@
     // 本部グループの画面をオーナーが開いたとき（提出物管理）は「報告」タブを光らせる（オーナーに本部タブは無い）
     const g = a.group === 'hq' && getRole() !== 'hq' ? 'storeops' : a.group;
     /* 案B＝店舗側の下タブは3つなので、開いている画面のタブも3つに寄せて光らせる */
-    const tabKey = (isPb() && getRole() !== 'hq') ? (g === 'learn' ? 'miru' : (g === 'other' || g === 'biz') ? 'other' : 'home') : groupTab(g);
+    const tabKey = (isPb() && getRole() !== 'hq') ? (g === 'learn' ? 'miru' : (g === 'other' || g === 'biz') ? 'miru' : 'home') : groupTab(g);
     return shell(inner, tabKey);
   }
   /* 案B＝画面の見出しの印を、その画面の写真に（写真が無い画面はいままでの印） */
