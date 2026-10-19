@@ -9621,6 +9621,8 @@
      本部からのお知らせ（news）＝本部が投稿→全端末に届く。ホームに最新を表示。
      配信先は全店 or 特定店舗。重要フラグあり。全端末同期。
   =================================================================== */
+  /* ★2026-10-20 神田さん「引き継ぎは実装しない話だったので不要」＝9/8 のお知らせ「【新機能】店舗用の『引き継ぎ伝言板』運用開始について」を出さない（10/17 決定＝引き継ぎは店のLINE）。本部データの行は消さない */
+  const NEWS_RETIRED_ = ['4261b070-b0ff-478b-8988-2662f594e5ee'];
   const getNews = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_news')) || []; } catch { return []; } };
   const saveNews = (a) => { try { localStorage.setItem('yosakura_demo_news', JSON.stringify(a)); } catch (e) {} };
   function newsVisible(list) { // 非本部は「全店向け＋自店向け」だけ、本部は全件
@@ -11895,7 +11897,7 @@
         case 'video': video.push({ store, url:r.item, note:r.note, t, id }); break;
         case 'emg': { const p=pj(r.note); if (!emg[store] || t >= emg[store].t) emg[store] = { slots: p.slots || {}, t }; } break; // 店舗ごとに最新版が正
         case 'whistle': { const p=pj(r.note); whistle.push({ store, cat:p.cat||'other', body:p.body||'', anon:!!p.anon, t, id }); } break;
-        case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', video:p.video||'', photos:r.photos||[], t, id }); } break;
+        case 'news': { if (NEWS_RETIRED_.includes(String(id))) break; const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', video:p.video||'', photos:r.photos||[], t, id }); } break;
         case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モード（定期衛生は×曜日）ごと最新版が正
         // 見本写真＋注意書き＝店舗×提出物ごと最新版が正（2026-08-30 長田さんのご提案）
         case 'phsample': { const p=pj(r.note); const k=`${store}||${r.item||'openphoto'}`; if (phsT[k]==null || t>=phsT[k]) { phs[k]={ photos: r.photos||[], memo: p.memo||'', by: p.by||'', t }; phsT[k]=t; } } break;
@@ -12114,6 +12116,7 @@
              全画面を作り直していた（古いiPadでは触り始めた瞬間に起きる）。自動同期では描き直さず、帯をそっと出して
              押したときだけ描き直す（受信箱と同じ）。自分の提出の直後（force）は結果を見せるため従来どおり描き直す。 */
           else if (force) render(true);
+          else if (_distFail) { /* ★2026-10-20 神田さん「何度も出てくる」＝本部のiPhoneは保存がいっぱい（LSFULL）で目印を残せず、毎回「新しい」と判定していた。保存できなかったときは帯を出さない */ }
           else showSyncBand_();
         }
       }
