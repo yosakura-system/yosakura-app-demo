@@ -4788,6 +4788,7 @@ console.log('== お知らせにコメント・いいね・確認（2026-09-08 �
   location.hash = '#/app/news';
   h = registry.app.innerHTML;
   ok(/確認済み（1）/.test(h) && /長堀橋/.test(h) && /秋定/.test(h), '本部には確認済み一覧（店舗・名前つき）が出る');
+  ok(/👍 いいね（\d+）：/.test(h), '★2026-10-20 本部には、いいねを押した店・名前の一覧も出る');
   // ③ 配線＝3操作とも行内の書き換え（全画面を作り直さない）
   const srcNW = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/dataset\.nwlike/.test(srcNW) && /dataset\.nwread/.test(srcNW) && /dataset\.nwcmt\)/.test(srcNW) && /dataset\.nwcmtsend/.test(srcNW), 'いいね・確認・コメントが配線されている');

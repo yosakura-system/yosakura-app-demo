@@ -9847,11 +9847,11 @@
   const lsMap_ = (k) => { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } };
   const lsMapAdd_ = (k, id) => { try { const m = lsMap_(k); m[id] = 1; localStorage.setItem(k, JSON.stringify(m)); } catch (e) {} };
   function newsFb(key) {
-    let likeN = 0; const reads = []; const cmts = [];
+    let likeN = 0; const likes = []; const reads = []; const cmts = [];
     try {
       getReports().forEach(r => {
         if (String(r.item || '') !== key) return;
-        if (r.kind === 'newslike') likeN++;
+        if (r.kind === 'newslike') { likeN++; const p = parseNote(r.note); likes.push({ store: r.store || '', by: (p && p.by) || '', t: r.t }); }   // ★2026-10-20 誰が押したか（本部だけに出す）
         else if (r.kind === 'newsread') { const p = parseNote(r.note); reads.push({ store: r.store || '', by: (p && p.by) || '', t: r.t }); }
         else if (r.kind === 'newscmt') { const p = parseNote(r.note); if (p && p.body) cmts.push({ store: r.store || '', by: (p && p.by) || '', body: p.body, t: r.t }); }
       });
@@ -9859,9 +9859,10 @@
     cmts.sort((a, b) => a.t - b.t);
     // 確認済みは「店舗×名前」で1件に（同じ人が別端末で押しても増やさない）
     const seen = {}; const uniqReads = reads.filter(x => { const k2 = x.store + '|' + x.by; if (seen[k2]) return false; seen[k2] = 1; return true; });
-    return { likeN, reads: uniqReads, cmts };
+    return { likeN, likes, reads: uniqReads, cmts };
   }
   const newsCmtLine = (c) => `<div class="l2" style="display:block;white-space:pre-wrap;margin-top:4px">💬 ${esc(c.body)}　<span class="muted">${esc(c.by || L({ ja:'名前なし', en:'(no name)', vi:'(không tên)' }))}${c.store && c.store !== '*' ? ' ・ ' + esc(storeShort(c.store)) : ' ・ ' + L({ ja:'本部', en:'HQ', vi:'HQ' })} ・ ${timeAgo(c.t)}</span></div>`;
+  /* ★2026-10-20 神田さん「いいねを誰が押したか、本部の方だけわかるように」＝本部IDでログインしているときだけ、いいね・確認済みの一覧を出す（店舗責任者・スタッフの見え方でも。店舗には件数だけ） */
   const newsRow = (n) => {
     const key = String(n.t);
     const fb = newsFb(key);
@@ -9881,7 +9882,8 @@
           ${readed ? `<span class="muted" style="margin-left:8px">✓ ${L({ ja:'確認済み', en:'Confirmed', vi:'Đã xem' })}</span>` : `<button class="mini" data-nwread="${esc(key)}" style="margin-left:8px">${L({ ja:'確認しました', en:'Confirm', vi:'Đã xem' })}</button>`}
           <button class="mini" data-nwcmt="${esc(key)}" style="margin-left:8px">💬 ${L({ ja:'コメント', en:'Comment', vi:'Bình luận' })}${fb.cmts.length ? ` ${fb.cmts.length}` : ''}</button>
         </div>
-        ${getRole() === 'hq' ? `<div class="l2" style="display:block;margin-top:4px">${L({ ja:'確認済み', en:'Confirmed by', vi:'Đã xem' })}（${fb.reads.length}）：${fb.reads.length ? esc(fb.reads.map(x => `${x.store && x.store !== '*' ? storeShort(x.store) : L({ ja:'本部', en:'HQ', vi:'HQ' })}${x.by ? '・' + x.by : ''}`).join(' ／ ')) : L({ ja:'まだいません', en:'none yet', vi:'chưa có' })}</div>` : ''}
+        ${(devViewAllowed() || getRole() === 'hq') ? `<div class="l2" style="display:block;margin-top:4px">👍 ${L({ ja:'いいね', en:'Liked by', vi:'Đã thích' })}（${fb.likes.length}）：${fb.likes.length ? esc(fb.likes.map(x => `${x.store && x.store !== '*' ? storeShort(x.store) : L({ ja:'本部', en:'HQ', vi:'HQ' })}${x.by ? '・' + x.by : ''}`).join(' ／ ')) : L({ ja:'まだいません', en:'none yet', vi:'chưa có' })}</div>` : ''}
+        ${(devViewAllowed() || getRole() === 'hq') ? `<div class="l2" style="display:block;margin-top:4px">${L({ ja:'確認済み', en:'Confirmed by', vi:'Đã xem' })}（${fb.reads.length}）：${fb.reads.length ? esc(fb.reads.map(x => `${x.store && x.store !== '*' ? storeShort(x.store) : L({ ja:'本部', en:'HQ', vi:'HQ' })}${x.by ? '・' + x.by : ''}`).join(' ／ ')) : L({ ja:'まだいません', en:'none yet', vi:'chưa có' })}</div>` : ''}
         <div class="nwcmts">${fb.cmts.map(newsCmtLine).join('')}</div>
         <div class="nwcmtform" style="display:none;margin-top:6px">
           <textarea class="nwcmt-input" rows="2" style="width:100%;box-sizing:border-box" placeholder="${esc(L({ ja:'コメントを入力（本部に届きます）', en:'Write a comment (goes to HQ)', vi:'Viết bình luận (gửi HQ)' }))}"></textarea>
@@ -10456,7 +10458,9 @@
       else if (path === '/home') html = viewHome(params.get('tab') || 'home');
       else html = viewHome('home');
     } finally { _rendering = false; }
-    $app.innerHTML = devViewBanner() + pwChangeBanner_() + html;   // 開発者ビュー中は戻るバナーを全画面の先頭に出す
+    $app.innerHTML = devViewBanner() + pwChangeBanner_() + html;
+    /* ★2026-10-20 神田さん「未入力の欄の薄い仮の数字が濃くて実績と見分けがつかない」＝数字だけの例（123700・¥40,600 など）は出さない。言葉の案内は残し、色はさらに薄く（styles.css） */
+    try { $app.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el => { const ph = el.getAttribute('placeholder') || ''; if (ph && /^[\s¥￥\d,.，．:：\-－%％()（）/／~〜]+$/.test(ph)) el.setAttribute('placeholder', ''); }); } catch (e) {}   // 開発者ビュー中は戻るバナーを全画面の先頭に出す
     setScrollY_(y);
     /* ★別の画面へ移ったのに、前の画面で読んでいた位置のまま始まることがあった（2026-08-12 神田さんのご指摘）。
        中身を入れ替えた直後は高さがまだ決まっておらず、一度の指定では戻りきらないため、
