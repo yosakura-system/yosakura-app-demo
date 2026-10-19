@@ -1819,7 +1819,8 @@
     const today = dateKeyFor(store, Date.now());
     const yd = new Date(today + 'T12:00:00Z'); yd.setUTCDate(yd.getUTCDate() - 1); const yday = yd.toISOString().slice(0, 10);
     const rec = getSk().find(r => r && r.store === store && r.date === yday);
-    const hasNum = rec && (rec.net != null || rec.sales != null);
+    const netOk = rec && Number(rec.net) > 0;   // ★2026-10-20 バックチェック：USENの無い店は純売上が0で保存されることがある＝0なら売上（税込）を使う
+    const hasNum = rec && (netOk || Number(rec.sales) > 0);
     const isPos = !!(rec && (rec.src === 'usen' || rec.pos));
     const hhmm = (t) => { const d = new Date(Number(t) || 0); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
     const src = !hasNum ? '' : isPos ? `POS ${hhmm(rec.t)} ${L({ja:'取込 ・ 入力なし',en:'imported',vi:'đã nhập'})}` : rec.src === 'drive' ? L({ja:'総括表から',en:'From the summary sheet',vi:'Từ bảng tổng hợp'}) : L({ja:'日報から',en:'From the daily report',vi:'Từ báo cáo ngày'});
@@ -1829,8 +1830,8 @@
         : L({ja:'まだありません。日報を出すと、ここに出ます',en:'Nothing yet. It shows here after the daily report.',vi:'Chưa có. Hiện ở đây sau báo cáo ngày.'});
       return `${head}<div class="pb-card"><button class="pb-row pb-regi" data-tsub="soukatsu"><span class="pb-rowtx"><span class="pb-sub">${msg}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
     }
-    const net = rec.net != null ? rec.net : rec.sales;
-    const parts = [`${L({ja:'売上',en:'Sales',vi:'Doanh thu'})} ${yen(net)}${rec.net != null ? L({ja:'（税抜）',en:' (excl. tax)',vi:' (chưa thuế)'}) : ''}`];
+    const net = netOk ? Number(rec.net) : Number(rec.sales);
+    const parts = [`${L({ja:'売上',en:'Sales',vi:'Doanh thu'})} ${yen(net)}${netOk ? L({ja:'（税抜）',en:' (excl. tax)',vi:' (chưa thuế)'}) : L({ja:'（税込）',en:' (incl. tax)',vi:' (gồm thuế)'})}`];
     if (rec.guests != null && rec.guests !== '') parts.push(`${rec.guests}${L({ja:'人',en:' guests',vi:' khách'})}`);
     if (rec.cash != null && rec.cash !== '') parts.push(`${L({ja:'現金',en:'Cash',vi:'Tiền mặt'})} ${yen(rec.cash)}`);
     if (rec.card != null && rec.card !== '') parts.push(`${L({ja:'カード',en:'Card',vi:'Thẻ'})} ${yen(rec.card)}`);
@@ -1975,12 +1976,14 @@
   /* ★2026-10-20 神田さん「その他を店舗管理 or 店の数字に変えて案Bの見本の仕様に」＝案Bの見本の「店の数字」。
      数字は見るだけ（入力は日報だけ）。出どころ＝レジ：getSk の整えた1行（USEN＞総括表＞日報）／今月：skMonthData／原価率：月次（棚卸の確定後）／お客様の声：サーベイ */
   function pbNum_(role) {
-    const sel = getStoreSel();
-    const store = STORES.includes(sel) ? sel : visibleStores()[0];
+    const sel = getStoreSel(); const vis = visibleStores();
+    let pick = ''; try { pick = localStorage.getItem('yosakura_num_store') || ''; } catch (e) {}
+    const store = STORES.includes(sel) ? sel : (vis.includes(pick) ? pick : vis[0]);   // ★2026-10-20 複数店のオーナーは上の切替で店を選ぶ
+    const storeSeg = !STORES.includes(sel) && vis.length > 1 ? `<div class="pb-numseg">${vis.map(x => `<button type="button" class="${x === store ? 'on' : ''}" data-numstore="${esc(x)}">${esc(storeShort(x))}</button>`).join('')}</div>` : '';
     if (!store) return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div></main>`;
     const today = dateKeyFor(store, Date.now());
     const addD = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
-    const val = (r) => r ? (r.net != null && r.net !== '' ? Number(r.net) : (r.sales != null && r.sales !== '' ? Number(r.sales) : null)) : null;
+    const val = (r) => r ? (Number(r.net) > 0 ? Number(r.net) : (Number(r.sales) > 0 ? Number(r.sales) : null)) : null;
     const recs = getSk().filter(r => r && r.store === store && r.date < today && val(r) != null).sort((a, b) => a.date < b.date ? 1 : -1);
     const rec = recs[0] || null;
     const hhmm = (t) => { const d = new Date(Number(t) || 0); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
@@ -2001,7 +2004,7 @@
       if (rec.disc) det.push(`${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})} ${yen(rec.disc)}`);
       if (rec.err != null && rec.err !== '' && Number(rec.err) !== 0) det.push(`${L({ja:'差異',en:'Diff.',vi:'Chênh lệch'})} ${Number(rec.err) < 0 ? '−' : ''}${yen(Math.abs(Number(rec.err)))}`);
       regi = head(`${dayLb} ・ ${L({ja:'レジ',en:'Register',vi:'Két'})}${isPos ? '（USEN）' : ''}`, isPos ? `POS ${hhmm(rec.t)} ${L({ja:'取込 ・ 押すと日報',en:'imported',vi:'đã nhập'})}` : rec.src === 'drive' ? L({ja:'総括表から',en:'From the summary sheet',vi:'Từ bảng tổng hợp'}) : L({ja:'日報から',en:'From the daily report',vi:'Từ báo cáo ngày'}))
-        + `<button class="pb-card pb-numcard" data-tsub="soukatsu"><div class="pb-kpi"><div><div class="l">${L({ja:'売上',en:'Sales',vi:'Doanh thu'})}${rec.net != null && rec.net !== '' ? L({ja:'（税抜）',en:' (excl.)',vi:' (chưa thuế)'}) : ''}</div><div class="v">${yen(net)}</div><div class="d">${rec.net != null && rec.net !== '' && rec.sales ? `${L({ja:'税込',en:'incl.',vi:'gồm thuế'})} ${yen(rec.sales)}` : ''}${wk ? `${rec.net != null && rec.sales ? ' ・ ' : ''}${L({ja:'先週の同じ曜日',en:'Same day last week',vi:'Cùng thứ tuần trước'})} ${yen(val(wk))}` : ''}</div></div>`
+        + `<button class="pb-card pb-numcard" data-tsub="soukatsu"><div class="pb-kpi"><div><div class="l">${L({ja:'売上',en:'Sales',vi:'Doanh thu'})}${Number(rec.net) > 0 ? L({ja:'（税抜）',en:' (excl.)',vi:' (chưa thuế)'}) : L({ja:'（税込）',en:' (incl.)',vi:' (gồm thuế)'})}</div><div class="v">${yen(net)}</div><div class="d">${Number(rec.net) > 0 && rec.sales ? `${L({ja:'税込',en:'incl.',vi:'gồm thuế'})} ${yen(rec.sales)}` : ''}${wk ? `${Number(rec.net) > 0 && rec.sales ? ' ・ ' : ''}${L({ja:'先週の同じ曜日',en:'Same day last week',vi:'Cùng thứ tuần trước'})} ${yen(val(wk))}` : ''}</div></div>`
         + `<div><div class="l">${L({ja:'客数 ・ 客単価',en:'Guests / per guest',vi:'Khách / mỗi khách'})}</div><div class="v">${g || '—'}<span class="u">${L({ja:'人',en:'',vi:''})}</span></div><div class="d">${g ? `${yen(Math.round(net / g))}／${L({ja:'人',en:'guest',vi:'khách'})}` : ''}</div></div></div>`
         + (det.length ? `<div class="pb-numdet">${det.map(x => `<span>${x}</span>`).join('')}</div>` : '') + `</button>`;
     } else {
@@ -2010,7 +2013,10 @@
     /* ② 今月の売上（日別の線）＝最後に締めた日の月 */
     const ym = ymOfDate(rec ? rec.date : addD(today, -1));
     let mon = { days: [], tot: {} }; try { mon = skMonthData(store, ym); } catch (e) {}
-    const byD = {}; recs.forEach(r => { if (ymOfDate(r.date) === ym) byD[r.date] = val(r); });
+    const monRecs = recs.filter(r => ymOfDate(r.date) === ym);
+    const useNet = monRecs.length > 0 && monRecs.every(r => Number(r.net) > 0);   // ★2026-10-20 バックチェック：税抜と税込を混ぜない
+    const mv = (r) => useNet ? Number(r.net) : (Number(r.sales) > 0 ? Number(r.sales) : null);
+    const byD = {}; monRecs.forEach(r => { const v = mv(r); if (v != null) byD[r.date] = v; });
     const dl = daysOfYm(ym);
     const pts = dl.map(d => byD[d] != null ? byD[d] : null);
     const have = pts.filter(v => v != null);
@@ -2019,7 +2025,7 @@
     const last7 = pts.slice(0, lastIdx + 1).filter(v => v != null).slice(-7);
     const pace = last7.length ? last7.reduce((a, v) => a + v, 0) / last7.length : 0;
     const fc = mtd + pace * Math.max(0, dl.length - 1 - lastIdx);
-    const pym = prevYm(ym); const prevTot = recs.filter(r => ymOfDate(r.date) === pym).reduce((a, r) => a + val(r), 0);
+    const pym = prevYm(ym); const prevTot = recs.filter(r => ymOfDate(r.date) === pym).reduce((a, r) => a + (useNet ? (Number(r.net) || 0) : (Number(r.sales) || 0)), 0);
     let spark = `<div class="muted">${L({ja:'今月の数字はまだありません',en:'No data this month yet',vi:'Chưa có số liệu tháng này'})}</div>`;
     if (have.length >= 2) {
       const W = 320, H = 96, mx = Math.max(...have), mn = Math.min(...have), rg = (mx - mn) || 1;
@@ -2030,7 +2036,7 @@
       const lp = seq[seq.length - 1];
       spark = `<svg class="pb-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path d="${area}" class="a"/><path d="${line}" class="l"/><circle cx="${lp[0].toFixed(1)}" cy="${lp[1].toFixed(1)}" r="3.5" class="p"/></svg>`;
     }
-    const monCard = head(L({ja:'今月の売上',en:'Sales this month',vi:'Doanh thu tháng'}), `${md(dl[0])}〜${md(dl[dl.length - 1])} ・ ${L({ja:'日別',en:'daily',vi:'theo ngày'})}`)
+    const monCard = head(L({ja:'今月の売上',en:'Sales this month',vi:'Doanh thu tháng'}), `${md(dl[0])}〜${md(dl[dl.length - 1])} ・ ${useNet ? L({ja:'税抜',en:'excl. tax',vi:'chưa thuế'}) : L({ja:'税込',en:'incl. tax',vi:'gồm thuế'})} ・ ${L({ja:'日別',en:'daily',vi:'theo ngày'})}`)
       + `<button class="pb-card pb-numcard" data-open="pl">${spark}<div class="pb-numfoot"><span>${L({ja:'累計',en:'MTD',vi:'Lũy kế'})} ${short(mtd)}</span>${have.length ? `<span>${L({ja:'着地見込み',en:'Forecast',vi:'Dự kiến'})} ${short(fc)}${prevTot ? `（${L({ja:'先月',en:'last month',vi:'tháng trước'})} ${short(prevTot)}）` : ''}</span>` : ''}</div></button>`;
     /* ③ 仕入率・原価率 */
     const t = mon.tot || {};
@@ -2049,7 +2055,7 @@
     const more = head(L({ja:'くわしく',en:'Details',vi:'Chi tiết'}), '')
       + `<div class="pb-card"><button class="pb-row" data-open="pl">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'数値・原価率',en:'Numbers & cost rate',vi:'Số liệu & giá vốn'})}</span><span class="pb-sub">${L({ja:'月ごとの売上・仕入・原価率の推移',en:'Monthly trend',vi:'Xu hướng theo tháng'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`
       + `<button class="pb-row" data-tsub="soukatsu">${pbImg_('kyou_nippou')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'日報の一覧',en:'Daily reports',vi:'Báo cáo ngày'})}</span><span class="pb-sub">${L({ja:'日ごとの数字',en:'Numbers by day',vi:'Theo ngày'})}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
-    return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div><p class="pb-lead">${esc(storeShort(store))} ・ ${L({ja:'数字は見るだけ。入力は「きょうやること」の日報だけです',en:'View only. Enter numbers in the daily report.',vi:'Chỉ xem. Nhập ở báo cáo ngày.'})}</p>${regi}${monCard}${kpi2}${voice}${more}
+    return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div><p class="pb-lead">${esc(storeShort(store))} ・ ${L({ja:'数字は見るだけ。入力は「きょうやること」の日報だけです',en:'View only. Enter numbers in the daily report.',vi:'Chỉ xem. Nhập ở báo cáo ngày.'})}</p>${storeSeg}${regi}${monCard}${kpi2}${voice}${more}
       <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;
   }
   function pbMiru_(role) {
@@ -2115,7 +2121,7 @@
         ${sections}
         <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}${buildNote()}</div>
       </main>`;
-    return shell(inner, tab);
+    return shell(inner, (isPb() && getRole() !== 'hq' && tab === 'other') ? 'miru' : tab);   // ★2026-10-20 その他は「見る・注文する」の中から開く＝そのタブを光らせる
   }
 
   function tileHTML(a, role) {
@@ -7856,7 +7862,6 @@
   const dailyKeepOn_ = () => { try { return localStorage.getItem('yosakura_daily_all') !== '1'; } catch (e) { return true; } };   // 検査用＝これまでの全項目で回すときだけ '1'
   function appliesToStore(m, store) {
     if (m.oblig === 'off') return false;
-    if (m.freq === 'daily' && !DAILY_KEEP_.includes(m.id) && dailyKeepOn_()) return false;
     if (m.target === 'except_course' && storeMeta(store).course) return false;
     if (m.target === 'stores' && Array.isArray(m.stores) && !m.stores.includes(store)) return false;
     if (m.target === 'gyotai_in' && Array.isArray(m.gyotai) && !m.gyotai.includes(storeMeta(store).gyotai)) return false; // 指定業態のみ（例：牛カツのみ）
@@ -7911,7 +7916,8 @@
   function todayItemsFor(store) {
     const today = dateKeyFor(store, Date.now());
     const yday = dateKeyFor(store, Date.now() - 864e5);
-    return getMasters(store).filter(m => appliesToStore(m, store)).map(m => {
+    // ★2026-10-20 毎日の一覧は8つだけ（DAILY_KEEP_）。履歴・写真の切替・本部からの返答の行き先は外さない（バックチェック：外すと納品書の返答がオープン写真を開いた）
+    return getMasters(store).filter(m => appliesToStore(m, store) && !(m.freq === 'daily' && !DAILY_KEEP_.includes(m.id) && dailyKeepOn_())).map(m => {
       // dueNextDay＝「前日分を翌日◯時までに出す」提出物（日報）。対象日は前日になる
       const prev = !!m.dueNextDay && m.freq === 'daily';
       const dk = prev ? yday : today;
@@ -8257,7 +8263,7 @@
     return `
       <div class="card">
         <h3>${L({ ja:'曜日別業務（定期衛生）', en:'By weekday (periodic hygiene)', vi:'Theo ngày (vệ sinh định kỳ)' })} — ${esc(storeShort(store))}</h3>
-        <p class="hint" style="display:block">${L({ ja:'曜日ごとに決められた箇所を掃除して、1週間で店を1周します。今日の分は「日次業務」にも出ます。', en:'Each weekday has its own spots; the whole store is covered in a week. Today’s spots also appear in Daily tasks.', vi:'Mỗi ngày có khu vực riêng; cả tuần đi hết cửa hàng. Việc hôm nay cũng có trong Hàng ngày.' })}</p>
+        <p class="hint" style="display:block">${L({ ja:'曜日ごとに決められた箇所を掃除して、1週間で店を1周します。', en:'Each weekday has its own spots; the whole store is covered in a week. Today’s spots also appear in Daily tasks.', vi:'Mỗi ngày có khu vực riêng; cả tuần đi hết cửa hàng. Việc hôm nay cũng có trong Hàng ngày.' })}</p>
         <div class="seg" data-seg="hygpick" style="margin:4px 0 10px">${WDAY_LABELS.map((w, i) => `<button type="button" data-hygpick="${i}" class="${i === d ? 'on' : ''}">${L(w)}${i === today ? `<small style="display:block;font-size:9px;line-height:1">${L({ ja:'今日', en:'today', vi:'nay' })}</small>` : ''}</button>`).join('')}</div>
         ${spots.length ? spots.map(n => `<div class="rep"><span class="kind b">${svg('check')}</span><div class="body"><div class="l1">${esc(n)}</div></div></div>`).join('') : `<div class="muted">${L({ ja:'この曜日の箇所はありません', en:'No spots for this day', vi:'Không có mục cho ngày này' })}</div>`}
         <button class="btn-primary" data-hygopen="${d}" style="margin-top:10px">${L({ ja:'この曜日の点検を開く ›', en:'Open this day’s check ›', vi:'Mở kiểm tra ngày này ›' })}</button>
@@ -9078,9 +9084,10 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas]');
+      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
+      if (t.dataset.numstore) { try { localStorage.setItem('yosakura_num_store', t.dataset.numstore); } catch (e2) {} render(); return; }
       if (t.dataset.viewas) { const r = t.dataset.viewas; setRole(r); if (r === 'hq') setStoreSel('all'); else { const sl = getStoreSel(); if (sl === 'all' || sl === 'owned' || !STORES.includes(sl)) setStoreSel(STORES[0]); } render(); return; }
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
       if (t.dataset.inboxrefresh) { render(true); return; }  // 「新しい報告が届きました」＝押したときだけ描き直す

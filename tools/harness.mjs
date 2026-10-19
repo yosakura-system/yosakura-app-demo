@@ -6540,6 +6540,14 @@ console.log('== 2026-10-20 毎日の提出物＝全店7つ＋日報（案Bの見
   }
 }
 
+console.log('== 2026-10-20 バックチェック対応（v383） ==');
+{
+  ok(!/function appliesToStore[\s\S]{0,400}DAILY_KEEP_/.test(code) && /appliesToStore\(m, store\) && !\(m\.freq === 'daily' && !DAILY_KEEP_\.includes\(m\.id\)/.test(code), '毎日の一覧の絞り込みは todayItemsFor だけ（履歴・写真の切替・本部からの返答の行き先は外さない）');
+  ok(/const netOk = rec && Number\(rec\.net\) > 0;/.test(code) && /const val = \(r\) => r \? \(Number\(r\.net\) > 0/.test(code), '純売上が0・空のときは売上（税込）を使う（「売上 ¥0」を出さない）');
+  ok(/const useNet = monRecs\.length > 0 && monRecs\.every/.test(code), '今月の線は税抜と税込を混ぜない');
+  ok(/data-numstore=/.test(code) && /\[data-numstore\]/.test(code), '複数店のオーナーは店の数字で店を切り替えられる');
+}
+
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');
 {
   const S = '牛カツ世桜 長堀橋店';
