@@ -106,6 +106,7 @@ const setLS = (role, storeSel, lang) => {
   localStorage.setItem('yosakura_demo_lang', lang);
   localStorage.setItem('yosakura_tour_done', '1'); // suppress tour
   localStorage.setItem('yosakura_setup_done', '1'); // 初回の「はじめの設定」は出さない
+  localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); // ★2026-10-20 本部IDを最初に店舗責任者で開く切替は済みにする（検査は役割を明示して回す）
   /* ★2026-10-19 10/20 6:00 以降は既定が案B（pb）。これまでの検査は今までのホーム（hp）を見ているので、テーマを選んでいない検査は hp で回す。
      既定（未設定）の検査は案Bの節で日付ごとに見る */
   if (localStorage.getItem('yosakura_theme') == null) localStorage.setItem('yosakura_theme', 'hp');
@@ -3687,6 +3688,15 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   seedAuth('kanda', 'hq', 'hq');
   location.hash = '#/home';
   ok(/class="viewas-btn on" data-viewas="hq"/.test(registry.app.innerHTML), '本部の表示でも切替の帯が出る（本部が選択中）＝2026-10-20 神田さん「本部のメンバーは全員3つ使えるように」');
+  ok(/let _rawKeysMem = '';/.test(code) && /localStorage\.getItem\('yosakura_demo_rawkeys'\) \|\| _rawKeysMem \|\| ''/.test(code) && /if \(!_distFail\) \{ _rawKeysMem = nextKeys;/.test(code) && (code.match(/_rawKeysMem = '';/g) || []).length >= 3, '★2026-10-20 目印を端末に保存できなくても、起動中は同じ内容で「新しい情報」の帯を出さない（ログアウト・取り直しでは空にする）');
+  ok(/document\.querySelectorAll\('\.pb-band'\)\.forEach\(x => x\.classList\.toggle\('on', x === b\)\)/.test(code), '★2026-10-20 開店前・営業中・締めは、押したボタンが選択中の色になる');
+  // ★2026-10-20 6:30 神田さん「本部側で入ると旧デザイン」＝本部IDは最初は店舗責任者の見え方（新デザイン）で開く。押せば本部に戻れ、以後はその選択のまま
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_hq_first_mgr_1020'); localStorage.removeItem('yosakura_theme'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); });
+  location.hash = '#/home';
+  ok(/class="viewas-btn on" data-viewas="manager"/.test(registry.app.innerHTML) && !/本部メニュー/.test(registry.app.innerHTML) && localStorage.getItem('yosakura_demo_store') !== 'all', '★本部IDは最初、店舗責任者の見え方（新デザイン）で開く');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); });
+  location.hash = '#/app/kizuki';
+  ok(/class="viewas-btn on" data-viewas="hq"/.test(registry.app.innerHTML), '★本部に戻したら、以後は本部のまま（毎回は切り替えない）');
   // ②' 増田さんも対象（2026-09-03 ご要望＝本部・加盟店の両目線）
   seedAuth('masuda', 'hq', 'staff');
   location.hash = '#/home';
@@ -3696,7 +3706,7 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   location.hash = '#/home';
   ok(/class="viewas-btn on" data-viewas="staff"/.test(registry.app.innerHTML) && !/本部メニュー/.test(registry.app.innerHTML), '★2026-10-20 本部IDは全員（社長も）店舗表示に切り替えられる');
   ok(/else if \(_distFail\) \{[^}]*\}\s*else showSyncBand_\(\);/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 保存がいっぱいで取り込めなかったときは「新しい情報が届きました」を出さない（本部iPhoneで毎回出ていた）');
-  ok(/const NEWS_RETIRED_ = \['4261b070-b0ff-478b-8988-2662f594e5ee'\];/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')) && /case 'news': \{ if \(NEWS_RETIRED_\.includes\(String\(id\)\)\) break;/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 引き継ぎ伝言板の9/8のお知らせは出さない（引き継ぎは店のLINE）');
+  ok(/const NEWS_RETIRED_ = \['4261b070-b0ff-478b-8988-2662f594e5ee', 'e41a75a2-81c8-40eb-ba69-c89791b14fe9'\];/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')) && /case 'news': \{ if \(NEWS_RETIRED_\.includes\(String\(id\)\)\) break;/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 引き継ぎ伝言板の9/8のお知らせは出さない（引き継ぎは店のLINE）');
   ok(/const getNews = \(\) => \{ try \{ return \(JSON\.parse\(localStorage\.getItem\('yosakura_demo_news'\)\) \|\| \[\]\)\.filter\(n => !\(n && NEWS_RETIRED_\.includes\(String\(n\.id\)\)\)\)/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 すでに保存済みの端末でも、引き継ぎ伝言板のお知らせは読むときに外す');
   ok(/function postReport\(rep\) \{[\s\S]{0,300}?if \(inDevView\(\)\) \{ toast\(/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 本部IDで店舗責任者・スタッフの見え方のときは送らない（店舗の提出として記録されない）');
   ok(/const pwChangeBanner_ = \(\) => pwChangeDue_\(\)\s/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 【見本】のパスワード変更の帯は出さない（押すと本部ID自身の変更が開くため）');
@@ -4869,7 +4879,7 @@ await new Promise(r=>setTimeout(r, 50));
   ok(String(localStorage.getItem('yosakura_demo_rawkeys') || '').indexOf('kizuki|') === 0, '代わりの目印一覧（rawkeys）で変更を検知する');
   ok(JSON.parse(localStorage.getItem('yosakura_demo_kizuki') || '[]').some(r => r.note === '凍結テストの気づき'), '取り込み自体は従来どおり動く');
   const srcQ = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/distribute\(d\.reports\);[\s\S]{0,700}if \(!_distFail\) \{ try \{ localStorage\.setItem\('yosakura_demo_rawkeys'/.test(srcQ), '振り分けが先・目印の保存が後（v279＝保存できたときだけ）＝途中で失敗したら次の同期で自動でやり直される');
+  ok(/distribute\(d\.reports\);[\s\S]{0,700}if \(!_distFail\) \{ (?:_rawKeysMem = nextKeys; )?try \{ localStorage\.setItem\('yosakura_demo_rawkeys'/.test(srcQ), '振り分けが先・目印の保存が後（v279＝保存できたときだけ）＝途中で失敗したら次の同期で自動でやり直される');
   ok(/removeItem\('yosakura_demo_raw'\)/.test(srcQ) && /_lsFull = true/.test(srcQ), '保存に失敗したら旧コピーを捨ててやり直し、それでも駄目なら受信箱に注意を出す（黙って凍らない）');
   FETCH_ROWS = { ok:false };
   run(() => { setLS('hq', 'all', 'ja'); });
@@ -6048,7 +6058,7 @@ location.hash = '#/app/checklist';
 {
   const src = code;
   ok(/_distFail = false;\s*\n\s*distribute\(d\.reports\);/.test(src), '同期は取り込みの前に失敗の印をリセットする');
-  ok(/if \(!_distFail\) \{ try \{ localStorage\.setItem\('yosakura_demo_rawkeys', nextKeys\)/.test(src), '取り込みが全部保存できたときだけ「取り込み済み」の目印を保存する');
+  ok(/if \(!_distFail\) \{ (?:_rawKeysMem = nextKeys; )?try \{ localStorage\.setItem\('yosakura_demo_rawkeys', nextKeys\)/.test(src), '取り込みが全部保存できたときだけ「取り込み済み」の目印を保存する');
   ok(/else \{ try \{ localStorage\.removeItem\('yosakura_demo_rawkeys'\); \} catch \(e\) \{\} reportLsFull_\(\); \}/.test(src), '失敗したら目印を消して、容量の内訳を本部データへ送る');
   ok(/REBUILDABLE_KEYS\.forEach\(rk => \{ if \(rk !== 'yosakura_demo_rawkeys' && !written\[rk\]\)/.test(src), '保存に失敗したら、まだ書いていない控えだけを捨てて空きを作る（書いた直後の一覧は消さない）');
   ok(/localStorage\.getItem\('yosakura_resync_once'\) !== 'v279'/.test(src), 'この版に上がった端末は1回だけ本部データから一覧を作り直す');

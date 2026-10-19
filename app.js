@@ -89,6 +89,7 @@
   }
   let lastSync = 0;
   let _lsFull = false; // 端末の保存領域いっぱい＝同期の取り込みに失敗した印（受信箱に注意を出す）
+  let _rawKeysMem = '';   // ★2026-10-20 目印の写し（端末に保存できなかったときも、起動中は同じ内容を「新しい」と判定しない＝帯が何度も出るのを止める）
   let _distFail = false; // ★直近の同期で取り込みの保存に失敗した印（2026-09-23 長堀橋店）＝目印を保存せず次の同期でやり直す
   /* ★自動同期による「画面の作り直し」を、写真の作業中だけ止める（2026-08-25 実機で発生）
      スマホは写真を選ぶあいだアプリが背面へ回る。その数秒で同期の通信が終わると render() が走り、
@@ -503,6 +504,8 @@
     const a = getAuth();
     if (a && a.role) {
       if (a.role === 'hq') {   // ★2026-10-20 神田さん「本部のメンバーは全員、本部・店舗責任者・スタッフの3つが使えるように」＝本部IDなら誰でも見え方を切替（DEV_VIEW_UIDS は使わない）
+        // ★2026-10-20 6:30 神田さん「最初からしっかり新デザインを」＝本部IDは最初は店舗責任者の見え方（新デザイン）で開く。各端末1回だけ切り替え、以後は本人の選択に従う
+        try { if (!localStorage.getItem('yosakura_hq_first_mgr_1020')) { localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); localStorage.setItem(LS.role, 'manager'); const sl = localStorage.getItem(LS.store); if (!sl || sl === 'all' || sl === 'owned' || !STORES.includes(sl)) localStorage.setItem(LS.store, STORES[0]); } } catch (e) {}
         const rv = localStorage.getItem(LS.role) || 'hq';   // ★開発者ビュー＝見え方だけ端末の選択に従う
         return roleKeys().includes(rv) ? rv : 'hq';
       }
@@ -620,7 +623,7 @@
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
     try { localStorage.removeItem('yosakura_auth_dropped'); } catch (e) {}   // ログインし直したら案内を消す
     setRole(a.role);
-    if (a.role === 'hq') setStoreSel('all');
+    if (a.role === 'hq') { setStoreSel('all'); try { localStorage.removeItem('yosakura_hq_first_mgr_1020'); } catch (e) {} }   // ★2026-10-20 本部IDはログイン直後も店舗責任者の見え方（新デザイン）から
     else if (a.role === 'owner') setStoreSel((a.stores || []).length > 1 ? 'owned' : ((a.stores || [])[0] || STORES[0]));
     else setStoreSel((a.stores || [])[0] || STORES[0]);
     if (a.name && !getUserName() && a.role !== 'staff') setUserName(a.name); // 店舗iPad（共用）は各自が名前を入れる
@@ -633,6 +636,7 @@
     try { await flushPending_(); } catch (e) {}
     setAuth(null);
     try { Object.keys(localStorage).filter(k => k.startsWith('yosakura_') && !LOGOUT_KEEP.has(k) && k !== SETUP_KEY).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+    _rawKeysMem = '';   // ★2026-10-20 ログアウトで目印の写しも空にする（次のログインで必ず取り込み直す）
     try { Object.keys(photoMem).forEach(k => delete photoMem[k]); } catch (e) {}
     try { indexedDB.deleteDatabase('yosakura_photos'); } catch (e) {}
     try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) {}
@@ -8144,6 +8148,7 @@
       </div>` : '';
   function refetchAll_() {
     try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {}
+    _rawKeysMem = '';
     _distFail = false; _lsFull = false;
     toast(L({ ja:'本部のデータから取り直しています…', en:'Rebuilding from HQ data…', vi:'Đang tạo lại từ dữ liệu trụ sở…' }));
     syncReports(true);
@@ -9622,7 +9627,7 @@
      配信先は全店 or 特定店舗。重要フラグあり。全端末同期。
   =================================================================== */
   /* ★2026-10-20 神田さん「引き継ぎは実装しない話だったので不要」＝9/8 のお知らせ「【新機能】店舗用の『引き継ぎ伝言板』運用開始について」を出さない（10/17 決定＝引き継ぎは店のLINE）。本部データの行は消さない */
-  const NEWS_RETIRED_ = ['4261b070-b0ff-478b-8988-2662f594e5ee'];
+  const NEWS_RETIRED_ = ['4261b070-b0ff-478b-8988-2662f594e5ee', 'e41a75a2-81c8-40eb-ba69-c89791b14fe9'];   // ★2026-10-20 9/11 長堀橋の「サーベイ先行スタート（口コミまで1本）」も外す＝10/5 常山さん決定で口コミのご案内は富士山の2店だけ（長堀橋では出ない）・「報告」タブも新デザインに無い
   const getNews = () => { try { return (JSON.parse(localStorage.getItem('yosakura_demo_news')) || []).filter(n => !(n && NEWS_RETIRED_.includes(String(n.id)))); } catch { return []; } };   // ★2026-10-20 すでに保存済みの端末でも出さない
   const saveNews = (a) => { try { localStorage.setItem('yosakura_demo_news', JSON.stringify(a)); } catch (e) {} };
   function newsVisible(list) { // 非本部は「全店向け＋自店向け」だけ、本部は全件
@@ -10267,7 +10272,8 @@
 
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab === 'home' ? '/home' : `/home?tab=${b.dataset.tab}`));
     // 案B＝上の3つの帯（開店前／営業中／締め）を押すとその区切りへ飛ぶ（1画面に流れ順で並べたまま）
-    document.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => { const el = document.getElementById(b.dataset.jump); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    // ★2026-10-20 神田さん「締めを押しても、ボタンがずっと開店前のピンク」＝押した時間帯のボタンを選択中の色にする
+    document.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => { const el = document.getElementById(b.dataset.jump); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (b.classList && b.classList.contains('pb-band')) { document.querySelectorAll('.pb-band').forEach(x => x.classList.toggle('on', x === b)); } });
     // 総括表のビジュアル：期間/指標の切替・個店カルテ・その日の日報
     document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
     // マニュアルの大項目＝タップで中身を開閉（2026-08-28 増田さんのご要望）
@@ -12091,14 +12097,14 @@
            目印一覧（種類|店舗|項目|時刻）なら1/10以下の大きさで、同じ変更検知と再送防止（alreadySent_）ができる。
            ★振り分けを先に行う＝途中で失敗したら目印を残さず、次の同期で自動的にやり直される */
         const nextKeys = d.reports.map(repKey_).join('\n');
-        if (nextKeys !== (localStorage.getItem('yosakura_demo_rawkeys') || '')) {
+        if (nextKeys !== (localStorage.getItem('yosakura_demo_rawkeys') || _rawKeysMem || '')) {
           _distFail = false;
           distribute(d.reports);
           /* ★2026-09-23 長堀橋店「提出したものが全て消えた」＝取り込みの保存に失敗しても目印を保存していたため、
              以後の同期が「変更なし」と判定されてスキップされ続け、22:15の在庫より後の提出が画面に出なかった
              （本部データには全部届いていた）。保存できたときだけ目印を残す。失敗したら目印を消し、
              端末の容量の内訳を apperr で本部データへ送る（次に起きたとき番号で追える） */
-          if (!_distFail) { try { localStorage.setItem('yosakura_demo_rawkeys', nextKeys); } catch (e) {} }
+          if (!_distFail) { _rawKeysMem = nextKeys; try { localStorage.setItem('yosakura_demo_rawkeys', nextKeys); } catch (e) {} }
           else { try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {} reportLsFull_(); }
           try { localStorage.removeItem('yosakura_demo_raw'); } catch (e) {} // 旧の全文コピーを消して容量を空ける
           // ★写真の作業中は描き直さない（貼った写真と選択中の入力欄が消えるため）。取り込み自体は済んでいる
