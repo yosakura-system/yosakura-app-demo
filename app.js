@@ -645,7 +645,7 @@
   const pwChangeDue_ = () => { const a = getAuth(); if (!a || !/^ipad-/.test(String(a.uid || ''))) return false; const ym = new Date().toISOString().slice(0, 7); return !a.pwYm || String(a.pwYm) < ym; };
   /* ★開発者ビュー（本部の確認用）で店舗iPadの表示にしているときは、見本として同じ帯を出す（2026-10-02 神田さん「こちらから店舗iPadの画面を見られないか」）。
      押すと端末設定が開き、同じ「パスワードを変更」の欄が見える（変えるのは自分のIDのパスワード） */
-  const pwChangeBanner_ = () => (pwChangeDue_() || (inDevView() && getRole() === 'staff'))
+  const pwChangeBanner_ = () => pwChangeDue_()   // ★2026-10-20 本部全員が見え方を切り替えるので【見本】の帯は出さない（押すと本部ID自身の変更が開くため）
     ? `<button type="button" class="devview-bar pwchange-bar" data-pwchange="1">${pwChangeDue_() ? '' : L({ ja:'【見本】', en:'[Sample] ', vi:'[Mẫu] ' })}${L({
         ja:'今月のパスワードが未変更です。責任者の方はここを押して変更',
         en:'This month’s password has not been changed yet. Manager: tap here to set a new password (other devices will need to sign in again).',
@@ -9623,7 +9623,7 @@
   =================================================================== */
   /* ★2026-10-20 神田さん「引き継ぎは実装しない話だったので不要」＝9/8 のお知らせ「【新機能】店舗用の『引き継ぎ伝言板』運用開始について」を出さない（10/17 決定＝引き継ぎは店のLINE）。本部データの行は消さない */
   const NEWS_RETIRED_ = ['4261b070-b0ff-478b-8988-2662f594e5ee'];
-  const getNews = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_news')) || []; } catch { return []; } };
+  const getNews = () => { try { return (JSON.parse(localStorage.getItem('yosakura_demo_news')) || []).filter(n => !(n && NEWS_RETIRED_.includes(String(n.id)))); } catch { return []; } };   // ★2026-10-20 すでに保存済みの端末でも出さない
   const saveNews = (a) => { try { localStorage.setItem('yosakura_demo_news', JSON.stringify(a)); } catch (e) {} };
   function newsVisible(list) { // 非本部は「全店向け＋自店向け」だけ、本部は全件
     if (getRole() === 'hq') return list.slice();
@@ -12187,6 +12187,8 @@
   // rep = { kind, store, item, level, note, photos, t }
   function postReport(rep) {
     if (!useBackend()) return Promise.resolve();
+    // ★2026-10-20 本部IDで店舗責任者・スタッフの見え方にしているときは送らない（本店などの提出として記録されるのを防ぐ）
+    if (inDevView()) { toast(L({ ja:'確認用の表示です。この操作は本部・店舗には届きません', en:'Preview view: this action is not sent to HQ or the store.', vi:'Chế độ xem thử: thao tác này không được gửi đi.' })); return Promise.resolve(); }
     return fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(Object.assign({ token: authToken() }, rep)), keepalive: !!(rep && rep.kind === 'ckdone') })
       .then((r) => r.json())
       .then((d) => {

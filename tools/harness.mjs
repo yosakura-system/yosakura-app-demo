@@ -3697,6 +3697,9 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   ok(/class="viewas-btn on" data-viewas="staff"/.test(registry.app.innerHTML) && !/本部メニュー/.test(registry.app.innerHTML), '★2026-10-20 本部IDは全員（社長も）店舗表示に切り替えられる');
   ok(/else if \(_distFail\) \{[^}]*\}\s*else showSyncBand_\(\);/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 保存がいっぱいで取り込めなかったときは「新しい情報が届きました」を出さない（本部iPhoneで毎回出ていた）');
   ok(/const NEWS_RETIRED_ = \['4261b070-b0ff-478b-8988-2662f594e5ee'\];/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')) && /case 'news': \{ if \(NEWS_RETIRED_\.includes\(String\(id\)\)\) break;/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 引き継ぎ伝言板の9/8のお知らせは出さない（引き継ぎは店のLINE）');
+  ok(/const getNews = \(\) => \{ try \{ return \(JSON\.parse\(localStorage\.getItem\('yosakura_demo_news'\)\) \|\| \[\]\)\.filter\(n => !\(n && NEWS_RETIRED_\.includes\(String\(n\.id\)\)\)\)/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 すでに保存済みの端末でも、引き継ぎ伝言板のお知らせは読むときに外す');
+  ok(/function postReport\(rep\) \{[\s\S]{0,300}?if \(inDevView\(\)\) \{ toast\(/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 本部IDで店舗責任者・スタッフの見え方のときは送らない（店舗の提出として記録されない）');
+  ok(/const pwChangeBanner_ = \(\) => pwChangeDue_\(\)\s/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 【見本】のパスワード変更の帯は出さない（押すと本部ID自身の変更が開くため）');
   // ④ ソース＝対象は許可リストのみ・ログイン済みの役割切替は開発者ビューだけ例外
   const dsrc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/const DEV_VIEW_UIDS = \['kanda', 'masuda', 'yosakura-fc', 'tsuneyama'\];/.test(dsrc), '対象は許可リスト（kanda・masuda・本部共有ID・tsuneyama）だけ');
