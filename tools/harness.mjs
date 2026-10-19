@@ -106,7 +106,8 @@ const setLS = (role, storeSel, lang) => {
   localStorage.setItem('yosakura_demo_lang', lang);
   localStorage.setItem('yosakura_tour_done', '1'); // suppress tour
   localStorage.setItem('yosakura_setup_done', '1'); // 初回の「はじめの設定」は出さない
-  localStorage.setItem('yosakura_daily_all', '1'); // ★2026-10-20 毎日の提出物は全店8つに絞った。これまでの検査は全項目で回し、絞った形は案Bの節で見る
+  localStorage.setItem('yosakura_daily_all', '1');
+  localStorage.setItem('yosakura_hqprep_off', '1'); // ★2026-10-20 本部の見え方は「準備中」の1枚。今までの本部ホームの検査はこれで回す // ★2026-10-20 毎日の提出物は全店8つに絞った。これまでの検査は全項目で回し、絞った形は案Bの節で見る
   localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); // ★2026-10-20 本部IDを最初に店舗責任者で開く切替は済みにする（検査は役割を明示して回す）
   /* ★2026-10-19 10/20 6:00 以降は既定が案B（pb）。これまでの検査は今までのホーム（hp）を見ているので、テーマを選んでいない検査は hp で回す。
      既定（未設定）の検査は案Bの節で日付ごとに見る */
@@ -6557,6 +6558,18 @@ console.log('== 2026-10-20 日報＝案Bの見本の並び（店舗側） ==');
   run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/app/soukatsu';
   ok(/id="submitSk"/.test(registry.app.innerHTML) && !/data-sktab=/.test(registry.app.innerHTML), '案Bの店舗側＝日報は開けて、タブ（入力／推移／最近）は出ない');
+}
+
+console.log('== 2026-10-20 本部の見え方＝準備中の1枚 ==');
+{
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_hqprep_off'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); });
+  location.hash = '#/home';
+  const h = registry.app.innerHTML;
+  ok(/本部の画面は準備中です/.test(h) && /class="hqprep__btn pri" data-viewas="manager"/.test(h) && /data-viewas="staff"/.test(h) && !/class="tabbar"/.test(h), '本部IDで本部の見え方＝準備中の1枚（店舗責任者・スタッフへ誘導・下のタブは出さない）');
+  location.hash = '#/home?tab=genba';
+  ok(/本部の画面は準備中です/.test(registry.app.innerHTML), '報告などのタブを直接開いても準備中');
+  location.hash = '#/home?tab=hq';
+  ok(!/本部の画面は準備中です/.test(registry.app.innerHTML), '本部メニュー（?tab=hq）は開ける（神田さんのタスクなど）');
 }
 
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');

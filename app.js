@@ -10424,6 +10424,20 @@
     try { scrollBox_().scrollTop = y; } catch (e) {}
     try { window.scrollTo(0, 0); } catch (e) {} // 念のためページ側は常に先頭（キーボード等でずれた時の戻し）
   };
+  /* ★2026-10-20 8:31 神田さん「本部でログインすると前の画面になる。準備中と大きく出して開けないように。店舗責任者・スタッフを選べるならそっちへ誘導」。
+     本部IDで「本部」の見え方のときは、新デザイン開始（PB_LAUNCH_MS）以降はこの1枚だけを出す。押すと上の切替と同じ（data-viewas）＝店舗責任者／スタッフの見え方へ */
+  const hqPrep_ = () => { if (TAIKEN || !devViewAllowed() || getRole() !== 'hq' || Date.now() < PB_LAUNCH_MS) return false; try { return localStorage.getItem('yosakura_hqprep_off') !== '1'; } catch (e) { return true; } };   // hqprep_off＝検査用（今までの本部ホームの検査を回すときだけ）
+  function hqPrepHTML_() {
+    return `<header class="hdr"><img class="hdr__logo" src="${IMG_ICON}" alt=""><div class="hdr__brand">世桜<small>YOSAKURA APP</small></div><div class="hdr__spacer"></div></header>
+      <main class="appmain hqprep" id="appmain"><div class="hqprep__card">
+        <div class="hqprep__tag">${L({ja:'準備中',en:'Coming soon',vi:'Đang chuẩn bị'})}</div>
+        <h1 class="hqprep__h">${L({ja:'本部の画面は準備中です',en:'The HQ screens are being prepared',vi:'Màn hình HQ đang được chuẩn bị'})}</h1>
+        <p class="hqprep__p">${L({ja:'新しいデザインの本部の画面は、順を追ってご案内します。いまは「店舗責任者」か「スタッフ」の画面で、新しいアプリをお使いください。',en:'The new HQ screens will follow step by step. For now, please use the new app in the Store lead or Staff view.',vi:'Màn hình HQ mới sẽ có dần. Hiện tại hãy dùng chế độ Quản lý cửa hàng hoặc Nhân viên.'})}</p>
+        <button type="button" class="hqprep__btn pri" data-viewas="manager">${L({ja:'店舗責任者の画面で使う',en:'Use the Store lead view',vi:'Dùng chế độ Quản lý'})}<small>${L({ja:'店の数字・きょうやること・見る・注文する',en:'Numbers, today, look up',vi:'Số liệu, hôm nay, tra cứu'})}</small></button>
+        <button type="button" class="hqprep__btn" data-viewas="staff">${L({ja:'スタッフの画面で使う',en:'Use the Staff view',vi:'Dùng chế độ Nhân viên'})}<small>${L({ja:'店舗iPadと同じ画面',en:'Same as the store iPad',vi:'Giống iPad cửa hàng'})}</small></button>
+        <p class="hqprep__note">${L({ja:'あとから画面の上の「表示」でも切り替えられます。確認用の表示なので、ここから出した提出は店舗・本部には届きません。',en:'You can also switch with “View” at the top. This is a preview view: submissions here are not sent.',vi:'Có thể đổi bằng “Xem” ở trên. Đây là chế độ xem thử: nộp ở đây không được gửi.'})}</p>
+      </div><div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;
+  }
   function render(keepScroll) {
     applyTheme();
     if (pbMaintNow_()) { $app.innerHTML = pbMaintHTML_(); return; }   // 10/19 24:00〜10/20 6:00 の休止
@@ -10435,7 +10449,8 @@
     // 描画のあいだは保存が起きない＝保存データの読み直しを1回で済ませる（[[lsJson]]の印）
     _rendering = true; _lsPass++;
     try {
-      if (path.startsWith('/app/')) html = viewApp(path.slice(5));
+      if (hqPrep_() && (path !== '/home' || params.get('tab') !== 'hq') && !path.startsWith('/app/')) html = hqPrepHTML_();   // 本部メニュー（?tab=hq）と各画面への直接リンクは残す（神田さんのタスクなど）   // ★2026-10-20 本部の見え方は準備中（神田さん「開けないように・店舗責任者かスタッフへ誘導」）
+      else if (path.startsWith('/app/')) html = viewApp(path.slice(5));
       else if (path === '/store') html = viewStore(params.get('s') || '', params.get('ym') || ''); // 個店カルテ
       else if (path === '/skprint') html = viewSkPrint(params.get('s') || '', params.get('ym') || ''); // 総括表の形での月次出力
       else if (path === '/home') html = viewHome(params.get('tab') || 'home');
