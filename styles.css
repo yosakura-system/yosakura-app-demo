@@ -1076,3 +1076,8 @@ html[data-theme="pb"] .pb-skauto__r b { font-weight: 700; text-align: right; }
 html[data-theme="pb"] .pb-skmore { margin: 14px 0; padding: 10px 12px; border-radius: 12px; }
 html[data-theme="pb"] #sk_errsel { width: 100%; margin-bottom: 6px; }
 html[data-theme="pb"] .pb-rep .pb-row { grid-template-columns: 1fr auto; }   /* 2026-10-19 本部からの返答＝写真の無い行でも文が横いっぱいに */
+/* ★2026-10-20 案Bの見本＝行の右の「目安○分」・昨日のレジ締め */
+html[data-theme="pb"] .pb-min { font-size: 11px; color: var(--gray); white-space: nowrap; text-align: right; line-height: 1.2; }
+html[data-theme="pb"] .pb-min b { display: block; font-size: 14px; color: inherit; font-weight: 600; }
+html[data-theme="pb"] .pb-regi { grid-template-columns: 1fr auto; }
+html[data-theme="pb"] .pb-regi .pb-nm { font-size: 15px; line-height: 1.5; }

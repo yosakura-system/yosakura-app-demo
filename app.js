@@ -1807,6 +1807,36 @@
   const pbDateLabel_ = () => { const d = new Date(); return LANG === 'ja' ? `${d.getMonth() + 1}月${d.getDate()}日 ${L(WDAY_LABELS[d.getDay()])}曜日` : `${d.getMonth() + 1}/${d.getDate()} ${L(WDAY_LABELS[d.getDay()])}`; };
   const pbSlotKey_ = (k) => k === 'asa' ? 'asa' : k === 'shime' ? 'shime' : 'mid';
   const PB_SLOTS = [['asa', { ja:'開店前', en:'Before opening', vi:'Trước mở cửa' }], ['mid', { ja:'営業中', en:'During service', vi:'Trong ca' }], ['shime', { ja:'締め', en:'Closing', vi:'Đóng cửa' }]];
+  /* ★2026-10-20 案Bの見本＝行の右の「目安○分」。写真1枚は1分・チェックと数を入れるものは3分・ほかは2分（目安。入力時間の計測がたまったら置き換える） */
+  const pbMins_ = (m) => m.linkApp === 'openphoto' || m.linkApp === 'firstphoto' ? 1 : (m.ckMode || m.linkApp === 'zaiko' || m.linkApp === 'soukatsu' || m.linkApp === 'stock') ? 3 : 2;
+  /* ★2026-10-20 神田さん「最初にログインした時に昨日のレジ締めが出てくる方が分かりやすい」＝案Bの見本と同じ「昨日のレジ締め」。
+     数字はUSENレジ（毎朝の取込）・総括表・日報のうち、いちばん正しいもの（getSk の整えた1行）。押すと日報（前日分）が開く */
+  function pbRegiCard_(store) {
+    if (!store) return '';
+    const today = dateKeyFor(store, Date.now());
+    const yd = new Date(today + 'T12:00:00Z'); yd.setUTCDate(yd.getUTCDate() - 1); const yday = yd.toISOString().slice(0, 10);
+    const rec = getSk().find(r => r && r.store === store && r.date === yday);
+    const hasNum = rec && (rec.net != null || rec.sales != null);
+    const isPos = !!(rec && (rec.src === 'usen' || rec.pos));
+    const hhmm = (t) => { const d = new Date(Number(t) || 0); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+    const src = !hasNum ? '' : isPos ? `POS ${hhmm(rec.t)} ${L({ja:'取込 ・ 入力なし',en:'imported',vi:'đã nhập'})}` : rec.src === 'drive' ? L({ja:'総括表から',en:'From the summary sheet',vi:'Từ bảng tổng hợp'}) : L({ja:'日報から',en:'From the daily report',vi:'Từ báo cáo ngày'});
+    const head = `<div class="pb-sec"><h2>${L({ja:'昨日のレジ締め',en:'Yesterday’s close',vi:'Chốt két hôm qua'})}</h2><small>${src || esc(yday.slice(5).replace('-', '/'))}</small></div>`;
+    if (!hasNum) {
+      const msg = USEN_STORES.includes(store) ? L({ja:'まだ届いていません。レジの数字は毎朝自動で入ります',en:'Not in yet. Register data arrives every morning.',vi:'Chưa có. Số liệu két tự vào mỗi sáng.'})
+        : L({ja:'まだありません。日報を出すと、ここに出ます',en:'Nothing yet. It shows here after the daily report.',vi:'Chưa có. Hiện ở đây sau báo cáo ngày.'});
+      return `${head}<div class="pb-card"><button class="pb-row pb-regi" data-tsub="soukatsu"><span class="pb-rowtx"><span class="pb-sub">${msg}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
+    }
+    const net = rec.net != null ? rec.net : rec.sales;
+    const parts = [`${L({ja:'売上',en:'Sales',vi:'Doanh thu'})} ${yen(net)}${rec.net != null ? L({ja:'（税抜）',en:' (excl. tax)',vi:' (chưa thuế)'}) : ''}`];
+    if (rec.guests != null && rec.guests !== '') parts.push(`${rec.guests}${L({ja:'人',en:' guests',vi:' khách'})}`);
+    if (rec.cash != null && rec.cash !== '') parts.push(`${L({ja:'現金',en:'Cash',vi:'Tiền mặt'})} ${yen(rec.cash)}`);
+    if (rec.card != null && rec.card !== '') parts.push(`${L({ja:'カード',en:'Card',vi:'Thẻ'})} ${yen(rec.card)}`);
+    const sub = [];
+    if (rec.emoney) sub.push(`${L({ja:'電子マネー',en:'E-money',vi:'Ví điện tử'})} ${yen(rec.emoney)}`);
+    if (rec.disc) sub.push(`${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})} ${yen(rec.disc)}`);
+    const g = Number(rec.guests) || 0; if (g && net) sub.push(`${L({ja:'客単価',en:'Per guest',vi:'Mỗi khách'})} ${yen(Math.round(Number(net) / g))}`);
+    return `${head}<div class="pb-card"><button class="pb-row pb-regi" data-tsub="soukatsu"><span class="pb-rowtx"><span class="pb-nm">${parts.join(' ・ ')}</span>${sub.length ? `<span class="pb-sub">${sub.join(' ・ ')}</span>` : ''}</span><span class="pb-rt">${svg('chev')}</span></button></div>`;
+  }
   /* 1行＝写真・名前・いまの状態・開く。開く先と印（data-tsub / data-tsubmode / data-tsubphoto / data-tdid / data-openurl）は subItemRow と同じ＝反応は変えない */
   const pbFlowRow_ = (it) => {
     const m = it.m;
@@ -1823,9 +1853,11 @@
     const act = (m.detect === 'didit' && !it.submitted) ? `<button class="pb-mini" data-tdid="${esc(m.id)}">${L({ja:'実施しました',en:'Done',vi:'Đã làm'})}</button>`
       : isHttp(m.url) ? `<button class="pb-mini" data-openurl="${esc(openUrlFor(m.url))}">${L({ja:'開く',en:'Open',vi:'Mở'})}</button>` : '';
     const tag = m.oblig === 'required' ? ` <span class="pb-pill">${L({ja:'本部へ',en:'HQ',vi:'HQ'})}</span>` : '';
+    const mins = (!done && !it.manual && !it.holiday) ? pbMins_(m) : 0;   // ★2026-10-20 案Bの見本と同じ＝行の右に「目安○分」
     const inner = `${pbImg_(pbPhotoKey_(m))}<span class="pb-rowtx"><span class="pb-nm">${esc(L(m.name))}${tag}</span><span class="pb-sub">${sub}</span></span>`;
     const cls = `pb-row${done ? ' done' : ''}${late ? ' late' : ''}`;
-    if (m.linkApp && !act) return `<button class="${cls}" data-tsub="${esc(m.linkApp)}"${openArg}>${inner}<span class="pb-rt">${done ? svg('tick') : svg('chev')}</span></button>`;
+    const minTx = mins ? `<span class="pb-min">${L({ja:'目安',en:'~',vi:'~'})}<b>${mins}${L({ja:'分',en:'min',vi:'ph'})}</b></span>` : '';
+    if (m.linkApp && !act) return `<button class="${cls}" data-tsub="${esc(m.linkApp)}"${openArg}>${inner}<span class="pb-rt">${done ? svg('tick') : (minTx || svg('chev'))}</span></button>`;
     return `<div class="${cls}">${inner}<span class="pb-rt">${act || (done ? svg('tick') : '')}</span></div>`;
   };
   /* ★ホームで気づかせるもの（本部からの返答・サーベイの低い評価）の中身＝旧ホームと案Bのホームで同じものを使う（2026-10-19・案Bのホームで抜けていた） */
@@ -1891,8 +1923,8 @@
     const overStrip = over ? `<button class="pb-strip pb-strip--late" data-jump="pbslot-${nowKey}"><span><b>${L({ja:'締切を過ぎている提出',en:'Overdue',vi:'Quá hạn'})}</b>${over} ${L({ja:'件・いま出せば本部にそのまま届きます',en:'item(s). Submit now and HQ gets it.',vi:'mục. Nộp ngay.'})}</span>${svg('chev')}</button>` : '';
     const cover = `<div class="pb-cover">${pbImg_('kyou_first_dish', 'pb-coverimg')}<div class="pb-veil"></div><div class="pb-coverin">
         <div class="pb-date">${pbDateLabel_()} ・ ${esc(storeShort(store))}</div>
-        <div class="pb-h">${left.length ? L({ja:'きょうやること',en:'Today',vi:'Hôm nay'}) : L({ja:'きょうは出し切りました',en:'All done today',vi:'Hôm nay đã xong'})}</div>
-        <div class="pb-st"><span>${left.length ? `${L({ja:'残り',en:'Left',vi:'Còn'})} ${left.length} ${L({ja:'件',en:'',vi:'mục'})}` : L({ja:'お疲れさまでした',en:'Well done',vi:'Cảm ơn'})}</span><span>${doneN}／${total} ${L({ja:'済',en:'done',vi:'xong'})}</span></div>
+        <div class="pb-h">${left.length ? L({ja:'きょうの流れ',en:'Today’s flow',vi:'Việc hôm nay'}) : L({ja:'きょうは出し切りました',en:'All done today',vi:'Hôm nay đã xong'})}</div>
+        <div class="pb-st"><span>${left.length ? `${L({ja:'残り',en:'Left',vi:'Còn'})} ${left.length}${L({ja:'件',en:'',vi:' mục'})} ・ ${L({ja:'目安',en:'about',vi:'khoảng'})} ${left.reduce((a, it) => a + pbMins_(it.m), 0)}${L({ja:'分',en:' min',vi:' ph'})}` : L({ja:'お疲れさまでした',en:'Well done',vi:'Cảm ơn'})}</span><span>${doneN}／${total} ${L({ja:'済',en:'done',vi:'xong'})}</span></div>
         <div class="pb-prog"><i style="width:${pct}%"></i></div></div></div>`;
     const chips = `<div class="pb-chips">
       <button class="pb-chip" data-open="kizuki">${pbImg_('kyou_kizuki', 'pb-chipimg')}<b>${L({ja:'気づき',en:'Insight',vi:'Ghi nhận'})}</b><small>${L({ja:'良かったことも困ったことも',en:'Good or bad',vi:'Tốt hay khó'})}</small></button>
@@ -1913,8 +1945,8 @@
     const rep = hqReplyData_(role);
     const repCard = rep.rows.length ? `<div class="pb-sec"><h2>${L({ja:'本部からの返答',en:'Replies from HQ',vi:'Phản hồi từ HQ'})}</h2><small>${L({ja:'直近7日',en:'Last 7 days',vi:'7 ngày qua'})}</small></div>
       <div class="pb-card pb-rep">${rep.rows.map(x => `<button class="pb-row" ${rep.PHOTO[x.kind] ? `data-tsub="openphoto" data-tsubphoto="${esc(x.kind)}"` : `data-go="${esc(rep.ROUTE[x.kind])}"`}><span class="pb-rowtx"><span class="pb-nm">${esc(L(rep.LABEL[x.kind]))}</span><span class="pb-sub">${esc(x.a.memo)} ・ ${timeAgo(x.a.ts)}</span></span><span class="pb-rt">${svg('chev')}</span></button>`).join('')}</div>` : '';
-    return `<main class="screen pb-home">${cover}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${nippouCard}
-      <div class="pb-bands">${bands}</div>
+    return `<main class="screen pb-home">${cover}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${pbRegiCard_(store)}${nippouCard}
+      <div class="pb-sec"><h2>${L({ja:'今日の流れ',en:'Today’s flow',vi:'Việc hôm nay'})}</h2><small>${L({ja:'時間帯の順',en:'In time order',vi:'Theo giờ'})}</small></div>
       <div class="pb-card pb-flow">${flow || `<div class="muted">${L({ja:'今日の提出物はありません',en:'Nothing today',vi:'Hôm nay không có'})}</div>`}</div>
       ${chips}${hoCard}${wk}
       <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;   // ★2026-10-19 「最新にする」を案Bのホームにも（旧ホームと同じ位置＝画面の下）
@@ -1932,7 +1964,7 @@
     if (!prevDone) { cls = hm >= '12:00' ? ' late' : ''; line = `${hm >= '12:00' ? `<span class="pb-late">${L({ja:'締切を過ぎています',en:'Overdue',vi:'Quá hạn'})}</span>・` : ''}${L({ja:'前日',en:'Yesterday',vi:'Hôm qua'})}（${esc(String(yday).slice(5))}）${L({ja:'の分がまだです。12時までに',en:' not yet submitted. Due 12:00',vi:' chưa nộp. Hạn 12:00'})}`; }
     else if (todayDone) { cls = ' done'; line = `${L({ja:'今日の分 出しました',en:'Today submitted',vi:'Hôm nay đã nộp'})} ${hhmm(todayRows[0].t)}`; }
     else line = L({ja:'閉店後にその日の分を。翌朝12時までなら前日分として出せます',en:'Submit after closing, or by 12:00 next morning as yesterday’s.',vi:'Nộp sau khi đóng cửa, hoặc trước 12:00 hôm sau.'});
-    return `<div class="pb-card pb-nippou"><div class="pb-slot">${L({ja:'日報',en:'Daily report',vi:'Báo cáo ngày'})}<small>${L({ja:'いつでも',en:'any time',vi:'bất kỳ lúc nào'})}</small></div>
+    return `<div class="pb-sec"><h2>${L({ja:'日報',en:'Daily report',vi:'Báo cáo ngày'})}</h2><small>${L({ja:'閉店後にその日の分 ・ 翌朝12時までなら前日分',en:'After closing, or by 12:00 next day',vi:'Sau đóng cửa, hoặc trước 12:00 hôm sau'})}</small></div><div class="pb-card pb-nippou">
       <button class="pb-row${cls}" data-tsub="soukatsu">${pbImg_('kyou_nippou')}<span class="pb-rowtx"><span class="pb-nm">${esc(L(m.name))} <span class="pb-pill">${L({ja:'本部へ',en:'HQ',vi:'HQ'})}</span></span><span class="pb-sub">${line}</span></span><span class="pb-rt">${cls === ' done' ? svg('tick') : svg('chev')}</span></button></div>`;
   }
   function pbMiru_(role) {

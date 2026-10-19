@@ -6535,12 +6535,14 @@ console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース�
   location.hash = '#/home';
   const h = registry.app.innerHTML;
   ok(/class="pb-cover"/.test(h) && /きょうやること/.test(h), 'pb：最初の画面は「きょうやること」の表紙');
-  ok(/id="pbslot-asa"/.test(h) && /data-jump="pbslot-/.test(h), 'pb：開店前／営業中／締めの区切りと、飛ぶための帯がある');
+  ok(/id="pbslot-asa"/.test(h) && !/class="pb-band/.test(h) && /今日の流れ/.test(h), 'pb：今日の流れは1枚に開店前／営業中／締めの見出しで区切る（2026-10-20 案Bの見本どおり・時間帯のボタンは出さない）');
+  ok(/昨日のレジ締め/.test(h) && h.indexOf('昨日のレジ締め') < h.indexOf('pb-nippou'), 'pb：表紙のすぐ下に「昨日のレジ締め」→日報の順（2026-10-20 神田さん「最初に昨日のレジ締めが出る方が分かりやすい」）');
+  ok(/きょうの流れ/.test(h) && /目安/.test(h), 'pb：表紙は「きょうの流れ」と目安の分（案Bの見本）');
   ok((h.match(/data-tab="/g) || []).length === 3 && /data-tab="miru"/.test(h) && !/data-tab="genba"/.test(h), 'pb：店舗側の下タブは3つ（きょうやること／見る・注文する／その他）');
   ok(/data-tsubmode="open"/.test(h), 'pb：流れの行は今までと同じ印で開く（チェックは種類つき）');
   ok(/data:image\/webp/.test(h), 'pb：ボタンに写真（埋め込みのwebp）が付いている');
   ok(!/data-open="handover"/.test(h) && /data-open="emergency"/.test(h) && /data-open="surveyqr"/.test(h), 'pb：緊急・サーベイQRの入口がある。引き継ぎの入口は無い（2026-10-17 引き継ぎは店のLINEで＝神田さん）');
-  ok(/class="pb-card pb-nippou"/.test(h) && (h.match(/data-tsub="soukatsu"/g) || []).length === 1, 'pb：日報は時間帯の帯に入れず専用の枠（1か所だけ）（2026-10-16 神田さん「別枠で」）');
+  ok(/class="pb-card pb-nippou"/.test(h) && !/data-tsub="soukatsu"/.test(h.slice(h.indexOf('pb-flow'))), 'pb：日報は時間帯の帯に入れず専用の枠（1か所だけ）（2026-10-16 神田さん「別枠で」）');
   location.hash = '#/home?tab=miru';
   const m = registry.app.innerHTML;
   ok(/class="pb-tiles"/.test(m) && (m.match(/class="pb-tile"/g) || []).length === 4, 'pb：見る・注文するは4つの写真タイル');
