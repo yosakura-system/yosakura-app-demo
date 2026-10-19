@@ -3688,7 +3688,7 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   seedAuth('kanda', 'hq', 'hq');
   location.hash = '#/home';
   ok(/class="viewas-btn on" data-viewas="hq"/.test(registry.app.innerHTML), '本部の表示でも切替の帯が出る（本部が選択中）＝2026-10-20 神田さん「本部のメンバーは全員3つ使えるように」');
-  ok(/let _rawKeysMem = '';/.test(code) && /localStorage\.getItem\('yosakura_demo_rawkeys'\) \|\| _rawKeysMem \|\| ''/.test(code) && /if \(!_distFail\) \{ _rawKeysMem = nextKeys;/.test(code) && (code.match(/_rawKeysMem = '';/g) || []).length >= 3, '★2026-10-20 目印を端末に保存できなくても、起動中は同じ内容で「新しい情報」の帯を出さない（ログアウト・取り直しでは空にする）');
+  ok(/let _rawKeysMem = '';/.test(code) && /localStorage\.getItem\('yosakura_demo_rawkeys'\) \|\| _rawKeysMem \|\| ''/.test(code) && /if \(!_distFail\) \{ _rawKeysMem = nextKeys;/.test(code) && (code.match(/_rawKeysMem = '';/g) || []).length >= 4 && /else \{ _rawKeysMem = ''; try \{ localStorage\.removeItem\('yosakura_demo_rawkeys'\); \} catch \(e\) \{\} reportLsFull_\(\); \}/.test(code), '★2026-10-20 目印を端末に保存できなくても、起動中は同じ内容で「新しい情報」の帯を出さない（ログアウト・取り直しでは空にする）');
   ok(/document\.querySelectorAll\('\.pb-band'\)\.forEach\(x => x\.classList\.toggle\('on', x === b\)\)/.test(code), '★2026-10-20 開店前・営業中・締めは、押したボタンが選択中の色になる');
   // ★2026-10-20 6:30 神田さん「本部側で入ると旧デザイン」＝本部IDは最初は店舗責任者の見え方（新デザイン）で開く。押せば本部に戻れ、以後はその選択のまま
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_hq_first_mgr_1020'); localStorage.removeItem('yosakura_theme'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); });
@@ -6059,7 +6059,7 @@ location.hash = '#/app/checklist';
   const src = code;
   ok(/_distFail = false;\s*\n\s*distribute\(d\.reports\);/.test(src), '同期は取り込みの前に失敗の印をリセットする');
   ok(/if \(!_distFail\) \{ (?:_rawKeysMem = nextKeys; )?try \{ localStorage\.setItem\('yosakura_demo_rawkeys', nextKeys\)/.test(src), '取り込みが全部保存できたときだけ「取り込み済み」の目印を保存する');
-  ok(/else \{ try \{ localStorage\.removeItem\('yosakura_demo_rawkeys'\); \} catch \(e\) \{\} reportLsFull_\(\); \}/.test(src), '失敗したら目印を消して、容量の内訳を本部データへ送る');
+  ok(/else \{ (?:_rawKeysMem = ''; )?try \{ localStorage\.removeItem\('yosakura_demo_rawkeys'\); \} catch \(e\) \{\} reportLsFull_\(\); \}/.test(src), '失敗したら目印を消して、容量の内訳を本部データへ送る');
   ok(/REBUILDABLE_KEYS\.forEach\(rk => \{ if \(rk !== 'yosakura_demo_rawkeys' && !written\[rk\]\)/.test(src), '保存に失敗したら、まだ書いていない控えだけを捨てて空きを作る（書いた直後の一覧は消さない）');
   ok(/localStorage\.getItem\('yosakura_resync_once'\) !== 'v279'/.test(src), 'この版に上がった端末は1回だけ本部データから一覧を作り直す');
   ok(/if \(!localStorage\.getItem\('yosakura_demo_reports'\) && localStorage\.getItem\('yosakura_demo_rawkeys'\)\) localStorage\.removeItem\('yosakura_demo_rawkeys'\)/.test(src), '一覧が無いのに目印だけある端末は起動時にほどく');

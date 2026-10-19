@@ -623,7 +623,7 @@
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
     try { localStorage.removeItem('yosakura_auth_dropped'); } catch (e) {}   // ログインし直したら案内を消す
     setRole(a.role);
-    if (a.role === 'hq') { setStoreSel('all'); try { localStorage.removeItem('yosakura_hq_first_mgr_1020'); } catch (e) {} }   // ★2026-10-20 本部IDはログイン直後も店舗責任者の見え方（新デザイン）から
+    if (a.role === 'hq') setStoreSel('all');   // ★2026-10-20 新しくログインした端末はログアウトで印が消えているので店舗責任者の見え方から。ログインが外れて入り直しただけなら、それまでの見え方のまま
     else if (a.role === 'owner') setStoreSel((a.stores || []).length > 1 ? 'owned' : ((a.stores || [])[0] || STORES[0]));
     else setStoreSel((a.stores || [])[0] || STORES[0]);
     if (a.name && !getUserName() && a.role !== 'staff') setUserName(a.name); // 店舗iPad（共用）は各自が名前を入れる
@@ -12105,7 +12105,7 @@
              （本部データには全部届いていた）。保存できたときだけ目印を残す。失敗したら目印を消し、
              端末の容量の内訳を apperr で本部データへ送る（次に起きたとき番号で追える） */
           if (!_distFail) { _rawKeysMem = nextKeys; try { localStorage.setItem('yosakura_demo_rawkeys', nextKeys); } catch (e) {} }
-          else { try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {} reportLsFull_(); }
+          else { _rawKeysMem = ''; try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {} reportLsFull_(); }   // ★2026-10-20 取り込みに失敗したら写しも空にする（次の同期で必ずやり直す）
           try { localStorage.removeItem('yosakura_demo_raw'); } catch (e) {} // 旧の全文コピーを消して容量を空ける
           // ★写真の作業中は描き直さない（貼った写真と選択中の入力欄が消えるため）。取り込み自体は済んでいる
           // ★同期の描き直しでは位置を保つ（2026-08-31 ユンさんの報告＝チェックのたびに同期→再描画で先頭へ戻っていた）
