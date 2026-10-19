@@ -1102,3 +1102,20 @@ html[data-theme="pb"] .pb-spark .p { fill: var(--suou, #8E354A); }
 html[data-theme="pb"] .pb-numseg { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; }
 html[data-theme="pb"] .pb-numseg button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: inherit; cursor: pointer; }
 html[data-theme="pb"] .pb-numseg button.on { background: var(--suou-t); color: var(--suou-d); border-color: var(--suou-d); font-weight: 600; }
+
+/* ★2026-10-20 日報（案Bの見本の並び） */
+html[data-theme="pb"] .pb-nip .pb-nipdate { margin: 0 0 10px; }
+html[data-theme="pb"] .pb-nip .pb-nipdate > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: baseline; font-size: 16px; font-weight: 600; padding: 4px 0; }
+html[data-theme="pb"] .pb-nip .pb-nipdate > summary span { font-size: 12px; font-weight: 400; color: var(--gray); text-decoration: underline; }
+html[data-theme="pb"] .pb-nipauto { border: 1px solid var(--line); border-radius: 14px; padding: 2px 14px; margin: 0 0 6px; background: #fff; }
+html[data-theme="pb"] .pb-nipf { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); }
+html[data-theme="pb"] .pb-nipf:first-child { border-top: 0; }
+html[data-theme="pb"] .pb-niplb { font-size: 15px; }
+html[data-theme="pb"] .pb-niplb small { display: block; font-size: 11px; color: var(--gray); margin-top: 2px; }
+html[data-theme="pb"] .pb-nipv { text-align: right; font-size: 18px; font-weight: 500; }
+html[data-theme="pb"] .pb-nipv small { display: block; font-size: 11px; color: #2d6a4f; font-weight: 600; margin-top: 2px; }
+html[data-theme="pb"] .pb-nipempty { padding: 12px 0; font-size: 13px; color: var(--gray); }
+html[data-theme="pb"] .pb-nipmore { margin: 12px 0; border: 1px solid var(--line); border-radius: 14px; padding: 0 14px; }
+html[data-theme="pb"] .pb-nipmore > summary { list-style: none; cursor: pointer; padding: 12px 0; font-weight: 500; }
+html[data-theme="pb"] .pb-nip #sk_slipbox > .idlabel { display: none; }
+html[data-theme="pb"] .pb-nipshoot { display: block; width: 100%; margin: 0 0 8px; padding: 12px; border-radius: 14px; border: 1px dashed var(--suou-d); background: var(--suou-t); color: var(--suou-d); font: inherit; font-weight: 600; cursor: pointer; }

@@ -2639,6 +2639,69 @@
           <button type="button" class="btn-sm" id="sk_slipadd">${L({ ja:'＋ 納品書を足す', en:'+ Add slip', vi:'+ Thêm phiếu' })}</button>
           <p class="hint" id="sk_slipnote" style="display:block;margin:6px 0 0;color:#c0392b;font-weight:600">${L({ ja:'写真から読んだ金額です。送信の前に、伝票の合計と同じか必ず確認してください。', en:'Amounts read from photos. Always check them against the slip total before sending.', vi:'Số tiền đọc từ ảnh. Luôn đối chiếu với tổng trên phiếu trước khi gửi.' })}</p>
         </div>`;
+  /* ★2026-10-20 神田さん「B案のデモの画面の方が使いやすい」＝案Bの店舗側だけ、日報を見本の並びにする。
+     上＝レジの数字（自動・入力なし）→今日の納品書→一言→ほかの項目（折りたたみ）。入力欄・id・提出の中身は今までのまま（並べ替えるだけ） */
+  function pbNipAutoHtml_() {
+    const g = (id) => document.getElementById(id);
+    const store = (g('sk_store') && g('sk_store').value) || visibleStores()[0];
+    const date = (g('sk_date') && g('sk_date').value) || todayKey();
+    const md = String(date).slice(5).replace('-', '/');
+    const wd = (() => { const d = new Date(date + 'T12:00:00Z'); return L(WDAY_LABELS[d.getUTCDay()]); })();
+    const sum = g('pbn_datesum'); if (sum) sum.innerHTML = `${esc(md)}（${esc(wd)}）${L({ja:'の日報',en:' report',vi:''})}${date === dateKeyFor(store, Date.now() - 864e5) ? ' ・ ' + L({ja:'前日分',en:'yesterday',vi:'hôm qua'}) : ''}<span>${L({ja:'日付を変える',en:'Change date',vi:'Đổi ngày'})}</span>`;
+    if (skNoUsen_(store)) return '';
+    const rec = getSk().find(r => r && r.store === store && r.date === date && (r.src === 'usen' || r.pos));
+    if (!rec) return `<div class="pb-nipauto"><div class="pb-nipempty">${L({ja:'レジの数字はまだ届いていません。毎朝自動で入ります（入力は要りません）',en:'Register numbers not in yet. They arrive automatically every morning.',vi:'Số liệu két chưa có. Tự vào mỗi sáng.'})}</div></div>`;
+    const d = new Date(Number(rec.t) || 0); const at = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const auto = L({ja:'自動',en:'auto',vi:'tự động'});
+    const row = (lb, sub, v) => `<div class="pb-nipf"><span class="pb-niplb">${lb}<small>${sub}</small></span><span class="pb-nipv">${v}<small>${auto}</small></span></div>`;
+    const out = [];
+    if (Number(rec.net) > 0) out.push(row(L({ja:'売上（税抜）',en:'Sales (excl. tax)',vi:'Doanh thu (chưa thuế)'}), `POS ${at} ${L({ja:'取込',en:'import',vi:'nhập'})}`, yen(rec.net)));
+    else if (Number(rec.sales) > 0) out.push(row(L({ja:'売上（税込）',en:'Sales (incl. tax)',vi:'Doanh thu (gồm thuế)'}), `POS ${at} ${L({ja:'取込',en:'import',vi:'nhập'})}`, yen(rec.sales)));
+    if (rec.guests != null && rec.guests !== '') out.push(row(L({ja:'客数',en:'Guests',vi:'Khách'}), 'POS', esc(String(rec.guests))));
+    if (rec.cash != null && rec.cash !== '') out.push(row(L({ja:'現金',en:'Cash',vi:'Tiền mặt'}), 'POS', yen(rec.cash)));
+    if (rec.card != null && rec.card !== '') out.push(row(L({ja:'カード',en:'Card',vi:'Thẻ'}), 'POS', yen(rec.card)));
+    if (rec.emoney) out.push(row(L({ja:'電子マネー',en:'E-money',vi:'Ví điện tử'}), 'POS', yen(rec.emoney)));
+    if (rec.disc) out.push(row(L({ja:'値引き',en:'Discount',vi:'Giảm giá'}), 'POS', yen(rec.disc)));
+    if (rec.err != null && rec.err !== '' && Number(rec.err) !== 0) out.push(row(L({ja:'レジの過不足',en:'Register diff.',vi:'Chênh lệch két'}), 'POS', (Number(rec.err) < 0 ? '−' : '') + yen(Math.abs(Number(rec.err)))));
+    return `<div class="pb-nipauto">${out.join('')}</div>`;
+  }
+  function pbNippouLayout_() {
+    const form = document.getElementById('skForm'); if (!form || form.dataset.pbn) return;
+    form.dataset.pbn = '1'; form.classList.add('pb-nip');
+    const g = (id) => document.getElementById(id);
+    const store = (g('sk_store') && g('sk_store').value) || visibleStores()[0];
+    const noUsen = skNoUsen_(store);
+    const kids = Array.from(form.children);
+    const h3 = form.querySelector('h3');
+    const submit = g('submitSk'); const after = submit ? submit.nextElementSibling : null;
+    const pos = g('sk_posnote');
+    if (pos) pos.textContent = noUsen
+      ? L({ ja:'売上はレジの日計を見て入れてください。あとは今日届いた納品書を撮るだけです。', en:'Enter sales from the register report, then photograph today’s delivery slips.', vi:'Nhập doanh thu từ báo cáo két, rồi chụp phiếu giao hàng hôm nay.' })
+      : L({ ja:'売上・客数・現金・カードはUSENレジから入っています。入れるのは今日届いた納品書だけです。', en:'Sales, guests, cash and card come from the USEN register. Only enter today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ két USEN. Chỉ nhập phiếu giao hàng hôm nay.' });
+    const dateGrid = g('sk_date') ? g('sk_date').closest('.sk-grid') : null;
+    const dbox = document.createElement('details'); dbox.className = 'pb-nipdate'; dbox.innerHTML = '<summary id="pbn_datesum"></summary>';
+    const auto = document.createElement('div'); auto.id = 'pbn_auto';
+    const salesLbl = noUsen && g('sk_posgrid') ? g('sk_posgrid').previousElementSibling : null;
+    const salesGrid = noUsen ? g('sk_posgrid') : null;
+    const slipHead = document.createElement('div'); slipHead.className = 'pb-sec'; slipHead.innerHTML = `<h2>${L({ja:'今日の納品書',en:'Today’s delivery slips',vi:'Phiếu giao hàng hôm nay'})}</h2><small>${L({ja:'撮れば自動で読みます',en:'Photos are read automatically',vi:'Chụp là tự đọc'})}</small>`;
+    const nm = (() => { try { return getMasters(store).find(m => m.id === 'nouhin' && appliesToStore(m, store)); } catch (e) { return null; } })();
+    const shoot = nm ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pb-nipshoot'; b.dataset.tsub = 'openphoto'; b.dataset.tsubphoto = 'nouhin'; b.textContent = L({ ja:'📷 納品書を撮る（仕入先と8%・10%を自動で読む）', en:'📷 Photograph a delivery slip', vi:'📷 Chụp phiếu giao hàng' }); return b; })() : null;   // ★納品書の写真は毎日の一覧から外したので、ここから撮る
+    const slip = g('sk_slipbox');
+    const memo = g('sk_memo') ? g('sk_memo').closest('label') : null;
+    if (memo && memo.querySelector('span')) memo.querySelector('span').textContent = L({ ja:'一言（本部に伝えたいこと・任意）', en:'A note for HQ (optional)', vi:'Ghi chú cho HQ (tùy chọn)' });
+    const more = document.createElement('details'); more.className = 'pb-nipmore';
+    more.innerHTML = `<summary>${L({ja:'ほかの項目（チップ・勤怠・発注など・入れる店だけ）',en:'Other items (tips, attendance, orders…)',vi:'Mục khác (tip, chấm công, đặt hàng…)'})}</summary>`;
+    const placed = new Set([h3, pos, g('sk_editnote'), g('sk_datenote'), dateGrid, salesLbl, salesGrid, slip, memo, submit, after].filter(Boolean));
+    kids.forEach(k => { if (!placed.has(k)) more.appendChild(k); });
+    if (dateGrid) dbox.appendChild(dateGrid);
+    if (h3) h3.textContent = L({ ja:'日報', en:'Daily report', vi:'Báo cáo ngày' });
+    if (g('sk_datenote')) g('sk_datenote').style.display = 'none';   // 日付は上の札に出す（二重にしない）
+    const order = [h3, pos, g('sk_editnote'), g('sk_datenote'), dbox, auto, salesLbl, salesGrid, slipHead, shoot, slip, memo, more, submit, after].filter(Boolean);
+    order.forEach(el => form.appendChild(el));
+    const draw = () => { const a = g('pbn_auto'); if (a) a.innerHTML = pbNipAutoHtml_(); };
+    draw();
+    ['sk_date', 'sk_store'].forEach(id => { const e = g(id); if (e) e.addEventListener('change', () => setTimeout(draw, 0)); });
+  }
   const skSlipsRender_ = () => { const el = document.getElementById('sk_slips'); if (el) el.innerHTML = skSlipsRowsHtml_(); };
   const skSlipsApply_ = () => {
     if (!skSlips_.length) return false;
@@ -5506,7 +5569,8 @@
     ];
     // タブはURL（?tab=）が最優先＝ガイド等からタブ指定で飛べる。無ければ前回選んだタブ、初回は入力
     const urlSkTab = currentRoute().params.get('tab');
-    const skTab = SKT.some(o => o.v === urlSkTab) ? urlSkTab
+    const PBN = isPb() && getRole() !== 'hq';   // ★2026-10-20 案Bの店舗側＝見本と同じ1枚（タブを出さない）
+    const skTab = PBN ? 'input' : SKT.some(o => o.v === urlSkTab) ? urlSkTab
       : SKT.some(o => o.v === localStorage.getItem('yosakura_soukatsu_tab')) ? localStorage.getItem('yosakura_soukatsu_tab') : 'input';
     const skTabSeg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="sktab">${SKT.map(o => `<button type="button" data-sktab="${o.v}" class="${o.v === skTab ? 'on' : ''}">${L(o.t)}</button>`).join('')}</div></div>`;
     /* 店舗比較（複数店舗を見られる本部・オーナー）／個店サマリー（1店舗）
@@ -5531,7 +5595,7 @@
     })();
     return `
       ${NOTE({ ja:'◆ 出すと本部に届きます', en:'Submitting sends it to HQ', vi:'Gửi là đến HQ' })}
-      ${skTabSeg}
+      ${PBN ? '' : skTabSeg}
       ${head}
       ${skTab !== 'input' ? '' : (() => { const skCum0 = skCumBase(vis[0], today); return `<div class="card" id="skForm">
         <h3>${L({ ja:'本日の日報', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
@@ -11816,6 +11880,7 @@
         skAuto_();
       };
       ['sk_date', 'sk_store'].forEach(id => { const el = byId(id); if (el) el.addEventListener('change', () => skFill_(true)); });
+      if (isPb() && getRole() !== 'hq') setTimeout(() => { try { pbNippouLayout_(); } catch (e) {} }, 0);   // ★2026-10-20 案Bの店舗側＝見本の並び
       /* ★今日の納品書の操作（2026-10-01）＝仕入先を選ぶ・金額を直す・足す・消す → 仕入3欄と累計を入れ直す */
       const slipsRefresh = (rerender) => { if (rerender) skSlipsRender_(); skSlipsApply_(); cumUpd(); };
       const slipBox = byId('sk_slipbox');

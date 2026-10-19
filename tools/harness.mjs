@@ -6548,6 +6548,17 @@ console.log('== 2026-10-20 バックチェック対応（v383） ==');
   ok(/data-numstore=/.test(code) && /\[data-numstore\]/.test(code), '複数店のオーナーは店の数字で店を切り替えられる');
 }
 
+console.log('== 2026-10-20 日報＝案Bの見本の並び（店舗側） ==');
+{
+  ok(/const skTab = PBN \? 'input' :/.test(code) && /\$\{PBN \? '' : skTabSeg\}/.test(code), '案Bの店舗側の日報はタブを出さず入力だけ');
+  ok(/function pbNippouLayout_\(\)/.test(code) && /if \(isPb\(\) && getRole\(\) !== 'hq'\) setTimeout\(\(\) => \{ try \{ pbNippouLayout_\(\); \}/.test(code), '案Bの店舗側は日報を見本の並び（レジの自動→納品書→一言→ほかの項目）に並べ替える');
+  ok(/kids\.forEach\(k => \{ if \(!placed\.has\(k\)\) more\.appendChild\(k\); \}\)/.test(code), '並べ替えは要素を移すだけ（入力欄とidは消さない＝提出の中身は同じ）');
+  ok(/b\.dataset\.tsub = 'openphoto'; b\.dataset\.tsubphoto = 'nouhin'/.test(code), '日報から納品書を撮れる（納品書の写真は毎日の一覧から外したため）');
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/app/soukatsu';
+  ok(/id="submitSk"/.test(registry.app.innerHTML) && !/data-sktab=/.test(registry.app.innerHTML), '案Bの店舗側＝日報は開けて、タブ（入力／推移／最近）は出ない');
+}
+
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');
 {
   const S = '牛カツ世桜 長堀橋店';
