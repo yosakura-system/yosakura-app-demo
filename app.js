@@ -12225,10 +12225,12 @@
     /* ★2026-10-16 本部の端末だけ、古い控えを端末に残さない（神田さんのiPhone＝全店ぶんの控えで 2,223K字＝iPhoneの上限に当たり LSFULL）。
        店舗の端末は自店ぶんだけなので対象外。日報・チェック・提出の記録は前々月の1日より前を端末に置かない（数値・原価率＝前月・前々月まで出る・提出履歴＝30日に足りる）。
        本部データ（サーバー）は消さない＝表示のときに持たないだけ。口コミの控え（gsnap）・設定類・お知らせは対象にしない */
+    let hqSlimCut_ = '';   // 本部の端末で総括表を持つ最初の営業日（YYYY-MM-DD）＝下の保存前の間引きで使う
     if (getRole() === 'hq' && rows.length > 1500) {   // 控えが多い本部の端末だけ（少ない端末・試験は従来どおり全部持つ）
       const cut = (() => { const d = new Date(Date.now() + 9 * 3600e3); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 2, 1) - 9 * 3600e3; })();   // 前々月の1日（JST）から＝数値・原価率の前月・前々月が出る
       const HEAVY = new Set(['soukatsu', 'ckdone', 'subrec', 'hqack', 'kinshu', 'chukan', 'chukandraft', 'skdraft', 'nouhindraft', 'handover', 'zaiko', 'zaikoorder', 'open']);
       rows = rows.filter(r => !(r && HEAVY.has(r.kind) && (Number(r.t) || 0) < cut));
+      hqSlimCut_ = new Date(cut + 9 * 3600e3).toISOString().slice(0, 10);
     }
     (rows || []).forEach(r => {
       // 店舗名は正式名称へ寄せる（過去のデータが旧い表記でも、同じ店舗として扱う）
@@ -12321,6 +12323,28 @@
       REBUILDABLE_KEYS.forEach(rk => { if (rk !== 'yosakura_demo_rawkeys' && !written[rk]) { try { localStorage.removeItem(rk); } catch (_) {} } });
       try { localStorage.setItem(k, s); written[k] = 1; } catch (_) { _lsFull = true; _distFail = true; }
     };
+    /* ★2026-10-20 本部のiPhoneで LSFULL が続いた（10/20 6:29 ＝ 2,318K字・reports 1,087K／soukatsu 889K）。上の間引きは送信時刻で切るため、
+       総括表・USENの取込行（1月〜7月の日付でも取り込んだ時刻は新しい）が残り、同じ店×日の取込が何行も重なっていた。
+       ①総括表は営業日の日付で前々月の1日より前を持たない ②同じ店×日×出どころは最新の1行だけ（USENはレジクローズと伝票集計を別に1行ずつ）
+       ＝skClean が選ぶ行はそのまま残るので、画面の数字は変わらない。③Google口コミの本文（reviews）は店ごとに最新の1件だけ（画面は最新しか出さない）。
+       サーバーの本部データは消さない＝端末に置かないだけ */
+    if (hqSlimCut_) {
+      const skLast = {};
+      sk.forEach((r, i) => {
+        if (!r || !r.date || String(r.date) < hqSlimCut_) return;
+        const cls = r.src === 'usen' ? [r.sales != null ? 'usen' : '', (r.pcty != null || r.foodamt != null || r.drinkamt != null) ? 'usenx' : ''] : ['s:' + (r.src || '')];
+        cls.forEach(c => { if (!c) return; const k = r.store + '||' + r.date + '||' + c; const o = skLast[k]; if (o == null || (Number(r.t) || 0) >= (Number(sk[o].t) || 0)) skLast[k] = i; });
+      });
+      const keepI = new Set(Object.values(skLast));
+      const slim = sk.filter((r, i) => keepI.has(i)); sk.length = 0; slim.forEach(r => sk.push(r));
+      const gLast = {};
+      subs.forEach((r, i) => { if (r.kind !== 'gsnap' || String(r.note || '').indexOf('"places"') === -1) return; const d = dateKeyOfItem(r.item); const o = gLast[r.store]; if (!o || d > o.d || (d === o.d && r.t >= o.t)) gLast[r.store] = { i, d, t: r.t }; });
+      const gKeep = new Set(Object.values(gLast).map(x => x.i));
+      subs.forEach((r, i) => {
+        if (r.kind !== 'gsnap' || gKeep.has(i) || String(r.note || '').indexOf('"reviews"') === -1) return;
+        const p = pj(r.note); if (p && typeof p === 'object' && p.reviews) { delete p.reviews; subs[i] = Object.assign({}, r, { note: JSON.stringify(p) }); }
+      });
+    }
     set(LS.reports, food.concat(subs)); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
     set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);

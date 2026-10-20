@@ -6779,5 +6779,38 @@ console.log('== 2026-10-15 納品書の読み取り（実物11件の回帰）と
   ok(/target === 'nouhin' \? `<p class="hint" id="nouhin_rednote" style="display:block;color:#c0392b/.test(code) && /伝票は1枚ずつ、合計の金額まで写してください。/.test(code), '納品書の写真の画面＝赤字1行「1枚ずつ・合計まで」');
 }
 
+console.log('== 2026-10-20 本部の端末の控えを減らす（LSFULL）＝総括表は営業日で前々月から・同じ店×日×出どころは最新1行・口コミ本文は最新だけ ==');
+{
+  const S = '牛カツ世桜 長堀橋店'; const now = Date.now();
+  const m1 = new Date(now + 9 * 3600e3).toISOString().slice(0, 8) + '01';   // 今月1日（前々月の1日より後）
+  const sk = (date, src, extra, t, id) => ({ kind:'soukatsu', store:S, note: JSON.stringify(Object.assign({ date }, src ? { src } : {}, extra)), t, id });
+  const fill = []; for (let i = 0; i < 1500; i++) fill.push({ kind:'subrec', store:S, item:'x' + i, note:'{}', t: now - i, id:'f' + i });
+  FETCH_ROWS = { ok:true, reports: fill.concat([
+    sk('2025-01-05', 'drive', { sales: 9 }, now, 'old'),   // 日付が古い取込（取り込んだ時刻は新しい）
+    sk(m1, 'drive', { sales: 100, guests: 1 }, now - 3000, 'dr1'), sk(m1, 'drive', { sales: 200, guests: 2 }, now - 2000, 'dr2'),
+    sk(m1, '', { sales: 0, posWait: true, buy: 5000 }, now - 2500, 'app1'),
+    sk(m1, 'usen', { sales: 300, guests: 3 }, now - 1800, 'us1'), sk(m1, 'usen', { sales: 310, guests: 3 }, now - 1700, 'us2'), sk(m1, 'usen', { pcty: { JP: 3 }, foodamt: 40 }, now - 1600, 'ux1'),
+    { kind:'gsnap', store:S, item:'2026-09-01', note: JSON.stringify({ src:'places', total:10, gained:1, reviews:[{ txt:'古い' }] }), t: now - 9000, id:'g1' },
+    { kind:'gsnap', store:S, item:'2026-09-02', note: JSON.stringify({ src:'places', total:11, gained:1, reviews:[{ txt:'最新' }] }), t: now - 8000, id:'g2' },
+  ]) };
+  try { run(() => setLS('hq', 'all', 'ja')); } catch (e) { FAIL++; console.log('  ✗ load threw: ' + e.message); }
+  await new Promise(r => setTimeout(r, 50));
+  const a = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]');
+  ok(!a.some(r => r.date === '2025-01-05'), '取り込んだ時刻が新しくても、営業日が前々月より前の総括表は本部の端末に置かない');
+  const drv = a.filter(r => r.date === m1 && r.src === 'drive');
+  ok(drv.length === 1 && drv[0].sales === 200, '同じ店×日の総括表取込は最新の1行だけ');
+  ok(a.filter(r => r.date === m1 && r.src === 'usen').length === 2 && a.some(r => r.src === 'usen' && r.sales === 310) && a.some(r => r.src === 'usen' && r.foodamt === 40), 'USENはレジクローズの最新と伝票集計の最新を1行ずつ残す');
+  ok(a.some(r => r.date === m1 && !r.src && r.buy === 5000), 'アプリの日報の行は残る');
+  const g = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').filter(r => r.kind === 'gsnap');
+  const gp = (id) => JSON.parse((g.find(r => r.id === id) || {}).note || '{}');
+  ok(g.length === 2 && !gp('g1').reviews && gp('g1').total === 10 && gp('g2').reviews && gp('g2').reviews[0].txt === '最新', '口コミの本文は店ごとに最新の1件だけ（件数・獲得数は全日分残る）');
+  /* 店舗の端末は対象外（自店ぶんだけで少ない） */
+  try { run(() => setLS('staff', S, 'ja')); } catch (e) {}
+  await new Promise(r => setTimeout(r, 50));
+  const b = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]');
+  ok(b.filter(r => r.date === m1 && r.src === 'drive').length === 2, '店舗の端末は従来どおり（間引かない）');
+}
+FETCH_ROWS = { ok:false };
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
