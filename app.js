@@ -1806,6 +1806,7 @@
      本部（hq）の画面はこれまでのまま（本部側の配置替えは11月）。 */
   const pbPhotoKey_ = (m) => {
     if (!m) return '';
+    const own = { ck_open_photo:'kyou_check_open', ck_close_photo:'kyou_check_close', ichishoku:'kyou_first_dish' }[m.id]; if (own) return own;
     if (m.ckMode) return ({ open:'kyou_check_open', idle:'kyou_check_idle', sakura:'kyou_check_sakura', close:'kyou_check_close', hygiene:'kyou_hygiene' })[m.ckMode] || 'kyou_check_open';
     const byApp = { openphoto:'kyou_open_photo', firstphoto:'kyou_first_dish', soukatsu:'kyou_nippou', chukan:'kyou_nippou', zaiko:'kyou_stock', kizuki:'kyou_kizuki', kinshu:'num_register', pl:'kyou_tanaoroshi', storevideo:'miru_howto', handover:'kyou_handover', surveyqr:'kyou_survey' };
     if (m.linkApp && byApp[m.linkApp]) return byApp[m.linkApp];
@@ -1852,7 +1853,7 @@
   }
   /* 1行＝写真・名前・いまの状態・開く。開く先と印（data-tsub / data-tsubmode / data-tsubphoto / data-tdid / data-openurl）は subItemRow と同じ＝反応は変えない */
   /* ★2026-10-20 案Bの見本と同じ呼び名（ホームの行だけ。提出物の正式名と本部の画面はそのまま） */
-  const PB_NAMES_ = { ck_open:'OPENチェック', ck_idle:'お手すきチェック', ck_sakura:'桜（トイレ）', ck_close:'CLOSEチェック', zaiko:'在庫の数', kizuki:'気づき' };
+  const PB_NAMES_ = { ck_open:'OPENチェック', ck_idle:'お手すきチェック', ck_sakura:'桜（トイレ）', ck_close:'CLOSEチェック', zaiko:'在庫の数', kizuki:'気づき', ck_open_photo:'OPENチェック（写真）', ck_close_photo:'CLOSEチェック（写真）', ichishoku:'一食目写真' };
   const pbFlowRow_ = (it) => {
     const m = it.m;
     const done = !it.manual && !!it.submitted;
@@ -2741,7 +2742,7 @@
     const pos = g('sk_posnote');
     if (pos) pos.textContent = noUsen
       ? L({ ja:'売上はレジの日計を見て入れてください。あとは今日届いた納品書を撮るだけです。', en:'Enter sales from the register report, then photograph today’s delivery slips.', vi:'Nhập doanh thu từ báo cáo két, rồi chụp phiếu giao hàng hôm nay.' })
-      : L({ ja:'売上・客数・現金・カードはUSENレジから入っています。入れるのは今日届いた納品書だけです。', en:'Sales, guests, cash and card come from the USEN register. Only enter today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ két USEN. Chỉ nhập phiếu giao hàng hôm nay.' });
+      : L({ ja:'売上・客数・現金・カードはUSENレジから入っています。入れるのは今日届いた納品書と、勤怠（任意）です。', en:'Sales, guests, cash and card come from the USEN register. Only enter today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ két USEN. Chỉ nhập phiếu giao hàng hôm nay.' });
     const dateGrid = g('sk_date') ? g('sk_date').closest('.sk-grid') : null;
     const dbox = document.createElement('details'); dbox.className = 'pb-nipdate'; dbox.innerHTML = '<summary id="pbn_datesum"></summary>';
     const auto = document.createElement('div'); auto.id = 'pbn_auto';
@@ -2754,13 +2755,17 @@
     const memo = g('sk_memo') ? g('sk_memo').closest('label') : null;
     if (memo && memo.querySelector('span')) memo.querySelector('span').textContent = L({ ja:'一言（本部に伝えたいこと・任意）', en:'A note for HQ (optional)', vi:'Ghi chú cho HQ (tùy chọn)' });
     const more = document.createElement('details'); more.className = 'pb-nipmore';
-    more.innerHTML = `<summary>${L({ja:'ほかの項目（チップ・勤怠・発注など・入れる店だけ）',en:'Other items (tips, attendance, orders…)',vi:'Mục khác (tip, chấm công, đặt hàng…)'})}</summary>`;
-    const placed = new Set([h3, pos, g('sk_editnote'), g('sk_datenote'), dateGrid, salesLbl, salesGrid, slip, memo, submit, after].filter(Boolean));
+    more.innerHTML = `<summary>${L({ja:'ほかの項目（チップ・発注など・入れる店だけ）',en:'Other items (tips, orders…)',vi:'Mục khác (tip, chấm công, đặt hàng…)'})}</summary>`;
+    /* ★2026-10-20 永井さん「人件費・勤怠もアプリで入れて総括表へ」＝勤怠を折りたたみの奥から出す（入れると総括表の勤怠表に自動で入る） */
+    const kt = g('sk_kintai');
+    if (kt) { kt.className = 'pb-nipmore'; kt.removeAttribute('style'); }   // 「ほかの項目」と同じ形
+    if (kt && kt.querySelector('summary')) kt.querySelector('summary').textContent = L({ ja:'勤怠を入れる（任意・総括表に自動で入ります）', en:'Attendance (optional, goes to the summary sheet)', vi:'Chấm công (tùy chọn, tự vào bảng tổng kết)' });
+    const placed = new Set([h3, pos, g('sk_editnote'), g('sk_datenote'), dateGrid, salesLbl, salesGrid, slip, memo, kt, submit, after].filter(Boolean));
     kids.forEach(k => { if (!placed.has(k)) more.appendChild(k); });
     if (dateGrid) dbox.appendChild(dateGrid);
     if (h3) h3.textContent = L({ ja:'日報', en:'Daily report', vi:'Báo cáo ngày' });
     if (g('sk_datenote')) g('sk_datenote').style.display = 'none';   // 日付は上の札に出す（二重にしない）
-    const order = [h3, pos, g('sk_editnote'), g('sk_datenote'), dbox, auto, salesLbl, salesGrid, slipHead, shoot, slip, memo, more, submit, after].filter(Boolean);
+    const order = [h3, pos, g('sk_editnote'), g('sk_datenote'), dbox, auto, salesLbl, salesGrid, slipHead, shoot, slip, memo, kt, more, submit, after].filter(Boolean);
     order.forEach(el => form.appendChild(el));
     const draw = () => { const a = g('pbn_auto'); if (a) a.innerHTML = pbNipAutoHtml_(); };
     draw();
@@ -7786,6 +7791,13 @@
     return [
       // ── 毎日 ──
       { id:'openphoto',  name:{ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'},                 oblig:'required', freq:'daily', due:'11:00', target:'all', hqReview:'none',      detect:'subrec', linkApp:'openphoto' },
+      /* ★2026-10-20 永井さんとの電話（牛カツ長堀橋・手巻き寿司難波）＝紙のチェック表とアプリの二重チェックをやめる。
+         OPEN・CLOSEチェックは記入した紙のチェック表を撮って出す（CK_PHOTO_STORES_ の店はアプリの項目チェックを出さない）。
+         難波店はグループLINEで送っていた一食目写真をアプリで受ける（オープン写真の直後）。お手すき・在庫の数は今までどおり */
+      { id:'ichishoku', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['手巻き寿司世桜 難波店'], hqReview:'none', detect:'subrec', linkApp:'openphoto', slot:'asa', autoAdd:true, after:'openphoto',
+        how:{ja:'その日の1食目を、お出しする前に撮って提出してください',en:'Photograph the first plate of the day before serving',vi:'Chụp món đầu tiên trong ngày trước khi phục vụ'} },
+      { id:'ck_open_photo', name:{ja:'OPENチェック表の写真',en:'Opening check sheet photo',vi:'Ảnh bảng kiểm mở cửa'}, oblig:'store', freq:'daily', due:'11:00', target:'stores', stores:['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店'], hqReview:'none', detect:'subrec', linkApp:'openphoto', slot:'asa', autoAdd:true, after:'ichishoku',
+        how:{ja:'記入したOPENチェック表を撮って提出してください',en:'Photograph the filled opening check sheet',vi:'Chụp bảng kiểm mở cửa đã điền'} },
       { id:'ck_open',    name:{ja:'オープンチェックリスト',en:'Opening checklist',vi:'Checklist mở cửa'}, oblig:'store',  freq:'daily', due:'11:00', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'open',   linkApp:'checklist' },
       /* ★予約状況＝長堀橋トライアル（2026-09-01）。LINEでの共有の形が確認できていないため、
          まず「その日の予約が分かる写真」で受ける。締切・中身は常山さんのFBを聞いてから調整する */
@@ -7816,6 +7828,8 @@
       { id:'zaiko_photo', name:{ja:'在庫チェック表の写真',en:'Stock check sheet photos',vi:'Ảnh bảng kiểm kho'}, oblig:'off', autoOff:true,   // 2026-09-18 在庫数の入力に置き換え＝写真は不要（神田さん） freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'記入した在庫チェック表（食材①②・ドリンク・消耗品）を撮影して提出してください',en:'Photograph the filled stock check sheets (ingredients, drinks, supplies)',vi:'Chụp các bảng kiểm kho đã điền (nguyên liệu, đồ uống, vật tư)'} },
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
+      { id:'ck_close_photo', name:{ja:'CLOSEチェック表の写真',en:'Closing check sheet photo',vi:'Ảnh bảng kiểm đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店'], hqReview:'none', detect:'subrec', linkApp:'openphoto', slot:'shime', autoAdd:true, after:'ck_close',
+        how:{ja:'記入したCLOSEチェック表を撮って提出してください',en:'Photograph the filled closing check sheet',vi:'Chụp bảng kiểm đóng cửa đã điền'} },
       { id:'nikkei_close', name:{ja:'日計レポート（レジクローズ）',en:'Daily sales report (register close)',vi:'Báo cáo doanh thu (đóng ca)'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'レジクローズ時に日計レポートを出力し、現金売上の封筒と合わせて撮影・提出してください（★封筒やメモでレポートの数字を隠さないでください＝写真から数字を自動で読み取り、日報の入力に入れます）',en:'Print the daily report at register close and submit it with the cash envelope (keep all numbers visible — they are read automatically into the summary sheet)',vi:'In báo cáo lúc đóng ca và nộp ảnh cùng phong bì tiền mặt (không che các con số — số sẽ được đọc tự động vào bảng tổng kết)'} },
       /* ★現金売上・チップの写真（2026-09-02 常山さん経由・m.taigaさんのご要望）。
@@ -7938,7 +7952,7 @@
       base = (Array.isArray(m) && m.length) ? m : defaultMasters();
     }
     /* ★既定に autoAdd の印がある項目は、本部が保存した一覧に無くても足す（2026-09-18 在庫数の入力） */
-    defaultMasters().forEach(d => { if (d.autoAdd && !base.some(b => b.id === d.id)) base = base.concat([d]); });
+    defaultMasters().forEach(d => { if (d.autoAdd && !base.some(b => b.id === d.id)) { const i = d.after ? base.findIndex(b => b.id === d.after) : -1; base = i >= 0 ? base.slice(0, i + 1).concat([d], base.slice(i + 1)) : base.concat([d]); } });   // ★after＝この項目の直後に入れる（2026-10-20 一食目写真はオープン写真の直後）
     /* ★既定で autoOff の項目は、本部が保存した一覧でも「対象外」にする（2026-09-18 在庫チェック表の写真） */
     { const offIds = defaultMasters().filter(d => d.autoOff).map(d => d.id); if (offIds.length) base = base.map(b => offIds.includes(b.id) ? Object.assign({}, b, { oblig: 'off' }) : b); }
     const urls = getMasterUrls();
@@ -8008,7 +8022,8 @@
   /* ★2026-10-20 神田さん「デモと同じ7つ＋日報に揃えて」＝毎日の提出物は全店この8つだけ（案Bの見本）。
      中間報告・日計レポート・現金売上／チップ／納品書の写真・金種別・予約状況・一食目写真・定期衛生（曜日）・在庫表の写真は毎日の一覧に出さない
      （レジの数字は毎朝自動・納品書は日報で入れる・定期衛生は「今週・今月」から）。チェックの中身は店ごとの設定（富士山2店の独自項目など）のまま */
-  const DAILY_KEEP_ = ['openphoto', 'ck_open', 'ck_idle', 'ck_sakura', 'ck_close', 'zaiko', 'kizuki', 'nippou'];
+  const DAILY_KEEP_ = ['openphoto', 'ichishoku', 'ck_open', 'ck_open_photo', 'ck_idle', 'ck_sakura', 'ck_close', 'ck_close_photo', 'zaiko', 'kizuki', 'nippou'];
+  const CK_PHOTO_STORES_ = ['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店'];   // ★2026-10-20 永井さん＝OPEN・CLOSEは紙のチェック表の写真で出す店（アプリの項目チェックは出さない）
   const dailyKeepOn_ = () => { try { return localStorage.getItem('yosakura_daily_all') !== '1'; } catch (e) { return true; } };   // 検査用＝これまでの全項目で回すときだけ '1'
   function appliesToStore(m, store) {
     if (m.oblig === 'off') return false;
@@ -8016,6 +8031,7 @@
     if (m.target === 'stores' && Array.isArray(m.stores) && !m.stores.includes(store)) return false;
     if (m.target === 'gyotai_in' && Array.isArray(m.gyotai) && !m.gyotai.includes(storeMeta(store).gyotai)) return false; // 指定業態のみ（例：牛カツのみ）
     if (m.target === 'gyotai_ex' && Array.isArray(m.gyotai) && m.gyotai.includes(storeMeta(store).gyotai)) return false;  // 指定業態を除く（例：牛カツ以外）
+    if ((m.id === 'ck_open' || m.id === 'ck_close') && CK_PHOTO_STORES_.includes(store)) return false;   // 写真で出す店（ck_open_photo／ck_close_photo）
     if (m.detect === 'zaiko' && !zkDueToday(store)) return false;   // 在庫数の入力＝今日確認する品目が無い日は出さない（2026-09-19）
     return true;
   }
@@ -8717,7 +8733,10 @@
     nikkei_idle:  { ja:'レジから出した日計レポート（取引別・商品別）を、文字が読める距離で撮ってください。', en:'Photograph the printed daily report so the text is readable.', vi:'Chụp báo cáo doanh thu đã in, chữ đọc được rõ.' },
     nouhin:       { ja:'真上から、影を入れずに撮ってください。', en:'Shoot straight down, without shadows.', vi:'Chụp thẳng từ trên xuống, không có bóng.' },   // 1枚ずつ・合計まで＝下の赤字1行（2026-10-15 短く）
     zaiko_photo:  { ja:'記入後の在庫チェック表を1枚ずつ撮ってください（食材①②・ドリンク・消耗品）。', en:'Photograph each filled stock sheet (ingredients ①②, drinks, supplies).', vi:'Chụp từng bảng kiểm kho đã điền (nguyên liệu ①②, đồ uống, vật tư).' },
-    nikkei_close: { ja:'クローズの日計レポート3枚と現金売上の封筒を撮ってください。', en:'Photograph the three closing reports and the cash envelope.', vi:'Chụp 3 báo cáo đóng ca và phong bì tiền mặt.' }
+    nikkei_close: { ja:'クローズの日計レポート3枚と現金売上の封筒を撮ってください。', en:'Photograph the three closing reports and the cash envelope.', vi:'Chụp 3 báo cáo đóng ca và phong bì tiền mặt.' },
+    ck_open_photo:  { ja:'記入したOPENチェック表を、文字が読めるように撮ってください。', en:'Photograph the filled opening check sheet so the text is readable.', vi:'Chụp bảng kiểm mở cửa đã điền, đọc được chữ.' },
+    ck_close_photo: { ja:'記入したCLOSEチェック表を、文字が読めるように撮ってください。', en:'Photograph the filled closing check sheet so the text is readable.', vi:'Chụp bảng kiểm đóng cửa đã điền, đọc được chữ.' },
+    ichishoku:      { ja:'その日の1食目を、お出しする前に撮ってください。', en:'Photograph the first plate of the day before serving.', vi:'Chụp món đầu tiên trong ngày trước khi phục vụ.' }
   };
   /* ★見本写真＋店舗ごとの注意書き（2026-08-30 長田さんのご提案）
      「この店舗の撮り方（見本）」を写真提出画面に出す＝初日のスタッフでも見本を見ながら同じ画角で撮れる。

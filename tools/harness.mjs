@@ -1142,7 +1142,7 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
   const S_GYU = '牛カツ世桜 長堀橋店';
   const kyou = renderView('kyou','manager',S_GYU,'ja');
   // 出す順＝開店前 → 営業中 → 閉店後
-  const order = ['オープン写真','オープンチェックリスト','日報','アイドルタイムチェックリスト','桜チェックリスト','クローズチェックリスト'];   // 総括表＝前日分を開店前に（2026-10-15）
+  const order = ['オープン写真','OPENチェック表の写真','日報','アイドルタイムチェックリスト','桜チェックリスト','CLOSEチェック表の写真'];   // 長堀橋のOPEN・CLOSEは紙のチェック表の写真（2026-10-20 永井さん）   // 総括表＝前日分を開店前に（2026-10-15）
   let prev = -1, ordered = true;
   order.forEach(name => { const i = kyou.indexOf(name); if (i < 0 || i < prev) ordered = false; prev = i; });
   ok(ordered, '日次の提出物が「出す順」に並ぶ（開店前→営業中→閉店後）');
@@ -1227,7 +1227,7 @@ console.log('== 提出物を本部の「提出物・実行項目一覧」に合�
     ok(/提出済/.test(rowOf(registry.app.innerHTML, '桜チェックリスト')),
        '最後まで終えると「提出済」になる');
   }
-  ok(/未提出/.test(rowOf(registry.app.innerHTML, 'クローズチェックリスト')), 'まだ実施していないチェックリストは「未提出」のまま');
+  ok(/未提出/.test(rowOf(registry.app.innerHTML, 'アイドルタイムチェックリスト')), 'まだ実施していないチェックリストは「未提出」のまま');
 }
 FETCH_ROWS = { ok:false };
 
@@ -5782,7 +5782,7 @@ console.log('== 今日出すもの＝時間帯（朝／昼／夜／締め）で�
   ok((h.match(/<details class="kslot"[^>]* open>/g) || []).length === 1, 'いまの時間帯だけが開いている（ほかは畳む）');
   const pos = (re) => { const m = re.exec(h); return m ? m.index : -1; };
   ok(pos(/data-kslot="asa"/) < pos(/オープン写真/) && pos(/オープン写真/) < pos(/data-kslot="hiru"/), 'オープン写真は「朝」の帯に入る');
-  ok(pos(/data-kslot="shime"/) < pos(/クローズチェックリスト/), 'クローズチェックリストは「締め」の帯に入る');
+  ok(pos(/data-kslot="shime"/) < pos(/CLOSEチェック表の写真/), 'クローズ（長堀橋はチェック表の写真）は「締め」の帯に入る');
   ok(pos(/data-kslot="asa"/) < pos(/日報 <small/) && pos(/日報 <small/) < pos(/data-kslot="hiru"/), '日報（翌日12時まで）は「OPEN業務（開店前）」の帯に入る（2026-10-15）');
   ok(pos(/data-kslot="hiru"/) < pos(/アイドルタイムチェックリスト/) && pos(/アイドルタイムチェックリスト/) < pos(/data-kslot="yoru"/), 'アイドルタイムは「昼」の帯に入る');
   ok(/kslot-n/.test(h), '畳んだ帯にも残り件数が見える（隠して漏らさない）');
@@ -6652,6 +6652,32 @@ console.log('== 2026-10-20 新しい情報の帯の位置・サーベイQRの題
   ok(/<div class="pb-ttl">サーベイQR<\/div>/.test(registry.app.innerHTML) && /お会計のときに、この画面をお客様にお見せください/.test(registry.app.innerHTML), '案B：サーベイQRの題と説明（見本と同じ）');
 }
 
+console.log('== 2026-10-20 永井さん：OPEN・CLOSEは紙のチェック表の写真・難波に一食目写真・日報の勤怠 ==');
+{
+  for (const S of ['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店']) {
+    run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+    location.hash = '#/home';
+    const h = registry.app.innerHTML;
+    ok(/data-tsubphoto="ck_open_photo"/.test(h) && /data-tsubphoto="ck_close_photo"/.test(h), `${S}：OPEN・CLOSEはチェック表の写真で出す`);
+    ok(!/data-tsubmode="open"/.test(h) && !/data-tsubmode="close"/.test(h), `${S}：アプリの項目チェック（OPEN・CLOSE）は出さない＝二重チェックにしない`);
+    ok(/data-tsubmode="idle"/.test(h), `${S}：お手すきチェックはそのまま（在庫の数は数える品目がある日に出る）`);
+  }
+  { run(() => { setLS('staff', '手巻き寿司世桜 難波店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+    location.hash = '#/home';
+    const h = registry.app.innerHTML;
+    const a = h.indexOf('data-tsubphoto="openphoto"'), b = h.indexOf('data-tsubphoto="ichishoku"'), c = h.indexOf('data-tsubphoto="ck_open_photo"');
+    ok(a >= 0 && b > a && c > b, '難波：一食目写真はオープン写真の直後（その次がOPENチェック表の写真）'); }
+  { run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+    location.hash = '#/home';
+    ok(!/data-tsubphoto="ichishoku"/.test(registry.app.innerHTML), '長堀橋：一食目写真は出さない（今回は難波だけ）'); }
+  { run(() => { setLS('staff', '日本料理世桜本店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+    location.hash = '#/home';
+    const h = registry.app.innerHTML;
+    ok(/data-tsubmode="open"/.test(h) && /data-tsubmode="close"/.test(h) && !/ck_open_photo|ck_close_photo|ichishoku/.test(h), 'ほかの店はこれまでどおり（アプリの項目チェック）'); }
+  ok(/base\.slice\(0, i \+ 1\)\.concat\(\[d\]/.test(code), '本部が保存した提出物の一覧にも、決めた位置（after）に足す');
+  ok(/slip, memo, kt, more, submit/.test(code) && /勤怠を入れる（任意・総括表に自動で入ります）/.test(code), '日報：勤怠は「ほかの項目」の奥でなく一言の下に出す（案Bの並び替えは描画後＝コードで確かめる）');
+}
+
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');
 {
   const S = '牛カツ世桜 長堀橋店';
@@ -6674,7 +6700,7 @@ console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース�
   location.hash = '#/home?tab=num';
   ok(!/class="screen pb-num"/.test(registry.app.innerHTML), 'pb：スタッフは店の数字を開かない（ホームに戻る）');
   location.hash = '#/home';
-  ok(/data-tsubmode="open"/.test(h), 'pb：流れの行は今までと同じ印で開く（チェックは種類つき）');
+  ok(/data-tsubmode="idle"/.test(h), 'pb：流れの行は今までと同じ印で開く（チェックは種類つき）');
   ok(/data:image\/webp/.test(h), 'pb：ボタンに写真（埋め込みのwebp）が付いている');
   ok(!/data-open="handover"/.test(h) && /data-open="emergency"/.test(h) && /data-open="surveyqr"/.test(h), 'pb：緊急・サーベイQRの入口がある。引き継ぎの入口は無い（2026-10-17 引き継ぎは店のLINEで＝神田さん）');
   ok(/class="pb-card pb-nippou"/.test(h) && !/data-tsub="soukatsu"/.test(h.slice(h.indexOf('pb-flow'))), 'pb：日報は時間帯の帯に入れず専用の枠（1か所だけ）（2026-10-16 神田さん「別枠で」）');
