@@ -1951,11 +1951,11 @@
     const rep = hqReplyData_(role);
     const repCard = rep.rows.length ? `<div class="pb-sec"><h2>${L({ja:'本部からの返答',en:'Replies from HQ',vi:'Phản hồi từ HQ'})}</h2><small>${L({ja:'直近7日',en:'Last 7 days',vi:'7 ngày qua'})}</small></div>
       <div class="pb-card pb-rep">${rep.rows.map(x => `<button class="pb-row" ${rep.PHOTO[x.kind] ? `data-tsub="openphoto" data-tsubphoto="${esc(x.kind)}"` : `data-go="${esc(rep.ROUTE[x.kind])}"`}><span class="pb-rowtx"><span class="pb-nm">${esc(L(rep.LABEL[x.kind]))}</span><span class="pb-sub">${esc(x.a.memo)} ・ ${timeAgo(x.a.ts)}</span></span><span class="pb-rt">${svg('chev')}</span></button>`).join('')}</div>` : '';
-    return `<main class="screen pb-home">${cover}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${pbRegiCard_(store)}${nippouCard}
+    return `<main class="screen pb-home"><div class="pb-2col"><div class="pb-col">${cover}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${pbRegiCard_(store)}${nippouCard}${hoCard}</div><div class="pb-col">
       <div class="pb-sec"><h2>${L({ja:'今日の流れ',en:'Today’s flow',vi:'Việc hôm nay'})}</h2><small>${L({ja:'時間帯の順',en:'In time order',vi:'Theo giờ'})}</small></div>
       <div class="pb-card pb-flow">${flow || `<div class="muted">${L({ja:'今日の提出物はありません',en:'Nothing today',vi:'Hôm nay không có'})}</div>`}</div>
-      ${chips}${hoCard}${wk}
-      <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;   // ★2026-10-19 「最新にする」を案Bのホームにも（旧ホームと同じ位置＝画面の下）
+      ${chips}${wk}</div></div>
+      <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;   // ★2026-10-20 iPad横は2列（pb-2col）／★2026-10-19 「最新にする」を案Bのホームにも（旧ホームと同じ位置＝画面の下）
   }
   /* 日報の専用カード＝前日分がまだ／今日の分を出した／これから、の3つの状態を1行で */
   function pbNippouCard_(store, it) {
@@ -2055,7 +2055,7 @@
     const more = head(L({ja:'くわしく',en:'Details',vi:'Chi tiết'}), '')
       + `<div class="pb-card"><button class="pb-row" data-open="pl">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'数値・原価率',en:'Numbers & cost rate',vi:'Số liệu & giá vốn'})}</span><span class="pb-sub">${L({ja:'月ごとの売上・仕入・原価率の推移',en:'Monthly trend',vi:'Xu hướng theo tháng'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`
       + `<button class="pb-row" data-tsub="soukatsu">${pbImg_('kyou_nippou')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'日報の一覧',en:'Daily reports',vi:'Báo cáo ngày'})}</span><span class="pb-sub">${L({ja:'日ごとの数字',en:'Numbers by day',vi:'Theo ngày'})}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
-    return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div><p class="pb-lead">${esc(storeShort(store))} ・ ${L({ja:'数字は見るだけ。入力は「きょうやること」の日報だけです',en:'View only. Enter numbers in the daily report.',vi:'Chỉ xem. Nhập ở báo cáo ngày.'})}</p>${storeSeg}${regi}${monCard}${kpi2}${voice}${more}
+    return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div><p class="pb-lead">${esc(storeShort(store))} ・ ${L({ja:'数字は見るだけ。入力は「きょうやること」の日報だけです',en:'View only. Enter numbers in the daily report.',vi:'Chỉ xem. Nhập ở báo cáo ngày.'})}</p>${storeSeg}<div class="pb-2col"><div class="pb-col">${regi}${monCard}</div><div class="pb-col">${kpi2}${voice}${more}</div></div>
       <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;
   }
   function pbMiru_(role) {

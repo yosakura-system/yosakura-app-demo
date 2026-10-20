@@ -1053,7 +1053,7 @@ html[data-theme="pb"] .pb-maint, .pb-maint { display: flex; flex-direction: colu
 .pb-maint .pb-ttl { font-size: 20px; }
 .pb-maint .pb-lead { max-width: 360px; line-height: 1.8; }
 /* ---- iPad・横（画面が広いとき）＝左にタブ・右に中身（案Bの見本と同じ） ---- */
-@media (min-width: 900px) {
+@media (min-width: 900px) and (min-height: 600px) {
   html[data-theme="pb"] #app { max-width: 1120px; display: grid; grid-template-columns: 220px 1fr; grid-template-rows: auto auto 1fr; }
   html[data-theme="pb"] #app > .devview-bar, html[data-theme="pb"] #app > .pwchange-bar { grid-column: 1 / -1; }
   html[data-theme="pb"] .hdr, html[data-theme="pb"] .taiken-band { grid-column: 1 / -1; }
@@ -1132,3 +1132,12 @@ html[data-theme="pb"] .pb-nipshoot { display: block; width: 100%; margin: 0 0 8p
 
 /* ★2026-10-20 入力欄の案内（placeholder）は実績の数字と見分けがつくよう、ごく薄く */
 input::placeholder, textarea::placeholder { color: #C9C2BA !important; opacity: 1; }
+/* ★2026-10-20 神田さん「iPadの横とスマホの縦をしっかり」＝iPad横（幅900以上・高さ600以上）はホームと店の数字を2列に。スマホ・iPhone横は1列のまま */
+html[data-theme="pb"] .pb-2col, html[data-theme="pb"] .pb-col { display: contents; }
+@media (min-width: 900px) and (min-height: 600px) {
+  html[data-theme="pb"] .screen.pb-home, html[data-theme="pb"] .screen.pb-num { max-width: 1100px; }
+  html[data-theme="pb"] .pb-2col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 26px; align-items: start; }
+  html[data-theme="pb"] .pb-col { display: block; min-width: 0; }
+  html[data-theme="pb"] .pb-col > .pb-sec:first-child { margin-top: 0; }
+}
+@media (min-width: 900px) and (min-height: 600px) { html[data-theme="pb"] #app > #syncFresh { grid-column: 1 / -1; } }   /* ★2026-10-20 iPad横で「新しい情報」の帯が左の細い列に押し込まれていた */
