@@ -6654,7 +6654,7 @@ console.log('== 2026-10-20 新しい情報の帯の位置・サーベイQRの題
 
 console.log('== 2026-10-20 永井さん：OPEN・CLOSEは紙のチェック表の写真・難波に一食目写真・日報の勤怠 ==');
 {
-  for (const S of ['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店']) {
+  for (const S of ['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店', '日本鰻世桜 長堀橋店']) {   // 21:22 永井さん「日本鰻長堀橋も同じ形で」
     run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
     location.hash = '#/home';
     const h = registry.app.innerHTML;

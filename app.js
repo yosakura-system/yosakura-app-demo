@@ -7835,7 +7835,7 @@
          難波店はグループLINEで送っていた一食目写真をアプリで受ける（オープン写真の直後）。お手すき・在庫の数は今までどおり */
       { id:'ichishoku', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['手巻き寿司世桜 難波店'], hqReview:'none', detect:'subrec', linkApp:'openphoto', slot:'asa', autoAdd:true, after:'openphoto',
         how:{ja:'その日の1食目を、お出しする前に撮って提出してください',en:'Photograph the first plate of the day before serving',vi:'Chụp món đầu tiên trong ngày trước khi phục vụ'} },
-      { id:'ck_open_photo', name:{ja:'OPENチェック表の写真',en:'Opening check sheet photo',vi:'Ảnh bảng kiểm mở cửa'}, oblig:'store', freq:'daily', due:'11:00', target:'stores', stores:['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店'], hqReview:'none', detect:'subrec', linkApp:'openphoto', slot:'asa', autoAdd:true, after:'ichishoku',
+      { id:'ck_open_photo', name:{ja:'OPENチェック表の写真',en:'Opening check sheet photo',vi:'Ảnh bảng kiểm mở cửa'}, oblig:'store', freq:'daily', due:'11:00', target:'stores', stores:['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店', '日本鰻世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto', slot:'asa', autoAdd:true, after:'ichishoku',
         how:{ja:'記入したOPENチェック表を撮って提出してください',en:'Photograph the filled opening check sheet',vi:'Chụp bảng kiểm mở cửa đã điền'} },
       { id:'ck_open',    name:{ja:'オープンチェックリスト',en:'Opening checklist',vi:'Checklist mở cửa'}, oblig:'store',  freq:'daily', due:'11:00', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'open',   linkApp:'checklist' },
       /* ★予約状況＝長堀橋トライアル（2026-09-01）。LINEでの共有の形が確認できていないため、
@@ -7867,7 +7867,7 @@
       { id:'zaiko_photo', name:{ja:'在庫チェック表の写真',en:'Stock check sheet photos',vi:'Ảnh bảng kiểm kho'}, oblig:'off', autoOff:true,   // 2026-09-18 在庫数の入力に置き換え＝写真は不要（神田さん） freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'記入した在庫チェック表（食材①②・ドリンク・消耗品）を撮影して提出してください',en:'Photograph the filled stock check sheets (ingredients, drinks, supplies)',vi:'Chụp các bảng kiểm kho đã điền (nguyên liệu, đồ uống, vật tư)'} },
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
-      { id:'ck_close_photo', name:{ja:'CLOSEチェック表の写真',en:'Closing check sheet photo',vi:'Ảnh bảng kiểm đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店'], hqReview:'none', detect:'subrec', linkApp:'openphoto', slot:'shime', autoAdd:true, after:'ck_close',
+      { id:'ck_close_photo', name:{ja:'CLOSEチェック表の写真',en:'Closing check sheet photo',vi:'Ảnh bảng kiểm đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店', '日本鰻世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto', slot:'shime', autoAdd:true, after:'ck_close',
         how:{ja:'記入したCLOSEチェック表を撮って提出してください',en:'Photograph the filled closing check sheet',vi:'Chụp bảng kiểm đóng cửa đã điền'} },
       { id:'nikkei_close', name:{ja:'日計レポート（レジクローズ）',en:'Daily sales report (register close)',vi:'Báo cáo doanh thu (đóng ca)'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'レジクローズ時に日計レポートを出力し、現金売上の封筒と合わせて撮影・提出してください（★封筒やメモでレポートの数字を隠さないでください＝写真から数字を自動で読み取り、日報の入力に入れます）',en:'Print the daily report at register close and submit it with the cash envelope (keep all numbers visible — they are read automatically into the summary sheet)',vi:'In báo cáo lúc đóng ca và nộp ảnh cùng phong bì tiền mặt (không che các con số — số sẽ được đọc tự động vào bảng tổng kết)'} },
@@ -8069,7 +8069,7 @@
      中間報告・日計レポート・現金売上／チップ／納品書の写真・金種別・予約状況・一食目写真・定期衛生（曜日）・在庫表の写真は毎日の一覧に出さない
      （レジの数字は毎朝自動・納品書は日報で入れる・定期衛生は「今週・今月」から）。チェックの中身は店ごとの設定（富士山2店の独自項目など）のまま */
   const DAILY_KEEP_ = ['openphoto', 'ichishoku', 'ck_open', 'ck_open_photo', 'ck_idle', 'ck_sakura', 'ck_close', 'ck_close_photo', 'zaiko', 'kizuki', 'nippou'];
-  const CK_PHOTO_STORES_ = ['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店'];   // ★2026-10-20 永井さん＝OPEN・CLOSEは紙のチェック表の写真で出す店（アプリの項目チェックは出さない）
+  const CK_PHOTO_STORES_ = ['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店', '日本鰻世桜 長堀橋店'];   // ★2026-10-20 永井さん＝OPEN・CLOSEは紙のチェック表の写真で出す店（アプリの項目チェックは出さない）。21:22 永井さん「日本鰻長堀橋も同じ形で」
   const dailyKeepOn_ = () => { try { return localStorage.getItem('yosakura_daily_all') !== '1'; } catch (e) { return true; } };   // 検査用＝これまでの全項目で回すときだけ '1'
   function appliesToStore(m, store) {
     if (m.oblig === 'off') return false;
