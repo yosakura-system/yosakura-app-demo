@@ -2224,7 +2224,8 @@
     try { if (!window.__pbTimer) window.__pbTimer = setInterval(() => { document.querySelectorAll('.pb-timer[data-t0]').forEach(el => { const sec = Math.max(0, Math.floor((Date.now() - Number(el.dataset.t0)) / 1000)); const b = el.querySelector('b'); if (b) b.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }); }, 1000); } catch (e) {}
     const hd = _pbHead; _pbHead = null;
     const ttl = hd && hd.t ? hd.t : L(a.name), lead = hd ? (hd.d || '') : (a.desc ? L(a.desc) : '');
-    return `<main class="screen pb-app pb-app--${esc(id)}">${pbBack_(a)}<div class="pb-ttl">${esc(ttl)}</div>${lead ? `<p class="pb-lead">${esc(lead)}</p>` : ''}
+    const leadHtml = hd && hd.h ? hd.h : (lead ? esc(lead) : '');
+    return `<main class="screen pb-app pb-app--${esc(id)}">${pbBack_(a)}<div class="pb-ttl">${esc(ttl)}</div>${leadHtml ? `<p class="pb-lead">${leadHtml}</p>` : ''}
       <div class="pb-appbody">${body}</div>
       <div class="pb-timer" data-t0="${_pbOpen.t}">${L({ ja:'この画面を開いてから', en:'Time on this screen', vi:'Thời gian trên màn hình' })} <b>0:00</b></div></main>`;
   }
@@ -4201,6 +4202,26 @@
           <button class="mini" id="ckBulkAdd" style="margin-top:4px">${L({ ja:'まとめて追加', en:'Add all', vi:'Thêm tất cả' })}</button>
         </details>` : ''}
       </div>`;
+    /* ★2026-10-20 案Bの見本＝「0／6 右の写真がお手本。項目はこの店の店長が外せます。」→1行1項目の大きなチェック→下に「あと○項目」。
+       種類の切替は出さない（きょうやることから選ぶ）。フロア・曜日の切替、店ごとの項目（富士山2店の独自項目・本店の外し）、記録（ckdone）はそのまま。
+       追加・外した項目を戻す・お手本の登録は、店長・オーナーだけ下の折りたたみで */
+    if (isPb() && getRole() !== 'hq') {
+      const PBN = { open:'OPENチェック', idle:'お手すきチェック', close:'CLOSEチェック', sakura:'桜（トイレ）', hygiene:'定期衛生' };
+      const base = ckBase(mode);
+      const left = Math.max(0, allIds.length - n);
+      _pbHead = { t: LANG === 'ja' ? (PBN[base] || '') : L((CK_MODES.find(m => m.v === base) || {}).t || ''),
+        h: `<b class="pb-ckn"><span id="ckCount">${n}</span>／${allIds.length}</b>　${esc(L({ ja: ckSmpPhotos.length ? '上の写真がお手本。項目はこの店の店長が外せます。' : '上から順に。項目はこの店の店長が外せます。', en:'Go from the top. Managers can remove items.', vi:'Làm từ trên xuống. Quản lý có thể bỏ mục.' }))}` };
+      const unassignedRows = unassigned.map(customRow).join('');
+      return `
+        ${ckFloorStore(store) ? `<div class="seg" data-seg="ckfloor" style="margin:0 0 8px">${CK_FLOORS.map(f => `<button type="button" data-ckfloor="${f.v}" class="${f.v===ckFloor(mode)?'on':''}">${L(f.t)}</button>`).join('')}</div>` : ''}
+        ${base === 'hygiene' ? `<div class="seg" data-seg="hygday" style="margin:0 0 8px"><button type="button" data-hygall="1" class="${hygAll ? 'on' : ''}">${L({ ja:'全体', en:'All', vi:'Tất cả' })}</button>${WDAY_LABELS.map((w, i) => `<button type="button" data-hygday="${i}" class="${!hygAll && i === hygDay ? 'on' : ''}">${L(w)}</button>`).join('')}</div>` : ''}
+        <div class="bar-track pb-ckbar"><div class="bar-fill" id="ckBar" style="width:${Math.round(n/total*100)}%"></div></div>
+        ${ckSmpPhotos.length ? `<div class="pb-ckmodel">${ckSmpPhotos.map(p => `<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join('')}${ckSmpMemo ? `<div class="pb-smpmemo">${esc(ckSmpMemo)}</div>` : ''}</div>` : ''}
+        <div class="pb-cklist">${hygAll ? hygAllHTML : groupsHTML + (unassignedRows ? `<div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'この店の項目', en:'This store', vi:'Mục của cửa hàng' })}</h2></div><div class="card" style="padding:4px 14px">${unassignedRows}</div>` : '')}</div>
+        <button type="button" class="btn-primary pb-big${left ? ' dim' : ''}" id="pbCkLeft"${left ? '' : ' data-tab="home"'}>${left ? L({ ja:`あと ${left}項目`, en:`${left} left`, vi:`Còn ${left} mục` }) : L({ ja:'できました（きょうやることへ）', en:'Done (back to Today)', vi:'Xong (về Hôm nay)' })}</button>
+        ${CK_NOTES[base] ? `<div class="hint" style="display:block;margin-top:8px">${L(CK_NOTES[base])}</div>` : ''}
+        ${editable ? `<details class="pb-card pb-more"><summary>${L({ ja:'項目を足す・外した項目・お手本（店長・オーナー）', en:'Add items, removed items, model (manager)', vi:'Thêm mục, mục đã bỏ, mẫu (quản lý)' })}</summary>${ckSmpHTML}${customHTML}${hiddenHTML}</details>` : ''}`;
+    }
     return `
       ${NOTE(canHide
         ? { ja:`◆ この一覧を出発点として、店舗ごとに作り替えられます。使わない項目は「×」で外し、必要な項目は下から追加してください。追加のときにホール・キッチン等の分類も選べます（店長・オーナーのみ${ckBase(mode) === 'hygiene' ? '／曜日ごとに保存されます' : ''}）`,
@@ -11655,6 +11676,7 @@
         const n2 = ids.filter(i => day[i]).length, total2 = ids.length || 1;
         cEl.textContent = n2;
         bEl.style.width = `${Math.round(n2 / total2 * 100)}%`;
+        pbCkLeft_(n2, ids.length);
       }
       /* ★2026-09-24 神田さん実機「連続で入れるとカクカク・パチパチ」＝タップごとに送信→直後の同期→画面全体の作り直し、
          という2つ目の経路が残っていた（v278はタップの瞬間の作り直しを止めただけ）。送信は1.5秒まとめて1回にし、
@@ -12370,7 +12392,16 @@
       const ids = ckIdsOf(store, mode, getHygDay());
       const n = ids.filter(i => day[i]).length, total = ids.length || 1;
       cEl.textContent = n; bEl.style.width = `${Math.round(n / total * 100)}%`;
+      pbCkLeft_(n, ids.length);
     }
+  }
+  /* ★2026-10-20 案Bのチェック＝下の大きなボタンは「あと○項目」。全部済んだら「できました」＝押すと きょうやること へ（記録は1つずつ自動で残る） */
+  function pbCkLeft_(n, total) {
+    const el = document.getElementById('pbCkLeft'); if (!el) return;
+    const left = Math.max(0, (Number(total) || 0) - (Number(n) || 0));
+    el.textContent = left ? L({ ja:`あと ${left}項目`, en:`${left} left`, vi:`Còn ${left} mục` }) : L({ ja:'できました（きょうやることへ）', en:'Done (back to Today)', vi:'Xong (về Hôm nay)' });
+    el.classList.toggle('dim', !!left);
+    el.onclick = left ? null : () => go('/home');
   }
   /* 同期で新しい行が届いたとき、いま見ている画面は作り直さず「新しい情報が届きました」の帯だけを出す（2026-09-24）。
      帯は画面の中身（.body）の先頭に差し込む。次の描き直しで自然に消える。 */

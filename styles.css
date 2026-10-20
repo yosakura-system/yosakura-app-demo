@@ -1214,3 +1214,14 @@ html[data-theme="pb"] .pb-app--openphoto #photoMulti { display: none; }
   html[data-theme="pb"] .pb-twhd, html[data-theme="pb"] .pb-smpmemo { grid-column: 1 / -1; }
   html[data-theme="pb"] .pb-thumbs { display: contents; }
 }
+/* ★2026-10-20 案Bのチェック＝1行1項目の大きなチェック（済みは緑）・下に「あと○項目」 */
+html[data-theme="pb"] .pb-ckn { font-size: 15px; color: var(--sumi); font-weight: 700; }
+html[data-theme="pb"] .pb-ckbar { margin: 4px 2px 10px; }
+html[data-theme="pb"] .pb-ckmodel { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; }
+html[data-theme="pb"] .pb-ckmodel img { width: 120px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
+html[data-theme="pb"] .pb-cklist .card { padding: 2px 14px !important; border-radius: 16px; }
+html[data-theme="pb"] .pb-cklist .check { min-height: 56px; padding: 12px 2px; gap: 14px; align-items: center; font-size: 15.5px; }
+html[data-theme="pb"] .pb-cklist .check .box { width: 30px; height: 30px; border-radius: 9px; flex: none; border-width: 2px; }
+html[data-theme="pb"] .pb-cklist .check.done .box { background: #3F7A55; border-color: #3F7A55; color: #fff; }
+html[data-theme="pb"] .pb-cklist .check.done .lbl { color: var(--gray); }
+html[data-theme="pb"] .pb-big.dim { background: #B89A9F; border-color: #B89A9F; }

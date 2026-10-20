@@ -6616,6 +6616,20 @@ console.log('== 2026-10-20 案Bの各画面＝見本の型（戻る1つ・題・
   ok(/id="op_store"/.test(registry.app.innerHTML) && !/class="pb-back"/.test(registry.app.innerHTML), '前のデザイン（hp）は今のまま');
 }
 
+console.log('== 2026-10-20 案Bのチェック（見本の形） ==');
+{
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_ckmode', 'sakura'); });
+  location.hash = '#/app/checklist';
+  const h = registry.app.innerHTML;
+  ok(/<div class="pb-ttl">桜（トイレ）<\/div>/.test(h) && /<span id="ckCount">0<\/span>／\d+/.test(h), '案B：チェックの題は見本の呼び名・件数「0／n」');
+  ok(/id="pbCkLeft"[^>]*>あと \d+項目/.test(h) && /data-ck="/.test(h) && /id="ckBar"/.test(h), '案B：1行1項目のチェック・下に「あと○項目」');
+  ok(!/data-ckmode=/.test(h), '案B：種類の切替は出さない（きょうやることから選ぶ）');
+  ok(/function pbCkLeft_\(n, total\)/.test(code) && (code.match(/pbCkLeft_\(n2?, ids\.length\)/g) || []).length === 2, 'チェックのたび・同期のたびに「あと○項目」を書き換える');
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_ckmode', 'sakura'); });
+  location.hash = '#/app/checklist';
+  ok(/data-ckmode=/.test(registry.app.innerHTML), '前のデザイン（hp）のチェックは今のまま');
+}
+
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');
 {
   const S = '牛カツ世桜 長堀橋店';
