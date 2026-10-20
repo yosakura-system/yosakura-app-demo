@@ -1225,3 +1225,13 @@ html[data-theme="pb"] .pb-cklist .check .box { width: 30px; height: 30px; border
 html[data-theme="pb"] .pb-cklist .check.done .box { background: #3F7A55; border-color: #3F7A55; color: #fff; }
 html[data-theme="pb"] .pb-cklist .check.done .lbl { color: var(--gray); }
 html[data-theme="pb"] .pb-big.dim { background: #B89A9F; border-color: #B89A9F; }
+/* ★2026-10-20 案Bの在庫・気づき・共通の細部 */
+html[data-theme="pb"] .pb-appbody > .mock-note { display: none; }
+html[data-theme="pb"] .pb-appbody #photoMulti { display: none; }
+html[data-theme="pb"] .pb-app--kizuki #kzForm > h3, html[data-theme="pb"] .pb-app--zaiko .pb-appbody > .card:first-of-type > h3:first-child { display: none; }
+html[data-theme="pb"] .zk-in { gap: 6px; }
+html[data-theme="pb"] .zk-in input { width: 64px; text-align: center; font-size: 17px; font-weight: 600; }
+html[data-theme="pb"] .zk-st { flex: none; width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--sumi); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
+html[data-theme="pb"] .zk-st:active { background: var(--suou-t); }
+html[data-theme="pb"] .zk-in.low input { color: #B5442E; border-color: #E2B3A8; }
+html[data-theme="pb"] .zk-in > .muted { width: 38px; flex: none; font-size: 12px; }

@@ -2545,6 +2545,7 @@
   const kzCatLabel = (v) => { const f = KZ_CATS.find(x=>x.v===v); return f ? L(f.t) : v; };
   APP_VIEWS.kizuki = () => {
     const vis = visibleStores();
+    if (isPb() && getRole() !== 'hq') _pbHead = { t: L({ ja:'気づき', en:'Insight', vi:'Ghi nhận' }), d: L({ ja:'良かったことも困ったことも、そのままの言葉で。本部から返答が来ます。', en:'Good or bad, in your own words. HQ will reply.', vi:'Tốt hay khó, cứ viết tự nhiên. HQ sẽ trả lời.' }) };
     const recent = getKz().filter(r=>vis.includes(r.store)).sort((a,b)=>b.t-a.t).slice(0,6);
     const ph = L({
       ja:'例）料理＝盛り付け・味・お客様の食べ残し（理由も）／サービス＝求められた調味料・ご指摘・褒められた点／その他＝必要な器具・こんなシステムがあれば 等',
@@ -2555,8 +2556,8 @@
       ${NOTE({ ja:'◆ クローズ後、その日出勤したスタッフ全員で「気づき」を送信（本部が改善に活用）', en:'◆ After close, every staff shares an insight (HQ uses it to improve)', vi:'◆ Sau khi đóng cửa, mỗi nhân viên gửi một ghi nhận' })}
       <div class="card" id="kzForm">
         <h3>${L({ ja:'気づきを報告', en:'Share an insight', vi:'Gửi ghi nhận' })}</h3>
-        <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
-          <select id="kz_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+        ${isPb() ? `<input type="hidden" id="kz_store" value="${esc(vis[0] || '')}">` : `<label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
+          <select id="kz_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>`}
         <label class="fld"><span>${L({ ja:'カテゴリ', en:'Category', vi:'Danh mục' })}</span>
           <div class="seg" data-seg="kzcat">${KZ_CATS.map((c,i)=>`<button type="button" data-v="${c.v}" class="${i===0?'on':''}">${L(c.t)}</button>`).join('')}</div></label>
         <label class="fld"><span>${L({ ja:'気づいたこと', en:'Your insight', vi:'Ghi nhận' })}</span>
@@ -2564,7 +2565,7 @@
         <label class="fld"><span>${L({ ja:'写真（任意）', en:'Photo (optional)', vi:'Ảnh (tùy chọn)' })}</span>
           <div class="photo-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ ja:'写真を追加', en:'Add photos', vi:'Thêm ảnh' })}</b></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
           <div class="photo-thumbs" id="photoThumbs"></div></label>
-        <button class="btn-primary" id="submitKz">${L({ ja:'報告する', en:'Submit', vi:'Gửi' })}</button>
+        <button class="btn-primary${isPb() ? ' pb-big' : ''}" id="submitKz">${isPb() ? L({ ja:'送る', en:'Send', vi:'Gửi' }) : L({ ja:'報告する', en:'Submit', vi:'Gửi' })}</button>
         <div class="hint">${L({ ja:'※退勤前に。お客様がいらっしゃる時はキッチン奥などご配慮を。', en:'Before leaving. Please be discreet if guests are present.', vi:'Trước khi tan ca. Vui lòng kín đáo nếu có khách.' })}</div>
       </div>
       <div class="card">
@@ -3105,6 +3106,7 @@
     </div>`;
   }
   APP_VIEWS.zaiko = () => {
+    if (isPb() && getRole() !== 'hq') _pbHead = { t: L({ ja:'在庫の数', en:'Stock count', vi:'Số tồn kho' }), d: L({ ja:'締めに数えて入れるだけ。基準より少ない品目は発注リストに出ます。', en:'Count at closing. Items below the minimum go to the order list.', vi:'Đếm khi đóng ca. Mục dưới định mức vào danh sách đặt.' }) };
     const vis = visibleStores(); const store = zkStore();
     let tab = ''; try { tab = localStorage.getItem(ZK_LS_TAB) || ''; } catch (e) {}
     if (!['in', 'now', 'order', 'items'].includes(tab)) tab = 'in';
@@ -3129,7 +3131,7 @@
           const rowsOf = (list) => list.map(([it, i]) => { const cur = l && l.q[it.n]; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
             const prev = list[list.indexOf(list.find(x => x[1] === i)) - 1]; const head = (it.g && (!prev || prev[0].g !== it.g)) ? `<div class="zk-grp" style="margin-top:${prev ? 16 : 4}px">${esc(it.g)}</div>` : '';
             return `${head}<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}</small></label>
-            <input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${isToday && cur != null ? esc(String(cur)) : (draft[it.n] != null ? esc(String(draft[it.n])) : '')}" placeholder="${!isToday && cur != null ? esc(String(cur)) : '0'}"><span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
+            ${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:-1" aria-label="-">−</button>` : ''}<input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${isToday && cur != null ? esc(String(cur)) : (draft[it.n] != null ? esc(String(draft[it.n])) : '')}" placeholder="${!isToday && cur != null ? esc(String(cur)) : '0'}">${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:1" aria-label="+">＋</button>` : ''}<span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
           const all = m.map((it, i) => [it, i]); const due = all.filter(([it]) => zkDue(it, dow)); const later = all.filter(([it]) => !zkDue(it, dow));
           const hasFreq = m.some(it => zkFreqOf(it));
           let h = '';
@@ -12396,6 +12398,15 @@
     }
   }
   /* ★2026-10-20 案Bのチェック＝下の大きなボタンは「あと○項目」。全部済んだら「できました」＝押すと きょうやること へ（記録は1つずつ自動で残る） */
+  /* ★2026-10-20 案Bの在庫＝見本と同じ −／＋。押すと入力欄の数を1つ増減し、入力したのと同じ扱い（下書き・判定はそのまま） */
+  try { document.addEventListener('click', (e) => {
+    const b = e.target && e.target.closest ? e.target.closest('[data-zkstep]') : null; if (!b) return;
+    e.preventDefault();
+    const [i, d] = String(b.dataset.zkstep).split(':'); const inp = document.getElementById('zk_q' + i); if (!inp) return;
+    const cur = parseFloat(String(inp.value || '').replace(/[^0-9.]/g, '')); const base = isNaN(cur) ? 0 : cur;
+    const nv = Math.max(0, Math.round((base + Number(d)) * 10) / 10);
+    inp.value = String(nv); inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+  }); } catch (e) {}
   function pbCkLeft_(n, total) {
     const el = document.getElementById('pbCkLeft'); if (!el) return;
     const left = Math.max(0, (Number(total) || 0) - (Number(n) || 0));

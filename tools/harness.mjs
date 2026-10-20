@@ -6630,6 +6630,20 @@ console.log('== 2026-10-20 案Bのチェック（見本の形） ==');
   ok(/data-ckmode=/.test(registry.app.innerHTML), '前のデザイン（hp）のチェックは今のまま');
 }
 
+console.log('== 2026-10-20 案Bの在庫・気づき（見本の形） ==');
+{
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/app/zaiko';
+  let h = registry.app.innerHTML;
+  ok(/<div class="pb-ttl">在庫の数<\/div>/.test(h) && /data-zkstep="\d+:-1"/.test(h) && /data-zkstep="\d+:1"/.test(h) && /id="zk_q0"/.test(h), '案B：在庫は −／＋（入力欄・idはそのまま）');
+  location.hash = '#/app/kizuki';
+  h = registry.app.innerHTML;
+  ok(/<div class="pb-ttl">気づき<\/div>/.test(h) && /<input type="hidden" id="kz_store" value="牛カツ世桜 長堀橋店">/.test(h) && /id="submitKz">送る</.test(h), '案B：気づきは店舗を選ばない（ログインの店）・「送る」');
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); });
+  location.hash = '#/app/zaiko';
+  ok(!/data-zkstep=/.test(registry.app.innerHTML), '前のデザイン（hp）の在庫は今のまま');
+}
+
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');
 {
   const S = '牛カツ世桜 長堀橋店';
