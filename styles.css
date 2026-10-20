@@ -1173,3 +1173,44 @@ html[data-theme="pb"] .pb-note { font-size: 12px; color: var(--gray); margin: 10
   html[data-theme="pb"] .pb-tiles { grid-template-columns: repeat(4, 1fr); gap: 10px; }
   html[data-theme="pb"] .pb-tile .pb-tileimg { height: 100%; }
 }
+/* ★2026-10-20 案Bの見本の型（店舗側の各画面）＝戻る1つ・明朝の題・1行の説明・下に経過時間 */
+html[data-theme="pb"] .pb-back { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; color: var(--gray); font: inherit; font-size: 14px; padding: 4px 2px; margin: 0 0 6px; cursor: pointer; }
+html[data-theme="pb"] .pb-back svg { width: 16px; height: 16px; }
+html[data-theme="pb"] .pb-app > .pb-ttl { margin-top: 2px; }
+html[data-theme="pb"] .pb-timer { text-align: right; font-size: 11.5px; color: var(--gray); margin: 10px 2px 0; }
+html[data-theme="pb"] .pb-timer b { font-weight: 500; font-variant-numeric: tabular-nums; }
+html[data-theme="pb"] .pb-appbody > .appbar:first-child { display: none; }
+/* ★2026-10-20 案Bのオープン写真＝左が見本・右が今日 */
+html[data-theme="pb"] .pb-twin2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+html[data-theme="pb"] .pb-twcol { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+html[data-theme="pb"] .pb-twhd { font-size: 12px; letter-spacing: .14em; color: var(--gray); font-weight: 700; }
+html[data-theme="pb"] .pb-fig { margin: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
+html[data-theme="pb"] .pb-fig img, html[data-theme="pb"] .pb-figempty { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 0; height: auto; margin: 0; }
+html[data-theme="pb"] .pb-figempty { display: grid; place-items: center; align-content: center; gap: 6px; background: #F4F0EA; color: var(--gray); font-size: 12px; }
+html[data-theme="pb"] .pb-figempty svg { width: 22px; height: 22px; }
+html[data-theme="pb"] .pb-fig figcaption { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 8px 10px; font-size: 12.5px; }
+html[data-theme="pb"] .pb-pill2 { font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+html[data-theme="pb"] .pb-pill2.info { background: var(--suou-t); color: var(--suou-d); }
+html[data-theme="pb"] .pb-pill2.warn { background: #F6E6D7; color: #9A5A1F; }
+html[data-theme="pb"] .pb-pill2.ok { background: #E3F0E6; color: #2F6B45; }
+html[data-theme="pb"] .pb-smpmemo { font-size: 12.5px; line-height: 1.7; white-space: pre-wrap; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: #fff; }
+html[data-theme="pb"] .pb-thumbs { margin: 0; display: grid; grid-template-columns: 1fr; gap: 10px; }
+html[data-theme="pb"] .pb-thumbs:empty { display: none; }
+html[data-theme="pb"] .pb-thumbs .pt { width: 100%; height: auto; }
+html[data-theme="pb"] .pb-thumbs .pt img { width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 12px; }
+html[data-theme="pb"] .pb-drop { flex-direction: column; justify-content: center; text-align: center; aspect-ratio: 4 / 3; gap: 6px; border-radius: 12px; background: #F4F0EA; }
+html[data-theme="pb"] .pb-thumbs:not(:empty) + .pb-drop { aspect-ratio: auto; flex-direction: row; padding: 10px; }
+html[data-theme="pb"] .pb-drop b { display: block; font-size: 14px; }
+html[data-theme="pb"] .pb-drop small { display: block; margin-top: 2px; }
+html[data-theme="pb"] .pb-big { width: 100%; margin-top: 12px; font-size: 17px; padding: 15px; border-radius: 14px; }
+html[data-theme="pb"] .pb-done { display: flex; align-items: center; gap: 6px; color: #2F6B45; background: #E3F0E6; border-radius: 12px; padding: 8px 12px; font-size: 13px; margin: 0 0 8px; }
+html[data-theme="pb"] .pb-done svg { width: 16px; height: 16px; }
+html[data-theme="pb"] .pb-more { margin-top: 12px; padding: 0; }
+html[data-theme="pb"] .pb-more > summary { list-style: none; cursor: pointer; padding: 12px 14px; font-size: 13.5px; font-weight: 600; color: var(--gray); }
+html[data-theme="pb"] .pb-app--openphoto #photoMulti { display: none; }
+@media (min-width: 900px) and (min-height: 600px) {
+  html[data-theme="pb"] .pb-twin2 { gap: 18px; padding: 16px; }
+  html[data-theme="pb"] .pb-twcol { display: grid; grid-template-columns: 1fr 1fr; align-content: start; }
+  html[data-theme="pb"] .pb-twhd, html[data-theme="pb"] .pb-smpmemo { grid-column: 1 / -1; }
+  html[data-theme="pb"] .pb-thumbs { display: contents; }
+}

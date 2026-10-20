@@ -2186,6 +2186,7 @@
     if (!a || appHidden(a)) return viewHome('home'); // 初期リリースで外した機能は開かない（タスクは神田さんのIDだけ例外）
     if (!canOpen(a, getRole())) { toast(L({ ja:'この機能を開く権限がありません', en:'You do not have permission for this', vi:'Bạn không có quyền mở mục này' })); return viewHome('home'); }
     const body = APP_VIEWS[id] ? APP_VIEWS[id](a) : mockGeneric(a);
+    if (isPb() && getRole() !== 'hq' && a.group !== 'hq') return shell(pbAppFrame_(id, a, body), pbAppTab_(a));   // ★2026-10-20 案Bの見本の型（戻る1つ・明朝の題・1行の説明・下に経過時間）
     const inner = `
       <main class="screen">
         <div class="appbar">${appbarHTML()}</div>
@@ -2202,6 +2203,30 @@
     /* 案B＝店舗側の下タブは3つなので、開いている画面のタブも3つに寄せて光らせる */
     const tabKey = (isPb() && getRole() !== 'hq') ? (g === 'learn' ? 'miru' : (g === 'other' || g === 'biz') ? 'miru' : 'home') : groupTab(g);
     return shell(inner, tabKey);
+  }
+  /* ★2026-10-20 神田さん「B案のデモと見比べて全体を」＝案Bの店舗側の画面は見本と同じ型：
+     上に戻るボタン1つ（来た所の名前＝きょうやること／見る・注文する／店の数字／前の画面の名前）→明朝の題→1行の説明→中身→下に小さく経過時間。
+     「1つ前へ／ホーム」の2つ・アイコン付き見出しは出さない。戻るは今までの履歴（NAV）をそのまま使う */
+  const pbAppTab_ = (a) => { const g = a.group; return (g === 'learn' || g === 'other' || g === 'biz') ? 'miru' : 'home'; };
+  let _pbOpen = { id: '', t: 0 };
+  let _pbHead = null;   // 各画面が { t:題, d:説明 } を入れると、その題・説明で出す（1回で消える）
+  function pbBack_(a) {
+    const prev = NAV.length > 1 ? String(NAV[NAV.length - 2] || '') : '';
+    const tabLb = (t) => t === 'miru' ? L({ ja:'見る・注文する', en:'Look up', vi:'Tra cứu' }) : t === 'num' ? L({ ja:'店の数字', en:'Numbers', vi:'Số liệu' }) : L({ ja:'きょうやること', en:'Today', vi:'Hôm nay' });
+    let lb;
+    if (prev.startsWith('/app/')) { const pa = appById(prev.slice(5).split('?')[0]); lb = pa ? L(pa.name) : L({ ja:'戻る', en:'Back', vi:'Quay lại' }); }
+    else if (prev.startsWith('/home')) { const m = prev.match(/[?&]tab=([a-z]+)/); lb = tabLb(m ? m[1] : 'home'); }
+    else lb = tabLb(pbAppTab_(a));
+    return prev ? `<button class="pb-back" id="prevBtn">${svg('back')}${esc(lb)}</button>` : `<button class="pb-back" data-tab="${pbAppTab_(a)}">${svg('back')}${esc(lb)}</button>`;
+  }
+  function pbAppFrame_(id, a, body) {
+    if (_pbOpen.id !== id) _pbOpen = { id, t: Date.now() };
+    try { if (!window.__pbTimer) window.__pbTimer = setInterval(() => { document.querySelectorAll('.pb-timer[data-t0]').forEach(el => { const sec = Math.max(0, Math.floor((Date.now() - Number(el.dataset.t0)) / 1000)); const b = el.querySelector('b'); if (b) b.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }); }, 1000); } catch (e) {}
+    const hd = _pbHead; _pbHead = null;
+    const ttl = hd && hd.t ? hd.t : L(a.name), lead = hd ? (hd.d || '') : (a.desc ? L(a.desc) : '');
+    return `<main class="screen pb-app pb-app--${esc(id)}">${pbBack_(a)}<div class="pb-ttl">${esc(ttl)}</div>${lead ? `<p class="pb-lead">${esc(lead)}</p>` : ''}
+      <div class="pb-appbody">${body}</div>
+      <div class="pb-timer" data-t0="${_pbOpen.t}">${L({ ja:'この画面を開いてから', en:'Time on this screen', vi:'Thời gian trên màn hình' })} <b>0:00</b></div></main>`;
   }
   /* 案B＝画面の見出しの印を、その画面の写真に（写真が無い画面はいままでの印） */
   function pbHeadIco_(id, a) {
@@ -8725,6 +8750,30 @@
           : `<button class="mini" id="phsMemoEdit" style="margin-top:8px">${L({ ja:'注意書きを編集', en:'Edit notes', vi:'Sửa ghi chú' })}</button>`)
           + `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 見本と注意書きは店舗ごとに保存され、スタッフの画面にも表示されます。', en:'Samples and notes are saved per store and shown to staff.', vi:'Mẫu và ghi chú lưu theo cửa hàng, nhân viên cũng thấy.' })}</div>` : ''}
       </div>` : '';
+    /* ★2026-10-20 案Bの見本＝「左が店長の登録した見本・右が今日」。店舗はログインの店で固定（選ぶ欄は出さない）・他の写真項目への切替も出さない。
+       撮る仕組み（photoDrop／f_photo／photoThumbs）・提出（data-topensubmit）・保存はそのまま。見本の登録は店長・オーナーだけ（最近の提出から） */
+    if (isPb() && getRole() !== 'hq') {
+      _pbHead = { t: title, d: target === 'openphoto'
+        ? L({ ja:'左が店長の登録した見本、右が今日。同じ画角で撮るだけ。', en:'Left: the sample set by the manager. Right: today. Shoot from the same angle.', vi:'Trái: ảnh mẫu của quản lý. Phải: hôm nay. Chụp cùng góc.' })
+        : hint };
+      const smp = (p, i) => `<figure class="pb-fig"><img src="${photoThumb(p)}" data-full="${photoFull(p)}" class="rep-photo" alt=""><figcaption>${L({ ja:'見本', en:'Sample', vi:'Mẫu' })}${sPhotos.length > 1 ? ' ' + (i + 1) : ''}<span class="pb-pill2 info">${L({ ja:'店長が登録', en:'By manager', vi:'Quản lý' })}</span></figcaption></figure>`;
+      const noSmp = `<figure class="pb-fig"><div class="pb-figempty">${svg('camera')}<span>${L({ ja:'見本はまだありません', en:'No sample yet', vi:'Chưa có mẫu' })}</span></div><figcaption>${L({ ja:'見本', en:'Sample', vi:'Mẫu' })}<span class="pb-pill2 warn">${L({ ja:'未登録', en:'Not set', vi:'Chưa có' })}</span></figcaption></figure>`;
+      return `
+        ${done ? `<div class="pb-done">${svg('tick')}${esc(period)}</div>` : ''}
+        ${target === 'nouhin' ? `<p class="hint" id="nouhin_rednote" style="display:block;color:#c0392b;font-weight:600">${L({ ja:'伝票は1枚ずつ、合計の金額まで写してください。', en:'One slip per photo, with the total.', vi:'Mỗi ảnh một phiếu, có tổng tiền.' })}</p>` : ''}
+        <div class="pb-card pb-twin2">
+          <div class="pb-twcol"><div class="pb-twhd">${L({ ja:'見本', en:'Sample', vi:'Mẫu' })}</div>${sPhotos.length ? sPhotos.map(smp).join('') : noSmp}${sMemo ? `<div class="pb-smpmemo">${esc(sMemo)}</div>` : ''}</div>
+          <div class="pb-twcol"><div class="pb-twhd">${L({ ja:'今日', en:'Today', vi:'Hôm nay' })}</div>
+            <div class="photo-thumbs pb-thumbs" id="photoThumbs"></div>
+            <div class="photo-drop pb-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b>${L({ ja:'撮る', en:'Take photo', vi:'Chụp' })}</b><small>${esc(hint)}</small></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
+          </div>
+        </div>
+        <button class="btn-primary pb-big" data-topensubmit="1">${L({ ja:'送る', en:'Send', vi:'Gửi' })}</button>
+        ${canEditSample ? `<details class="pb-card pb-more"><summary>${L({ ja:'見本の登録・注意書き・最近の提出（店長）', en:'Samples, notes, recent (manager)', vi:'Mẫu, ghi chú, gần đây (quản lý)' })}</summary>${sampleHTML}
+          <div class="card"><h3>${L({ja:'最近の提出',en:'Recent submissions',vi:'Đã nộp gần đây'})}</h3>
+          ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join(''):`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div>${hqAckLine(['openphoto','hygiene_m','menubook'].includes(target)?'openphoto':target, r.t, r.store)}</div>${canEditSample && r.photos && r.photos.length ? `<button class="mini" data-mksample="${esc(String(r.id || r.t))}" style="flex:none;margin-left:auto">${L({ja:'これを見本にする',en:'Use as sample',vi:'Dùng làm mẫu'})}</button>` : ''}</div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
+          </div></details>` : ''}`;
+    }
     return `
       <div class="card">
         <h3>${esc(title)} — ${esc(storeShort(store))}</h3>

@@ -6602,6 +6602,20 @@ console.log('== 2026-10-20 緊急連絡先の初期値（国内10店） ==');
   ok(/const emgOf = \(store\) => \{ const rec = getEmg\(\)\[store\]; return rec \? \(rec\.slots \|\| \{\}\) : Object\.assign\(\{\}, EMG_DEFAULTS_\[store\]/.test(code), '店が一度保存したら保存した内容だけ（初期値で上書きしない）');
 }
 
+console.log('== 2026-10-20 案Bの各画面＝見本の型（戻る1つ・題・説明・経過時間） ==');
+{
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_photo_target', 'openphoto'); });
+  location.hash = '#/app/openphoto';
+  let h = registry.app.innerHTML;
+  ok(/class="pb-back"/.test(h) && /class="pb-timer" data-t0=/.test(h) && !/id="backBtn"/.test(h) && !/1つ前へ/.test(h), '案B：戻るは1つ（1つ前へ／ホームの2つは出さない）・下に経過時間');
+  ok(/<div class="pb-ttl">オープン写真<\/div>/.test(h) && /左が店長の登録した見本、右が今日/.test(h), '案B：オープン写真の題と説明');
+  ok(/class="pb-card pb-twin2"/.test(h) && /id="photoDrop"/.test(h) && /id="f_photo"/.test(h) && /id="photoThumbs"/.test(h) && /data-topensubmit="1"/.test(h), '案B：見本と今日を左右に・撮る仕組みと送るはそのまま');
+  ok(!/id="op_store"/.test(h) && !/data-phtarget=/.test(h), '案B：店舗を選ぶ欄・他の写真への切替は出さない（ログインの店で固定）');
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_photo_target', 'openphoto'); });
+  location.hash = '#/app/openphoto';
+  ok(/id="op_store"/.test(registry.app.innerHTML) && !/class="pb-back"/.test(registry.app.innerHTML), '前のデザイン（hp）は今のまま');
+}
+
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');
 {
   const S = '牛カツ世桜 長堀橋店';
