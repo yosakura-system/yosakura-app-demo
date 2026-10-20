@@ -1859,7 +1859,7 @@
     const done = !it.manual && !!it.submitted;
     const late = !!it.overdue;
     const openArg = m.ckMode ? ` data-tsubmode="${m.ckMode}"` : (m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(m.id)}"` : '');
-    const dueTxt = it.prev
+    const dueTxt = m.freq === 'weekly' ? L({ja:'今週中',en:'This week',vi:'Trong tuần'}) : m.freq === 'monthly' ? L({ja:'今月中',en:'This month',vi:'Trong tháng'}) : m.freq === 'quarterly' ? L({ja:'今四半期',en:'This quarter',vi:'Quý này'}) : it.prev
       ? `${L({ja:'前日分',en:'Yesterday',vi:'Hôm qua'})}（${esc(String(it.dk).slice(5))}）・${L({ja:'締切',en:'Due',vi:'Hạn'})} ${esc(m.due || '')}`
       : `${L({ja:'締切',en:'Due',vi:'Hạn'})} ${esc(m.due || '')}`;
     const sub = done ? L({ ja:'出しました', en:'Done', vi:'Đã nộp' })
@@ -1947,11 +1947,18 @@
       <button class="pb-chip" data-open="surveyqr">${pbImg_('kyou_survey', 'pb-chipimg')}<b>${L({ja:'サーベイQR',en:'Survey QR',vi:'QR khảo sát'})}</b><small>${L({ja:'お会計のときに',en:'At payment',vi:'Khi thanh toán'})}</small></button>
       <button class="pb-chip" data-open="emergency">${pbImg_('miru_emergency', 'pb-chipimg')}<b>${L({ja:'緊急のとき',en:'Emergency',vi:'Khẩn cấp'})}</b><small>${L({ja:'火事・けが・お申し出',en:'Fire, injury, complaint',vi:'Cháy, thương tích'})}</small></button>
     </div>`;
-    const wk = `<div class="pb-sec"><h2>${L({ja:'今週・今月',en:'This week / month',vi:'Tuần / tháng này'})}</h2><small>${L({ja:'期日が近いものだけ',en:'Only what is due soon',vi:'Chỉ mục sắp đến hạn'})}</small></div>
-      <div class="pb-card">
-        <button class="pb-row" data-open="shukan">${pbImg_('kyou_hygiene')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'定期衛生（曜日別）',en:'Periodic hygiene',vi:'Vệ sinh định kỳ'})}</span><span class="pb-sub">${L({ja:'今日の曜日の箇所',en:'Today’s spots',vi:'Hạng mục hôm nay'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>
-        <button class="pb-row" data-open="getsuji">${pbImg_('kyou_tanaoroshi')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'月末棚卸・月に1回のもの',en:'Month-end',vi:'Cuối tháng'})}</span><span class="pb-sub">${L({ja:'棚卸・定期衛生の写真・パスワード変更',en:'Stock count, hygiene photos, password',vi:'Kiểm kê, ảnh vệ sinh, mật khẩu'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>
-      </div>`;
+    /* ★2026-10-20 神田さん「週次、月次をある程度ワンクリックで見れるように」＝案Bの見本どおり、今週・今月の提出物をホームに1件ずつ並べる（押すとその入力へ直接）。
+       済んだものは ✓ で残す。定期衛生（曜日別）は今週の先頭に入口を残す */
+    const allIts = todayItemsFor(store).filter(it => !(it.manual && !it.m.linkApp && !isHttp(it.m.url)));   // 押しても開く先が無い行（PL＝アプリでは受けていない）は出さない
+    const wkIts = allIts.filter(it => it.m.freq === 'weekly');
+    const moIts = allIts.filter(it => it.m.freq === 'monthly' || it.m.freq === 'quarterly');
+    const hygRow = `<button class="pb-row" data-open="shukan">${pbImg_('kyou_hygiene')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'定期衛生（曜日別）',en:'Periodic hygiene',vi:'Vệ sinh định kỳ'})}</span><span class="pb-sub">${L({ja:'今日の曜日の箇所',en:'Today’s spots',vi:'Hạng mục hôm nay'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`;
+    const wkLeft = wkIts.filter(it => !it.manual && !it.submitted).length, moLeft = moIts.filter(it => !it.manual && !it.submitted).length;
+    const leftTx = (n) => n ? `${L({ja:'残り',en:'Left',vi:'Còn'})} ${n}${L({ja:'件',en:'',vi:' mục'})}` : L({ja:'すべて済み',en:'All done',vi:'Xong hết'});
+    const wk = `<div class="pb-sec" id="pbwk"><h2>${L({ja:'今週',en:'This week',vi:'Tuần này'})}</h2><small>${L({ja:'週に1回・曜日は店で決めてよい',en:'Once a week, any day',vi:'Mỗi tuần 1 lần'})} ・ ${leftTx(wkLeft)}</small></div>
+      <div class="pb-card">${hygRow}${wkIts.map(pbFlowRow_).join('')}</div>
+      ${moIts.length ? `<div class="pb-sec" id="pbmo"><h2>${L({ja:'今月',en:'This month',vi:'Tháng này'})}</h2><small>${L({ja:'月に1回のもの',en:'Once a month',vi:'Mỗi tháng 1 lần'})} ・ ${leftTx(moLeft)}</small></div>
+      <div class="pb-card">${moIts.map(pbFlowRow_).join('')}</div>` : ''}`;
     const nippouCard = pbNippouCard_(store, items.find(isNippou));
     /* ★2026-10-19 旧ホームにあって案Bで抜けていた3つ＝サーベイの低い評価・数字の要確認（店長・オーナー）・本部からの返答（直近7日・3件まで）。中身は旧ホームと同じ関数 */
     const sv = svLowData_(role, false);

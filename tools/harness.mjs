@@ -6678,6 +6678,18 @@ console.log('== 2026-10-20 永井さん：OPEN・CLOSEは紙のチェック表�
   ok(/slip, memo, kt, more, submit/.test(code) && /勤怠を入れる（任意・総括表に自動で入ります）/.test(code), '日報：勤怠は「ほかの項目」の奥でなく一言の下に出す（案Bの並び替えは描画後＝コードで確かめる）');
 }
 
+console.log('== 2026-10-20 今週・今月をホームに1件ずつ（押すと直接開く） ==');
+{
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/home';
+  const h = registry.app.innerHTML;
+  const wk = h.slice(h.indexOf('id="pbwk"'));
+  ok(/id="pbwk"/.test(h) && /id="pbmo"/.test(h), '今週・今月の見出しがホームにある');
+  ok(/卓上POPの交換/.test(wk) && /data-open="shukan"/.test(wk), '今週＝週次の提出物（卓上POP）と定期衛生（曜日別）の入口');
+  ok(/定期衛生管理（月次の指定箇所）/.test(wk) && /data-tsubphoto="hygiene_m"/.test(wk), '今月＝月次の提出物が並び、押すとその写真の画面へ直接');
+  ok(/今月中/.test(wk) && !/PL・損益/.test(wk), '期日は「今月中」・開く先の無い行（PL）は出さない');
+}
+
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');
 {
   const S = '牛カツ世桜 長堀橋店';
