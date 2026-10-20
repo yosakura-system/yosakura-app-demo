@@ -210,7 +210,7 @@ body {
 label.fld { display: block; margin-bottom: 14px; }
 label.fld > span { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: #4a4340; }
 /* password はログイン画面で使う（2026-08-28 追加＝入れないと幅がそろわない） */
-input[type=text], input[type=password], input[type=date], select, textarea {
+input[type=text], input[type=tel], input[type=password], input[type=date], select, textarea {
   width: 100%; font: inherit; font-size: 15px; padding: 12px 13px; border: 1px solid var(--line);
   border-radius: 12px; background: #FCFBF9; color: var(--sumi); font-family: var(--sans);
 }
@@ -974,7 +974,7 @@ html[data-theme="pb"] .rep .kind.b { background: var(--matsu-soft); color: var(-
 html[data-theme="pb"] .kslot { border-radius: 14px; }
 html[data-theme="pb"] .kslot-n.over { background: var(--suou); }
 html[data-theme="pb"] .zk-grp { border-radius: 10px; }
-html[data-theme="pb"] input[type="text"], html[data-theme="pb"] input[type="search"], html[data-theme="pb"] input[type="number"], html[data-theme="pb"] input[type="date"], html[data-theme="pb"] input[type="time"], html[data-theme="pb"] select, html[data-theme="pb"] textarea { border-radius: 10px; border-color: var(--line); background: var(--paper); }
+html[data-theme="pb"] input[type="text"], html[data-theme="pb"] input[type="tel"], html[data-theme="pb"] input[type="search"], html[data-theme="pb"] input[type="number"], html[data-theme="pb"] input[type="date"], html[data-theme="pb"] input[type="time"], html[data-theme="pb"] select, html[data-theme="pb"] textarea { border-radius: 10px; border-color: var(--line); background: var(--paper); }
 html[data-theme="pb"] .toast { border-radius: 999px; background: var(--sumi); color: var(--paper); }
 html[data-theme="pb"] .sheet { border-radius: 22px 22px 0 0; }
 html[data-theme="pb"] .footer-note { font-family: var(--serif); letter-spacing: .14em; font-size: 11px; color: var(--gray); text-align: center; margin-top: 18px; }
@@ -1242,3 +1242,5 @@ html[data-theme="pb"] .pb-app--emergency .rep .l2 a[href^="tel:"] { color: var(-
 html[data-theme="pb"] .pb-app--emergency .rep > a.amt { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--suou); color: #fff; flex: none; }
 html[data-theme="pb"] .pb-app--emergency .rep > a.amt svg { width: 20px; height: 20px; display: block; }
 html[data-theme="pb"] .pb-app--emergency .pb-appbody > .card:first-child > h3:first-child { display: none; }
+/* ★2026-10-20 「新しい情報」の帯と本部の「表示」切替が両方出ると、見出しが画面の一番下に押し出されていた（行が足りない）＝上の帯は4本まで自動で積み、本文とメニューは5行目 */
+@media (min-width: 900px) and (min-height: 600px) { html[data-theme="pb"] #app { grid-template-rows: auto auto auto auto 1fr; } html[data-theme="pb"] .appmain, html[data-theme="pb"] .tabbar { grid-row: 5; } }

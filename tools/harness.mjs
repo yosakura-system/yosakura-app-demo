@@ -6597,7 +6597,7 @@ console.log('== 2026-10-20 緊急連絡先の初期値（国内10店） ==');
   ok(!!mm, '緊急連絡先の初期値がある');
   const D = mm ? JSON.parse(mm[1]) : {};
   ok(Object.keys(D).length === 10 && Object.values(D).every(x => x.police && x.fire && x.ambulance && x.hospital && x.electric && x.gas && x.water), '国内10店すべてに警察・消防・救急・病院・電気・ガス・水道');
-  ok(Object.values(D).every(x => !x.police.phone && !x.fire.phone && x.ambulance.phone === '119'), '警察・消防は電話欄を空＝押すと110／119。署の番号はメモ');
+  ok(Object.values(D).every(x => x.police.phone && x.fire.phone && x.ambulance.phone === '119') && /const phone = s\.fix \|\| cur\.phone \|\| '';/.test(code), '警察・消防の電話欄は署の番号。一覧の発信ボタンは110／119が先（2026-10-20 神田さん「電話番号に数字が入っていない」）');
   ok(Object.values(D).every(x => !x.building && !x.facility && !x.kitchen && !x.other), 'ビル管理・設備・厨房機器・その他は空（提携先が分からない）');
   ok(/const emgOf = \(store\) => \{ const rec = getEmg\(\)\[store\]; return rec \? \(rec\.slots \|\| \{\}\) : Object\.assign\(\{\}, EMG_DEFAULTS_\[store\]/.test(code), '店が一度保存したら保存した内容だけ（初期値で上書きしない）');
 }
