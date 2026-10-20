@@ -3056,6 +3056,7 @@
        和牛・日本料理・手巻き寿司＝備品リストに器の一覧が無い → 全業態共通の6品だけ（店長が「品目・基準在庫」で足す）
      std＝初回発注の個数（これを下回ったら「減っている」の目安）。数が分からない物は空欄＝発注リストには出ない */
   /* ★2026-10-20 神田さん「曜日に固定せず、週に1回の業務として」＝器は f:'week'（その週のうちに1回）。日々の在庫の入力には出さず、提出物「器の数と欠け」（今週）から開く */
+  let zkGroupOpts_ = [];   // ★2026-10-20 区分の候補（既存の区分＋冷凍庫・冷蔵庫・常温・備品）＝select で選ぶだけ（古いiPadでは datalist の候補が出ないため）
   const ZK_TW_G = '器（週に1回）';
   const zkTw_ = (rows) => rows.map(r => ({ g: ZK_TW_G, n: r[0], std: r[2] == null ? '' : r[2], u: r[1], f: 'week' }));
   const ZK_TW_COMMON = [['茶碗', '個', ''], ['汁椀', '個', ''], ['湯呑', '個', ''], ['グラス', '個', ''], ['ビールグラス', '個', ''], ['箸置き', '個', '']];
@@ -3208,8 +3209,8 @@
       body = `
         <div class="hint" style="display:block">${L({ ja:'在庫チェック表と同じ順で品目を入れてください。基準在庫＝これを下回ったら発注する数。単位は「本」「袋」「kg」など。区分（冷凍庫など）を入れると、その見出しで分かれて並びます。品目の名前を変えると、前に数えた数は新しい名前には引き継がれません。', en:'List items in the same order as the stock sheet. Minimum = order when below this.', vi:'Nhập mặt hàng theo thứ tự bảng kiểm kho. Định mức = đặt hàng khi thấp hơn.' })}</div>
         <div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span><span>${L({ ja:'確認日', en:'Check', vi:'Ngày' })}</span><span>${L({ ja:'区分', en:'Group', vi:'Nhóm' })}</span></div>
-        <datalist id="zk_glist">${Array.from(new Set(m.map(it => String(it.g || '').trim()).filter(Boolean).concat(['冷凍庫', '冷蔵庫', '常温', '備品']))).map(g => `<option value="${esc(g)}"></option>`).join('')}</datalist>
-        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="zk-grp" style="margin-top:${i ? 14 : 2}px">${esc(r.g)}</div>` : ''}<div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="0"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'本', en:'pcs', vi:'cái' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${(r.n ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select><input type="text" id="zk_g${i}" list="zk_glist" value="${esc(r.g || '')}" placeholder="${L({ ja:'区分（例：冷凍庫）', en:'Group', vi:'Nhóm' })}" style="flex:0.9;min-width:0"></div>`).join('')}
+        ${(() => { zkGroupOpts_ = Array.from(new Set(m.map(it => String(it.g || '').trim()).filter(Boolean).concat(['冷凍庫', '冷蔵庫', '常温', '備品']))); return ''; })()}
+        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="zk-grp" style="margin-top:${i ? 14 : 2}px">${esc(r.g)}</div>` : ''}<div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="0"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'本', en:'pcs', vi:'cái' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${(r.n ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select><select id="zk_g${i}" style="flex:0.9;min-width:0"><option value="">${L({ ja:'区分なし', en:'No group', vi:'Không' })}</option>${zkGroupOpts_.map(g => `<option value="${esc(g)}"${g === String(r.g || '').trim() ? ' selected' : ''}>${esc(g)}</option>`).join('')}<option value="__new">${L({ ja:'＋新しい区分', en:'+ New group', vi:'+ Nhóm mới' })}</option></select><input type="text" id="zk_gn${i}" placeholder="${L({ ja:'新しい区分名', en:'New group', vi:'Nhóm mới' })}" style="flex:0.9;min-width:0;display:none"></div>`).join('')}
         ${missing.length ? `<div style="margin:6px 0 4px"><button class="mini" id="zkFromDefault">${L({ ja:'本部が写した品目を取り込む', en:'Add HQ-listed items', vi:'Thêm mặt hàng do HQ nhập' })}（${missing.length}）</button>
           <span class="muted" style="font-size:12px">${L({ ja:'紙の在庫表・朝礼シートから本部が写した品目のうち、この一覧に無いものを空の行に足します（足したら保存）', en:'Adds items HQ copied from the paper sheets that are not in this list', vi:'Thêm các mặt hàng HQ đã nhập mà danh sách chưa có' })}</span></div>` : ''}
         <div style="margin:6px 0 10px"><button class="mini" id="zkFromTana">${L({ ja:'月次棚卸の品目を取り込む', en:'Import stocktake items', vi:'Nhập mặt hàng từ kiểm kê' })}${(() => { const n = zkTanaNames(store).length; return n ? `（${n}）` : ''; })()}</button>
@@ -11352,6 +11353,7 @@
       names.forEach(n => { if (have[n]) return; const empty = Array.from(document.querySelectorAll('input[id^="zk_n"]')).find(el => !String(el.value || '').trim()); if (!empty) return; empty.value = n; have[n] = true; added++; });
       toast(added ? `${L({ ja:'棚卸の品目を追加しました', en:'Added', vi:'Đã thêm' })}：${added}${L({ ja:'件（基準在庫を入れて保存してください）', en:' (set minimums and save)', vi:' (đặt định mức rồi lưu)' })}` : L({ ja:'追加する品目はありません（すべて登録済み）', en:'Nothing to add', vi:'Không có gì để thêm' }));
     };
+    document.querySelectorAll('select[id^="zk_g"]').forEach(sel => { sel.onchange = () => { const inp = document.getElementById('zk_gn' + sel.id.slice(4)); if (inp) { inp.style.display = sel.value === '__new' ? '' : 'none'; if (sel.value === '__new') inp.focus(); } }; });   // ★区分「＋新しい区分」＝入力欄を出す
     const svZk = document.getElementById('saveZkMaster');
     if (svZk) svZk.onclick = () => {
       if (!zkMgr()) return;
@@ -11360,7 +11362,7 @@
         const nEl = document.getElementById('zk_n' + i); if (!nEl) break;
         const name = String(nEl.value || '').trim(); if (!name) continue;
         const sv = String((document.getElementById('zk_s' + i) || {}).value || '').trim();
-        items.push({ n: name, std: sv === '' ? '' : (Number(sv) || 0), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g: String((document.getElementById('zk_g' + i) || {}).value || '').trim(), f: String((document.getElementById('zk_f' + i) || {}).value || '') });
+        items.push({ n: name, std: sv === '' ? '' : (Number(sv) || 0), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g: (() => { const gv = String((document.getElementById('zk_g' + i) || {}).value || '').trim(); return gv === '__new' ? String((document.getElementById('zk_gn' + i) || {}).value || '').trim() : gv; })(), f: String((document.getElementById('zk_f' + i) || {}).value || '') });
       }
       if (!items.length) { toast(L({ ja:'品目を1つ以上入れてください', en:'Enter at least one item', vi:'Nhập ít nhất một mặt hàng' })); return; }
       const t = Date.now();

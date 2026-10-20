@@ -6905,10 +6905,11 @@ console.log('== 2026-10-20 永井さん「冷凍庫という見出しを足し�
   run(() => { setLS('manager', '和牛世桜 広島店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_zk_tab', 'items'); });
   location.hash = '#/app/zaiko';
   const html = registry.app.innerHTML;
-  ok(/id="zk_g0" list="zk_glist"/.test(html) && /<datalist id="zk_glist">/.test(html) && /<option value="冷凍庫">/.test(html), '品目の行に「区分」の入力（候補＝既存の区分＋冷凍庫・冷蔵庫・常温・備品）');
+  ok(/<select id="zk_g0"/.test(html) && /<option value="冷凍庫">冷凍庫<\/option>/.test(html) && /<option value="__new">＋新しい区分<\/option>/.test(html) && /id="zk_gn0"/.test(html), '品目の行に「区分」の選択（既存の区分＋冷凍庫・冷蔵庫・常温・備品＋新しい区分の入力）');
   ok(/<span>区分<\/span>/.test(html) && /id="zk_s0"/.test(html), '見出し行に区分・基準在庫の欄は従来どおり');
   ok(/品目の名前を変えると、前に数えた数は新しい名前には引き継がれません/.test(html), '名前を変えたときの注意が出る');
   ok(!/type="hidden" id="zk_g0"/.test(html), '区分は隠し欄ではなく見える欄');
+  ok(/gv === '__new' \? String\(\(document\.getElementById\('zk_gn' \+ i\)/.test(code), '保存＝選んだ区分（＋新しい区分なら入力した名前）');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
