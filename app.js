@@ -2757,7 +2757,9 @@
     const salesGrid = noUsen ? g('sk_posgrid') : null;
     const slipHead = document.createElement('div'); slipHead.className = 'pb-sec'; slipHead.innerHTML = `<h2>${L({ja:'今日の納品書',en:'Today’s delivery slips',vi:'Phiếu giao hàng hôm nay'})}</h2><small>${L({ja:'撮れば自動で読みます',en:'Photos are read automatically',vi:'Chụp là tự đọc'})}</small>`;
     const nm = (() => { try { return getMasters(store).find(m => m.id === 'nouhin' && appliesToStore(m, store)); } catch (e) { return null; } })();
-    const shoot = nm ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pb-nipshoot'; b.dataset.tsub = 'openphoto'; b.dataset.tsubphoto = 'nouhin'; b.textContent = L({ ja:'📷 納品書を撮る（仕入先と8%・10%を自動で読む）', en:'📷 Photograph a delivery slip', vi:'📷 Chụp phiếu giao hàng' }); return b; })() : null;   // ★納品書の写真は毎日の一覧から外したので、ここから撮る
+    /* ★2026-10-20 原さん（心斎橋）「納品書をスキャンして入稿するやり方が分からない」＝撮るボタンが提出物「納品書の写真」のある店（長堀橋）にしか出ていなかった。
+       納品書の枠と「撮れば自動で読みます」は全店に出るので、ボタンも全店に出す（写真の画面は店を問わず動く） */
+    const shoot = g('sk_slipbox') ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pb-nipshoot'; b.dataset.tsub = 'openphoto'; b.dataset.tsubphoto = 'nouhin'; b.textContent = L({ ja:'📷 納品書を撮る（仕入先と8%・10%を自動で読む）', en:'📷 Photograph a delivery slip', vi:'📷 Chụp phiếu giao hàng' }); return b; })() : null;   // ★納品書の写真は毎日の一覧から外したので、ここから撮る
     const slip = g('sk_slipbox');
     const memo = g('sk_memo') ? g('sk_memo').closest('label') : null;
     if (memo && memo.querySelector('span')) memo.querySelector('span').textContent = L({ ja:'一言（本部に伝えたいこと・任意）', en:'A note for HQ (optional)', vi:'Ghi chú cho HQ (tùy chọn)' });

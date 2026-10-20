@@ -6846,5 +6846,13 @@ console.log('== 2026-10-20 器の数と欠け＝曜日に固定せず「今週�
   ok(!daily || !/出しました/.test(daily), '日々の在庫の数は、器だけの提出では済みにならない');
 }
 
+console.log('== 2026-10-20 原さん（心斎橋）＝日報の「納品書を撮る」ボタンは全店に出す ==');
+{
+  /* 案Bの日報の並べ替えは描画後の DOM 操作（ハーネスの innerHTML には写らない）＝条件をコードで固定する */
+  ok(/const shoot = g\('sk_slipbox'\) \? \(\(\) => \{ const b = document\.createElement\('button'\)/.test(code), '撮るボタン＝納品書の枠がある店すべて（提出物「納品書の写真」の有無で出し分けない）');
+  ok(!/const shoot = nm \?/.test(code), '旧＝納品書の写真がある店だけ、の条件は残っていない');
+  ok(/b\.dataset\.tsub = 'openphoto'; b\.dataset\.tsubphoto = 'nouhin'/.test(code), '押すと納品書の写真画面（OCR）へ');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
