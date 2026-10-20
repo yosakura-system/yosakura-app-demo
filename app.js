@@ -153,6 +153,7 @@
     star:   '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9L12 3.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
     table:  '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 9.5h17M3.5 14.5h17M9 9.5v10M15 9.5v10" stroke="currentColor" stroke-width="1.5"/>',
     calendar:'<rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    search: '<circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
     chart:  '<path d="M4 20h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 17v-5M12 17V7M17 17v-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
     yen:    '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 8l3.5 4 3.5-4M12 12v5M9.5 13h5M9.5 15.2h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
     gauge:  '<path d="M4 15a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 15l4-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15" r="1.4" fill="currentColor"/>',
@@ -661,6 +662,10 @@
      「画面の見え方」だけを店舗iPad・店長・オーナーに切り替える。確認中は上部に戻るバナーを常時出す。 */
   const devViewAllowed = () => { const a = getAuth(); return !!a && a.role === 'hq'; };   // ★2026-10-20 本部IDは全員
   const inDevView = () => devViewAllowed() && getRole() !== 'hq';
+  document.addEventListener('input', (e) => { const el = e.target; if (!el || el.id !== 'pbq') return; const box = document.getElementById('pbqres'); if (box) box.innerHTML = pbSearchHTML_(el.value); });   // ★2026-10-20 見る・注文するの「言葉で探す」
+  document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pbqopen],[data-pbqurl]') : null; if (!b) return; e.preventDefault();
+    if (b.dataset.pbqopen) { go('/app/' + b.dataset.pbqopen); return; }
+    const u = b.dataset.pbqurl || ''; if (!isHttp(u)) { toast(L({ ja:'この資料はまだ登録されていません', en:'This document is not registered yet', vi:'Tài liệu này chưa được đăng ký' })); return; } window.open(openUrlFor(u), '_blank', 'noopener'); });
   document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pwchange]') : null; if (b) { e.preventDefault(); try { openPwChangeSheet_(); } catch (e2) {} } });
   /* ★2026-10-20 本部IDのときは全画面の上に「表示：本部｜店舗責任者｜スタッフ」を常に出す（神田さん「本部のメンバーも新デザインを期待」）。
      店舗責任者＝役割 manager の見え方。ログイン・権限・保存は本部のまま。押すとその見え方で描き直す */
@@ -1540,10 +1545,14 @@
       ['miru', { ja:'見る・注文する', en:'Look up', vi:'Tra cứu' }, 'book'],
       ...(['manager', 'owner'].includes(roleKey) ? [['num', { ja:'店の数字', en:'Numbers', vi:'Số liệu' }, 'chart']] : [])
     ] : tabs;
+    /* ★2026-10-20 神田さん「B案のデモの方がしっくりくる」＝案Bの店舗側の見出しは見本と同じ「店名（太字）／日付・役割」の2行。言語と役割のチップは右に小さく残す */
+    const pbHdr = isPb() && roleKey !== 'hq';
+    const hdrWho = pbHdr ? (() => { const sel = getStoreSel(); const st = STORES.includes(sel) ? sel : (visibleStores()[0] || ''); const d = new Date();
+      return `<div class="hdr__who"><b>${esc(st)}</b><span>${d.getMonth() + 1}${L({ja:'月',en:'/',vi:'/'})}${d.getDate()}${L({ja:'日',en:'',vi:''})}（${L(WDAY_LABELS[d.getDay()])}）・${L(role.label)}</span></div>`; })() : '';
     return `
       <header class="hdr">
         <img class="hdr__logo" src="${IMG_ICON}" alt="">
-        <div class="hdr__brand">世桜<small>YOSAKURA APP</small></div>
+        ${pbHdr ? hdrWho : `<div class="hdr__brand">世桜<small>YOSAKURA APP</small></div>`}
         <div class="hdr__spacer"></div>
         <button class="lang-chip" id="langBtn" aria-label="language">${svg('globe')}<span>${LANGS[LANG].short}</span></button>
         <button class="role-chip" id="roleBtn">
@@ -2058,18 +2067,46 @@
     return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div><p class="pb-lead">${esc(storeShort(store))} ・ ${L({ja:'数字は見るだけ。入力は「きょうやること」の日報だけです',en:'View only. Enter numbers in the daily report.',vi:'Chỉ xem. Nhập ở báo cáo ngày.'})}</p>${storeSeg}<div class="pb-2col"><div class="pb-col">${regi}${monCard}</div><div class="pb-col">${kpi2}${voice}${more}</div></div>
       <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;
   }
+  /* ★2026-10-20 神田さん「B案のデモの方がしっくりくる」＝案Bの見本の「見る・注文する」。
+     ①言葉で探す（マニュアル・レシピ＝本部が登録した資料／アプリの画面名）→②写真いっぱいの4枚→③お客様の声（サーベイ・Google口コミ＝毎晩の自動取得 gsnap があるときだけ）→④緊急のとき（安全のため残す）。
+     よく見るレシピ（料理写真）は、MOTONの実物写真がアプリに入っていないので出さない（料理写真はMOTONの実物だけ） */
+  function pbSearch_(q) {
+    q = String(q || '').trim().toLowerCase(); if (!q) return [];
+    const role = getRole(); const st = visibleStores()[0]; const gy = st ? storeGyotai(st) : null;
+    const words = q.split(/[\s　]+/).filter(Boolean);
+    const hit = (txt) => { const t = String(txt || '').toLowerCase(); return words.every(w => t.indexOf(w) >= 0); };
+    const out = [];
+    try { getLinks().forEach(l => { if (!l || !l.title) return; const g = linkGyotai(l); if (role !== 'hq' && g && gy && g.indexOf(gy) < 0) return; if (hit(l.title + ' ' + (l.desc || ''))) out.push({ k: 'url', url: l.url || '', t: l.title, s: l.desc || L({ja:'マニュアル・資料',en:'Manual',vi:'Tài liệu'}) }); }); } catch (e) {}
+    try { APPS.forEach(a => { if (!a || appHidden(a) || !canOpen(a, role) || !a.name) return; const nm = L(a.name); if (hit(nm + ' ' + (a.desc ? L(a.desc) : ''))) out.push({ k: 'app', id: a.id, t: nm, s: a.desc ? L(a.desc) : L({ja:'アプリの画面',en:'App screen',vi:'Màn hình'}) }); }); } catch (e) {}
+    return out.slice(0, 30);
+  }
+  const pbSearchHTML_ = (q) => {
+    if (!String(q || '').trim()) return '';
+    const rs = pbSearch_(q);
+    if (!rs.length) return `<div class="pb-card"><div class="muted">${L({ja:'見つかりませんでした。別の言葉で探してください',en:'No results. Try other words.',vi:'Không tìm thấy.'})}</div></div>`;
+    return `<div class="pb-card pb-qres">${rs.map(r => `<button class="pb-row pb-qrow" ${r.k === 'app' ? `data-pbqopen="${esc(r.id)}"` : `data-pbqurl="${esc(r.url)}"`}><span class="pb-rowtx"><span class="pb-nm">${esc(r.t)}</span><span class="pb-sub">${esc(r.s)}</span></span><span class="pb-rt">${svg('chev')}</span></button>`).join('')}</div>`;
+  };
   function pbMiru_(role) {
-    const tile = (key, open, t, s, extra) => `<button class="pb-tile" ${extra || `data-open="${open}"`}>${pbImg_(key, 'pb-tileimg')}<span class="pb-tiletx"><b>${L(t)}</b><small>${L(s)}</small></span></button>`;
+    const tile = (key, open, t, s, extra) => `<button class="pb-tile" ${extra || `data-open="${open}"`}>${pbImg_(key, 'pb-tileimg')}<span class="pb-veil"></span><span class="pb-tiletx"><b>${L(t)}</b><small>${L(s)}</small></span></button>`;
     const tiles = [
-      tile('miru_recipe', 'gyotaiman', { ja:'レシピ', en:'Recipes', vi:'Công thức' }, { ja:'業態別の作り方・合格の目安', en:'By format', vi:'Theo loại hình' }),
-      tile('miru_manual', 'manual', { ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' }, { ja:'仕事の手順・衛生・ルール', en:'Procedures & rules', vi:'Quy trình & quy định' }),
-      tile('miru_order', 'order', { ja:'備品・食材を注文する', en:'Order supplies', vi:'Đặt vật tư' }, { ja:'注文先へ', en:'To order forms', vi:'Đến form đặt hàng' }),
+      tile('miru_recipe', 'gyotaiman', { ja:'レシピ', en:'Recipes', vi:'Công thức' }, { ja:'作り方・合格の形', en:'How to make', vi:'Cách làm' }),
+      tile('miru_manual', 'manual', { ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' }, { ja:'手順・衛生・アレルギー・緊急', en:'Procedures & hygiene', vi:'Quy trình & vệ sinh' }),
+      tile('miru_order', 'order', { ja:'発注', en:'Order', vi:'Đặt hàng' }, { ja:'備品・食材の注文先へ', en:'To order forms', vi:'Đến form đặt hàng' }),
       tile('miru_howto', '', { ja:'その他', en:'More', vi:'Khác' }, { ja:'使い方・ルール集・相談・設定', en:'How-to, FAQ, settings', vi:'Hướng dẫn, cài đặt' }, 'data-tab="other"'),
     ].join('');
+    const st = visibleStores()[0];
+    const ymNow = st ? ymOfDate(dateKeyFor(st, Date.now())) : '';
+    const sv = st ? getSurvey().filter(r => r && r.store === st && r.sat >= 1 && ymOfDate(dateKeyFor(st, r.t)) === ymNow) : [];
+    const svAvg = sv.length ? (sv.reduce((a, r) => a + r.sat, 0) / sv.length).toFixed(1) : null;
+    const svLow = sv.filter(r => r.sat <= 3).length;
+    let g = null; try { const gs = st ? gsnapsOf(st) : []; if (gs.length) { const last = gs[gs.length - 1]; const mon = gs.filter(x => String(x._d).slice(0, 7) === String(last._d).slice(0, 7)); g = { total: last.total, rating: last.rating, gained: mon.length > 1 ? (Number(last.total) || 0) - (Number(mon[0].total) || 0) : null }; } } catch (e) {}
+    const gHalf = g && g.total != null ? `<button class="pb-voicehalf" data-open="greview"><div class="l">${L({ja:'Google口コミ',en:'Google reviews',vi:'Đánh giá Google'})}</div><div class="v">${g.rating != null ? Number(g.rating).toFixed(1) : '—'}</div><div class="d">${L({ja:'通算',en:'Total',vi:'Tổng'})} ${Number(g.total).toLocaleString('ja-JP')}${L({ja:'件',en:'',vi:''})}${g.gained != null ? ` ・ ${L({ja:'今月',en:'this month',vi:'tháng này'})} ${g.gained >= 0 ? '+' : ''}${g.gained}` : ''}</div></button>` : '';
+    const voice = st ? `<div class="pb-sec"><h2>${L({ja:'お客様の声',en:'Guest feedback',vi:'Ý kiến khách'})}</h2><small>${L({ja:'自動 ・ 毎晩記録',en:'Automatic',vi:'Tự động'})}</small></div>
+      <div class="pb-card pb-voice">${gHalf}<button class="pb-voicehalf" data-open="survey?tab=voice"><div class="l">${L({ja:'サーベイ満足度',en:'Survey score',vi:'Điểm khảo sát'})}</div><div class="v">${svAvg || '—'}</div><div class="d">${L({ja:'今月',en:'This month',vi:'Tháng này'})} ${sv.length}${L({ja:'件',en:'',vi:''})}${svLow ? ` ・ ${L({ja:'低評価',en:'low',vi:'thấp'})} ${svLow}${L({ja:'件',en:'',vi:''})}` : ''}</div></button></div>` : '';
     const em = `<button class="pb-strip pb-strip--em" data-open="emergency">${pbImg_('miru_emergency', 'pb-th pb-th--s')}<span><b>${L({ja:'緊急のとき',en:'Emergency',vi:'Khẩn cấp'})}</b>${L({ja:'火事・けが・食中毒の疑い・お客様の重大なお申し出',en:'Fire, injury, food poisoning, serious complaint',vi:'Cháy, thương tích, ngộ độc, khiếu nại'})}</span>${svg('chev')}</button>`;
-    const num = ['manager', 'owner'].includes(role) ? `<div class="pb-sec"><h2>${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</h2><small>${L({ja:'店長・オーナー',en:'Manager / owner',vi:'Quản lý'})}</small></div>
-      <div class="pb-card"><button class="pb-row" data-open="pl">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'数値・原価率',en:'Numbers & cost rate',vi:'Số liệu & giá vốn'})}</span><span class="pb-sub">${L({ja:'今月の売上・仕入率・前月の原価率',en:'Sales, purchases and cost rate',vi:'Doanh thu, nhập, giá vốn'})}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>` : '';
-    return `<main class="screen pb-miru"><div class="pb-ttl">${L({ja:'見る・注文する',en:'Look up & order',vi:'Tra cứu & đặt hàng'})}</div><p class="pb-lead">${L({ja:'探すものを押してください。',en:'Tap what you need.',vi:'Chạm vào mục cần tìm.'})}</p>${em}<div class="pb-tiles">${tiles}</div>${num}</main>`;
+    const search = `<label class="pb-search">${svg('search')}<input id="pbq" type="search" placeholder="${esc(L({ja:'言葉で探す（例：鰻　アレルギー　棚卸）',en:'Search (e.g. eel, allergy, stock)',vi:'Tìm (vd: lươn, dị ứng)'}))}" autocomplete="off" enterkeyhint="search"></label><div id="pbqres"></div>`;
+    return `<main class="screen pb-miru">${search}<div class="pb-tiles">${tiles}</div>${voice}<div class="pb-emwrap">${em}</div>
+      <p class="pb-note">${L({ja:'レシピ・マニュアルは、整備できたものから増えます。',en:'Recipes and manuals are added as they are ready.',vi:'Công thức và cẩm nang sẽ được bổ sung dần.'})}</p></main>`;
   }
   /* 10/19（月）24:00〜10/20（火）6:00 ＝切り替えの休止（神田さん 10/16「6時間でいけますか」）。?nomaint を付けると確認用に通る。
      6:00を過ぎると1分以内に自分で開き直す（人が起きている必要はない） */

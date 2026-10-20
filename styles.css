@@ -1141,3 +1141,35 @@ html[data-theme="pb"] .pb-2col, html[data-theme="pb"] .pb-col { display: content
   html[data-theme="pb"] .pb-col > .pb-sec:first-child { margin-top: 0; }
 }
 @media (min-width: 900px) and (min-height: 600px) { html[data-theme="pb"] #app > #syncFresh { grid-column: 1 / -1; } }   /* ★2026-10-20 iPad横で「新しい情報」の帯が左の細い列に押し込まれていた */
+
+/* ★2026-10-20 案Bの見本に寄せる（見出し・見る・注文する・iPadの幅） */
+html[data-theme="pb"] .hdr { padding-top: calc(8px + env(safe-area-inset-top)); padding-bottom: 9px; gap: 10px; }
+html[data-theme="pb"] .hdr__logo { width: 32px; height: 32px; }
+html[data-theme="pb"] .hdr__who { line-height: 1.25; min-width: 0; }
+html[data-theme="pb"] .hdr__who b { display: block; font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[data-theme="pb"] .hdr__who span { display: block; font-size: 11px; color: var(--gray); white-space: nowrap; }
+html[data-theme="pb"] .hdr .role-chip { font-size: 11px; padding: 5px 10px; }
+html[data-theme="pb"] .hdr .lang-chip { font-size: 11px; padding: 4px 8px; }
+html[data-theme="pb"] .pb-search { display: flex; align-items: center; gap: 8px; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 10px 13px; color: var(--gray); margin: 4px 0 10px; }
+html[data-theme="pb"] .pb-search svg { width: 20px; height: 20px; flex: none; }
+html[data-theme="pb"] .pb-search input { flex: 1; border: 0; background: none; font: inherit; font-size: 15px; color: var(--sumi); min-width: 0; outline: none; padding: 0; box-shadow: none; }
+html[data-theme="pb"] #pbqres:not(:empty) { margin-bottom: 10px; }
+html[data-theme="pb"] .pb-qres .pb-row { grid-template-columns: 1fr auto; }
+html[data-theme="pb"] .pb-tile { position: relative; display: block; aspect-ratio: 4 / 3; border: 0; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 18px rgba(43,39,36,.14); background: var(--usu, #EDE7DF); }
+html[data-theme="pb"] .pb-tile .pb-tileimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+html[data-theme="pb"] .pb-tile .pb-veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,15,12,0) 30%, rgba(20,15,12,.72) 100%); }
+html[data-theme="pb"] .pb-tile .pb-tiletx { position: absolute; left: 13px; right: 10px; bottom: 10px; padding: 0; color: #fff; gap: 3px; }
+html[data-theme="pb"] .pb-tile .pb-tiletx b { font-family: var(--serif); font-size: 19px; letter-spacing: .04em; line-height: 1.15; color: #fff; }
+html[data-theme="pb"] .pb-tile .pb-tiletx small { font-size: 11.5px; color: #fff; opacity: .92; }
+html[data-theme="pb"] .pb-voice { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 14px; }
+html[data-theme="pb"] .pb-voicehalf { font: inherit; color: inherit; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; }
+html[data-theme="pb"] .pb-voice .l { font-size: 12px; color: var(--gray); }
+html[data-theme="pb"] .pb-voice .v { font-family: var(--serif); font-size: 28px; font-weight: 700; line-height: 1.15; margin: 3px 0 2px; }
+html[data-theme="pb"] .pb-voice .d { font-size: 12px; color: var(--gray); }
+html[data-theme="pb"] .pb-emwrap { margin-top: 12px; }
+html[data-theme="pb"] .pb-note { font-size: 12px; color: var(--gray); margin: 10px 2px 0; }
+@media (min-width: 900px) and (min-height: 600px) {
+  html[data-theme="pb"] .screen { max-width: 1100px; padding: 16px 26px 28px; }
+  html[data-theme="pb"] .pb-tiles { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  html[data-theme="pb"] .pb-tile .pb-tileimg { height: 100%; }
+}

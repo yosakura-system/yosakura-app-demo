@@ -6573,6 +6573,24 @@ console.log('== 2026-10-20 本部の見え方＝準備中の1枚 ==');
   ok(!/本部の画面は準備中です/.test(registry.app.innerHTML), '本部メニュー（?tab=hq）は開ける（神田さんのタスクなど）');
 }
 
+console.log('== 2026-10-20 見る・注文する・見出しを案Bの見本に ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/home?tab=miru';
+  const h = registry.app.innerHTML;
+  ok(/id="pbq"/.test(h) && /言葉で探す/.test(h), '見る・注文する：上に「言葉で探す」の欄');
+  ok((h.match(/class="pb-tile"/g) || []).length === 4 && (h.match(/class="pb-veil"/g) || []).length === 4, '見る・注文する：写真いっぱいの4枚（暗いグラデの上に題）');
+  ok(/data-open="emergency"/.test(h), '見る・注文する：緊急のときは残す');
+  ok(!/数値・原価率/.test(h), '見る・注文する：店の数字の行は外す（下のタブにある）');
+  ok(/お客様の声/.test(h) && /data-open="survey\?tab=voice"/.test(h), '見る・注文する：お客様の声（サーベイ）→回答の一覧');
+  ok(/class="hdr__who"><b>牛カツ世桜 長堀橋店<\/b><span>\d+月\d+日（.）・/.test(h) && !/class="hdr__brand"/.test(h), '案Bの見出し＝店名／日付・役割の2行');
+  ok(/data-pbqopen=|data-pbqurl=/.test(code) && /document\.addEventListener\('input'/.test(code) && typeof code === 'string', '検索は打つたびに結果の箱だけ書き換え、押すと開く');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'hp'); });
+  location.hash = '#/home';
+  ok(/class="hdr__brand"/.test(registry.app.innerHTML), '前のデザイン（hp）の見出しはそのまま');
+}
+
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');
 {
   const S = '牛カツ世桜 長堀橋店';
