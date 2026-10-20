@@ -6861,5 +6861,18 @@ console.log('== 2026-10-20 原さん（心斎橋）＝納品書の仕入先を�
   ok(/NOUHIN_ALC_VENDORS = \['名畑', 'リカーマウンテン', '大洋商事'\]/.test(code), '大洋商事（梅酒）は酒屋扱い');
 }
 
+console.log('== 2026-10-20 原さん（心斎橋）＝「納品書を撮る」の先が納品書の写真の画面になる（オープン写真に戻らない） ==');
+{
+  for (const S of ['寿司世桜 心斎橋店', '和牛世桜 広島店', '日本料理世桜本店', '牛カツ世桜 長堀橋店']) {
+    run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_photo_target', 'nouhin'); });
+    location.hash = '#/app/openphoto';
+    const html = registry.app.innerHTML;
+    ok(/納品書の写真/.test(html) && !/開店時の店内・外観を1枚/.test(html), `${S}：納品書の写真の画面が開く（オープン写真の案内が出ない）`);
+  }
+  run(() => { setLS('manager', '寿司世桜 心斎橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_photo_target', 'ck_open_photo'); });
+  location.hash = '#/app/openphoto';
+  ok(/開店時の店内・外観を1枚/.test(registry.app.innerHTML), '心斎橋に無い提出物（OPENチェック表の写真）を指しても、従来どおりオープン写真に戻る');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

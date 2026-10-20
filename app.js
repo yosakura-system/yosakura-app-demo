@@ -8769,6 +8769,9 @@
   const photoSubIds = () => { const s = visibleStores()[0]; return getMasters(s).filter(m => m.detect === 'subrec' && m.linkApp === 'openphoto' && appliesToStore(m, s)).map(m => m.id); };
   const getPhotoTarget = () => {
     const v = localStorage.getItem('yosakura_photo_target');
+    /* ★2026-10-20 原さん（心斎橋）「納品書を撮るを押すとオープン写真の画面になる」＝提出物「納品書の写真」が無い店では nouhin が openphoto に戻されていた。
+       納品書の写真（OCR）は全店で使う＝店の提出物に関係なく通す */
+    if (v === 'nouhin') return v;
     return photoSubIds().includes(v) ? v : 'openphoto';
   };
   // 何をどう撮るか（画面に出す案内）。項目が増えたらここに足す
