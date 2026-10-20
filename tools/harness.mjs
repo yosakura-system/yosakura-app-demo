@@ -6900,5 +6900,16 @@ console.log('== 2026-10-20 原さん（心斎橋）＝翌朝に撮った納品�
   ok(!/2918/.test(registry.app.innerHTML), '前日の日報で使った写真は、今日の日報には出ない');
 }
 
+console.log('== 2026-10-20 永井さん「冷凍庫という見出しを足したい・発注定数を自分で変えたい」＝品目・基準在庫で区分を入れられる ==');
+{
+  run(() => { setLS('manager', '和牛世桜 広島店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_zk_tab', 'items'); });
+  location.hash = '#/app/zaiko';
+  const html = registry.app.innerHTML;
+  ok(/id="zk_g0" list="zk_glist"/.test(html) && /<datalist id="zk_glist">/.test(html) && /<option value="冷凍庫">/.test(html), '品目の行に「区分」の入力（候補＝既存の区分＋冷凍庫・冷蔵庫・常温・備品）');
+  ok(/<span>区分<\/span>/.test(html) && /id="zk_s0"/.test(html), '見出し行に区分・基準在庫の欄は従来どおり');
+  ok(/品目の名前を変えると、前に数えた数は新しい名前には引き継がれません/.test(html), '名前を変えたときの注意が出る');
+  ok(!/type="hidden" id="zk_g0"/.test(html), '区分は隠し欄ではなく見える欄');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
