@@ -6591,6 +6591,17 @@ console.log('== 2026-10-20 見る・注文する・見出しを案Bの見本に 
   ok(/class="hdr__brand"/.test(registry.app.innerHTML), '前のデザイン（hp）の見出しはそのまま');
 }
 
+console.log('== 2026-10-20 緊急連絡先の初期値（国内10店） ==');
+{
+  const mm = code.match(/const EMG_DEFAULTS_ = (\{.*?\});/);
+  ok(!!mm, '緊急連絡先の初期値がある');
+  const D = mm ? JSON.parse(mm[1]) : {};
+  ok(Object.keys(D).length === 10 && Object.values(D).every(x => x.police && x.fire && x.ambulance && x.hospital && x.electric && x.gas && x.water), '国内10店すべてに警察・消防・救急・病院・電気・ガス・水道');
+  ok(Object.values(D).every(x => !x.police.phone && !x.fire.phone && x.ambulance.phone === '119'), '警察・消防は電話欄を空＝押すと110／119。署の番号はメモ');
+  ok(Object.values(D).every(x => !x.building && !x.facility && !x.kitchen && !x.other), 'ビル管理・設備・厨房機器・その他は空（提携先が分からない）');
+  ok(/const emgOf = \(store\) => \{ const rec = getEmg\(\)\[store\]; return rec \? \(rec\.slots \|\| \{\}\) : Object\.assign\(\{\}, EMG_DEFAULTS_\[store\]/.test(code), '店が一度保存したら保存した内容だけ（初期値で上書きしない）');
+}
+
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');
 {
   const S = '牛カツ世桜 長堀橋店';
