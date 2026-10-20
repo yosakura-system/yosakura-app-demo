@@ -6644,6 +6644,14 @@ console.log('== 2026-10-20 案Bの在庫・気づき（見本の形） ==');
   ok(!/data-zkstep=/.test(registry.app.innerHTML), '前のデザイン（hp）の在庫は今のまま');
 }
 
+console.log('== 2026-10-20 新しい情報の帯の位置・サーベイQRの題 ==');
+{
+  ok(/const main = document\.getElementById\('appmain'\);\s*if \(main\) main\.insertBefore\(d, main\.firstChild\)/.test(code) && !/const body = app\.querySelector\('\.body'\);/.test(code), '「新しい情報が届きました」は画面の中身の先頭に入れる（一覧の行の中に入れない）');
+  run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/app/surveyqr';
+  ok(/<div class="pb-ttl">サーベイQR<\/div>/.test(registry.app.innerHTML) && /お会計のときに、この画面をお客様にお見せください/.test(registry.app.innerHTML), '案B：サーベイQRの題と説明（見本と同じ）');
+}
+
 console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース：入口の組み替え・写真・休止 ==');
 {
   const S = '牛カツ世桜 長堀橋店';

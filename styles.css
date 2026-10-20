@@ -1235,3 +1235,10 @@ html[data-theme="pb"] .zk-st { flex: none; width: 40px; height: 40px; border-rad
 html[data-theme="pb"] .zk-st:active { background: var(--suou-t); }
 html[data-theme="pb"] .zk-in.low input { color: #B5442E; border-color: #E2B3A8; }
 html[data-theme="pb"] .zk-in > .muted { width: 38px; flex: none; font-size: 12px; }
+/* ★2026-10-20 案Bの緊急連絡先＝番号は大きく・右に丸い発信ボタン */
+html[data-theme="pb"] .pb-app--emergency .rep { display: flex; align-items: center; gap: 10px; }
+html[data-theme="pb"] .pb-app--emergency .rep .body { flex: 1; min-width: 0; }
+html[data-theme="pb"] .pb-app--emergency .rep .l2 a[href^="tel:"] { color: var(--suou); font-size: 16px; font-weight: 700; text-decoration: none; }
+html[data-theme="pb"] .pb-app--emergency .rep > a.amt { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--suou); color: #fff; flex: none; }
+html[data-theme="pb"] .pb-app--emergency .rep > a.amt svg { width: 20px; height: 20px; display: block; }
+html[data-theme="pb"] .pb-app--emergency .pb-appbody > .card:first-child > h3:first-child { display: none; }
