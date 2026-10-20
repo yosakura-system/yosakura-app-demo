@@ -2659,7 +2659,7 @@
         if (r.kind !== 'nouhindraft' || r.store !== store || dateKeyOfItem(r.item) !== dk) return;
         const p = parseNote(r.note); if (!p || p.src !== 'ocr') return;
         const key = (p.photo || r.id || String(r.t)) + (p.part ? '#' + String(p.part).split('/')[0] : '');   // ★1枚の写真に伝票が2枚（part '1/2'・'2/2'）＝別の伝票として並べる（2026-10-15）
-        if (!by[key] || r.t > by[key]._t) by[key] = Object.assign({ _t: r.t }, p);
+        if (!by[key] || r.t > by[key]._t) by[key] = Object.assign({ _t: r.t, _key: key }, p);
       });
     } catch (e) {}
     return Object.values(by).sort((a, b) => a._t - b._t).map(p => ({
@@ -2667,9 +2667,20 @@
       total: p.total != null ? Number(p.total) : 0, conf: p.conf || 'low', photo: p.photo || '', src: 'ocr', raw: p.raw ? String(p.raw) : '', ret: !!p.ret }));
   };
   let skSlips_ = [];
+  /* ★2026-10-20 原さん（心斎橋）「翌朝に前日分をまとめて撮るスタイルが理想」＝日報の日付が前日のとき、その後（翌朝）に撮った納品書も前日分として出す。
+     同じ写真を2つの日報に数えないよう、ほかの日付の日報で既に使った写真は除く（その日の日報を出したあとで開く当日の日報にも出ない） */
+  const nouhinUsedPhotos_ = (store, exceptDk) => {
+    const used = new Set();
+    try { getSk().forEach(r => { if (r.store !== store || r.date === exceptDk || !Array.isArray(r.slips)) return; r.slips.forEach(x => { if (x && x.photo) used.add(x.photo); }); }); } catch (e) {}
+    return used;
+  };
   const skSlipsLoad_ = (store, dk, rec) => {
     if (rec && Array.isArray(rec.slips) && rec.slips.length) { skSlips_ = rec.slips.map(s => Object.assign({}, s)); return; }
-    skSlips_ = nouhinDrafts(store, dk);
+    let drafts = nouhinDrafts(store, dk);
+    const today = dateKeyFor(store, Date.now()), prev = dateKeyFor(store, Date.now() - 86400e3);
+    if (dk === prev) drafts = drafts.concat(nouhinDrafts(store, today).map(p => Object.assign({}, p, { late: 1 })));   // 前日の日報＝翌朝に撮った分も
+    const used = nouhinUsedPhotos_(store, dk);
+    skSlips_ = drafts.filter(p => !(p.photo && used.has(p.photo)));
     // 税率の行が読めなかった伝票＝合計を仕入先の既定の税率へ（酒屋は10%・それ以外は8%）。要確認の印は残る
     skSlips_.forEach(s => { if (s.a8 === '' && s.a10 === '' && s.total) { if (NOUHIN_ALC_VENDORS.some(x => String(s.v).includes(x))) s.a10 = String(s.total); else s.a8 = String(s.total); } });
   };
@@ -5771,7 +5782,7 @@
           <label class="fld"><span>${L({ja:'キャンセル 累計（自動計算）',en:'Cancel total (auto)',vi:'Hủy tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_cancel" placeholder="31700" value="${skCum0.cancel || ''}"></label>
           <label class="fld"><span>${L({ja:'レジ締め担当',en:'Cash-up by',vi:'Người chốt sổ'})}</span><input type="text" id="sk_closer" placeholder="${L({ja:'担当者名',en:'staff name',vi:'tên NV'})}"></label>
         </div>
-        ${(skSlipsLoad_(vis[0], todayKey(), null), skSlipsHtml_())}
+        ${(skSlipsLoad_(vis[0], skEditTarget_().date || skDefaultDate_(vis[0]), null), skSlipsHtml_())}   // ★2026-10-20 既定の日付（12時前は前日）で読む＝翌朝に撮った納品書が前日の日報に出る
         <div class="sk-grid">
           ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_cash"><input type="hidden" id="sk_card">'}
           <label class="fld"><span>${L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'})}</span><input type="text" inputmode="numeric" id="sk_lunch" placeholder="186400" value="${skChukanToday(vis[0]) != null ? skChukanToday(vis[0]) : ''}"></label>
@@ -8491,6 +8502,26 @@
         <p class="hint" style="display:block">${esc(L({ ja:'提出そのものは本部に届いています。押すと、本部のデータからこの一覧を作り直します。', en:'Your submissions did reach HQ. Tap to rebuild this list from HQ data.', vi:'Các mục đã đến trụ sở. Bấm để tạo lại danh sách từ dữ liệu trụ sở.' }))}</p>
         <button type="button" class="mini" data-refetch="1" style="margin-top:6px">${esc(L({ ja:'表示を取り直す', en:'Rebuild the list', vi:'Tạo lại danh sách' }))}</button>
       </div>` : '';
+  /* ★2026-10-20 神田さん「本部iPhoneの容量いっぱいを自動で定点チェックしてリセット」＝取り込みの保存に失敗（LSFULL）したら、
+     人が「表示を取り直す」を押すのを待たずに、端末の控え（作り直せるキーだけ）を全部捨てて本部データから取り直す。
+     ・提出・写真の下書き・ログインは消さない（REBUILDABLE_KEYS だけ）
+     ・10分に1回まで（それでも入らない端末で同期のたびに繰り返さない）
+     ・やったことは apperr（LSRESET）で本部データへ＝見守りの毎時メールに出る */
+  let _lsResetAt = 0;
+  function autoResetStorage_() {
+    if (Date.now() - _lsResetAt < 10 * 60e3) return;
+    _lsResetAt = Date.now();
+    const u = lsUsage_();
+    REBUILDABLE_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+    try { localStorage.removeItem('yosakura_demo_raw'); } catch (e) {}
+    _rawKeysMem = ''; _distFail = false; _lsFull = false;
+    try {
+      const t = Date.now();
+      const e = { code: 'LSRESET', t, path: String(location.hash || '').replace(/^#/, ''), msg: 'storage full: cleared rebuildable keys and resyncing', detail: (Math.round(u.total / 1024) + 'KB ' + u.top).slice(0, 600), store: (visibleStores()[0] || ''), role: getRole(), by: getUserName() || '' };
+      if (useBackend()) fetch(getApiUrl(), { method:'POST', body: JSON.stringify(Object.assign({ token: authToken() }, { kind:'apperr', store: e.store, item: 'LSRESET', level:'', note: JSON.stringify(e), photos: [], t })) }).catch(() => {});
+    } catch (x) {}
+    setTimeout(() => { try { syncReports(true); } catch (e) {} }, 500);
+  }
   function refetchAll_() {
     try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {}
     _rawKeysMem = '';
@@ -12552,7 +12583,7 @@
              （本部データには全部届いていた）。保存できたときだけ目印を残す。失敗したら目印を消し、
              端末の容量の内訳を apperr で本部データへ送る（次に起きたとき番号で追える） */
           if (!_distFail) { _rawKeysMem = nextKeys; try { localStorage.setItem('yosakura_demo_rawkeys', nextKeys); } catch (e) {} }
-          else { _rawKeysMem = ''; try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {} reportLsFull_(); }   // ★2026-10-20 取り込みに失敗したら写しも空にする（次の同期で必ずやり直す）
+          else { _rawKeysMem = ''; try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {} reportLsFull_(); autoResetStorage_(); }   // ★2026-10-20 取り込みに失敗したら写しも空にする＋端末の控えを捨てて自動で取り直す（神田さん「自動で定点チェックしてリセット」）
           try { localStorage.removeItem('yosakura_demo_raw'); } catch (e) {} // 旧の全文コピーを消して容量を空ける
           // ★写真の作業中は描き直さない（貼った写真と選択中の入力欄が消えるため）。取り込み自体は済んでいる
           // ★同期の描き直しでは位置を保つ（2026-08-31 ユンさんの報告＝チェックのたびに同期→再描画で先頭へ戻っていた）

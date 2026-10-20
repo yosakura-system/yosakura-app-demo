@@ -3690,7 +3690,7 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   seedAuth('kanda', 'hq', 'hq');
   location.hash = '#/home';
   ok(/class="viewas-btn on" data-viewas="hq"/.test(registry.app.innerHTML), '本部の表示でも切替の帯が出る（本部が選択中）＝2026-10-20 神田さん「本部のメンバーは全員3つ使えるように」');
-  ok(/let _rawKeysMem = '';/.test(code) && /localStorage\.getItem\('yosakura_demo_rawkeys'\) \|\| _rawKeysMem \|\| ''/.test(code) && /if \(!_distFail\) \{ _rawKeysMem = nextKeys;/.test(code) && (code.match(/_rawKeysMem = '';/g) || []).length >= 4 && /else \{ _rawKeysMem = ''; try \{ localStorage\.removeItem\('yosakura_demo_rawkeys'\); \} catch \(e\) \{\} reportLsFull_\(\); \}/.test(code), '★2026-10-20 目印を端末に保存できなくても、起動中は同じ内容で「新しい情報」の帯を出さない（ログアウト・取り直しでは空にする）');
+  ok(/let _rawKeysMem = '';/.test(code) && /localStorage\.getItem\('yosakura_demo_rawkeys'\) \|\| _rawKeysMem \|\| ''/.test(code) && /if \(!_distFail\) \{ _rawKeysMem = nextKeys;/.test(code) && (code.match(/_rawKeysMem = '';/g) || []).length >= 4 && /else \{ _rawKeysMem = ''; try \{ localStorage\.removeItem\('yosakura_demo_rawkeys'\); \} catch \(e\) \{\} reportLsFull_\(\); autoResetStorage_\(\); \}/.test(code), '★2026-10-20 目印を端末に保存できなくても、起動中は同じ内容で「新しい情報」の帯を出さない（ログアウト・取り直しでは空にする）');
   ok(/document\.querySelectorAll\('\.pb-band'\)\.forEach\(x => x\.classList\.toggle\('on', x === b\)\)/.test(code), '★2026-10-20 開店前・営業中・締めは、押したボタンが選択中の色になる');
   // ★2026-10-20 6:30 神田さん「本部側で入ると旧デザイン」＝本部IDは最初は店舗責任者の見え方（新デザイン）で開く。押せば本部に戻れ、以後はその選択のまま
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_hq_first_mgr_1020'); localStorage.removeItem('yosakura_theme'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); });
@@ -6062,7 +6062,7 @@ location.hash = '#/app/checklist';
   const src = code;
   ok(/_distFail = false;\s*\n\s*distribute\(d\.reports\);/.test(src), '同期は取り込みの前に失敗の印をリセットする');
   ok(/if \(!_distFail\) \{ (?:_rawKeysMem = nextKeys; )?try \{ localStorage\.setItem\('yosakura_demo_rawkeys', nextKeys\)/.test(src), '取り込みが全部保存できたときだけ「取り込み済み」の目印を保存する');
-  ok(/else \{ (?:_rawKeysMem = ''; )?try \{ localStorage\.removeItem\('yosakura_demo_rawkeys'\); \} catch \(e\) \{\} reportLsFull_\(\); \}/.test(src), '失敗したら目印を消して、容量の内訳を本部データへ送る');
+  ok(/else \{ (?:_rawKeysMem = ''; )?try \{ localStorage\.removeItem\('yosakura_demo_rawkeys'\); \} catch \(e\) \{\} reportLsFull_\(\); autoResetStorage_\(\); \}/.test(src), '失敗したら目印を消して、容量の内訳を本部データへ送る');
   ok(/REBUILDABLE_KEYS\.forEach\(rk => \{ if \(rk !== 'yosakura_demo_rawkeys' && !written\[rk\]\)/.test(src), '保存に失敗したら、まだ書いていない控えだけを捨てて空きを作る（書いた直後の一覧は消さない）');
   ok(/localStorage\.getItem\('yosakura_resync_once'\) !== 'v279'/.test(src), 'この版に上がった端末は1回だけ本部データから一覧を作り直す');
   ok(/if \(!localStorage\.getItem\('yosakura_demo_reports'\) && localStorage\.getItem\('yosakura_demo_rawkeys'\)\) localStorage\.removeItem\('yosakura_demo_rawkeys'\)/.test(src), '一覧が無いのに目印だけある端末は起動時にほどく');
@@ -6872,6 +6872,32 @@ console.log('== 2026-10-20 原さん（心斎橋）＝「納品書を撮る」�
   run(() => { setLS('manager', '寿司世桜 心斎橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_photo_target', 'ck_open_photo'); });
   location.hash = '#/app/openphoto';
   ok(/開店時の店内・外観を1枚/.test(registry.app.innerHTML), '心斎橋に無い提出物（OPENチェック表の写真）を指しても、従来どおりオープン写真に戻る');
+}
+
+console.log('== 2026-10-20 神田さん「本部iPhoneの容量いっぱいを自動でリセット」 ==');
+{
+  ok(/reportLsFull_\(\); autoResetStorage_\(\); \}/.test(code), '取り込みの保存に失敗したら、自動で端末の控えを捨てて取り直す');
+  ok(/if \(Date\.now\(\) - _lsResetAt < 10 \* 60e3\) return;/.test(code), '10分に1回まで（繰り返さない）');
+  ok(/REBUILDABLE_KEYS\.forEach\(k => \{ try \{ localStorage\.removeItem\(k\); \} catch \(e\) \{\} \}\);/.test(code) && /_lsResetAt = Date\.now\(\);[\s\S]{0,400}localStorage\.removeItem\('yosakura_demo_raw'\)/.test(code), '消すのは作り直せる控えだけ（提出の保留・写真の下書き・ログインは消さない）');
+  ok(/item: 'LSRESET'/.test(code), 'やったことは LSRESET として本部データへ（見守りの毎時メールに出る）');
+  ok(/setTimeout\(\(\) => \{ try \{ syncReports\(true\); \} catch \(e\) \{\} \}, 500\);/.test(code), '捨てたあとすぐ本部データから取り直す');
+}
+
+console.log('== 2026-10-20 原さん（心斎橋）＝翌朝に撮った納品書を前日の日報に入れる ==');
+{
+  ok(/if \(dk === prev\) drafts = drafts\.concat\(nouhinDrafts\(store, today\)\.map\(p => Object\.assign\(\{\}, p, \{ late: 1 \}\)\)\);/.test(code), '日報の日付が前日のとき、翌朝（今日）に撮った納品書も並ぶ');
+  ok(/const used = nouhinUsedPhotos_\(store, dk\);\s*skSlips_ = drafts\.filter\(p => !\(p\.photo && used\.has\(p\.photo\)\)\);/.test(code), 'ほかの日の日報で使った写真は出さない（二重に数えない）');
+  ok(/skSlipsLoad_\(vis\[0\], skEditTarget_\(\)\.date \|\| skDefaultDate_\(vis\[0\]\), null\)/.test(code), '最初の描画も既定の日付（12時前は前日）で読む');
+  /* 通し＝今日の下書きが日報に出る／前日の日報で使った写真は今日の日報に出ない */
+  const S = '寿司世桜 心斎橋店'; const now = Date.now(); const dk0 = new Date(now - 5 * 3600e3).toLocaleDateString('en-CA'); const prev = new Date(now - 5 * 3600e3 - 86400e3).toLocaleDateString('en-CA');
+  const draft = { kind:'nouhindraft', store:S, item: dk0, note: JSON.stringify({ src:'ocr', v:'名畑', a8:'', a10:2918, total:2918, conf:'high', photo:'PHOTO_HARA_1' }), photos:[], t: now };
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([draft])); });
+  location.hash = '#/app/soukatsu';
+  ok(/名畑/.test(registry.app.innerHTML) && /2918/.test(registry.app.innerHTML), '今日撮った納品書（名畑 2,918）が日報に出る');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([draft]));
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store:S, date: prev, sales: 0, posWait: true, t: now - 1000, slips: [{ v:'名畑', a8:'', a10:'2918', photo:'PHOTO_HARA_1', src:'ocr', ret:0 }] }])); });
+  location.hash = '#/app/soukatsu';
+  ok(!/2918/.test(registry.app.innerHTML), '前日の日報で使った写真は、今日の日報には出ない');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
