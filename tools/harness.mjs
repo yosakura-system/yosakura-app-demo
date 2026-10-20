@@ -6854,5 +6854,12 @@ console.log('== 2026-10-20 原さん（心斎橋）＝日報の「納品書を�
   ok(/b\.dataset\.tsub = 'openphoto'; b\.dataset\.tsubphoto = 'nouhin'/.test(code), '押すと納品書の写真画面（OCR）へ');
 }
 
+console.log('== 2026-10-20 原さん（心斎橋）＝納品書の仕入先を業態ごとに ==');
+{
+  ok(/'寿司': \['西原商会', '名畑', '中央メディカル', 'ヤスイ', 'ナオト水産', 'おのうえ'/.test(code), '寿司世桜の仕入先＝12-18 発注リストの業者');
+  ok(/const opts = nouhinVendorsFor_\(visibleStores\(\)\[0\] \|\| ''\)\.slice\(\)/.test(code), 'プルダウンは店の業態の一覧を使う');
+  ok(/NOUHIN_ALC_VENDORS = \['名畑', 'リカーマウンテン', '大洋商事'\]/.test(code), '大洋商事（梅酒）は酒屋扱い');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

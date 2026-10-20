@@ -2638,7 +2638,13 @@
      日報は「今日の納品書」としてそれを並べ、仕入先×税率で 食材／お酒／お酒以外 の3欄（税込）を自動で埋める。
      送信は必ず人が押す＝読み取りが違っていても、その場で直せる */
   const NOUHIN_VENDORS = ['西原商会', 'フレッシュ青果', '銘洋', '魚伸', '名畑', 'リカーマウンテン', '日本食研', 'オーディエー', 'イオン', 'ローソン', '本部', 'その他'];
-  const NOUHIN_ALC_VENDORS = ['名畑', 'リカーマウンテン'];      // 酒屋＝8%はお酒以外の飲料・10%はお酒
+  /* ★2026-10-20 原さん（心斎橋）「仕入先の業者名を寿司世桜用にカスタマイズできるか」＝業態ごとの仕入先一覧。出典＝本部ドライブ 12-18【世桜】発注リスト「寿司世桜」タブ（2026-10-20 読取）。
+     一覧に無い業者は、写真から読んだ名前がそのまま先頭に入る（下の opts.unshift）＝手で選び直せる */
+  const NOUHIN_VENDORS_BY_FORMAT = {
+    '寿司': ['西原商会', '名畑', '中央メディカル', 'ヤスイ', 'ナオト水産', 'おのうえ', '魚伸', '魚萬珍味堂', '幸南食糧', '大洋商事', 'うすなが牧場', 'Amazon', '本部', 'その他'],
+  };
+  const nouhinVendorsFor_ = (store) => NOUHIN_VENDORS_BY_FORMAT[zkFormatOf_(store)] || NOUHIN_VENDORS;
+  const NOUHIN_ALC_VENDORS = ['名畑', 'リカーマウンテン', '大洋商事'];      // 酒屋＝8%はお酒以外の飲料・10%はお酒（大洋商事＝梅酒・寿司世桜）
   const NOUHIN_MIX_VENDORS = ['本部', 'イオン', 'ローソン'];     // 8%は食材・10%はお酒（本部請求＝和牛・鰻が8%、梅酒が10%）
   const nouhinKind = (v, rate) => {
     const n = String(v || '');
@@ -2678,7 +2684,7 @@
     return o;
   };
   const skSlipsRowsHtml_ = () => skSlips_.map((s, i) => {
-    const opts = NOUHIN_VENDORS.slice(); if (s.v && !opts.includes(s.v)) opts.unshift(s.v);
+    const opts = nouhinVendorsFor_(visibleStores()[0] || '').slice(); if (s.v && !opts.includes(s.v)) opts.unshift(s.v);   // 店の業態の仕入先一覧
     const rateLbl = NOUHIN_ALC_VENDORS.some(x => String(s.v).includes(x)) ? L({ ja:'8%＝お酒以外・10%＝お酒', en:'8% soft / 10% alcohol', vi:'8% khác / 10% rượu' })
       : (NOUHIN_MIX_VENDORS.some(x => String(s.v).includes(x)) ? L({ ja:'8%＝食材・10%＝お酒', en:'8% food / 10% alcohol', vi:'8% thực phẩm / 10% rượu' }) : L({ ja:'食材', en:'food', vi:'thực phẩm' }));
     return `<div class="sk-slip" data-slip="${i}" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto;gap:6px;align-items:center;margin:4px 0${s.ret ? ';background:#fdecea;border-radius:6px;padding:2px 4px' : ''}">
