@@ -6912,5 +6912,13 @@ console.log('== 2026-10-20 永井さん「冷凍庫という見出しを足し�
   ok(/gv === '__new' \? String\(\(document\.getElementById\('zk_gn' \+ i\)/.test(code), '保存＝選んだ区分（＋新しい区分なら入力した名前）');
 }
 
+console.log('== 2026-10-20 神田さん「月末月初にパスワード変更のアラートをトップに」 ==');
+{
+  ok(/if \(!\(day >= 28 \|\| day <= 3\)\) return '';/.test(code), '28日〜翌月3日だけ出す');
+  ok(/if \(a && a\.pwYm === ym\) return '';/.test(code), '今月すでに変えた端末には出さない');
+  ok(/if \(!useBackend\(\) \|\| getRole\(\) === 'hq'\) return '';/.test(code), '店舗のIDだけ（本部・体験版には出さない）');
+  ok(/data-pwchange="1"><span><b>\$\{L\(\{ja:'店舗IDのパスワードを変える時期です'/.test(code) && /\$\{cover\}\$\{pwStrip\}\$\{overStrip\}/.test(code), '押すとパスワード変更の画面・表紙のすぐ下');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

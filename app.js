@@ -1937,6 +1937,17 @@
     const latest = newsVisible(getNews()).sort((a, b) => b.t - a.t)[0];
     const newsStrip = latest ? `<button class="pb-strip" data-open="news">${pbImg_('hq_notice', 'pb-th pb-th--s')}<span><b>${L({ja:'本部から',en:'From HQ',vi:'Từ HQ'})}</b>${esc(latest.title || '')}</span>${svg('chev')}</button>` : '';
     const overStrip = over ? `<button class="pb-strip pb-strip--late" data-jump="pbslot-${nowKey}"><span><b>${L({ja:'締切を過ぎている提出',en:'Overdue',vi:'Quá hạn'})}</b>${over} ${L({ja:'件・いま出せば本部にそのまま届きます',en:'item(s). Submit now and HQ gets it.',vi:'mục. Nộp ngay.'})}</span>${svg('chev')}</button>` : '';
+    /* ★2026-10-20 神田さん「毎月の月末月初になったらトップにアラート」＝店舗IDのパスワードは月1回変える（情報管理マニュアル）。
+       28日〜翌月3日に出す。今月すでに変えた端末（ログインの pwYm＝今月）には出さない。押すとパスワード変更の画面 */
+    const pwStrip = (() => {
+      try {
+        if (!useBackend() || getRole() === 'hq') return '';
+        const d = new Date(Date.now() + 9 * 3600e3); const day = d.getUTCDate(); const ym = d.toISOString().slice(0, 7);
+        if (!(day >= 28 || day <= 3)) return '';
+        const a = getAuth(); if (a && a.pwYm === ym) return '';
+        return `<button class="pb-strip pb-strip--late" data-pwchange="1"><span><b>${L({ja:'店舗IDのパスワードを変える時期です',en:'Time to change the store password',vi:'Đến kỳ đổi mật khẩu'})}</b>${L({ja:'毎月1回。押して変更→新しいパスワードはスタッフへ口頭で',en:'Once a month. Tap to change, then tell staff in person.',vi:'Mỗi tháng 1 lần. Bấm để đổi, rồi báo nhân viên trực tiếp.'})}</span>${svg('chev')}</button>`;
+      } catch (e) { return ''; }
+    })();
     const cover = `<div class="pb-cover">${pbImg_('kyou_first_dish', 'pb-coverimg')}<div class="pb-veil"></div><div class="pb-coverin">
         <div class="pb-date">${pbDateLabel_()} ・ ${esc(storeShort(store))}</div>
         <div class="pb-h">${left.length ? L({ja:'きょうの流れ',en:'Today’s flow',vi:'Việc hôm nay'}) : L({ja:'きょうは出し切りました',en:'All done today',vi:'Hôm nay đã xong'})}</div>
@@ -1968,7 +1979,7 @@
     const rep = hqReplyData_(role);
     const repCard = rep.rows.length ? `<div class="pb-sec"><h2>${L({ja:'本部からの返答',en:'Replies from HQ',vi:'Phản hồi từ HQ'})}</h2><small>${L({ja:'直近7日',en:'Last 7 days',vi:'7 ngày qua'})}</small></div>
       <div class="pb-card pb-rep">${rep.rows.map(x => `<button class="pb-row" ${rep.PHOTO[x.kind] ? `data-tsub="openphoto" data-tsubphoto="${esc(x.kind)}"` : `data-go="${esc(rep.ROUTE[x.kind])}"`}><span class="pb-rowtx"><span class="pb-nm">${esc(L(rep.LABEL[x.kind]))}</span><span class="pb-sub">${esc(x.a.memo)} ・ ${timeAgo(x.a.ts)}</span></span><span class="pb-rt">${svg('chev')}</span></button>`).join('')}</div>` : '';
-    return `<main class="screen pb-home"><div class="pb-2col"><div class="pb-col">${cover}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${pbRegiCard_(store)}${nippouCard}${hoCard}</div><div class="pb-col">
+    return `<main class="screen pb-home"><div class="pb-2col"><div class="pb-col">${cover}${pwStrip}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${pbRegiCard_(store)}${nippouCard}${hoCard}</div><div class="pb-col">
       <div class="pb-sec"><h2>${L({ja:'今日の流れ',en:'Today’s flow',vi:'Việc hôm nay'})}</h2><small>${L({ja:'時間帯の順',en:'In time order',vi:'Theo giờ'})}</small></div>
       <div class="pb-card pb-flow">${flow || `<div class="muted">${L({ja:'今日の提出物はありません',en:'Nothing today',vi:'Hôm nay không có'})}</div>`}</div>
       ${chips}${wk}</div></div>
