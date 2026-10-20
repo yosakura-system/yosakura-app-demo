@@ -5820,7 +5820,7 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
     ok(/<b>牛肉<\/b>/.test(hO) && /<b>油<\/b>/.test(hO), '発注リスト＝前の提出で基準割れの牛肉も、今日の油も両方出る（最新1件だけを見ない）');
   }
   ok(/data-zkname="牛肉"/.test(hIn) && /id="submitZk"/.test(hIn), '入力タブ＝登録した品目の欄と提出ボタン');
-  ok(/data-zkname="牛肉"/.test(hIn) && (!/今日確認する品目/.test(hIn) || /器（水曜に数える）/.test(hIn)), '毎日の品目は畳まれない。折りたたみに入るのは確認日のある品目（画面292から器＝水曜）だけ');
+  ok(/data-zkname="牛肉"/.test(hIn) && (!/今日確認する品目/.test(hIn) || /器（週に1回）/.test(hIn)), '毎日の品目は畳まれない。折りたたみに入るのは確認日のある品目（器＝週に1回）だけ');
   {
     /* 確認日（毎日／月・木／土）＝今日の曜日で「今日確認する品目」と折りたたみに分かれる（2026-09-19 長田さん） */
     const dowNow = new Date().getDay(); const todayKey = ['sun','mon','tue','wed','thu','fri','sat'][dowNow];
@@ -5881,7 +5881,7 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
   const fg = renderView('kyou', 'manager', '牛カツ世桜 富士山店', 'ja');
   ok(/在庫数の入力（締め）/.test(fg), '牛カツ富士山店にも出る');
   const wg = renderView('kyou', 'manager', '和牛世桜 広島店', 'ja');
-  ok(/器（水曜に数える）/.test(renderView('zaiko', 'manager', '和牛世桜 広島店', 'ja')), '全店に出る（9/18 全店から希望＝広島にも）＝画面292から広島にも「器（水曜に数える）」が最初から入る。今日出すものには水曜だけ出る');
+  ok(/器（週に1回）/.test(renderView('zaiko', 'manager', '和牛世桜 広島店', 'ja')), '全店に出る（9/18 全店から希望＝広島にも）＝画面292から広島にも「器（週に1回）」が最初から入る。今日出すものには水曜だけ出る');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
@@ -5993,7 +5993,7 @@ console.log('== 在庫＝長堀橋の品目は最初から入っている・写�
   const kyou = renderView('kyou', 'manager', S, 'ja');
   ok(!/在庫チェック表の写真/.test(kyou) && /在庫数の入力（締め）/.test(kyou), '今日出すもの＝写真の項目は消え、在庫数の入力だけ');
   const other = renderView('zaiko', 'staff', '日本料理世桜本店', 'ja');
-  ok(/器（水曜に数える）/.test(other) && !/品目がまだ登録されていません/.test(other), '紙の既定が無い店にも、画面292から業態の器が最初から入る（店長は足すだけ）');
+  ok(/器（週に1回）/.test(other) && !/品目がまだ登録されていません/.test(other), '紙の既定が無い店にも、画面292から業態の器が最初から入る（店長は足すだけ）');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
@@ -6204,41 +6204,41 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
 {
   const dayItems = (d) => { const m = code.match(/const HYGIENE_DAYS = \[([\s\S]*?)\n  \];/); const blk = m[1]; const parts = blk.split(/\{ d:(\d),/); const idx = parts.indexOf(String(d)); return idx > 0 ? parts[idx + 1] : ''; };
   ok(/在庫の整理（先入先出・期限切れ）/.test(dayItems(0)), '日曜：在庫の整理（先入先出・期限切れ）（③）');
-  ok(/器の数と欠け（チップ）/.test(dayItems(3)) && /食器類のケース・破損確認/.test(dayItems(3)), '水曜：器の数と欠け（①②）＝既存の食器項目は残す');
+  ok(!/器の数と欠け（チップ）/.test(dayItems(3)) && /食器類のケース・破損確認/.test(dayItems(3)), '水曜：器の数と欠けは外した（10/20 今週の必須へ）・既存の食器項目は残す');
   ok(/見えない所の埃（トイレ換気扇・棚の上）/.test(dayItems(4)), '木曜：トイレ換気扇・棚の上（④）');
-  ok(/スタッフルーム・厨房の整理整頓/.test(dayItems(6)), '土曜：スタッフルーム・厨房の整理整頓（④）');
-  ok(/「在庫数」の器の欄へ／数えるときに欠け・ひびをしっかり見て、ある器は取り除いて使わない（怪我のもと・報告は不要）/.test(code), '器の項目の説明＝在庫数の器の欄へ・欠けは取り除く（報告は不要）');
-  ok(/ja:'週に1回が最低。曜日は店で決めてよい/.test(code), '★2026-10-12 器の数＝週1回が最低・曜日は店で（水曜は目安）');
+  ok(!/スタッフルーム・厨房の整理整頓/.test(dayItems(6)) && /シンク下・作業台下/.test(dayItems(6)), '土曜：スタッフルーム・厨房の整理整頓は外した（10/20 今週の必須へ）・既存は残す');
+  ok(/欠け・ひびのある器は使わずに破棄/.test(code), '器の説明＝欠け・ひびのある器は使わずに破棄（報告は不要）');
+  ok(/id:'utsuwa'[^\n]*oblig:'required', freq:'weekly'/.test(code), '★2026-10-20 器の数＝本部の必須・週に1回（曜日は決めない）');
   run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_ckmode', 'hygiene'); localStorage.setItem('yosakura_hygall', '1'); });
   location.hash = '#/app/checklist';
   const hw = registry.app.innerHTML;
-  ok(/器の数と欠け（チップ）/.test(hw) && /在庫の整理（先入先出・期限切れ）/.test(hw) && /スタッフルーム・厨房の整理整頓/.test(hw), '定期衛生（全曜日表示）に4項目が出る');
+  ok(!/器の数と欠け（チップ）/.test(hw) && /在庫の整理（先入先出・期限切れ）/.test(hw) && !/スタッフルーム・厨房の整理整頓/.test(hw) && /見えない所の埃/.test(hw), '定期衛生（全曜日表示）に任意の2項目が残る（器・スタッフルームは今週の必須へ）');
 }
 // ==== 画面292: 田中さんの週次のお願い＝文言を短く・器の在庫を業態別に最初から・点検から在庫数へ（2026-09-25 神田さん「詰めが甘いと言われないように」） ====
 {
-  ok(/ja:'器の数と欠け（チップ）',[^\n]*go:'\/app\/zaiko'/.test(code), '水曜の器の項目に「在庫数を入力へ」の行き先がある');
+  ok(/id:'utsuwa'[^\n]*detect:'zaikowk', linkApp:'zaiko'/.test(code), '器の数は提出物（今週）から在庫の器の画面へ');
   ok(!/2026-09-25 田中さん）'/.test(code.slice(code.indexOf('const HYGIENE_DAYS'), code.indexOf('const CK_COMMON'))), '定期衛生の説明文から長い注記を外した（短く）');
   run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_ckmode', 'hygiene'); localStorage.setItem('yosakura_hygall', '1'); });
   location.hash = '#/app/checklist';
   const hw = registry.app.innerHTML;
-  ok(/data-ckgo="\/app\/zaiko"[^>]*>在庫数を入力へ ›</.test(hw), '定期衛生（全体表示）の器の項目に「在庫数を入力へ ›」ボタンが出る');
+  ok(!/data-ckgo="\/app\/zaiko"/.test(hw), '定期衛生（全体表示）には器の行き先ボタンは出ない（今週の行から開く）');
   ok(/if \(e\.target\.closest\('\[data-ckgo\]'\)\) \{ go\(/.test(code), 'ボタンを押してもチェックは切り替わらない（別画面へ移動）');
   // 器の既定＝業態ごと
   run(() => { setLS('manager', '日本鰻世桜 京都祇園店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in'); });
   location.hash = '#/app/zaiko';
   const z1 = registry.app.innerHTML;
-  ok(/器（水曜に数える）/.test(z1) && /３連皿/.test(z1) && /どんぶり/.test(z1) && /卓上タレ入れ/.test(z1), '鰻の店＝既定が無い店でも「器（水曜に数える）」に３連皿・どんぶり・卓上タレ入れが最初から入る');
+  ok(/器（週に1回）/.test(z1) && /３連皿/.test(z1) && /どんぶり/.test(z1) && /卓上タレ入れ/.test(z1), '鰻の店＝既定が無い店でも「器（週に1回）」に３連皿・どんぶり・卓上タレ入れが最初から入る');
   run(() => { setLS('manager', '寿司世桜 心斎橋店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in'); });
   location.hash = '#/app/zaiko';
   ok(/海鮮丼皿/.test(registry.app.innerHTML) && /ペアリンググラス/.test(registry.app.innerHTML), '寿司の店＝心斎橋の備品リストの器が入る');
   run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in'); });
   location.hash = '#/app/zaiko';
   const z3 = registry.app.innerHTML;
-  ok(/器（水曜に数える）/.test(z3) && /牛カツ皿（運ぶ皿）/.test(z3) && /食材管理①（毎日）/.test(z3), '長堀橋＝紙から写した既定の後ろに器が足される（既存の品目は残る）');
+  ok(/器（週に1回）/.test(z3) && /牛カツ皿（運ぶ皿）/.test(z3) && /食材管理①（毎日）/.test(z3), '長堀橋＝紙から写した既定の後ろに器が足される（既存の品目は残る）');
   run(() => { setLS('manager', '日本料理世桜本店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in'); });
   location.hash = '#/app/zaiko';
   const z4 = registry.app.innerHTML;
-  ok(/器（水曜に数える）/.test(z4) && /汁椀/.test(z4) && !/海鮮丼皿/.test(z4), '一覧の無い業態（日本料理）＝共通6品だけ。他業態の器は混ざらない');
+  ok(/器（週に1回）/.test(z4) && /汁椀/.test(z4) && !/海鮮丼皿/.test(z4), '一覧の無い業態（日本料理）＝共通6品だけ。他業態の器は混ざらない');
 }
 // ==== 画面293: 店長が品目を保存済みの店（牛カツ富士山）にも器を自動で足す／国内10店すべてに器が出るか総当たり（2026-09-25 神田さん「ダブルチェック」） ====
 {
@@ -6247,10 +6247,10 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   location.hash = '#/app/zaiko';
   const zf = registry.app.innerHTML;
   ok(/白だし/.test(zf) && /手袋M/.test(zf), '店長が保存した品目はそのまま');
-  ok(/器（水曜に数える）/.test(zf) && /牛カツ皿（運ぶ皿）/.test(zf) && /茶碗/.test(zf), '保存済みの店にも業態の器が自動で足される');
+  ok(/器（週に1回）/.test(zf) && /牛カツ皿（運ぶ皿）/.test(zf) && /茶碗/.test(zf), '保存済みの店にも業態の器が自動で足される');
   const STORES10 = ['日本料理世桜本店', '寿司世桜 心斎橋店', '牛カツ世桜 長堀橋店', '日本鰻世桜 長堀橋店', '手巻き寿司世桜 難波店', '牛カツ世桜 富士山店', '日本鰻世桜 富士山店', '日本鰻世桜 京都祇園店', '日本鰻世桜 浅草橋店', '和牛世桜 広島店'];
-  const missing = STORES10.filter(st => !/器（水曜に数える）/.test(renderView('zaiko', 'manager', st, 'ja')));
-  ok(!missing.length, '国内10店すべての在庫数に「器（水曜に数える）」が出る' + (missing.length ? '（出ない：' + missing.join('・') + '）' : ''));
+  const missing = STORES10.filter(st => !/器（週に1回）/.test(renderView('zaiko', 'manager', st, 'ja')));
+  ok(!missing.length, '国内10店すべての在庫数に「器（週に1回）」が出る' + (missing.length ? '（出ない：' + missing.join('・') + '）' : ''));
 }
 // ==== 画面294→296: 定期衛生＝今日の項目を直接出す。曜日チップ（全体／日〜土）は見出しの下に常に出す（2026-09-25 神田さん「上の定期衛生の下あたりに常に」） ====
 {
@@ -6277,7 +6277,7 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   run(() => { setLS('staff', '日本鰻世桜 富士山店', 'ja'); localStorage.setItem('yosakura_hygday', new Date().toLocaleDateString('en-CA') + '|3'); });
   location.hash = '#/app/shukan';
   const w3 = registry.app.innerHTML;
-  ok(/data-hygpick="3" class="on"/.test(w3) && /器の数と欠け（チップ）/.test(w3), '水曜を選ぶと、水曜の箇所（器の数と欠け）が並ぶ');
+  ok(/data-hygpick="3" class="on"/.test(w3) && /食器類のケース・破損確認/.test(w3), '水曜を選ぶと、水曜の箇所（食器類のケース）が並ぶ');
   ok(/data-hygopen="3"/.test(w3), '開くボタンも水曜になる');
 }
 // ==== 画面297: 相談・通報窓口＝2区分（ハラスメントの相談／公益通報）・受付時間・翌営業日（2026-09-25 構築MTG） ====
@@ -6685,7 +6685,7 @@ console.log('== 2026-10-20 今週・今月をホームに1件ずつ（押すと�
   const h = registry.app.innerHTML;
   const wk = h.slice(h.indexOf('id="pbwk"'));
   ok(/id="pbwk"/.test(h) && /id="pbmo"/.test(h), '今週・今月の見出しがホームにある');
-  ok(/卓上POPの交換/.test(wk) && /data-open="shukan"/.test(wk), '今週＝週次の提出物（卓上POP）と定期衛生（曜日別）の入口');
+  ok(/卓上POPの交換/.test(wk) && /data-open="shukan"/.test(wk), '今週＝週次の必須（卓上POP）と定期衛生（曜日別・任意）の入口');
   ok(/定期衛生管理（月次の指定箇所）/.test(wk) && /data-tsubphoto="hygiene_m"/.test(wk), '今月＝月次の提出物が並び、押すとその写真の画面へ直接');
   ok(/今月中/.test(wk) && !/PL・損益/.test(wk), '期日は「今月中」・開く先の無い行（PL）は出さない');
 }
@@ -6811,6 +6811,40 @@ console.log('== 2026-10-20 本部の端末の控えを減らす（LSFULL）＝�
   ok(b.filter(r => r.date === m1 && r.src === 'drive').length === 2, '店舗の端末は従来どおり（間引かない）');
 }
 FETCH_ROWS = { ok:false };
+
+console.log('== 2026-10-20 器の数と欠け＝曜日に固定せず「今週」の必須（ワンクリックで器の画面）・任意の週次は曜日別へ ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/home';
+  const h = registry.app.innerHTML;
+  const wk = h.slice(h.indexOf('id="pbwk"'), h.indexOf('id="pbmo"') > 0 ? h.indexOf('id="pbmo"') : undefined);
+  ok(/器の数と欠け/.test(wk) && /data-tsub="zaiko" data-tsubq="wk=1"/.test(wk), '今週に「器の数と欠け」が1行・押すと器の画面へ直接（wk=1）');
+  ok(/必須・週に1回/.test(wk) && wk.indexOf('器の数と欠け') < wk.indexOf('data-open="shukan"'), '今週＝必須が先、そのあとに定期衛生（曜日別）');
+  ok(/任意・今日の曜日の箇所/.test(wk), '定期衛生（曜日別）は「任意」と分かる');
+  ok(/スタッフルーム・厨房の整理整頓/.test(wk) && /data-tdid="staffroom"/.test(wk) && /残り 3件/.test(wk), '今週に「スタッフルーム・厨房の整理整頓」＝必須・押すだけ（実施しました）。今週の必須は3件（POP・整理整頓・器）');
+  location.hash = '#/app/zaiko?wk=1';
+  const z = registry.app.innerHTML;
+  ok(/器（週に1回）/.test(z) && /data-zkname="茶碗"/.test(z) && !/data-zkname="牛肉"/.test(z), '器の画面＝器の品目だけ（食材は出ない）');
+  ok(/器の数を提出する/.test(z) && /使わずに破棄/.test(z), '器の画面の提出ボタンと「欠け・ひびは破棄」の1文');
+  location.hash = '#/app/zaiko';
+  const zd = registry.app.innerHTML;
+  const todayPart = zd.split('data-zklater')[0];
+  ok(!/data-zkname="茶碗"/.test(todayPart), '日々の在庫の数には、器は「今日確認する品目」に出ない（どの曜日も）');
+}
+{
+  /* 器の画面から出した提出（wk）は、今週の器の数を済みにし、日々の在庫の数は済みにしない */
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([{ kind:'zaiko', store:S, item: new Date(Date.now() - 5 * 3600e3).toLocaleDateString('en-CA'), note: JSON.stringify({ q:{ '茶碗': 24 }, by:'t', wk:1 }), photos:[], t: Date.now() }])); });
+  location.hash = '#/home';
+  const h = registry.app.innerHTML;
+  const wk = h.slice(h.indexOf('id="pbwk"'));
+  const row = (wk.match(/<button class="pb-row[^"]*" data-tsub="zaiko" data-tsubq="wk=1">[\s\S]*?<\/button>/) || [''])[0];
+  ok(/pb-row done/.test(row) && /出しました/.test(row), '器の画面から出すと、今週の器の数が「出しました」');
+  const daily = (h.match(/<button class="pb-row[^"]*" data-tsub="zaiko">[\s\S]*?<\/button>/) || [''])[0];
+  ok(!daily || !/出しました/.test(daily), '日々の在庫の数は、器だけの提出では済みにならない');
+}
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

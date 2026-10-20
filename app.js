@@ -1806,12 +1806,12 @@
      本部（hq）の画面はこれまでのまま（本部側の配置替えは11月）。 */
   const pbPhotoKey_ = (m) => {
     if (!m) return '';
-    const own = { ck_open_photo:'kyou_check_open', ck_close_photo:'kyou_check_close', ichishoku:'kyou_first_dish' }[m.id]; if (own) return own;
+    const own = { ck_open_photo:'kyou_check_open', ck_close_photo:'kyou_check_close', ichishoku:'kyou_first_dish', utsuwa:'kyou_utsuwa' }[m.id]; if (own) return own;
     if (m.ckMode) return ({ open:'kyou_check_open', idle:'kyou_check_idle', sakura:'kyou_check_sakura', close:'kyou_check_close', hygiene:'kyou_hygiene' })[m.ckMode] || 'kyou_check_open';
     const byApp = { openphoto:'kyou_open_photo', firstphoto:'kyou_first_dish', soukatsu:'kyou_nippou', chukan:'kyou_nippou', zaiko:'kyou_stock', kizuki:'kyou_kizuki', kinshu:'num_register', pl:'kyou_tanaoroshi', storevideo:'miru_howto', handover:'kyou_handover', surveyqr:'kyou_survey' };
     if (m.linkApp && byApp[m.linkApp]) return byApp[m.linkApp];
     if (m.id && byApp[m.id]) return byApp[m.id];
-    const byId = { hygiene_d:'kyou_hygiene', hygiene_m:'kyou_hygiene', tip_photo:'kyou_first_dish', genkin_photo:'num_register', nikkei_idle:'kyou_nippou', nikkei_close:'kyou_nippou', utsuwa:'kyou_utsuwa', pop:'kyou_check_idle', compliance:'miru_manual' };
+    const byId = { hygiene_d:'kyou_hygiene', hygiene_m:'kyou_hygiene', tip_photo:'kyou_first_dish', genkin_photo:'num_register', nikkei_idle:'kyou_nippou', nikkei_close:'kyou_nippou', utsuwa:'kyou_utsuwa', pop:'kyou_check_idle', pop_week:'kyou_check_idle', staffroom:'kyou_hygiene', compliance:'miru_manual' };
     return byId[m.id] || '';
   };
   const pbImg_ = (key, cls) => (typeof PHOTOS !== 'undefined' && PHOTOS[key])
@@ -1858,7 +1858,7 @@
     const m = it.m;
     const done = !it.manual && !!it.submitted;
     const late = !!it.overdue;
-    const openArg = m.ckMode ? ` data-tsubmode="${m.ckMode}"` : (m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(m.id)}"` : '');
+    const openArg = m.ckMode ? ` data-tsubmode="${m.ckMode}"` : (m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(m.id)}"` : m.detect === 'zaikowk' ? ' data-tsubq="wk=1"' : '');
     const dueTxt = m.freq === 'weekly' ? L({ja:'今週中',en:'This week',vi:'Trong tuần'}) : m.freq === 'monthly' ? L({ja:'今月中',en:'This month',vi:'Trong tháng'}) : m.freq === 'quarterly' ? L({ja:'今四半期',en:'This quarter',vi:'Quý này'}) : it.prev
       ? `${L({ja:'前日分',en:'Yesterday',vi:'Hôm qua'})}（${esc(String(it.dk).slice(5))}）・${L({ja:'締切',en:'Due',vi:'Hạn'})} ${esc(m.due || '')}`
       : `${L({ja:'締切',en:'Due',vi:'Hạn'})} ${esc(m.due || '')}`;
@@ -1950,13 +1950,13 @@
     /* ★2026-10-20 神田さん「週次、月次をある程度ワンクリックで見れるように」＝案Bの見本どおり、今週・今月の提出物をホームに1件ずつ並べる（押すとその入力へ直接）。
        済んだものは ✓ で残す。定期衛生（曜日別）は今週の先頭に入口を残す */
     const allIts = todayItemsFor(store).filter(it => !(it.manual && !it.m.linkApp && !isHttp(it.m.url)));   // 押しても開く先が無い行（PL＝アプリでは受けていない）は出さない
-    const wkIts = allIts.filter(it => it.m.freq === 'weekly');
+    const wkIts = allIts.filter(it => it.m.freq === 'weekly' && it.m.oblig === 'required');   // ★2026-10-20 今週＝必須だけ。任意の週次は定期衛生（曜日別）に入れる
     const moIts = allIts.filter(it => it.m.freq === 'monthly' || it.m.freq === 'quarterly');
-    const hygRow = `<button class="pb-row" data-open="shukan">${pbImg_('kyou_hygiene')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'定期衛生（曜日別）',en:'Periodic hygiene',vi:'Vệ sinh định kỳ'})}</span><span class="pb-sub">${L({ja:'今日の曜日の箇所',en:'Today’s spots',vi:'Hạng mục hôm nay'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`;
+    const hygRow = `<button class="pb-row" data-open="shukan">${pbImg_('kyou_hygiene')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'定期衛生（曜日別）',en:'Periodic hygiene',vi:'Vệ sinh định kỳ'})}</span><span class="pb-sub">${L({ja:'任意・今日の曜日の箇所',en:'Optional · today’s spots',vi:'Tùy chọn · hạng mục hôm nay'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`;
     const wkLeft = wkIts.filter(it => !it.manual && !it.submitted).length, moLeft = moIts.filter(it => !it.manual && !it.submitted).length;
     const leftTx = (n) => n ? `${L({ja:'残り',en:'Left',vi:'Còn'})} ${n}${L({ja:'件',en:'',vi:' mục'})}` : L({ja:'すべて済み',en:'All done',vi:'Xong hết'});
-    const wk = `<div class="pb-sec" id="pbwk"><h2>${L({ja:'今週',en:'This week',vi:'Tuần này'})}</h2><small>${L({ja:'週に1回・曜日は店で決めてよい',en:'Once a week, any day',vi:'Mỗi tuần 1 lần'})} ・ ${leftTx(wkLeft)}</small></div>
-      <div class="pb-card">${hygRow}${wkIts.map(pbFlowRow_).join('')}</div>
+    const wk = `<div class="pb-sec" id="pbwk"><h2>${L({ja:'今週',en:'This week',vi:'Tuần này'})}</h2><small>${L({ja:'必須・週に1回（曜日は店で決めてよい）',en:'Required, once a week (any day)',vi:'Bắt buộc, mỗi tuần 1 lần'})} ・ ${leftTx(wkLeft)}</small></div>
+      <div class="pb-card">${wkIts.map(pbFlowRow_).join('')}${hygRow}</div>
       ${moIts.length ? `<div class="pb-sec" id="pbmo"><h2>${L({ja:'今月',en:'This month',vi:'Tháng này'})}</h2><small>${L({ja:'月に1回のもの',en:'Once a month',vi:'Mỗi tháng 1 lần'})} ・ ${leftTx(moLeft)}</small></div>
       <div class="pb-card">${moIts.map(pbFlowRow_).join('')}</div>` : ''}`;
     const nippouCard = pbNippouCard_(store, items.find(isNippou));
@@ -3003,10 +3003,10 @@
      f＝'' 毎日／'mon,thu' 月・木／'sat' 土 …（曜日の英略を , で並べる）。f が無い品目は区分名から補う（長堀橋の「月・木に確認」） */
   const ZK_DOW = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   const ZK_DOW_JA = { sun:'日', mon:'月', tue:'火', wed:'水', thu:'木', fri:'金', sat:'土' };
-  const ZK_FREQ_OPTS = [['', { ja:'毎日', en:'Daily', vi:'Hằng ngày' }], ['mon,thu', { ja:'月・木', en:'Mon & Thu', vi:'T2 & T5' }], ['mon', { ja:'月', en:'Mon', vi:'T2' }], ['tue', { ja:'火', en:'Tue', vi:'T3' }], ['wed', { ja:'水', en:'Wed', vi:'T4' }], ['thu', { ja:'木', en:'Thu', vi:'T5' }], ['fri', { ja:'金', en:'Fri', vi:'T6' }], ['sat', { ja:'土', en:'Sat', vi:'T7' }], ['sun', { ja:'日', en:'Sun', vi:'CN' }]];
-  function zkFreqOf(it) { if (it && it.f != null && it.f !== '') return String(it.f); const g = String((it && it.g) || ''); return /月・木/.test(g) ? 'mon,thu' : /土曜/.test(g) ? 'sat' : ''; }
+  const ZK_FREQ_OPTS = [['', { ja:'毎日', en:'Daily', vi:'Hằng ngày' }], ['week', { ja:'週に1回', en:'Weekly', vi:'Mỗi tuần' }], ['mon,thu', { ja:'月・木', en:'Mon & Thu', vi:'T2 & T5' }], ['mon', { ja:'月', en:'Mon', vi:'T2' }], ['tue', { ja:'火', en:'Tue', vi:'T3' }], ['wed', { ja:'水', en:'Wed', vi:'T4' }], ['thu', { ja:'木', en:'Thu', vi:'T5' }], ['fri', { ja:'金', en:'Fri', vi:'T6' }], ['sat', { ja:'土', en:'Sat', vi:'T7' }], ['sun', { ja:'日', en:'Sun', vi:'CN' }]];
+  function zkFreqOf(it) { if (it && /^器（/.test(String(it.g || ''))) return 'week'; if (it && it.f != null && it.f !== '') return String(it.f); const g = String((it && it.g) || ''); return /月・木/.test(g) ? 'mon,thu' : /土曜/.test(g) ? 'sat' : ''; }
   const zkFreqLabel = (f) => { const o = ZK_FREQ_OPTS.find(x => x[0] === f); return o ? L(o[1]) : f.split(',').map(d => ZK_DOW_JA[d] || d).join('・'); };
-  function zkDue(it, dow) { const f = zkFreqOf(it); if (!f) return true; const d = ZK_DOW[dow == null ? new Date().getDay() : dow]; return f.split(',').includes(d); }
+  function zkDue(it, dow) { const f = zkFreqOf(it); if (!f) return true; if (f === 'week') return false; const d = ZK_DOW[dow == null ? new Date().getDay() : dow]; return f.split(',').includes(d); }
   /* 今日確認する品目があるか（品目未登録なら true＝登録を促す画面を出す） */
   function zkDueToday(store, dow) { const m = zkMaster(store); return !m.length || m.some(it => zkDue(it, dow)); }
   function zkStore() {
@@ -3018,7 +3018,7 @@
   function zkMaster(store) {
     const rows = getZk('zaikomaster').filter(r => r.store === store).sort((a, b) => b.t - a.t);
     const p = rows.length ? parseNote(rows[0].note) : null;
-    const saved = (p && Array.isArray(p.items)) ? p.items.filter(it => it && it.n) : [];
+    const saved = (p && Array.isArray(p.items)) ? p.items.filter(it => it && it.n).map(it => /^器（/.test(String(it.g || '')) ? Object.assign({}, it, { g: ZK_TW_G, f: 'week' }) : it) : [];
     if (!saved.length) return zkDefaultsFor_(store);   // 保存が無ければ既定（在庫チェック表の転記＋業態の器）
     /* ★店長が保存済みの店（牛カツ富士山 9/19）にも、業態の器を自動で足す（画面293・2026-09-25 神田さん「牛カツ富士山の器が反映されてない」）。
        器は本部（田中さん）の週次のお願い＝店の保存を待たずに出す。同名が保存にあれば足さない */
@@ -3027,6 +3027,8 @@
     return saved.concat(tw);
   }
   const zkIsDefault = (store) => !getZk('zaikomaster').some(r => r.store === store);
+  const zkWeekItems_ = (store) => zkMaster(store).filter(it => zkFreqOf(it) === 'week');
+  const zkWkMode_ = () => { try { return currentRoute().params.get('wk') === '1'; } catch (e) { return false; } };
   /* ★器（週次・水曜に数える）＝田中さん 2026-09-25「週次で器の棚卸し・チップの確認」（いる・いらないシート No.59）。
      出典＝本部ドライブ「2.初回発注 備品リスト」（2026-09-25 読取）
        寿司＝2.寿司世桜備品【心斎橋店】のマルシン・兼光の器（個数14＝席数）
@@ -3034,8 +3036,9 @@
        牛カツ＝7.和牛世桜備品【広島】本部手配分の「[牛カツ] 茶碗×24」＋全業態共通のマルシン行（サラダ皿・牛カツを運ぶ皿）
        和牛・日本料理・手巻き寿司＝備品リストに器の一覧が無い → 全業態共通の6品だけ（店長が「品目・基準在庫」で足す）
      std＝初回発注の個数（これを下回ったら「減っている」の目安）。数が分からない物は空欄＝発注リストには出ない */
-  const ZK_TW_G = '器（水曜に数える）';
-  const zkTw_ = (rows) => rows.map(r => ({ g: ZK_TW_G, n: r[0], std: r[2] == null ? '' : r[2], u: r[1], f: 'wed' }));
+  /* ★2026-10-20 神田さん「曜日に固定せず、週に1回の業務として」＝器は f:'week'（その週のうちに1回）。日々の在庫の入力には出さず、提出物「器の数と欠け」（今週）から開く */
+  const ZK_TW_G = '器（週に1回）';
+  const zkTw_ = (rows) => rows.map(r => ({ g: ZK_TW_G, n: r[0], std: r[2] == null ? '' : r[2], u: r[1], f: 'week' }));
   const ZK_TW_COMMON = [['茶碗', '個', ''], ['汁椀', '個', ''], ['湯呑', '個', ''], ['グラス', '個', ''], ['ビールグラス', '個', ''], ['箸置き', '個', '']];
   const ZK_TABLEWARE = {
     '鰻': zkTw_([['３連皿', '枚', 50], ['茶碗', '個', 50], ['どんぶり', '個', 50], ['汁椀', '個', ''], ['卓上薬味入れ', '個', 22], ['卓上タレ入れ', '個', 11], ['湯呑', '個', ''], ['グラス', '個', ''], ['ビールグラス', '個', ''], ['箸置き', '個', '']]),
@@ -3118,6 +3121,7 @@
     </div>`;
   }
   APP_VIEWS.zaiko = () => {
+    if (zkWkMode_()) return zkWeekView_();
     if (isPb() && getRole() !== 'hq') _pbHead = { t: L({ ja:'在庫の数', en:'Stock count', vi:'Số tồn kho' }), d: L({ ja:'締めに数えて入れるだけ。基準より少ない品目は発注リストに出ます。', en:'Count at closing. Items below the minimum go to the order list.', vi:'Đếm khi đóng ca. Mục dưới định mức vào danh sách đặt.' }) };
     const vis = visibleStores(); const store = zkStore();
     let tab = ''; try { tab = localStorage.getItem(ZK_LS_TAB) || ''; } catch (e) {}
@@ -3200,6 +3204,27 @@
         ${storeSel}${tabBar}${body}
       </div>`;
   };
+  /* ★器の数と欠け（週に1回・2026-10-20）＝提出物「今週」の行から1回で開く。器の品目だけを並べ、提出は在庫の数と同じ置き場（wk の印つき）。
+     日々の「在庫の数」の提出済みには数えない。数えるときに欠け・ひびを見て、ある器は取り除く（報告は不要＝10/12 神田さん） */
+  function zkWeekView_() {
+    const vis = visibleStores(); const store = zkStore();
+    const lead = L({ ja:'週に1回、都合のよい日に数えます。欠け・ひびのある器は使わずに破棄してください。', en:'Count once a week, any day. Discard chipped or cracked pieces.', vi:'Đếm mỗi tuần 1 lần. Bỏ đồ mẻ/nứt.' });
+    if (isPb() && getRole() !== 'hq') _pbHead = { t: L({ ja:'器の数と欠け', en:'Tableware count & chips', vi:'Đếm bát đĩa & đồ mẻ' }), d: lead };
+    const all = zkMaster(store).map((it, i) => [it, i]).filter(([it]) => zkFreqOf(it) === 'week');
+    const l = zkLatest(store); const today = dateKeyFor(store, Date.now()); const draft = zkDraft(store, today);
+    const wkDone = getZk('zaiko').some(r => r.store === store && (parseNote(r.note) || {}).wk && weekKeyOf(dateKeyFor(store, r.t)) === weekKeyOf(today));
+    const storeSel = vis.length > 1 ? `<label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="zk_store">${vis.map(x => `<option${x === store ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : '';
+    const rows = all.map(([it, i]) => { const cur = l && l.q[it.n]; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
+      return `<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}${cur != null && cur !== '' ? ` ・ ${L({ ja:'前回', en:'last', vi:'lần trước' })} ${esc(String(cur))}` : ''}</small></label>
+      ${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:-1" aria-label="-">−</button>` : ''}<input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${draft[it.n] != null ? esc(String(draft[it.n])) : ''}" placeholder="${cur != null && cur !== '' ? esc(String(cur)) : '0'}">${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:1" aria-label="+">＋</button>` : ''}<span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
+    const body = all.length ? `
+      ${wkDone ? `<div class="hint" style="display:block">${L({ ja:'今週はもう数えています。直すときはそのまま入れ直して提出してください。', en:'Already counted this week; resubmit to correct.', vi:'Tuần này đã đếm; gửi lại để sửa.' })}</div>` : ''}
+      <div class="zk-grp" style="margin-top:4px">${esc(ZK_TW_G)}</div>${rows}
+      <label class="fld"><span>${L({ ja:'名前', en:'Your name', vi:'Tên bạn' })}</span><input type="text" id="zk_by" value="${esc(getUserName() || '')}"></label>
+      <button class="btn-primary" id="submitZk">${L({ ja:'器の数を提出する', en:'Submit tableware count', vi:'Gửi số bát đĩa' })}</button>`
+      : `<div class="muted">${L({ ja:'この店の器の品目はまだありません。店長が「在庫」の「品目・基準在庫」で足せます。', en:'No tableware items for this store yet. The manager can add them under Items.', vi:'Chưa có mặt hàng bát đĩa. Quản lý có thể thêm ở mục Mặt hàng.' })}</div>`;
+    return `${isPb() && getRole() !== 'hq' ? '' : `<p class="hint" style="display:block">${lead}</p>`}<div class="card"><h3>${L({ ja:'器の数と欠け', en:'Tableware count & chips', vi:'Đếm bát đĩa & đồ mẻ' })} — ${esc(storeShort(store))}</h3>${storeSel}${body}</div>`;
+  }
   APP_VIEWS.kinshu = () => {
     const vis = visibleStores();
     const recent = getKinshu().filter(r => vis.includes(r.store)).sort((a, b) => b.t - a.t).slice(0, 5);
@@ -3645,7 +3670,7 @@
         {ja:'食器類のケース・破損確認',d:{ja:'食器を出してケース内をアルコールで拭く／戻してテプラを貼り直す／ひび割れや破損がないか確認'}},
         {ja:'冷凍庫（内部・外部）',d:{ja:'中身を全部出す／ダスターを湿らせアルコールで拭く／ストック用ケースはシンクで洗浄／外側の扉も'}},
         {ja:'冷凍庫（フィルター）',d:{ja:'取り外してシンクで洗い流す／乾かしてから戻す'}},
-        {ja:'器の数と欠け（チップ）',en:'Tableware count & chips',vi:'Đếm bát đĩa & đồ mẻ',go:'/app/zaiko',goT:{ja:'在庫数を入力へ',en:'Open Stock count',vi:'Mở Tồn kho'},d:{ja:'週に1回が最低。曜日は店で決めてよい（水曜は目安。変えるときは、この項目を外して、やりたい曜日に足す）／種類ごとに数えて「在庫数」の器の欄へ／数えるときに欠け・ひびをしっかり見て、ある器は取り除いて使わない（怪我のもと・報告は不要）',en:'At least once a week; the store picks the day (Wednesday is just a guide — hide this item and add it to another day if you prefer). Count each type into Stock (tableware). While counting, check carefully for chips and cracks and remove those pieces (no report needed).',vi:'Ít nhất 1 lần/tuần; cửa hàng tự chọn ngày (thứ Tư chỉ là gợi ý — có thể ẩn mục này và thêm vào ngày khác). Đếm từng loại vào Tồn kho (bát đĩa). Khi đếm, kiểm tra kỹ đồ mẻ/nứt và loại bỏ (không cần báo cáo).'}} ] },   /* ★2026-10-12 神田さん「チップは報告いらない。器の棚卸のときにしっかり確認。曜日は固定せず店舗に委ねる。週1回が最低」 */
+      ] },   /* ★2026-10-20 器の数と欠けは定期衛生（水曜）から外し、提出物の「今週」の1件へ（神田さん「曜日に固定せず、週に1回の業務としてワンクリックで」）。数え方は在庫の数の器の画面に */
       { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
         {ja:'レジカウンター周辺',d:{ja:'レジ周りの埃／整理整頓／アルコールで全体を拭く／金銭トレイ・チラシ立ても／カウンターの後ろも／傘立ては水を捨てて掃除'}},
         {ja:'バックヤード',d:{ja:'何がどこにあるか見て分かるように整理し、名称を表示／昼と夜の物を分ける／使ったものは必ず元に戻す'}},
@@ -3669,8 +3694,7 @@
     { d:6, g:[
       { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
         {ja:'ポットの洗浄',d:{ja:'専用の洗浄剤を使用方法に従って／本体もアルコールで拭く（放置すると汚れが落ちなくなり故障の原因に）'}},
-        {ja:'シンク下・作業台下',d:{ja:'下の物を全部出す／アルコールで汚れを拭き取る／出した物が汚れていれば拭く／元に戻す（全部出さないときれいにならない）'}},
-        {ja:'スタッフルーム・厨房の整理整頓',en:'Staff room & kitchen tidy-up',vi:'Dọn phòng nhân viên & bếp',d:{ja:'私物・段ボール・書類を片づける／ゴミ箱の中とフードダクトの周りも見る',en:'Clear personal items, boxes and papers; check inside bins and around the hood.',vi:'Dọn đồ cá nhân, thùng, giấy; xem trong thùng rác và quanh hút mùi.'}} ] },
+        {ja:'シンク下・作業台下',d:{ja:'下の物を全部出す／アルコールで汚れを拭き取る／出した物が汚れていれば拭く／元に戻す（全部出さないときれいにならない）'}} ] },   /* ★2026-10-20 土曜の整理整頓（スタッフルーム）は定期衛生から外し、提出物の「今週」の必須へ（神田さん「今伝えたものは必須に」） */
       { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
         {ja:'外看板の清掃',d:{ja:'フィルムやフレームを拭き上げ／同時に外観の清掃も／コンセントの故障やポスターの色褪せも確認'}},
         {ja:'椅子',d:{ja:'フレームや脚を拭き上げ／足を乗せる場所の黒ずみは必ず落とす／脚裏のアジャスターやクッションが取れていないか'}} ] } ] }
@@ -7858,6 +7882,13 @@
       { id:'kizuki',     name:{ja:'気づきの報告',en:'Daily insights',vi:'Ghi nhận cuối ca'},           oblig:'store',    freq:'daily', due:'23:59', target:'all', hqReview:'none',  detect:'kizuki', linkApp:'kizuki',
         how:{ja:'クローズ後に、その日の気づきを共有してください（無い日は出さなくて大丈夫です）',en:'Share what you noticed after closing (skip if nothing)',vi:'Sau khi đóng cửa, chia sẻ điều bạn nhận thấy (không có thì bỏ qua)'} },
       // ── 毎週 ──
+      /* ★器の数と欠け（2026-10-20 神田さん「曜日に固定せず、週に1回の業務としてワンクリックで」）＝これまで定期衛生の水曜に入っていた。
+         今週のうちに1回、器の画面（在庫の数の器の品目だけ）で数えて提出。チップは報告不要＝数えるときに取り除く（10/12） */
+      /* ★スタッフルーム・厨房の整理整頓（田中さん 9/18 全店発信④＝見えない場所の清掃）＝週に1回・押すだけ（2026-10-20 神田さん「必須に」） */
+      { id:'staffroom', name:{ja:'スタッフルーム・厨房の整理整頓',en:'Staff room & kitchen tidy-up',vi:'Dọn phòng nhân viên & bếp'}, oblig:'required', freq:'weekly', due:'23:59', target:'all', hqReview:'none', detect:'didit', autoAdd:true,
+        how:{ja:'週に1回。私物・段ボール・書類を片づけ、ゴミ箱の中とフードダクトの周りも見たら「実施しました」を押してください',en:'Once a week: clear personal items, boxes and papers; check bins and around the hood, then tap “Done”',vi:'Mỗi tuần 1 lần: dọn đồ cá nhân, thùng, giấy; xem thùng rác và quanh hút mùi rồi bấm “Đã làm”'} },
+      { id:'utsuwa', name:{ja:'器の数と欠け',en:'Tableware count & chips',vi:'Đếm bát đĩa & đồ mẻ'}, oblig:'required', freq:'weekly', due:'23:59', target:'all', hqReview:'none', detect:'zaikowk', linkApp:'zaiko', autoAdd:true,
+        how:{ja:'週に1回、都合のよい日に器を種類ごとに数えて提出してください（欠け・ひびのある器は使わずに破棄）',en:'Once a week, count tableware by type and submit (discard chipped or cracked pieces)',vi:'Mỗi tuần 1 lần, đếm bát đĩa theo loại và gửi (bỏ đồ mẻ/nứt)'} },
       { id:'pop_week',   name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'weekly', due:'23:59', target:'gyotai_in', gyotai:['gyukatsu'], hqReview:'none', detect:'didit', how:{ja:'新しいものと交換したら「実施しました」を押してください',en:'Replace with new ones, then tap “Done”',vi:'Thay mới rồi bấm “Đã làm”'} }, // 牛カツは油汚れ対策で週1
       // ── 毎月 ──
       /* ★総括表とPLは別のもの（2026-08-12 神田さんのご指摘で整理）。
@@ -8039,7 +8070,8 @@
     if (m.target === 'gyotai_in' && Array.isArray(m.gyotai) && !m.gyotai.includes(storeMeta(store).gyotai)) return false; // 指定業態のみ（例：牛カツのみ）
     if (m.target === 'gyotai_ex' && Array.isArray(m.gyotai) && m.gyotai.includes(storeMeta(store).gyotai)) return false;  // 指定業態を除く（例：牛カツ以外）
     if ((m.id === 'ck_open' || m.id === 'ck_close') && CK_PHOTO_STORES_.includes(store)) return false;   // 写真で出す店（ck_open_photo／ck_close_photo）
-    if (m.detect === 'zaiko' && !zkDueToday(store)) return false;   // 在庫数の入力＝今日確認する品目が無い日は出さない（2026-09-19）
+    if (m.detect === 'zaiko' && !zkDueToday(store)) return false;
+    if (m.detect === 'zaikowk' && !zkWeekItems_(store).length) return false;   // 器の品目が無い店には出さない   // 在庫数の入力＝今日確認する品目が無い日は出さない（2026-09-19）
     return true;
   }
   // 週キー（月曜始まり）＝週次提出の「今週提出済み」判定に使用
@@ -8070,7 +8102,8 @@
       if (m.detect === 'chukan') return getReports().some(r => r.kind === 'chukan' && r.store === store && inScope(r.t));
       // 金種別入力（レジクローズ）＝当日の kinshu 記録が1件でもあれば提出済み
       if (m.detect === 'kinshu') return getReports().some(r => r.kind === 'kinshu' && r.store === store && inScope(r.t));
-      if (m.detect === 'zaiko')  return getReports().some(r => r.kind === 'zaiko' && r.store === store && inScope(r.t));
+      if (m.detect === 'zaiko')  return getReports().some(r => r.kind === 'zaiko' && r.store === store && inScope(r.t) && !(parseNote(r.note) || {}).wk);   // 器の画面からの提出（wk）は日々の在庫に数えない
+      if (m.detect === 'zaikowk') return getReports().some(r => r.kind === 'zaiko' && r.store === store && inScope(r.t) && (parseNote(r.note) || {}).wk);
       if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
       /* アプリのチェックリスト＝★その日の項目が「全部」終わったときだけ提出済みとする。
          2026-08-12 神田さんのご指摘で修正。以前は1つでもチェックすれば実施とみなしていたため、
@@ -8122,7 +8155,7 @@
        ここで「どれを開くか」を渡さないと、前回見ていた種類が開いてしまう。
        （2026-08-12 神田さんのご指摘。オープンを押したのにアイドルが開く状態だった） */
     const openArg = it.m.ckMode ? ` data-tsubmode="${it.m.ckMode}"`
-      : (it.m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(it.m.id)}"` : '');
+      : (it.m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(it.m.id)}"` : it.m.detect === 'zaikowk' ? ' data-tsubq="wk=1"' : '');
     /* 「実施するだけ」の項目（卓上POPの交換など）は、開く画面が無い。
        写真も要らないので、その場で押せる「実施しました」を出す。
        押した記録は写真の提出と同じ置き場に残るので、本部からも実施状況が見える。 */
@@ -9573,7 +9606,7 @@
       if (t.dataset.tsub) {
         if (t.dataset.tsubmode) localStorage.setItem('yosakura_ckmode', t.dataset.tsubmode);
         if (t.dataset.tsubphoto) localStorage.setItem('yosakura_photo_target', t.dataset.tsubphoto);
-        go(`/app/${t.dataset.tsub}`); return;
+        go(`/app/${t.dataset.tsub}${t.dataset.tsubq ? '?' + t.dataset.tsubq : ''}`); return;
       }
       if (t.dataset.tmissing) { const cur = localStorage.getItem('yosakura_sub_missingonly') === '1'; localStorage.setItem('yosakura_sub_missingonly', cur ? '0' : '1'); render(); return; }
       if (t.dataset.tdrill) { openTeishutsuDrill(t.dataset.tdrill); return; }
@@ -11243,7 +11276,7 @@
       if (!n) { toast(L({ ja:'在庫数を1つ以上入れてください', en:'Enter at least one count', vi:'Nhập ít nhất một số' })); return; }
       const by = String((document.getElementById('zk_by') || {}).value || '').trim(); if (by) setUserName(by);
       const t = Date.now();
-      const rep = { kind:'zaiko', store, item: dateKeyFor(store, t), note: JSON.stringify({ q, by: by || submitterLabel() }), photos: [], t };
+      const rep = { kind:'zaiko', store, item: dateKeyFor(store, t), note: JSON.stringify(Object.assign({ q, by: by || submitterLabel() }, zkWkMode_() ? { wk: 1 } : {})), photos: [], t };
       try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
       zkDraftClear();
       lastSync = t;
