@@ -7140,5 +7140,26 @@ console.log('== 2026-10-21 永井さん「品目を編集して更新したら�
   ok(/const zkDraftOf_ = \(store\) => [\s\S]{0,400}\(Number\(d\.t\) \|\| 0\) > mt \? d : null/.test(code), '復元するのは保存より新しい下書きだけ');
 }
 
+console.log('== 2026-10-21 永井さん「在庫チェックに消耗品管理の2枚も」＝長堀橋の既定にホール（第二・第四の火）とキッチン・トイレ（月・木） ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); });
+  location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  const h = registry.app.innerHTML;
+  ok(/<div class="zk-grp"[^>]*>消耗品（ホール）第二・第四の火<\/div>/.test(h) && /<div class="zk-grp"[^>]*>消耗品（キッチン・トイレ）月・木<\/div>/.test(h), '2つの見出しが出る');
+  ok(/value="ボールペン（黒）"/.test(h) && /value="レジロール（大／小）"/.test(h) && /value="クリアファイル"/.test(h) && /value="輪ゴム"/.test(h), 'ホール＝ボールペン〜クリアファイル（19品）');
+  ok(/value="ハンドソープ（詰替）"/.test(h) && /value="ゴミ袋（90ℓ）"/.test(h) && /value="ゴミ袋（45ℓ）"/.test(h) && /value="トイレの消臭剤"/.test(h), 'キッチン・トイレ＝ハンドソープ〜ゴミ袋45ℓ（12品）');
+  ok(!/排水ネット|グリスト専用ネット|半透明袋|マウスウォッシュ/.test(h), '紙で消してある4品は入れない');
+  const bl = h.split('<div class="zk-edit">').slice(1);
+  const blk = (b) => (b.match(/id="zk_n\d+" value="([^"]*)"/) || ['', ''])[1];
+  const grp = (b) => (b.match(/<select id="zk_g\d+"[\s\S]*?<\/select>/) || [''])[0];
+  const frq = (b) => ((b.match(/<select id="zk_f\d+"[\s\S]*?<\/select>/) || [''])[0].match(/<option value="([^"]*)" selected/) || ['', ''])[1];
+  const hallRows = bl.filter(b => /<option value="消耗品（ホール）第二・第四の火" selected>/.test(grp(b)));
+  const kitRows = bl.filter(b => /<option value="消耗品（キッチン・トイレ）月・木" selected>/.test(grp(b)));
+  ok(hallRows.filter(b => blk(b)).length === 19 && hallRows.filter(b => !blk(b)).length === 5 && hallRows.every(b => frq(b) === 'tue'), 'ホール＝19品＋空欄5・確認日は火');
+  ok(kitRows.filter(b => blk(b)).length === 12 && kitRows.filter(b => !blk(b)).length === 5 && kitRows.every(b => frq(b) === 'mon,thu'), 'キッチン・トイレ＝12品＋空欄5・確認日は月・木');
+  ok(/value="輪ゴム"[\s\S]{0,80}id="zk_s\d+" value="30"/.test(h) && /value="レジロール（大／小）"[\s\S]{0,80}id="zk_s\d+" value="5"/.test(h), '発注目安＝輪ゴム30・レジロール5');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
