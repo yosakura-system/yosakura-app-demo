@@ -3307,13 +3307,16 @@
       /* 空の行は必ず8行以上残す（品目が24を超える店＝富士山で、追加する行が無くなっていた 2026-09-19） */
       /* ★2026-10-21 永井さん（牛カツ長堀橋）「区分の終わり（食材管理①・②）に空白の欄がほしい」＝区分ごとの末尾に空の行を2つ。
          区分と確認日はその区分のものを入れておく（名前を打って保存すれば、その区分の中に並ぶ）。いちばん下の8行以上はそのまま */
-      const rows = []; m.forEach((it, i) => { rows.push(it); const nx = m[i + 1]; if (it.g && (!nx || String(nx.g || '') !== String(it.g || ''))) { for (let k = 0; k < 2; k++) rows.push({ n: '', std: '', u: '', g: it.g }); } });
+      /* ★2026-10-21 神田さん「各項目の終わりに5つくらい空白は常にほしい」＝区分の末尾の空の行は常に5つ（下書きから戻したときも足りなければ足す） */
+      const ZK_GROUP_BLANKS = 5;
+      const padGroups = (src) => { const out = []; src.forEach((it, i) => { out.push(it); const nx = src[i + 1]; const g = String(it.g || '').trim(); if (g && (!nx || String(nx.g || '').trim() !== g)) { let blanks = 0; for (let j = out.length - 1; j >= 0 && !String(out[j].n || '').trim() && String(out[j].g || '').trim() === g; j--) blanks++; for (let k = blanks; k < ZK_GROUP_BLANKS; k++) out.push({ n: '', std: '', u: '', g: it.g }); } }); return out; };
+      const rows = padGroups(m);
       const missing = zkMissingDefaults(store); const want = Math.max(ZK_SLOTS, rows.length + 8 + missing.length); while (rows.length < want) rows.push({ n: '', std: '', u: '' });
       const draft = zkDraftOf_(store); let draftNote = '';
       if (draft) {
         const dr = draft.rows.map(x => ({ n: String(x.n || ''), std: x.std == null ? '' : x.std, u: String(x.u || ''), g: String(x.g || ''), f: String(x.f || '') }));
         const need = Math.max(want, dr.length + 8); while (dr.length < need) dr.push({ n: '', std: '', u: '' });
-        rows.length = 0; dr.forEach(x => rows.push(x));
+        rows.length = 0; padGroups(dr).forEach(x => rows.push(x));   // 下書きの区分にも常に5つの空の行
         const dt = new Date(Number(draft.t) || Date.now());
         draftNote = `<div class="hint" style="display:block;background:#fff6dc;border:1px solid #e3c86a;border-radius:10px;padding:8px 10px;margin:0 0 8px;color:#5a4a1a">${L({ ja:`保存していない編集を復元しました（${dt.getMonth() + 1}/${dt.getDate()} ${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}）。下の「品目と基準在庫を保存する」を押すまで、本部や他の端末には届きません。`, en:'Restored unsaved edits. They are not sent until you tap Save below.', vi:'Đã khôi phục chỉnh sửa chưa lưu. Chưa gửi đi cho đến khi bấm Lưu.' })} <button type="button" class="mini" id="zkDraftDrop" style="margin-left:6px">${L({ ja:'編集を破棄', en:'Discard edits', vi:'Bỏ chỉnh sửa' })}</button></div>`;
       }

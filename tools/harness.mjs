@@ -7096,7 +7096,7 @@ console.log('== 2026-10-21 永井さん「在庫の区分の終わりに空白�
   const freqOf = (b) => { const m = b.match(/<select id=\"zk_f\d+\"[\s\S]*?<\/select>/); return m ? (m[0].match(/<option value=\"([^\"]*)\" selected/) || ['', ''])[1] : ''; };
   const empty1 = blocks.filter(b => !nameOf(b) && /^食材管理①/.test(grpOf(b)));
   const empty2 = blocks.filter(b => !nameOf(b) && /^食材管理②/.test(grpOf(b)));
-  ok(empty1.length === 2 && empty2.length === 2, '食材管理①・②のそれぞれに、区分入りの空の行が2つ');
+  ok(empty1.length === 5 && empty2.length === 5, '食材管理①・②のそれぞれに、区分入りの空の行が5つ（神田さん 10/21「5つくらい常に」）');
   ok(empty2.every(b => freqOf(b) === 'mon,thu'), '食材管理②の空の行は確認日が「月・木」');
   const lastIdx1 = Math.max(...blocks.map((b, i) => /^食材管理①/.test(grpOf(b)) && nameOf(b) ? i : -1)); const firstEmpty1 = blocks.findIndex(b => !nameOf(b) && /^食材管理①/.test(grpOf(b)));
   ok(firstEmpty1 === lastIdx1 + 1, '空の行は、その区分の最後の品目のすぐ下');
@@ -7118,6 +7118,7 @@ console.log('== 2026-10-21 永井さん「品目を編集して更新したら�
   ok(/保存していない編集を復元しました/.test(h) && /id=\"zkDraftDrop\"/.test(h), '下書きがあれば「復元しました」の帯と「編集を破棄」');
   ok(/id=\"zk_n1\" value=\"テスト品目\"/.test(h) && /id=\"zk_s1\" value=\"2\"/.test(h), '下書きの品目（テスト品目・基準2）が欄に戻る');
   ok((h.match(/id=\"zk_n\d+\" value=\"\"/g) || []).length >= 8, '下書きの下にも空き行が8行以上');
+  { const bl = h.split('<div class="zk-edit">').slice(1); const e1 = bl.filter(b => /id="zk_n\d+" value=""/.test(b) && /<option value="食材管理①（毎日確認）" selected>/.test(b)).length; ok(e1 === 5, '下書きから戻しても、区分の末尾の空の行は5つ（足りなければ足す）'); }
   ok(/保存する前の編集はこの端末に下書きとして残ります/.test(h), '保存の下に、下書きは端末に残る旨');
   // 下書きで「＋新しい区分」を打った行＝その区分が候補に入り、選ばれた状態で戻る
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); localStorage.setItem('yosakura_zk_master_draft', JSON.stringify({ [S]: { rows: [{ n:'新しい品目', std:'1', u:'袋', g:'冷凍ストッカー', f:'' }], t: Date.now() - 60e3 } })); });
