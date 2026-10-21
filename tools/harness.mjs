@@ -7049,6 +7049,10 @@ console.log('== 2026-10-21 全店点検（神田さん「うその数値や根�
 console.log('== 2026-10-21 神田さん「店の数字をもう少し詳細に＝3か月平均＋今月の日別＋Google口コミ＋サーベイ」（テスト＝体験版のみ） ==');
 {
   const S = '牛カツ世桜 富士山店'; const D = 86400e3; const now = new Date(); const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  // 体験版（接続先なし）として動かす＝本番ではこの画面を出さないため
+  const taikenCode = code.replace(code.match(/ {2}const API_URL_DEFAULT = '[^']*';/)[0], "  const API_URL_DEFAULT = '';");
+  const runTaiken = (setup) => { store.clear(); registry.app = makeEl('div'); Object.keys(registry).forEach(k => { if (k !== 'app') delete registry[k]; }); Object.keys(winHandlers).forEach(k => delete winHandlers[k]); hashVal = ''; setup();
+    const box = Object.assign({}, sandbox); box.window = Object.assign({}, windowObj); box.globalThis = box; box.self = box; vm.runInContext(taikenCode, vm.createContext(box), { filename:'app-taiken.js' }); return registry.app; };
   const ymN = (k) => { const d = new Date(now.getFullYear(), now.getMonth() - k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   const dayOf = (ym, d) => ym + '-' + String(d).padStart(2, '0'); const y = new Date(Date.now() - D).toLocaleDateString('en-CA');
   const sk = [];
@@ -7059,7 +7063,8 @@ console.log('== 2026-10-21 神田さん「店の数字をもう少し詳細に�
   const y8 = new Date(Date.now() - 8 * D).toLocaleDateString('en-CA'); sk.push({ store:S, date:y8, sales:110000, net:100000, guests:25, src:'drive', t: Date.now() - 8 * D });
   const gs = []; [3, 2, 1, 0].forEach(k => { const m = ymN(k); gs.push({ id:'g' + k + 'a', kind:'gsnap', store:S, item:dayOf(m, 1), note:JSON.stringify({ src:'places', total: 100 + (3 - k) * 10, rating: 4.8 }), t: Date.now() - (k * 30 + 25) * D }); gs.push({ id:'g' + k + 'b', kind:'gsnap', store:S, item:dayOf(m, 20), note:JSON.stringify({ src:'places', total: 100 + (3 - k) * 10 + 8, rating: 4.9 }), t: Date.now() - (k * 30 + 5) * D }); });
   const sv = [{ store:S, sat:5, t: Date.now() - 2 * D }, { store:S, sat:3, t: Date.now() - 3 * D }, { store:S, sat:4, t: Date.now() - 40 * D }, { store:S, sat:5, t: Date.now() - 70 * D }];
-  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(sk)); localStorage.setItem('yosakura_demo_reports', JSON.stringify(gs)); localStorage.setItem('yosakura_demo_survey', JSON.stringify(sv)); });
+  const SEEDV = (code.match(/const APP_BUILD = '([^']+)'/) || [])[1]; const markAll = () => { (code.match(/seedMark\('([a-z]+)'\)/g) || []).forEach(x => localStorage.setItem('yosakura_demo_seed_ver:' + x.match(/'([a-z]+)'/)[1], SEEDV)); };   // 体験版の見本データで上書きされないように
+  runTaiken(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); markAll(); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(sk)); localStorage.setItem('yosakura_demo_reports', JSON.stringify(gs)); localStorage.setItem('yosakura_demo_survey', JSON.stringify(sv)); });
   location.hash = '#/home?tab=num';
   ok(/data-open=\"numdetail\"/.test(registry.app.innerHTML) && /3か月の平均と今月の日別/.test(registry.app.innerHTML) && (() => { const hh = registry.app.innerHTML; const k = hh.indexOf('くわしく'); return k > 0 && hh.indexOf('data-open="numdetail"', k) > 0 && hh.indexOf('data-open="numdetail"', k) < hh.indexOf('data-open="pl"', k); })(), '店の数字の「くわしく」の先頭に「3か月の平均と今月の日別」の行');
   location.hash = '#/app/numdetail';
@@ -7074,10 +7079,33 @@ console.log('== 2026-10-21 神田さん「店の数字をもう少し詳細に�
   ok(/今月の満足度<\/div><div class=\"v\">4\.0/.test(h) && /低い評価 1/.test(h) && /3か月の平均<\/div><div class=\"v\">4\.5/.test(h), 'サーベイ＝今月4.0（2件・低い1）・3か月平均4.5（2件）');
   ok(!/id=\"f_photo\"|<input|<textarea|<select/.test(h), '入力欄は無い（見るだけ）');
   // スタッフは開けない
-  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  runTaiken(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/app/numdetail';
   ok(!/店の数字（くわしく）/.test(registry.app.innerHTML), 'スタッフは開かない');
   ok(/html\[data-theme=\"pb\"\] \.pb-tbl \{ width: 100%; border-collapse: collapse;/.test(css) && /\.pb-tblwrap \{ padding: 8px 10px; overflow-x: auto; \}/.test(css), 'CSS：表は横にはみ出さず中だけスクロール');
+}
+
+console.log('== 2026-10-21 永井さん「在庫の区分の終わりに空白の欄を」＝区分ごとの末尾に空の行2つ（区分・確認日入り） ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); });
+  location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  const blocks = registry.app.innerHTML.split('<div class=\"zk-edit\">').slice(1);
+  const grpOf = (b) => { const m = b.match(/<select id=\"zk_g\d+\"[\s\S]*?<\/select>/); const s = m ? (m[0].match(/<option value=\"([^\"]*)\" selected/) || ['', ''])[1] : ''; return s; };
+  const nameOf = (b) => (b.match(/id=\"zk_n\d+\" value=\"([^\"]*)\"/) || ['', ''])[1];
+  const freqOf = (b) => { const m = b.match(/<select id=\"zk_f\d+\"[\s\S]*?<\/select>/); return m ? (m[0].match(/<option value=\"([^\"]*)\" selected/) || ['', ''])[1] : ''; };
+  const empty1 = blocks.filter(b => !nameOf(b) && /^食材管理①/.test(grpOf(b)));
+  const empty2 = blocks.filter(b => !nameOf(b) && /^食材管理②/.test(grpOf(b)));
+  ok(empty1.length === 2 && empty2.length === 2, '食材管理①・②のそれぞれに、区分入りの空の行が2つ');
+  ok(empty2.every(b => freqOf(b) === 'mon,thu'), '食材管理②の空の行は確認日が「月・木」');
+  const lastIdx1 = Math.max(...blocks.map((b, i) => /^食材管理①/.test(grpOf(b)) && nameOf(b) ? i : -1)); const firstEmpty1 = blocks.findIndex(b => !nameOf(b) && /^食材管理①/.test(grpOf(b)));
+  ok(firstEmpty1 === lastIdx1 + 1, '空の行は、その区分の最後の品目のすぐ下');
+  const tailEmpty = blocks.filter(b => !nameOf(b) && !grpOf(b)).length; ok(tailEmpty >= 8, 'いちばん下の区分なしの空き行は8行以上のまま');
+  ok(!/<div class=\"zk-grp\"[^>]*>食材管理①[^<]*<\/div>[\s\S]*?<div class=\"zk-grp\"[^>]*>食材管理①/.test(registry.app.innerHTML), '区分の見出しは1回ずつ（空の行で見出しが増えない）');
+}
+console.log('== 2026-10-21 店の数字（くわしく）はテスト中＝本番（バックエンド接続）では出さない ==');
+{
+  ok(/\$\{useBackend\(\) \? '' : `<button class=\"pb-row\" data-open=\"numdetail\">/.test(code) && /APP_VIEWS\.numdetail = \(\) => useBackend\(\) \?/.test(code), '本番では「くわしく」の行も画面も出ない（体験版だけ）');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
