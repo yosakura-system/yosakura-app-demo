@@ -2093,7 +2093,7 @@
       + `<button class="pb-card pb-numcard" data-open="survey?tab=voice"><div class="pb-kpi"><div><div class="l">${L({ja:'サーベイ満足度（今月）',en:'Survey score (month)',vi:'Điểm khảo sát (tháng)'})}</div><div class="v">${svAvg || '—'}</div><div class="d">${svM.length} ${L({ja:'件',en:'answers',vi:'câu'})}${svLow ? ` ・ ${L({ja:'低い評価',en:'low',vi:'thấp'})} ${svLow} ${L({ja:'件',en:'',vi:'câu'})}` : ''}</div></div><div class="pb-numgo">${L({ja:'回答の一覧へ',en:'See answers',vi:'Xem câu trả lời'})} ${svg('chev')}</div></div></button>`;
     /* ⑤ くわしく（今までの画面へ） */
     const more = head(L({ja:'くわしく',en:'Details',vi:'Chi tiết'}), '')
-      + `<div class="pb-card">${useBackend() ? '' : `<button class="pb-row" data-open="numdetail">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'3か月の平均と今月の日別',en:'3-month avg & daily',vi:'TB 3 tháng & theo ngày'})}</span><span class="pb-sub">${L({ja:'レジ・Google口コミ・サーベイ',en:'Register, Google reviews, survey',vi:'Két, Google, khảo sát'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`}`   // ★2026-10-21 テスト中＝体験版だけ。神田さんのOKで本番へ
+      + `<div class="pb-card"><button class="pb-row" data-open="numdetail">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'3か月の平均と今月の日別',en:'3-month avg & daily',vi:'TB 3 tháng & theo ngày'})}</span><span class="pb-sub">${L({ja:'レジ・Google口コミ・サーベイ',en:'Register, Google reviews, survey',vi:'Két, Google, khảo sát'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`   // ★2026-10-21 14:50 神田さん「本番用に実装して」＝本番にも出す
       + `<button class="pb-row" data-open="pl">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'数値・原価率',en:'Numbers & cost rate',vi:'Số liệu & giá vốn'})}</span><span class="pb-sub">${L({ja:'月ごとの売上・仕入・原価率の推移',en:'Monthly trend',vi:'Xu hướng theo tháng'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`
       + `<button class="pb-row" data-tsub="soukatsu">${pbImg_('kyou_nippou')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'日報の一覧',en:'Daily reports',vi:'Báo cáo ngày'})}</span><span class="pb-sub">${L({ja:'日ごとの数字',en:'Numbers by day',vi:'Theo ngày'})}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
     return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div><p class="pb-lead">${esc(storeShort(store))} ・ ${L({ja:'数字は見るだけ。入力は「きょうやること」の日報だけです',en:'View only. Enter numbers in the daily report.',vi:'Chỉ xem. Nhập ở báo cáo ngày.'})}</p>${storeSeg}<div class="pb-2col"><div class="pb-col">${regi}${monCard}</div><div class="pb-col">${kpi2}${voice}${more}</div></div>
@@ -9007,7 +9007,7 @@
     postReport({ kind:'phsample', store, item: target, note: JSON.stringify({ memo: next.memo, by: next.by }), photos: next.photos, t: next.t });
   }
 
-  APP_VIEWS.numdetail = () => useBackend() ? `<div class="muted">${L({ ja:'この画面は準備中です', en:'Coming soon', vi:'Sắp có' })}</div>` : pbNumDetail_();   // ★2026-10-21 店の数字（くわしく）＝テスト中は体験版だけ
+  APP_VIEWS.numdetail = () => pbNumDetail_();   // ★2026-10-21 店の数字（くわしく）＝14:50 神田さんOKで本番へ
   APP_VIEWS.openphoto = () => {
     const store = visibleStores()[0];
     const dk = dateKeyFor(store, Date.now());

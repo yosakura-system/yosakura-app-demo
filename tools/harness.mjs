@@ -7103,9 +7103,12 @@ console.log('== 2026-10-21 永井さん「在庫の区分の終わりに空白�
   const tailEmpty = blocks.filter(b => !nameOf(b) && !grpOf(b)).length; ok(tailEmpty >= 8, 'いちばん下の区分なしの空き行は8行以上のまま');
   ok(!/<div class=\"zk-grp\"[^>]*>食材管理①[^<]*<\/div>[\s\S]*?<div class=\"zk-grp\"[^>]*>食材管理①/.test(registry.app.innerHTML), '区分の見出しは1回ずつ（空の行で見出しが増えない）');
 }
-console.log('== 2026-10-21 店の数字（くわしく）はテスト中＝本番（バックエンド接続）では出さない ==');
+console.log('== 2026-10-21 14:50 神田さん「店の数字（くわしく）を本番用に実装」＝本番（バックエンド接続）でも出す ==');
 {
-  ok(/\$\{useBackend\(\) \? '' : `<button class=\"pb-row\" data-open=\"numdetail\">/.test(code) && /APP_VIEWS\.numdetail = \(\) => useBackend\(\) \?/.test(code), '本番では「くわしく」の行も画面も出ない（体験版だけ）');
+  ok(!/useBackend\(\) \? '' : `<button class=\"pb-row\" data-open=\"numdetail\">/.test(code) && /APP_VIEWS\.numdetail = \(\) => pbNumDetail_\(\);/.test(code), '本番でも「くわしく」の行と画面が出る');
+  run(() => { setLS('manager', '牛カツ世桜 富士山店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/app/numdetail';
+  ok(/<div class="pb-ttl">店の数字（くわしく）<\/div>/.test(registry.app.innerHTML) && /直近3か月の平均（前月まで）/.test(registry.app.innerHTML), '通常版（接続あり）でも画面が開く');
 }
 
 console.log('== 2026-10-21 永井さん「品目を編集して更新したら全部消えた」＝保存前の編集を端末に下書きとして残す ==');
