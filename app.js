@@ -720,9 +720,17 @@
     return [STORES.includes(sel) ? sel : STORES[0]];
   }
   // 画面では「世桜」以降の地名だけを出す（例：日本料理世桜本店 → 本店／牛カツ世桜 長堀橋店 → 長堀橋店）
+  /* ★2026-10-21 長田さん「店の数字が鰻・牛カツともに富士山店になっている」＝地名だけだと同じ地名の2店（富士山・長堀橋）が
+     同じ表記になり、店の切替で見分けられなかった。**同じ地名の店が STORES に2つ以上あるときは、業態（世桜の前の語）を前に付ける**。
+     例：牛カツ世桜 富士山店 → 牛カツ 富士山店／日本鰻世桜 富士山店 → 日本鰻 富士山店（本店・心斎橋店などは今までどおり地名だけ）。
+     店を足しても STORES から自動で判定する＝手で一覧を持たない（以後同じ取り違えを出さない）。 */
+  const storePlace_ = (s) => String(s || '').replace(/^.*世桜[\s　]*/, '');
+  const STORE_PLACE_DUP_ = (() => { const n = {}; STORES.forEach(s => { const p = storePlace_(s); n[p] = (n[p] || 0) + 1; }); return n; })();
+  const storeNeedsBrand_ = (s) => (STORE_PLACE_DUP_[storePlace_(s)] || 0) > 1 && /世桜/.test(String(s || ''));
   const storeShort = (s) => s === 'all' ? L({ ja:'全店', en:'All', vi:'Tất cả' })
     : s === 'owned' ? L({ ja:'所有店舗', en:'My stores', vi:'CH của tôi' })
-    : (String(s || '').replace(/^.*世桜[\s　]*/, '') || s);
+    : storeNeedsBrand_(s) ? (String(s).split('世桜')[0].trim() + ' ' + storePlace_(s))
+    : (storePlace_(s) || s);
   /* ★保存データの読み直しを1回で済ませる（2026-09-03 実機報告＝本部の受信箱で「対応済みにする」が
        カクカクする・反応が遅い への対応）。
      原因＝1画面を描くたびに localStorage の中身（全提出データ）を JSON.parse し直していた。
@@ -5920,7 +5928,7 @@
      - 個店の行をタップ→個店カルテ（#/store）。日付の行・棒をタップ→その日の日報（全項目）
      ============================================================ */
   // 表示名：同じ地名に複数店（長堀橋＝牛カツ/鰻、富士山＝牛カツ/鰻、心斎橋＝寿司/日本料理）があるため業態を前置
-  const storeLabel = (s) => { const g = storeGyotai(s); return (g ? gyotaiLabel(g) + '・' : '') + storeShort(s); };
+  const storeLabel = (s) => { if (storeNeedsBrand_(s)) return storeShort(s); const g = storeGyotai(s); return (g ? gyotaiLabel(g) + '・' : '') + storeShort(s); };   // ★2026-10-21 同じ地名の店は storeShort が業態つき＝二重に付けない
   const numOr0 = (v) => Number(String(v == null ? '' : v).replace(/[^0-9.-]/g, '')) || 0;
   const hasVal = (v) => v !== undefined && v !== null && String(v).trim() !== '';
   const yenShort = (n) => {

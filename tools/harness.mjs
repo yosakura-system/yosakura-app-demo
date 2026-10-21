@@ -5537,13 +5537,13 @@ console.log('== 今日・今週・月次で出すもの＝店舗を一発で選�
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_kyou_store', '牛カツ世桜 長堀橋店'); });
   location.hash = '#/app/kyou';
   let h = registry.app.innerHTML;
-  ok(/今日出すもの[^<]*— 長堀橋店/.test(h) && !/class="ksum"/.test(h), '店舗を選ぶ＝その店の一覧に切り替わる（一枚表は消える）');
+  ok(/今日出すもの[^<]*— 牛カツ 長堀橋店/.test(h) && !/class="ksum"/.test(h), '店舗を選ぶ＝その店の一覧に切り替わる（一枚表は消える）');
   ok(/class="kchip on" data-kyou="牛カツ世桜 長堀橋店"/.test(h), '選んだ店舗のチップが点灯');
   location.hash = '#/app/getsuji';
-  ok(/月末・月次で出すもの[^<]*— 長堀橋店/.test(registry.app.innerHTML), '選んだ店舗は今日・今週・月次で共通');
+  ok(/月末・月次で出すもの[^<]*— 牛カツ 長堀橋店/.test(registry.app.innerHTML), '選んだ店舗は今日・今週・月次で共通');
   for (const route of ['kyou', 'shukan', 'getsuji']) {
     const h2 = renderView(route, 'staff', '牛カツ世桜 長堀橋店', 'ja');
-    ok(!/class="kchips"/.test(h2) && !/class="ksum"/.test(h2) && /— 長堀橋店/.test(h2), route + '：店舗の端末＝チップは出ず従来どおり自店の一覧');
+    ok(!/class="kchips"/.test(h2) && !/class="ksum"/.test(h2) && /— 牛カツ 長堀橋店/.test(h2), route + '：店舗の端末＝チップは出ず従来どおり自店の一覧');
   }
   // ホームから入っても同じ形（2026-09-16 神田さん）＝通知・日次/週次/月次の行は ?store=all で全店の一枚表へ
   seed('hq', 'all');
@@ -5575,13 +5575,13 @@ console.log('== 今日・今週・月次で出すもの＝店舗を一発で選�
   ok(/日次・必須の提出状況|提出状況/.test(h) && !/提出履歴（直近/.test(h), '提出履歴：全店＝7日間の提出状況一覧が出る（日別の履歴は出ない）');
   location.hash = '#/app/history?s=牛カツ世桜 長堀橋店';
   h = registry.app.innerHTML;
-  ok(/提出履歴（直近[^<]*— 長堀橋店/.test(h) && /class="kchip on" data-kyou="牛カツ世桜 長堀橋店"/.test(h), '提出履歴：?s=店舗 で入ると、その店の日別履歴＋チップ点灯');
+  ok(/提出履歴（直近[^<]*— 牛カツ 長堀橋店/.test(h) && /class="kchip on" data-kyou="牛カツ世桜 長堀橋店"/.test(h), '提出履歴：?s=店舗 で入ると、その店の日別履歴＋チップ点灯');
   ok(localStorage.getItem('yosakura_kyou_store') === '牛カツ世桜 長堀橋店', '提出履歴の ?s= が店舗の選択として記憶される');
   location.hash = '#/app/kyou';
-  ok(/今日出すもの[^<]*— 長堀橋店/.test(registry.app.innerHTML), '提出履歴で選んだ店舗が、今日出すものにも引き継がれる');
+  ok(/今日出すもの[^<]*— 牛カツ 長堀橋店/.test(registry.app.innerHTML), '提出履歴で選んだ店舗が、今日出すものにも引き継がれる');
   {
     const h3 = renderView('history', 'staff', '牛カツ世桜 長堀橋店', 'ja');
-    ok(!/class="kchips"/.test(h3) && /提出履歴（直近[^<]*— 長堀橋店/.test(h3), '提出履歴：店舗の端末＝チップなし・自店の履歴');
+    ok(!/class="kchips"/.test(h3) && /提出履歴（直近[^<]*— 牛カツ 長堀橋店/.test(h3), '提出履歴：店舗の端末＝チップなし・自店の履歴');
   }
   // 店舗チップの押下は委譲イベント（どの画面でも効く）＝ソースで固定
   {
@@ -6918,6 +6918,25 @@ console.log('== 2026-10-20 神田さん「月末月初にパスワード変更�
   ok(/if \(a && a\.pwYm === ym\) return '';/.test(code), '今月すでに変えた端末には出さない');
   ok(/if \(!useBackend\(\) \|\| getRole\(\) === 'hq'\) return '';/.test(code), '店舗のIDだけ（本部・体験版には出さない）');
   ok(/data-pwchange="1"><span><b>\$\{L\(\{ja:'店舗IDのパスワードを変える時期です'/.test(code) && /\$\{cover\}\$\{pwStrip\}\$\{overStrip\}/.test(code), '押すとパスワード変更の画面・表紙のすぐ下');
+}
+
+console.log('== 2026-10-21 長田さん「店の数字が鰻・牛カツともに富士山店」＝同じ地名の店は業態つきの表記 ==');
+{
+  run(() => { setLS('owner', 'owned', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/home?tab=num';
+  const seg = (registry.app.innerHTML.match(/<div class="pb-numseg">[\s\S]*?<\/div>/) || [''])[0];
+  ok(/>日本鰻 富士山店</.test(seg) && />牛カツ 富士山店</.test(seg), '店の数字の切替＝「日本鰻 富士山店」「牛カツ 富士山店」で見分けられる');
+  ok(!/>富士山店</.test(seg), '切替に業態なしの「富士山店」は出ない');
+  const lead = (registry.app.innerHTML.match(/<p class="pb-lead">([^<]*)/) || ['', ''])[1];
+  ok(/(日本鰻|牛カツ) 富士山店/.test(lead), '上の説明の店名も業態つき');
+  const sc = code.slice(code.indexOf('const storePlace_'), code.indexOf('/* ★保存データの読み直しを1回で済ませる'));
+  const f = new Function('STORES', 'L', sc + '; return { storeShort, storeNeedsBrand_ };')(['日本料理世桜本店','寿司世桜 心斎橋店','牛カツ世桜 長堀橋店','日本鰻世桜 長堀橋店','牛カツ世桜 富士山店','日本鰻世桜 富士山店','和牛世桜 広島店'], (o) => o.ja);
+  ok(f.storeShort('日本鰻世桜 長堀橋店') === '日本鰻 長堀橋店' && f.storeShort('牛カツ世桜 長堀橋店') === '牛カツ 長堀橋店', '長堀橋の2店も業態つき');
+  ok(f.storeShort('日本料理世桜本店') === '本店' && f.storeShort('和牛世桜 広島店') === '広島店' && f.storeShort('寿司世桜 心斎橋店') === '心斎橋店', '地名が1店だけの店は今までどおり地名だけ');
+  ok(f.storeShort('all') === '全店' && f.storeShort('owned') === '所有店舗', '全店・所有店舗はそのまま');
+  const names = ['牛カツ世桜 長堀橋店','日本鰻世桜 長堀橋店','牛カツ世桜 富士山店','日本鰻世桜 富士山店','日本料理世桜本店','寿司世桜 心斎橋店','和牛世桜 広島店'].map(f.storeShort);
+  ok(new Set(names).size === names.length, 'どの店も短い表記が重ならない（店を足しても自動で判定）');
+  ok(/if \(storeNeedsBrand_\(s\)\) return storeShort\(s\);/.test(code), '総括表の店名（storeLabel）で業態を二重に付けない');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
