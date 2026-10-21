@@ -89,6 +89,7 @@
   }
   let lastSync = 0;
   let _lsFull = false; // 端末の保存領域いっぱい＝同期の取り込みに失敗した印（受信箱に注意を出す）
+  let _rawKeysMem = '';   // ★2026-10-20 目印の写し（端末に保存できなかったときも、起動中は同じ内容を「新しい」と判定しない＝帯が何度も出るのを止める）
   let _distFail = false; // ★直近の同期で取り込みの保存に失敗した印（2026-09-23 長堀橋店）＝目印を保存せず次の同期でやり直す
   /* ★自動同期による「画面の作り直し」を、写真の作業中だけ止める（2026-08-25 実機で発生）
      スマホは写真を選ぶあいだアプリが背面へ回る。その数秒で同期の通信が終わると render() が走り、
@@ -152,6 +153,8 @@
     star:   '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9L12 3.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
     table:  '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 9.5h17M3.5 14.5h17M9 9.5v10M15 9.5v10" stroke="currentColor" stroke-width="1.5"/>',
     calendar:'<rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    search: '<circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    chart:  '<path d="M4 20h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 17v-5M12 17V7M17 17v-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
     yen:    '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 8l3.5 4 3.5-4M12 12v5M9.5 13h5M9.5 15.2h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
     gauge:  '<path d="M4 15a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 15l4-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15" r="1.4" fill="currentColor"/>',
     inbox:  '<path d="M4 13l2-7h12l2 7v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 13h4l1 2h6l1-2h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
@@ -502,7 +505,9 @@
   const getRole = () => {
     const a = getAuth();
     if (a && a.role) {
-      if (a.role === 'hq' && DEV_VIEW_UIDS.includes(String(a.uid || ''))) {
+      if (a.role === 'hq') {   // ★2026-10-20 神田さん「本部のメンバーは全員、本部・店舗責任者・スタッフの3つが使えるように」＝本部IDなら誰でも見え方を切替（DEV_VIEW_UIDS は使わない）
+        // ★2026-10-20 6:30 神田さん「最初からしっかり新デザインを」＝本部IDは最初は店舗責任者の見え方（新デザイン）で開く。各端末1回だけ切り替え、以後は本人の選択に従う
+        try { if (!localStorage.getItem('yosakura_hq_first_mgr_1020')) { localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); localStorage.setItem(LS.role, 'manager'); const sl = localStorage.getItem(LS.store); if (!sl || sl === 'all' || sl === 'owned' || !STORES.includes(sl)) localStorage.setItem(LS.store, STORES[0]); } } catch (e) {}
         const rv = localStorage.getItem(LS.role) || 'hq';   // ★開発者ビュー＝見え方だけ端末の選択に従う
         return roleKeys().includes(rv) ? rv : 'hq';
       }
@@ -620,7 +625,7 @@
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
     try { localStorage.removeItem('yosakura_auth_dropped'); } catch (e) {}   // ログインし直したら案内を消す
     setRole(a.role);
-    if (a.role === 'hq') setStoreSel('all');
+    if (a.role === 'hq') setStoreSel('all');   // ★2026-10-20 新しくログインした端末はログアウトで印が消えているので店舗責任者の見え方から。ログインが外れて入り直しただけなら、それまでの見え方のまま
     else if (a.role === 'owner') setStoreSel((a.stores || []).length > 1 ? 'owned' : ((a.stores || [])[0] || STORES[0]));
     else setStoreSel((a.stores || [])[0] || STORES[0]);
     if (a.name && !getUserName() && a.role !== 'staff') setUserName(a.name); // 店舗iPad（共用）は各自が名前を入れる
@@ -633,6 +638,7 @@
     try { await flushPending_(); } catch (e) {}
     setAuth(null);
     try { Object.keys(localStorage).filter(k => k.startsWith('yosakura_') && !LOGOUT_KEEP.has(k) && k !== SETUP_KEY).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+    _rawKeysMem = '';   // ★2026-10-20 ログアウトで目印の写しも空にする（次のログインで必ず取り込み直す）
     try { Object.keys(photoMem).forEach(k => delete photoMem[k]); } catch (e) {}
     try { indexedDB.deleteDatabase('yosakura_photos'); } catch (e) {}
     try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) {}
@@ -645,7 +651,7 @@
   const pwChangeDue_ = () => { const a = getAuth(); if (!a || !/^ipad-/.test(String(a.uid || ''))) return false; const ym = new Date().toISOString().slice(0, 7); return !a.pwYm || String(a.pwYm) < ym; };
   /* ★開発者ビュー（本部の確認用）で店舗iPadの表示にしているときは、見本として同じ帯を出す（2026-10-02 神田さん「こちらから店舗iPadの画面を見られないか」）。
      押すと端末設定が開き、同じ「パスワードを変更」の欄が見える（変えるのは自分のIDのパスワード） */
-  const pwChangeBanner_ = () => (pwChangeDue_() || (inDevView() && getRole() === 'staff'))
+  const pwChangeBanner_ = () => pwChangeDue_()   // ★2026-10-20 本部全員が見え方を切り替えるので【見本】の帯は出さない（押すと本部ID自身の変更が開くため）
     ? `<button type="button" class="devview-bar pwchange-bar" data-pwchange="1">${pwChangeDue_() ? '' : L({ ja:'【見本】', en:'[Sample] ', vi:'[Mẫu] ' })}${L({
         ja:'今月のパスワードが未変更です。責任者の方はここを押して変更',
         en:'This month’s password has not been changed yet. Manager: tap here to set a new password (other devices will need to sign in again).',
@@ -654,15 +660,21 @@
   /* ★開発者ビュー（2026-09-01 神田さんのご要望＝店舗側の見え方を自分の端末で確認したい）。
      対象は DEV_VIEW_UIDS（getRole の上で定義）にある本部アカウントだけ。ログイン・権限・保存はすべて本部のまま、
      「画面の見え方」だけを店舗iPad・店長・オーナーに切り替える。確認中は上部に戻るバナーを常時出す。 */
-  const devViewAllowed = () => { const a = getAuth(); return !!a && a.role === 'hq' && DEV_VIEW_UIDS.includes(String(a.uid || '')); };
+  const devViewAllowed = () => { const a = getAuth(); return !!a && a.role === 'hq'; };   // ★2026-10-20 本部IDは全員
   const inDevView = () => devViewAllowed() && getRole() !== 'hq';
+  document.addEventListener('input', (e) => { const el = e.target; if (!el || el.id !== 'pbq') return; const box = document.getElementById('pbqres'); if (box) box.innerHTML = pbSearchHTML_(el.value); });   // ★2026-10-20 見る・注文するの「言葉で探す」
+  document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pbqopen],[data-pbqurl]') : null; if (!b) return; e.preventDefault();
+    if (b.dataset.pbqopen) { go('/app/' + b.dataset.pbqopen); return; }
+    const u = b.dataset.pbqurl || ''; if (!isHttp(u)) { toast(L({ ja:'この資料はまだ登録されていません', en:'This document is not registered yet', vi:'Tài liệu này chưa được đăng ký' })); return; } window.open(openUrlFor(u), '_blank', 'noopener'); });
   document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pwchange]') : null; if (b) { e.preventDefault(); try { openPwChangeSheet_(); } catch (e2) {} } });
-  const devViewBanner = () => inDevView()
-    ? `<button type="button" class="devview-bar" data-devexit="1">${L({
-        ja:'開発者ビュー・タップで本部に戻る',
-        en:'Developer view: store-side display (HQ account). Tap to return to HQ.',
-        vi:'Chế độ phát triển: đang xem như cửa hàng (tài khoản HQ). Chạm để về HQ.' })}</button>`
-    : '';
+  /* ★2026-10-20 本部IDのときは全画面の上に「表示：本部｜店舗責任者｜スタッフ」を常に出す（神田さん「本部のメンバーも新デザインを期待」）。
+     店舗責任者＝役割 manager の見え方。ログイン・権限・保存は本部のまま。押すとその見え方で描き直す */
+  const devViewBanner = () => {
+    if (!devViewAllowed()) return '';
+    const cur = getRole();
+    const opt = (r, lb) => `<button type="button" class="viewas-btn${cur === r ? ' on' : ''}" data-viewas="${r}">${L(lb)}</button>`;
+    return `<div class="devview-bar viewas-bar"><span class="viewas-lb">${L({ ja:'表示', en:'View', vi:'Xem' })}</span>${opt('hq', { ja:'本部', en:'HQ', vi:'HQ' })}${opt('manager', { ja:'店舗責任者', en:'Store lead', vi:'Quản lý' })}${opt('staff', { ja:'スタッフ', en:'Staff', vi:'Nhân viên' })}</div>`;
+  };
   // 通信が「ログインしてください」と言ってきたときの受け（トークン切れ・再発行後も含む）
   /* ログインが外れたとき（2026-09-03 神田さんの実機＝「急にログイン画面になった」）。
      ★時間切れではない。1つのIDで同時に使える端末数に上限があり、上限を超えて
@@ -708,9 +720,17 @@
     return [STORES.includes(sel) ? sel : STORES[0]];
   }
   // 画面では「世桜」以降の地名だけを出す（例：日本料理世桜本店 → 本店／牛カツ世桜 長堀橋店 → 長堀橋店）
+  /* ★2026-10-21 長田さん「店の数字が鰻・牛カツともに富士山店になっている」＝地名だけだと同じ地名の2店（富士山・長堀橋）が
+     同じ表記になり、店の切替で見分けられなかった。**同じ地名の店が STORES に2つ以上あるときは、業態（世桜の前の語）を前に付ける**。
+     例：牛カツ世桜 富士山店 → 牛カツ 富士山店／日本鰻世桜 富士山店 → 日本鰻 富士山店（本店・心斎橋店などは今までどおり地名だけ）。
+     店を足しても STORES から自動で判定する＝手で一覧を持たない（以後同じ取り違えを出さない）。 */
+  const storePlace_ = (s) => String(s || '').replace(/^.*世桜[\s　]*/, '');
+  const STORE_PLACE_DUP_ = (() => { const n = {}; STORES.forEach(s => { const p = storePlace_(s); n[p] = (n[p] || 0) + 1; }); return n; })();
+  const storeNeedsBrand_ = (s) => (STORE_PLACE_DUP_[storePlace_(s)] || 0) > 1 && /世桜/.test(String(s || ''));
   const storeShort = (s) => s === 'all' ? L({ ja:'全店', en:'All', vi:'Tất cả' })
     : s === 'owned' ? L({ ja:'所有店舗', en:'My stores', vi:'CH của tôi' })
-    : (String(s || '').replace(/^.*世桜[\s　]*/, '') || s);
+    : storeNeedsBrand_(s) ? (String(s).split('世桜')[0].trim() + ' ' + storePlace_(s))
+    : (storePlace_(s) || s);
   /* ★保存データの読み直しを1回で済ませる（2026-09-03 実機報告＝本部の受信箱で「対応済みにする」が
        カクカクする・反応が遅い への対応）。
      原因＝1画面を描くたびに localStorage の中身（全提出データ）を JSON.parse し直していた。
@@ -1103,7 +1123,7 @@
     "num_register": 'data:image/webp;base64,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'
   };
   /* </embed-photos> */
-  const APP_BUILD = 'yosakura-taiken-v166';
+  const APP_BUILD = 'yosakura-taiken-v167';
   let LATEST_BUILD = '';
   const BUILD_TAG = APP_BUILD;
   const $app = document.getElementById('app');
@@ -1526,15 +1546,21 @@
     ];
     if (roleKey === 'hq') tabs.push(['hq', { ja:'本部', en:'HQ', vi:'HQ' }, 'hq']); // 本部権限のみ
     /* ★案B（2026-10-16）＝店舗側の下のタブは3つ。きょうやること／見る・注文する／その他（今までの一覧＝使い方・設定・相談） */
+    /* ★2026-10-20 神田さん「その他を店の数字に変えて案Bの見本の仕様に」＝スタッフは2つ（きょうやること／見る・注文する）、
+       店長・オーナーは3つ目が「店の数字」。今までの「その他」（使い方・設定・相談）は「見る・注文する」の中の「その他」から開く */
     const tabsUse = (isPb() && roleKey !== 'hq') ? [
       ['home', { ja:'きょうやること', en:'Today', vi:'Hôm nay' }, 'check'],
       ['miru', { ja:'見る・注文する', en:'Look up', vi:'Tra cứu' }, 'book'],
-      ['other', { ja:'その他', en:'More', vi:'Khác' }, 'dots']
+      ...(['manager', 'owner'].includes(roleKey) ? [['num', { ja:'店の数字', en:'Numbers', vi:'Số liệu' }, 'chart']] : [])
     ] : tabs;
+    /* ★2026-10-20 神田さん「B案のデモの方がしっくりくる」＝案Bの店舗側の見出しは見本と同じ「店名（太字）／日付・役割」の2行。言語と役割のチップは右に小さく残す */
+    const pbHdr = isPb() && roleKey !== 'hq';
+    const hdrWho = pbHdr ? (() => { const sel = getStoreSel(); const st = STORES.includes(sel) ? sel : (visibleStores()[0] || ''); const d = new Date();
+      return `<div class="hdr__who"><b>${esc(st)}</b><span>${d.getMonth() + 1}${L({ja:'月',en:'/',vi:'/'})}${d.getDate()}${L({ja:'日',en:'',vi:''})}（${L(WDAY_LABELS[d.getDay()])}）・${L(role.label)}</span></div>`; })() : '';
     return `
       <header class="hdr">
         <img class="hdr__logo" src="${IMG_ICON}" alt="">
-        <div class="hdr__brand">世桜<small>YOSAKURA APP</small></div>
+        ${pbHdr ? hdrWho : `<div class="hdr__brand">世桜<small>YOSAKURA APP</small></div>`}
         <div class="hdr__spacer"></div>
         <button class="lang-chip" id="langBtn" aria-label="language">${svg('globe')}<span>${LANGS[LANG].short}</span></button>
         <button class="role-chip" id="roleBtn">
@@ -1788,11 +1814,12 @@
      本部（hq）の画面はこれまでのまま（本部側の配置替えは11月）。 */
   const pbPhotoKey_ = (m) => {
     if (!m) return '';
+    const own = { ck_open_photo:'kyou_check_open', ck_close_photo:'kyou_check_close', ichishoku:'kyou_first_dish', utsuwa:'kyou_utsuwa' }[m.id]; if (own) return own;
     if (m.ckMode) return ({ open:'kyou_check_open', idle:'kyou_check_idle', sakura:'kyou_check_sakura', close:'kyou_check_close', hygiene:'kyou_hygiene' })[m.ckMode] || 'kyou_check_open';
     const byApp = { openphoto:'kyou_open_photo', firstphoto:'kyou_first_dish', soukatsu:'kyou_nippou', chukan:'kyou_nippou', zaiko:'kyou_stock', kizuki:'kyou_kizuki', kinshu:'num_register', pl:'kyou_tanaoroshi', storevideo:'miru_howto', handover:'kyou_handover', surveyqr:'kyou_survey' };
     if (m.linkApp && byApp[m.linkApp]) return byApp[m.linkApp];
     if (m.id && byApp[m.id]) return byApp[m.id];
-    const byId = { hygiene_d:'kyou_hygiene', hygiene_m:'kyou_hygiene', tip_photo:'kyou_first_dish', genkin_photo:'num_register', nikkei_idle:'kyou_nippou', nikkei_close:'kyou_nippou', utsuwa:'kyou_utsuwa', pop:'kyou_check_idle', compliance:'miru_manual' };
+    const byId = { hygiene_d:'kyou_hygiene', hygiene_m:'kyou_hygiene', tip_photo:'kyou_first_dish', genkin_photo:'num_register', nikkei_idle:'kyou_nippou', nikkei_close:'kyou_nippou', utsuwa:'kyou_utsuwa', pop:'kyou_check_idle', pop_week:'kyou_check_idle', staffroom:'kyou_hygiene', compliance:'miru_manual' };
     return byId[m.id] || '';
   };
   const pbImg_ = (key, cls) => (typeof PHOTOS !== 'undefined' && PHOTOS[key])
@@ -1801,13 +1828,46 @@
   const pbDateLabel_ = () => { const d = new Date(); return LANG === 'ja' ? `${d.getMonth() + 1}月${d.getDate()}日 ${L(WDAY_LABELS[d.getDay()])}曜日` : `${d.getMonth() + 1}/${d.getDate()} ${L(WDAY_LABELS[d.getDay()])}`; };
   const pbSlotKey_ = (k) => k === 'asa' ? 'asa' : k === 'shime' ? 'shime' : 'mid';
   const PB_SLOTS = [['asa', { ja:'開店前', en:'Before opening', vi:'Trước mở cửa' }], ['mid', { ja:'営業中', en:'During service', vi:'Trong ca' }], ['shime', { ja:'締め', en:'Closing', vi:'Đóng cửa' }]];
+  /* ★2026-10-20 案Bの見本＝行の右の「目安○分」。写真1枚は1分・チェックと数を入れるものは3分・ほかは2分（目安。入力時間の計測がたまったら置き換える） */
+  const pbMins_ = (m) => m.linkApp === 'openphoto' || m.linkApp === 'firstphoto' ? 1 : (m.ckMode || m.linkApp === 'zaiko' || m.linkApp === 'soukatsu' || m.linkApp === 'stock') ? 3 : 2;
+  /* ★2026-10-20 神田さん「最初にログインした時に昨日のレジ締めが出てくる方が分かりやすい」＝案Bの見本と同じ「昨日のレジ締め」。
+     数字はUSENレジ（毎朝の取込）・総括表・日報のうち、いちばん正しいもの（getSk の整えた1行）。押すと日報（前日分）が開く */
+  function pbRegiCard_(store) {
+    if (!store) return '';
+    const today = dateKeyFor(store, Date.now());
+    const yd = new Date(today + 'T12:00:00Z'); yd.setUTCDate(yd.getUTCDate() - 1); const yday = yd.toISOString().slice(0, 10);
+    const rec = getSk().find(r => r && r.store === store && r.date === yday);
+    const netOk = rec && Number(rec.net) > 0;   // ★2026-10-20 バックチェック：USENの無い店は純売上が0で保存されることがある＝0なら売上（税込）を使う
+    const hasNum = rec && (netOk || Number(rec.sales) > 0);
+    const isPos = !!(rec && (rec.src === 'usen' || rec.pos));
+    const hhmm = (t) => { const d = new Date(Number(t) || 0); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+    const src = !hasNum ? '' : isPos ? `POS ${hhmm(rec.t)} ${L({ja:'取込 ・ 入力なし',en:'imported',vi:'đã nhập'})}` : rec.src === 'drive' ? L({ja:'総括表から',en:'From the summary sheet',vi:'Từ bảng tổng hợp'}) : L({ja:'日報から',en:'From the daily report',vi:'Từ báo cáo ngày'});
+    const head = `<div class="pb-sec"><h2>${L({ja:'昨日のレジ締め',en:'Yesterday’s close',vi:'Chốt két hôm qua'})}</h2><small>${src || esc(yday.slice(5).replace('-', '/'))}</small></div>`;
+    if (!hasNum) {
+      const msg = USEN_STORES.includes(store) ? L({ja:'まだ届いていません。レジの数字は毎朝自動で入ります',en:'Not in yet. Register data arrives every morning.',vi:'Chưa có. Số liệu két tự vào mỗi sáng.'})
+        : L({ja:'まだありません。日報を出すと、ここに出ます',en:'Nothing yet. It shows here after the daily report.',vi:'Chưa có. Hiện ở đây sau báo cáo ngày.'});
+      return `${head}<div class="pb-card"><button class="pb-row pb-regi" data-tsub="soukatsu"><span class="pb-rowtx"><span class="pb-sub">${msg}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
+    }
+    const net = netOk ? Number(rec.net) : Number(rec.sales);
+    const parts = [`${L({ja:'売上',en:'Sales',vi:'Doanh thu'})} ${yen(net)}${netOk ? L({ja:'（税抜）',en:' (excl. tax)',vi:' (chưa thuế)'}) : L({ja:'（税込）',en:' (incl. tax)',vi:' (gồm thuế)'})}`];
+    if (rec.guests != null && rec.guests !== '') parts.push(`${rec.guests}${L({ja:'人',en:' guests',vi:' khách'})}`);
+    if (rec.cash != null && rec.cash !== '') parts.push(`${L({ja:'現金',en:'Cash',vi:'Tiền mặt'})} ${yen(rec.cash)}`);
+    if (rec.card != null && rec.card !== '') parts.push(`${L({ja:'カード',en:'Card',vi:'Thẻ'})} ${yen(rec.card)}`);
+    const sub = [];
+    if (rec.emoney) sub.push(`${L({ja:'電子マネー',en:'E-money',vi:'Ví điện tử'})} ${yen(rec.emoney)}`);
+    if (rec.disc) sub.push(`${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})} ${yen(rec.disc)}`);
+    const g = Number(rec.guests) || 0; if (g && net) sub.push(`${L({ja:'客単価',en:'Per guest',vi:'Mỗi khách'})} ${yen(Math.round(Number(net) / g))}`);
+    return `${head}<div class="pb-card"><button class="pb-row pb-regi" data-tsub="soukatsu"><span class="pb-rowtx"><span class="pb-nm">${parts.join(' ・ ')}</span>${sub.length ? `<span class="pb-sub">${sub.join(' ・ ')}</span>` : ''}</span><span class="pb-rt">${svg('chev')}</span></button></div>`;
+  }
   /* 1行＝写真・名前・いまの状態・開く。開く先と印（data-tsub / data-tsubmode / data-tsubphoto / data-tdid / data-openurl）は subItemRow と同じ＝反応は変えない */
+  /* ★2026-10-20 案Bの見本と同じ呼び名（ホームの行だけ。提出物の正式名と本部の画面はそのまま） */
+  const PB_NAMES_ = { ck_open:'OPENチェック', ck_idle:'お手すきチェック', ck_sakura:'桜（トイレ）', ck_close:'CLOSEチェック', zaiko:'在庫の数', kizuki:'気づき', ck_open_photo:'OPENチェック（写真）', ck_close_photo:'CLOSEチェック（写真）', ichishoku:'一食目写真' };
   const pbFlowRow_ = (it) => {
     const m = it.m;
     const done = !it.manual && !!it.submitted;
     const late = !!it.overdue;
-    const openArg = m.ckMode ? ` data-tsubmode="${m.ckMode}"` : (m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(m.id)}"` : '');
-    const dueTxt = it.prev
+    const openArg = m.ckMode ? ` data-tsubmode="${m.ckMode}"` : (m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(m.id)}"` : m.detect === 'zaikowk' ? ' data-tsubq="wk=1"' : '');
+    const dueTxt = m.freq === 'weekly' ? L({ja:'今週中',en:'This week',vi:'Trong tuần'}) : m.freq === 'monthly' ? L({ja:'今月中',en:'This month',vi:'Trong tháng'}) : m.freq === 'quarterly' ? L({ja:'今四半期',en:'This quarter',vi:'Quý này'}) : it.prev
       ? `${L({ja:'前日分',en:'Yesterday',vi:'Hôm qua'})}（${esc(String(it.dk).slice(5))}）・${L({ja:'締切',en:'Due',vi:'Hạn'})} ${esc(m.due || '')}`
       : `${L({ja:'締切',en:'Due',vi:'Hạn'})} ${esc(m.due || '')}`;
     const sub = done ? L({ ja:'出しました', en:'Done', vi:'Đã nộp' })
@@ -1817,9 +1877,11 @@
     const act = (m.detect === 'didit' && !it.submitted) ? `<button class="pb-mini" data-tdid="${esc(m.id)}">${L({ja:'実施しました',en:'Done',vi:'Đã làm'})}</button>`
       : isHttp(m.url) ? `<button class="pb-mini" data-openurl="${esc(openUrlFor(m.url))}">${L({ja:'開く',en:'Open',vi:'Mở'})}</button>` : '';
     const tag = m.oblig === 'required' ? ` <span class="pb-pill">${L({ja:'本部へ',en:'HQ',vi:'HQ'})}</span>` : '';
-    const inner = `${pbImg_(pbPhotoKey_(m))}<span class="pb-rowtx"><span class="pb-nm">${esc(L(m.name))}${tag}</span><span class="pb-sub">${sub}</span></span>`;
+    const mins = (!done && !it.manual && !it.holiday) ? pbMins_(m) : 0;   // ★2026-10-20 案Bの見本と同じ＝行の右に「目安○分」
+    const inner = `${pbImg_(pbPhotoKey_(m))}<span class="pb-rowtx"><span class="pb-nm">${esc(LANG === 'ja' && PB_NAMES_[m.id] ? PB_NAMES_[m.id] : L(m.name))}${tag}</span><span class="pb-sub">${sub}</span></span>`;
     const cls = `pb-row${done ? ' done' : ''}${late ? ' late' : ''}`;
-    if (m.linkApp && !act) return `<button class="${cls}" data-tsub="${esc(m.linkApp)}"${openArg}>${inner}<span class="pb-rt">${done ? svg('tick') : svg('chev')}</span></button>`;
+    const minTx = mins ? `<span class="pb-min">${L({ja:'目安',en:'~',vi:'~'})}<b>${mins}${L({ja:'分',en:'min',vi:'ph'})}</b></span>` : '';
+    if (m.linkApp && !act) return `<button class="${cls}" data-tsub="${esc(m.linkApp)}"${openArg}>${inner}<span class="pb-rt">${done ? svg('tick') : (minTx || svg('chev'))}</span></button>`;
     return `<div class="${cls}">${inner}<span class="pb-rt">${act || (done ? svg('tick') : '')}</span></div>`;
   };
   /* ★ホームで気づかせるもの（本部からの返答・サーベイの低い評価）の中身＝旧ホームと案Bのホームで同じものを使う（2026-10-19・案Bのホームで抜けていた） */
@@ -1883,21 +1945,39 @@
     const latest = newsVisible(getNews()).sort((a, b) => b.t - a.t)[0];
     const newsStrip = latest ? `<button class="pb-strip" data-open="news">${pbImg_('hq_notice', 'pb-th pb-th--s')}<span><b>${L({ja:'本部から',en:'From HQ',vi:'Từ HQ'})}</b>${esc(latest.title || '')}</span>${svg('chev')}</button>` : '';
     const overStrip = over ? `<button class="pb-strip pb-strip--late" data-jump="pbslot-${nowKey}"><span><b>${L({ja:'締切を過ぎている提出',en:'Overdue',vi:'Quá hạn'})}</b>${over} ${L({ja:'件・いま出せば本部にそのまま届きます',en:'item(s). Submit now and HQ gets it.',vi:'mục. Nộp ngay.'})}</span>${svg('chev')}</button>` : '';
+    /* ★2026-10-20 神田さん「毎月の月末月初になったらトップにアラート」＝店舗IDのパスワードは月1回変える（情報管理マニュアル）。
+       28日〜翌月3日に出す。今月すでに変えた端末（ログインの pwYm＝今月）には出さない。押すとパスワード変更の画面 */
+    const pwStrip = (() => {
+      try {
+        if (!useBackend() || getRole() === 'hq') return '';
+        const d = new Date(Date.now() + 9 * 3600e3); const day = d.getUTCDate(); const ym = d.toISOString().slice(0, 7);
+        if (!(day >= 28 || day <= 3)) return '';
+        const a = getAuth(); if (a && a.pwYm === ym) return '';
+        return `<button class="pb-strip pb-strip--late" data-pwchange="1"><span><b>${L({ja:'店舗IDのパスワードを変える時期です',en:'Time to change the store password',vi:'Đến kỳ đổi mật khẩu'})}</b>${L({ja:'毎月1回。押して変更→新しいパスワードはスタッフへ口頭で',en:'Once a month. Tap to change, then tell staff in person.',vi:'Mỗi tháng 1 lần. Bấm để đổi, rồi báo nhân viên trực tiếp.'})}</span>${svg('chev')}</button>`;
+      } catch (e) { return ''; }
+    })();
     const cover = `<div class="pb-cover">${pbImg_('kyou_first_dish', 'pb-coverimg')}<div class="pb-veil"></div><div class="pb-coverin">
         <div class="pb-date">${pbDateLabel_()} ・ ${esc(storeShort(store))}</div>
-        <div class="pb-h">${left.length ? L({ja:'きょうやること',en:'Today',vi:'Hôm nay'}) : L({ja:'きょうは出し切りました',en:'All done today',vi:'Hôm nay đã xong'})}</div>
-        <div class="pb-st"><span>${left.length ? `${L({ja:'残り',en:'Left',vi:'Còn'})} ${left.length} ${L({ja:'件',en:'',vi:'mục'})}` : L({ja:'お疲れさまでした',en:'Well done',vi:'Cảm ơn'})}</span><span>${doneN}／${total} ${L({ja:'済',en:'done',vi:'xong'})}</span></div>
+        <div class="pb-h">${left.length ? L({ja:'きょうの流れ',en:'Today’s flow',vi:'Việc hôm nay'}) : L({ja:'きょうは出し切りました',en:'All done today',vi:'Hôm nay đã xong'})}</div>
+        <div class="pb-st"><span>${left.length ? `${L({ja:'残り',en:'Left',vi:'Còn'})} ${left.length}${L({ja:'件',en:'',vi:' mục'})} ・ ${L({ja:'目安',en:'about',vi:'khoảng'})} ${left.reduce((a, it) => a + pbMins_(it.m), 0)}${L({ja:'分',en:' min',vi:' ph'})}` : L({ja:'お疲れさまでした',en:'Well done',vi:'Cảm ơn'})}</span><span>${doneN}／${total} ${L({ja:'済',en:'done',vi:'xong'})}</span></div>
         <div class="pb-prog"><i style="width:${pct}%"></i></div></div></div>`;
     const chips = `<div class="pb-chips">
       <button class="pb-chip" data-open="kizuki">${pbImg_('kyou_kizuki', 'pb-chipimg')}<b>${L({ja:'気づき',en:'Insight',vi:'Ghi nhận'})}</b><small>${L({ja:'良かったことも困ったことも',en:'Good or bad',vi:'Tốt hay khó'})}</small></button>
       <button class="pb-chip" data-open="surveyqr">${pbImg_('kyou_survey', 'pb-chipimg')}<b>${L({ja:'サーベイQR',en:'Survey QR',vi:'QR khảo sát'})}</b><small>${L({ja:'お会計のときに',en:'At payment',vi:'Khi thanh toán'})}</small></button>
       <button class="pb-chip" data-open="emergency">${pbImg_('miru_emergency', 'pb-chipimg')}<b>${L({ja:'緊急のとき',en:'Emergency',vi:'Khẩn cấp'})}</b><small>${L({ja:'火事・けが・お申し出',en:'Fire, injury, complaint',vi:'Cháy, thương tích'})}</small></button>
     </div>`;
-    const wk = `<div class="pb-sec"><h2>${L({ja:'今週・今月',en:'This week / month',vi:'Tuần / tháng này'})}</h2><small>${L({ja:'期日が近いものだけ',en:'Only what is due soon',vi:'Chỉ mục sắp đến hạn'})}</small></div>
-      <div class="pb-card">
-        <button class="pb-row" data-open="shukan">${pbImg_('kyou_hygiene')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'定期衛生（曜日別）',en:'Periodic hygiene',vi:'Vệ sinh định kỳ'})}</span><span class="pb-sub">${L({ja:'今日の曜日の箇所',en:'Today’s spots',vi:'Hạng mục hôm nay'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>
-        <button class="pb-row" data-open="getsuji">${pbImg_('kyou_tanaoroshi')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'月末棚卸・月に1回のもの',en:'Month-end',vi:'Cuối tháng'})}</span><span class="pb-sub">${L({ja:'棚卸・定期衛生の写真・パスワード変更',en:'Stock count, hygiene photos, password',vi:'Kiểm kê, ảnh vệ sinh, mật khẩu'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>
-      </div>`;
+    /* ★2026-10-20 神田さん「週次、月次をある程度ワンクリックで見れるように」＝案Bの見本どおり、今週・今月の提出物をホームに1件ずつ並べる（押すとその入力へ直接）。
+       済んだものは ✓ で残す。定期衛生（曜日別）は今週の先頭に入口を残す */
+    const allIts = todayItemsFor(store).filter(it => !(it.manual && !it.m.linkApp && !isHttp(it.m.url)));   // 押しても開く先が無い行（PL＝アプリでは受けていない）は出さない
+    const wkIts = allIts.filter(it => it.m.freq === 'weekly' && it.m.oblig === 'required');   // ★2026-10-20 今週＝必須だけ。任意の週次は定期衛生（曜日別）に入れる
+    const moIts = allIts.filter(it => it.m.freq === 'monthly' || it.m.freq === 'quarterly');
+    const hygRow = `<button class="pb-row" data-open="shukan">${pbImg_('kyou_hygiene')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'定期衛生（曜日別）',en:'Periodic hygiene',vi:'Vệ sinh định kỳ'})}</span><span class="pb-sub">${L({ja:'任意・今日の曜日の箇所',en:'Optional · today’s spots',vi:'Tùy chọn · hạng mục hôm nay'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`;
+    const wkLeft = wkIts.filter(it => !it.manual && !it.submitted).length, moLeft = moIts.filter(it => !it.manual && !it.submitted).length;
+    const leftTx = (n) => n ? `${L({ja:'残り',en:'Left',vi:'Còn'})} ${n}${L({ja:'件',en:'',vi:' mục'})}` : L({ja:'すべて済み',en:'All done',vi:'Xong hết'});
+    const wk = `<div class="pb-sec" id="pbwk"><h2>${L({ja:'今週',en:'This week',vi:'Tuần này'})}</h2><small>${L({ja:'必須・週に1回（曜日は店で決めてよい）',en:'Required, once a week (any day)',vi:'Bắt buộc, mỗi tuần 1 lần'})} ・ ${leftTx(wkLeft)}</small></div>
+      <div class="pb-card">${wkIts.map(pbFlowRow_).join('')}${hygRow}</div>
+      ${moIts.length ? `<div class="pb-sec" id="pbmo"><h2>${L({ja:'今月',en:'This month',vi:'Tháng này'})}</h2><small>${L({ja:'月に1回のもの',en:'Once a month',vi:'Mỗi tháng 1 lần'})} ・ ${leftTx(moLeft)}</small></div>
+      <div class="pb-card">${moIts.map(pbFlowRow_).join('')}</div>` : ''}`;
     const nippouCard = pbNippouCard_(store, items.find(isNippou));
     /* ★2026-10-19 旧ホームにあって案Bで抜けていた3つ＝サーベイの低い評価・数字の要確認（店長・オーナー）・本部からの返答（直近7日・3件まで）。中身は旧ホームと同じ関数 */
     const sv = svLowData_(role, false);
@@ -1907,11 +1987,11 @@
     const rep = hqReplyData_(role);
     const repCard = rep.rows.length ? `<div class="pb-sec"><h2>${L({ja:'本部からの返答',en:'Replies from HQ',vi:'Phản hồi từ HQ'})}</h2><small>${L({ja:'直近7日',en:'Last 7 days',vi:'7 ngày qua'})}</small></div>
       <div class="pb-card pb-rep">${rep.rows.map(x => `<button class="pb-row" ${rep.PHOTO[x.kind] ? `data-tsub="openphoto" data-tsubphoto="${esc(x.kind)}"` : `data-go="${esc(rep.ROUTE[x.kind])}"`}><span class="pb-rowtx"><span class="pb-nm">${esc(L(rep.LABEL[x.kind]))}</span><span class="pb-sub">${esc(x.a.memo)} ・ ${timeAgo(x.a.ts)}</span></span><span class="pb-rt">${svg('chev')}</span></button>`).join('')}</div>` : '';
-    return `<main class="screen pb-home">${cover}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${nippouCard}
-      <div class="pb-bands">${bands}</div>
+    return `<main class="screen pb-home"><div class="pb-2col"><div class="pb-col">${cover}${pwStrip}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${pbRegiCard_(store)}${nippouCard}${hoCard}</div><div class="pb-col">
+      <div class="pb-sec"><h2>${L({ja:'今日の流れ',en:'Today’s flow',vi:'Việc hôm nay'})}</h2><small>${L({ja:'時間帯の順',en:'In time order',vi:'Theo giờ'})}</small></div>
       <div class="pb-card pb-flow">${flow || `<div class="muted">${L({ja:'今日の提出物はありません',en:'Nothing today',vi:'Hôm nay không có'})}</div>`}</div>
-      ${chips}${hoCard}${wk}
-      <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;   // ★2026-10-19 「最新にする」を案Bのホームにも（旧ホームと同じ位置＝画面の下）
+      ${chips}${wk}</div></div>
+      <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;   // ★2026-10-20 iPad横は2列（pb-2col）／★2026-10-19 「最新にする」を案Bのホームにも（旧ホームと同じ位置＝画面の下）
   }
   /* 日報の専用カード＝前日分がまだ／今日の分を出した／これから、の3つの状態を1行で */
   function pbNippouCard_(store, it) {
@@ -1926,21 +2006,134 @@
     if (!prevDone) { cls = hm >= '12:00' ? ' late' : ''; line = `${hm >= '12:00' ? `<span class="pb-late">${L({ja:'締切を過ぎています',en:'Overdue',vi:'Quá hạn'})}</span>・` : ''}${L({ja:'前日',en:'Yesterday',vi:'Hôm qua'})}（${esc(String(yday).slice(5))}）${L({ja:'の分がまだです。12時までに',en:' not yet submitted. Due 12:00',vi:' chưa nộp. Hạn 12:00'})}`; }
     else if (todayDone) { cls = ' done'; line = `${L({ja:'今日の分 出しました',en:'Today submitted',vi:'Hôm nay đã nộp'})} ${hhmm(todayRows[0].t)}`; }
     else line = L({ja:'閉店後にその日の分を。翌朝12時までなら前日分として出せます',en:'Submit after closing, or by 12:00 next morning as yesterday’s.',vi:'Nộp sau khi đóng cửa, hoặc trước 12:00 hôm sau.'});
-    return `<div class="pb-card pb-nippou"><div class="pb-slot">${L({ja:'日報',en:'Daily report',vi:'Báo cáo ngày'})}<small>${L({ja:'いつでも',en:'any time',vi:'bất kỳ lúc nào'})}</small></div>
+    return `<div class="pb-sec"><h2>${L({ja:'日報',en:'Daily report',vi:'Báo cáo ngày'})}</h2><small>${L({ja:'閉店後にその日の分 ・ 翌朝12時までなら前日分',en:'After closing, or by 12:00 next day',vi:'Sau đóng cửa, hoặc trước 12:00 hôm sau'})}</small></div><div class="pb-card pb-nippou">
       <button class="pb-row${cls}" data-tsub="soukatsu">${pbImg_('kyou_nippou')}<span class="pb-rowtx"><span class="pb-nm">${esc(L(m.name))} <span class="pb-pill">${L({ja:'本部へ',en:'HQ',vi:'HQ'})}</span></span><span class="pb-sub">${line}</span></span><span class="pb-rt">${cls === ' done' ? svg('tick') : svg('chev')}</span></button></div>`;
   }
+  /* ★2026-10-20 神田さん「その他を店舗管理 or 店の数字に変えて案Bの見本の仕様に」＝案Bの見本の「店の数字」。
+     数字は見るだけ（入力は日報だけ）。出どころ＝レジ：getSk の整えた1行（USEN＞総括表＞日報）／今月：skMonthData／原価率：月次（棚卸の確定後）／お客様の声：サーベイ */
+  function pbNum_(role) {
+    const sel = getStoreSel(); const vis = visibleStores();
+    let pick = ''; try { pick = localStorage.getItem('yosakura_num_store') || ''; } catch (e) {}
+    const store = STORES.includes(sel) ? sel : (vis.includes(pick) ? pick : vis[0]);   // ★2026-10-20 複数店のオーナーは上の切替で店を選ぶ
+    const storeSeg = !STORES.includes(sel) && vis.length > 1 ? `<div class="pb-numseg">${vis.map(x => `<button type="button" class="${x === store ? 'on' : ''}" data-numstore="${esc(x)}">${esc(storeShort(x))}</button>`).join('')}</div>` : '';
+    if (!store) return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div></main>`;
+    const today = dateKeyFor(store, Date.now());
+    const addD = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+    const val = (r) => r ? (Number(r.net) > 0 ? Number(r.net) : (Number(r.sales) > 0 ? Number(r.sales) : null)) : null;
+    const recs = getSk().filter(r => r && r.store === store && r.date < today && val(r) != null).sort((a, b) => a.date < b.date ? 1 : -1);
+    const rec = recs[0] || null;
+    const hhmm = (t) => { const d = new Date(Number(t) || 0); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+    const md = (d) => { const [, m, dd] = String(d).split('-'); return `${Number(m)}/${Number(dd)}`; };
+    const short = (n) => n >= 1e6 ? '¥' + (n / 1e6).toFixed(2) + 'M' : yen(n);
+    const isPos = !!(rec && (rec.src === 'usen' || rec.pos));
+    const head = (t, sm) => `<div class="pb-sec"><h2>${t}</h2><small>${sm || ''}</small></div>`;
+    /* ① レジ（いちばん新しい締めの日） */
+    let regi = '';
+    if (rec) {
+      const net = val(rec), wk = recs.find(r => r.date === addD(rec.date, -7));
+      const g = Number(rec.guests) || 0;
+      const dayLb = rec.date === addD(today, -1) ? L({ja:'昨日',en:'Yesterday',vi:'Hôm qua'}) : md(rec.date);
+      const det = [];
+      if (rec.cash != null && rec.cash !== '') det.push(`${L({ja:'現金',en:'Cash',vi:'Tiền mặt'})} ${yen(rec.cash)}`);
+      if (rec.card != null && rec.card !== '') det.push(`${L({ja:'クレジット',en:'Card',vi:'Thẻ'})} ${yen(rec.card)}`);
+      if (rec.emoney) det.push(`${L({ja:'電子マネー',en:'E-money',vi:'Ví điện tử'})} ${yen(rec.emoney)}`);
+      if (rec.disc) det.push(`${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})} ${yen(rec.disc)}`);
+      if (rec.err != null && rec.err !== '' && Number(rec.err) !== 0) det.push(`${L({ja:'差異',en:'Diff.',vi:'Chênh lệch'})} ${Number(rec.err) < 0 ? '−' : ''}${yen(Math.abs(Number(rec.err)))}`);
+      regi = head(`${dayLb} ・ ${L({ja:'レジ',en:'Register',vi:'Két'})}${isPos ? '（USEN）' : ''}`, isPos ? `POS ${hhmm(rec.t)} ${L({ja:'取込 ・ 押すと日報',en:'imported',vi:'đã nhập'})}` : rec.src === 'drive' ? L({ja:'総括表から',en:'From the summary sheet',vi:'Từ bảng tổng hợp'}) : L({ja:'日報から',en:'From the daily report',vi:'Từ báo cáo ngày'}))
+        + `<button class="pb-card pb-numcard" data-tsub="soukatsu"><div class="pb-kpi"><div><div class="l">${L({ja:'売上',en:'Sales',vi:'Doanh thu'})}${Number(rec.net) > 0 ? L({ja:'（税抜）',en:' (excl.)',vi:' (chưa thuế)'}) : L({ja:'（税込）',en:' (incl.)',vi:' (gồm thuế)'})}</div><div class="v">${yen(net)}</div><div class="d">${Number(rec.net) > 0 && rec.sales ? `${L({ja:'税込',en:'incl.',vi:'gồm thuế'})} ${yen(rec.sales)}` : ''}${wk ? `${Number(rec.net) > 0 && rec.sales ? ' ・ ' : ''}${L({ja:'先週の同じ曜日',en:'Same day last week',vi:'Cùng thứ tuần trước'})} ${yen(val(wk))}` : ''}</div></div>`
+        + `<div><div class="l">${L({ja:'客数 ・ 客単価',en:'Guests / per guest',vi:'Khách / mỗi khách'})}</div><div class="v">${g || '—'}<span class="u">${L({ja:'人',en:'',vi:''})}</span></div><div class="d">${g ? `${yen(Math.round(net / g))}／${L({ja:'人',en:'guest',vi:'khách'})}` : ''}</div></div></div>`
+        + (det.length ? `<div class="pb-numdet">${det.map(x => `<span>${x}</span>`).join('')}</div>` : '') + `</button>`;
+    } else {
+      regi = head(L({ja:'レジ',en:'Register',vi:'Két'}), '') + `<div class="pb-card"><div class="muted">${L({ja:'まだ数字がありません。レジの数字は毎朝自動で入ります',en:'No numbers yet.',vi:'Chưa có số liệu.'})}</div></div>`;
+    }
+    /* ② 今月の売上（日別の線）＝最後に締めた日の月 */
+    const ym = ymOfDate(rec ? rec.date : addD(today, -1));
+    let mon = { days: [], tot: {} }; try { mon = skMonthData(store, ym); } catch (e) {}
+    const monRecs = recs.filter(r => ymOfDate(r.date) === ym);
+    const useNet = monRecs.length > 0 && monRecs.every(r => Number(r.net) > 0);   // ★2026-10-20 バックチェック：税抜と税込を混ぜない
+    const mv = (r) => useNet ? Number(r.net) : (Number(r.sales) > 0 ? Number(r.sales) : null);
+    const byD = {}; monRecs.forEach(r => { const v = mv(r); if (v != null) byD[r.date] = v; });
+    const dl = daysOfYm(ym);
+    const pts = dl.map(d => byD[d] != null ? byD[d] : null);
+    const have = pts.filter(v => v != null);
+    const mtd = have.reduce((a, v) => a + v, 0);
+    const lastIdx = pts.reduce((a, v, i) => v != null ? i : a, -1);
+    const last7 = pts.slice(0, lastIdx + 1).filter(v => v != null).slice(-7);
+    const pace = last7.length ? last7.reduce((a, v) => a + v, 0) / last7.length : 0;
+    const fc = mtd + pace * Math.max(0, dl.length - 1 - lastIdx);
+    const pym = prevYm(ym); const prevTot = recs.filter(r => ymOfDate(r.date) === pym).reduce((a, r) => a + (useNet ? (Number(r.net) || 0) : (Number(r.sales) || 0)), 0);
+    let spark = `<div class="muted">${L({ja:'今月の数字はまだありません',en:'No data this month yet',vi:'Chưa có số liệu tháng này'})}</div>`;
+    if (have.length >= 2) {
+      const W = 320, H = 96, mx = Math.max(...have), mn = Math.min(...have), rg = (mx - mn) || 1;
+      const X = (i) => 6 + i * (W - 12) / Math.max(1, dl.length - 1), Y = (v) => H - 10 - (v - mn) / rg * (H - 26);
+      const seq = pts.map((v, i) => v != null ? [X(i), Y(v)] : null).filter(Boolean);
+      const line = seq.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+      const area = line + ` L${seq[seq.length - 1][0].toFixed(1)} ${H - 4} L${seq[0][0].toFixed(1)} ${H - 4} Z`;
+      const lp = seq[seq.length - 1];
+      spark = `<svg class="pb-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path d="${area}" class="a"/><path d="${line}" class="l"/><circle cx="${lp[0].toFixed(1)}" cy="${lp[1].toFixed(1)}" r="3.5" class="p"/></svg>`;
+    }
+    const monCard = head(L({ja:'今月の売上',en:'Sales this month',vi:'Doanh thu tháng'}), `${md(dl[0])}〜${md(dl[dl.length - 1])} ・ ${useNet ? L({ja:'税抜',en:'excl. tax',vi:'chưa thuế'}) : L({ja:'税込',en:'incl. tax',vi:'gồm thuế'})} ・ ${L({ja:'日別',en:'daily',vi:'theo ngày'})}`)
+      + `<button class="pb-card pb-numcard" data-open="pl">${spark}<div class="pb-numfoot"><span>${L({ja:'累計',en:'MTD',vi:'Lũy kế'})} ${short(mtd)}</span>${have.length ? `<span>${L({ja:'着地見込み',en:'Forecast',vi:'Dự kiến'})} ${short(fc)}${prevTot ? `（${L({ja:'先月',en:'last month',vi:'tháng trước'})} ${short(prevTot)}）` : ''}</span>` : ''}</div></button>`;
+    /* ③ 仕入率・原価率 */
+    const t = mon.tot || {};
+    const buyRate = t.sales && t.buy ? (t.buy / t.sales * 100).toFixed(1) : null;
+    let cost = null; try { const pm = plMonthsOf(store).find(r => r.ym === pym); if (pm && pm.close != null && pm.close !== '' && Number(pm.sales)) cost = plCalc(pm).costRate; } catch (e) {}
+    const kpi2 = head(L({ja:'仕入率 ・ 原価率',en:'Purchase & cost rate',vi:'Tỷ lệ nhập & giá vốn'}), L({ja:'仕入率は毎日 ・ 原価率は前月分',en:'Purchase daily / cost last month',vi:'Nhập hằng ngày / giá vốn tháng trước'}))
+      + `<div class="pb-kpi2"><button class="pb-card pb-numcard" data-open="pl"><div class="l">${L({ja:'仕入率（今月1日〜）',en:'Purchase rate (MTD)',vi:'Tỷ lệ nhập (lũy kế)'})}</div><div class="v">${buyRate != null ? buyRate + '<span class="u">%</span>' : '—'}</div><div class="d">${buyRate != null ? `${L({ja:'仕入',en:'Purchases',vi:'Nhập'})} ${short(t.buy)} ÷ ${L({ja:'売上（税込）',en:'sales (incl.)',vi:'doanh thu (gồm thuế)'})} ${short(t.sales)}` : L({ja:'納品書が入ると出ます',en:'Shows once invoices are in',vi:'Hiện khi có hóa đơn'})}</div></button>`
+      + `<button class="pb-card pb-numcard" data-open="pl"><div class="l">${L({ja:'原価率（前月・確定）',en:'Cost rate (last month)',vi:'Giá vốn (tháng trước)'})}</div><div class="v">${cost != null ? cost.toFixed(1) + '<span class="u">%</span>' : '—'}</div><div class="d">${cost != null ? `${Number(pym.slice(5))}${L({ja:'月分 ・ 月初＋仕入−月末棚卸',en:' ・ open + purchases − close',vi:' ・ đầu kỳ + nhập − cuối kỳ'})}` : L({ja:'月末棚卸が入ると出ます',en:'Shows after month-end count',vi:'Hiện sau kiểm kê cuối tháng'})}</div></button></div>`;
+    /* ④ お客様の声（サーベイ・今月） */
+    const svM = getSurvey().filter(r => r && r.store === store && r.sat >= 1 && ymOfDate(dateKeyFor(store, r.t)) === ymOfDate(today));
+    const svAvg = svM.length ? (svM.reduce((a, r) => a + r.sat, 0) / svM.length).toFixed(1) : null;
+    const svLow = svM.filter(r => r.sat <= 3).length;
+    const voice = head(L({ja:'お客様の声',en:'Guest feedback',vi:'Ý kiến khách'}), L({ja:'サーベイ ・ 自動',en:'Survey, automatic',vi:'Khảo sát, tự động'}))
+      + `<button class="pb-card pb-numcard" data-open="survey?tab=voice"><div class="pb-kpi"><div><div class="l">${L({ja:'サーベイ満足度（今月）',en:'Survey score (month)',vi:'Điểm khảo sát (tháng)'})}</div><div class="v">${svAvg || '—'}</div><div class="d">${svM.length} ${L({ja:'件',en:'answers',vi:'câu'})}${svLow ? ` ・ ${L({ja:'低い評価',en:'low',vi:'thấp'})} ${svLow} ${L({ja:'件',en:'',vi:'câu'})}` : ''}</div></div><div class="pb-numgo">${L({ja:'回答の一覧へ',en:'See answers',vi:'Xem câu trả lời'})} ${svg('chev')}</div></div></button>`;
+    /* ⑤ くわしく（今までの画面へ） */
+    const more = head(L({ja:'くわしく',en:'Details',vi:'Chi tiết'}), '')
+      + `<div class="pb-card"><button class="pb-row" data-open="pl">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'数値・原価率',en:'Numbers & cost rate',vi:'Số liệu & giá vốn'})}</span><span class="pb-sub">${L({ja:'月ごとの売上・仕入・原価率の推移',en:'Monthly trend',vi:'Xu hướng theo tháng'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`
+      + `<button class="pb-row" data-tsub="soukatsu">${pbImg_('kyou_nippou')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'日報の一覧',en:'Daily reports',vi:'Báo cáo ngày'})}</span><span class="pb-sub">${L({ja:'日ごとの数字',en:'Numbers by day',vi:'Theo ngày'})}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
+    return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div><p class="pb-lead">${esc(storeShort(store))} ・ ${L({ja:'数字は見るだけ。入力は「きょうやること」の日報だけです',en:'View only. Enter numbers in the daily report.',vi:'Chỉ xem. Nhập ở báo cáo ngày.'})}</p>${storeSeg}<div class="pb-2col"><div class="pb-col">${regi}${monCard}</div><div class="pb-col">${kpi2}${voice}${more}</div></div>
+      <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;
+  }
+  /* ★2026-10-20 神田さん「B案のデモの方がしっくりくる」＝案Bの見本の「見る・注文する」。
+     ①言葉で探す（マニュアル・レシピ＝本部が登録した資料／アプリの画面名）→②写真いっぱいの4枚→③お客様の声（サーベイ・Google口コミ＝毎晩の自動取得 gsnap があるときだけ）→④緊急のとき（安全のため残す）。
+     よく見るレシピ（料理写真）は、MOTONの実物写真がアプリに入っていないので出さない（料理写真はMOTONの実物だけ） */
+  function pbSearch_(q) {
+    q = String(q || '').trim().toLowerCase(); if (!q) return [];
+    const role = getRole(); const st = visibleStores()[0]; const gy = st ? storeGyotai(st) : null;
+    const words = q.split(/[\s　]+/).filter(Boolean);
+    const hit = (txt) => { const t = String(txt || '').toLowerCase(); return words.every(w => t.indexOf(w) >= 0); };
+    const out = [];
+    try { getLinks().forEach(l => { if (!l || !l.title) return; const g = linkGyotai(l); if (role !== 'hq' && g && gy && g.indexOf(gy) < 0) return; if (hit(l.title + ' ' + (l.desc || ''))) out.push({ k: 'url', url: l.url || '', t: l.title, s: l.desc || L({ja:'マニュアル・資料',en:'Manual',vi:'Tài liệu'}) }); }); } catch (e) {}
+    try { APPS.forEach(a => { if (!a || appHidden(a) || !canOpen(a, role) || !a.name) return; const nm = L(a.name); if (hit(nm + ' ' + (a.desc ? L(a.desc) : ''))) out.push({ k: 'app', id: a.id, t: nm, s: a.desc ? L(a.desc) : L({ja:'アプリの画面',en:'App screen',vi:'Màn hình'}) }); }); } catch (e) {}
+    return out.slice(0, 30);
+  }
+  const pbSearchHTML_ = (q) => {
+    if (!String(q || '').trim()) return '';
+    const rs = pbSearch_(q);
+    if (!rs.length) return `<div class="pb-card"><div class="muted">${L({ja:'見つかりませんでした。別の言葉で探してください',en:'No results. Try other words.',vi:'Không tìm thấy.'})}</div></div>`;
+    return `<div class="pb-card pb-qres">${rs.map(r => `<button class="pb-row pb-qrow" ${r.k === 'app' ? `data-pbqopen="${esc(r.id)}"` : `data-pbqurl="${esc(r.url)}"`}><span class="pb-rowtx"><span class="pb-nm">${esc(r.t)}</span><span class="pb-sub">${esc(r.s)}</span></span><span class="pb-rt">${svg('chev')}</span></button>`).join('')}</div>`;
+  };
   function pbMiru_(role) {
-    const tile = (key, open, t, s, extra) => `<button class="pb-tile" ${extra || `data-open="${open}"`}>${pbImg_(key, 'pb-tileimg')}<span class="pb-tiletx"><b>${L(t)}</b><small>${L(s)}</small></span></button>`;
+    const tile = (key, open, t, s, extra) => `<button class="pb-tile" ${extra || `data-open="${open}"`}>${pbImg_(key, 'pb-tileimg')}<span class="pb-veil"></span><span class="pb-tiletx"><b>${L(t)}</b><small>${L(s)}</small></span></button>`;
     const tiles = [
-      tile('miru_recipe', 'gyotaiman', { ja:'レシピ', en:'Recipes', vi:'Công thức' }, { ja:'業態別の作り方・合格の目安', en:'By format', vi:'Theo loại hình' }),
-      tile('miru_manual', 'manual', { ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' }, { ja:'仕事の手順・衛生・ルール', en:'Procedures & rules', vi:'Quy trình & quy định' }),
-      tile('miru_order', 'order', { ja:'備品・食材を注文する', en:'Order supplies', vi:'Đặt vật tư' }, { ja:'注文先へ', en:'To order forms', vi:'Đến form đặt hàng' }),
+      tile('miru_recipe', 'gyotaiman', { ja:'レシピ', en:'Recipes', vi:'Công thức' }, { ja:'作り方・合格の形', en:'How to make', vi:'Cách làm' }),
+      tile('miru_manual', 'manual', { ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' }, { ja:'手順・衛生・アレルギー・緊急', en:'Procedures & hygiene', vi:'Quy trình & vệ sinh' }),
+      tile('miru_order', 'order', { ja:'発注', en:'Order', vi:'Đặt hàng' }, { ja:'備品・食材の注文先へ', en:'To order forms', vi:'Đến form đặt hàng' }),
       tile('miru_howto', '', { ja:'その他', en:'More', vi:'Khác' }, { ja:'使い方・ルール集・相談・設定', en:'How-to, FAQ, settings', vi:'Hướng dẫn, cài đặt' }, 'data-tab="other"'),
     ].join('');
+    const st = visibleStores()[0];
+    const ymNow = st ? ymOfDate(dateKeyFor(st, Date.now())) : '';
+    const sv = st ? getSurvey().filter(r => r && r.store === st && r.sat >= 1 && ymOfDate(dateKeyFor(st, r.t)) === ymNow) : [];
+    const svAvg = sv.length ? (sv.reduce((a, r) => a + r.sat, 0) / sv.length).toFixed(1) : null;
+    const svLow = sv.filter(r => r.sat <= 3).length;
+    let g = null; try { const gs = st ? gsnapsOf(st) : []; if (gs.length) { const last = gs[gs.length - 1]; const mon = gs.filter(x => String(x._d).slice(0, 7) === String(last._d).slice(0, 7)); g = { total: last.total, rating: last.rating, gained: mon.length > 1 ? (Number(last.total) || 0) - (Number(mon[0].total) || 0) : null }; } } catch (e) {}
+    const gHalf = g && g.total != null ? `<button class="pb-voicehalf" data-open="greview"><div class="l">${L({ja:'Google口コミ',en:'Google reviews',vi:'Đánh giá Google'})}</div><div class="v">${g.rating != null ? Number(g.rating).toFixed(1) : '—'}</div><div class="d">${L({ja:'通算',en:'Total',vi:'Tổng'})} ${Number(g.total).toLocaleString('ja-JP')}${L({ja:'件',en:'',vi:''})}${g.gained != null ? ` ・ ${L({ja:'今月',en:'this month',vi:'tháng này'})} ${g.gained >= 0 ? '+' : ''}${g.gained}` : ''}</div></button>` : '';
+    const voice = st ? `<div class="pb-sec"><h2>${L({ja:'お客様の声',en:'Guest feedback',vi:'Ý kiến khách'})}</h2><small>${L({ja:'自動 ・ 毎晩記録',en:'Automatic',vi:'Tự động'})}</small></div>
+      <div class="pb-card pb-voice">${gHalf}<button class="pb-voicehalf" data-open="survey?tab=voice"><div class="l">${L({ja:'サーベイ満足度',en:'Survey score',vi:'Điểm khảo sát'})}</div><div class="v">${svAvg || '—'}</div><div class="d">${L({ja:'今月',en:'This month',vi:'Tháng này'})} ${sv.length}${L({ja:'件',en:'',vi:''})}${svLow ? ` ・ ${L({ja:'低評価',en:'low',vi:'thấp'})} ${svLow}${L({ja:'件',en:'',vi:''})}` : ''}</div></button></div>` : '';
     const em = `<button class="pb-strip pb-strip--em" data-open="emergency">${pbImg_('miru_emergency', 'pb-th pb-th--s')}<span><b>${L({ja:'緊急のとき',en:'Emergency',vi:'Khẩn cấp'})}</b>${L({ja:'火事・けが・食中毒の疑い・お客様の重大なお申し出',en:'Fire, injury, food poisoning, serious complaint',vi:'Cháy, thương tích, ngộ độc, khiếu nại'})}</span>${svg('chev')}</button>`;
-    const num = ['manager', 'owner'].includes(role) ? `<div class="pb-sec"><h2>${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</h2><small>${L({ja:'店長・オーナー',en:'Manager / owner',vi:'Quản lý'})}</small></div>
-      <div class="pb-card"><button class="pb-row" data-open="pl">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'数値・原価率',en:'Numbers & cost rate',vi:'Số liệu & giá vốn'})}</span><span class="pb-sub">${L({ja:'今月の売上・仕入率・前月の原価率',en:'Sales, purchases and cost rate',vi:'Doanh thu, nhập, giá vốn'})}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>` : '';
-    return `<main class="screen pb-miru"><div class="pb-ttl">${L({ja:'見る・注文する',en:'Look up & order',vi:'Tra cứu & đặt hàng'})}</div><p class="pb-lead">${L({ja:'探すものを押してください。',en:'Tap what you need.',vi:'Chạm vào mục cần tìm.'})}</p>${em}<div class="pb-tiles">${tiles}</div>${num}</main>`;
+    const search = `<label class="pb-search">${svg('search')}<input id="pbq" type="search" placeholder="${esc(L({ja:'言葉で探す（例：鰻　アレルギー　棚卸）',en:'Search (e.g. eel, allergy, stock)',vi:'Tìm (vd: lươn, dị ứng)'}))}" autocomplete="off" enterkeyhint="search"></label><div id="pbqres"></div>`;
+    return `<main class="screen pb-miru">${search}<div class="pb-tiles">${tiles}</div>${voice}<div class="pb-emwrap">${em}</div>
+      <p class="pb-note">${L({ja:'レシピ・マニュアルは、整備できたものから増えます。',en:'Recipes and manuals are added as they are ready.',vi:'Công thức và cẩm nang sẽ được bổ sung dần.'})}</p></main>`;
   }
   /* 10/19（月）24:00〜10/20（火）6:00 ＝切り替えの休止（神田さん 10/16「6時間でいけますか」）。?nomaint を付けると確認用に通る。
      6:00を過ぎると1分以内に自分で開き直す（人が起きている必要はない） */
@@ -1958,6 +2151,8 @@
     if (isPb() && role !== 'hq') {
       if (tab === 'home') return shell(pbHome_(role), 'home');
       if (tab === 'miru') return shell(pbMiru_(role), 'miru');
+      if (tab === 'num' && ['manager', 'owner'].includes(role)) return shell(pbNum_(role), 'num');   // ★2026-10-20 店の数字（案Bの見本）
+      if (tab === 'num') return shell(pbHome_(role), 'home');
     }
     if (tab === 'miru') tab = 'learn';
 
@@ -1990,7 +2185,7 @@
         ${sections}
         <div class="footer-note">${L({ ja:'世桜アプリ ・ 役割と言語で表示が変わります（上部で切替）', en:'YOSAKURA app · View changes by role & language (switch at top)', vi:'Ứng dụng YOSAKURA · Hiển thị theo vai trò & ngôn ngữ (đổi ở trên)' })}${buildNote()}</div>
       </main>`;
-    return shell(inner, tab);
+    return shell(inner, (isPb() && getRole() !== 'hq' && tab === 'other') ? 'miru' : tab);   // ★2026-10-20 その他は「見る・注文する」の中から開く＝そのタブを光らせる
   }
 
   function tileHTML(a, role) {
@@ -2018,6 +2213,7 @@
     if (!a || appHidden(a)) return viewHome('home'); // 初期リリースで外した機能は開かない（タスクは神田さんのIDだけ例外）
     if (!canOpen(a, getRole())) { toast(L({ ja:'この機能を開く権限がありません', en:'You do not have permission for this', vi:'Bạn không có quyền mở mục này' })); return viewHome('home'); }
     const body = APP_VIEWS[id] ? APP_VIEWS[id](a) : mockGeneric(a);
+    if (isPb() && getRole() !== 'hq' && a.group !== 'hq') return shell(pbAppFrame_(id, a, body), pbAppTab_(a));   // ★2026-10-20 案Bの見本の型（戻る1つ・明朝の題・1行の説明・下に経過時間）
     const inner = `
       <main class="screen">
         <div class="appbar">${appbarHTML()}</div>
@@ -2032,8 +2228,33 @@
     // 本部グループの画面をオーナーが開いたとき（提出物管理）は「報告」タブを光らせる（オーナーに本部タブは無い）
     const g = a.group === 'hq' && getRole() !== 'hq' ? 'storeops' : a.group;
     /* 案B＝店舗側の下タブは3つなので、開いている画面のタブも3つに寄せて光らせる */
-    const tabKey = (isPb() && getRole() !== 'hq') ? (g === 'learn' ? 'miru' : (g === 'other' || g === 'biz') ? 'other' : 'home') : groupTab(g);
+    const tabKey = (isPb() && getRole() !== 'hq') ? (g === 'learn' ? 'miru' : (g === 'other' || g === 'biz') ? 'miru' : 'home') : groupTab(g);
     return shell(inner, tabKey);
+  }
+  /* ★2026-10-20 神田さん「B案のデモと見比べて全体を」＝案Bの店舗側の画面は見本と同じ型：
+     上に戻るボタン1つ（来た所の名前＝きょうやること／見る・注文する／店の数字／前の画面の名前）→明朝の題→1行の説明→中身→下に小さく経過時間。
+     「1つ前へ／ホーム」の2つ・アイコン付き見出しは出さない。戻るは今までの履歴（NAV）をそのまま使う */
+  const pbAppTab_ = (a) => { const g = a.group; return (g === 'learn' || g === 'other' || g === 'biz') ? 'miru' : 'home'; };
+  let _pbOpen = { id: '', t: 0 };
+  let _pbHead = null;   // 各画面が { t:題, d:説明 } を入れると、その題・説明で出す（1回で消える）
+  function pbBack_(a) {
+    const prev = NAV.length > 1 ? String(NAV[NAV.length - 2] || '') : '';
+    const tabLb = (t) => t === 'miru' ? L({ ja:'見る・注文する', en:'Look up', vi:'Tra cứu' }) : t === 'num' ? L({ ja:'店の数字', en:'Numbers', vi:'Số liệu' }) : L({ ja:'きょうやること', en:'Today', vi:'Hôm nay' });
+    let lb;
+    if (prev.startsWith('/app/')) { const pa = appById(prev.slice(5).split('?')[0]); lb = pa ? L(pa.name) : L({ ja:'戻る', en:'Back', vi:'Quay lại' }); }
+    else if (prev.startsWith('/home')) { const m = prev.match(/[?&]tab=([a-z]+)/); lb = tabLb(m ? m[1] : 'home'); }
+    else lb = tabLb(pbAppTab_(a));
+    return prev ? `<button class="pb-back" id="prevBtn">${svg('back')}${esc(lb)}</button>` : `<button class="pb-back" data-tab="${pbAppTab_(a)}">${svg('back')}${esc(lb)}</button>`;
+  }
+  function pbAppFrame_(id, a, body) {
+    if (_pbOpen.id !== id) _pbOpen = { id, t: Date.now() };
+    try { if (!window.__pbTimer) window.__pbTimer = setInterval(() => { document.querySelectorAll('.pb-timer[data-t0]').forEach(el => { const sec = Math.max(0, Math.floor((Date.now() - Number(el.dataset.t0)) / 1000)); const b = el.querySelector('b'); if (b) b.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }); }, 1000); } catch (e) {}
+    const hd = _pbHead; _pbHead = null;
+    const ttl = hd && hd.t ? hd.t : L(a.name), lead = hd ? (hd.d || '') : (a.desc ? L(a.desc) : '');
+    const leadHtml = hd && hd.h ? hd.h : (lead ? esc(lead) : '');
+    return `<main class="screen pb-app pb-app--${esc(id)}">${pbBack_(a)}<div class="pb-ttl">${esc(ttl)}</div>${leadHtml ? `<p class="pb-lead">${leadHtml}</p>` : ''}
+      <div class="pb-appbody">${body}</div>
+      <div class="pb-timer" data-t0="${_pbOpen.t}">${L({ ja:'この画面を開いてから', en:'Time on this screen', vi:'Thời gian trên màn hình' })} <b>0:00</b></div></main>`;
   }
   /* 案B＝画面の見出しの印を、その画面の写真に（写真が無い画面はいままでの印） */
   function pbHeadIco_(id, a) {
@@ -2351,6 +2572,7 @@
   const kzCatLabel = (v) => { const f = KZ_CATS.find(x=>x.v===v); return f ? L(f.t) : v; };
   APP_VIEWS.kizuki = () => {
     const vis = visibleStores();
+    if (isPb() && getRole() !== 'hq') _pbHead = { t: L({ ja:'気づき', en:'Insight', vi:'Ghi nhận' }), d: L({ ja:'良かったことも困ったことも、そのままの言葉で。本部から返答が来ます。', en:'Good or bad, in your own words. HQ will reply.', vi:'Tốt hay khó, cứ viết tự nhiên. HQ sẽ trả lời.' }) };
     const recent = getKz().filter(r=>vis.includes(r.store)).sort((a,b)=>b.t-a.t).slice(0,6);
     const ph = L({
       ja:'例）料理＝盛り付け・味・お客様の食べ残し（理由も）／サービス＝求められた調味料・ご指摘・褒められた点／その他＝必要な器具・こんなシステムがあれば 等',
@@ -2361,8 +2583,8 @@
       ${NOTE({ ja:'◆ クローズ後、その日出勤したスタッフ全員で「気づき」を送信（本部が改善に活用）', en:'◆ After close, every staff shares an insight (HQ uses it to improve)', vi:'◆ Sau khi đóng cửa, mỗi nhân viên gửi một ghi nhận' })}
       <div class="card" id="kzForm">
         <h3>${L({ ja:'気づきを報告', en:'Share an insight', vi:'Gửi ghi nhận' })}</h3>
-        <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
-          <select id="kz_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+        ${isPb() ? `<input type="hidden" id="kz_store" value="${esc(vis[0] || '')}">` : `<label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span>
+          <select id="kz_store">${vis.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>`}
         <label class="fld"><span>${L({ ja:'カテゴリ', en:'Category', vi:'Danh mục' })}</span>
           <div class="seg" data-seg="kzcat">${KZ_CATS.map((c,i)=>`<button type="button" data-v="${c.v}" class="${i===0?'on':''}">${L(c.t)}</button>`).join('')}</div></label>
         <label class="fld"><span>${L({ ja:'気づいたこと', en:'Your insight', vi:'Ghi nhận' })}</span>
@@ -2370,7 +2592,7 @@
         <label class="fld"><span>${L({ ja:'写真（任意）', en:'Photo (optional)', vi:'Ảnh (tùy chọn)' })}</span>
           <div class="photo-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b style="font-size:13px">${L({ ja:'写真を追加', en:'Add photos', vi:'Thêm ảnh' })}</b></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
           <div class="photo-thumbs" id="photoThumbs"></div></label>
-        <button class="btn-primary" id="submitKz">${L({ ja:'報告する', en:'Submit', vi:'Gửi' })}</button>
+        <button class="btn-primary${isPb() ? ' pb-big' : ''}" id="submitKz">${isPb() ? L({ ja:'送る', en:'Send', vi:'Gửi' }) : L({ ja:'報告する', en:'Submit', vi:'Gửi' })}</button>
         <div class="hint">${L({ ja:'※退勤前に。お客様がいらっしゃる時はキッチン奥などご配慮を。', en:'Before leaving. Please be discreet if guests are present.', vi:'Trước khi tan ca. Vui lòng kín đáo nếu có khách.' })}</div>
       </div>
       <div class="card">
@@ -2435,7 +2657,13 @@
      日報は「今日の納品書」としてそれを並べ、仕入先×税率で 食材／お酒／お酒以外 の3欄（税込）を自動で埋める。
      送信は必ず人が押す＝読み取りが違っていても、その場で直せる */
   const NOUHIN_VENDORS = ['西原商会', 'フレッシュ青果', '銘洋', '魚伸', '名畑', 'リカーマウンテン', '日本食研', 'オーディエー', 'イオン', 'ローソン', '本部', 'その他'];
-  const NOUHIN_ALC_VENDORS = ['名畑', 'リカーマウンテン'];      // 酒屋＝8%はお酒以外の飲料・10%はお酒
+  /* ★2026-10-20 原さん（心斎橋）「仕入先の業者名を寿司世桜用にカスタマイズできるか」＝業態ごとの仕入先一覧。出典＝本部ドライブ 12-18【世桜】発注リスト「寿司世桜」タブ（2026-10-20 読取）。
+     一覧に無い業者は、写真から読んだ名前がそのまま先頭に入る（下の opts.unshift）＝手で選び直せる */
+  const NOUHIN_VENDORS_BY_FORMAT = {
+    '寿司': ['西原商会', '名畑', '中央メディカル', 'ヤスイ', 'ナオト水産', 'おのうえ', '魚伸', '魚萬珍味堂', '幸南食糧', '大洋商事', 'うすなが牧場', 'Amazon', '本部', 'その他'],
+  };
+  const nouhinVendorsFor_ = (store) => NOUHIN_VENDORS_BY_FORMAT[zkFormatOf_(store)] || NOUHIN_VENDORS;
+  const NOUHIN_ALC_VENDORS = ['名畑', 'リカーマウンテン', '大洋商事'];      // 酒屋＝8%はお酒以外の飲料・10%はお酒（大洋商事＝梅酒・寿司世桜）
   const NOUHIN_MIX_VENDORS = ['本部', 'イオン', 'ローソン'];     // 8%は食材・10%はお酒（本部請求＝和牛・鰻が8%、梅酒が10%）
   const nouhinKind = (v, rate) => {
     const n = String(v || '');
@@ -2450,7 +2678,7 @@
         if (r.kind !== 'nouhindraft' || r.store !== store || dateKeyOfItem(r.item) !== dk) return;
         const p = parseNote(r.note); if (!p || p.src !== 'ocr') return;
         const key = (p.photo || r.id || String(r.t)) + (p.part ? '#' + String(p.part).split('/')[0] : '');   // ★1枚の写真に伝票が2枚（part '1/2'・'2/2'）＝別の伝票として並べる（2026-10-15）
-        if (!by[key] || r.t > by[key]._t) by[key] = Object.assign({ _t: r.t }, p);
+        if (!by[key] || r.t > by[key]._t) by[key] = Object.assign({ _t: r.t, _key: key }, p);
       });
     } catch (e) {}
     return Object.values(by).sort((a, b) => a._t - b._t).map(p => ({
@@ -2458,9 +2686,20 @@
       total: p.total != null ? Number(p.total) : 0, conf: p.conf || 'low', photo: p.photo || '', src: 'ocr', raw: p.raw ? String(p.raw) : '', ret: !!p.ret }));
   };
   let skSlips_ = [];
+  /* ★2026-10-20 原さん（心斎橋）「翌朝に前日分をまとめて撮るスタイルが理想」＝日報の日付が前日のとき、その後（翌朝）に撮った納品書も前日分として出す。
+     同じ写真を2つの日報に数えないよう、ほかの日付の日報で既に使った写真は除く（その日の日報を出したあとで開く当日の日報にも出ない） */
+  const nouhinUsedPhotos_ = (store, exceptDk) => {
+    const used = new Set();
+    try { getSk().forEach(r => { if (r.store !== store || r.date === exceptDk || !Array.isArray(r.slips)) return; r.slips.forEach(x => { if (x && x.photo) used.add(x.photo); }); }); } catch (e) {}
+    return used;
+  };
   const skSlipsLoad_ = (store, dk, rec) => {
     if (rec && Array.isArray(rec.slips) && rec.slips.length) { skSlips_ = rec.slips.map(s => Object.assign({}, s)); return; }
-    skSlips_ = nouhinDrafts(store, dk);
+    let drafts = nouhinDrafts(store, dk);
+    const today = dateKeyFor(store, Date.now()), prev = dateKeyFor(store, Date.now() - 86400e3);
+    if (dk === prev) drafts = drafts.concat(nouhinDrafts(store, today).map(p => Object.assign({}, p, { late: 1 })));   // 前日の日報＝翌朝に撮った分も
+    const used = nouhinUsedPhotos_(store, dk);
+    skSlips_ = drafts.filter(p => !(p.photo && used.has(p.photo)));
     // 税率の行が読めなかった伝票＝合計を仕入先の既定の税率へ（酒屋は10%・それ以外は8%）。要確認の印は残る
     skSlips_.forEach(s => { if (s.a8 === '' && s.a10 === '' && s.total) { if (NOUHIN_ALC_VENDORS.some(x => String(s.v).includes(x))) s.a10 = String(s.total); else s.a8 = String(s.total); } });
   };
@@ -2475,7 +2714,7 @@
     return o;
   };
   const skSlipsRowsHtml_ = () => skSlips_.map((s, i) => {
-    const opts = NOUHIN_VENDORS.slice(); if (s.v && !opts.includes(s.v)) opts.unshift(s.v);
+    const opts = nouhinVendorsFor_(visibleStores()[0] || '').slice(); if (s.v && !opts.includes(s.v)) opts.unshift(s.v);   // 店の業態の仕入先一覧
     const rateLbl = NOUHIN_ALC_VENDORS.some(x => String(s.v).includes(x)) ? L({ ja:'8%＝お酒以外・10%＝お酒', en:'8% soft / 10% alcohol', vi:'8% khác / 10% rượu' })
       : (NOUHIN_MIX_VENDORS.some(x => String(s.v).includes(x)) ? L({ ja:'8%＝食材・10%＝お酒', en:'8% food / 10% alcohol', vi:'8% thực phẩm / 10% rượu' }) : L({ ja:'食材', en:'food', vi:'thực phẩm' }));
     return `<div class="sk-slip" data-slip="${i}" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto;gap:6px;align-items:center;margin:4px 0${s.ret ? ';background:#fdecea;border-radius:6px;padding:2px 4px' : ''}">
@@ -2508,6 +2747,75 @@
           <button type="button" class="btn-sm" id="sk_slipadd">${L({ ja:'＋ 納品書を足す', en:'+ Add slip', vi:'+ Thêm phiếu' })}</button>
           <p class="hint" id="sk_slipnote" style="display:block;margin:6px 0 0;color:#c0392b;font-weight:600">${L({ ja:'写真から読んだ金額です。送信の前に、伝票の合計と同じか必ず確認してください。', en:'Amounts read from photos. Always check them against the slip total before sending.', vi:'Số tiền đọc từ ảnh. Luôn đối chiếu với tổng trên phiếu trước khi gửi.' })}</p>
         </div>`;
+  /* ★2026-10-20 神田さん「B案のデモの画面の方が使いやすい」＝案Bの店舗側だけ、日報を見本の並びにする。
+     上＝レジの数字（自動・入力なし）→今日の納品書→一言→ほかの項目（折りたたみ）。入力欄・id・提出の中身は今までのまま（並べ替えるだけ） */
+  function pbNipAutoHtml_() {
+    const g = (id) => document.getElementById(id);
+    const store = (g('sk_store') && g('sk_store').value) || visibleStores()[0];
+    const date = (g('sk_date') && g('sk_date').value) || todayKey();
+    const md = String(date).slice(5).replace('-', '/');
+    const wd = (() => { const d = new Date(date + 'T12:00:00Z'); return L(WDAY_LABELS[d.getUTCDay()]); })();
+    const sum = g('pbn_datesum'); if (sum) sum.innerHTML = `${esc(md)}（${esc(wd)}）${L({ja:'の日報',en:' report',vi:''})}${date === dateKeyFor(store, Date.now() - 864e5) ? ' ・ ' + L({ja:'前日分',en:'yesterday',vi:'hôm qua'}) : ''}<span>${L({ja:'日付を変える',en:'Change date',vi:'Đổi ngày'})}</span>`;
+    if (skNoUsen_(store)) return '';
+    const rec = getSk().find(r => r && r.store === store && r.date === date && (r.src === 'usen' || r.pos));
+    if (!rec) return `<div class="pb-nipauto"><div class="pb-nipempty">${L({ja:'レジの数字はまだ届いていません。毎朝自動で入ります（入力は要りません）',en:'Register numbers not in yet. They arrive automatically every morning.',vi:'Số liệu két chưa có. Tự vào mỗi sáng.'})}</div></div>`;
+    const d = new Date(Number(rec.t) || 0); const at = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const auto = L({ja:'自動',en:'auto',vi:'tự động'});
+    const row = (lb, sub, v) => `<div class="pb-nipf"><span class="pb-niplb">${lb}<small>${sub}</small></span><span class="pb-nipv">${v}<small>${auto}</small></span></div>`;
+    const out = [];
+    if (Number(rec.net) > 0) out.push(row(L({ja:'売上（税抜）',en:'Sales (excl. tax)',vi:'Doanh thu (chưa thuế)'}), `POS ${at} ${L({ja:'取込',en:'import',vi:'nhập'})}`, yen(rec.net)));
+    else if (Number(rec.sales) > 0) out.push(row(L({ja:'売上（税込）',en:'Sales (incl. tax)',vi:'Doanh thu (gồm thuế)'}), `POS ${at} ${L({ja:'取込',en:'import',vi:'nhập'})}`, yen(rec.sales)));
+    if (rec.guests != null && rec.guests !== '') out.push(row(L({ja:'客数',en:'Guests',vi:'Khách'}), 'POS', esc(String(rec.guests))));
+    if (rec.cash != null && rec.cash !== '') out.push(row(L({ja:'現金',en:'Cash',vi:'Tiền mặt'}), 'POS', yen(rec.cash)));
+    if (rec.card != null && rec.card !== '') out.push(row(L({ja:'カード',en:'Card',vi:'Thẻ'}), 'POS', yen(rec.card)));
+    if (rec.emoney) out.push(row(L({ja:'電子マネー',en:'E-money',vi:'Ví điện tử'}), 'POS', yen(rec.emoney)));
+    if (rec.disc) out.push(row(L({ja:'値引き',en:'Discount',vi:'Giảm giá'}), 'POS', yen(rec.disc)));
+    if (rec.err != null && rec.err !== '' && Number(rec.err) !== 0) out.push(row(L({ja:'レジの過不足',en:'Register diff.',vi:'Chênh lệch két'}), 'POS', (Number(rec.err) < 0 ? '−' : '') + yen(Math.abs(Number(rec.err)))));
+    return `<div class="pb-nipauto">${out.join('')}</div>`;
+  }
+  function pbNippouLayout_() {
+    const form = document.getElementById('skForm'); if (!form || form.dataset.pbn) return;
+    form.dataset.pbn = '1'; form.classList.add('pb-nip');
+    const g = (id) => document.getElementById(id);
+    const store = (g('sk_store') && g('sk_store').value) || visibleStores()[0];
+    const noUsen = skNoUsen_(store);
+    const kids = Array.from(form.children);
+    const h3 = form.querySelector('h3');
+    const submit = g('submitSk'); const after = submit ? submit.nextElementSibling : null;
+    const pos = g('sk_posnote');
+    if (pos) pos.textContent = noUsen
+      ? L({ ja:'売上はレジの日計を見て入れてください。あとは今日届いた納品書を撮るだけです。', en:'Enter sales from the register report, then photograph today’s delivery slips.', vi:'Nhập doanh thu từ báo cáo két, rồi chụp phiếu giao hàng hôm nay.' })
+      : L({ ja:'売上・客数・現金・カードはUSENレジから入っています。入れるのは今日届いた納品書と、勤怠（任意）です。', en:'Sales, guests, cash and card come from the USEN register. Only enter today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ két USEN. Chỉ nhập phiếu giao hàng hôm nay.' });
+    const dateGrid = g('sk_date') ? g('sk_date').closest('.sk-grid') : null;
+    const dbox = document.createElement('details'); dbox.className = 'pb-nipdate'; dbox.innerHTML = '<summary id="pbn_datesum"></summary>';
+    const auto = document.createElement('div'); auto.id = 'pbn_auto';
+    const salesLbl = noUsen && g('sk_posgrid') ? g('sk_posgrid').previousElementSibling : null;
+    const salesGrid = noUsen ? g('sk_posgrid') : null;
+    const slipHead = document.createElement('div'); slipHead.className = 'pb-sec'; slipHead.innerHTML = `<h2>${L({ja:'今日の納品書',en:'Today’s delivery slips',vi:'Phiếu giao hàng hôm nay'})}</h2><small>${L({ja:'撮れば自動で読みます',en:'Photos are read automatically',vi:'Chụp là tự đọc'})}</small>`;
+    const nm = (() => { try { return getMasters(store).find(m => m.id === 'nouhin' && appliesToStore(m, store)); } catch (e) { return null; } })();
+    /* ★2026-10-20 原さん（心斎橋）「納品書をスキャンして入稿するやり方が分からない」＝撮るボタンが提出物「納品書の写真」のある店（長堀橋）にしか出ていなかった。
+       納品書の枠と「撮れば自動で読みます」は全店に出るので、ボタンも全店に出す（写真の画面は店を問わず動く） */
+    const shoot = g('sk_slipbox') ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pb-nipshoot'; b.dataset.tsub = 'openphoto'; b.dataset.tsubphoto = 'nouhin'; b.textContent = L({ ja:'📷 納品書を撮る（仕入先と8%・10%を自動で読む）', en:'📷 Photograph a delivery slip', vi:'📷 Chụp phiếu giao hàng' }); return b; })() : null;   // ★納品書の写真は毎日の一覧から外したので、ここから撮る
+    const slip = g('sk_slipbox');
+    const memo = g('sk_memo') ? g('sk_memo').closest('label') : null;
+    if (memo && memo.querySelector('span')) memo.querySelector('span').textContent = L({ ja:'一言（本部に伝えたいこと・任意）', en:'A note for HQ (optional)', vi:'Ghi chú cho HQ (tùy chọn)' });
+    const more = document.createElement('details'); more.className = 'pb-nipmore';
+    more.innerHTML = `<summary>${L({ja:'ほかの項目（チップ・発注など・入れる店だけ）',en:'Other items (tips, orders…)',vi:'Mục khác (tip, chấm công, đặt hàng…)'})}</summary>`;
+    /* ★2026-10-20 永井さん「人件費・勤怠もアプリで入れて総括表へ」＝勤怠を折りたたみの奥から出す（入れると総括表の勤怠表に自動で入る） */
+    const kt = g('sk_kintai');
+    if (kt) { kt.className = 'pb-nipmore'; kt.removeAttribute('style'); }   // 「ほかの項目」と同じ形
+    if (kt && kt.querySelector('summary')) kt.querySelector('summary').textContent = L({ ja:'勤怠を入れる（任意・総括表に自動で入ります）', en:'Attendance (optional, goes to the summary sheet)', vi:'Chấm công (tùy chọn, tự vào bảng tổng kết)' });
+    const placed = new Set([h3, pos, g('sk_editnote'), g('sk_datenote'), dateGrid, salesLbl, salesGrid, slip, memo, kt, submit, after].filter(Boolean));
+    kids.forEach(k => { if (!placed.has(k)) more.appendChild(k); });
+    if (dateGrid) dbox.appendChild(dateGrid);
+    if (h3) h3.textContent = L({ ja:'日報', en:'Daily report', vi:'Báo cáo ngày' });
+    if (g('sk_datenote')) g('sk_datenote').style.display = 'none';   // 日付は上の札に出す（二重にしない）
+    const order = [h3, pos, g('sk_editnote'), g('sk_datenote'), dbox, auto, salesLbl, salesGrid, slipHead, shoot, slip, memo, kt, more, submit, after].filter(Boolean);
+    order.forEach(el => form.appendChild(el));
+    const draw = () => { const a = g('pbn_auto'); if (a) a.innerHTML = pbNipAutoHtml_(); };
+    draw();
+    ['sk_date', 'sk_store'].forEach(id => { const e = g(id); if (e) e.addEventListener('change', () => setTimeout(draw, 0)); });
+  }
   const skSlipsRender_ = () => { const el = document.getElementById('sk_slips'); if (el) el.innerHTML = skSlipsRowsHtml_(); };
   const skSlipsApply_ = () => {
     if (!skSlips_.length) return false;
@@ -2733,10 +3041,10 @@
      f＝'' 毎日／'mon,thu' 月・木／'sat' 土 …（曜日の英略を , で並べる）。f が無い品目は区分名から補う（長堀橋の「月・木に確認」） */
   const ZK_DOW = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   const ZK_DOW_JA = { sun:'日', mon:'月', tue:'火', wed:'水', thu:'木', fri:'金', sat:'土' };
-  const ZK_FREQ_OPTS = [['', { ja:'毎日', en:'Daily', vi:'Hằng ngày' }], ['mon,thu', { ja:'月・木', en:'Mon & Thu', vi:'T2 & T5' }], ['mon', { ja:'月', en:'Mon', vi:'T2' }], ['tue', { ja:'火', en:'Tue', vi:'T3' }], ['wed', { ja:'水', en:'Wed', vi:'T4' }], ['thu', { ja:'木', en:'Thu', vi:'T5' }], ['fri', { ja:'金', en:'Fri', vi:'T6' }], ['sat', { ja:'土', en:'Sat', vi:'T7' }], ['sun', { ja:'日', en:'Sun', vi:'CN' }]];
-  function zkFreqOf(it) { if (it && it.f != null && it.f !== '') return String(it.f); const g = String((it && it.g) || ''); return /月・木/.test(g) ? 'mon,thu' : /土曜/.test(g) ? 'sat' : ''; }
+  const ZK_FREQ_OPTS = [['', { ja:'毎日', en:'Daily', vi:'Hằng ngày' }], ['week', { ja:'週に1回', en:'Weekly', vi:'Mỗi tuần' }], ['mon,thu', { ja:'月・木', en:'Mon & Thu', vi:'T2 & T5' }], ['mon', { ja:'月', en:'Mon', vi:'T2' }], ['tue', { ja:'火', en:'Tue', vi:'T3' }], ['wed', { ja:'水', en:'Wed', vi:'T4' }], ['thu', { ja:'木', en:'Thu', vi:'T5' }], ['fri', { ja:'金', en:'Fri', vi:'T6' }], ['sat', { ja:'土', en:'Sat', vi:'T7' }], ['sun', { ja:'日', en:'Sun', vi:'CN' }]];
+  function zkFreqOf(it) { if (it && /^器（/.test(String(it.g || ''))) return 'week'; if (it && it.f != null && it.f !== '') return String(it.f); const g = String((it && it.g) || ''); return /月・木/.test(g) ? 'mon,thu' : /土曜/.test(g) ? 'sat' : ''; }
   const zkFreqLabel = (f) => { const o = ZK_FREQ_OPTS.find(x => x[0] === f); return o ? L(o[1]) : f.split(',').map(d => ZK_DOW_JA[d] || d).join('・'); };
-  function zkDue(it, dow) { const f = zkFreqOf(it); if (!f) return true; const d = ZK_DOW[dow == null ? new Date().getDay() : dow]; return f.split(',').includes(d); }
+  function zkDue(it, dow) { const f = zkFreqOf(it); if (!f) return true; if (f === 'week') return false; const d = ZK_DOW[dow == null ? new Date().getDay() : dow]; return f.split(',').includes(d); }
   /* 今日確認する品目があるか（品目未登録なら true＝登録を促す画面を出す） */
   function zkDueToday(store, dow) { const m = zkMaster(store); return !m.length || m.some(it => zkDue(it, dow)); }
   function zkStore() {
@@ -2748,7 +3056,7 @@
   function zkMaster(store) {
     const rows = getZk('zaikomaster').filter(r => r.store === store).sort((a, b) => b.t - a.t);
     const p = rows.length ? parseNote(rows[0].note) : null;
-    const saved = (p && Array.isArray(p.items)) ? p.items.filter(it => it && it.n) : [];
+    const saved = (p && Array.isArray(p.items)) ? p.items.filter(it => it && it.n).map(it => /^器（/.test(String(it.g || '')) ? Object.assign({}, it, { g: ZK_TW_G, f: 'week' }) : it) : [];
     if (!saved.length) return zkDefaultsFor_(store);   // 保存が無ければ既定（在庫チェック表の転記＋業態の器）
     /* ★店長が保存済みの店（牛カツ富士山 9/19）にも、業態の器を自動で足す（画面293・2026-09-25 神田さん「牛カツ富士山の器が反映されてない」）。
        器は本部（田中さん）の週次のお願い＝店の保存を待たずに出す。同名が保存にあれば足さない */
@@ -2757,6 +3065,8 @@
     return saved.concat(tw);
   }
   const zkIsDefault = (store) => !getZk('zaikomaster').some(r => r.store === store);
+  const zkWeekItems_ = (store) => zkMaster(store).filter(it => zkFreqOf(it) === 'week');
+  const zkWkMode_ = () => { try { return currentRoute().params.get('wk') === '1'; } catch (e) { return false; } };
   /* ★器（週次・水曜に数える）＝田中さん 2026-09-25「週次で器の棚卸し・チップの確認」（いる・いらないシート No.59）。
      出典＝本部ドライブ「2.初回発注 備品リスト」（2026-09-25 読取）
        寿司＝2.寿司世桜備品【心斎橋店】のマルシン・兼光の器（個数14＝席数）
@@ -2764,8 +3074,10 @@
        牛カツ＝7.和牛世桜備品【広島】本部手配分の「[牛カツ] 茶碗×24」＋全業態共通のマルシン行（サラダ皿・牛カツを運ぶ皿）
        和牛・日本料理・手巻き寿司＝備品リストに器の一覧が無い → 全業態共通の6品だけ（店長が「品目・基準在庫」で足す）
      std＝初回発注の個数（これを下回ったら「減っている」の目安）。数が分からない物は空欄＝発注リストには出ない */
-  const ZK_TW_G = '器（水曜に数える）';
-  const zkTw_ = (rows) => rows.map(r => ({ g: ZK_TW_G, n: r[0], std: r[2] == null ? '' : r[2], u: r[1], f: 'wed' }));
+  /* ★2026-10-20 神田さん「曜日に固定せず、週に1回の業務として」＝器は f:'week'（その週のうちに1回）。日々の在庫の入力には出さず、提出物「器の数と欠け」（今週）から開く */
+  let zkGroupOpts_ = [];   // ★2026-10-20 区分の候補（既存の区分＋冷凍庫・冷蔵庫・常温・備品）＝select で選ぶだけ（古いiPadでは datalist の候補が出ないため）
+  const ZK_TW_G = '器（週に1回）';
+  const zkTw_ = (rows) => rows.map(r => ({ g: ZK_TW_G, n: r[0], std: r[2] == null ? '' : r[2], u: r[1], f: 'week' }));
   const ZK_TW_COMMON = [['茶碗', '個', ''], ['汁椀', '個', ''], ['湯呑', '個', ''], ['グラス', '個', ''], ['ビールグラス', '個', ''], ['箸置き', '個', '']];
   const ZK_TABLEWARE = {
     '鰻': zkTw_([['３連皿', '枚', 50], ['茶碗', '個', 50], ['どんぶり', '個', 50], ['汁椀', '個', ''], ['卓上薬味入れ', '個', 22], ['卓上タレ入れ', '個', 11], ['湯呑', '個', ''], ['グラス', '個', ''], ['ビールグラス', '個', ''], ['箸置き', '個', '']]),
@@ -2848,6 +3160,8 @@
     </div>`;
   }
   APP_VIEWS.zaiko = () => {
+    if (zkWkMode_()) return zkWeekView_();
+    if (isPb() && getRole() !== 'hq') _pbHead = { t: L({ ja:'在庫の数', en:'Stock count', vi:'Số tồn kho' }), d: L({ ja:'締めに数えて入れるだけ。基準より少ない品目は発注リストに出ます。', en:'Count at closing. Items below the minimum go to the order list.', vi:'Đếm khi đóng ca. Mục dưới định mức vào danh sách đặt.' }) };
     const vis = visibleStores(); const store = zkStore();
     let tab = ''; try { tab = localStorage.getItem(ZK_LS_TAB) || ''; } catch (e) {}
     if (!['in', 'now', 'order', 'items'].includes(tab)) tab = 'in';
@@ -2872,7 +3186,7 @@
           const rowsOf = (list) => list.map(([it, i]) => { const cur = l && l.q[it.n]; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
             const prev = list[list.indexOf(list.find(x => x[1] === i)) - 1]; const head = (it.g && (!prev || prev[0].g !== it.g)) ? `<div class="zk-grp" style="margin-top:${prev ? 16 : 4}px">${esc(it.g)}</div>` : '';
             return `${head}<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}</small></label>
-            <input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${isToday && cur != null ? esc(String(cur)) : (draft[it.n] != null ? esc(String(draft[it.n])) : '')}" placeholder="${!isToday && cur != null ? esc(String(cur)) : '0'}"><span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
+            ${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:-1" aria-label="-">−</button>` : ''}<input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${isToday && cur != null ? esc(String(cur)) : (draft[it.n] != null ? esc(String(draft[it.n])) : '')}" placeholder="${!isToday && cur != null ? esc(String(cur)) : '0'}">${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:1" aria-label="+">＋</button>` : ''}<span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
           const all = m.map((it, i) => [it, i]); const due = all.filter(([it]) => zkDue(it, dow)); const later = all.filter(([it]) => !zkDue(it, dow));
           const hasFreq = m.some(it => zkFreqOf(it));
           let h = '';
@@ -2912,9 +3226,10 @@
       /* 空の行は必ず8行以上残す（品目が24を超える店＝富士山で、追加する行が無くなっていた 2026-09-19） */
       const rows = m.slice(); const missing = zkMissingDefaults(store); const want = Math.max(ZK_SLOTS, m.length + 8 + missing.length); while (rows.length < want) rows.push({ n: '', std: '', u: '' });
       body = `
-        <div class="hint" style="display:block">${L({ ja:'在庫チェック表と同じ順で品目を入れてください。基準在庫＝これを下回ったら発注する数。単位は「本」「袋」「kg」など。', en:'List items in the same order as the stock sheet. Minimum = order when below this.', vi:'Nhập mặt hàng theo thứ tự bảng kiểm kho. Định mức = đặt hàng khi thấp hơn.' })}</div>
-        <div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span><span>${L({ ja:'確認日', en:'Check', vi:'Ngày' })}</span></div>
-        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="zk-grp" style="margin-top:${i ? 14 : 2}px">${esc(r.g)}</div>` : ''}<input type="hidden" id="zk_g${i}" value="${esc(r.g || '')}"><div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="0"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'本', en:'pcs', vi:'cái' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${(r.n ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select></div>`).join('')}
+        <div class="hint" style="display:block">${L({ ja:'在庫チェック表と同じ順で品目を入れてください。基準在庫＝これを下回ったら発注する数。単位は「本」「袋」「kg」など。区分（冷凍庫など）を入れると、その見出しで分かれて並びます。品目の名前を変えると、前に数えた数は新しい名前には引き継がれません。', en:'List items in the same order as the stock sheet. Minimum = order when below this.', vi:'Nhập mặt hàng theo thứ tự bảng kiểm kho. Định mức = đặt hàng khi thấp hơn.' })}</div>
+        <div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span><span>${L({ ja:'確認日', en:'Check', vi:'Ngày' })}</span><span>${L({ ja:'区分', en:'Group', vi:'Nhóm' })}</span></div>
+        ${(() => { zkGroupOpts_ = Array.from(new Set(m.map(it => String(it.g || '').trim()).filter(Boolean).concat(['冷凍庫', '冷蔵庫', '常温', '備品']))); return ''; })()}
+        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="zk-grp" style="margin-top:${i ? 14 : 2}px">${esc(r.g)}</div>` : ''}<div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="0"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'本', en:'pcs', vi:'cái' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${(r.n ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select><select id="zk_g${i}" style="flex:0.9;min-width:0"><option value="">${L({ ja:'区分なし', en:'No group', vi:'Không' })}</option>${zkGroupOpts_.map(g => `<option value="${esc(g)}"${g === String(r.g || '').trim() ? ' selected' : ''}>${esc(g)}</option>`).join('')}<option value="__new">${L({ ja:'＋新しい区分', en:'+ New group', vi:'+ Nhóm mới' })}</option></select><input type="text" id="zk_gn${i}" placeholder="${L({ ja:'新しい区分名', en:'New group', vi:'Nhóm mới' })}" style="flex:0.9;min-width:0;display:none"></div>`).join('')}
         ${missing.length ? `<div style="margin:6px 0 4px"><button class="mini" id="zkFromDefault">${L({ ja:'本部が写した品目を取り込む', en:'Add HQ-listed items', vi:'Thêm mặt hàng do HQ nhập' })}（${missing.length}）</button>
           <span class="muted" style="font-size:12px">${L({ ja:'紙の在庫表・朝礼シートから本部が写した品目のうち、この一覧に無いものを空の行に足します（足したら保存）', en:'Adds items HQ copied from the paper sheets that are not in this list', vi:'Thêm các mặt hàng HQ đã nhập mà danh sách chưa có' })}</span></div>` : ''}
         <div style="margin:6px 0 10px"><button class="mini" id="zkFromTana">${L({ ja:'月次棚卸の品目を取り込む', en:'Import stocktake items', vi:'Nhập mặt hàng từ kiểm kê' })}${(() => { const n = zkTanaNames(store).length; return n ? `（${n}）` : ''; })()}</button>
@@ -2929,6 +3244,27 @@
         ${storeSel}${tabBar}${body}
       </div>`;
   };
+  /* ★器の数と欠け（週に1回・2026-10-20）＝提出物「今週」の行から1回で開く。器の品目だけを並べ、提出は在庫の数と同じ置き場（wk の印つき）。
+     日々の「在庫の数」の提出済みには数えない。数えるときに欠け・ひびを見て、ある器は取り除く（報告は不要＝10/12 神田さん） */
+  function zkWeekView_() {
+    const vis = visibleStores(); const store = zkStore();
+    const lead = L({ ja:'週に1回、都合のよい日に数えます。欠け・ひびのある器は使わずに破棄してください。', en:'Count once a week, any day. Discard chipped or cracked pieces.', vi:'Đếm mỗi tuần 1 lần. Bỏ đồ mẻ/nứt.' });
+    if (isPb() && getRole() !== 'hq') _pbHead = { t: L({ ja:'器の数と欠け', en:'Tableware count & chips', vi:'Đếm bát đĩa & đồ mẻ' }), d: lead };
+    const all = zkMaster(store).map((it, i) => [it, i]).filter(([it]) => zkFreqOf(it) === 'week');
+    const l = zkLatest(store); const today = dateKeyFor(store, Date.now()); const draft = zkDraft(store, today);
+    const wkDone = getZk('zaiko').some(r => r.store === store && (parseNote(r.note) || {}).wk && weekKeyOf(dateKeyFor(store, r.t)) === weekKeyOf(today));
+    const storeSel = vis.length > 1 ? `<label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="zk_store">${vis.map(x => `<option${x === store ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : '';
+    const rows = all.map(([it, i]) => { const cur = l && l.q[it.n]; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
+      return `<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}${cur != null && cur !== '' ? ` ・ ${L({ ja:'前回', en:'last', vi:'lần trước' })} ${esc(String(cur))}` : ''}</small></label>
+      ${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:-1" aria-label="-">−</button>` : ''}<input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${draft[it.n] != null ? esc(String(draft[it.n])) : ''}" placeholder="${cur != null && cur !== '' ? esc(String(cur)) : '0'}">${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:1" aria-label="+">＋</button>` : ''}<span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
+    const body = all.length ? `
+      ${wkDone ? `<div class="hint" style="display:block">${L({ ja:'今週はもう数えています。直すときはそのまま入れ直して提出してください。', en:'Already counted this week; resubmit to correct.', vi:'Tuần này đã đếm; gửi lại để sửa.' })}</div>` : ''}
+      <div class="zk-grp" style="margin-top:4px">${esc(ZK_TW_G)}</div>${rows}
+      <label class="fld"><span>${L({ ja:'名前', en:'Your name', vi:'Tên bạn' })}</span><input type="text" id="zk_by" value="${esc(getUserName() || '')}"></label>
+      <button class="btn-primary" id="submitZk">${L({ ja:'器の数を提出する', en:'Submit tableware count', vi:'Gửi số bát đĩa' })}</button>`
+      : `<div class="muted">${L({ ja:'この店の器の品目はまだありません。店長が「在庫」の「品目・基準在庫」で足せます。', en:'No tableware items for this store yet. The manager can add them under Items.', vi:'Chưa có mặt hàng bát đĩa. Quản lý có thể thêm ở mục Mặt hàng.' })}</div>`;
+    return `${isPb() && getRole() !== 'hq' ? '' : `<p class="hint" style="display:block">${lead}</p>`}<div class="card"><h3>${L({ ja:'器の数と欠け', en:'Tableware count & chips', vi:'Đếm bát đĩa & đồ mẻ' })} — ${esc(storeShort(store))}</h3>${storeSel}${body}</div>`;
+  }
   APP_VIEWS.kinshu = () => {
     const vis = visibleStores();
     const recent = getKinshu().filter(r => vis.includes(r.store)).sort((a, b) => b.t - a.t).slice(0, 5);
@@ -3004,7 +3340,8 @@
   /* 回答のあとにGoogle口コミのボタンが出る店（サーベイ側の YSK_SHOW_REVIEW=true と必ず同じにする） */
   const SURVEY_REVIEW_STORES = ['牛カツ世桜 富士山店', '日本鰻世桜 富士山店'];
   const SURVEY_QR = {"日本料理世桜本店":{"url":"https://yosakura-system.github.io/yosakura-survey/index.html","svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 37 37\" shape-rendering=\"crispEdges\"><path fill=\"#ffffff\" d=\"M0 0h37v37H0z\"/><path stroke=\"#000000\" d=\"M2 2.5h7m2 0h5m2 0h1m1 0h6m2 0h7M2 3.5h1m5 0h1m2 0h1m3 0h4m4 0h2m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h3m2 0h1m1 0h2m1 0h1m1 0h5m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m1 0h2m4 0h2m1 0h1m4 0h2m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h1m2 0h2m2 0h1m2 0h6m2 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m1 0h2m2 0h2m1 0h1m5 0h2m3 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M10 9.5h2m5 0h2m2 0h6M2 10.5h1m1 0h5m2 0h5m2 0h2m1 0h2m1 0h1m1 0h1m1 0h5M3 11.5h1m1 0h1m4 0h2m1 0h2m3 0h1m1 0h6m2 0h2m1 0h2m1 0h1M4 12.5h3m1 0h2m1 0h2m1 0h1m2 0h1m4 0h1m5 0h1m1 0h1m1 0h1M3 13.5h1m1 0h1m1 0h1m3 0h1m2 0h1m1 0h2m3 0h1m1 0h1m2 0h3m1 0h5M2 14.5h1m1 0h1m1 0h1m1 0h3m1 0h3m4 0h1m4 0h1m2 0h1m1 0h3m1 0h2M3 15.5h1m1 0h2m2 0h2m1 0h1m1 0h1m1 0h1m1 0h2m1 0h5m1 0h2m2 0h1m1 0h2M4 16.5h1m2 0h2m3 0h1m1 0h1m2 0h2m3 0h1m4 0h2m2 0h1m1 0h1M2 17.5h4m5 0h1m3 0h1m1 0h2m4 0h1m3 0h3m1 0h2M3 18.5h2m3 0h1m1 0h1m1 0h1m6 0h4m1 0h4m1 0h3m2 0h1M2 19.5h1m1 0h2m3 0h2m2 0h2m1 0h1m1 0h6m1 0h1m1 0h3m1 0h2m1 0h1M4 20.5h1m3 0h1m1 0h1m2 0h2m2 0h1m2 0h1m1 0h1m1 0h1m2 0h1m1 0h2m1 0h2M5 21.5h2m4 0h3m2 0h3m1 0h1m2 0h1m1 0h3m1 0h5M3 22.5h1m4 0h5m1 0h1m2 0h1m1 0h3m2 0h1m1 0h2m1 0h3m2 0h1M2 23.5h4m1 0h1m3 0h4m3 0h6m1 0h4m5 0h1M2 24.5h1m2 0h1m2 0h1m1 0h1m2 0h2m2 0h1m1 0h1m2 0h2m4 0h1m1 0h4M2 25.5h1m2 0h3m1 0h2m1 0h3m2 0h2m1 0h5m1 0h2m1 0h1m1 0h2M2 26.5h1m1 0h1m1 0h3m1 0h3m1 0h1m2 0h3m1 0h2m3 0h5m2 0h2M10 27.5h1m1 0h1m5 0h6m1 0h2m3 0h1m1 0h1m1 0h1M2 28.5h7m2 0h2m2 0h5m2 0h5m1 0h1m1 0h1m1 0h2M2 29.5h1m5 0h1m1 0h1m2 0h2m1 0h2m2 0h2m1 0h4m3 0h3m1 0h1M2 30.5h1m1 0h3m1 0h1m1 0h1m1 0h4m2 0h2m4 0h1m1 0h6m1 0h2M2 31.5h1m1 0h3m1 0h1m1 0h2m3 0h1m2 0h1m1 0h2m2 0h2m1 0h1m2 0h2m1 0h2M2 32.5h1m1 0h3m1 0h1m1 0h1m2 0h3m1 0h1m1 0h1m2 0h4m2 0h2m1 0h1M2 33.5h1m5 0h1m2 0h2m1 0h4m5 0h2m5 0h3M2 34.5h7m1 0h3m6 0h1m1 0h2m1 0h3m1 0h2m1 0h1m1 0h1\"/></svg>"},"牛カツ世桜 長堀橋店":{"url":"https://yosakura-system.github.io/yosakura-survey/store2.html","svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 37 37\" shape-rendering=\"crispEdges\"><path fill=\"#ffffff\" d=\"M0 0h37v37H0z\"/><path stroke=\"#000000\" d=\"M2 2.5h7m1 0h5m1 0h1m3 0h1m2 0h1m4 0h7M2 3.5h1m5 0h1m1 0h2m3 0h1m2 0h2m1 0h2m1 0h1m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m2 0h2m1 0h1m1 0h1m1 0h2m2 0h2m1 0h1m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h3m3 0h1m1 0h2m1 0h1m1 0h2m3 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m2 0h1m1 0h1m1 0h1m3 0h1m5 0h1m2 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M13 9.5h4m1 0h1m2 0h1m2 0h3M2 10.5h1m2 0h6m1 0h1m1 0h1m4 0h1m1 0h2m3 0h2m2 0h1m1 0h3M2 11.5h2m2 0h2m2 0h1m1 0h1m1 0h4m2 0h2m3 0h1m4 0h3M3 12.5h3m2 0h1m5 0h2m1 0h1m2 0h1m4 0h1m4 0h3m1 0h1M5 13.5h1m4 0h1m2 0h1m1 0h1m2 0h4m2 0h6m2 0h3M8 14.5h2m4 0h2m2 0h1m2 0h1m3 0h1m2 0h2M3 15.5h1m3 0h1m2 0h1m1 0h2m2 0h5m3 0h2m3 0h1m1 0h1M2 16.5h4m1 0h3m2 0h1m1 0h1m1 0h3m2 0h2m1 0h1m3 0h1m1 0h2M5 17.5h1m1 0h1m1 0h1m2 0h5m4 0h2m1 0h1m2 0h1m2 0h3m1 0h1M2 18.5h1m2 0h2m1 0h1m2 0h3m3 0h1m2 0h1m3 0h1m1 0h5M4 19.5h3m3 0h1m1 0h4m1 0h1m1 0h4m1 0h1m2 0h2m1 0h1m1 0h1m1 0h1M3 20.5h3m2 0h1m1 0h1m1 0h2m1 0h5m1 0h1m3 0h1m2 0h2m1 0h2m1 0h1M2 21.5h1m2 0h3m3 0h1m3 0h1m2 0h1m2 0h2m2 0h2m1 0h1m1 0h3m1 0h1M3 22.5h3m1 0h2m1 0h1m3 0h2m1 0h1m1 0h2m1 0h1m3 0h1m2 0h1m1 0h1m1 0h2M2 23.5h3m2 0h1m1 0h1m3 0h2m1 0h2m1 0h1m1 0h1m2 0h4m1 0h2M2 24.5h1m1 0h2m2 0h1m1 0h1m1 0h1m1 0h1m1 0h2m5 0h1m1 0h1m4 0h1m1 0h3M2 25.5h1m2 0h2m2 0h3m1 0h1m1 0h1m2 0h5m2 0h3m2 0h1m1 0h2M2 26.5h2m1 0h2m1 0h1m1 0h1m2 0h1m1 0h2m7 0h8M10 27.5h1m3 0h1m2 0h2m1 0h1m4 0h2m3 0h1m1 0h2M2 28.5h7m1 0h6m1 0h1m1 0h5m1 0h2m1 0h1m1 0h1m1 0h1M2 29.5h1m5 0h1m1 0h1m1 0h3m1 0h1m1 0h1m1 0h3m2 0h2m3 0h3M2 30.5h1m1 0h3m1 0h1m1 0h5m1 0h1m3 0h1m1 0h1m1 0h7m2 0h1M2 31.5h1m1 0h3m1 0h1m1 0h3m3 0h2m1 0h3m1 0h1m3 0h1m1 0h1m3 0h2M2 32.5h1m1 0h3m1 0h1m2 0h1m1 0h2m2 0h2m2 0h1m1 0h1m3 0h1m1 0h2m2 0h2M2 33.5h1m5 0h1m2 0h1m2 0h1m1 0h3m2 0h2m1 0h1m2 0h8M2 34.5h7m1 0h2m4 0h1m1 0h2m2 0h1m2 0h7\"/></svg>"},"日本鰻世桜 長堀橋店":{"url":"https://yosakura-system.github.io/yosakura-survey/store3.html","svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 37 37\" shape-rendering=\"crispEdges\"><path fill=\"#ffffff\" d=\"M0 0h37v37H0z\"/><path stroke=\"#000000\" d=\"M2 2.5h7m1 0h1m1 0h3m1 0h1m3 0h1m2 0h1m4 0h7M2 3.5h1m5 0h1m1 0h2m3 0h1m2 0h2m1 0h2m1 0h1m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h3m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m3 0h1m3 0h1m1 0h2m2 0h2m1 0h1m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h2m2 0h1m1 0h1m1 0h2m1 0h1m1 0h2m3 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m2 0h1m3 0h1m3 0h1m5 0h1m2 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M13 9.5h1m1 0h2m1 0h1m2 0h1m2 0h3M2 10.5h1m2 0h6m1 0h3m4 0h1m1 0h2m3 0h2m2 0h1m1 0h3M3 11.5h1m2 0h2m2 0h3m1 0h4m2 0h2m3 0h1m4 0h3M3 12.5h6m2 0h1m2 0h2m1 0h1m2 0h1m4 0h1m4 0h3m1 0h1M2 13.5h1m2 0h1m4 0h2m1 0h1m1 0h1m2 0h4m2 0h6m2 0h3M6 14.5h5m1 0h1m1 0h2m2 0h1m2 0h1m3 0h1m2 0h2M4 15.5h2m7 0h2m1 0h5m3 0h2m3 0h1m1 0h1M2 16.5h2m3 0h4m1 0h1m1 0h1m1 0h3m2 0h2m1 0h1m3 0h1m1 0h2M4 17.5h2m1 0h1m1 0h1m2 0h2m1 0h2m4 0h2m1 0h1m2 0h1m2 0h3m1 0h1M2 18.5h1m2 0h2m1 0h1m2 0h2m4 0h1m2 0h1m3 0h1m1 0h5M2 19.5h1m1 0h3m3 0h5m2 0h1m1 0h4m1 0h1m2 0h2m1 0h1m1 0h1m1 0h1M2 20.5h1m1 0h5m1 0h1m1 0h2m3 0h3m1 0h1m3 0h1m2 0h2m1 0h2m1 0h1M5 21.5h1m6 0h1m3 0h1m1 0h1m2 0h2m2 0h2m1 0h1m1 0h3m1 0h1M3 22.5h3m1 0h2m1 0h1m6 0h1m1 0h2m1 0h1m3 0h1m2 0h1m1 0h1m1 0h2M2 23.5h1m7 0h1m6 0h1m1 0h1m1 0h1m2 0h4m1 0h2M2 24.5h1m5 0h1m3 0h3m1 0h2m5 0h1m1 0h1m4 0h1m1 0h3M2 25.5h1m3 0h1m2 0h3m1 0h1m1 0h1m2 0h5m2 0h3m2 0h1m1 0h2M2 26.5h5m1 0h3m4 0h2m7 0h8M10 27.5h2m2 0h2m1 0h2m1 0h1m4 0h2m3 0h1m1 0h2M2 28.5h7m1 0h1m2 0h2m2 0h1m1 0h5m1 0h2m1 0h1m1 0h1m1 0h1M2 29.5h1m5 0h1m1 0h1m1 0h5m1 0h1m2 0h2m2 0h2m3 0h3M2 30.5h1m1 0h3m1 0h1m1 0h2m1 0h1m1 0h1m4 0h1m1 0h1m1 0h7m2 0h1M2 31.5h1m1 0h3m1 0h1m1 0h2m4 0h2m1 0h3m1 0h1m3 0h1m1 0h1m3 0h2M2 32.5h1m1 0h3m1 0h1m2 0h1m1 0h2m2 0h2m2 0h1m1 0h1m3 0h1m1 0h2m2 0h2M2 33.5h1m5 0h1m2 0h1m2 0h1m1 0h3m2 0h2m1 0h1m2 0h8M2 34.5h7m1 0h2m1 0h1m2 0h1m1 0h2m2 0h1m2 0h7\"/></svg>"},"牛カツ世桜 富士山店":{"url":"https://yosakura-system.github.io/yosakura-survey/store5.html","svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 37 37\" shape-rendering=\"crispEdges\"><path fill=\"#ffffff\" d=\"M0 0h37v37H0z\"/><path stroke=\"#000000\" d=\"M2 2.5h7m5 0h2m2 0h8m2 0h7M2 3.5h1m5 0h1m7 0h4m3 0h2m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h1m1 0h1m4 0h2m3 0h5m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m1 0h3m4 0h1m1 0h1m4 0h2m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h4m4 0h1m2 0h5m2 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m1 0h1m1 0h4m1 0h2m4 0h2m3 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M10 9.5h2m1 0h1m3 0h2m3 0h5M2 10.5h1m1 0h5m5 0h2m2 0h2m2 0h1m1 0h1m1 0h1m1 0h5M3 11.5h3m1 0h1m3 0h1m2 0h2m2 0h1m1 0h6m2 0h2m1 0h2m1 0h1M3 12.5h1m1 0h4m1 0h8m1 0h2m1 0h1m5 0h1m1 0h1m1 0h1M2 13.5h2m3 0h1m2 0h3m2 0h1m1 0h1m2 0h2m1 0h1m2 0h3m1 0h5M3 14.5h2m1 0h3m4 0h2m1 0h1m2 0h1m2 0h1m1 0h1m2 0h1m1 0h3m1 0h2M5 15.5h1m1 0h1m3 0h2m1 0h2m2 0h8m1 0h2m2 0h1m1 0h2M2 16.5h1m3 0h4m4 0h4m4 0h1m4 0h2m2 0h1m1 0h1M6 17.5h2m3 0h1m3 0h1m1 0h2m2 0h1m1 0h1m3 0h3m1 0h2M2 18.5h1m2 0h4m1 0h3m3 0h2m1 0h2m1 0h1m1 0h4m1 0h3m2 0h1M2 19.5h1m1 0h1m2 0h1m2 0h1m3 0h1m3 0h1m1 0h4m1 0h1m1 0h3m1 0h2m1 0h1M2 20.5h1m2 0h1m2 0h2m1 0h2m3 0h2m4 0h1m1 0h1m2 0h1m1 0h2m1 0h2M2 21.5h3m1 0h1m2 0h3m3 0h1m1 0h2m4 0h1m1 0h3m1 0h5M3 22.5h3m1 0h3m1 0h1m2 0h2m1 0h6m1 0h1m1 0h2m1 0h3m2 0h1M2 23.5h1m3 0h2m1 0h1m1 0h1m2 0h1m1 0h1m1 0h2m1 0h3m1 0h4m5 0h1M2 24.5h1m1 0h1m2 0h2m3 0h1m1 0h1m2 0h1m1 0h1m2 0h2m4 0h1m1 0h4M2 25.5h1m1 0h1m2 0h1m1 0h1m2 0h1m2 0h1m1 0h1m2 0h5m1 0h2m1 0h1m1 0h3M2 26.5h1m1 0h2m1 0h2m3 0h2m4 0h2m1 0h2m3 0h5m2 0h2M10 27.5h1m3 0h3m1 0h1m1 0h4m1 0h2m3 0h1m1 0h1m1 0h1M2 28.5h7m2 0h1m1 0h6m3 0h5m1 0h1m1 0h1m1 0h2M2 29.5h1m5 0h1m1 0h2m1 0h3m1 0h1m3 0h1m1 0h4m3 0h3m1 0h1M2 30.5h1m1 0h3m1 0h1m1 0h3m1 0h1m1 0h1m2 0h2m3 0h1m1 0h6m1 0h2M2 31.5h1m1 0h3m1 0h1m1 0h1m1 0h2m4 0h1m1 0h2m2 0h2m1 0h1m2 0h2m1 0h2M2 32.5h1m1 0h3m1 0h1m1 0h3m1 0h4m1 0h1m2 0h4m2 0h2m1 0h1M2 33.5h1m5 0h1m4 0h3m2 0h1m4 0h2m5 0h3M2 34.5h7m1 0h4m1 0h2m2 0h1m1 0h2m1 0h3m1 0h2m1 0h1m1 0h1\"/></svg>"},"日本鰻世桜 富士山店":{"url":"https://yosakura-system.github.io/yosakura-survey/store6.html","svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 37 37\" shape-rendering=\"crispEdges\"><path fill=\"#ffffff\" d=\"M0 0h37v37H0z\"/><path stroke=\"#000000\" d=\"M2 2.5h7m1 0h5m1 0h1m3 0h1m2 0h1m4 0h7M2 3.5h1m5 0h1m1 0h2m3 0h1m2 0h2m1 0h2m1 0h1m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h1m4 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m7 0h1m1 0h2m2 0h2m1 0h1m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h4m2 0h1m1 0h2m1 0h1m1 0h2m3 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m2 0h1m1 0h3m3 0h1m5 0h1m2 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M13 9.5h4m1 0h1m2 0h1m2 0h3M2 10.5h1m2 0h6m1 0h1m1 0h1m4 0h1m1 0h2m3 0h2m2 0h1m1 0h3M2 11.5h2m3 0h1m2 0h3m1 0h4m2 0h2m3 0h1m4 0h3M3 12.5h3m2 0h1m5 0h2m1 0h1m2 0h1m4 0h1m4 0h3m1 0h1M2 13.5h2m1 0h1m4 0h2m1 0h1m1 0h1m2 0h4m2 0h6m2 0h3M2 14.5h2m4 0h2m1 0h2m2 0h1m2 0h1m2 0h1m3 0h1m2 0h2M3 15.5h1m8 0h1m1 0h1m1 0h5m3 0h2m3 0h1m1 0h1M2 16.5h2m3 0h4m1 0h1m3 0h3m2 0h2m1 0h1m3 0h1m1 0h2M4 17.5h1m2 0h1m1 0h2m1 0h1m1 0h3m4 0h2m1 0h1m2 0h1m2 0h3m1 0h1M2 18.5h1m1 0h3m1 0h1m2 0h3m3 0h1m2 0h1m3 0h1m1 0h5M2 19.5h1m1 0h2m4 0h1m1 0h3m2 0h1m1 0h4m1 0h1m2 0h2m1 0h1m1 0h1m1 0h1M3 20.5h6m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1m3 0h1m2 0h2m1 0h2m1 0h1M2 21.5h1m2 0h1m6 0h1m5 0h1m2 0h2m2 0h2m1 0h1m1 0h3m1 0h1M2 22.5h3m2 0h2m1 0h2m2 0h1m2 0h1m1 0h2m1 0h1m3 0h1m2 0h1m1 0h1m1 0h2M2 23.5h1m2 0h1m11 0h1m1 0h1m1 0h1m2 0h4m1 0h2M2 24.5h1m2 0h1m2 0h1m1 0h1m1 0h1m1 0h1m1 0h2m5 0h1m1 0h1m4 0h1m1 0h3M2 25.5h1m3 0h1m4 0h1m1 0h1m1 0h1m2 0h5m2 0h3m2 0h1m1 0h2M2 26.5h2m1 0h2m1 0h1m1 0h1m2 0h1m1 0h2m7 0h8M10 27.5h2m2 0h2m1 0h2m1 0h1m4 0h2m3 0h1m1 0h2M2 28.5h7m1 0h1m1 0h4m1 0h1m1 0h1m1 0h3m1 0h2m1 0h1m1 0h1m1 0h1M2 29.5h1m5 0h1m1 0h1m2 0h2m1 0h1m1 0h1m1 0h3m2 0h2m3 0h3M2 30.5h1m1 0h3m1 0h1m1 0h1m1 0h5m3 0h1m1 0h1m1 0h7m2 0h1M2 31.5h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h2m1 0h3m1 0h1m3 0h1m1 0h1m3 0h2M2 32.5h1m1 0h3m1 0h1m2 0h1m5 0h2m2 0h1m1 0h1m3 0h1m1 0h2m2 0h2M2 33.5h1m5 0h1m2 0h1m1 0h2m1 0h3m2 0h2m1 0h1m2 0h8M2 34.5h7m1 0h2m4 0h1m1 0h2m2 0h1m2 0h7\"/></svg>"},"寿司世桜 心斎橋店":{"url":"https://yosakura-system.github.io/yosakura-survey/store7.html","svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 37 37\" shape-rendering=\"crispEdges\"><path fill=\"#ffffff\" d=\"M0 0h37v37H0z\"/><path stroke=\"#000000\" d=\"M2 2.5h7m1 0h1m1 0h3m1 0h1m3 0h1m2 0h1m4 0h7M2 3.5h1m5 0h1m1 0h2m3 0h1m2 0h2m1 0h2m1 0h1m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h2m3 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m2 0h1m2 0h1m1 0h1m1 0h2m2 0h2m1 0h1m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h1m1 0h2m1 0h1m1 0h2m3 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m2 0h1m2 0h2m3 0h1m5 0h1m2 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M13 9.5h1m1 0h2m1 0h1m2 0h1m2 0h3M2 10.5h1m2 0h6m1 0h3m4 0h1m1 0h2m3 0h2m2 0h1m1 0h3M3 11.5h1m3 0h1m2 0h1m1 0h1m1 0h4m2 0h2m3 0h1m4 0h3M3 12.5h6m2 0h1m2 0h2m1 0h1m2 0h1m4 0h1m4 0h3m1 0h1M3 13.5h1m1 0h1m4 0h1m2 0h1m1 0h1m2 0h4m2 0h6m2 0h3M2 14.5h2m2 0h6m3 0h1m2 0h1m2 0h1m3 0h1m2 0h2M4 15.5h2m1 0h1m2 0h1m5 0h5m3 0h2m3 0h1m1 0h1M2 16.5h4m1 0h3m2 0h1m3 0h3m2 0h2m1 0h1m3 0h1m1 0h2M7 17.5h1m1 0h2m1 0h1m2 0h2m4 0h2m1 0h1m2 0h1m2 0h3m1 0h1M2 18.5h1m1 0h3m1 0h1m2 0h2m4 0h1m2 0h1m3 0h1m1 0h5M4 19.5h2m4 0h6m1 0h1m1 0h4m1 0h1m2 0h2m1 0h1m1 0h1m1 0h1M2 20.5h1m1 0h2m2 0h1m1 0h1m2 0h1m2 0h4m1 0h1m3 0h1m2 0h2m1 0h2m1 0h1M5 21.5h3m3 0h1m3 0h2m1 0h1m2 0h2m2 0h2m1 0h1m1 0h3m1 0h1M2 22.5h3m2 0h2m1 0h2m3 0h1m1 0h1m1 0h2m1 0h1m3 0h1m2 0h1m1 0h1m1 0h2M2 23.5h4m1 0h1m1 0h2m2 0h2m1 0h2m1 0h1m1 0h1m2 0h4m1 0h2M2 24.5h1m1 0h1m3 0h1m3 0h3m1 0h2m5 0h1m1 0h1m4 0h1m1 0h3M2 25.5h1m2 0h2m4 0h1m1 0h1m1 0h1m2 0h5m2 0h3m2 0h1m1 0h2M2 26.5h5m1 0h3m4 0h2m7 0h8M10 27.5h1m3 0h1m2 0h2m1 0h1m4 0h2m3 0h1m1 0h2M2 28.5h7m1 0h2m1 0h2m2 0h1m1 0h1m1 0h3m1 0h2m1 0h1m1 0h1m1 0h1M2 29.5h1m5 0h1m1 0h1m2 0h4m1 0h1m2 0h2m2 0h2m3 0h3M2 30.5h1m1 0h3m1 0h1m1 0h1m2 0h1m6 0h1m1 0h1m1 0h7m2 0h1M2 31.5h1m1 0h3m1 0h1m1 0h5m1 0h2m1 0h3m1 0h1m3 0h1m1 0h1m3 0h2M2 32.5h1m1 0h3m1 0h1m2 0h1m5 0h2m2 0h1m1 0h1m3 0h1m1 0h2m2 0h2M2 33.5h1m5 0h1m2 0h1m1 0h2m1 0h3m2 0h2m1 0h1m2 0h8M2 34.5h7m1 0h2m1 0h1m2 0h1m1 0h2m2 0h1m2 0h7\"/></svg>"},"日本鰻世桜 浅草橋店":{"url":"https://yosakura-system.github.io/yosakura-survey/store8.html","svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 37 37\" shape-rendering=\"crispEdges\"><path fill=\"#ffffff\" d=\"M0 0h37v37H0z\"/><path stroke=\"#000000\" d=\"M2 2.5h7m1 0h5m1 0h1m3 0h1m2 0h1m4 0h7M2 3.5h1m5 0h1m1 0h1m4 0h1m2 0h2m1 0h2m1 0h1m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m7 0h1m1 0h2m2 0h2m1 0h1m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h2m4 0h1m1 0h2m1 0h1m1 0h2m3 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m2 0h1m1 0h1m1 0h1m3 0h1m5 0h1m2 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M14 9.5h3m1 0h1m2 0h1m2 0h3M2 10.5h1m2 0h6m1 0h3m4 0h1m1 0h2m3 0h2m2 0h1m1 0h3M2 11.5h2m3 0h1m2 0h1m1 0h1m1 0h4m2 0h2m3 0h1m4 0h3M2 12.5h4m1 0h2m3 0h1m1 0h2m1 0h1m2 0h1m4 0h1m4 0h3m1 0h1M3 13.5h1m1 0h1m1 0h1m2 0h1m2 0h1m1 0h1m2 0h4m2 0h6m2 0h3M2 14.5h1m2 0h1m2 0h2m1 0h2m2 0h1m2 0h1m2 0h1m3 0h1m2 0h2M9 15.5h2m1 0h1m3 0h5m3 0h2m3 0h1m1 0h1M2 16.5h3m2 0h3m2 0h2m2 0h3m2 0h2m1 0h1m3 0h1m1 0h2M5 17.5h1m1 0h1m1 0h1m2 0h1m2 0h2m4 0h2m1 0h1m2 0h1m2 0h3m1 0h1M2 18.5h1m1 0h3m1 0h2m1 0h2m4 0h1m2 0h1m3 0h1m1 0h5M2 19.5h1m1 0h3m3 0h6m1 0h1m1 0h4m1 0h1m2 0h2m1 0h1m1 0h1m1 0h1M4 20.5h2m2 0h1m1 0h1m1 0h2m3 0h3m1 0h1m3 0h1m2 0h2m1 0h2m1 0h1M2 21.5h2m1 0h1m6 0h1m2 0h1m2 0h1m2 0h2m2 0h2m1 0h1m1 0h3m1 0h1M4 22.5h1m3 0h1m6 0h1m1 0h1m1 0h2m1 0h1m3 0h1m2 0h1m1 0h1m1 0h2M2 23.5h2m1 0h1m3 0h2m1 0h1m3 0h2m1 0h1m1 0h1m2 0h4m1 0h2M2 24.5h1m1 0h1m3 0h1m3 0h3m1 0h2m5 0h1m1 0h1m4 0h1m1 0h3M2 25.5h1m1 0h3m4 0h1m1 0h1m1 0h1m2 0h5m2 0h3m2 0h1m1 0h2M2 26.5h2m1 0h2m1 0h3m2 0h1m1 0h2m7 0h8M10 27.5h2m2 0h1m2 0h4m4 0h2m3 0h1m1 0h2M2 28.5h7m1 0h1m1 0h6m2 0h4m1 0h2m1 0h1m1 0h1m1 0h1M2 29.5h1m5 0h1m1 0h6m2 0h1m1 0h3m2 0h2m3 0h3M2 30.5h1m1 0h3m1 0h1m1 0h2m1 0h1m2 0h1m3 0h1m1 0h1m1 0h7m2 0h1M2 31.5h1m1 0h3m1 0h1m1 0h4m2 0h2m1 0h3m1 0h1m3 0h1m1 0h1m3 0h2M2 32.5h1m1 0h3m1 0h1m2 0h1m1 0h2m2 0h2m2 0h1m1 0h1m3 0h1m1 0h2m2 0h2M2 33.5h1m5 0h1m2 0h1m1 0h1m2 0h3m2 0h2m1 0h1m2 0h8M2 34.5h7m1 0h2m4 0h1m1 0h2m2 0h1m2 0h7\"/></svg>"},"和牛世桜 広島店":{"url":"https://yosakura-system.github.io/yosakura-survey/store9.html","svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 37 37\" shape-rendering=\"crispEdges\"><path fill=\"#ffffff\" d=\"M0 0h37v37H0z\"/><path stroke=\"#000000\" d=\"M2 2.5h7m1 0h1m1 0h3m1 0h1m3 0h1m2 0h1m4 0h7M2 3.5h1m5 0h1m1 0h1m4 0h1m2 0h2m1 0h2m1 0h1m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h3m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m2 0h1m2 0h1m1 0h1m1 0h2m2 0h2m1 0h1m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h3m1 0h1m1 0h1m1 0h2m1 0h1m1 0h2m3 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m2 0h1m3 0h1m3 0h1m5 0h1m2 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M15 9.5h2m1 0h1m2 0h1m2 0h3M2 10.5h1m2 0h6m1 0h1m1 0h1m4 0h1m1 0h2m3 0h2m2 0h1m1 0h3M3 11.5h1m3 0h1m2 0h3m1 0h4m2 0h2m3 0h1m4 0h3M2 12.5h5m1 0h1m2 0h2m1 0h2m1 0h1m2 0h1m4 0h1m4 0h3m1 0h1M2 13.5h2m1 0h1m1 0h1m2 0h2m1 0h1m1 0h1m2 0h4m2 0h6m2 0h3M2 14.5h1m2 0h7m3 0h1m2 0h1m2 0h1m3 0h1m2 0h2M3 15.5h3m1 0h1m1 0h1m4 0h1m1 0h5m3 0h2m3 0h1m1 0h1M2 16.5h2m1 0h1m1 0h4m1 0h2m2 0h3m2 0h2m1 0h1m3 0h1m1 0h2M4 17.5h2m1 0h1m1 0h1m2 0h1m1 0h3m4 0h2m1 0h1m2 0h1m2 0h3m1 0h1M2 18.5h1m1 0h3m1 0h2m1 0h3m3 0h1m2 0h1m3 0h1m1 0h5M4 19.5h3m3 0h1m1 0h3m2 0h1m1 0h4m1 0h1m2 0h2m1 0h1m1 0h1m1 0h1M2 20.5h7m1 0h1m1 0h2m1 0h5m1 0h1m3 0h1m2 0h2m1 0h2m1 0h1M3 21.5h1m1 0h3m3 0h1m4 0h1m1 0h1m2 0h2m2 0h2m1 0h1m1 0h3m1 0h1M4 22.5h1m3 0h1m5 0h1m2 0h1m1 0h2m1 0h1m3 0h1m2 0h1m1 0h1m1 0h2M2 23.5h1m1 0h2m1 0h1m4 0h3m2 0h1m1 0h1m1 0h1m2 0h4m1 0h2M2 24.5h1m2 0h1m2 0h1m1 0h1m1 0h1m1 0h1m1 0h2m5 0h1m1 0h1m4 0h1m1 0h3M2 25.5h1m1 0h1m1 0h1m4 0h1m1 0h1m1 0h1m2 0h5m2 0h3m2 0h1m1 0h2M2 26.5h5m1 0h1m1 0h1m4 0h2m7 0h8M10 27.5h1m3 0h2m1 0h4m4 0h2m3 0h1m1 0h2M2 28.5h7m1 0h2m1 0h2m1 0h2m2 0h4m1 0h2m1 0h1m1 0h1m1 0h1M2 29.5h1m5 0h1m1 0h5m3 0h1m2 0h2m2 0h2m3 0h3M2 30.5h1m1 0h3m1 0h1m1 0h6m4 0h1m1 0h1m1 0h7m2 0h1M2 31.5h1m1 0h3m1 0h1m1 0h2m1 0h1m2 0h2m1 0h3m1 0h1m3 0h1m1 0h1m3 0h2M2 32.5h1m1 0h3m1 0h1m2 0h1m1 0h2m2 0h2m2 0h1m1 0h1m3 0h1m1 0h2m2 0h2M2 33.5h1m5 0h1m2 0h1m1 0h1m2 0h3m2 0h2m1 0h1m2 0h8M2 34.5h7m1 0h2m1 0h1m2 0h1m1 0h2m2 0h1m2 0h7\"/></svg>"}};
-  APP_VIEWS.surveyqr = () => {
+  APP_VIEWS.surveyqr = (...args) => { if (isPb() && getRole() !== 'hq') _pbHead = { t: L({ ja:'サーベイQR', en:'Survey QR', vi:'QR khảo sát' }), d: L({ ja:'お会計のときに、この画面をお客様にお見せください。', en:'Show this screen to guests at payment.', vi:'Đưa màn hình này cho khách khi thanh toán.' }) }; return APP_VIEWS._surveyqr0(...args); };
+  APP_VIEWS._surveyqr0 = () => {
     const vis = visibleStores();
     let store = localStorage.getItem('yosakura_svqr_store') || vis[0];
     if (!vis.includes(store)) store = vis[0];
@@ -3373,7 +3710,7 @@
         {ja:'食器類のケース・破損確認',d:{ja:'食器を出してケース内をアルコールで拭く／戻してテプラを貼り直す／ひび割れや破損がないか確認'}},
         {ja:'冷凍庫（内部・外部）',d:{ja:'中身を全部出す／ダスターを湿らせアルコールで拭く／ストック用ケースはシンクで洗浄／外側の扉も'}},
         {ja:'冷凍庫（フィルター）',d:{ja:'取り外してシンクで洗い流す／乾かしてから戻す'}},
-        {ja:'器の数と欠け（チップ）',en:'Tableware count & chips',vi:'Đếm bát đĩa & đồ mẻ',go:'/app/zaiko',goT:{ja:'在庫数を入力へ',en:'Open Stock count',vi:'Mở Tồn kho'},d:{ja:'週に1回が最低。曜日は店で決めてよい（水曜は目安。変えるときは、この項目を外して、やりたい曜日に足す）／種類ごとに数えて「在庫数」の器の欄へ／数えるときに欠け・ひびをしっかり見て、ある器は取り除いて使わない（怪我のもと・報告は不要）',en:'At least once a week; the store picks the day (Wednesday is just a guide — hide this item and add it to another day if you prefer). Count each type into Stock (tableware). While counting, check carefully for chips and cracks and remove those pieces (no report needed).',vi:'Ít nhất 1 lần/tuần; cửa hàng tự chọn ngày (thứ Tư chỉ là gợi ý — có thể ẩn mục này và thêm vào ngày khác). Đếm từng loại vào Tồn kho (bát đĩa). Khi đếm, kiểm tra kỹ đồ mẻ/nứt và loại bỏ (không cần báo cáo).'}} ] },   /* ★2026-10-12 神田さん「チップは報告いらない。器の棚卸のときにしっかり確認。曜日は固定せず店舗に委ねる。週1回が最低」 */
+      ] },   /* ★2026-10-20 器の数と欠けは定期衛生（水曜）から外し、提出物の「今週」の1件へ（神田さん「曜日に固定せず、週に1回の業務としてワンクリックで」）。数え方は在庫の数の器の画面に */
       { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
         {ja:'レジカウンター周辺',d:{ja:'レジ周りの埃／整理整頓／アルコールで全体を拭く／金銭トレイ・チラシ立ても／カウンターの後ろも／傘立ては水を捨てて掃除'}},
         {ja:'バックヤード',d:{ja:'何がどこにあるか見て分かるように整理し、名称を表示／昼と夜の物を分ける／使ったものは必ず元に戻す'}},
@@ -3397,8 +3734,7 @@
     { d:6, g:[
       { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
         {ja:'ポットの洗浄',d:{ja:'専用の洗浄剤を使用方法に従って／本体もアルコールで拭く（放置すると汚れが落ちなくなり故障の原因に）'}},
-        {ja:'シンク下・作業台下',d:{ja:'下の物を全部出す／アルコールで汚れを拭き取る／出した物が汚れていれば拭く／元に戻す（全部出さないときれいにならない）'}},
-        {ja:'スタッフルーム・厨房の整理整頓',en:'Staff room & kitchen tidy-up',vi:'Dọn phòng nhân viên & bếp',d:{ja:'私物・段ボール・書類を片づける／ゴミ箱の中とフードダクトの周りも見る',en:'Clear personal items, boxes and papers; check inside bins and around the hood.',vi:'Dọn đồ cá nhân, thùng, giấy; xem trong thùng rác và quanh hút mùi.'}} ] },
+        {ja:'シンク下・作業台下',d:{ja:'下の物を全部出す／アルコールで汚れを拭き取る／出した物が汚れていれば拭く／元に戻す（全部出さないときれいにならない）'}} ] },   /* ★2026-10-20 土曜の整理整頓（スタッフルーム）は定期衛生から外し、提出物の「今週」の必須へ（神田さん「今伝えたものは必須に」） */
       { g:{ja:'ホール',en:'Hall',vi:'Sảnh'}, items:[
         {ja:'外看板の清掃',d:{ja:'フィルムやフレームを拭き上げ／同時に外観の清掃も／コンセントの故障やポスターの色褪せも確認'}},
         {ja:'椅子',d:{ja:'フレームや脚を拭き上げ／足を乗せる場所の黒ずみは必ず落とす／脚裏のアジャスターやクッションが取れていないか'}} ] } ] }
@@ -3945,6 +4281,26 @@
           <button class="mini" id="ckBulkAdd" style="margin-top:4px">${L({ ja:'まとめて追加', en:'Add all', vi:'Thêm tất cả' })}</button>
         </details>` : ''}
       </div>`;
+    /* ★2026-10-20 案Bの見本＝「0／6 右の写真がお手本。項目はこの店の店長が外せます。」→1行1項目の大きなチェック→下に「あと○項目」。
+       種類の切替は出さない（きょうやることから選ぶ）。フロア・曜日の切替、店ごとの項目（富士山2店の独自項目・本店の外し）、記録（ckdone）はそのまま。
+       追加・外した項目を戻す・お手本の登録は、店長・オーナーだけ下の折りたたみで */
+    if (isPb() && getRole() !== 'hq') {
+      const PBN = { open:'OPENチェック', idle:'お手すきチェック', close:'CLOSEチェック', sakura:'桜（トイレ）', hygiene:'定期衛生' };
+      const base = ckBase(mode);
+      const left = Math.max(0, allIds.length - n);
+      _pbHead = { t: LANG === 'ja' ? (PBN[base] || '') : L((CK_MODES.find(m => m.v === base) || {}).t || ''),
+        h: `<b class="pb-ckn"><span id="ckCount">${n}</span>／${allIds.length}</b>　${esc(L({ ja: ckSmpPhotos.length ? '上の写真がお手本。項目はこの店の店長が外せます。' : '上から順に。項目はこの店の店長が外せます。', en:'Go from the top. Managers can remove items.', vi:'Làm từ trên xuống. Quản lý có thể bỏ mục.' }))}` };
+      const unassignedRows = unassigned.map(customRow).join('');
+      return `
+        ${ckFloorStore(store) ? `<div class="seg" data-seg="ckfloor" style="margin:0 0 8px">${CK_FLOORS.map(f => `<button type="button" data-ckfloor="${f.v}" class="${f.v===ckFloor(mode)?'on':''}">${L(f.t)}</button>`).join('')}</div>` : ''}
+        ${base === 'hygiene' ? `<div class="seg" data-seg="hygday" style="margin:0 0 8px"><button type="button" data-hygall="1" class="${hygAll ? 'on' : ''}">${L({ ja:'全体', en:'All', vi:'Tất cả' })}</button>${WDAY_LABELS.map((w, i) => `<button type="button" data-hygday="${i}" class="${!hygAll && i === hygDay ? 'on' : ''}">${L(w)}</button>`).join('')}</div>` : ''}
+        <div class="bar-track pb-ckbar"><div class="bar-fill" id="ckBar" style="width:${Math.round(n/total*100)}%"></div></div>
+        ${ckSmpPhotos.length ? `<div class="pb-ckmodel">${ckSmpPhotos.map(p => `<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join('')}${ckSmpMemo ? `<div class="pb-smpmemo">${esc(ckSmpMemo)}</div>` : ''}</div>` : ''}
+        <div class="pb-cklist">${hygAll ? hygAllHTML : groupsHTML + (unassignedRows ? `<div class="sec-h" style="margin:16px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'この店の項目', en:'This store', vi:'Mục của cửa hàng' })}</h2></div><div class="card" style="padding:4px 14px">${unassignedRows}</div>` : '')}</div>
+        <button type="button" class="btn-primary pb-big${left ? ' dim' : ''}" id="pbCkLeft"${left ? '' : ' data-tab="home"'}>${left ? L({ ja:`あと ${left}項目`, en:`${left} left`, vi:`Còn ${left} mục` }) : L({ ja:'できました（きょうやることへ）', en:'Done (back to Today)', vi:'Xong (về Hôm nay)' })}</button>
+        ${CK_NOTES[base] ? `<div class="hint" style="display:block;margin-top:8px">${L(CK_NOTES[base])}</div>` : ''}
+        ${editable ? `<details class="pb-card pb-more"><summary>${L({ ja:'項目を足す・外した項目・お手本（店長・オーナー）', en:'Add items, removed items, model (manager)', vi:'Thêm mục, mục đã bỏ, mẫu (quản lý)' })}</summary>${ckSmpHTML}${customHTML}${hiddenHTML}</details>` : ''}`;
+    }
     return `
       ${NOTE(canHide
         ? { ja:`◆ この一覧を出発点として、店舗ごとに作り替えられます。使わない項目は「×」で外し、必要な項目は下から追加してください。追加のときにホール・キッチン等の分類も選べます（店長・オーナーのみ${ckBase(mode) === 'hygiene' ? '／曜日ごとに保存されます' : ''}）`,
@@ -5375,7 +5731,8 @@
     ];
     // タブはURL（?tab=）が最優先＝ガイド等からタブ指定で飛べる。無ければ前回選んだタブ、初回は入力
     const urlSkTab = currentRoute().params.get('tab');
-    const skTab = SKT.some(o => o.v === urlSkTab) ? urlSkTab
+    const PBN = isPb() && getRole() !== 'hq';   // ★2026-10-20 案Bの店舗側＝見本と同じ1枚（タブを出さない）
+    const skTab = PBN ? 'input' : SKT.some(o => o.v === urlSkTab) ? urlSkTab
       : SKT.some(o => o.v === localStorage.getItem('yosakura_soukatsu_tab')) ? localStorage.getItem('yosakura_soukatsu_tab') : 'input';
     const skTabSeg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="sktab">${SKT.map(o => `<button type="button" data-sktab="${o.v}" class="${o.v === skTab ? 'on' : ''}">${L(o.t)}</button>`).join('')}</div></div>`;
     /* 店舗比較（複数店舗を見られる本部・オーナー）／個店サマリー（1店舗）
@@ -5400,7 +5757,7 @@
     })();
     return `
       ${NOTE({ ja:'◆ 出すと本部に届きます', en:'Submitting sends it to HQ', vi:'Gửi là đến HQ' })}
-      ${skTabSeg}
+      ${PBN ? '' : skTabSeg}
       ${head}
       ${skTab !== 'input' ? '' : (() => { const skCum0 = skCumBase(vis[0], today); return `<div class="card" id="skForm">
         <h3>${L({ ja:'本日の日報', en:'Daily report', vi:'Báo cáo ngày' })}</h3>
@@ -5446,7 +5803,7 @@
           <label class="fld"><span>${L({ja:'キャンセル 累計（自動計算）',en:'Cancel total (auto)',vi:'Hủy tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_cancel" placeholder="31700" value="${skCum0.cancel || ''}"></label>
           <label class="fld"><span>${L({ja:'レジ締め担当',en:'Cash-up by',vi:'Người chốt sổ'})}</span><input type="text" id="sk_closer" placeholder="${L({ja:'担当者名',en:'staff name',vi:'tên NV'})}"></label>
         </div>
-        ${(skSlipsLoad_(vis[0], todayKey(), null), skSlipsHtml_())}
+        ${(skSlipsLoad_(vis[0], skEditTarget_().date || skDefaultDate_(vis[0]), null), skSlipsHtml_())}   // ★2026-10-20 既定の日付（12時前は前日）で読む＝翌朝に撮った納品書が前日の日報に出る
         <div class="sk-grid">
           ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_cash"><input type="hidden" id="sk_card">'}
           <label class="fld"><span>${L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'})}</span><input type="text" inputmode="numeric" id="sk_lunch" placeholder="186400" value="${skChukanToday(vis[0]) != null ? skChukanToday(vis[0]) : ''}"></label>
@@ -5571,7 +5928,7 @@
      - 個店の行をタップ→個店カルテ（#/store）。日付の行・棒をタップ→その日の日報（全項目）
      ============================================================ */
   // 表示名：同じ地名に複数店（長堀橋＝牛カツ/鰻、富士山＝牛カツ/鰻、心斎橋＝寿司/日本料理）があるため業態を前置
-  const storeLabel = (s) => { const g = storeGyotai(s); return (g ? gyotaiLabel(g) + '・' : '') + storeShort(s); };
+  const storeLabel = (s) => { if (storeNeedsBrand_(s)) return storeShort(s); const g = storeGyotai(s); return (g ? gyotaiLabel(g) + '・' : '') + storeShort(s); };   // ★2026-10-21 同じ地名の店は storeShort が業態つき＝二重に付けない
   const numOr0 = (v) => Number(String(v == null ? '' : v).replace(/[^0-9.-]/g, '')) || 0;
   const hasVal = (v) => v !== undefined && v !== null && String(v).trim() !== '';
   const yenShort = (n) => {
@@ -7505,6 +7862,13 @@
     return [
       // ── 毎日 ──
       { id:'openphoto',  name:{ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'},                 oblig:'required', freq:'daily', due:'11:00', target:'all', hqReview:'none',      detect:'subrec', linkApp:'openphoto' },
+      /* ★2026-10-20 永井さんとの電話（牛カツ長堀橋・手巻き寿司難波）＝紙のチェック表とアプリの二重チェックをやめる。
+         OPEN・CLOSEチェックは記入した紙のチェック表を撮って出す（CK_PHOTO_STORES_ の店はアプリの項目チェックを出さない）。
+         難波店はグループLINEで送っていた一食目写真をアプリで受ける（オープン写真の直後）。お手すき・在庫の数は今までどおり */
+      { id:'ichishoku', name:{ja:'一食目写真',en:'First-plate photo',vi:'Ảnh món đầu tiên'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['手巻き寿司世桜 難波店'], hqReview:'none', detect:'subrec', linkApp:'openphoto', slot:'asa', autoAdd:true, after:'openphoto',
+        how:{ja:'その日の1食目を、お出しする前に撮って提出してください',en:'Photograph the first plate of the day before serving',vi:'Chụp món đầu tiên trong ngày trước khi phục vụ'} },
+      { id:'ck_open_photo', name:{ja:'OPENチェック表の写真',en:'Opening check sheet photo',vi:'Ảnh bảng kiểm mở cửa'}, oblig:'store', freq:'daily', due:'11:00', target:'stores', stores:['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店', '日本鰻世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto', slot:'asa', autoAdd:true, after:'ichishoku',
+        how:{ja:'記入したOPENチェック表を撮って提出してください',en:'Photograph the filled opening check sheet',vi:'Chụp bảng kiểm mở cửa đã điền'} },
       { id:'ck_open',    name:{ja:'オープンチェックリスト',en:'Opening checklist',vi:'Checklist mở cửa'}, oblig:'store',  freq:'daily', due:'11:00', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'open',   linkApp:'checklist' },
       /* ★予約状況＝長堀橋トライアル（2026-09-01）。LINEでの共有の形が確認できていないため、
          まず「その日の予約が分かる写真」で受ける。締切・中身は常山さんのFBを聞いてから調整する */
@@ -7535,6 +7899,8 @@
       { id:'zaiko_photo', name:{ja:'在庫チェック表の写真',en:'Stock check sheet photos',vi:'Ảnh bảng kiểm kho'}, oblig:'off', autoOff:true,   // 2026-09-18 在庫数の入力に置き換え＝写真は不要（神田さん） freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'記入した在庫チェック表（食材①②・ドリンク・消耗品）を撮影して提出してください',en:'Photograph the filled stock check sheets (ingredients, drinks, supplies)',vi:'Chụp các bảng kiểm kho đã điền (nguyên liệu, đồ uống, vật tư)'} },
       { id:'ck_close',   name:{ja:'クローズチェックリスト',en:'Closing checklist',vi:'Checklist đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'all', hqReview:'none',      detect:'ckdone', ckMode:'close',  linkApp:'checklist' },
+      { id:'ck_close_photo', name:{ja:'CLOSEチェック表の写真',en:'Closing check sheet photo',vi:'Ảnh bảng kiểm đóng cửa'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店', '日本鰻世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto', slot:'shime', autoAdd:true, after:'ck_close',
+        how:{ja:'記入したCLOSEチェック表を撮って提出してください',en:'Photograph the filled closing check sheet',vi:'Chụp bảng kiểm đóng cửa đã điền'} },
       { id:'nikkei_close', name:{ja:'日計レポート（レジクローズ）',en:'Daily sales report (register close)',vi:'Báo cáo doanh thu (đóng ca)'}, oblig:'store', freq:'daily', due:'23:59', target:'stores', stores:['牛カツ世桜 長堀橋店'], hqReview:'none', detect:'subrec', linkApp:'openphoto',
         how:{ja:'レジクローズ時に日計レポートを出力し、現金売上の封筒と合わせて撮影・提出してください（★封筒やメモでレポートの数字を隠さないでください＝写真から数字を自動で読み取り、日報の入力に入れます）',en:'Print the daily report at register close and submit it with the cash envelope (keep all numbers visible — they are read automatically into the summary sheet)',vi:'In báo cáo lúc đóng ca và nộp ảnh cùng phong bì tiền mặt (không che các con số — số sẽ được đọc tự động vào bảng tổng kết)'} },
       /* ★現金売上・チップの写真（2026-09-02 常山さん経由・m.taigaさんのご要望）。
@@ -7556,6 +7922,13 @@
       { id:'kizuki',     name:{ja:'気づきの報告',en:'Daily insights',vi:'Ghi nhận cuối ca'},           oblig:'store',    freq:'daily', due:'23:59', target:'all', hqReview:'none',  detect:'kizuki', linkApp:'kizuki',
         how:{ja:'クローズ後に、その日の気づきを共有してください（無い日は出さなくて大丈夫です）',en:'Share what you noticed after closing (skip if nothing)',vi:'Sau khi đóng cửa, chia sẻ điều bạn nhận thấy (không có thì bỏ qua)'} },
       // ── 毎週 ──
+      /* ★器の数と欠け（2026-10-20 神田さん「曜日に固定せず、週に1回の業務としてワンクリックで」）＝これまで定期衛生の水曜に入っていた。
+         今週のうちに1回、器の画面（在庫の数の器の品目だけ）で数えて提出。チップは報告不要＝数えるときに取り除く（10/12） */
+      /* ★スタッフルーム・厨房の整理整頓（田中さん 9/18 全店発信④＝見えない場所の清掃）＝週に1回・押すだけ（2026-10-20 神田さん「必須に」） */
+      { id:'staffroom', name:{ja:'スタッフルーム・厨房の整理整頓',en:'Staff room & kitchen tidy-up',vi:'Dọn phòng nhân viên & bếp'}, oblig:'required', freq:'weekly', due:'23:59', target:'all', hqReview:'none', detect:'didit', autoAdd:true,
+        how:{ja:'週に1回。私物・段ボール・書類を片づけ、ゴミ箱の中とフードダクトの周りも見たら「実施しました」を押してください',en:'Once a week: clear personal items, boxes and papers; check bins and around the hood, then tap “Done”',vi:'Mỗi tuần 1 lần: dọn đồ cá nhân, thùng, giấy; xem thùng rác và quanh hút mùi rồi bấm “Đã làm”'} },
+      { id:'utsuwa', name:{ja:'器の数と欠け',en:'Tableware count & chips',vi:'Đếm bát đĩa & đồ mẻ'}, oblig:'required', freq:'weekly', due:'23:59', target:'all', hqReview:'none', detect:'zaikowk', linkApp:'zaiko', autoAdd:true,
+        how:{ja:'週に1回、都合のよい日に器を種類ごとに数えて提出してください（欠け・ひびのある器は使わずに破棄）',en:'Once a week, count tableware by type and submit (discard chipped or cracked pieces)',vi:'Mỗi tuần 1 lần, đếm bát đĩa theo loại và gửi (bỏ đồ mẻ/nứt)'} },
       { id:'pop_week',   name:{ja:'卓上POPの交換',en:'Table POP replacement',vi:'Thay POP bàn'},        oblig:'required', freq:'weekly', due:'23:59', target:'gyotai_in', gyotai:['gyukatsu'], hqReview:'none', detect:'didit', how:{ja:'新しいものと交換したら「実施しました」を押してください',en:'Replace with new ones, then tap “Done”',vi:'Thay mới rồi bấm “Đã làm”'} }, // 牛カツは油汚れ対策で週1
       // ── 毎月 ──
       /* ★総括表とPLは別のもの（2026-08-12 神田さんのご指摘で整理）。
@@ -7657,7 +8030,7 @@
       base = (Array.isArray(m) && m.length) ? m : defaultMasters();
     }
     /* ★既定に autoAdd の印がある項目は、本部が保存した一覧に無くても足す（2026-09-18 在庫数の入力） */
-    defaultMasters().forEach(d => { if (d.autoAdd && !base.some(b => b.id === d.id)) base = base.concat([d]); });
+    defaultMasters().forEach(d => { if (d.autoAdd && !base.some(b => b.id === d.id)) { const i = d.after ? base.findIndex(b => b.id === d.after) : -1; base = i >= 0 ? base.slice(0, i + 1).concat([d], base.slice(i + 1)) : base.concat([d]); } });   // ★after＝この項目の直後に入れる（2026-10-20 一食目写真はオープン写真の直後）
     /* ★既定で autoOff の項目は、本部が保存した一覧でも「対象外」にする（2026-09-18 在庫チェック表の写真） */
     { const offIds = defaultMasters().filter(d => d.autoOff).map(d => d.id); if (offIds.length) base = base.map(b => offIds.includes(b.id) ? Object.assign({}, b, { oblig: 'off' }) : b); }
     const urls = getMasterUrls();
@@ -7724,13 +8097,21 @@
   }
 
   // この提出物がこの店舗に適用されるか（対象設定＋コース除外＋業態出し分け＋対象外オフ）
+  /* ★2026-10-20 神田さん「デモと同じ7つ＋日報に揃えて」＝毎日の提出物は全店この8つだけ（案Bの見本）。
+     中間報告・日計レポート・現金売上／チップ／納品書の写真・金種別・予約状況・一食目写真・定期衛生（曜日）・在庫表の写真は毎日の一覧に出さない
+     （レジの数字は毎朝自動・納品書は日報で入れる・定期衛生は「今週・今月」から）。チェックの中身は店ごとの設定（富士山2店の独自項目など）のまま */
+  const DAILY_KEEP_ = ['openphoto', 'ichishoku', 'ck_open', 'ck_open_photo', 'ck_idle', 'ck_sakura', 'ck_close', 'ck_close_photo', 'zaiko', 'kizuki', 'nippou'];
+  const CK_PHOTO_STORES_ = ['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店', '日本鰻世桜 長堀橋店'];   // ★2026-10-20 永井さん＝OPEN・CLOSEは紙のチェック表の写真で出す店（アプリの項目チェックは出さない）。21:22 永井さん「日本鰻長堀橋も同じ形で」
+  const dailyKeepOn_ = () => { try { return localStorage.getItem('yosakura_daily_all') !== '1'; } catch (e) { return true; } };   // 検査用＝これまでの全項目で回すときだけ '1'
   function appliesToStore(m, store) {
     if (m.oblig === 'off') return false;
     if (m.target === 'except_course' && storeMeta(store).course) return false;
     if (m.target === 'stores' && Array.isArray(m.stores) && !m.stores.includes(store)) return false;
     if (m.target === 'gyotai_in' && Array.isArray(m.gyotai) && !m.gyotai.includes(storeMeta(store).gyotai)) return false; // 指定業態のみ（例：牛カツのみ）
     if (m.target === 'gyotai_ex' && Array.isArray(m.gyotai) && m.gyotai.includes(storeMeta(store).gyotai)) return false;  // 指定業態を除く（例：牛カツ以外）
-    if (m.detect === 'zaiko' && !zkDueToday(store)) return false;   // 在庫数の入力＝今日確認する品目が無い日は出さない（2026-09-19）
+    if ((m.id === 'ck_open' || m.id === 'ck_close') && CK_PHOTO_STORES_.includes(store)) return false;   // 写真で出す店（ck_open_photo／ck_close_photo）
+    if (m.detect === 'zaiko' && !zkDueToday(store)) return false;
+    if (m.detect === 'zaikowk' && !zkWeekItems_(store).length) return false;   // 器の品目が無い店には出さない   // 在庫数の入力＝今日確認する品目が無い日は出さない（2026-09-19）
     return true;
   }
   // 週キー（月曜始まり）＝週次提出の「今週提出済み」判定に使用
@@ -7761,7 +8142,8 @@
       if (m.detect === 'chukan') return getReports().some(r => r.kind === 'chukan' && r.store === store && inScope(r.t));
       // 金種別入力（レジクローズ）＝当日の kinshu 記録が1件でもあれば提出済み
       if (m.detect === 'kinshu') return getReports().some(r => r.kind === 'kinshu' && r.store === store && inScope(r.t));
-      if (m.detect === 'zaiko')  return getReports().some(r => r.kind === 'zaiko' && r.store === store && inScope(r.t));
+      if (m.detect === 'zaiko')  return getReports().some(r => r.kind === 'zaiko' && r.store === store && inScope(r.t) && !(parseNote(r.note) || {}).wk);   // 器の画面からの提出（wk）は日々の在庫に数えない
+      if (m.detect === 'zaikowk') return getReports().some(r => r.kind === 'zaiko' && r.store === store && inScope(r.t) && (parseNote(r.note) || {}).wk);
       if (m.detect === 'checks') { const c = jget(LS.checks, []); return Array.isArray(c) && c.some(r => r.store === store && inScope(r.t)); }
       /* アプリのチェックリスト＝★その日の項目が「全部」終わったときだけ提出済みとする。
          2026-08-12 神田さんのご指摘で修正。以前は1つでもチェックすれば実施とみなしていたため、
@@ -7780,7 +8162,8 @@
   function todayItemsFor(store) {
     const today = dateKeyFor(store, Date.now());
     const yday = dateKeyFor(store, Date.now() - 864e5);
-    return getMasters(store).filter(m => appliesToStore(m, store)).map(m => {
+    // ★2026-10-20 毎日の一覧は8つだけ（DAILY_KEEP_）。履歴・写真の切替・本部からの返答の行き先は外さない（バックチェック：外すと納品書の返答がオープン写真を開いた）
+    return getMasters(store).filter(m => appliesToStore(m, store) && !(m.freq === 'daily' && !DAILY_KEEP_.includes(m.id) && dailyKeepOn_())).map(m => {
       // dueNextDay＝「前日分を翌日◯時までに出す」提出物（日報）。対象日は前日になる
       const prev = !!m.dueNextDay && m.freq === 'daily';
       const dk = prev ? yday : today;
@@ -7812,7 +8195,7 @@
        ここで「どれを開くか」を渡さないと、前回見ていた種類が開いてしまう。
        （2026-08-12 神田さんのご指摘。オープンを押したのにアイドルが開く状態だった） */
     const openArg = it.m.ckMode ? ` data-tsubmode="${it.m.ckMode}"`
-      : (it.m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(it.m.id)}"` : '');
+      : (it.m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(it.m.id)}"` : it.m.detect === 'zaikowk' ? ' data-tsubq="wk=1"' : '');
     /* 「実施するだけ」の項目（卓上POPの交換など）は、開く画面が無い。
        写真も要らないので、その場で押せる「実施しました」を出す。
        押した記録は写真の提出と同じ置き場に残るので、本部からも実施状況が見える。 */
@@ -8126,7 +8509,7 @@
     return `
       <div class="card">
         <h3>${L({ ja:'曜日別業務（定期衛生）', en:'By weekday (periodic hygiene)', vi:'Theo ngày (vệ sinh định kỳ)' })} — ${esc(storeShort(store))}</h3>
-        <p class="hint" style="display:block">${L({ ja:'曜日ごとに決められた箇所を掃除して、1週間で店を1周します。今日の分は「日次業務」にも出ます。', en:'Each weekday has its own spots; the whole store is covered in a week. Today’s spots also appear in Daily tasks.', vi:'Mỗi ngày có khu vực riêng; cả tuần đi hết cửa hàng. Việc hôm nay cũng có trong Hàng ngày.' })}</p>
+        <p class="hint" style="display:block">${L({ ja:'曜日ごとに決められた箇所を掃除して、1週間で店を1周します。', en:'Each weekday has its own spots; the whole store is covered in a week. Today’s spots also appear in Daily tasks.', vi:'Mỗi ngày có khu vực riêng; cả tuần đi hết cửa hàng. Việc hôm nay cũng có trong Hàng ngày.' })}</p>
         <div class="seg" data-seg="hygpick" style="margin:4px 0 10px">${WDAY_LABELS.map((w, i) => `<button type="button" data-hygpick="${i}" class="${i === d ? 'on' : ''}">${L(w)}${i === today ? `<small style="display:block;font-size:9px;line-height:1">${L({ ja:'今日', en:'today', vi:'nay' })}</small>` : ''}</button>`).join('')}</div>
         ${spots.length ? spots.map(n => `<div class="rep"><span class="kind b">${svg('check')}</span><div class="body"><div class="l1">${esc(n)}</div></div></div>`).join('') : `<div class="muted">${L({ ja:'この曜日の箇所はありません', en:'No spots for this day', vi:'Không có mục cho ngày này' })}</div>`}
         <button class="btn-primary" data-hygopen="${d}" style="margin-top:10px">${L({ ja:'この曜日の点検を開く ›', en:'Open this day’s check ›', vi:'Mở kiểm tra ngày này ›' })}</button>
@@ -8140,8 +8523,29 @@
         <p class="hint" style="display:block">${esc(L({ ja:'提出そのものは本部に届いています。押すと、本部のデータからこの一覧を作り直します。', en:'Your submissions did reach HQ. Tap to rebuild this list from HQ data.', vi:'Các mục đã đến trụ sở. Bấm để tạo lại danh sách từ dữ liệu trụ sở.' }))}</p>
         <button type="button" class="mini" data-refetch="1" style="margin-top:6px">${esc(L({ ja:'表示を取り直す', en:'Rebuild the list', vi:'Tạo lại danh sách' }))}</button>
       </div>` : '';
+  /* ★2026-10-20 神田さん「本部iPhoneの容量いっぱいを自動で定点チェックしてリセット」＝取り込みの保存に失敗（LSFULL）したら、
+     人が「表示を取り直す」を押すのを待たずに、端末の控え（作り直せるキーだけ）を全部捨てて本部データから取り直す。
+     ・提出・写真の下書き・ログインは消さない（REBUILDABLE_KEYS だけ）
+     ・10分に1回まで（それでも入らない端末で同期のたびに繰り返さない）
+     ・やったことは apperr（LSRESET）で本部データへ＝見守りの毎時メールに出る */
+  let _lsResetAt = 0;
+  function autoResetStorage_() {
+    if (Date.now() - _lsResetAt < 10 * 60e3) return;
+    _lsResetAt = Date.now();
+    const u = lsUsage_();
+    REBUILDABLE_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+    try { localStorage.removeItem('yosakura_demo_raw'); } catch (e) {}
+    _rawKeysMem = ''; _distFail = false; _lsFull = false;
+    try {
+      const t = Date.now();
+      const e = { code: 'LSRESET', t, path: String(location.hash || '').replace(/^#/, ''), msg: 'storage full: cleared rebuildable keys and resyncing', detail: (Math.round(u.total / 1024) + 'KB ' + u.top).slice(0, 600), store: (visibleStores()[0] || ''), role: getRole(), by: getUserName() || '' };
+      if (useBackend()) fetch(getApiUrl(), { method:'POST', body: JSON.stringify(Object.assign({ token: authToken() }, { kind:'apperr', store: e.store, item: 'LSRESET', level:'', note: JSON.stringify(e), photos: [], t })) }).catch(() => {});
+    } catch (x) {}
+    setTimeout(() => { try { syncReports(true); } catch (e) {} }, 500);
+  }
   function refetchAll_() {
     try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {}
+    _rawKeysMem = '';
     _distFail = false; _lsFull = false;
     toast(L({ ja:'本部のデータから取り直しています…', en:'Rebuilding from HQ data…', vi:'Đang tạo lại từ dữ liệu trụ sở…' }));
     syncReports(true);
@@ -8417,6 +8821,9 @@
   const photoSubIds = () => { const s = visibleStores()[0]; return getMasters(s).filter(m => m.detect === 'subrec' && m.linkApp === 'openphoto' && appliesToStore(m, s)).map(m => m.id); };
   const getPhotoTarget = () => {
     const v = localStorage.getItem('yosakura_photo_target');
+    /* ★2026-10-20 原さん（心斎橋）「納品書を撮るを押すとオープン写真の画面になる」＝提出物「納品書の写真」が無い店では nouhin が openphoto に戻されていた。
+       納品書の写真（OCR）は全店で使う＝店の提出物に関係なく通す */
+    if (v === 'nouhin') return v;
     return photoSubIds().includes(v) ? v : 'openphoto';
   };
   // 何をどう撮るか（画面に出す案内）。項目が増えたらここに足す
@@ -8429,7 +8836,10 @@
     nikkei_idle:  { ja:'レジから出した日計レポート（取引別・商品別）を、文字が読める距離で撮ってください。', en:'Photograph the printed daily report so the text is readable.', vi:'Chụp báo cáo doanh thu đã in, chữ đọc được rõ.' },
     nouhin:       { ja:'真上から、影を入れずに撮ってください。', en:'Shoot straight down, without shadows.', vi:'Chụp thẳng từ trên xuống, không có bóng.' },   // 1枚ずつ・合計まで＝下の赤字1行（2026-10-15 短く）
     zaiko_photo:  { ja:'記入後の在庫チェック表を1枚ずつ撮ってください（食材①②・ドリンク・消耗品）。', en:'Photograph each filled stock sheet (ingredients ①②, drinks, supplies).', vi:'Chụp từng bảng kiểm kho đã điền (nguyên liệu ①②, đồ uống, vật tư).' },
-    nikkei_close: { ja:'クローズの日計レポート3枚と現金売上の封筒を撮ってください。', en:'Photograph the three closing reports and the cash envelope.', vi:'Chụp 3 báo cáo đóng ca và phong bì tiền mặt.' }
+    nikkei_close: { ja:'クローズの日計レポート3枚と現金売上の封筒を撮ってください。', en:'Photograph the three closing reports and the cash envelope.', vi:'Chụp 3 báo cáo đóng ca và phong bì tiền mặt.' },
+    ck_open_photo:  { ja:'記入したOPENチェック表を、文字が読めるように撮ってください。', en:'Photograph the filled opening check sheet so the text is readable.', vi:'Chụp bảng kiểm mở cửa đã điền, đọc được chữ.' },
+    ck_close_photo: { ja:'記入したCLOSEチェック表を、文字が読めるように撮ってください。', en:'Photograph the filled closing check sheet so the text is readable.', vi:'Chụp bảng kiểm đóng cửa đã điền, đọc được chữ.' },
+    ichishoku:      { ja:'その日の1食目を、お出しする前に撮ってください。', en:'Photograph the first plate of the day before serving.', vi:'Chụp món đầu tiên trong ngày trước khi phục vụ.' }
   };
   /* ★見本写真＋店舗ごとの注意書き（2026-08-30 長田さんのご提案）
      「この店舗の撮り方（見本）」を写真提出画面に出す＝初日のスタッフでも見本を見ながら同じ画角で撮れる。
@@ -8486,6 +8896,30 @@
           : `<button class="mini" id="phsMemoEdit" style="margin-top:8px">${L({ ja:'注意書きを編集', en:'Edit notes', vi:'Sửa ghi chú' })}</button>`)
           + `<div class="hint" style="display:block;margin-top:6px">${L({ ja:'※ 見本と注意書きは店舗ごとに保存され、スタッフの画面にも表示されます。', en:'Samples and notes are saved per store and shown to staff.', vi:'Mẫu và ghi chú lưu theo cửa hàng, nhân viên cũng thấy.' })}</div>` : ''}
       </div>` : '';
+    /* ★2026-10-20 案Bの見本＝「左が店長の登録した見本・右が今日」。店舗はログインの店で固定（選ぶ欄は出さない）・他の写真項目への切替も出さない。
+       撮る仕組み（photoDrop／f_photo／photoThumbs）・提出（data-topensubmit）・保存はそのまま。見本の登録は店長・オーナーだけ（最近の提出から） */
+    if (isPb() && getRole() !== 'hq') {
+      _pbHead = { t: title, d: target === 'openphoto'
+        ? L({ ja:'左が店長の登録した見本、右が今日。同じ画角で撮るだけ。', en:'Left: the sample set by the manager. Right: today. Shoot from the same angle.', vi:'Trái: ảnh mẫu của quản lý. Phải: hôm nay. Chụp cùng góc.' })
+        : hint };
+      const smp = (p, i) => `<figure class="pb-fig"><img src="${photoThumb(p)}" data-full="${photoFull(p)}" class="rep-photo" alt=""><figcaption>${L({ ja:'見本', en:'Sample', vi:'Mẫu' })}${sPhotos.length > 1 ? ' ' + (i + 1) : ''}<span class="pb-pill2 info">${L({ ja:'店長が登録', en:'By manager', vi:'Quản lý' })}</span></figcaption></figure>`;
+      const noSmp = `<figure class="pb-fig"><div class="pb-figempty">${svg('camera')}<span>${L({ ja:'見本はまだありません', en:'No sample yet', vi:'Chưa có mẫu' })}</span></div><figcaption>${L({ ja:'見本', en:'Sample', vi:'Mẫu' })}<span class="pb-pill2 warn">${L({ ja:'未登録', en:'Not set', vi:'Chưa có' })}</span></figcaption></figure>`;
+      return `
+        ${done ? `<div class="pb-done">${svg('tick')}${esc(period)}</div>` : ''}
+        ${target === 'nouhin' ? `<p class="hint" id="nouhin_rednote" style="display:block;color:#c0392b;font-weight:600">${L({ ja:'伝票は1枚ずつ、合計の金額まで写してください。', en:'One slip per photo, with the total.', vi:'Mỗi ảnh một phiếu, có tổng tiền.' })}</p>` : ''}
+        <div class="pb-card pb-twin2">
+          <div class="pb-twcol"><div class="pb-twhd">${L({ ja:'見本', en:'Sample', vi:'Mẫu' })}</div>${sPhotos.length ? sPhotos.map(smp).join('') : noSmp}${sMemo ? `<div class="pb-smpmemo">${esc(sMemo)}</div>` : ''}</div>
+          <div class="pb-twcol"><div class="pb-twhd">${L({ ja:'今日', en:'Today', vi:'Hôm nay' })}</div>
+            <div class="photo-thumbs pb-thumbs" id="photoThumbs"></div>
+            <div class="photo-drop pb-drop" id="photoDrop"><div class="ph-ico">${svg('camera')}</div><div><b>${L({ ja:'撮る', en:'Take photo', vi:'Chụp' })}</b><small>${esc(hint)}</small></div><input type="file" accept="image/*" multiple id="f_photo" hidden></div>
+          </div>
+        </div>
+        <button class="btn-primary pb-big" data-topensubmit="1">${L({ ja:'送る', en:'Send', vi:'Gửi' })}</button>
+        ${canEditSample ? `<details class="pb-card pb-more"><summary>${L({ ja:'見本の登録・注意書き・最近の提出（店長）', en:'Samples, notes, recent (manager)', vi:'Mẫu, ghi chú, gần đây (quản lý)' })}</summary>${sampleHTML}
+          <div class="card"><h3>${L({ja:'最近の提出',en:'Recent submissions',vi:'Đã nộp gần đây'})}</h3>
+          ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join(''):`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div>${hqAckLine(['openphoto','hygiene_m','menubook'].includes(target)?'openphoto':target, r.t, r.store)}</div>${canEditSample && r.photos && r.photos.length ? `<button class="mini" data-mksample="${esc(String(r.id || r.t))}" style="flex:none;margin-left:auto">${L({ja:'これを見本にする',en:'Use as sample',vi:'Dùng làm mẫu'})}</button>` : ''}</div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
+          </div></details>` : ''}`;
+    }
     return `
       <div class="card">
         <h3>${esc(title)} — ${esc(storeShort(store))}</h3>
@@ -8946,9 +9380,11 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit]');
+      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
+      if (t.dataset.numstore) { try { localStorage.setItem('yosakura_num_store', t.dataset.numstore); } catch (e2) {} render(); return; }
+      if (t.dataset.viewas) { const r = t.dataset.viewas; setRole(r); if (r === 'hq') setStoreSel('all'); else { const sl = getStoreSel(); if (sl === 'all' || sl === 'owned' || !STORES.includes(sl)) setStoreSel(STORES[0]); } render(); return; }
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
       if (t.dataset.inboxrefresh) { render(true); return; }  // 「新しい報告が届きました」＝押したときだけ描き直す
       if (t.dataset.refetch) { refetchAll_(); return; }       // 「表示を取り直す」＝目印を消して本部データから一覧を作り直す（2026-09-23）
@@ -9233,7 +9669,7 @@
       if (t.dataset.tsub) {
         if (t.dataset.tsubmode) localStorage.setItem('yosakura_ckmode', t.dataset.tsubmode);
         if (t.dataset.tsubphoto) localStorage.setItem('yosakura_photo_target', t.dataset.tsubphoto);
-        go(`/app/${t.dataset.tsub}`); return;
+        go(`/app/${t.dataset.tsub}${t.dataset.tsubq ? '?' + t.dataset.tsubq : ''}`); return;
       }
       if (t.dataset.tmissing) { const cur = localStorage.getItem('yosakura_sub_missingonly') === '1'; localStorage.setItem('yosakura_sub_missingonly', cur ? '0' : '1'); render(); return; }
       if (t.dataset.tdrill) { openTeishutsuDrill(t.dataset.tdrill); return; }
@@ -9275,7 +9711,11 @@
   const emgSlotLabel = (id) => { const s = EMG_SLOTS.find(x => x.id === id); return s ? L(s.t) : id; };
   const getEmg = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_emg')) || {}; } catch { return {}; } };
   const saveEmg = (o) => { try { localStorage.setItem('yosakura_demo_emg', JSON.stringify(o)); } catch (e) {} };
-  const emgOf = (store) => (getEmg()[store] || {}).slots || {};
+  /* ★2026-10-20 神田さん「最寄りの警察・消防・救急・病院・電気・ガス・水道はこちらで調べて初期設定に。直すのは店舗責任者画面から」。
+     出典＝世桜公式の店舗一覧の住所から、各機関の公式ページで番号を確かめたもの（調査メモ＝scratchpad/emg_research.json）。ビル管理・設備・厨房機器・その他は提携先が分からないので空。
+     店が一度保存したら、その店は保存した内容だけが正（初期値は出さない） */
+  const EMG_DEFAULTS_ = {"日本料理世桜本店":{"police":{"vendor":"大阪府警察 南警察署","phone":"06-6281-1234","memo":"緊急は110。この番号は署（緊急でないとき）"},"fire":{"vendor":"大阪市消防局 中央消防署","phone":"06-6947-0119","memo":"緊急は119。この番号は署（緊急でないとき）"},"ambulance":{"vendor":"救急","phone":"119","memo":"救急相談 #7119（24時間）"},"hospital":{"vendor":"国立病院機構 大阪医療センター（救命救急センター）","phone":"06-6942-1331","memo":"救命救急（重症）。軽いけがは #7119 で受診先を聞く"},"electric":{"vendor":"関西電力送配電","phone":"0800-777-3081","memo":"停電・電気の事故（24時間）"},"gas":{"vendor":"大阪ガスネットワーク ガス漏れ通報専用（大阪市内）","phone":"0120-0-19424","memo":"24時間。プロパンガスの店はガスの販売店へ"},"water":{"vendor":"大阪市水道局 お客さまセンター","phone":"06-6458-1132","memo":"漏水・断水（夜間は音声案内）"}},"日本鰻世桜 長堀橋店":{"police":{"vendor":"大阪府警察 南警察署","phone":"06-6281-1234","memo":"緊急は110。この番号は署（緊急でないとき）"},"fire":{"vendor":"大阪市消防局 中央消防署","phone":"06-6947-0119","memo":"緊急は119。この番号は署（緊急でないとき）"},"ambulance":{"vendor":"救急","phone":"119","memo":"救急相談 #7119（24時間）"},"hospital":{"vendor":"国立病院機構 大阪医療センター（救命救急センター）","phone":"06-6942-1331","memo":"救命救急（重症）。軽いけがは #7119 で受診先を聞く"},"electric":{"vendor":"関西電力送配電","phone":"0800-777-3081","memo":"停電・電気の事故（24時間）"},"gas":{"vendor":"大阪ガスネットワーク ガス漏れ通報専用（大阪市内）","phone":"0120-0-19424","memo":"24時間。プロパンガスの店はガスの販売店へ"},"water":{"vendor":"大阪市水道局 お客さまセンター","phone":"06-6458-1132","memo":"漏水・断水（夜間は音声案内）"}},"寿司世桜 心斎橋店":{"police":{"vendor":"大阪府警察 南警察署","phone":"06-6281-1234","memo":"緊急は110。この番号は署（緊急でないとき）"},"fire":{"vendor":"大阪市消防局 中央消防署","phone":"06-6947-0119","memo":"緊急は119。この番号は署（緊急でないとき）"},"ambulance":{"vendor":"救急","phone":"119","memo":"救急相談 #7119（24時間）"},"hospital":{"vendor":"国立病院機構 大阪医療センター（救命救急センター）","phone":"06-6942-1331","memo":"救命救急（重症）。軽いけがは #7119 で受診先を聞く"},"electric":{"vendor":"関西電力送配電","phone":"0800-777-3081","memo":"停電・電気の事故（24時間）"},"gas":{"vendor":"大阪ガスネットワーク ガス漏れ通報専用（大阪市内）","phone":"0120-0-19424","memo":"24時間。プロパンガスの店はガスの販売店へ"},"water":{"vendor":"大阪市水道局 お客さまセンター","phone":"06-6458-1132","memo":"漏水・断水（夜間は音声案内）"}},"牛カツ世桜 長堀橋店":{"police":{"vendor":"大阪府警察 南警察署","phone":"06-6281-1234","memo":"緊急は110。この番号は署（緊急でないとき）"},"fire":{"vendor":"大阪市消防局 中央消防署","phone":"06-6947-0119","memo":"緊急は119。この番号は署（緊急でないとき）"},"ambulance":{"vendor":"救急","phone":"119","memo":"救急相談 #7119（24時間）"},"hospital":{"vendor":"国立病院機構 大阪医療センター（救命救急センター）","phone":"06-6942-1331","memo":"救命救急（重症）。軽いけがは #7119 で受診先を聞く"},"electric":{"vendor":"関西電力送配電","phone":"0800-777-3081","memo":"停電・電気の事故（24時間）"},"gas":{"vendor":"大阪ガスネットワーク ガス漏れ通報専用（大阪市内）","phone":"0120-0-19424","memo":"24時間。プロパンガスの店はガスの販売店へ"},"water":{"vendor":"大阪市水道局 お客さまセンター","phone":"06-6458-1132","memo":"漏水・断水（夜間は音声案内）"}},"手巻き寿司世桜 難波店":{"police":{"vendor":"大阪府警察 南警察署","phone":"06-6281-1234","memo":"緊急は110。この番号は署（緊急でないとき）"},"fire":{"vendor":"大阪市消防局 中央消防署","phone":"06-6947-0119","memo":"緊急は119。この番号は署（緊急でないとき）"},"ambulance":{"vendor":"救急","phone":"119","memo":"救急相談 #7119（24時間）"},"hospital":{"vendor":"国立病院機構 大阪医療センター（救命救急センター）","phone":"06-6942-1331","memo":"救命救急（重症）。軽いけがは #7119 で受診先を聞く"},"electric":{"vendor":"関西電力送配電","phone":"0800-777-3081","memo":"停電・電気の事故（24時間）"},"gas":{"vendor":"大阪ガスネットワーク ガス漏れ通報専用（大阪市内）","phone":"0120-0-19424","memo":"24時間。プロパンガスの店はガスの販売店へ"},"water":{"vendor":"大阪市水道局 お客さまセンター","phone":"06-6458-1132","memo":"漏水・断水（夜間は音声案内）"}},"牛カツ世桜 富士山店":{"police":{"vendor":"山梨県警察 富士吉田警察署","phone":"0555-22-0110","memo":"緊急は110。この番号は署（緊急でないとき）"},"fire":{"vendor":"富士五湖消防本部","phone":"0555-22-0119","memo":"緊急は119。この番号は署（緊急でないとき）"},"ambulance":{"vendor":"救急","phone":"119","memo":"救急相談 #7119（24時間）"},"hospital":{"vendor":"富士吉田市立病院","phone":"0555-22-4111","memo":"富士吉田市上吉田東7-11-1。約3km。救急科あり。夜間の受入れ体制の詳細は要確認"},"electric":{"vendor":"東京電力パワーグリッド","phone":"0120-995-007","memo":"停電・電気の事故（24時間）"},"gas":{"vendor":"吉田ガス","phone":"0555-22-2161","memo":"24時間。プロパンガスの店はガスの販売店へ。⚠夜間もこの番号か要確認"},"water":{"vendor":"富士吉田市 上下水道工務課（上水道配水担当）","phone":"0555-22-1111","memo":"平日昼のみ（内線653〜655）。⚠夜間・休日の番号は要確認"}},"日本鰻世桜 富士山店":{"police":{"vendor":"山梨県警察 富士吉田警察署","phone":"0555-22-0110","memo":"緊急は110。この番号は署（緊急でないとき）"},"fire":{"vendor":"富士五湖消防本部","phone":"0555-22-0119","memo":"緊急は119。この番号は署（緊急でないとき）"},"ambulance":{"vendor":"救急","phone":"119","memo":"救急相談 #7119（24時間）"},"hospital":{"vendor":"富士吉田市立病院","phone":"0555-22-4111","memo":"富士吉田市上吉田東7-11-1。約3km。夜間の受入れ体制の詳細は要確認"},"electric":{"vendor":"東京電力パワーグリッド","phone":"0120-995-007","memo":"停電・電気の事故（24時間）"},"gas":{"vendor":"吉田ガス","phone":"0555-22-2161","memo":"24時間。プロパンガスの店はガスの販売店へ。⚠夜間もこの番号か要確認"},"water":{"vendor":"富士吉田市 上下水道工務課（上水道配水担当）","phone":"0555-22-1111","memo":"平日昼のみ（内線653〜655）。⚠夜間・休日の番号は要確認"}},"日本鰻世桜 京都祇園店":{"police":{"vendor":"京都府警察 東山警察署","phone":"075-525-0110","memo":"緊急は110。この番号は署（緊急でないとき）"},"fire":{"vendor":"京都市消防局 東山消防署","phone":"075-541-0191","memo":"緊急は119。この番号は署（緊急でないとき）"},"ambulance":{"vendor":"救急","phone":"119","memo":"救急相談 #7119（24時間）"},"hospital":{"vendor":"京都第一赤十字病院（救命救急センター）","phone":"075-561-1121","memo":"東山区本町15-749。約3km"},"electric":{"vendor":"関西電力送配電","phone":"0800-777-3081","memo":"停電・電気の事故（24時間）"},"gas":{"vendor":"大阪ガスネットワーク ガス漏れ通報専用（京都府・滋賀県）","phone":"0120-8-19424","memo":"24時間。プロパンガスの店はガスの販売店へ"},"water":{"vendor":"京都市上下水道局","phone":"075-672-7770","memo":"夜21時〜朝8:30は 0800-222-3500"}},"日本鰻世桜 浅草橋店":{"police":{"vendor":"警視庁 蔵前警察署","phone":"03-3864-0110","memo":"緊急は110。この番号は署（緊急でないとき）"},"fire":{"vendor":"東京消防庁 浅草消防署 浅草橋出張所","phone":"03-3863-0119","memo":"緊急は119。この番号は署（緊急でないとき）"},"ambulance":{"vendor":"救急","phone":"119","memo":"救急相談 #7119（24時間）"},"hospital":{"vendor":"三井記念病院","phone":"03-3862-9111","memo":"千代田区神田和泉町1。約1km。急患は24時間受付（来院前に電話）。夜間は内科・外科のみ"},"electric":{"vendor":"東京電力パワーグリッド","phone":"0120-995-007","memo":"停電・電気の事故（24時間）"},"gas":{"vendor":"東京ガスネットワーク ガス漏れ通報専用","phone":"0570-002299","memo":"24時間。プロパンガスの店はガスの販売店へ"},"water":{"vendor":"東京都水道局 お客さまセンター（区部）","phone":"0570-091-100","memo":"夜21時〜朝8:30は 0800-222-3500"}},"和牛世桜 広島店":{"police":{"vendor":"広島県警察 広島中央警察署","phone":"082-224-0110","memo":"緊急は110。この番号は署（緊急でないとき）"},"fire":{"vendor":"広島市消防局 中消防署","phone":"082-541-2700","memo":"緊急は119。この番号は署（緊急でないとき）"},"ambulance":{"vendor":"救急","phone":"119","memo":"救急相談 #7119（24時間）"},"hospital":{"vendor":"広島市立広島市民病院（救命救急センター）","phone":"082-221-2291","memo":"中区基町7-33。約1km。代表番号は24時間つながる"},"electric":{"vendor":"中国電力ネットワーク 広島ネットワークセンター","phone":"0120-748-510","memo":"停電・電気の事故（24時間）"},"gas":{"vendor":"広島ガス 保安指令センター（広島地区）","phone":"082-251-3219","memo":"24時間。プロパンガスの店はガスの販売店へ"},"water":{"vendor":"広島市水道局 中部管理事務所 維持係","phone":"082-221-7222","memo":"夜間・休日は 082-221-8099"}}};   // 警察・消防＝電話欄は署の番号。一覧の発信ボタンは110／119（EMG_SLOTS の fix）が先
+  const emgOf = (store) => { const rec = getEmg()[store]; return rec ? (rec.slots || {}) : Object.assign({}, EMG_DEFAULTS_[store] || {}); };
   const canEditEmg = () => ['manager','owner','hq'].includes(getRole());
   function seedNews() {
     if (localStorage.getItem('yosakura_demo_news')) return;
@@ -9513,7 +9953,7 @@
       return `
         ${NOTE({ ja:'◆ 緊急連絡先は店舗ごとに登録します。編集は右上で対象店舗を選ぶと行えます', en:'◆ Contacts are per store. Pick a store (top-right) to edit.', vi:'◆ Danh bạ theo từng cửa hàng. Chọn cửa hàng (góc phải) để sửa.' })}
         <div class="card"><h3>${L({ ja:'店舗別の登録状況', en:'Registration by store', vi:'Tình trạng theo cửa hàng' })}</h3>
-          ${vis.map(s => { const n = Object.values((map[s]||{}).slots || {}).filter(v => v && v.phone).length;
+          ${vis.map(s => { const n = Object.values(emgOf(s)).filter(v => v && (v.phone || v.vendor)).length;
             return `<div class="rep"><div class="body"><div class="l1">${esc(s)}</div><div class="l2">${n ? L({ ja:`${n}件 登録済み`, en:`${n} registered`, vi:`Đã đăng ký ${n}` }) : L({ ja:'未登録', en:'Not set', vi:'Chưa đăng ký' })}</div></div><span class="amt">${n}</span></div>`; }).join('')}
         </div>
         <p class="hint">${L({ ja:'※ 共通枠：警察・消防・救急・病院・電気・ガス・水道・ビル管理・設備・厨房機器・その他', en:'Fixed slots: police, fire, ambulance, hospital, utilities, building, facility, kitchen, other', vi:'Khung cố định: cảnh sát, cứu hỏa, cấp cứu, bệnh viện, tiện ích, tòa nhà, thiết bị, bếp, khác' })}</p>`;
@@ -9522,7 +9962,8 @@
     const slots = emgOf(store);
     const rows = EMG_SLOTS.map(s => {
       const cur = slots[s.id] || {};
-      const phone = cur.phone || s.fix || '';
+      const phone = s.fix || cur.phone || '';   // ★2026-10-20 警察・消防・救急は押すと110／119。署の番号は下に小さく
+      const sub = (s.fix && cur.phone && cur.phone !== s.fix) ? cur.phone : '';
       if (editable) {
         return `<div class="card" style="padding:12px 14px;margin-bottom:8px">
           <div style="font-weight:700;font-size:13px;margin-bottom:8px">${esc(L(s.t))}</div>
@@ -9535,7 +9976,7 @@
       }
       return `<div class="rep">
         <div class="body"><div class="l1">${esc(L(s.t))}${cur.vendor?`　<span class="muted">${esc(cur.vendor)}</span>`:''}</div>
-        <div class="l2">${phone ? `<a href="tel:${esc(phone.replace(/[^0-9+]/g,''))}">${esc(phone)}</a>` : L({ ja:'未登録', en:'Not set', vi:'Chưa đăng ký' })}${cur.memo?`　・${esc(cur.memo)}`:''}</div></div>
+        <div class="l2">${phone ? `<a href="tel:${esc(phone.replace(/[^0-9+]/g,''))}">${esc(phone)}</a>` : L({ ja:'未登録', en:'Not set', vi:'Chưa đăng ký' })}${sub ? `　・${L({ ja:'署', en:'Station', vi:'Trạm' })} <a href="tel:${esc(sub.replace(/[^0-9+]/g,''))}">${esc(sub)}</a>` : ''}${(cur.memo && !(s.fix && /^緊急は/.test(cur.memo)))?`　・${esc(cur.memo)}`:''}</div></div>
         ${phone ? `<a class="amt" style="text-decoration:none" href="tel:${esc(phone.replace(/[^0-9+]/g,''))}">${svg('phone')}</a>` : ''}
       </div>`;
     }).join('');
@@ -9618,7 +10059,9 @@
      本部からのお知らせ（news）＝本部が投稿→全端末に届く。ホームに最新を表示。
      配信先は全店 or 特定店舗。重要フラグあり。全端末同期。
   =================================================================== */
-  const getNews = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_news')) || []; } catch { return []; } };
+  /* ★2026-10-20 神田さん「引き継ぎは実装しない話だったので不要」＝9/8 のお知らせ「【新機能】店舗用の『引き継ぎ伝言板』運用開始について」を出さない（10/17 決定＝引き継ぎは店のLINE）。本部データの行は消さない */
+  const NEWS_RETIRED_ = ['4261b070-b0ff-478b-8988-2662f594e5ee', 'e41a75a2-81c8-40eb-ba69-c89791b14fe9'];   // ★2026-10-20 9/11 長堀橋の「サーベイ先行スタート（口コミまで1本）」も外す＝10/5 常山さん決定で口コミのご案内は富士山の2店だけ（長堀橋では出ない）・「報告」タブも新デザインに無い
+  const getNews = () => { try { return (JSON.parse(localStorage.getItem('yosakura_demo_news')) || []).filter(n => !(n && NEWS_RETIRED_.includes(String(n.id)))); } catch { return []; } };   // ★2026-10-20 すでに保存済みの端末でも出さない
   const saveNews = (a) => { try { localStorage.setItem('yosakura_demo_news', JSON.stringify(a)); } catch (e) {} };
   function newsVisible(list) { // 非本部は「全店向け＋自店向け」だけ、本部は全件
     if (getRole() === 'hq') return list.slice();
@@ -9641,11 +10084,11 @@
   const lsMap_ = (k) => { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } };
   const lsMapAdd_ = (k, id) => { try { const m = lsMap_(k); m[id] = 1; localStorage.setItem(k, JSON.stringify(m)); } catch (e) {} };
   function newsFb(key) {
-    let likeN = 0; const reads = []; const cmts = [];
+    let likeN = 0; const likes = []; const reads = []; const cmts = [];
     try {
       getReports().forEach(r => {
         if (String(r.item || '') !== key) return;
-        if (r.kind === 'newslike') likeN++;
+        if (r.kind === 'newslike') { likeN++; const p = parseNote(r.note); likes.push({ store: r.store || '', by: (p && p.by) || '', t: r.t }); }   // ★2026-10-20 誰が押したか（本部だけに出す）
         else if (r.kind === 'newsread') { const p = parseNote(r.note); reads.push({ store: r.store || '', by: (p && p.by) || '', t: r.t }); }
         else if (r.kind === 'newscmt') { const p = parseNote(r.note); if (p && p.body) cmts.push({ store: r.store || '', by: (p && p.by) || '', body: p.body, t: r.t }); }
       });
@@ -9653,9 +10096,10 @@
     cmts.sort((a, b) => a.t - b.t);
     // 確認済みは「店舗×名前」で1件に（同じ人が別端末で押しても増やさない）
     const seen = {}; const uniqReads = reads.filter(x => { const k2 = x.store + '|' + x.by; if (seen[k2]) return false; seen[k2] = 1; return true; });
-    return { likeN, reads: uniqReads, cmts };
+    return { likeN, likes, reads: uniqReads, cmts };
   }
   const newsCmtLine = (c) => `<div class="l2" style="display:block;white-space:pre-wrap;margin-top:4px">💬 ${esc(c.body)}　<span class="muted">${esc(c.by || L({ ja:'名前なし', en:'(no name)', vi:'(không tên)' }))}${c.store && c.store !== '*' ? ' ・ ' + esc(storeShort(c.store)) : ' ・ ' + L({ ja:'本部', en:'HQ', vi:'HQ' })} ・ ${timeAgo(c.t)}</span></div>`;
+  /* ★2026-10-20 神田さん「いいねを誰が押したか、本部の方だけわかるように」＝本部IDでログインしているときだけ、いいね・確認済みの一覧を出す（店舗責任者・スタッフの見え方でも。店舗には件数だけ） */
   const newsRow = (n) => {
     const key = String(n.t);
     const fb = newsFb(key);
@@ -9675,7 +10119,8 @@
           ${readed ? `<span class="muted" style="margin-left:8px">✓ ${L({ ja:'確認済み', en:'Confirmed', vi:'Đã xem' })}</span>` : `<button class="mini" data-nwread="${esc(key)}" style="margin-left:8px">${L({ ja:'確認しました', en:'Confirm', vi:'Đã xem' })}</button>`}
           <button class="mini" data-nwcmt="${esc(key)}" style="margin-left:8px">💬 ${L({ ja:'コメント', en:'Comment', vi:'Bình luận' })}${fb.cmts.length ? ` ${fb.cmts.length}` : ''}</button>
         </div>
-        ${getRole() === 'hq' ? `<div class="l2" style="display:block;margin-top:4px">${L({ ja:'確認済み', en:'Confirmed by', vi:'Đã xem' })}（${fb.reads.length}）：${fb.reads.length ? esc(fb.reads.map(x => `${x.store && x.store !== '*' ? storeShort(x.store) : L({ ja:'本部', en:'HQ', vi:'HQ' })}${x.by ? '・' + x.by : ''}`).join(' ／ ')) : L({ ja:'まだいません', en:'none yet', vi:'chưa có' })}</div>` : ''}
+        ${(devViewAllowed() || getRole() === 'hq') ? `<div class="l2" style="display:block;margin-top:4px">👍 ${L({ ja:'いいね', en:'Liked by', vi:'Đã thích' })}（${fb.likes.length}）：${fb.likes.length ? esc(fb.likes.map(x => `${x.store && x.store !== '*' ? storeShort(x.store) : L({ ja:'本部', en:'HQ', vi:'HQ' })}${x.by ? '・' + x.by : ''}`).join(' ／ ')) : L({ ja:'まだいません', en:'none yet', vi:'chưa có' })}</div>` : ''}
+        ${(devViewAllowed() || getRole() === 'hq') ? `<div class="l2" style="display:block;margin-top:4px">${L({ ja:'確認済み', en:'Confirmed by', vi:'Đã xem' })}（${fb.reads.length}）：${fb.reads.length ? esc(fb.reads.map(x => `${x.store && x.store !== '*' ? storeShort(x.store) : L({ ja:'本部', en:'HQ', vi:'HQ' })}${x.by ? '・' + x.by : ''}`).join(' ／ ')) : L({ ja:'まだいません', en:'none yet', vi:'chưa có' })}</div>` : ''}
         <div class="nwcmts">${fb.cmts.map(newsCmtLine).join('')}</div>
         <div class="nwcmtform" style="display:none;margin-top:6px">
           <textarea class="nwcmt-input" rows="2" style="width:100%;box-sizing:border-box" placeholder="${esc(L({ ja:'コメントを入力（本部に届きます）', en:'Write a comment (goes to HQ)', vi:'Viết bình luận (gửi HQ)' }))}"></textarea>
@@ -10218,6 +10663,20 @@
     try { scrollBox_().scrollTop = y; } catch (e) {}
     try { window.scrollTo(0, 0); } catch (e) {} // 念のためページ側は常に先頭（キーボード等でずれた時の戻し）
   };
+  /* ★2026-10-20 8:31 神田さん「本部でログインすると前の画面になる。準備中と大きく出して開けないように。店舗責任者・スタッフを選べるならそっちへ誘導」。
+     本部IDで「本部」の見え方のときは、新デザイン開始（PB_LAUNCH_MS）以降はこの1枚だけを出す。押すと上の切替と同じ（data-viewas）＝店舗責任者／スタッフの見え方へ */
+  const hqPrep_ = () => { if (TAIKEN || !devViewAllowed() || getRole() !== 'hq' || Date.now() < PB_LAUNCH_MS) return false; try { return localStorage.getItem('yosakura_hqprep_off') !== '1'; } catch (e) { return true; } };   // hqprep_off＝検査用（今までの本部ホームの検査を回すときだけ）
+  function hqPrepHTML_() {
+    return `<header class="hdr"><img class="hdr__logo" src="${IMG_ICON}" alt=""><div class="hdr__brand">世桜<small>YOSAKURA APP</small></div><div class="hdr__spacer"></div></header>
+      <main class="appmain hqprep" id="appmain"><div class="hqprep__card">
+        <div class="hqprep__tag">${L({ja:'準備中',en:'Coming soon',vi:'Đang chuẩn bị'})}</div>
+        <h1 class="hqprep__h">${L({ja:'本部の画面は準備中です',en:'The HQ screens are being prepared',vi:'Màn hình HQ đang được chuẩn bị'})}</h1>
+        <p class="hqprep__p">${L({ja:'新しいデザインの本部の画面は、順を追ってご案内します。いまは「店舗責任者」か「スタッフ」の画面で、新しいアプリをお使いください。',en:'The new HQ screens will follow step by step. For now, please use the new app in the Store lead or Staff view.',vi:'Màn hình HQ mới sẽ có dần. Hiện tại hãy dùng chế độ Quản lý cửa hàng hoặc Nhân viên.'})}</p>
+        <button type="button" class="hqprep__btn pri" data-viewas="manager">${L({ja:'店舗責任者の画面で使う',en:'Use the Store lead view',vi:'Dùng chế độ Quản lý'})}<small>${L({ja:'店の数字・きょうやること・見る・注文する',en:'Numbers, today, look up',vi:'Số liệu, hôm nay, tra cứu'})}</small></button>
+        <button type="button" class="hqprep__btn" data-viewas="staff">${L({ja:'スタッフの画面で使う',en:'Use the Staff view',vi:'Dùng chế độ Nhân viên'})}<small>${L({ja:'店舗iPadと同じ画面',en:'Same as the store iPad',vi:'Giống iPad cửa hàng'})}</small></button>
+        <p class="hqprep__note">${L({ja:'あとから画面の上の「表示」でも切り替えられます。確認用の表示なので、ここから出した提出は店舗・本部には届きません。',en:'You can also switch with “View” at the top. This is a preview view: submissions here are not sent.',vi:'Có thể đổi bằng “Xem” ở trên. Đây là chế độ xem thử: nộp ở đây không được gửi.'})}</p>
+      </div><div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;
+  }
   function render(keepScroll) {
     applyTheme();
     if (pbMaintNow_()) { $app.innerHTML = pbMaintHTML_(); return; }   // 10/19 24:00〜10/20 6:00 の休止
@@ -10229,13 +10688,16 @@
     // 描画のあいだは保存が起きない＝保存データの読み直しを1回で済ませる（[[lsJson]]の印）
     _rendering = true; _lsPass++;
     try {
-      if (path.startsWith('/app/')) html = viewApp(path.slice(5));
+      if (hqPrep_() && (path !== '/home' || params.get('tab') !== 'hq') && !path.startsWith('/app/')) html = hqPrepHTML_();   // 本部メニュー（?tab=hq）と各画面への直接リンクは残す（神田さんのタスクなど）   // ★2026-10-20 本部の見え方は準備中（神田さん「開けないように・店舗責任者かスタッフへ誘導」）
+      else if (path.startsWith('/app/')) html = viewApp(path.slice(5));
       else if (path === '/store') html = viewStore(params.get('s') || '', params.get('ym') || ''); // 個店カルテ
       else if (path === '/skprint') html = viewSkPrint(params.get('s') || '', params.get('ym') || ''); // 総括表の形での月次出力
       else if (path === '/home') html = viewHome(params.get('tab') || 'home');
       else html = viewHome('home');
     } finally { _rendering = false; }
-    $app.innerHTML = devViewBanner() + pwChangeBanner_() + html;   // 開発者ビュー中は戻るバナーを全画面の先頭に出す
+    $app.innerHTML = devViewBanner() + pwChangeBanner_() + html;
+    /* ★2026-10-20 神田さん「未入力の欄の薄い仮の数字が濃くて実績と見分けがつかない」＝数字だけの例（123700・¥40,600 など）は出さない。言葉の案内は残し、色はさらに薄く（styles.css） */
+    try { $app.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el => { const ph = el.getAttribute('placeholder') || ''; if (ph && /^[\s¥￥\d,.，．:：\-－%％()（）/／~〜]+$/.test(ph)) el.setAttribute('placeholder', ''); }); } catch (e) {}   // 開発者ビュー中は戻るバナーを全画面の先頭に出す
     setScrollY_(y);
     /* ★別の画面へ移ったのに、前の画面で読んでいた位置のまま始まることがあった（2026-08-12 神田さんのご指摘）。
        中身を入れ替えた直後は高さがまだ決まっておらず、一度の指定では戻りきらないため、
@@ -10262,7 +10724,8 @@
 
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab === 'home' ? '/home' : `/home?tab=${b.dataset.tab}`));
     // 案B＝上の3つの帯（開店前／営業中／締め）を押すとその区切りへ飛ぶ（1画面に流れ順で並べたまま）
-    document.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => { const el = document.getElementById(b.dataset.jump); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    // ★2026-10-20 神田さん「締めを押しても、ボタンがずっと開店前のピンク」＝押した時間帯のボタンを選択中の色にする
+    document.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => { const el = document.getElementById(b.dataset.jump); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (b.classList && b.classList.contains('pb-band')) { document.querySelectorAll('.pb-band').forEach(x => x.classList.toggle('on', x === b)); } });
     // 総括表のビジュアル：期間/指標の切替・個店カルテ・その日の日報
     document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
     // マニュアルの大項目＝タップで中身を開閉（2026-08-28 増田さんのご要望）
@@ -10876,7 +11339,7 @@
       if (!n) { toast(L({ ja:'在庫数を1つ以上入れてください', en:'Enter at least one count', vi:'Nhập ít nhất một số' })); return; }
       const by = String((document.getElementById('zk_by') || {}).value || '').trim(); if (by) setUserName(by);
       const t = Date.now();
-      const rep = { kind:'zaiko', store, item: dateKeyFor(store, t), note: JSON.stringify({ q, by: by || submitterLabel() }), photos: [], t };
+      const rep = { kind:'zaiko', store, item: dateKeyFor(store, t), note: JSON.stringify(Object.assign({ q, by: by || submitterLabel() }, zkWkMode_() ? { wk: 1 } : {})), photos: [], t };
       try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (e) {}
       zkDraftClear();
       lastSync = t;
@@ -10909,6 +11372,7 @@
       names.forEach(n => { if (have[n]) return; const empty = Array.from(document.querySelectorAll('input[id^="zk_n"]')).find(el => !String(el.value || '').trim()); if (!empty) return; empty.value = n; have[n] = true; added++; });
       toast(added ? `${L({ ja:'棚卸の品目を追加しました', en:'Added', vi:'Đã thêm' })}：${added}${L({ ja:'件（基準在庫を入れて保存してください）', en:' (set minimums and save)', vi:' (đặt định mức rồi lưu)' })}` : L({ ja:'追加する品目はありません（すべて登録済み）', en:'Nothing to add', vi:'Không có gì để thêm' }));
     };
+    document.querySelectorAll('select[id^="zk_g"]').forEach(sel => { sel.onchange = () => { const inp = document.getElementById('zk_gn' + sel.id.slice(4)); if (inp) { inp.style.display = sel.value === '__new' ? '' : 'none'; if (sel.value === '__new') inp.focus(); } }; });   // ★区分「＋新しい区分」＝入力欄を出す
     const svZk = document.getElementById('saveZkMaster');
     if (svZk) svZk.onclick = () => {
       if (!zkMgr()) return;
@@ -10917,7 +11381,7 @@
         const nEl = document.getElementById('zk_n' + i); if (!nEl) break;
         const name = String(nEl.value || '').trim(); if (!name) continue;
         const sv = String((document.getElementById('zk_s' + i) || {}).value || '').trim();
-        items.push({ n: name, std: sv === '' ? '' : (Number(sv) || 0), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g: String((document.getElementById('zk_g' + i) || {}).value || '').trim(), f: String((document.getElementById('zk_f' + i) || {}).value || '') });
+        items.push({ n: name, std: sv === '' ? '' : (Number(sv) || 0), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g: (() => { const gv = String((document.getElementById('zk_g' + i) || {}).value || '').trim(); return gv === '__new' ? String((document.getElementById('zk_gn' + i) || {}).value || '').trim() : gv; })(), f: String((document.getElementById('zk_f' + i) || {}).value || '') });
       }
       if (!items.length) { toast(L({ ja:'品目を1つ以上入れてください', en:'Enter at least one item', vi:'Nhập ít nhất một mặt hàng' })); return; }
       const t = Date.now();
@@ -11339,6 +11803,7 @@
         const n2 = ids.filter(i => day[i]).length, total2 = ids.length || 1;
         cEl.textContent = n2;
         bEl.style.width = `${Math.round(n2 / total2 * 100)}%`;
+        pbCkLeft_(n2, ids.length);
       }
       /* ★2026-09-24 神田さん実機「連続で入れるとカクカク・パチパチ」＝タップごとに送信→直後の同期→画面全体の作り直し、
          という2つ目の経路が残っていた（v278はタップの瞬間の作り直しを止めただけ）。送信は1.5秒まとめて1回にし、
@@ -11652,6 +12117,8 @@
           /* ★USENレジの行は、レジが持つ項目（純売上・現金・カード・値引き）も下書きに入れる（2026-10-07 勉強会のスクショで確認＝
              売上・客数しか入っておらず、注記も「総括表スプレッドシートから」のままだった。レジから入った日は出どころをそう言う） */
           if (rec.src === 'usen') ['net', 'cash', 'card', 'disc'].forEach(k => { if (rec[k] != null && rec[k] !== '') set('sk_' + k, rec[k]); });
+          /* ★2026-10-20 神田さん「売上合計や客数はどこから？」＝USENの無い店は総括表（毎時の取込）から。総括表にある現金・カード・純売上・電子マネーも同じく下書きに入れ、出どころを1行で出す */
+          if (rec.src === 'drive') ['net', 'cash', 'card', 'emoney'].forEach(k => { if (rec[k] != null && rec[k] !== '') set('sk_' + k, rec[k]); });
           if (note) note.style.display = 'none';   // ★取込の注記は出さない（上の「自動で入ります」の1行で足りる・2026-10-15）
           cumUpd();   // 累計＝自動入力を入れ直す（取込の売上も足し上がる）
           return;
@@ -11673,6 +12140,7 @@
         skAuto_();
       };
       ['sk_date', 'sk_store'].forEach(id => { const el = byId(id); if (el) el.addEventListener('change', () => skFill_(true)); });
+      if (isPb() && getRole() !== 'hq') setTimeout(() => { try { pbNippouLayout_(); } catch (e) {} }, 0);   // ★2026-10-20 案Bの店舗側＝見本の並び
       /* ★今日の納品書の操作（2026-10-01）＝仕入先を選ぶ・金額を直す・足す・消す → 仕入3欄と累計を入れ直す */
       const slipsRefresh = (rerender) => { if (rerender) skSlipsRender_(); skSlipsApply_(); cumUpd(); };
       const slipBox = byId('sk_slipbox');
@@ -11854,10 +12322,12 @@
     /* ★2026-10-16 本部の端末だけ、古い控えを端末に残さない（神田さんのiPhone＝全店ぶんの控えで 2,223K字＝iPhoneの上限に当たり LSFULL）。
        店舗の端末は自店ぶんだけなので対象外。日報・チェック・提出の記録は前々月の1日より前を端末に置かない（数値・原価率＝前月・前々月まで出る・提出履歴＝30日に足りる）。
        本部データ（サーバー）は消さない＝表示のときに持たないだけ。口コミの控え（gsnap）・設定類・お知らせは対象にしない */
+    let hqSlimCut_ = '';   // 本部の端末で総括表を持つ最初の営業日（YYYY-MM-DD）＝下の保存前の間引きで使う
     if (getRole() === 'hq' && rows.length > 1500) {   // 控えが多い本部の端末だけ（少ない端末・試験は従来どおり全部持つ）
       const cut = (() => { const d = new Date(Date.now() + 9 * 3600e3); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 2, 1) - 9 * 3600e3; })();   // 前々月の1日（JST）から＝数値・原価率の前月・前々月が出る
       const HEAVY = new Set(['soukatsu', 'ckdone', 'subrec', 'hqack', 'kinshu', 'chukan', 'chukandraft', 'skdraft', 'nouhindraft', 'handover', 'zaiko', 'zaikoorder', 'open']);
       rows = rows.filter(r => !(r && HEAVY.has(r.kind) && (Number(r.t) || 0) < cut));
+      hqSlimCut_ = new Date(cut + 9 * 3600e3).toISOString().slice(0, 10);
     }
     (rows || []).forEach(r => {
       // 店舗名は正式名称へ寄せる（過去のデータが旧い表記でも、同じ店舗として扱う）
@@ -11892,7 +12362,7 @@
         case 'video': video.push({ store, url:r.item, note:r.note, t, id }); break;
         case 'emg': { const p=pj(r.note); if (!emg[store] || t >= emg[store].t) emg[store] = { slots: p.slots || {}, t }; } break; // 店舗ごとに最新版が正
         case 'whistle': { const p=pj(r.note); whistle.push({ store, cat:p.cat||'other', body:p.body||'', anon:!!p.anon, t, id }); } break;
-        case 'news': { const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', video:p.video||'', photos:r.photos||[], t, id }); } break;
+        case 'news': { if (NEWS_RETIRED_.includes(String(id))) break; const p=pj(r.note); news.push({ title:p.title||'', body:p.body||'', level:p.level||'normal', target:p.target||'all', video:p.video||'', photos:r.photos||[], t, id }); } break;
         case 'ckitem': { const p=pj(r.note); const k=`${store}||${p.mode||'open'}`; if (ckitemT[k]==null || t>=ckitemT[k]) { ckitem[k]=Array.isArray(p.items)?p.items:[]; ckitemT[k]=t; } } break; // 店舗×モード（定期衛生は×曜日）ごと最新版が正
         // 見本写真＋注意書き＝店舗×提出物ごと最新版が正（2026-08-30 長田さんのご提案）
         case 'phsample': { const p=pj(r.note); const k=`${store}||${r.item||'openphoto'}`; if (phsT[k]==null || t>=phsT[k]) { phs[k]={ photos: r.photos||[], memo: p.memo||'', by: p.by||'', t }; phsT[k]=t; } } break;
@@ -11950,6 +12420,28 @@
       REBUILDABLE_KEYS.forEach(rk => { if (rk !== 'yosakura_demo_rawkeys' && !written[rk]) { try { localStorage.removeItem(rk); } catch (_) {} } });
       try { localStorage.setItem(k, s); written[k] = 1; } catch (_) { _lsFull = true; _distFail = true; }
     };
+    /* ★2026-10-20 本部のiPhoneで LSFULL が続いた（10/20 6:29 ＝ 2,318K字・reports 1,087K／soukatsu 889K）。上の間引きは送信時刻で切るため、
+       総括表・USENの取込行（1月〜7月の日付でも取り込んだ時刻は新しい）が残り、同じ店×日の取込が何行も重なっていた。
+       ①総括表は営業日の日付で前々月の1日より前を持たない ②同じ店×日×出どころは最新の1行だけ（USENはレジクローズと伝票集計を別に1行ずつ）
+       ＝skClean が選ぶ行はそのまま残るので、画面の数字は変わらない。③Google口コミの本文（reviews）は店ごとに最新の1件だけ（画面は最新しか出さない）。
+       サーバーの本部データは消さない＝端末に置かないだけ */
+    if (hqSlimCut_) {
+      const skLast = {};
+      sk.forEach((r, i) => {
+        if (!r || !r.date || String(r.date) < hqSlimCut_) return;
+        const cls = r.src === 'usen' ? [r.sales != null ? 'usen' : '', (r.pcty != null || r.foodamt != null || r.drinkamt != null) ? 'usenx' : ''] : ['s:' + (r.src || '')];
+        cls.forEach(c => { if (!c) return; const k = r.store + '||' + r.date + '||' + c; const o = skLast[k]; if (o == null || (Number(r.t) || 0) >= (Number(sk[o].t) || 0)) skLast[k] = i; });
+      });
+      const keepI = new Set(Object.values(skLast));
+      const slim = sk.filter((r, i) => keepI.has(i)); sk.length = 0; slim.forEach(r => sk.push(r));
+      const gLast = {};
+      subs.forEach((r, i) => { if (r.kind !== 'gsnap' || String(r.note || '').indexOf('"places"') === -1) return; const d = dateKeyOfItem(r.item); const o = gLast[r.store]; if (!o || d > o.d || (d === o.d && r.t >= o.t)) gLast[r.store] = { i, d, t: r.t }; });
+      const gKeep = new Set(Object.values(gLast).map(x => x.i));
+      subs.forEach((r, i) => {
+        if (r.kind !== 'gsnap' || gKeep.has(i) || String(r.note || '').indexOf('"reviews"') === -1) return;
+        const p = pj(r.note); if (p && typeof p === 'object' && p.reviews) { delete p.reviews; subs[i] = Object.assign({}, r, { note: JSON.stringify(p) }); }
+      });
+    }
     set(LS.reports, food.concat(subs)); set('yosakura_demo_kizuki', kz); set('yosakura_demo_route', route);
     set('yosakura_demo_soukatsu', sk); set('yosakura_demo_survey', survey);
     set('yosakura_demo_svfb', svfb); set('yosakura_demo_storevideo', video);
@@ -12053,7 +12545,25 @@
       const ids = ckIdsOf(store, mode, getHygDay());
       const n = ids.filter(i => day[i]).length, total = ids.length || 1;
       cEl.textContent = n; bEl.style.width = `${Math.round(n / total * 100)}%`;
+      pbCkLeft_(n, ids.length);
     }
+  }
+  /* ★2026-10-20 案Bのチェック＝下の大きなボタンは「あと○項目」。全部済んだら「できました」＝押すと きょうやること へ（記録は1つずつ自動で残る） */
+  /* ★2026-10-20 案Bの在庫＝見本と同じ −／＋。押すと入力欄の数を1つ増減し、入力したのと同じ扱い（下書き・判定はそのまま） */
+  try { document.addEventListener('click', (e) => {
+    const b = e.target && e.target.closest ? e.target.closest('[data-zkstep]') : null; if (!b) return;
+    e.preventDefault();
+    const [i, d] = String(b.dataset.zkstep).split(':'); const inp = document.getElementById('zk_q' + i); if (!inp) return;
+    const cur = parseFloat(String(inp.value || '').replace(/[^0-9.]/g, '')); const base = isNaN(cur) ? 0 : cur;
+    const nv = Math.max(0, Math.round((base + Number(d)) * 10) / 10);
+    inp.value = String(nv); inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+  }); } catch (e) {}
+  function pbCkLeft_(n, total) {
+    const el = document.getElementById('pbCkLeft'); if (!el) return;
+    const left = Math.max(0, (Number(total) || 0) - (Number(n) || 0));
+    el.textContent = left ? L({ ja:`あと ${left}項目`, en:`${left} left`, vi:`Còn ${left} mục` }) : L({ ja:'できました（きょうやることへ）', en:'Done (back to Today)', vi:'Xong (về Hôm nay)' });
+    el.classList.toggle('dim', !!left);
+    el.onclick = left ? null : () => go('/home');
   }
   /* 同期で新しい行が届いたとき、いま見ている画面は作り直さず「新しい情報が届きました」の帯だけを出す（2026-09-24）。
      帯は画面の中身（.body）の先頭に差し込む。次の描き直しで自然に消える。 */
@@ -12065,8 +12575,9 @@
       d.style.cssText = 'border:1px solid #d8b56a;background:#fdf6e7;margin:8px 12px';
       d.innerHTML = `<div class="l1" style="font-weight:600">${esc(L({ ja:'新しい情報が届きました', en:'New data arrived', vi:'Có dữ liệu mới' }))}</div>
         <button type="button" class="mini" data-syncrefresh="1" style="margin-top:6px">${esc(L({ ja:'表示を更新する', en:'Refresh', vi:'Cập nhật' }))}</button>`;
-      const body = app.querySelector('.body');
-      if (body) body.insertBefore(d, body.firstChild); else app.insertBefore(d, app.firstChild);
+      /* ★2026-10-20 案Bの画面では「.body」が一覧の行の中にもある＝行の中に帯が入っていた（発注のカタログ）。画面の中身（#appmain）の先頭に入れる */
+      const main = document.getElementById('appmain');
+      if (main) main.insertBefore(d, main.firstChild); else app.insertBefore(d, app.firstChild);
     } catch (e) {}
   }
   async function syncReports(force) {
@@ -12086,15 +12597,15 @@
            目印一覧（種類|店舗|項目|時刻）なら1/10以下の大きさで、同じ変更検知と再送防止（alreadySent_）ができる。
            ★振り分けを先に行う＝途中で失敗したら目印を残さず、次の同期で自動的にやり直される */
         const nextKeys = d.reports.map(repKey_).join('\n');
-        if (nextKeys !== (localStorage.getItem('yosakura_demo_rawkeys') || '')) {
+        if (nextKeys !== (localStorage.getItem('yosakura_demo_rawkeys') || _rawKeysMem || '')) {
           _distFail = false;
           distribute(d.reports);
           /* ★2026-09-23 長堀橋店「提出したものが全て消えた」＝取り込みの保存に失敗しても目印を保存していたため、
              以後の同期が「変更なし」と判定されてスキップされ続け、22:15の在庫より後の提出が画面に出なかった
              （本部データには全部届いていた）。保存できたときだけ目印を残す。失敗したら目印を消し、
              端末の容量の内訳を apperr で本部データへ送る（次に起きたとき番号で追える） */
-          if (!_distFail) { try { localStorage.setItem('yosakura_demo_rawkeys', nextKeys); } catch (e) {} }
-          else { try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {} reportLsFull_(); }
+          if (!_distFail) { _rawKeysMem = nextKeys; try { localStorage.setItem('yosakura_demo_rawkeys', nextKeys); } catch (e) {} }
+          else { _rawKeysMem = ''; try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {} reportLsFull_(); autoResetStorage_(); }   // ★2026-10-20 取り込みに失敗したら写しも空にする＋端末の控えを捨てて自動で取り直す（神田さん「自動で定点チェックしてリセット」）
           try { localStorage.removeItem('yosakura_demo_raw'); } catch (e) {} // 旧の全文コピーを消して容量を空ける
           // ★写真の作業中は描き直さない（貼った写真と選択中の入力欄が消えるため）。取り込み自体は済んでいる
           // ★同期の描き直しでは位置を保つ（2026-08-31 ユンさんの報告＝チェックのたびに同期→再描画で先頭へ戻っていた）
@@ -12111,6 +12622,7 @@
              全画面を作り直していた（古いiPadでは触り始めた瞬間に起きる）。自動同期では描き直さず、帯をそっと出して
              押したときだけ描き直す（受信箱と同じ）。自分の提出の直後（force）は結果を見せるため従来どおり描き直す。 */
           else if (force) render(true);
+          else if (_distFail) { /* ★2026-10-20 神田さん「何度も出てくる」＝本部のiPhoneは保存がいっぱい（LSFULL）で目印を残せず、毎回「新しい」と判定していた。保存できなかったときは帯を出さない */ }
           else showSyncBand_();
         }
       }
@@ -12181,6 +12693,8 @@
   // rep = { kind, store, item, level, note, photos, t }
   function postReport(rep) {
     if (!useBackend()) return Promise.resolve();
+    // ★2026-10-20 本部IDで店舗責任者・スタッフの見え方にしているときは送らない（本店などの提出として記録されるのを防ぐ）
+    if (inDevView()) { toast(L({ ja:'確認用の表示です。この操作は本部・店舗には届きません', en:'Preview view: this action is not sent to HQ or the store.', vi:'Chế độ xem thử: thao tác này không được gửi đi.' })); return Promise.resolve(); }
     return fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(Object.assign({ token: authToken() }, rep)), keepalive: !!(rep && rep.kind === 'ckdone') })
       .then((r) => r.json())
       .then((d) => {
