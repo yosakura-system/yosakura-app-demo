@@ -6939,5 +6939,53 @@ console.log('== 2026-10-21 長田さん「店の数字が鰻・牛カツとも�
   ok(/if \(storeNeedsBrand_\(s\)\) return storeShort\(s\);/.test(code), '総括表の店名（storeLabel）で業態を二重に付けない');
 }
 
+console.log('== 2026-10-21 神田さん「店舗の売上も同じやったみたい」＝富士山2店の切替で数字が店ごとに変わる ==');
+{
+  const y = new Date(Date.now() - 86400e3).toLocaleDateString('en-CA');
+  run(() => { setLS('owner', 'owned', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.removeItem('yosakura_num_store');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+      { store:'牛カツ世桜 富士山店', date:y, sales:201300, net:182993, guests:38, src:'usen', t: Date.now() - 3600e3 },
+      { store:'日本鰻世桜 富士山店', date:y, sales:232100, net:208890, guests:49, src:'drive', t: Date.now() - 3600e3 }])); });
+  location.hash = '#/home?tab=num';
+  const h1 = registry.app.innerHTML;
+  ok(/class=\"on\" data-numstore=\"日本鰻世桜 富士山店\"/.test(h1) && /208,890/.test(h1) && !/182,993/.test(h1), '最初は1店目（見本の並び＝鰻）＝鰻の売上だけが出る');
+  run(() => { setLS('owner', 'owned', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_num_store', '牛カツ世桜 富士山店');   // run() は保存を空にするので入れ直す
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+      { store:'牛カツ世桜 富士山店', date:y, sales:201300, net:182993, guests:38, src:'usen', t: Date.now() - 3600e3 },
+      { store:'日本鰻世桜 富士山店', date:y, sales:232100, net:208890, guests:49, src:'drive', t: Date.now() - 3600e3 }])); });
+  location.hash = '#/home?tab=num';
+  const h2 = registry.app.innerHTML;
+  ok(/class=\"on\" data-numstore=\"牛カツ世桜 富士山店\"/.test(h2) && /182,993/.test(h2) && !/208,890/.test(h2), '牛カツに切り替える＝牛カツの売上だけに変わる（鰻の数字は残らない）');
+  ok(/38<span class=\"u\">人/.test(h2) && /（USEN）/.test(h2) && /49<span class=\"u\">人/.test(h1) && /総括表から/.test(h1), '牛カツ＝38人・USENレジ／鰻＝49人・総括表から（出どころも店ごと）');
+  ok(/if \(t\.dataset\.numstore\) \{ try \{ localStorage\.setItem\('yosakura_num_store', t\.dataset\.numstore\); \} catch \(e2\) \{\} render\(\); return; \}/.test(code) && /\[data-numstore\]'\)/.test(code), '切替ボタンは押すと保存して描き直す（closest の一覧に入っている）');
+  run(() => { localStorage.removeItem('yosakura_demo_soukatsu'); localStorage.removeItem('yosakura_num_store'); });
+}
+
+console.log('== 2026-10-21 神田さん「オープン写真の過去の写真も履歴として見える化」＝窓口の中に日付ごと ==');
+{
+  const S = '牛カツ世桜 長堀橋店'; const D = 86400e3;
+  const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_photo_target', 'openphoto');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { id:'h1', kind:'subrec', store:S, item:'openphoto', note:JSON.stringify({ by:'永井' }), photos:['PH_A1', 'PH_A2'], t: Date.now() - 2 * D },
+      { id:'h2', kind:'subrec', store:S, item:'openphoto', note:JSON.stringify({ by:'原' }), photos:['PH_B1'], t: Date.now() - 1 * D },
+      { id:'h3', kind:'subrec', store:S, item:'nouhin', note:'{}', photos:['PH_N1'], t: Date.now() - 1 * D },
+      { id:'h4', kind:'subrec', store:'手巻き寿司世桜 難波店', item:'openphoto', note:'{}', photos:['PH_X1'], t: Date.now() - 1 * D },
+      { id:'h5', kind:'subrec', store:S, item:'openphoto', note:'{}', photos:['PH_OLD'], t: Date.now() - 40 * D }])); });
+  location.hash = '#/app/openphoto';
+  const h = registry.app.innerHTML;
+  ok(/class=\"pb-card pb-hist\"/.test(h) && /これまでの写真（30日）/.test(h), 'オープン写真の窓口に「これまでの写真」が出る');
+  ok((h.match(/class=\"pb-histday\"/g) || []).length === 2 && /PH_B1/.test(h) && /PH_A1/.test(h) && /PH_A2/.test(h), '日付ごとに2日分・写真は全部');
+  ok(h.indexOf('PH_B1') < h.indexOf('PH_A1'), '新しい日が上');
+  ok(/pb-histdt\">[^<]*<span>永井<\/span>/.test(h) && /<span>原<\/span>/.test(h), '日付の横に出した人');
+  ok(!/PH_N1/.test(h) && !/PH_X1/.test(h) && !/PH_OLD/.test(h), '納品書の写真・他店・30日より前は混ざらない');
+  ok(/data-full=\"[^\"]*PH_B1/.test(h) && /loading=\"lazy\"/.test(h), '押すと拡大（data-full）・読み込みは遅延');
+  ok(/pb-twin2/.test(h) && /data-topensubmit=\"1\"/.test(h) && h.indexOf('data-topensubmit') < h.indexOf('pb-hist'), '見本と今日・送るはそのまま、履歴はその下');
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_photo_target', 'openphoto'); localStorage.setItem('yosakura_demo_reports', '[]'); });
+  location.hash = '#/app/openphoto';
+  ok(/まだ写真がありません。送ると、ここに日付ごとに残ります。/.test(registry.app.innerHTML), '無いときは1行');
+  ok(/html\[data-theme=\"pb\"\] \.pb-histph \{ display: grid; grid-template-columns: repeat\(3, 1fr\)/.test(css), 'CSS：1行3枚');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

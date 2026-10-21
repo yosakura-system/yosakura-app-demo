@@ -1206,6 +1206,12 @@ html[data-theme="pb"] .pb-big { width: 100%; margin-top: 12px; font-size: 17px; 
 html[data-theme="pb"] .pb-done { display: flex; align-items: center; gap: 6px; color: #2F6B45; background: #E3F0E6; border-radius: 12px; padding: 8px 12px; font-size: 13px; margin: 0 0 8px; }
 html[data-theme="pb"] .pb-done svg { width: 16px; height: 16px; }
 html[data-theme="pb"] .pb-more { margin-top: 12px; padding: 0; }
+/* これまでの写真（オープン写真の窓口・日付ごと）2026-10-21 */
+html[data-theme="pb"] .pb-hist { margin-top: 12px; padding: 12px; }
+html[data-theme="pb"] .pb-histday { margin-top: 10px; }
+html[data-theme="pb"] .pb-histdt { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--gray); margin-bottom: 6px; }
+html[data-theme="pb"] .pb-histph { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+html[data-theme="pb"] .pb-histph img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; margin: 0; }
 html[data-theme="pb"] .pb-more > summary { list-style: none; cursor: pointer; padding: 12px 14px; font-size: 13.5px; font-weight: 600; color: var(--gray); }
 html[data-theme="pb"] .pb-app--openphoto #photoMulti { display: none; }
 @media (min-width: 900px) and (min-height: 600px) {

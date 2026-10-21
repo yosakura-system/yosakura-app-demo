@@ -8880,6 +8880,21 @@
     /* ★この店舗の撮り方（見本）＝2026-08-30 長田さんのご提案。
        スタッフは見るだけ（未登録なら枠ごと出さない）。店長・オーナー・本部は未登録でも枠を出し、登録の導線を案内する */
     const canEditSample = ckCanEdit();
+    /* ★2026-10-21 神田さん「オープン写真の過去の写真も履歴として見える化。窓口に入って見れたらOK」
+       ＝この店・この項目の提出を、日付ごとに新しい順で出す（直近30日・写真は40枚まで）。誰でも見られる（見本の登録は従来どおり店長だけ）。
+       古いiPadの重さ対策＝枚数の上限と loading="lazy"。写真の取り方（photoThumb／data-full で拡大）は「最近の提出」と同じ */
+    const histDays = (() => {
+      const rows = subRows(SUB_KINDS.open)
+        .filter(r => r.store === store && String(r.item || '').split('|')[0] === target && (r.photos || []).length && Number(r.t) >= Date.now() - 30 * 86400e3)
+        .sort((a, b) => b.t - a.t);
+      const days = []; let n = 0;
+      rows.forEach(r => { if (n >= 40) return; const d = dateKeyFor(store, r.t); let g = days.find(x => x.d === d); if (!g) days.push(g = { d, ph: [], by: [] });
+        (r.photos || []).forEach(p => { if (n < 40) { g.ph.push(p); n++; } }); const who = parseNote(r.note).by || ''; if (who && !g.by.includes(who)) g.by.push(who); });
+      return days;
+    })();
+    const histHTML = `<div class="pb-card pb-hist"><div class="pb-twhd">${L({ ja:'これまでの写真（30日）', en:'Past photos (30 days)', vi:'Ảnh đã nộp (30 ngày)' })}</div>${histDays.length
+      ? histDays.map(g => `<div class="pb-histday"><div class="pb-histdt">${g.d === dk ? L({ ja:'今日', en:'Today', vi:'Hôm nay' }) : `${esc(mdLabel(g.d))}（${esc(L(WDAYS[wdOf(g.d)]))}）`}${g.by.length ? `<span>${esc(g.by.join('・'))}</span>` : ''}</div><div class="pb-histph">${g.ph.map(p => `<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="" loading="lazy">`).join('')}</div></div>`).join('')
+      : `<div class="muted" style="margin-top:8px">${L({ ja:'まだ写真がありません。送ると、ここに日付ごとに残ります。', en:'No photos yet. Sent photos appear here by date.', vi:'Chưa có ảnh. Ảnh đã gửi sẽ hiện ở đây theo ngày.' })}</div>`}</div>`;
     const sample = phSampleOf(store, target) || {};
     const sPhotos = (sample.photos || []).slice(0, 2);
     const sMemo = String(sample.memo || '').trim();
@@ -8915,6 +8930,7 @@
           </div>
         </div>
         <button class="btn-primary pb-big" data-topensubmit="1">${L({ ja:'送る', en:'Send', vi:'Gửi' })}</button>
+        ${histHTML}
         ${canEditSample ? `<details class="pb-card pb-more"><summary>${L({ ja:'見本の登録・注意書き・最近の提出（店長）', en:'Samples, notes, recent (manager)', vi:'Mẫu, ghi chú, gần đây (quản lý)' })}</summary>${sampleHTML}
           <div class="card"><h3>${L({ja:'最近の提出',en:'Recent submissions',vi:'Đã nộp gần đây'})}</h3>
           ${recent.length ? recent.map(r=>{ const who = parseNote(r.note).by || ''; return `<div class="rep">${r.photos&&r.photos.length?r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="">`).join(''):`<span class="kind b">${L({ja:'写真',en:'Photo',vi:'Ảnh'})}</span>`}<div class="body"><div class="l1">${esc(storeShort(r.store))}</div><div class="l2">${timeAgo(r.t)}${who?' ・ '+esc(who):''}</div>${hqAckLine(['openphoto','hygiene_m','menubook'].includes(target)?'openphoto':target, r.t, r.store)}</div>${canEditSample && r.photos && r.photos.length ? `<button class="mini" data-mksample="${esc(String(r.id || r.t))}" style="flex:none;margin-left:auto">${L({ja:'これを見本にする',en:'Use as sample',vi:'Dùng làm mẫu'})}</button>` : ''}</div>`; }).join('') : `<div class="muted">${L({ja:'まだありません',en:'None yet',vi:'Chưa có'})}</div>`}
