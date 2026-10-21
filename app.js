@@ -6742,7 +6742,10 @@
   /* ★売上・仕入の自動＝総括表（日報）の月合計から（2026-09-18 神田さん「棚卸が自動で反映するように」）。
      月次数値に手で入れた値があればそれが優先。無ければ日報の合計を出す＝棚卸を保存すれば原価率まで自動で出る */
   function plAutoFrom(store, ym) {
-    try { const t = skMonthData(store, ym).tot || {}; return { sales: t.sales || 0, purchase: t.buy || 0, days: t.entered || 0 }; } catch (e) { return { sales: 0, purchase: 0, days: 0 }; }
+    /* ★2026-10-21 売上は税抜（純売上）で合計する＝入力のある日がすべて純売上を持つときは純売上の合計、そうでなければ従来どおり売上（税込と税抜を混ぜない）。
+       月次画面の見出しが「売上（税抜・月合計）」なのに税込の合計が入っていた */
+    try { const d = skMonthData(store, ym); const t = d.tot || {}; const ent = (d.days || []).filter(x => x.r); const allNet = ent.length > 0 && ent.every(x => Number(x.r.net) > 0);
+      const sales = allNet ? Math.round(ent.reduce((a, x) => a + Number(x.r.net), 0)) : (t.sales || 0); return { sales, purchase: t.buy || 0, days: t.entered || 0 }; } catch (e) { return { sales: 0, purchase: 0, days: 0 }; }
   }
   const plFill = (store, ym, rec) => {  // 欠けている欄だけ自動で埋める（保存する前に呼ぶ）
     const a = plAutoFrom(store, ym); const r = Object.assign({}, rec);
@@ -6752,7 +6755,16 @@
     return r;
   };
   /* 表示用＝売上・仕入が無い月（総括表からの取込＝期首・仕入・期末だけ）は日報の合計で埋めて原価率を出す（保存はしない） */
-  const plMonthsOf = (store) => getMonthly().filter(r => r.store === store).sort((a, b) => a.ym < b.ym ? 1 : -1).map(r => (r.sales == null || r.sales === '' || r.open == null || r.open === '') ? plFill(store, r.ym, r) : r);
+  /* ★2026-10-21 神田さん「原価率70%って本当？」＝牛カツ富士山の9月が70.9%と出ていた。
+     原因＝9/25・26に棚卸を保存したとき、plFill がその時点の月合計（2,246,650円）を売上として記録に残し、月が終わっても増えなかった
+     （仕入・在庫は総括表の取込で更新されるのに、売上だけ9/25のまま。実際の9月は約288万円＝原価率55%）。
+     売上の正は日報・レジの月合計（USEN＞総括表＞日報）。日報の合計が記録より大きければ日報の合計で割る
+     （途中で止まった記録は必ず小さい。日報に欠けがあって記録の方が大きいときは記録のまま）。月次画面の売上欄も同じ値を出す */
+  const plSalesFix_ = (store, r) => {
+    try { const a = plAutoFrom(store, r.ym); const s = Number(r.sales) || 0; if (a.sales > 0 && a.sales > s) return Object.assign({}, r, { sales: a.sales, salesFrom: 'daily', salesSaved: r.sales }); } catch (e) {}
+    return r;
+  };
+  const plMonthsOf = (store) => getMonthly().filter(r => r.store === store).sort((a, b) => a.ym < b.ym ? 1 : -1).map(r => plSalesFix_(store, (r.sales == null || r.sales === '' || r.open == null || r.open === '') ? plFill(store, r.ym, r) : r));
   const plPrevClose = (store, ym) => { const r = getMonthly().find(x => x.store === store && x.ym === prevYm(ym)); return r ? r.close : ''; };
 
   const pct = (v) => (Number(v) || 0).toFixed(1) + '%';
@@ -6917,9 +6929,9 @@
     const cur = rows.find(r => r.ym === nowYm) || {};
     const openDef = cur.open != null && cur.open !== '' ? cur.open : plPrevClose(store, nowYm);
     const autoNow = plAutoFrom(store, nowYm);
-    const salesDef = cur.sales != null && cur.sales !== '' ? cur.sales : (autoNow.sales || '');
+    const salesDef = cur.sales != null && cur.sales !== '' ? (Number(autoNow.sales) > Number(cur.sales) ? autoNow.sales : cur.sales) : (autoNow.sales || '');   // ★2026-10-21 日報の月合計が記録より大きければ日報の合計（plSalesFix_ と同じ）
     const purchaseDef = cur.purchase != null && cur.purchase !== '' ? cur.purchase : (autoNow.purchase || '');
-    const autoUsed = (cur.sales == null || cur.sales === '') && !!autoNow.sales;
+    const autoUsed = ((cur.sales == null || cur.sales === '') || Number(autoNow.sales) > Number(cur.sales)) && !!autoNow.sales;
 
     /* ★スタッフ（店舗iPad）は読むだけ。入力欄は出さない（2026-08-12 アクション8-③）。
        店舗iPadは共用のため、月次の数値を誰でも書き換えられる状態にしない。

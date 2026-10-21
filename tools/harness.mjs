@@ -6987,5 +6987,34 @@ console.log('== 2026-10-21 神田さん「オープン写真の過去の写真�
   ok(/html\[data-theme=\"pb\"\] \.pb-histph \{ display: grid; grid-template-columns: repeat\(3, 1fr\)/.test(css), 'CSS：1行3枚');
 }
 
+console.log('== 2026-10-21 神田さん「原価率70%って本当？」＝途中で止まった月の売上で割らない（日報・レジの月合計が正） ==');
+{
+  const S = '牛カツ世桜 富士山店';
+  const now = new Date(); const pm = new Date(now.getFullYear(), now.getMonth() - 1, 1); const pym = pm.getFullYear() + '-' + String(pm.getMonth() + 1).padStart(2, '0');
+  const dayOf = (d) => pym + '-' + String(d).padStart(2, '0');
+  const seed = () => { setLS('owner', 'owned', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_num_store', S);
+    // 9/25に棚卸を保存した形＝売上がその時点の月合計で止まっている（2,246,650）。仕入・在庫は総括表の取込で月末の値
+    localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store:S, ym:pym, sales:2246650, open:833298, purchase:1892923, close:1132798, by:'加盟店オーナー（長田）', t: Date.now() - 20 * 86400e3 }]));
+    // 日報・レジの月合計＝2,900,000（税抜）
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+      { store:S, date:dayOf(5), sales:1100000, net:1000000, guests:200, src:'usen', t: Date.now() - 20 * 86400e3 },
+      { store:S, date:dayOf(15), sales:1100000, net:1000000, guests:200, src:'drive', t: Date.now() - 15 * 86400e3 },
+      { store:S, date:dayOf(28), sales:990000, net:900000, guests:180, src:'drive', t: Date.now() - 5 * 86400e3 },
+      { store:S, date:new Date(Date.now() - 86400e3).toLocaleDateString('en-CA'), sales:110000, net:100000, guests:20, src:'usen', t: Date.now() - 3600e3 }])); };   // 今月の行＝「前月」が先月になる
+  run(seed);
+  location.hash = '#/home?tab=num';
+  const h = registry.app.innerHTML;
+  const exp = ((833298 + 1892923 - 1132798) / 2900000 * 100).toFixed(1);   // 54.9
+  ok(new RegExp('原価率（前月・確定）[\\s\\S]{0,200}' + exp.replace('.', '\\.') + '<span class=\"u\">%').test(h), '店の数字の原価率＝(月初＋仕入−月末)÷日報の月合計＝' + exp + '%（70.9%ではない）');
+  ok(!/70\.9<span class=\"u\">%/.test(h), '止まっていた売上（2,246,650）で割った70.9%は出ない');
+  const sc = code.slice(code.indexOf('const plSalesFix_'), code.indexOf('const plPrevClose'));
+  ok(/a\.sales > 0 && a\.sales > s/.test(sc) && /salesFrom: 'daily'/.test(sc) && /plSalesFix_\(store, \(r\.sales == null/.test(sc), '日報の合計が記録より大きいときだけ差し替える（記録の方が大きければそのまま）');
+  // 記録の方が大きい（日報に欠けがある）ときは記録のまま
+  run(() => { seed(); localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store:S, ym:pym, sales:3200000, open:833298, purchase:1892923, close:1132798, t: Date.now() }])); });
+  location.hash = '#/home?tab=num';
+  const exp2 = ((833298 + 1892923 - 1132798) / 3200000 * 100).toFixed(1);
+  ok(new RegExp(exp2.replace('.', '\\.') + '<span class=\"u\">%').test(registry.app.innerHTML), '記録の売上（3,200,000）が日報の合計より大きいときは記録で割る＝' + exp2 + '%');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
