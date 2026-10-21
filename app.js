@@ -2076,11 +2076,15 @@
       + `<button class="pb-card pb-numcard" data-open="pl">${spark}<div class="pb-numfoot"><span>${L({ja:'累計',en:'MTD',vi:'Lũy kế'})} ${short(mtd)}</span>${have.length ? `<span>${L({ja:'着地見込み',en:'Forecast',vi:'Dự kiến'})} ${short(fc)}${prevTot ? `（${L({ja:'先月',en:'last month',vi:'tháng trước'})} ${short(prevTot)}）` : ''}</span>` : ''}</div></button>`;
     /* ③ 仕入率・原価率 */
     const t = mon.tot || {};
-    const buyRate = t.sales && t.buy ? (t.buy / t.sales * 100).toFixed(1) : null;
-    let cost = null; try { const pm = plMonthsOf(store).find(r => r.ym === pym); if (pm && pm.close != null && pm.close !== '' && Number(pm.sales)) cost = plCalc(pm).costRate; } catch (e) {}
+    /* ★2026-10-21 全店点検＝日別の仕入（総括表の日別の仕入金額）は一部の日しか入っておらず、牛カツ富士山で 5.9%（仕入25万）と出ていた。
+       総括表の当月仕入高（仕入台帳・毎時の取込）の方が大きければそれを使い、出どころを添える */
+    let buyNow = Number(t.buy) || 0, buyFrom = 'daily';
+    try { const cm = getMonthly().find(r => r.store === store && r.ym === ym); if (cm && Number(cm.purchase) > buyNow) { buyNow = Number(cm.purchase); buyFrom = cm.purchaseFrom === 'drive' ? 'drive' : 'app'; } } catch (e) {}
+    const buyRate = t.sales && buyNow ? (buyNow / t.sales * 100).toFixed(1) : null;
+    let cost = null; try { const pm = plMonthsOf(store).find(r => r.ym === pym); if (pm) { const pc = plCalc(pm); if (pc.complete) cost = pc.costRate; } } catch (e) {}   // ★2026-10-21 月初・月末がそろった月だけ
     const kpi2 = head(L({ja:'仕入率 ・ 原価率',en:'Purchase & cost rate',vi:'Tỷ lệ nhập & giá vốn'}), L({ja:'仕入率は毎日 ・ 原価率は前月分',en:'Purchase daily / cost last month',vi:'Nhập hằng ngày / giá vốn tháng trước'}))
-      + `<div class="pb-kpi2"><button class="pb-card pb-numcard" data-open="pl"><div class="l">${L({ja:'仕入率（今月1日〜）',en:'Purchase rate (MTD)',vi:'Tỷ lệ nhập (lũy kế)'})}</div><div class="v">${buyRate != null ? buyRate + '<span class="u">%</span>' : '—'}</div><div class="d">${buyRate != null ? `${L({ja:'仕入',en:'Purchases',vi:'Nhập'})} ${short(t.buy)} ÷ ${L({ja:'売上（税込）',en:'sales (incl.)',vi:'doanh thu (gồm thuế)'})} ${short(t.sales)}` : L({ja:'納品書が入ると出ます',en:'Shows once invoices are in',vi:'Hiện khi có hóa đơn'})}</div></button>`
-      + `<button class="pb-card pb-numcard" data-open="pl"><div class="l">${L({ja:'原価率（前月・確定）',en:'Cost rate (last month)',vi:'Giá vốn (tháng trước)'})}</div><div class="v">${cost != null ? cost.toFixed(1) + '<span class="u">%</span>' : '—'}</div><div class="d">${cost != null ? `${Number(pym.slice(5))}${L({ja:'月分 ・ 月初＋仕入−月末棚卸',en:' ・ open + purchases − close',vi:' ・ đầu kỳ + nhập − cuối kỳ'})}` : L({ja:'月末棚卸が入ると出ます',en:'Shows after month-end count',vi:'Hiện sau kiểm kê cuối tháng'})}</div></button></div>`;
+      + `<div class="pb-kpi2"><button class="pb-card pb-numcard" data-open="pl"><div class="l">${L({ja:'仕入率（今月1日〜）',en:'Purchase rate (MTD)',vi:'Tỷ lệ nhập (lũy kế)'})}</div><div class="v">${buyRate != null ? buyRate + '<span class="u">%</span>' : '—'}</div><div class="d">${buyRate != null ? `${L({ja:'仕入',en:'Purchases',vi:'Nhập'})} ${short(buyNow)}${buyFrom === 'drive' ? L({ja:'（総括表の仕入台帳）',en:' (ledger)',vi:' (sổ nhập)'}) : ''} ÷ ${L({ja:'売上（税込）',en:'sales (incl.)',vi:'doanh thu (gồm thuế)'})} ${short(t.sales)}` : L({ja:'納品書が入ると出ます',en:'Shows once invoices are in',vi:'Hiện khi có hóa đơn'})}</div></button>`
+      + `<button class="pb-card pb-numcard" data-open="pl"><div class="l">${L({ja:'原価率（前月・確定）',en:'Cost rate (last month)',vi:'Giá vốn (tháng trước)'})}</div><div class="v">${cost != null ? cost.toFixed(1) + '<span class="u">%</span>' : '—'}</div><div class="d">${cost != null ? `${Number(pym.slice(5))}${L({ja:'月分 ・ 月初＋仕入−月末棚卸',en:' ・ open + purchases − close',vi:' ・ đầu kỳ + nhập − cuối kỳ'})}` : L({ja:'月初と月末の在庫がそろうと出ます',en:'Shows after month-end count',vi:'Hiện sau kiểm kê cuối tháng'})}</div></button></div>`;
     /* ④ お客様の声（サーベイ・今月） */
     const svM = getSurvey().filter(r => r && r.store === store && r.sat >= 1 && ymOfDate(dateKeyFor(store, r.t)) === ymOfDate(today));
     const svAvg = svM.length ? (svM.reduce((a, r) => a + r.sat, 0) / svM.length).toFixed(1) : null;
@@ -6572,7 +6576,7 @@
           <div class="dgrid">
             <div class="dcell${sv.length ? '' : ' off'}"><span class="dk">${L({ ja:'サーベイ 平均満足度', en:'Survey avg.', vi:'Khảo sát TB' })}</span><b class="dv">${sv.length ? '★' + svAvg.toFixed(1) : '—'}</b></div>
             <div class="dcell${sv.length ? '' : ' off'}"><span class="dk">${L({ ja:'サーベイ 回答数／低評価', en:'Responses / low', vi:'Phản hồi / thấp' })}</span><b class="dv">${sv.length ? sv.length + ' / ' + svLow : '—'}</b></div>
-            <div class="dcell${moC ? '' : ' off'}"><span class="dk">${L({ ja:'月次 原価率', en:'Monthly cost ratio', vi:'Giá vốn tháng' })}</span><b class="dv">${moC ? moC.costRate.toFixed(1) + '%' : '—'}</b></div>
+            <div class="dcell${moC ? '' : ' off'}"><span class="dk">${L({ ja:'月次 原価率', en:'Monthly cost ratio', vi:'Giá vốn tháng' })}</span><b class="dv">${moC && moC.complete ? moC.costRate.toFixed(1) + '%' : '—'}</b></div>
             ${getRole() === 'staff' ? '' : `<div class="dcell${moC ? '' : ' off'}"><span class="dk">${L({ ja:'月次 粗利', en:'Gross profit', vi:'Lãi gộp' })}</span><b class="dv">${moC ? esc(yenShort(moC.gross)) : '—'}</b></div>`}
             <div class="dcell${kzN ? '' : ' off'}"><span class="dk">${L({ ja:'気づきの報告', en:'Insights', vi:'Ghi nhận' })}</span><b class="dv">${kzN ? kzN + L({ ja:'件', en:'', vi:'' }) : '—'}</b></div>
             <div class="dcell${fdN ? '' : ' off'}"><span class="dk">${L({ ja:'食べ残し報告', en:'Leftover reports', vi:'Báo cáo đồ thừa' })}</span><b class="dv">${fdN ? fdN + L({ ja:'件', en:'', vi:'' }) : '—'}</b></div>
@@ -6737,15 +6741,19 @@
      端数＝消費税を切り捨ててから引く（多くの会計ソフトの標準）。税率＝食材8・飲料（お酒）10・飲料（お酒以外）8。
      旧データ（税込3欄や税率の無い行）はそのまま＝換算しない（黙って数字を変えない） */
   const taxNet = (gross, rate) => { const g = Math.round(Number(gross) || 0); const r = Number(rate) || 0; if (!g || !r) return g; return g - Math.floor(g * r / (100 + r)); };
-  const plCalc = (m) => { const sales = Number(m.sales) || 0; const cost = (Number(m.open) || 0) + (Number(m.purchase) || 0) - (Number(m.close) || 0); const costRate = sales ? cost / sales * 100 : 0; const gross = sales - cost; const grossRate = sales ? gross / sales * 100 : 0; return { sales, cost, costRate, gross, grossRate }; };
+  /* ★2026-10-21 全店点検（神田さん「うその数値や根拠のない数値は絶対にNG」）＝月初在庫か月末在庫が無い月は原価率を出さない（complete=false）。
+     月初が無いと「仕入−月末」になり、広島8月 6.6%・鰻富士山8月 13.6%・本店9月 11.4% のような低すぎる値が出ていた（実際は22〜40%） */
+  const plCalc = (m) => { const sales = Number(m.sales) || 0; const cost = (Number(m.open) || 0) + (Number(m.purchase) || 0) - (Number(m.close) || 0); const costRate = sales ? cost / sales * 100 : 0; const gross = sales - cost; const grossRate = sales ? gross / sales * 100 : 0;
+    const complete = sales > 0 && hasVal(m.open) && hasVal(m.close) && Number(m.close) !== 0; return { sales, cost, costRate, gross, grossRate, complete }; };
   const prevYm = (ym) => { const [y, m] = (ym || '').split('-').map(Number); if (!y) return ''; const d = new Date(y, m - 2, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   /* ★売上・仕入の自動＝総括表（日報）の月合計から（2026-09-18 神田さん「棚卸が自動で反映するように」）。
      月次数値に手で入れた値があればそれが優先。無ければ日報の合計を出す＝棚卸を保存すれば原価率まで自動で出る */
   function plAutoFrom(store, ym) {
-    /* ★2026-10-21 売上は税抜（純売上）で合計する＝入力のある日がすべて純売上を持つときは純売上の合計、そうでなければ従来どおり売上（税込と税抜を混ぜない）。
+    /* ★2026-10-21 売上は税抜（純売上）で合計する。
        月次画面の見出しが「売上（税抜・月合計）」なのに税込の合計が入っていた */
-    try { const d = skMonthData(store, ym); const t = d.tot || {}; const ent = (d.days || []).filter(x => x.r); const allNet = ent.length > 0 && ent.every(x => Number(x.r.net) > 0);
-      const sales = allNet ? Math.round(ent.reduce((a, x) => a + Number(x.r.net), 0)) : (t.sales || 0); return { sales, purchase: t.buy || 0, days: t.entered || 0 }; } catch (e) { return { sales: 0, purchase: 0, days: 0 }; }
+    try { const d = skMonthData(store, ym); const t = d.tot || {}; const ent = (d.days || []).filter(x => x.r);
+      /* 日ごとに純売上（税抜）、純売上が無い日だけ売上（税込）。全店点検（10/21）＝1日でも純売上が0の日があると月ごと税込に落ちて、牛カツ富士山9月が51%（税込）になっていた */
+      const sales = Math.round(ent.reduce((a, x) => a + (Number(x.r.net) > 0 ? Number(x.r.net) : (Number(x.r.sales) || 0)), 0)); return { sales, purchase: t.buy || 0, days: t.entered || 0 }; } catch (e) { return { sales: 0, purchase: 0, days: 0 }; }
   }
   const plFill = (store, ym, rec) => {  // 欠けている欄だけ自動で埋める（保存する前に呼ぶ）
     const a = plAutoFrom(store, ym); const r = Object.assign({}, rec);
@@ -6891,7 +6899,7 @@
     const mlabel = (ym) => String(ym || '').slice(5) + L({ ja:'月', en:'', vi:'' });
     const tipOf = (m) => { const c = plCalc(m); return `${m.ym}　${L({ ja:'売上', en:'Sales', vi:'DT' })} ${yen(c.sales)}　${L({ ja:'原価率', en:'Cost', vi:'Giá vốn' })} ${pct(c.costRate)}`; };
     const sales = ms.map(m => ({ k: mlabel(m.ym), v: plCalc(m).sales, tip: tipOf(m) }));
-    const cost  = ms.map(m => ({ k: mlabel(m.ym), v: Number(plCalc(m).costRate.toFixed(1)), tip: tipOf(m) }));
+    const cost  = ms.filter(m => plCalc(m).complete).map(m => ({ k: mlabel(m.ym), v: Number(plCalc(m).costRate.toFixed(1)), tip: tipOf(m) }));   // ★2026-10-21 そろった月だけ
     const man = (v) => Math.round(v / 10000) + L({ ja:'万', en:'万', vi:'万' });
     return `
       <div class="card">
@@ -6911,7 +6919,7 @@
   /* ★利益（粗利）を見せてよい相手か（2026-08-12 アプリ構築MTG アクション8-③）。
      売上・原価率はスタッフも見てよいが、利益と詳細なPLは出さない。 */
   const canSeeProfit = () => getRole() !== 'staff';
-  const plRow = (m) => { const c = plCalc(m); return `<div class="rep"><span class="kind ${c.costRate>0&&c.costRate<=35?'b':'a'}">${esc(m.ym)}</span><div class="body"><div class="l1">${L({ja:'売上',en:'Sales',vi:'DT'})} ${yen(c.sales)} ・ ${L({ja:'原価率',en:'Cost',vi:'Giá vốn'})} <b>${pct(c.costRate)}</b></div><div class="l2">${L({ja:'原価',en:'Cost',vi:'Giá vốn'})} ${yen(c.cost)}${canSeeProfit() ? ` ・ ${L({ja:'粗利',en:'Gross',vi:'Lãi gộp'})} ${yen(c.gross)}（${pct(c.grossRate)}）` : ''}</div></div></div>`; };
+  const plRow = (m) => { const c = plCalc(m); return `<div class="rep"><span class="kind ${c.costRate>0&&c.costRate<=35?'b':'a'}">${esc(m.ym)}</span><div class="body"><div class="l1">${L({ja:'売上',en:'Sales',vi:'DT'})} ${yen(c.sales)} ・ ${L({ja:'原価率',en:'Cost',vi:'Giá vốn'})} <b>${c.complete ? pct(c.costRate) : '—'}</b></div><div class="l2">${c.complete ? `${L({ja:'原価',en:'Cost',vi:'Giá vốn'})} ${yen(c.cost)}` : L({ja:'月初か月末の在庫が無いため原価率は出せません',en:'No cost ratio: opening or closing stock missing',vi:'Thiếu tồn đầu/cuối kỳ'})}${canSeeProfit() ? ` ・ ${L({ja:'粗利',en:'Gross',vi:'Lãi gộp'})} ${yen(c.gross)}（${pct(c.grossRate)}）` : ''}</div></div></div>`; };
   APP_VIEWS.pl = () => {
     const vis = visibleStores();
     // 複数店舗（オーナー所有／本部全店）＝直近月の原価率を店舗比較
@@ -6944,7 +6952,7 @@
         <div class="card"><h3>${L({ ja:'直近の月', en:'Latest month', vi:'Tháng gần nhất' })} — ${esc(storeShort(store))}</h3>
           ${c0 ? `<div class="stat-row">
             <div class="stat"><div class="n">${yen(c0.sales)}</div><div class="k">${L({ ja:'売上', en:'Sales', vi:'Doanh thu' })}</div></div>
-            <div class="stat"><div class="n">${pct(c0.costRate)}</div><div class="k">${L({ ja:'原価率', en:'Cost ratio', vi:'Tỷ lệ giá vốn' })}</div></div>
+            <div class="stat"><div class="n">${c0.complete ? pct(c0.costRate) : '—'}</div><div class="k">${L({ ja:'原価率', en:'Cost ratio', vi:'Tỷ lệ giá vốn' })}</div></div>
           </div>` : `<div class="muted">${L({ ja:'まだ入力がありません', en:'No data yet', vi:'Chưa có' })}</div>`}
         </div>
         ${plTrend(store)}
@@ -10851,7 +10859,7 @@
       const recalc = () => {
         const c = plCalc({ sales: num('pl_sales'), purchase: num('pl_purchase'), open: num('pl_open'), close: num('pl_close') });
         if (byId('pl_cost')) byId('pl_cost').textContent = yen(c.cost);
-        if (byId('pl_costrate')) byId('pl_costrate').textContent = c.sales ? c.costRate.toFixed(1) + '%' : '—';
+        if (byId('pl_costrate')) byId('pl_costrate').textContent = c.complete ? c.costRate.toFixed(1) + '%' : '—';
         if (byId('pl_grossrate')) byId('pl_grossrate').textContent = c.sales ? c.grossRate.toFixed(1) + '%' : '—';
       };
       ['pl_sales','pl_purchase','pl_open','pl_close'].forEach(id => { if (byId(id)) byId(id).oninput = recalc; });
@@ -10981,7 +10989,7 @@
         lastSync = rec.t;
         /* 貼り付けの下書きは保存で役目を終える（残すと保存済みの内容より優先されてしまう） */
         try { const dr = getTnDrafts(); delete dr[tnDraftKey(store, ym)]; localStorage.setItem('yosakura_tn_draft', JSON.stringify(dr)); } catch (e) {}
-        { const c = plCalc(rec); toast(c.sales ? `${L({ ja:'棚卸を保存しました。原価率', en:'Stocktake saved. Cost ratio', vi:'Đã lưu kiểm kê. Giá vốn' })} ${c.costRate.toFixed(1)}%` : L({ ja:'棚卸を保存しました（月末在庫へ反映済み）', en:'Stocktake saved (closing stock updated)', vi:'Đã lưu kiểm kê' })); }
+        { const c = plCalc(rec); toast(c.complete ? `${L({ ja:'棚卸を保存しました。原価率', en:'Stocktake saved. Cost ratio', vi:'Đã lưu kiểm kê. Giá vốn' })} ${c.costRate.toFixed(1)}%` : L({ ja:'棚卸を保存しました（月末在庫へ反映済み）', en:'Stocktake saved (closing stock updated)', vi:'Đã lưu kiểm kê' })); }
         render();
         postReport({ kind:'monthly', store, note: JSON.stringify({ ym, sales: rec.sales, purchase: rec.purchase, open: rec.open, close: rec.close, goal: rec.goal, closeDetail: detail, by: rec.by }), t: rec.t });
       };

@@ -7016,5 +7016,35 @@ console.log('== 2026-10-21 神田さん「原価率70%って本当？」＝途�
   ok(new RegExp(exp2.replace('.', '\\.') + '<span class=\"u\">%').test(registry.app.innerHTML), '記録の売上（3,200,000）が日報の合計より大きいときは記録で割る＝' + exp2 + '%');
 }
 
+console.log('== 2026-10-21 全店点検（神田さん「うその数値や根拠のない数値は絶対にNG」）＝月初が無い月は出さない・日ごとに純売上・仕入率は仕入台帳 ==');
+{
+  const S = '日本料理世桜本店';
+  const now = new Date(); const pm = new Date(now.getFullYear(), now.getMonth() - 1, 1); const pym = pm.getFullYear() + '-' + String(pm.getMonth() + 1).padStart(2, '0'); const nowYm = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const dayOf = (d) => pym + '-' + String(d).padStart(2, '0'); const y = new Date(Date.now() - 86400e3).toLocaleDateString('en-CA');
+  // 本店9月の形＝月初在庫が無い・月末だけある → 原価率は出さない（旧＝仕入−月末÷売上＝11.4%）
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store:S, ym:pym, sales:3729605, purchase:1044970, close:434817, t: Date.now() - 20 * 86400e3 }, { store:S, ym:nowYm, purchase:1464248, purchaseFrom:'drive', src:'drive', t: Date.now() - 3600e3 }]));
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+      { store:S, date:dayOf(5), sales:2200000, net:2000000, guests:300, src:'drive', t: Date.now() - 20 * 86400e3 },
+      { store:S, date:dayOf(6), sales:1100000, guests:150, src:'drive', t: Date.now() - 20 * 86400e3 },   // 純売上の無い日＝この日だけ税込
+      { store:S, date:dayOf(20), sales:2200000, net:2000000, guests:300, src:'drive', t: Date.now() - 10 * 86400e3 },
+      { store:S, date:y, sales:5500000, net:5000000, guests:700, buy:808140, src:'drive', t: Date.now() - 3600e3 }])); });
+  location.hash = '#/home?tab=num';
+  const h = registry.app.innerHTML;
+  ok(/原価率（前月・確定）<\/div><div class=\"v\">—<\/div>/.test(h) && /月初と月末の在庫がそろうと出ます/.test(h), '月初在庫が無い月＝原価率は「—」（11.4%のような低すぎる値を出さない）');
+  ok(/仕入率（今月1日〜）<\/div><div class=\"v\">26\.6<span class=\"u\">%/.test(h) && /総括表の仕入台帳/.test(h), '仕入率＝総括表の当月仕入高1,464,248÷売上（税込）5,500,000＝26.6%・出どころつき（日別の80万ではない）');
+  const sc = code.slice(code.indexOf('function plAutoFrom'), code.indexOf('const plFill'));
+  ok(/Number\(x\.r\.net\) > 0 \? Number\(x\.r\.net\) : \(Number\(x\.r\.sales\) \|\| 0\)/.test(sc), '月の売上＝日ごとに純売上、無い日だけ売上（1日の欠けで月ごと税込に落ちない）');
+  ok(/const complete = sales > 0 && hasVal\(m\.open\) && hasVal\(m\.close\) && Number\(m\.close\) !== 0;/.test(code), 'plCalc.complete＝売上・月初・月末がそろって月末が0でない');
+  ok(/ms\.filter\(m => plCalc\(m\)\.complete\)\.map/.test(code) && /c\.complete \? pct\(c\.costRate\) : '—'/.test(code) && /c0\.complete \? pct\(c0\.costRate\) : '—'/.test(code) && /moC && moC\.complete \?/.test(code) && /c\.complete \? c\.costRate\.toFixed\(1\)/.test(code), '月次画面の一覧・統計・グラフ・保存の表示も、そろった月だけ原価率を出す');
+  // 月初がそろえば出る（前月の月末在庫を月初に引き継ぐ）
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    const ppm = new Date(now.getFullYear(), now.getMonth() - 2, 1); const ppym = ppm.getFullYear() + '-' + String(ppm.getMonth() + 1).padStart(2, '0');
+    localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store:S, ym:ppym, close:400000, t: Date.now() - 50 * 86400e3 }, { store:S, ym:pym, sales:3729605, purchase:1044970, close:434817, t: Date.now() - 20 * 86400e3 }]));
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store:S, date:dayOf(5), sales:5500000, net:5000000, guests:700, src:'drive', t: Date.now() - 20 * 86400e3 }, { store:S, date:y, sales:110000, net:100000, guests:20, src:'usen', t: Date.now() - 3600e3 }])); });
+  location.hash = '#/home?tab=num';
+  ok(/原価率（前月・確定）<\/div><div class=\"v\">20\.2<span class=\"u\">%/.test(registry.app.innerHTML), '前月の月末在庫400,000を月初に引き継げば出る＝(400,000＋1,044,970−434,817)÷5,000,000＝20.2%');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
