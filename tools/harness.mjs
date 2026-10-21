@@ -7164,5 +7164,41 @@ console.log('== 2026-10-21 永井さん「在庫チェックに消耗品管理�
   ok(/value="輪ゴム"[\s\S]{0,80}id="zk_s\d+" value="30"/.test(h) && /value="レジロール（大／小）"[\s\S]{0,80}id="zk_s\d+" value="5"/.test(h), '発注目安＝輪ゴム30・レジロール5');
 }
 
+console.log('== 2026-10-22 永井さん「基準在庫を設定しても消える（2、3回）」＝本部ID（nagai）の店舗責任者の見え方では保存を止めて下書きを残す ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const draft = { [S]: { rows: [{ n:'パン粉', std:'9', u:'袋', g:'食材管理①（毎日確認）', f:'' }], t: Date.now() } };
+  const seedHq = (view) => run(() => { setLS(view, S, 'ja'); localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'nagai', name: '永井', role: 'hq', stores: ['*'] })); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); localStorage.setItem('yosakura_zk_master_draft', JSON.stringify(draft)); });
+  // ① 店舗責任者の見え方＝帯に「届きません」が常時・保存を押しても行は増えず下書きも残る
+  seedHq('manager');
+  location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  let h = registry.app.innerHTML;
+  ok(/class="viewas-btn on" data-viewas="manager"/.test(h) && /viewas-note/.test(h) && /提出・保存は本部・店舗に届きません/.test(h) && /店長IDでログインしてください/.test(h), '店舗責任者の見え方＝帯に「届きません・店長IDで」が常に出る');
+  ok(/保存していない編集を復元しました/.test(h) && /id="zk_s\d+" value="9"/.test(h), '下書き（基準在庫9）が復元されている');
+  const btn = doc.getElementById('saveZkMaster'); ok(!!btn, '保存ボタンがある'); if (btn) btn.onclick();
+  ok(!JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').some(r => r.kind === 'zaikomaster'), '保存を押しても端末の記録に zaikomaster は増えない（「保存しました」を出さない）');
+  ok(JSON.parse(localStorage.getItem('yosakura_zk_master_draft') || '{}')[S], '下書きは消えない（店長IDで入り直せば復元できる）');
+  { const t = doc.getElementById('toast'); ok(!t || /確認用の表示では保存できません/.test(t.textContent || ''), '止めた理由を出す（店長IDでログインし直す）'); }
+  // 在庫数の提出も同じ
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'nagai', name: '永井', role: 'hq', stores: ['*'] })); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'in'); });
+  location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  { const inp = doc.querySelector('input[data-zkname]'); if (inp) inp.value = '3'; const sb = doc.getElementById('submitZk'); if (sb) sb.onclick(); }
+  ok(!JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').some(r => r.kind === 'zaiko'), '在庫数の提出も、確認用の表示では端末の記録に増えない');
+  // ② 本部の見え方＝注意の行は出ない。店長ID（nagai-ten）＝従来どおり保存できる
+  seedHq('hq');
+  location.hash = '#/app/zaiko?x=hqv';
+  ok(!/viewas-note/.test(registry.app.innerHTML), '本部の見え方では注意の行は出ない');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'nagai-ten', name: '永井（店長）', role: 'manager', stores: [S] })); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); localStorage.setItem('yosakura_zk_master_draft', JSON.stringify(draft)); });
+  location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  h = registry.app.innerHTML;
+  ok(!/viewas-note/.test(h) && /id="zk_s\d+" value="9"/.test(h), '店長IDでは帯なし・下書きが復元される');
+  doc.getElementById('zk_n0').value = 'パン粉'; doc.getElementById('zk_s0').value = '9'; doc.getElementById('zk_u0').value = '袋'; doc.getElementById('zk_g0').value = '食材管理①（毎日確認）';   // 擬似DOMは value を持たないので下書きの中身を欄に入れる
+  doc.getElementById('saveZkMaster').onclick();
+  const saved = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').find(r => r.kind === 'zaikomaster');
+  ok(saved && JSON.parse(saved.note).items.some(it => it.n === 'パン粉' && it.std === 9), '店長IDで保存＝zaikomaster が記録され、基準在庫9が入る');
+  ok(!JSON.parse(localStorage.getItem('yosakura_zk_master_draft') || '{}')[S], '店長IDで保存したら下書きは消える');
+  ok(/if \(inDevView\(\)\) \{ toast\(L\(\{ ja:'確認用の表示では保存できません/.test(code) && /if \(inDevView\(\)\) \{ toast\(L\(\{ ja:'確認用の表示では提出できません/.test(code), 'ソース＝保存・提出の入口で inDevView を先に見る（下書きを消す前）');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

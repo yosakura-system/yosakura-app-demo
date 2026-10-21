@@ -148,6 +148,34 @@ function 認証_利用者を登録(uid, name, role, storesSlash, tempPw) {
    共有IDは本部が決めたパスワードをそのまま使う（must_change=false）。
    実行のたびに全端末が強制ログアウト＝新しいパスワードを知っている人だけがまた入れる（退職者はここで外れる）。
    例：認証_共有パスワードを設定('ipad-gyukatsu', 'gk2026-10') */
+/* ★2026-10-22 神田さん「永井さん・秋定さん・ユンさんは本部でも現場に近い。いま使っているIDを店舗用（本店／牛カツ長堀橋／手巻き難波）にしてほしい。他の加盟店の情報は要らない」
+   ＝そのIDを「店長・3店」に変える。パスワードはそのまま（hash・must_change・pw_at は触らない）。
+   全端末のトークンを外す＝次に開いたときログイン画面になり、入り直すと新しい役割・店舗で動く（アプリは役割と店舗一覧をログイン時に覚えるため）。
+   使い方（Apps Script の画面で関数を選んで実行）：
+     認証_店舗用IDにする('nagai',   '日本料理世桜本店／牛カツ世桜 長堀橋店／手巻き寿司世桜 難波店')
+     認証_店舗用IDにする('akisada', '日本料理世桜本店／牛カツ世桜 長堀橋店／手巻き寿司世桜 難波店')
+     認証_店舗用IDにする('yun',     '日本料理世桜本店／牛カツ世桜 長堀橋店／手巻き寿司世桜 難波店')
+   または 認証_3人を店舗用IDにする() で3人まとめて。デプロイは不要（実行だけ）。営業時間を避けて実行（その場でログアウトになるため） */
+function 認証_店舗用IDにする(uid, storesSlash) {
+  var rec = auth_find_(uid);
+  if (!rec) throw new Error('見つかりません: ' + uid);
+  var stores = String(storesSlash || '').split('／').map(function (s) { return s.trim(); }).filter(String);
+  if (!stores.length) throw new Error('店舗を1つ以上入れてください（区切りは「／」）');
+  var before = { 役割: rec.role, 店舗: rec.stores };
+  rec.role = 'manager';
+  rec.stores = stores.join('／');
+  rec.tokens = '[]';               // 全端末からログアウト＝入り直すと店長・3店で動く
+  rec.updated = new Date();
+  auth_write_(rec);
+  var out = { uid: uid, 名前: rec.name, 変更前: before, 変更後: { 役割: rec.role, 店舗: rec.stores }, パスワード: '変更していません（そのまま使えます）', 端末: '全端末ログアウト＝入り直し' };
+  Logger.log(JSON.stringify(out)); return out;
+}
+function 認証_3人を店舗用IDにする() {
+  var st = '日本料理世桜本店／牛カツ世桜 長堀橋店／手巻き寿司世桜 難波店';
+  var out = ['nagai', 'akisada', 'yun'].map(function (u) { return 認証_店舗用IDにする(u, st); });
+  Logger.log(JSON.stringify(out)); return out;
+}
+
 function 認証_共有パスワードを設定(uid, pw) {
   uid = String(uid || '').trim();
   var rec = auth_find_(uid);

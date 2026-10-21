@@ -673,7 +673,7 @@
     if (!devViewAllowed()) return '';
     const cur = getRole();
     const opt = (r, lb) => `<button type="button" class="viewas-btn${cur === r ? ' on' : ''}" data-viewas="${r}">${L(lb)}</button>`;
-    return `<div class="devview-bar viewas-bar"><span class="viewas-lb">${L({ ja:'表示', en:'View', vi:'Xem' })}</span>${opt('hq', { ja:'本部', en:'HQ', vi:'HQ' })}${opt('manager', { ja:'店舗責任者', en:'Store lead', vi:'Quản lý' })}${opt('staff', { ja:'スタッフ', en:'Staff', vi:'Nhân viên' })}</div>`;
+    return `<div class="devview-bar viewas-bar"><span class="viewas-lb">${L({ ja:'表示', en:'View', vi:'Xem' })}</span>${opt('hq', { ja:'本部', en:'HQ', vi:'HQ' })}${opt('manager', { ja:'店舗責任者', en:'Store lead', vi:'Quản lý' })}${opt('staff', { ja:'スタッフ', en:'Staff', vi:'Nhân viên' })}</div>${cur !== 'hq' ? `<div class="devview-bar viewas-note">${L({ ja:'この見え方は確認用です。提出・保存は本部・店舗に届きません。店の仕事は店長IDでログインしてください。', en:'Preview only: submissions are not sent. Sign in with the store manager ID for store work.', vi:'Chỉ xem thử: không gửi đi. Dùng ID quản lý cửa hàng cho công việc của cửa hàng.' })}</div>` : ''}`;
   };
   // 通信が「ログインしてください」と言ってきたときの受け（トークン切れ・再発行後も含む）
   /* ログインが外れたとき（2026-09-03 神田さんの実機＝「急にログイン画面になった」）。
@@ -11497,6 +11497,7 @@
     const zkSt = document.getElementById('zk_store'); if (zkSt) zkSt.onchange = () => { try { localStorage.setItem(ZK_LS_STORE, zkSt.value); } catch (e) {} render(true); };
     const subZk = document.getElementById('submitZk');
     if (subZk) subZk.onclick = () => {
+      if (inDevView()) { toast(L({ ja:'確認用の表示では提出できません。店長IDか店舗IDでログインし直してください', en:'Preview view cannot submit. Sign in with the store ID.', vi:'Chế độ xem thử không gửi được. Hãy đăng nhập bằng ID cửa hàng.' })); return; }   // ★2026-10-22 同上
       const store = zkStore(); const q = {}; let n = 0; const bad = [];
       document.querySelectorAll('input[data-zkname]').forEach(el => {
         const num = zkParseNum(el.value); if (num === null) { el.classList.remove('zk-bad'); return; }
@@ -11553,6 +11554,10 @@
     const svZk = document.getElementById('saveZkMaster');
     if (svZk) svZk.onclick = () => {
       if (!zkMgr()) return;
+      /* ★2026-10-22 永井さん「基準在庫を設定しても消える（2、3回）」＝本部ID（nagai）の「店舗責任者」の見え方で保存していた。
+         この見え方では postReport が送らない作り（10/20）なのに「保存しました」と出し、下書きも消し、次の同期で端末からも消えていた。
+         保存の前に止めて、下書きはそのまま残す（本部データに行は1件も無い＝復元不能だった） */
+      if (inDevView()) { toast(L({ ja:'確認用の表示では保存できません。店長IDでログインし直してください（打った内容は端末に残ります）', en:'Preview view cannot save. Sign in with the store manager ID (your edits stay on this device).', vi:'Chế độ xem thử không lưu được. Hãy đăng nhập bằng ID quản lý (nội dung vẫn còn trên máy).' })); return; }
       const store = zkStore(); const items = [];
       for (let i = 0; i < 400; i++) {
         const nEl = document.getElementById('zk_n' + i); if (!nEl) break;
