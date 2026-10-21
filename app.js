@@ -2093,11 +2093,79 @@
       + `<button class="pb-card pb-numcard" data-open="survey?tab=voice"><div class="pb-kpi"><div><div class="l">${L({ja:'サーベイ満足度（今月）',en:'Survey score (month)',vi:'Điểm khảo sát (tháng)'})}</div><div class="v">${svAvg || '—'}</div><div class="d">${svM.length} ${L({ja:'件',en:'answers',vi:'câu'})}${svLow ? ` ・ ${L({ja:'低い評価',en:'low',vi:'thấp'})} ${svLow} ${L({ja:'件',en:'',vi:'câu'})}` : ''}</div></div><div class="pb-numgo">${L({ja:'回答の一覧へ',en:'See answers',vi:'Xem câu trả lời'})} ${svg('chev')}</div></div></button>`;
     /* ⑤ くわしく（今までの画面へ） */
     const more = head(L({ja:'くわしく',en:'Details',vi:'Chi tiết'}), '')
-      + `<div class="pb-card"><button class="pb-row" data-open="pl">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'数値・原価率',en:'Numbers & cost rate',vi:'Số liệu & giá vốn'})}</span><span class="pb-sub">${L({ja:'月ごとの売上・仕入・原価率の推移',en:'Monthly trend',vi:'Xu hướng theo tháng'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`
+      + `<div class="pb-card"><button class="pb-row" data-open="numdetail">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'3か月の平均と今月の日別',en:'3-month avg & daily',vi:'TB 3 tháng & theo ngày'})}</span><span class="pb-sub">${L({ja:'レジ・Google口コミ・サーベイ',en:'Register, Google reviews, survey',vi:'Két, Google, khảo sát'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`
+      + `<button class="pb-row" data-open="pl">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'数値・原価率',en:'Numbers & cost rate',vi:'Số liệu & giá vốn'})}</span><span class="pb-sub">${L({ja:'月ごとの売上・仕入・原価率の推移',en:'Monthly trend',vi:'Xu hướng theo tháng'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`
       + `<button class="pb-row" data-tsub="soukatsu">${pbImg_('kyou_nippou')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'日報の一覧',en:'Daily reports',vi:'Báo cáo ngày'})}</span><span class="pb-sub">${L({ja:'日ごとの数字',en:'Numbers by day',vi:'Theo ngày'})}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
     return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div><p class="pb-lead">${esc(storeShort(store))} ・ ${L({ja:'数字は見るだけ。入力は「きょうやること」の日報だけです',en:'View only. Enter numbers in the daily report.',vi:'Chỉ xem. Nhập ở báo cáo ngày.'})}</p>${storeSeg}<div class="pb-2col"><div class="pb-col">${regi}${monCard}</div><div class="pb-col">${kpi2}${voice}${more}</div></div>
       <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;
   }
+  /* ★2026-10-21 神田さん「店の数字をもう少し詳細に。前月を含む直近3か月の平均と、当月の詳細。USENレジ・Google口コミ・サーベイだけでいい。本番に入れる前にテストで見せて」
+     ＝店の数字の「くわしく」から開く1画面。出どころは3つだけ（レジの行＝USEN＞総括表＞日報の整えた1行／Google口コミ＝毎晩の自動取得 gsnap／サーベイ＝回答）。
+     数字は見るだけ・入力なし。無い月・無い日は「—」。売上は日ごとに純売上（税抜）、無い日だけ売上（税込）＝原価率と同じ決め方 */
+  function pbNumDetail_() {
+    const sel = getStoreSel(); const vis = visibleStores();
+    let pick = ''; try { pick = localStorage.getItem('yosakura_num_store') || ''; } catch (e) {}
+    const store = STORES.includes(sel) ? sel : (vis.includes(pick) ? pick : vis[0]);
+    if (!store) return '';
+    const today = dateKeyFor(store, Date.now()); const ym = ymOfDate(today);
+    const val = (r) => Number(r.net) > 0 ? Number(r.net) : (Number(r.sales) || 0);
+    const byDate = {};
+    getSk().filter(r => r && r.store === store && r.date && r.date < today).forEach(r => { if (!byDate[r.date] || (Number(r.t) || 0) >= (Number(byDate[r.date].t) || 0)) byDate[r.date] = r; });
+    const rowsOf = (m) => Object.values(byDate).filter(r => ymOfDate(r.date) === m && val(r) > 0);
+    const sumOf = (m) => { const rs = rowsOf(m); const s = rs.reduce((a, r) => a + val(r), 0); const g = rs.reduce((a, r) => a + (Number(r.guests) || 0), 0); return { m, days: rs.length, sales: s, guests: g, per: g ? Math.round(s / g) : null, perDay: rs.length ? Math.round(s / rs.length) : null, allNet: rs.length > 0 && rs.every(r => Number(r.net) > 0) }; };
+    const months = [3, 2, 1].map(n => prevYmN_(ym, n)).map(sumOf);
+    const withData = months.filter(x => x.days > 0);
+    const avg = withData.length ? { sales: Math.round(withData.reduce((a, x) => a + x.sales, 0) / withData.length), guests: Math.round(withData.reduce((a, x) => a + x.guests, 0) / withData.length), days: Math.round(withData.reduce((a, x) => a + x.days, 0) / withData.length) } : null;
+    if (avg) { avg.per = avg.guests ? Math.round(avg.sales / avg.guests) : null; avg.perDay = avg.days ? Math.round(avg.sales / avg.days) : null; }
+    const cur = sumOf(ym);
+    const n = (v) => v == null ? '—' : Number(v).toLocaleString('en-US');
+    const yv = (v) => v == null ? '—' : yen(v);
+    const mlab = (m) => `${Number(String(m).slice(5, 7))}${L({ ja:'月', en:'', vi:'' })}`;
+    const head = (tt, sm) => `<div class="pb-sec"><h2>${tt}</h2><small>${sm || ''}</small></div>`;
+    const pctDiff = (a, b) => (a && b) ? `${a >= b ? '+' : '−'}${Math.abs((a - b) / b * 100).toFixed(1)}%` : '—';
+    /* ① 直近3か月（前月まで）の平均 */
+    const t1 = `<div class="pb-card pb-tblwrap"><table class="pb-tbl"><thead><tr><th>${L({ ja:'月', en:'Month', vi:'Tháng' })}</th><th>${L({ ja:'売上（税抜）', en:'Sales', vi:'Doanh thu' })}</th><th>${L({ ja:'客数', en:'Guests', vi:'Khách' })}</th><th>${L({ ja:'客単価', en:'Per guest', vi:'Đơn giá' })}</th><th>${L({ ja:'日数', en:'Days', vi:'Ngày' })}</th><th>${L({ ja:'1日平均', en:'Per day', vi:'Mỗi ngày' })}</th></tr></thead><tbody>`
+      + months.map(x => `<tr><td>${mlab(x.m)}</td><td>${x.days ? yv(x.sales) : '—'}</td><td>${x.days ? n(x.guests) : '—'}</td><td>${yv(x.per)}</td><td>${x.days || '—'}</td><td>${yv(x.perDay)}</td></tr>`).join('')
+      + (avg ? `<tr class="avg"><td>${L({ ja:'平均', en:'Avg', vi:'TB' })}</td><td>${yv(avg.sales)}</td><td>${n(avg.guests)}</td><td>${yv(avg.per)}</td><td>${avg.days}</td><td>${yv(avg.perDay)}</td></tr>` : '')
+      + `</tbody></table>${withData.length < 3 ? `<div class="muted" style="margin-top:8px">${L({ ja:`数字のある月は${withData.length}か月です。平均はその月だけで出しています。`, en:`${withData.length} month(s) with data; the average uses those.`, vi:`${withData.length} tháng có số liệu.` })}</div>` : ''}</div>`;
+    /* ② 今月（日別） */
+    const curRows = rowsOf(ym).sort((a, b) => a.date < b.date ? 1 : -1);
+    const wk = (d) => L(WDAYS[wdOf(d)]);
+    const lastWeek = (r) => { const d = new Date(r.date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 7); const k = d.toISOString().slice(0, 10); const p = byDate[k]; return p && val(p) > 0 ? val(p) : null; };
+    const kpiNow = `<div class="pb-card"><div class="pb-kpi"><div><div class="l">${L({ ja:'今月の累計（税抜）', en:'Month to date', vi:'Lũy kế tháng' })}</div><div class="v">${cur.days ? yenShort(cur.sales) : '—'}</div><div class="d">${cur.days} ${L({ ja:'日', en:'days', vi:'ngày' })}${cur.days ? ` ・ ${L({ ja:'客数', en:'guests', vi:'khách' })} ${n(cur.guests)} ・ ${L({ ja:'客単価', en:'per guest', vi:'đơn giá' })} ${yv(cur.per)}` : ''}</div></div>`
+      + `<div><div class="l">${L({ ja:'1日平均 ・ 3か月平均との比較', en:'Per day vs 3-month avg', vi:'Mỗi ngày so TB 3 tháng' })}</div><div class="v">${cur.perDay ? yenShort(cur.perDay) : '—'}</div><div class="d">${avg && avg.perDay ? `${L({ ja:'3か月平均', en:'3-mo avg', vi:'TB 3 tháng' })} ${yenShort(avg.perDay)}／${L({ ja:'日', en:'day', vi:'ngày' })} ・ ${pctDiff(cur.perDay, avg.perDay)}` : L({ ja:'3か月平均はまだありません', en:'No 3-month average yet', vi:'Chưa có TB 3 tháng' })}</div></div></div></div>`;
+    const dayTbl = curRows.length ? `<div class="pb-card pb-tblwrap"><table class="pb-tbl"><thead><tr><th>${L({ ja:'日', en:'Day', vi:'Ngày' })}</th><th>${L({ ja:'売上（税抜）', en:'Sales', vi:'Doanh thu' })}</th><th>${L({ ja:'客数', en:'Guests', vi:'Khách' })}</th><th>${L({ ja:'客単価', en:'Per guest', vi:'Đơn giá' })}</th><th>${L({ ja:'先週同曜日', en:'vs last wk', vi:'So tuần trước' })}</th><th>${L({ ja:'出どころ', en:'Source', vi:'Nguồn' })}</th></tr></thead><tbody>`
+      + curRows.map(r => { const g = Number(r.guests) || 0; const lw = lastWeek(r); return `<tr><td>${mdLabel(r.date)}（${wk(r.date)}）</td><td>${yv(val(r))}</td><td>${g ? n(g) : '—'}</td><td>${g ? yv(Math.round(val(r) / g)) : '—'}</td><td>${lw ? pctDiff(val(r), lw) : '—'}</td><td>${r.src === 'usen' || r.pos ? 'USEN' : r.src === 'drive' ? L({ ja:'総括表', en:'Sheet', vi:'Bảng' }) : L({ ja:'日報', en:'Report', vi:'Báo cáo' })}</td></tr>`; }).join('')
+      + `</tbody></table></div>` : `<div class="pb-card"><div class="muted">${L({ ja:'今月の数字はまだありません', en:'No data this month yet', vi:'Chưa có số liệu tháng này' })}</div></div>`;
+    /* 曜日別（今月）＝1日平均 */
+    const dow = [0, 1, 2, 3, 4, 5, 6].map(w => { const rs = curRows.filter(r => wdOf(r.date) === w); return { w, n: rs.length, avg: rs.length ? Math.round(rs.reduce((a, r) => a + val(r), 0) / rs.length) : null }; });
+    const dmax = Math.max(1, ...dow.map(x => x.avg || 0));
+    const dowHTML = curRows.length ? `<div class="pb-card"><div class="pb-twhd">${L({ ja:'曜日別の1日平均（今月）', en:'Avg per weekday (this month)', vi:'TB theo thứ (tháng này)' })}</div><div class="pb-dow">${dow.map(x => `<div class="pb-dowrow"><span class="pb-dowk">${L(WDAYS[x.w])}</span><span class="pb-dowbar"><i style="width:${x.avg ? Math.round(x.avg / dmax * 100) : 0}%"></i></span><b>${x.avg ? yenShort(x.avg) : '—'}</b><small>${x.n ? `${x.n}${L({ ja:'日', en:'d', vi:'ng' })}` : ''}</small></div>`).join('')}</div></div>` : '';
+    /* ③ Google口コミ（毎晩の自動取得） */
+    const gs = gsnapsOf(store);
+    const gLast = gs.length ? gs[gs.length - 1] : null;
+    const gEnd = (m) => { const a = gs.filter(x => String(x._d).slice(0, 7) === m); return a.length ? a[a.length - 1] : null; };
+    const gStart = (m) => { const a = gs.filter(x => String(x._d).slice(0, 7) === m); return a.length ? a[0] : null; };
+    const gRows = [...months.map(x => x.m), ym].map(m => { const e = gEnd(m), s = gStart(m); const prev = gEnd(prevYmN_(m, 1)); const base = prev || s; const gained = (e && base) ? (Number(e.total) || 0) - (Number(base.total) || 0) : null; return { m, total: e ? e.total : null, rating: e ? e.rating : null, gained }; });
+    const gHTML = `<div class="pb-card"><div class="pb-kpi"><div><div class="l">${L({ ja:'いまの評価', en:'Rating now', vi:'Điểm hiện tại' })}</div><div class="v">${gLast && gLast.rating != null ? Number(gLast.rating).toFixed(1) : '—'}</div><div class="d">${gLast ? `${n(gLast.total)} ${L({ ja:'件', en:'reviews', vi:'đánh giá' })} ・ ${mdLabel(gLast._d)}${L({ ja:'時点', en:'', vi:'' })}` : L({ ja:'自動取得がまだありません', en:'No snapshots yet', vi:'Chưa có dữ liệu' })}</div></div>`
+      + `<div><div class="l">${L({ ja:'今月増えた件数', en:'Gained this month', vi:'Tăng tháng này' })}</div><div class="v">${gRows[3].gained != null ? (gRows[3].gained >= 0 ? '+' : '') + n(gRows[3].gained) : '—'}</div><div class="d">${avg ? `${L({ ja:'3か月平均', en:'3-mo avg', vi:'TB 3 tháng' })} ${(() => { const a = gRows.slice(0, 3).filter(x => x.gained != null); return a.length ? '+' + Math.round(a.reduce((s, x) => s + x.gained, 0) / a.length) : '—'; })()}／${L({ ja:'月', en:'mo', vi:'tháng' })}` : ''}</div></div></div>`
+      + `<table class="pb-tbl" style="margin-top:10px"><thead><tr><th>${L({ ja:'月', en:'Month', vi:'Tháng' })}</th><th>${L({ ja:'月末の件数', en:'Total (end)', vi:'Tổng cuối tháng' })}</th><th>${L({ ja:'増えた件数', en:'Gained', vi:'Tăng' })}</th><th>${L({ ja:'評価', en:'Rating', vi:'Điểm' })}</th></tr></thead><tbody>${gRows.map(x => `<tr${x.m === ym ? ' class="now"' : ''}><td>${mlab(x.m)}${x.m === ym ? L({ ja:'（途中）', en:' (so far)', vi:' (đến nay)' }) : ''}</td><td>${n(x.total)}</td><td>${x.gained != null ? (x.gained >= 0 ? '+' : '') + n(x.gained) : '—'}</td><td>${x.rating != null ? Number(x.rating).toFixed(1) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+    /* ④ サーベイ */
+    const sv = getSurvey().filter(r => r && r.store === store && r.sat >= 1);
+    const svOf = (m) => { const a = sv.filter(r => ymOfDate(dateKeyFor(store, r.t)) === m); return { m, n: a.length, avg: a.length ? (a.reduce((s, r) => s + r.sat, 0) / a.length) : null, low: a.filter(r => r.sat <= 3).length }; };
+    const svRows = [...months.map(x => x.m), ym].map(svOf);
+    const svAll3 = sv.filter(r => months.some(x => x.m === ymOfDate(dateKeyFor(store, r.t))));
+    const svHTML = `<div class="pb-card"><div class="pb-kpi"><div><div class="l">${L({ ja:'今月の満足度', en:'Score this month', vi:'Điểm tháng này' })}</div><div class="v">${svRows[3].avg != null ? svRows[3].avg.toFixed(1) : '—'}</div><div class="d">${svRows[3].n} ${L({ ja:'件', en:'answers', vi:'câu' })}${svRows[3].low ? ` ・ ${L({ ja:'低い評価', en:'low', vi:'thấp' })} ${svRows[3].low}` : ''}</div></div>`
+      + `<div><div class="l">${L({ ja:'3か月の平均', en:'3-month avg', vi:'TB 3 tháng' })}</div><div class="v">${svAll3.length ? (svAll3.reduce((s, r) => s + r.sat, 0) / svAll3.length).toFixed(1) : '—'}</div><div class="d">${svAll3.length} ${L({ ja:'件', en:'answers', vi:'câu' })}</div></div></div>`
+      + `<table class="pb-tbl" style="margin-top:10px"><thead><tr><th>${L({ ja:'月', en:'Month', vi:'Tháng' })}</th><th>${L({ ja:'件数', en:'Answers', vi:'Số câu' })}</th><th>${L({ ja:'平均', en:'Avg', vi:'TB' })}</th><th>${L({ ja:'低い評価（3以下）', en:'Low (≤3)', vi:'Thấp (≤3)' })}</th></tr></thead><tbody>${svRows.map(x => `<tr${x.m === ym ? ' class="now"' : ''}><td>${mlab(x.m)}${x.m === ym ? L({ ja:'（途中）', en:' (so far)', vi:' (đến nay)' }) : ''}</td><td>${x.n || '—'}</td><td>${x.avg != null ? x.avg.toFixed(1) : '—'}</td><td>${x.n ? x.low : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+    _pbHead = { t: L({ ja:'店の数字（くわしく）', en:'Store numbers (detail)', vi:'Số liệu (chi tiết)' }), d: `${storeShort(store)} ・ ${L({ ja:'前月までの3か月と今月。レジ・Google口コミ・サーベイだけ', en:'Last 3 months and this month: register, Google reviews, survey.', vi:'3 tháng trước và tháng này.' })}` };
+    return head(L({ ja:'直近3か月の平均（前月まで）', en:'Last 3 months (avg)', vi:'3 tháng gần nhất (TB)' }), L({ ja:'レジ（USEN＞総括表＞日報）・税抜', en:'Register, excl. tax', vi:'Két, chưa thuế' })) + t1
+      + head(L({ ja:'今月', en:'This month', vi:'Tháng này' }), `${mlab(ym)} ・ ${L({ ja:'日別', en:'by day', vi:'theo ngày' })}`) + kpiNow + dowHTML + dayTbl
+      + head(L({ ja:'Google口コミ', en:'Google reviews', vi:'Đánh giá Google' }), L({ ja:'毎晩の自動取得', en:'Nightly snapshot', vi:'Tự động mỗi đêm' })) + gHTML
+      + head(L({ ja:'サーベイ', en:'Survey', vi:'Khảo sát' }), L({ ja:'回答から自動', en:'From answers', vi:'Từ câu trả lời' })) + svHTML
+      + `<p class="hint" style="display:block;margin-top:12px">${L({ ja:'※ 売上は日ごとに純売上（税抜）。純売上の無い日は売上（税込）。数字の無い月・日は「—」です。', en:'Sales are net per day; days without net use gross. Missing data shows “—”.', vi:'Doanh thu theo ngày (chưa thuế).' })}</p>`;
+  }
+  const prevYmN_ = (ym, k) => { const [y, m] = String(ym).split('-').map(Number); const d = new Date(y, m - 1 - k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   /* ★2026-10-20 神田さん「B案のデモの方がしっくりくる」＝案Bの見本の「見る・注文する」。
      ①言葉で探す（マニュアル・レシピ＝本部が登録した資料／アプリの画面名）→②写真いっぱいの4枚→③お客様の声（サーベイ・Google口コミ＝毎晩の自動取得 gsnap があるときだけ）→④緊急のとき（安全のため残す）。
      よく見るレシピ（料理写真）は、MOTONの実物写真がアプリに入っていないので出さない（料理写真はMOTONの実物だけ） */
@@ -8882,6 +8950,7 @@
     postReport({ kind:'phsample', store, item: target, note: JSON.stringify({ memo: next.memo, by: next.by }), photos: next.photos, t: next.t });
   }
 
+  APP_VIEWS.numdetail = () => pbNumDetail_();   // ★2026-10-21 店の数字（くわしく）
   APP_VIEWS.openphoto = () => {
     const store = visibleStores()[0];
     const dk = dateKeyFor(store, Date.now());
@@ -10522,6 +10591,11 @@
       name:{ ja:'写真の提出', en:'Photo submission', vi:'Nộp ảnh' },
       /* 項目が店舗ごとに増減するようになったため、名指しをやめて総称に（2026-09-01 長堀橋トライアルで4項目追加） */
       desc:{ ja:'オープン写真など、写真で出す提出物はすべてここから', en:'All photo submissions in one place', vi:'Mọi bài nộp bằng ảnh đều ở đây' } });
+  }
+  if (!appById('numdetail')) {   // ★2026-10-21 店の数字（くわしく）＝店長・オーナー・本部。下のタブには出さない（店の数字から開く）
+    APPS.unshift({ id:'numdetail', group:'storeops', icon:'chart', live:true, tabHide:true, roles:['manager', 'owner', 'hq'],
+      name:{ ja:'店の数字（くわしく）', en:'Store numbers (detail)', vi:'Số liệu (chi tiết)' },
+      desc:{ ja:'前月までの3か月の平均と今月の日別。レジ・Google口コミ・サーベイ', en:'3-month averages and this month by day', vi:'TB 3 tháng và theo ngày' } });
   }
   if (!appById('history')) {
     APPS.unshift({ id:'history', group:'genba', icon:'report', roles:['staff','manager','owner','hq'],

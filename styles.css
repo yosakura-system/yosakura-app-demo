@@ -1206,6 +1206,20 @@ html[data-theme="pb"] .pb-big { width: 100%; margin-top: 12px; font-size: 17px; 
 html[data-theme="pb"] .pb-done { display: flex; align-items: center; gap: 6px; color: #2F6B45; background: #E3F0E6; border-radius: 12px; padding: 8px 12px; font-size: 13px; margin: 0 0 8px; }
 html[data-theme="pb"] .pb-done svg { width: 16px; height: 16px; }
 html[data-theme="pb"] .pb-more { margin-top: 12px; padding: 0; }
+/* 店の数字（くわしく）＝表と曜日別 2026-10-21 */
+html[data-theme="pb"] .pb-tblwrap { padding: 8px 10px; overflow-x: auto; }
+html[data-theme="pb"] .pb-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+html[data-theme="pb"] .pb-tbl th { font-weight: 600; color: var(--gray); font-size: 11px; letter-spacing: .04em; text-align: right; padding: 6px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+html[data-theme="pb"] .pb-tbl td { text-align: right; padding: 7px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+html[data-theme="pb"] .pb-tbl th:first-child, html[data-theme="pb"] .pb-tbl td:first-child { text-align: left; }
+html[data-theme="pb"] .pb-tbl tr.avg td { font-weight: 700; background: var(--kinari, #f6f2ea); }
+html[data-theme="pb"] .pb-tbl tr.now td { color: var(--suou, #8E354A); }
+html[data-theme="pb"] .pb-tbl tbody tr:last-child td { border-bottom: 0; }
+html[data-theme="pb"] .pb-dow { display: grid; gap: 6px; margin-top: 8px; }
+html[data-theme="pb"] .pb-dowrow { display: grid; grid-template-columns: 1.6em 1fr auto 2.6em; align-items: center; gap: 8px; font-size: 12.5px; }
+html[data-theme="pb"] .pb-dowbar { display: block; height: 10px; background: var(--kinari, #f6f2ea); border-radius: 5px; overflow: hidden; }
+html[data-theme="pb"] .pb-dowbar i { display: block; height: 100%; background: var(--suou, #8E354A); border-radius: 5px; }
+html[data-theme="pb"] .pb-dowrow small { color: var(--gray); font-size: 11px; text-align: right; }
 /* これまでの写真（オープン写真の窓口・日付ごと）2026-10-21 */
 html[data-theme="pb"] .pb-hist { margin-top: 12px; padding: 12px; }
 html[data-theme="pb"] .pb-histday { margin-top: 10px; }

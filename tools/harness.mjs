@@ -7046,5 +7046,39 @@ console.log('== 2026-10-21 全店点検（神田さん「うその数値や根�
   ok(/原価率（前月・確定）<\/div><div class=\"v\">20\.2<span class=\"u\">%/.test(registry.app.innerHTML), '前月の月末在庫400,000を月初に引き継げば出る＝(400,000＋1,044,970−434,817)÷5,000,000＝20.2%');
 }
 
+console.log('== 2026-10-21 神田さん「店の数字をもう少し詳細に＝3か月平均＋今月の日別＋Google口コミ＋サーベイ」（テスト＝体験版のみ） ==');
+{
+  const S = '牛カツ世桜 富士山店'; const D = 86400e3; const now = new Date(); const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const ymN = (k) => { const d = new Date(now.getFullYear(), now.getMonth() - k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const dayOf = (ym, d) => ym + '-' + String(d).padStart(2, '0'); const y = new Date(Date.now() - D).toLocaleDateString('en-CA');
+  const sk = [];
+  // 前月まで3か月＝各2日ずつ（純売上あり）。3か月前だけ1日は純売上なし（税込で入る）
+  [3, 2, 1].forEach(k => { sk.push({ store:S, date:dayOf(ymN(k), 5), sales:1100000, net:1000000, guests:200, src:'usen', t: Date.now() - 40 * D }); sk.push({ store:S, date:dayOf(ymN(k), 12), sales:1100000, net:1000000, guests:200, src:'usen', t: Date.now() - 40 * D }); });
+  // 今月＝きのう（USEN）と8日前（総括表）
+  sk.push({ store:S, date:y, sales:220000, net:200000, guests:40, src:'usen', t: Date.now() - 3600e3 });
+  const y8 = new Date(Date.now() - 8 * D).toLocaleDateString('en-CA'); sk.push({ store:S, date:y8, sales:110000, net:100000, guests:25, src:'drive', t: Date.now() - 8 * D });
+  const gs = []; [3, 2, 1, 0].forEach(k => { const m = ymN(k); gs.push({ id:'g' + k + 'a', kind:'gsnap', store:S, item:dayOf(m, 1), note:JSON.stringify({ src:'places', total: 100 + (3 - k) * 10, rating: 4.8 }), t: Date.now() - (k * 30 + 25) * D }); gs.push({ id:'g' + k + 'b', kind:'gsnap', store:S, item:dayOf(m, 20), note:JSON.stringify({ src:'places', total: 100 + (3 - k) * 10 + 8, rating: 4.9 }), t: Date.now() - (k * 30 + 5) * D }); });
+  const sv = [{ store:S, sat:5, t: Date.now() - 2 * D }, { store:S, sat:3, t: Date.now() - 3 * D }, { store:S, sat:4, t: Date.now() - 40 * D }, { store:S, sat:5, t: Date.now() - 70 * D }];
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(sk)); localStorage.setItem('yosakura_demo_reports', JSON.stringify(gs)); localStorage.setItem('yosakura_demo_survey', JSON.stringify(sv)); });
+  location.hash = '#/home?tab=num';
+  ok(/data-open=\"numdetail\"/.test(registry.app.innerHTML) && /3か月の平均と今月の日別/.test(registry.app.innerHTML) && (() => { const hh = registry.app.innerHTML; const k = hh.indexOf('くわしく'); return k > 0 && hh.indexOf('data-open="numdetail"', k) > 0 && hh.indexOf('data-open="numdetail"', k) < hh.indexOf('data-open="pl"', k); })(), '店の数字の「くわしく」の先頭に「3か月の平均と今月の日別」の行');
+  location.hash = '#/app/numdetail';
+  const h = registry.app.innerHTML;
+  ok(/<div class=\"pb-ttl\">店の数字（くわしく）<\/div>/.test(h) && /前月までの3か月と今月/.test(h), '題と説明');
+  ok(/直近3か月の平均（前月まで）/.test(h) && (h.match(/<tr><td>\d+月<\/td><td>¥2,000,000<\/td><td>400<\/td><td>¥5,000<\/td><td>2<\/td><td>¥1,000,000<\/td><\/tr>/g) || []).length === 3, '3か月＝各月 売上200万・客数400・客単価5,000・2日・1日平均100万');
+  ok(/<tr class=\"avg\"><td>平均<\/td><td>¥2,000,000<\/td><td>400<\/td><td>¥5,000<\/td><td>2<\/td><td>¥1,000,000<\/td><\/tr>/.test(h), '平均の行');
+  ok(/今月の累計（税抜）<\/div><div class=\"v\">¥30\.0万/.test(h) && /2 日/.test(h) && /客数<\/span>|客数 65/.test(h), '今月＝累計30万・2日・客数65');
+  ok(/1日平均 ・ 3か月平均との比較<\/div><div class=\"v\">¥15\.0万/.test(h) && /3か月平均 ¥100万／日 ・ −85\.0%/.test(h), '1日平均15万と3か月平均100万の比較＝−85.0%');
+  ok(/曜日別の1日平均（今月）/.test(h) && /USEN<\/td>/.test(h) && /総括表<\/td>/.test(h) && /先週同曜日/.test(h), '日別の表＝出どころ（USEN／総括表）と先週同曜日');
+  ok(/いまの評価<\/div><div class=\"v\">4\.9/.test(h) && /138 件/.test(h) && /今月増えた件数<\/div><div class=\"v\">\+10/.test(h), 'Google口コミ＝いまの評価4.9・138件・今月+10（前月末128→138）');
+  ok(/今月の満足度<\/div><div class=\"v\">4\.0/.test(h) && /低い評価 1/.test(h) && /3か月の平均<\/div><div class=\"v\">4\.5/.test(h), 'サーベイ＝今月4.0（2件・低い1）・3か月平均4.5（2件）');
+  ok(!/id=\"f_photo\"|<input|<textarea|<select/.test(h), '入力欄は無い（見るだけ）');
+  // スタッフは開けない
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/app/numdetail';
+  ok(!/店の数字（くわしく）/.test(registry.app.innerHTML), 'スタッフは開かない');
+  ok(/html\[data-theme=\"pb\"\] \.pb-tbl \{ width: 100%; border-collapse: collapse;/.test(css) && /\.pb-tblwrap \{ padding: 8px 10px; overflow-x: auto; \}/.test(css), 'CSS：表は横にはみ出さず中だけスクロール');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
