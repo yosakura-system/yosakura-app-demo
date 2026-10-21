@@ -7108,5 +7108,32 @@ console.log('== 2026-10-21 店の数字（くわしく）はテスト中＝本�
   ok(/\$\{useBackend\(\) \? '' : `<button class=\"pb-row\" data-open=\"numdetail\">/.test(code) && /APP_VIEWS\.numdetail = \(\) => useBackend\(\) \?/.test(code), '本番では「くわしく」の行も画面も出ない（体験版だけ）');
 }
 
+console.log('== 2026-10-21 永井さん「品目を編集して更新したら全部消えた」＝保存前の編集を端末に下書きとして残す ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const draftRows = [{ n:'パン粉', std:'3', u:'袋', g:'食材管理①（毎日確認）', f:'' }, { n:'テスト品目', std:'2', u:'袋', g:'食材管理①（毎日確認）', f:'' }];
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); localStorage.setItem('yosakura_zk_master_draft', JSON.stringify({ [S]: { rows: draftRows, t: Date.now() - 60e3 } })); });
+  location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  let h = registry.app.innerHTML;
+  ok(/保存していない編集を復元しました/.test(h) && /id=\"zkDraftDrop\"/.test(h), '下書きがあれば「復元しました」の帯と「編集を破棄」');
+  ok(/id=\"zk_n1\" value=\"テスト品目\"/.test(h) && /id=\"zk_s1\" value=\"2\"/.test(h), '下書きの品目（テスト品目・基準2）が欄に戻る');
+  ok((h.match(/id=\"zk_n\d+\" value=\"\"/g) || []).length >= 8, '下書きの下にも空き行が8行以上');
+  ok(/保存する前の編集はこの端末に下書きとして残ります/.test(h), '保存の下に、下書きは端末に残る旨');
+  // 保存より古い下書きは使わない
+  const master = { id:'m1', kind:'zaikomaster', store:S, item:S, note: JSON.stringify({ items:[{ n:'パン粉', std:3, u:'袋', g:'食材管理①（毎日確認）', f:'' }], by:'店長' }), photos:[], t: Date.now() };
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([master])); localStorage.setItem('yosakura_zk_tab', 'items'); localStorage.setItem('yosakura_zk_master_draft', JSON.stringify({ [S]: { rows: draftRows, t: Date.now() - 600e3 } })); });
+  location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  h = registry.app.innerHTML;
+  ok(!/保存していない編集を復元しました/.test(h) && !/テスト品目/.test(h), '保存の方が新しければ下書きは出さない');
+  // 下書きが無いときは帯なし
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); });
+  location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  ok(!/保存していない編集を復元しました/.test(registry.app.innerHTML), '下書きが無ければ帯は出ない');
+  const sc = code.slice(code.indexOf('const zkCollect_'), code.indexOf('const zkCollect_') + 1400);
+  ok(/el\.addEventListener\('input', keep\); el\.addEventListener\('change', keep\);/.test(sc) && /:not\(#zk_store\)/.test(sc), '打つたび・選ぶたびに下書き（店舗の切替は除く）');
+  ok(/zkDraftClear_\(store\);   \/\/ ★2026-10-21 保存したら下書きは消す/.test(code) && /dd\.onclick = \(\) => \{ zkDraftClear_\(zkStore\(\)\); render\(true\); \}/.test(code), '保存と「編集を破棄」で下書きは消える');
+  ok(/const zkDraftOf_ = \(store\) => [\s\S]{0,400}\(Number\(d\.t\) \|\| 0\) > mt \? d : null/.test(code), '復元するのは保存より新しい下書きだけ');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
