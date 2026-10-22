@@ -6607,16 +6607,33 @@ console.log('== 2026-10-20 日報＝案Bの見本の並び（店舗側） ==');
   ok(/id="submitSk"/.test(registry.app.innerHTML) && !/data-sktab=/.test(registry.app.innerHTML), '案Bの店舗側＝日報は開けて、タブ（入力／推移／最近）は出ない');
 }
 
-console.log('== 2026-10-20 本部の見え方＝準備中の1枚 ==');
+console.log('== 2026-10-22 本部の見え方＝案Bの本部画面（神田さん「B案の本部画面を基準に」。10/20 の「準備中」は引退）==');
 {
-  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_hqprep_off'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); });
-  location.hash = '#/home';
-  const h = registry.app.innerHTML;
-  ok(/本部の画面は準備中です/.test(h) && /class="hqprep__btn pri" data-viewas="manager"/.test(h) && /data-viewas="staff"/.test(h) && !/class="tabbar"/.test(h), '本部IDで本部の見え方＝準備中の1枚（店舗責任者・スタッフへ誘導・下のタブは出さない）');
-  location.hash = '#/home?tab=genba';
-  ok(/本部の画面は準備中です/.test(registry.app.innerHTML), '報告などのタブを直接開いても準備中');
-  location.hash = '#/home?tab=hq';
-  ok(!/本部の画面は準備中です/.test(registry.app.innerHTML), '本部メニュー（?tab=hq）は開ける（神田さんのタスクなど）');
+  const S1 = '牛カツ世桜 長堀橋店';
+  const today = new Date().toLocaleDateString('en-CA');
+  const dk = (n) => { const d = new Date(Date.now() - n * 864e5); return d.toLocaleDateString('en-CA'); };
+  const skRows = [0, 1, 2].map(n => ({ store: S1, date: dk(n), net: 100000, sales: 110000, guests: 20, err: -1000, src: 'usen', pos: true, t: Date.now() - n * 864e5, loss: 2000, laborcost: 30000 }));
+  const seedHq2 = () => run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); localStorage.removeItem('yosakura_hqprep_off'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(skRows)); });
+  seedHq2(); location.hash = '#/home';
+  let h = registry.app.innerHTML;
+  ok(!/本部の画面は準備中です/.test(h) && /class="tabbar"/.test(h) && /data-tab="hq"/.test(h) && /きょうやること/.test(h) && /店の数字/.test(h) && /見る・注文する/.test(h), '本部の見え方＝準備中は出ない。下のタブは案Bの4つ（きょうやること／見る・注文する／店の数字／本部）');
+  const nRows = (h.match(/class="pb-hqrow/g) || []).length;
+  ok(/全店 きょう/.test(h) && nRows >= 10 && /data-open="kyou\?store=/.test(h), 'きょうやること＝全店の行（' + nRows + '店）。押すとその店のきょうやること');
+  ok(/<b>本部<\/b>/.test(h) && /・全店</.test(h), '見出し＝本部／日付・全店');
+  location.hash = '#/home?tab=hq'; h = registry.app.innerHTML;
+  const nCards = (h.match(/class="pb-hqst"/g) || []).length;
+  ok(/<h2>店舗<\/h2>/.test(h) && nCards === nRows && (h.match(/class="pb-hqst__img"/g) || []).length === nCards, '本部タブ＝店舗カード（写真つき・全店 ' + nCards + '枚）');
+  ok(/<span class="h">OPEN<\/span>/.test(h) && /<span class="h">CLOSE<\/span>/.test(h) && /<span class="h">在庫<\/span>/.test(h) && /<span class="h">日報<\/span>/.test(h) && /<span class="h">レジ締め<\/span>/.test(h) && (h.match(/class="pb-dot/g) || []).length === nCards * 5, '全店きょうの表＝店×5項目（OPEN・CLOSE・在庫・日報・レジ締め）');
+  ok(/<h2>レジ締め<\/h2>/.test(h) && /<h2>ロス率 ・ 人件費率 ・ 今月<\/h2>/.test(h) && /<h2>返答待ち<\/h2>/.test(h) && /<h2>提出物の設定<\/h2>/.test(h) && /data-open="news\?tab=post"/.test(h), '本部タブ＝レジ締め・ロス率/人件費率・返答待ち・提出物の設定・お知らせを出す');
+  ok(/data-open="inbox"|未対応の報告はありません/.test(h) && /data-open="teishutsu"/.test(h), '押す先＝受信箱・提出物管理');
+  { const row = (h.match(/<div class="pb-bar"><span>[^<]*長堀橋店<\/span><i[^>]*><\/i><b>[^<]*<\/b>/) || [''])[0]; ok(/−¥1,000/.test(row) && /#B5533C/.test(row), 'レジ締め＝長堀橋の昨日の過不足 −¥1,000（赤）: ' + row.slice(-40)); }
+  ok(/ロス率（ロス÷売上）/.test(h) && /<span>[^<]*長堀橋店<\/span><i[^>]*><\/i><b>2\.0％<\/b>/.test(h) && /<span>[^<]*長堀橋店<\/span><i[^>]*><\/i><b>30\.0％<\/b>/.test(h), 'ロス率 2.0％（2,000÷100,000）・人件費率 30.0％（30,000÷100,000）が今月の日報から出る');
+  ok(!/日報の入力時間/.test(h), '案Bの「日報の入力時間」は記録が無いので出さない');
+  location.hash = '#/home?tab=miru'; ok(/class="tabbar"/.test(registry.app.innerHTML) && /pb-tile/.test(registry.app.innerHTML), '本部でも「見る・注文する」が開く');
+  location.hash = '#/home?tab=num'; ok(/class="tabbar"/.test(registry.app.innerHTML) && /pb-numseg/.test(registry.app.innerHTML), '本部の「店の数字」＝店を選ぶチップつき');
+  location.hash = '#/home?tab=genba'; ok(!/本部の画面は準備中です/.test(registry.app.innerHTML), '旧タブを直接開いても準備中は出ない');
+  ok(/"hq_st_gyukatsu": 'data:image/.test(code) && /"hq_st_nihon": 'data:image/.test(code), 'ソース＝店舗カードの写真6枚（案Bの見本と同じ）が埋め込み');
+  ok(/const hqPrep_ = \(\) => \{ return false;/.test(code), 'ソース＝準備中の1枚は引退');
 }
 
 console.log('== 2026-10-20 見る・注文する・見出しを案Bの見本に ==');

@@ -1280,3 +1280,41 @@ html[data-theme="pb"] .pb-app--emergency .rep > a.amt svg { width: 20px; height:
 html[data-theme="pb"] .pb-app--emergency .pb-appbody > .card:first-child > h3:first-child { display: none; }
 /* ★2026-10-20 「新しい情報」の帯と本部の「表示」切替が両方出ると、見出しが画面の一番下に押し出されていた（行が足りない）＝上の帯は4本まで自動で積み、本文とメニューは5行目 */
 @media (min-width: 900px) and (min-height: 600px) { html[data-theme="pb"] #app { grid-template-rows: auto auto auto auto 1fr; } html[data-theme="pb"] .appmain, html[data-theme="pb"] .tabbar { grid-row: 5; } }
+
+/* ★2026-10-22 本部の見え方＝案Bの本部画面（店舗カード・全店きょうの表・棒・返答待ち） */
+html[data-theme="pb"] .pb-hqstores { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+html[data-theme="pb"] .pb-hqst { flex: 0 0 118px; scroll-snap-align: start; border-radius: 14px; overflow: hidden; position: relative; background: var(--paper); border: 1px solid var(--line); padding: 0; text-align: left; font: inherit; color: var(--sumi); }
+html[data-theme="pb"] .pb-hqst__img { width: 100%; height: 118px; object-fit: cover; display: block; }
+html[data-theme="pb"] .pb-hqst .n { display: block; padding: 6px 8px 2px; font-size: 12px; font-weight: 700; }
+html[data-theme="pb"] .pb-hqst .s { display: block; padding: 0 8px 7px; font-size: 11px; color: var(--gray); }
+html[data-theme="pb"] .pb-hqst .b { position: absolute; top: 8px; right: 8px; background: #B5533C; color: #fff; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 7px; }
+html[data-theme="pb"] .pb-hqst .b.ok { background: #5C6E58; }
+html[data-theme="pb"] .pb-hqst .b.late { background: #a23b3b; }
+html[data-theme="pb"] .pb-hqst .b.hol { background: #9A9388; }
+html[data-theme="pb"] .pb-hqgrid { display: grid; grid-template-columns: auto repeat(5, 1fr); gap: 5px 6px; font-size: 12px; align-items: center; }
+html[data-theme="pb"] .pb-hqgrid .h { font-size: 10px; color: var(--gray); text-align: center; letter-spacing: .04em; }
+html[data-theme="pb"] .pb-hqgrid .s { white-space: nowrap; }
+html[data-theme="pb"] .pb-dot { width: 15px; height: 15px; border-radius: 50%; margin: 0 auto; background: #EFEAE2; }
+html[data-theme="pb"] .pb-dot.ok { background: #5C6E58; }
+html[data-theme="pb"] .pb-dot.late { background: #B5533C; }
+html[data-theme="pb"] .pb-dot.na { background: transparent; border: 1px dashed var(--line); }
+html[data-theme="pb"] .pb-bar { display: grid; grid-template-columns: 96px 1fr 72px; gap: 8px; align-items: center; font-size: 13px; padding: 5px 0; }
+html[data-theme="pb"] .pb-bar i { display: block; height: 10px; border-radius: 5px; background: var(--suou); opacity: .85; }
+html[data-theme="pb"] .pb-bar b { font-variant-numeric: tabular-nums; text-align: right; font-weight: 500; color: var(--gray); }
+html[data-theme="pb"] .pb-hqnote { font-size: 12px; color: var(--gray); margin-top: 8px; line-height: 1.5; }
+html[data-theme="pb"] .pb-inboxrow { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+html[data-theme="pb"] .pb-inboxrow:first-child { border-top: 0; }
+html[data-theme="pb"] .pb-inboxrow .ic { width: 40px; height: 40px; border-radius: 10px; background: var(--kinari); border: 1px solid var(--line); display: grid; place-items: center; color: var(--gray); }
+html[data-theme="pb"] .pb-inboxrow .ic svg { width: 20px; height: 20px; }
+html[data-theme="pb"] .pb-inboxrow .k { font-size: 11px; color: var(--suou); font-weight: 700; }
+html[data-theme="pb"] .pb-inboxrow .t { font-size: 13px; }
+html[data-theme="pb"] .pb-inboxrow .by { font-size: 11px; color: var(--gray); }
+html[data-theme="pb"] .pb-hqrow { display: grid; grid-template-columns: 1fr 72px 44px 58px; align-items: center; gap: 8px; width: 100%; min-height: 46px; padding: 6px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 6px; font: inherit; color: var(--sumi); text-align: left; }
+html[data-theme="pb"] .pb-hqrow .kname { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-theme="pb"] .pb-hqrow .kbar { height: 6px; background: #EFEAE2; border-radius: 3px; overflow: hidden; }
+html[data-theme="pb"] .pb-hqrow .kbar i { display: block; height: 100%; background: #5C6E58; }
+html[data-theme="pb"] .pb-hqrow.ov .kbar i { background: #a23b3b; }
+html[data-theme="pb"] .pb-hqrow .kpct { font-size: 12px; color: var(--gray); text-align: right; }
+html[data-theme="pb"] .pb-hqrow .kst { font-size: 12px; font-weight: 700; text-align: right; }
+html[data-theme="pb"] .pb-hqrow.ov .kst { color: #a23b3b; }
+html[data-theme="pb"] .pb-hqrow.hol { opacity: .55; }
