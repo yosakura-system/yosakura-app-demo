@@ -4800,8 +4800,8 @@
      st＝'all' 全店に配布済み／'test' 現場テスト中／'hq' 本部確認中（たたき台）／'hqonly' 本部資料（店舗には出さない）。
      店舗（スタッフ・店長・オーナー）には 'all' だけ。本部には全部を状態の札つきで。状態の正＝いる・いらないスプシ K列（変わったらここを直す） */
   const KANTAN_MANUALS = [
-    { k:'tanaoroshi_app', st:'all', ver:'Ver1.0', d:'2026-10-15', pdf:'tanaoroshi_kantan.pdf', id:'1z_HqPmdNR-qciv2cHIsNeMPICgWd21xT', t:{ ja:'月末棚卸（アプリで入力）', en:'Month-end stocktake (app)', vi:'Kiểm kê cuối tháng (app)' }, s:{ ja:'6枚 ・ 未開封だけ数える', en:'6 pages', vi:'6 trang' } },
-    { k:'tanaoroshi_sheet', st:'all', ver:'Ver1.0', d:'2026-10-15', pdf:'tanaoroshi_soukatsu.pdf', id:'1gCZUJrnY8hPqwBqFEl6W-8IM_Rtfg-uP', t:{ ja:'月末棚卸（総括表に入力・アプリ導入前の店）', en:'Month-end stocktake (sheet)', vi:'Kiểm kê (bảng tổng hợp)' }, s:{ ja:'6枚', en:'6 pages', vi:'6 trang' } },
+    /* ★2026-10-22 神田さん「全店舗にアプリ導入されたので、アプリあるバージョンしかない」＝総括表に入力する版（tanaoroshi_soukatsu.pdf・Drive は 10/19 にゴミ箱）を外し、Ver1.1 の1本に */
+    { k:'tanaoroshi_app', st:'all', ver:'Ver1.1', d:'2026-10-22', pdf:'tanaoroshi_kantan.pdf', id:'1z_HqPmdNR-qciv2cHIsNeMPICgWd21xT', t:{ ja:'月末棚卸', en:'Month-end stocktake', vi:'Kiểm kê cuối tháng' }, s:{ ja:'6枚 ・ 未開封だけ数える', en:'6 pages', vi:'6 trang' } },
     { k:'kasuhara', st:'all', ver:'Ver1.1', d:'2026-09-25', pdf:'kasuhara.pdf', id:'1jEsOKkX8ymAoswDcpSQ9bkvFPOXCjAoH', t:{ ja:'カスタマーハラスメント対応', en:'Customer harassment response', vi:'Ứng phó quấy rối từ khách' }, s:{ ja:'8枚 ・ 10/1から義務', en:'8 pages', vi:'8 trang' } },
     { k:'kasuhara_post_app', st:'all', ver:'', d:'2026-09-25', pdf:'kasuhara_post_app.pdf', id:'1ifORxQ23xTtmJHIn_l44inKfryUsqVsA', t:{ ja:'カスハラ対応 掲示用（アプリ導入店）', en:'Harassment notice (app stores)', vi:'Bảng thông báo (CH có app)' }, s:{ ja:'A4横 ・ 店に貼る', en:'A4 landscape', vi:'A4 ngang' } },
     { k:'kasuhara_post_noapp', st:'all', ver:'', d:'2026-09-25', pdf:'kasuhara_post_noapp.pdf', id:'1qt36An5GXtSYmC5232tmU3rKo7luOENa', t:{ ja:'カスハラ対応 掲示用（アプリ未導入店）', en:'Harassment notice (no-app stores)', vi:'Bảng thông báo (CH chưa có app)' }, s:{ ja:'A4横', en:'A4 landscape', vi:'A4 ngang' } },

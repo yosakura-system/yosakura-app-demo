@@ -5180,7 +5180,7 @@ console.log('== 提出した日報を後から直せる（2026-09-03 ユンさ�
 console.log('== 総括表の月次出力が時計に隠れない／フロアを分けて点検できる（2026-09-03）==');
 {
   const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
-  ok(/\.screen\.skp \{ padding-top: calc\(10px \+ env\(safe-area-inset-top\)\); \}/.test(css),
+  ok(/\.screen\.skp \{ padding-top: calc\(10px \+ env\(safe-area-inset-top\) \* 1\.25\); \}/.test(css),
      '月次出力の画面に端末の安全領域ぶんの余白がある（ボタンが時計に隠れない）');
   // フロア＝分ける店舗だけに出る
   const S = '牛カツ世桜 長堀橋店';
@@ -6621,7 +6621,7 @@ console.log('== 2026-10-22 神田さん「B案の見る・注文すると同じ�
   seedM(); location.hash = '#/app/manualtop'; h = registry.app.innerHTML;
   ok(/<div class="pb-ttl">マニュアル<\/div>/.test(h) && /class="pb-use"/.test(h) && /食物アレルギー/.test(h) && /data-open="emergency"/.test(h) && /data-open="manual\?cat=hygiene"/.test(h) && /data-open="manual\?cat=storeops"/.test(h), 'マニュアル＝よく使う4つ（アレルギー・緊急・衛生・仕事の手順）');
   ok(/docs\.google\.com\/spreadsheets\/d\/abc/.test(h), 'アレルギー＝本部が登録したアレルギー表のリンクを使う');
-  ok(/1枚マニュアル（かんたん版）/.test(h) && /月末棚卸（アプリで入力）/.test(h), 'マニュアルの中に1枚マニュアル（かんたん版）');
+  ok(/1枚マニュアル（かんたん版）/.test(h) && /月末棚卸</.test(h) && !/総括表に入力/.test(h), 'マニュアルの中に1枚マニュアル（かんたん版）＝月末棚卸は1本（10/22 総括表に入力する版は無い）');
   ok(/<h2>全部の資料<\/h2>/.test(h) && /class="pb-mgrid"/.test(h) && /data-open="manual\?cat=service"/.test(h) && /data-open="gyotaiman"/.test(h), '全部の資料＝本部の目次の分類を格子で（押すとその分類を開いた目次へ）');
   location.hash = '#/app/manual?cat=hygiene'; h = registry.app.innerHTML;
   ok(/data-mfoldbody="hygiene">/.test(h) && /data-mfoldbody="service" hidden/.test(h), '目次＝?cat の分類だけ開いた状態・ほかは畳んだまま');
@@ -6641,26 +6641,34 @@ console.log('== 2026-10-22 神田さん「B案の見る・注文すると同じ�
   ok(/"rc_unagi_jo": 'data:image\/webp/.test(code) && /"rc_sand": 'data:image\/webp/.test(code) && !/"rc_unagi": 'data:image/.test(code) && !/"rc_wagyukibako"/.test(code), 'ソース＝写真はMOTONの実物（webp）に差し替え・案Bの見本の写真は残っていない');
 }
 
+console.log('== 2026-10-22 神田さん（iPhone 17）「上の店舗名が上すぎて文字の半分がぼやけてる」「店長とJPが重なってる」==');
+{
+  const css = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  ok(/html\[data-theme="pb"\] \.hdr \{ padding-top: calc\(8px \+ env\(safe-area-inset-top\) \* 1\.25\);/.test(css), 'ヘッダーの上端＝safe-area の 1.25 倍（時計の帯の下のぼかしに掛からない）');
+  ok(/\.hdr \{[^}]*padding: calc\(12px \+ env\(safe-area-inset-top\) \* 1\.25\) 16px 12px;/.test(css), '共通ヘッダーも同じ');
+  ok(/html\[data-theme="pb"\] \.hdr__who \{[^}]*flex: 1 1 auto; overflow: hidden;/.test(css) && /html\[data-theme="pb"\] \.hdr__who span \{[^}]*overflow: hidden; text-overflow: ellipsis;/.test(css), '店舗名の下の行＝幅に収めて「…」で切る（JP の札に重ならない）');
+  ok(/html\[data-theme="pb"\] \.hdr \.role-chip \{[^}]*max-width: 46vw;/.test(css), '役割の札は幅の上限 46vw');
+}
 console.log('== 2026-10-22 神田さん「棚卸マニュアルとか、すでにリリースしたマニュアルもアプリで見れるように」＝マニュアル画面に1枚マニュアル（かんたん版）==');
 {
   const S = '牛カツ世桜 長堀橋店';
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/app/manual'; let h = registry.app.innerHTML;
-  ok(/1枚マニュアル（かんたん版）/.test(h) && /月末棚卸（アプリで入力）/.test(h) && /カスタマーハラスメント対応/.test(h), '店長のマニュアル画面＝先頭に1枚マニュアル（棚卸・カスハラ）');
+  ok(/1枚マニュアル（かんたん版）/.test(h) && /月末棚卸</.test(h) && /Ver1\.1/.test(h) && !/tanaoroshi_soukatsu/.test(h) && /カスタマーハラスメント対応/.test(h), '店長のマニュアル画面＝先頭に1枚マニュアル（棚卸・カスハラ）');
   ok(/data-openurl="[^"]*yosakura-app-preview\/manual\/tanaoroshi_kantan\.pdf/.test(h) && /manual\/kasuhara\.pdf/.test(h) && !/drive\.google\.com/.test(h), '全店配布＝アプリの公開先 manual/ のPDF（ログイン不要）。店舗の画面にDriveのリンクは無い');
   ok(!/日報の出し方と数字の直し方/.test(h) && !/HACCP（衛生管理計画と記録）/.test(h) && !/表示ルール（総額表示/.test(h) && !/class="mchip/.test(h), '店舗には全店リリース済みだけ（現場テスト中・本部確認中・本部資料は出ない・札も無し）');
   const nStore = (h.match(/class="mrow" data-openurl="[^"]*yosakura-app-preview\/manual\//g) || []).length;
-  ok(nStore === 6, '店舗に出る1枚マニュアル＝6本（棚卸2・カスハラ4）: ' + nStore);
+  ok(nStore === 5, '店舗に出る1枚マニュアル＝5本（棚卸1・カスハラ4。10/22 総括表に入力する版を外した）: ' + nStore);
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
-  location.hash = '#/app/manual'; ok(/月末棚卸（アプリで入力）/.test(registry.app.innerHTML) && !/現場テスト中/.test(registry.app.innerHTML), 'スタッフも同じ（全店だけ）');
+  location.hash = '#/app/manual'; ok(/月末棚卸</.test(registry.app.innerHTML) && !/現場テスト中/.test(registry.app.innerHTML), 'スタッフも同じ（全店だけ）');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); });
   location.hash = '#/app/manual'; h = registry.app.innerHTML;
   const nHq = (h.match(/class="mrow" data-openurl="[^"]*(drive\.google\.com\/file\/d\/|yosakura-app-preview\/manual\/)/g) || []).length;
-  ok(nHq === 28 && /mchip--all">全店</.test(h) && /mchip--test">現場テスト中</.test(h) && /mchip--hq">本部確認中</.test(h) && /mchip--hqonly">本部資料</.test(h), '本部には全部（28本）を状態の札つきで（全店／現場テスト中／本部確認中／本部資料）: ' + nHq);
-  ok(/全店（6）/.test(h) && /現場テスト中（10）/.test(h) && /本部確認中（11）/.test(h) && /本部資料（1）/.test(h), '本部の並び＝状態ごとにまとめて件数つき');
+  ok(nHq === 27 && /mchip--all">全店</.test(h) && /mchip--test">現場テスト中</.test(h) && /mchip--hq">本部確認中</.test(h) && /mchip--hqonly">本部資料</.test(h), '本部には全部（27本）を状態の札つきで（全店／現場テスト中／本部確認中／本部資料）: ' + nHq);
+  ok(/全店（5）/.test(h) && /現場テスト中（10）/.test(h) && /本部確認中（11）/.test(h) && /本部資料（1）/.test(h), '本部の並び＝状態ごとにまとめて件数つき');
   ok(/状態はいる・いらないスプシのK列が正/.test(h), '本部向けの注記＝状態の正はいる・いらないスプシ');
-  { const ids = (code.match(/st:'(?:all|test|hq|hqonly)'[^\n]*?id:'(1[A-Za-z0-9_-]{25,})'/g) || []).map(x => x.replace(/^.*id:'/, '').slice(0, -1)); ok(ids.length === 28 && new Set(ids).size === 28, 'ソース＝1枚マニュアルのDrive IDは28本すべて別（重複なし）: ' + ids.length); }
-  { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 6 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の6本のPDFが manual/ に実在する: ' + pdfs.join(',')); }
+  { const ids = (code.match(/st:'(?:all|test|hq|hqonly)'[^\n]*?id:'(1[A-Za-z0-9_-]{25,})'/g) || []).map(x => x.replace(/^.*id:'/, '').slice(0, -1)); ok(ids.length === 27 && new Set(ids).size === 27, 'ソース＝1枚マニュアルのDrive IDは27本すべて別（重複なし）: ' + ids.length); }
+  { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 5 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の5本のPDFが manual/ に実在する: ' + pdfs.join(',')); }
 }
 
 console.log('== 2026-10-22 本部の見え方＝案Bの本部画面（神田さん「B案の本部画面を基準に」。10/20 の「準備中」は引退）==');

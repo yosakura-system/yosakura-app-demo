@@ -69,7 +69,7 @@ body {
 .hdr {
   flex-shrink: 0; z-index: 20; /* スクロールの外（#app直下）に静止＝sticky不要になった（2026-09-08） */
   display: flex; align-items: center; gap: 10px;
-  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  padding: calc(12px + env(safe-area-inset-top) * 1.25) 16px 12px;   /* ★2026-10-22 iPhone 17＝上端の帯の下のぼかしに掛からないよう 1.25 倍 */
   background: rgba(255,255,255,.85);
   backdrop-filter: saturate(180%) blur(14px);
   -webkit-backdrop-filter: saturate(180%) blur(14px);
@@ -176,7 +176,7 @@ body {
   background: #7a5c1e; color: #fff; font-family: var(--sans); font-size: 12px; font-weight: 700;
   padding: 9px 14px; line-height: 1.5; position: -webkit-sticky; position: sticky; top: 0; z-index: 60;
   /* ★iPhoneのホーム画面版＝画面上端（時計・電波の帯）の下に潜って押せない（2026-10-02 神田さん）→ 上端ぶんを空ける */
-  padding-top: calc(9px + env(safe-area-inset-top)); }
+  padding-top: calc(9px + env(safe-area-inset-top) * 1.25); }
 /* 帯が2本並ぶとき（開発者ビュー＋パスワード変更）は2本目を詰める。帯の下のヘッダーは上端ぶんを二重に取らない（2026-10-02 神田さん「上に色々出過ぎて操作しにくい」） */
 .devview-bar + .devview-bar { padding-top: 7px; top: 0; }
 .devview-bar { font-size: 11px; padding-bottom: 7px; line-height: 1.4; }
@@ -526,9 +526,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 /* ★総括表の月次出力はヘッダーの無い画面のため、そのままだと iPhone の時計・電波表示に
    「個店カルテへ」のボタンが隠れて押せなかった（2026-09-03 ユンさんのご報告）。
    端末の安全領域のぶんだけ、画面の上に余白を足す。 */
-.screen.skp { padding-top: calc(10px + env(safe-area-inset-top)); }
+.screen.skp { padding-top: calc(10px + env(safe-area-inset-top) * 1.25); }
 /* ★月次出力の「個店カルテへ」＝上に追従させ、開発者ビューのバナー（z-index:60）やiPhoneの上端の下に隠れないようにする（2026-10-01） */
-.skp-bar { position: -webkit-sticky; position: sticky; top: 0; z-index: 61; background: var(--paper, #FFFFFF); margin: -4px -16px 0; padding: calc(8px + env(safe-area-inset-top)) 16px 6px; }
+.skp-bar { position: -webkit-sticky; position: sticky; top: 0; z-index: 61; background: var(--paper, #FFFFFF); margin: -4px -16px 0; padding: calc(8px + env(safe-area-inset-top) * 1.25) 16px 6px; }
 .skp-bar .back { min-height: 44px; }
 .skp-sheet { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
 .skp-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
@@ -1164,12 +1164,12 @@ html[data-theme="pb"] .pb-2col, html[data-theme="pb"] .pb-col { display: content
 @media (min-width: 900px) and (min-height: 600px) { html[data-theme="pb"] #app > #syncFresh { grid-column: 1 / -1; } }   /* ★2026-10-20 iPad横で「新しい情報」の帯が左の細い列に押し込まれていた */
 
 /* ★2026-10-20 案Bの見本に寄せる（見出し・見る・注文する・iPadの幅） */
-html[data-theme="pb"] .hdr { padding-top: calc(8px + env(safe-area-inset-top)); padding-bottom: 9px; gap: 10px; }
+html[data-theme="pb"] .hdr { padding-top: calc(8px + env(safe-area-inset-top) * 1.25); padding-bottom: 9px; gap: 10px; }
 html[data-theme="pb"] .hdr__logo { width: 32px; height: 32px; }
-html[data-theme="pb"] .hdr__who { line-height: 1.25; min-width: 0; }
+html[data-theme="pb"] .hdr__who { line-height: 1.25; min-width: 0; flex: 1 1 auto; overflow: hidden; }   /* ★2026-10-22 iPhone＝下の行が JP の札に重なっていた */
 html[data-theme="pb"] .hdr__who b { display: block; font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-html[data-theme="pb"] .hdr__who span { display: block; font-size: 11px; color: var(--gray); white-space: nowrap; }
-html[data-theme="pb"] .hdr .role-chip { font-size: 11px; padding: 5px 10px; }
+html[data-theme="pb"] .hdr__who span { display: block; font-size: 11px; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[data-theme="pb"] .hdr .role-chip { font-size: 11px; padding: 5px 10px; max-width: 46vw; }
 html[data-theme="pb"] .hdr .lang-chip { font-size: 11px; padding: 4px 8px; }
 html[data-theme="pb"] .pb-search { display: flex; align-items: center; gap: 8px; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 10px 13px; color: var(--gray); margin: 4px 0 10px; }
 html[data-theme="pb"] .pb-search svg { width: 20px; height: 20px; flex: none; }
