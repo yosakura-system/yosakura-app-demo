@@ -50,6 +50,7 @@ body {
   flex: 1 1 auto; min-height: 0;
   overflow-y: auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+  overflow-x: hidden;   /* ★2026-10-22 神田さん「スマホで横にスライドできて画面がフラフラ」＝幅を超える要素があっても横には動かさない（iPhoneの品目・基準在庫タブ） */
 }
 
 /* ===== スプラッシュ ===== */
@@ -921,7 +922,8 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 @media (max-width: 600px) {
   .zk-head { display: none; }
   .zk-edit { flex-wrap: wrap; row-gap: 6px; margin-bottom: 12px; }
-  .zk-edit input:nth-child(1) { flex: 1 0 100%; }
+  .zk-edit > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+  .zk-edit input:nth-child(1) { flex: 1 1 100%; }   /* 縮める余地を残す（iPhoneで幅を超えて横スクロールが出た） */
   .zk-edit input:nth-child(2), .zk-edit input:nth-child(3), .zk-edit input:nth-child(4) { flex: 1 1 0; text-align: center; }
   .zk-edit select { flex: 1.6 1 0; }
 }
