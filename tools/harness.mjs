@@ -7231,6 +7231,7 @@ console.log('== 2026-10-21 永井さん「在庫チェックに消耗品管理�
   const cssN = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
   ok(/\.zk-edit input, \.zk-edit select, \.zk-in input \{ font-size: 16px; \}/.test(cssN) && /@media \(max-width: 600px\) \{\s*\.zk-head \{ display: none; \}\s*\.zk-edit \{ flex-wrap: wrap;/.test(cssN), 'CSS＝在庫の入力欄は16px（iOSの拡大を止める）・スマホ幅は品目名＋2行目に折り返す');
   ok(/overscroll-behavior-y: contain;\s*overflow-x: hidden;/.test(cssN) && /\.zk-edit > \* \{ min-width: 0; max-width: 100%; box-sizing: border-box; \}/.test(cssN), 'CSS＝スクロール領域（.appmain）は横に動かさない・品目タブの欄は幅を超えない（神田さん「横にスライドできてフラフラ」）');
+  ok(/\.ckov \{ overflow-x: auto;/.test(cssN), 'CSS＝本部の店舗×項目の表（.ckov）は自分の中で横に動く（.appmain を止めた分の受け皿）');
   seed3('牛カツ世桜 長堀橋店'); run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'nagai', name: '永井', role: 'manager', stores: S3 })); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); });
   location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
   ok(/id="zk_s0" value="[^"]*" placeholder="基準"/.test(registry.app.innerHTML) && /id="zk_o0" value="[^"]*" placeholder="発注数"/.test(registry.app.innerHTML) && /id="zk_u0" value="[^"]*" placeholder="単位"/.test(registry.app.innerHTML), '品目タブ＝欄の薄字が「基準」「発注数」「単位」（見出し行が消えるスマホ幅でも分かる）');
