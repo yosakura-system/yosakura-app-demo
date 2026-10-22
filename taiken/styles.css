@@ -935,6 +935,7 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 .htab .hdot { position: absolute; top: 8px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: #c0392b; }
 .hpane[hidden] { display: none; }
 /* 本部の点検一覧＝1店1行 */
+.ckov { overflow-x: auto; -webkit-overflow-scrolling: touch; }   /* ★2026-10-22 .appmain を横に動かさなくしたので、本部の店舗×項目の表は自分の中で横に動く */
 .ckov table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .ckov th, .ckov td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
 .ckov tbody th { text-align: left; font-weight: 600; }
