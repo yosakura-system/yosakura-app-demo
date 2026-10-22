@@ -3682,31 +3682,31 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   // ① 対象アカウント（kanda・本部）が店舗表示に切り替えると、戻るバナーが全画面に出る
   seedAuth('kanda', 'hq', 'staff');
   location.hash = '#/home';
-  ok(/class="viewas-btn on" data-viewas="staff"/.test(registry.app.innerHTML), '店舗表示中はホームに切替の帯（本部｜店舗責任者｜スタッフ・スタッフが選択中）が出る');
+  ok(!/viewas-bar/.test(registry.app.innerHTML) && /rc-role">店舗iPad</.test(registry.app.innerHTML) && /viewas-note/.test(registry.app.innerHTML) && /data-viewas="hq">本部に戻る/.test(registry.app.innerHTML), '店舗表示中＝上の切替の帯は無い（10/22廃止）。右上のチップがスタッフ・赤い注意行に「本部に戻る」');
   ok(!/本部メニュー/.test(registry.app.innerHTML), '店舗表示中は本部メニューが消える（見え方が本当に店舗側になる）');
   location.hash = '#/app/kizuki';
-  ok(/data-viewas="hq"/.test(registry.app.innerHTML), 'アプリ画面にも切替の帯が出る');
+  ok(/data-viewas="hq"/.test(registry.app.innerHTML) && !/viewas-bar/.test(registry.app.innerHTML), 'アプリ画面にも注意行（本部に戻る）は出る・切替の帯は出ない');
   // ② 本部の表示に戻っているときはバナーを出さない
   seedAuth('kanda', 'hq', 'hq');
   location.hash = '#/home';
-  ok(/class="viewas-btn on" data-viewas="hq"/.test(registry.app.innerHTML), '本部の表示でも切替の帯が出る（本部が選択中）＝2026-10-20 神田さん「本部のメンバーは全員3つ使えるように」');
+  ok(!/viewas-bar/.test(registry.app.innerHTML) && !/viewas-note/.test(registry.app.innerHTML) && /rc-role">本部</.test(registry.app.innerHTML), '本部の表示＝帯も注意行も無し・右上のチップが本部（切替は右上から）＝2026-10-20 神田さん「本部のメンバーは全員3つ使えるように」');
   ok(/let _rawKeysMem = '';/.test(code) && /localStorage\.getItem\('yosakura_demo_rawkeys'\) \|\| _rawKeysMem \|\| ''/.test(code) && /if \(!_distFail\) \{ _rawKeysMem = nextKeys;/.test(code) && (code.match(/_rawKeysMem = '';/g) || []).length >= 4 && /else \{ _rawKeysMem = ''; try \{ localStorage\.removeItem\('yosakura_demo_rawkeys'\); \} catch \(e\) \{\} reportLsFull_\(\); autoResetStorage_\(\); \}/.test(code), '★2026-10-20 目印を端末に保存できなくても、起動中は同じ内容で「新しい情報」の帯を出さない（ログアウト・取り直しでは空にする）');
   ok(/document\.querySelectorAll\('\.pb-band'\)\.forEach\(x => x\.classList\.toggle\('on', x === b\)\)/.test(code), '★2026-10-20 開店前・営業中・締めは、押したボタンが選択中の色になる');
   // ★2026-10-20 6:30 神田さん「本部側で入ると旧デザイン」＝本部IDは最初は店舗責任者の見え方（新デザイン）で開く。押せば本部に戻れ、以後はその選択のまま
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_hq_first_mgr_1020'); localStorage.removeItem('yosakura_theme'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); });
   location.hash = '#/home';
-  ok(/class="viewas-btn on" data-viewas="manager"/.test(registry.app.innerHTML) && !/本部メニュー/.test(registry.app.innerHTML) && localStorage.getItem('yosakura_demo_store') !== 'all', '★本部IDは最初、店舗責任者の見え方（新デザイン）で開く');
+  ok(/rc-role">店長</.test(registry.app.innerHTML) && !/本部メニュー/.test(registry.app.innerHTML) && localStorage.getItem('yosakura_demo_store') !== 'all', '★本部IDは最初、店舗責任者の見え方（新デザイン）で開く');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); });
   location.hash = '#/app/kizuki';
-  ok(/class="viewas-btn on" data-viewas="hq"/.test(registry.app.innerHTML), '★本部に戻したら、以後は本部のまま（毎回は切り替えない）');
+  ok(/rc-role">本部</.test(registry.app.innerHTML) && !/viewas-note/.test(registry.app.innerHTML), '★本部に戻したら、以後は本部のまま（毎回は切り替えない）');
   // ②' 増田さんも対象（2026-09-03 ご要望＝本部・加盟店の両目線）
   seedAuth('masuda', 'hq', 'staff');
   location.hash = '#/home';
-  ok(/class="viewas-btn on" data-viewas="staff"/.test(registry.app.innerHTML), '増田さんのアカウントでも店舗表示に切り替えられる');
+  ok(/rc-role">店舗iPad</.test(registry.app.innerHTML), '増田さんのアカウントでも店舗表示に切り替えられる');
   // ③ 対象でない本部アカウントには何も起きない（切替の入口も開かない）
   seedAuth('takahara', 'hq', 'staff');
   location.hash = '#/home';
-  ok(/class="viewas-btn on" data-viewas="staff"/.test(registry.app.innerHTML) && !/本部メニュー/.test(registry.app.innerHTML), '★2026-10-20 本部IDは全員（社長も）店舗表示に切り替えられる');
+  ok(/rc-role">店舗iPad</.test(registry.app.innerHTML) && !/本部メニュー/.test(registry.app.innerHTML), '★2026-10-20 本部IDは全員（社長も）店舗表示に切り替えられる');
   ok(/else if \(_distFail\) \{[^}]*\}\s*else showSyncBand_\(\);/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 保存がいっぱいで取り込めなかったときは「新しい情報が届きました」を出さない（本部iPhoneで毎回出ていた）');
   ok(/const NEWS_RETIRED_ = \['4261b070-b0ff-478b-8988-2662f594e5ee', 'e41a75a2-81c8-40eb-ba69-c89791b14fe9'\];/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')) && /case 'news': \{ if \(NEWS_RETIRED_\.includes\(String\(id\)\)\) break;/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 引き継ぎ伝言板の9/8のお知らせは出さない（引き継ぎは店のLINE）');
   ok(/const getNews = \(\) => \{ try \{ return \(JSON\.parse\(localStorage\.getItem\('yosakura_demo_news'\)\) \|\| \[\]\)\.filter\(n => !\(n && NEWS_RETIRED_\.includes\(String\(n\.id\)\)\)\)/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 すでに保存済みの端末でも、引き継ぎ伝言板のお知らせは読むときに外す');
@@ -6663,6 +6663,7 @@ console.log('== 2026-10-22 本部の見え方＝案Bの本部画面（神田さ�
   location.hash = '#/home?tab=genba'; ok(!/本部の画面は準備中です/.test(registry.app.innerHTML), '旧タブを直接開いても準備中は出ない');
   ok(/"hq_st_gyukatsu": 'data:image/.test(code) && /"hq_st_nihon": 'data:image/.test(code), 'ソース＝店舗カードの写真6枚（案Bの見本と同じ）が埋め込み');
   ok(/const hqPrep_ = \(\) => \{ return false;/.test(code), 'ソース＝準備中の1枚は引退');
+  ok(!/viewas-bar/.test(code) && /if \(cur === 'hq'\) return '';/.test(code) && /if \(getAuth\(\) && !devViewAllowed\(\)\) return;   \/\/ ★ログイン済み＝役割は変えられない（開発者ビューだけ例外）/.test(code), 'ソース＝上の切替の帯は廃止。見え方の切替は右上の設定シート（本部IDは役割のボタンが効く）');
 }
 
 console.log('== 2026-10-20 見る・注文する・見出しを案Bの見本に ==');
@@ -7291,7 +7292,7 @@ console.log('== 2026-10-22 永井さん「基準在庫を設定しても消え�
   seedHq('manager');
   location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
   let h = registry.app.innerHTML;
-  ok(/class="viewas-btn on" data-viewas="manager"/.test(h) && /viewas-note/.test(h) && /提出・保存は本部・店舗に届きません/.test(h) && /店長IDでログインしてください/.test(h), '店舗責任者の見え方＝帯に「届きません・店長IDで」が常に出る');
+  ok(/rc-role">店長</.test(h) && /viewas-note/.test(h) && /提出・保存は本部・店舗に届きません/.test(h) && /店長IDでログインしてください/.test(h), '店舗責任者の見え方＝帯に「届きません・店長IDで」が常に出る');
   ok(/保存していない編集を復元しました/.test(h) && /id="zk_s\d+" value="9"/.test(h), '下書き（基準在庫9）が復元されている');
   const btn = doc.getElementById('saveZkMaster'); ok(!!btn, '保存ボタンがある'); if (btn) btn.onclick();
   ok(!JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').some(r => r.kind === 'zaikomaster'), '保存を押しても端末の記録に zaikomaster は増えない（「保存しました」を出さない）');

@@ -680,8 +680,10 @@
   const devViewBanner = () => {
     if (!devViewAllowed()) return '';
     const cur = getRole();
-    const opt = (r, lb) => `<button type="button" class="viewas-btn${cur === r ? ' on' : ''}" data-viewas="${r}">${L(lb)}</button>`;
-    return `<div class="devview-bar viewas-bar"><span class="viewas-lb">${L({ ja:'表示', en:'View', vi:'Xem' })}</span>${opt('hq', { ja:'本部', en:'HQ', vi:'HQ' })}${opt('manager', { ja:'店舗責任者', en:'Store lead', vi:'Quản lý' })}${opt('staff', { ja:'スタッフ', en:'Staff', vi:'Nhân viên' })}</div>${cur !== 'hq' ? `<div class="devview-bar viewas-note">${L({ ja:'この見え方は確認用です。提出・保存は本部・店舗に届きません。店の仕事は店長IDでログインしてください。', en:'Preview only: submissions are not sent. Sign in with the store manager ID for store work.', vi:'Chỉ xem thử: không gửi đi. Dùng ID quản lý cửa hàng cho công việc của cửa hàng.' })}</div>` : ''}`;
+    /* ★2026-10-22 神田さん「本部画面に入れるようになったので、1番上の黄色の切り替え（表示：本部｜店舗責任者｜スタッフ）はもう不要」
+       ＝切替は右上の「本部・全店」（設定シート・役割と店舗）に一本化。残すのは店舗の見え方のときの赤い注意行だけ（＋本部へ戻るボタン） */
+    if (cur === 'hq') return '';
+    return `<div class="devview-bar viewas-note">${L({ ja:'この見え方は確認用です。提出・保存は本部・店舗に届きません。店の仕事は店長IDでログインしてください。', en:'Preview only: submissions are not sent. Sign in with the store manager ID for store work.', vi:'Chỉ xem thử: không gửi đi. Dùng ID quản lý cửa hàng cho công việc của cửa hàng.' })} <button type="button" class="viewas-btn" data-viewas="hq">${L({ ja:'本部に戻る', en:'Back to HQ', vi:'Về HQ' })}</button></div>`;
   };
   // 通信が「ログインしてください」と言ってきたときの受け（トークン切れ・再発行後も含む）
   /* ログインが外れたとき（2026-09-03 神田さんの実機＝「急にログイン画面になった」）。
