@@ -6620,7 +6620,7 @@ console.log('== 2026-10-22 神田さん「B案の見る・注文すると同じ�
   ok(/この業態のレシピはまだ整備中です/.test(h) && /<h2>ほかの業態<\/h2>/.test(h), '文書の無い業態（寿司）＝「整備中」と出し、ほかの業態は見える');
   seedM(); location.hash = '#/app/manualtop'; h = registry.app.innerHTML;
   ok(/<div class="pb-ttl">マニュアル<\/div>/.test(h) && /class="pb-use"/.test(h) && /食物アレルギー/.test(h) && /data-open="emergency"/.test(h) && /data-open="manual\?cat=hygiene"/.test(h) && /data-open="manual\?cat=storeops"/.test(h), 'マニュアル＝よく使う4つ（アレルギー・緊急・衛生・仕事の手順）');
-  ok(/docs\.google\.com\/spreadsheets\/d\/abc/.test(h), 'アレルギー＝本部が登録したアレルギー表のリンクを使う');
+  ok(/data-openurl="https:\/\/yosakura-system\.github\.io\/yosakura-app-preview\/manual\/allergy_gyukatsu\.pdf"><b>食物アレルギー<\/b><small>押すと、この店の表<\/small>/.test(h) && !/docs\.google\.com\/spreadsheets\/d\/abc/.test(h) && !/drive\.google\.com\/drive\/folders/.test(h), 'アレルギー＝自店の業態（牛カツ）の同梱PDFが1回で開く。本部ドライブのフォルダ・登録リンクは使わない（2026-10-22 店の端末では開けない）');
   ok(/1枚マニュアル（かんたん版）/.test(h) && /月末棚卸</.test(h) && !/総括表に入力/.test(h), 'マニュアルの中に1枚マニュアル（かんたん版）＝月末棚卸は1本（10/22 総括表に入力する版は無い）');
   ok(/<h2>全部の資料<\/h2>/.test(h) && /class="pb-mgrid"/.test(h) && /data-open="manual\?cat=service"/.test(h) && /data-open="gyotaiman"/.test(h), '全部の資料＝本部の目次の分類を格子で（押すとその分類を開いた目次へ）');
   location.hash = '#/app/manual?cat=hygiene'; h = registry.app.innerHTML;
@@ -6668,7 +6668,7 @@ console.log('== 2026-10-22 神田さん「棚卸マニュアルとか、すで�
   ok(/全店（5）/.test(h) && /現場テスト中（10）/.test(h) && /本部確認中（11）/.test(h) && /本部資料（1）/.test(h), '本部の並び＝状態ごとにまとめて件数つき');
   ok(/状態はいる・いらないスプシのK列が正/.test(h), '本部向けの注記＝状態の正はいる・いらないスプシ');
   { const ids = (code.match(/st:'(?:all|test|hq|hqonly)'[^\n]*?id:'(1[A-Za-z0-9_-]{25,})'/g) || []).map(x => x.replace(/^.*id:'/, '').slice(0, -1)); ok(ids.length === 27 && new Set(ids).size === 27, 'ソース＝1枚マニュアルのDrive IDは27本すべて別（重複なし）: ' + ids.length); }
-  { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 5 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の5本のPDFが manual/ に実在する: ' + pdfs.join(',')); }
+  { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 8 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の5本＋アレルギー表3本（2026-10-22）のPDFが manual/ に実在する: ' + pdfs.join(',')); }
 }
 
 console.log('== 2026-10-22 本部の見え方＝案Bの本部画面（神田さん「B案の本部画面を基準に」。10/20 の「準備中」は引退）==');
@@ -7359,6 +7359,34 @@ console.log('== 2026-10-22 永井さん「基準在庫を設定しても消え�
   ok(saved && JSON.parse(saved.note).items.some(it => it.n === 'パン粉' && it.std === 9), '店長IDで保存＝zaikomaster が記録され、基準在庫9が入る');
   ok(!JSON.parse(localStorage.getItem('yosakura_zk_master_draft') || '{}')[S], '店長IDで保存したら下書きは消える');
   ok(/if \(inDevView\(\)\) \{ toast\(L\(\{ ja:'確認用の表示では保存できません/.test(code) && /if \(inDevView\(\)\) \{ toast\(L\(\{ ja:'確認用の表示では提出できません/.test(code), 'ソース＝保存・提出の入口で inDevView を先に見る（下書きを消す前）');
+}
+
+console.log('== 2026-10-22 神田さん「食物アレルギーをカードボタンを押したらワンクリックで出てくるように」＝ホームのカード→自店の業態の表（同梱PDF）が1回で開く ==');
+{
+  const seed = (role, st) => run(() => { setLS(role, st, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  const PDF = 'https:\\/\\/yosakura-system\\.github\\.io\\/yosakura-app-preview\\/manual\\/';
+  seed('manager', '牛カツ世桜 長堀橋店'); location.hash = '#/home'; let h = registry.app.innerHTML;
+  ok(/class="pb-chips pb-chips--home"/.test(h) && (h.match(/class="pb-chip"/g) || []).length === 4 && /data-open="kizuki"/.test(h) && /data-open="surveyqr"/.test(h) && /data-open="emergency"/.test(h), 'ホームのカードは4枚（気づき・サーベイQR・緊急・食物アレルギー）＝2×2。前の3枚はそのまま');
+  ok(new RegExp('<button class="pb-chip" data-openurl="' + PDF + 'allergy_gyukatsu\\.pdf"><img class="pb-chipimg" src="data:image\\/webp[^"]*"[^>]*><b>食物アレルギー<\\/b><small>押すと、この店の表<\\/small><\\/button>').test(h), '牛カツの店＝カードを押すと牛カツのアレルギー表（同梱PDF）が1回で開く。写真つき');
+  ok(!/drive\.google\.com\/drive\/folders\/1wf6AimkGQ9IHX8/.test(h) && !/data-open="allergy"/.test(h), '表がある業態＝本部ドライブのフォルダにも選ぶ画面にも行かない（1回で表）');
+  seed('staff', '日本鰻世桜 浅草橋店'); location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(new RegExp('data-openurl="' + PDF + 'allergy_unagi\\.pdf"><img class="pb-chipimg"').test(h), '鰻の店（スタッフ）＝日本鰻の表');
+  seed('manager', '和牛世桜 広島店'); location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(new RegExp('data-openurl="' + PDF + 'allergy_wagyu\\.pdf"><img class="pb-chipimg"').test(h), '和牛の店＝和牛の表');
+  seed('manager', '寿司世桜 心斎橋店'); location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(/<button class="pb-chip" data-open="allergy"><img class="pb-chipimg"[^>]*><b>食物アレルギー<\/b><small>この業態は本部で準備中<\/small>/.test(h) && !/allergy_[a-z]+\.pdf/.test(h), '表の無い業態（寿司）＝「本部で準備中」。黙って別の業態の表を出さない');
+  location.hash = '#/app/allergy'; h = registry.app.innerHTML;
+  ok(/<div class="pb-ttl">食物アレルギー<\/div>/.test(h) && /寿司のアレルギー表は本部で準備中です/.test(h) && (h.match(/class="pb-orow"/g) || []).length === 3 && /<span class="nm">牛カツ<\/span>/.test(h) && /<span class="nm">鰻<\/span>/.test(h) && /<span class="nm">和牛<\/span>/.test(h) && /2026\/10\/05 ・ 1枚/.test(h), '選ぶ画面＝準備中の説明＋ある3業態の表（牛カツ 2026/10/05・鰻・和牛）');
+  ok(/推測で答えずに本部へ確認します/.test(h), '注記＝表に無いことは推測で答えず本部へ');
+  seed('hq', 'all'); location.hash = '#/home'; location.hash = '#/app/manualtop'; h = registry.app.innerHTML;
+  ok(/data-open="allergy"><b>食物アレルギー<\/b><small>業態を選んで開く<\/small>/.test(h), '本部の全店表示＝マニュアル画面の食物アレルギーは「業態を選んで開く」');
+  location.hash = '#/app/allergy'; h = registry.app.innerHTML;
+  ok(/業態を選んでください/.test(h) && (h.match(/class="pb-orow"/g) || []).length === 3, '本部の選ぶ画面＝3業態');
+  seed('hq', '牛カツ世桜 富士山店'); location.hash = '#/home'; location.hash = '#/app/manualtop'; h = registry.app.innerHTML;   // 本部のホームは本部画面（カード無し）＝マニュアル画面で見る
+  ok(new RegExp('data-openurl="' + PDF + 'allergy_gyukatsu\\.pdf"><b>食物アレルギー').test(h), '本部が店を選んで見るとき＝マニュアル画面の食物アレルギーはその店の業態の表が1回で開く');
+  ok(['allergy_gyukatsu.pdf', 'allergy_unagi.pdf', 'allergy_wagyu.pdf'].every(f => fs.existsSync(new URL('../manual/' + f, import.meta.url)) && fs.statSync(new URL('../manual/' + f, import.meta.url)).size > 100000), 'アレルギー表のPDF3本が manual/ に実在する（各100KB超）');
+  ok(/ALLERGY_TABLES = \{[\s\S]*?gyukatsu: \{ pdf:'allergy_gyukatsu\.pdf', id:'1fkax360lOtD15t1DibYCzpNBJ_cfZBOTMu_az5-lq5c', d:'2026-10-05' \}/.test(code), 'ソース＝牛カツは 10/5 の新しいスライド（9行）の方を元にしている');
+  ok(/html\[data-theme="pb"\] \.pb-chips--home \{ grid-template-columns: 1fr 1fr; \}/.test(fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8')), 'CSS＝ホームのカード4枚は2列（3列だと「食物アレルギー」がはみ出す）');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);

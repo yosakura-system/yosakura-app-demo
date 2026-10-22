@@ -1052,6 +1052,9 @@ html[data-theme="pb"] .pb-chip { font: inherit; background: var(--paper); border
 html[data-theme="pb"] .pb-chipimg { width: 100%; height: 64px; object-fit: cover; display: block; margin-bottom: 4px; }
 html[data-theme="pb"] .pb-chip b { font-size: 13px; }
 html[data-theme="pb"] .pb-chip small { font-size: 10.5px; color: var(--gray); padding: 0 6px; line-height: 1.3; }
+/* ★2026-10-22 ホームのカードは4枚（気づき・サーベイQR・緊急・食物アレルギー）＝2×2。3列のままだと「食物アレルギー」が枠からはみ出す */
+html[data-theme="pb"] .pb-chips--home { grid-template-columns: 1fr 1fr; }
+html[data-theme="pb"] .pb-chips--home .pb-chipimg { height: 74px; }
 html[data-theme="pb"] .pb-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 16px 2px 7px; }
 html[data-theme="pb"] .pb-sec h2 { font-family: var(--sans); font-size: 12px; letter-spacing: .14em; color: var(--gray); font-weight: 700; margin: 0; }
 html[data-theme="pb"] .pb-sec small { font-size: 11px; color: var(--gray); }

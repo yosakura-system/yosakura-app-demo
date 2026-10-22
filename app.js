@@ -2003,10 +2003,12 @@
         <div class="pb-h">${left.length ? L({ja:'きょうの流れ',en:'Today’s flow',vi:'Việc hôm nay'}) : L({ja:'きょうは出し切りました',en:'All done today',vi:'Hôm nay đã xong'})}</div>
         <div class="pb-st"><span>${left.length ? `${L({ja:'残り',en:'Left',vi:'Còn'})} ${left.length}${L({ja:'件',en:'',vi:' mục'})} ・ ${L({ja:'目安',en:'about',vi:'khoảng'})} ${left.reduce((a, it) => a + pbMins_(it.m), 0)}${L({ja:'分',en:' min',vi:' ph'})}` : L({ja:'お疲れさまでした',en:'Well done',vi:'Cảm ơn'})}</span><span>${doneN}／${total} ${L({ja:'済',en:'done',vi:'xong'})}</span></div>
         <div class="pb-prog"><i style="width:${pct}%"></i></div></div></div>`;
-    const chips = `<div class="pb-chips">
+    const al = allergyInfo_(store);   // ★2026-10-22 食物アレルギー＝カード1回で自店の表（神田さん）
+    const chips = `<div class="pb-chips pb-chips--home">
       <button class="pb-chip" data-open="kizuki">${pbImg_('kyou_kizuki', 'pb-chipimg')}<b>${L({ja:'気づき',en:'Insight',vi:'Ghi nhận'})}</b><small>${L({ja:'良かったことも困ったことも',en:'Good or bad',vi:'Tốt hay khó'})}</small></button>
       <button class="pb-chip" data-open="surveyqr">${pbImg_('kyou_survey', 'pb-chipimg')}<b>${L({ja:'サーベイQR',en:'Survey QR',vi:'QR khảo sát'})}</b><small>${L({ja:'お会計のときに',en:'At payment',vi:'Khi thanh toán'})}</small></button>
       <button class="pb-chip" data-open="emergency">${pbImg_('miru_emergency', 'pb-chipimg')}<b>${L({ja:'緊急のとき',en:'Emergency',vi:'Khẩn cấp'})}</b><small>${L({ja:'火事・けが・お申し出',en:'Fire, injury, complaint',vi:'Cháy, thương tích'})}</small></button>
+      <button class="pb-chip" ${al.attr}>${pbImg_('miru_allergy', 'pb-chipimg')}<b>${L({ja:'食物アレルギー',en:'Food allergies',vi:'Dị ứng thực phẩm'})}</b><small>${L(al.sub)}</small></button>
     </div>`;
     /* ★2026-10-20 神田さん「週次、月次をある程度ワンクリックで見れるように」＝案Bの見本どおり、今週・今月の提出物をホームに1件ずつ並べる（押すとその入力へ直接）。
        済んだものは ✓ で残す。定期衛生（曜日別）は今週の先頭に入口を残す */
@@ -4832,6 +4834,24 @@
   /* 全店配布（st:'all'）はアプリの公開先 manual/ のPDF（ログイン不要・9/29の方針）。Driveの「マニュアル_かんたん版」は個別共有＝店舗の端末では開けない（10/22 権限を確認）。本部向け（test／hq）はDriveのまま */
   const KANTAN_PDF_BASE = 'https://yosakura-system.github.io/yosakura-app-preview/manual/';
   const kantanUrl_ = (m) => m.pdf ? KANTAN_PDF_BASE + m.pdf : `https://drive.google.com/file/d/${m.id}/view`;
+  /* ★2026-10-22 神田さん「食物アレルギーをカードボタンを押したらワンクリックで出てくるように」
+     本部ドライブ「03.マニュアル（レシピ・食材系）／アレルギー表」の Google スライド（業態ごと1枚）は本部の方だけに共有＝店舗の端末では開けない。
+     そこで表を A4横1枚のPDFにしてアプリに同梱し、ログイン中の店の業態の表を押した瞬間に開く（1枚マニュアルと同じ開き方）。
+     本部の表が変わったら manual/allergy_*.pdf を入れ替えて d: を更新して配信。表が無い業態（日本料理・寿司・手巻き）は「本部で準備中」と出す（黙って別の業態の表を出さない）。
+     id: は本部ドライブの元のスライド（本部の方が直すとき用。アプリからは開かない） */
+  const ALLERGY_TABLES = {
+    gyukatsu: { pdf:'allergy_gyukatsu.pdf', id:'1fkax360lOtD15t1DibYCzpNBJ_cfZBOTMu_az5-lq5c', d:'2026-10-05' },
+    unagi:    { pdf:'allergy_unagi.pdf',    id:'1pqpMH_70AFvOSVOxlw7gQkV498zW_0bKiCbOBFTmJnw', d:'2026-07-14' },
+    wagyu:    { pdf:'allergy_wagyu.pdf',    id:'1yJd85_aID0z_6DnABVNzYUmLpH-FqcHUH-gj7HZaIVY', d:'2026-07-14' }
+  };
+  const allergyFor_ = (store) => { const gy = store ? storeGyotai(store) : null; return gy && ALLERGY_TABLES[gy] ? Object.assign({ gy }, ALLERGY_TABLES[gy]) : null; };
+  /* ボタンに付ける属性と小さい説明＝表がある業態は直接PDF（1回で開く）。無い業態と本部の「全店」は選ぶ画面（allergy）へ */
+  const allergyInfo_ = (store) => {   // store＝画面が使っている店（ホームは自分の store を渡す＝同じ店で判定する）
+    const hqAll = getRole() === 'hq' && getStoreSel() === 'all';
+    const st = store || (hqAll ? null : visibleStores()[0]); const a = st ? allergyFor_(st) : null;
+    if (a) return { attr: `data-openurl="${esc(KANTAN_PDF_BASE + a.pdf)}"`, sub: { ja:'押すと、この店の表', en:'Tap to open this store’s table', vi:'Chạm để mở bảng của cửa hàng' }, direct: true };
+    return { attr: 'data-open="allergy"', sub: hqAll ? { ja:'業態を選んで開く', en:'Choose a business type', vi:'Chọn loại hình' } : { ja:'この業態は本部で準備中', en:'Being prepared by HQ', vi:'HQ đang chuẩn bị' }, direct: false };
+  };
   const KANTAN_ST = { all: { ja:'全店', en:'All stores', vi:'Tất cả' }, test: { ja:'現場テスト中', en:'Field test', vi:'Đang thử nghiệm' }, hq: { ja:'本部確認中', en:'HQ review', vi:'HQ đang xem' }, hqonly: { ja:'本部資料', en:'HQ only', vi:'Chỉ HQ' } };
   function kantanSection_(role) {
     const isHq = role === 'hq';
@@ -4893,10 +4913,9 @@
   };
   APP_VIEWS.manualtop = () => {
     const role = getRole();
-    const al = getLinks().find(l => l && /アレルギー/.test(String(l.title || '')) && isHttp(l.url));
-    const alUrl = al ? al.url : 'https://drive.google.com/drive/folders/1wf6AimkGQ9IHX8--1uvjSkxQRxb1FFbh';   // 本部ドライブ「03.マニュアル（レシピ・食材系）／アレルギー表」
+    const al = allergyInfo_();   // ★2026-10-22 ホームのカードと同じ＝自店の業態の表が1回で開く（それまでは本部ドライブのフォルダ＝店の端末では開けなかった）
     const use = [
-      [`data-openurl="${esc(openUrlFor(alUrl))}"`, { ja:'食物アレルギー', en:'Food allergies', vi:'Dị ứng thực phẩm' }, { ja:'本部の正式な表', en:'Official HQ table', vi:'Bảng chính thức' }],
+      [al.attr, { ja:'食物アレルギー', en:'Food allergies', vi:'Dị ứng thực phẩm' }, al.sub],
       ['data-open="emergency"', { ja:'緊急のとき', en:'Emergency', vi:'Khẩn cấp' }, { ja:'火事・けが・お申し出', en:'Fire, injury, complaints', vi:'Cháy, thương tích, khiếu nại' }],
       ['data-open="manual?cat=hygiene"', { ja:'衛生のきまり', en:'Hygiene rules', vi:'Quy tắc vệ sinh' }, { ja:'温度・手洗い・期限', en:'Temperature, hand-washing', vi:'Nhiệt độ, rửa tay' }],
       ['data-open="manual?cat=storeops"', { ja:'仕事の手順', en:'Work procedures', vi:'Quy trình' }, { ja:'開店・締め・掃除', en:'Open, close, cleaning', vi:'Mở, đóng, dọn' }]
@@ -4907,6 +4926,17 @@
     return `${useHtml}${kantanSection_(role)}
       <div class="pb-sec"><h2>${L({ ja:'全部の資料', en:'All documents', vi:'Tất cả tài liệu' })}</h2><small>${L({ ja:'本部の目次のまま ・ 上に無いときはここから', en:'HQ index as is', vi:'Theo mục lục HQ' })}</small></div>${grid}
       <p class="pb-note">${L({ ja:'マニュアルは整備できたものから差し替わります。変わったときは「本部から」のお知らせで届きます。', en:'Manuals are replaced as they are ready; changes arrive via HQ notices.', vi:'Cẩm nang sẽ được thay dần; thay đổi sẽ báo qua thông báo HQ.' })}</p>`;
+  };
+  APP_VIEWS.allergy = () => {
+    const hqAll = getRole() === 'hq' && getStoreSel() === 'all';
+    const st = hqAll ? null : visibleStores()[0]; const gy = st ? storeGyotai(st) : null;
+    const mine = gy ? ALLERGY_TABLES[gy] : null;
+    const lead = mine ? '' : hqAll ? L({ ja:'業態を選んでください。店舗のホームでは、その店の業態の表が1回で開きます。', en:'Choose a type. On a store’s home, its own table opens in one tap.', vi:'Chọn loại hình. Ở trang chủ cửa hàng, bảng của cửa hàng mở trong 1 chạm.' })
+      : L({ ja:`${esc(gyotaiLabel(gy) || '')}のアレルギー表は本部で準備中です。できたら、ホームの「食物アレルギー」から1回で開きます。`, en:'The table for this type is being prepared by HQ.', vi:'Bảng cho loại hình này đang được HQ chuẩn bị.' });
+    const rows = GYOTAI.filter(g => ALLERGY_TABLES[g.code]).sort((a, b) => (b.code === gy) - (a.code === gy)).map(g => { const a = ALLERGY_TABLES[g.code];   // 自店の業態を先頭に
+      return `<button type="button" class="pb-orow" data-openurl="${esc(KANTAN_PDF_BASE + a.pdf)}"><span class="st">${svg('book')}</span><span><span class="nm">${esc(gyotaiLabel(g.code))}</span><br><span class="sub">${esc(a.d.replace(/-/g, '/'))} ・ ${L({ ja:'1枚', en:'1 page', vi:'1 trang' })}</span></span><span class="rt">${svg('chev')}</span></button>`; }).join('');
+    return `${lead ? `<div class="pb-card"><div class="muted">${lead}</div></div>` : ''}<div class="pb-card" style="padding-top:0">${rows}</div>
+      <p class="pb-note">${L({ ja:'表に無いこと・分からないことは、推測で答えずに本部へ確認します。', en:'If it is not in the table or unclear, ask HQ instead of guessing.', vi:'Nếu không có trong bảng hoặc không rõ, hỏi HQ, không đoán.' })}</p>`;
   };
   APP_VIEWS.ordertop = () => {
     const role = getRole();
@@ -10977,6 +11007,7 @@
     APPS.push({ id:'manualtop', group:'learn', icon:'book', live:true, tabHide:true, roles:['staff','manager','owner','hq'], name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' }, desc:{ ja:'よく使うものを上に。全部の資料は下の目次から（いまの本部の目次のまま）。', en:'Frequently used first; all documents below in HQ’s index.', vi:'Mục hay dùng ở trên; toàn bộ ở mục lục HQ bên dưới.' } });
     APPS.push({ id:'ordertop', group:'learn', icon:'box', live:true, tabHide:true, roles:['staff','manager','owner','hq'], name:{ ja:'備品・食材を注文する', en:'Order supplies', vi:'Đặt vật tư & nguyên liệu' }, desc:{ ja:'注文先を押すと、その注文画面が開きます。注文先が変わったら本部がここを直すので、URLを探す必要はありません。', en:'Tap a supplier to open its order page. HQ keeps this list current.', vi:'Chạm để mở trang đặt hàng. HQ cập nhật danh sách.' } });
     APPS.push({ id:'othertop', group:'learn', icon:'dots', live:true, tabHide:true, roles:['staff','manager','owner','hq'], name:{ ja:'その他', en:'More', vi:'Khác' }, desc:{ ja:'', en:'', vi:'' } });
+    APPS.push({ id:'allergy', group:'learn', icon:'book', live:true, tabHide:true, roles:['staff','manager','owner','hq'], name:{ ja:'食物アレルギー', en:'Food allergies', vi:'Dị ứng thực phẩm' }, desc:{ ja:'本部の正式な表（業態ごと1枚）。', en:'Official HQ tables, one per business type.', vi:'Bảng chính thức của HQ, mỗi loại hình 1 trang.' } });   // ★2026-10-22
     APPS.push({ id:'emergency', group:'genba', icon:'phone', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'緊急連絡先', en:'Emergency contacts', vi:'Liên hệ khẩn cấp' },
       desc:{ ja:'警察・消防・設備業者など、店舗別にすぐ確認', en:'Police, fire, vendors — by store', vi:'Cảnh sát, cứu hỏa, đơn vị — theo cửa hàng' } });
