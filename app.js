@@ -4756,6 +4756,55 @@
      見出しだけを写すと意味が伝わらず、解説・具体例のある本部のスライドを開いていただくほうが早い。
      入口＝マニュアル →「世桜とは・理念」→「世桜10訓（スライド）」。 */
 
+  /* ★2026-10-22 神田さん「棚卸マニュアルとか、すでにリリースしたマニュアルもアプリで見れるように」
+     ＝1枚マニュアル（かんたん版）。PDFは Drive「マニュアル_かんたん版」（リンクを知っている人は閲覧）。IDは台帳 05/_生成スクリプト/_drive_links.json と同じ＝版が上がっても同じIDに置換（URLは変えない）。
+     st＝'all' 全店に配布済み／'test' 現場テスト中／'hq' 本部確認中（たたき台）／'hqonly' 本部資料（店舗には出さない）。
+     店舗（スタッフ・店長・オーナー）には 'all' だけ。本部には全部を状態の札つきで。状態の正＝いる・いらないスプシ K列（変わったらここを直す） */
+  const KANTAN_MANUALS = [
+    { k:'tanaoroshi_app', st:'all', ver:'Ver1.0', d:'2026-10-15', id:'1z_HqPmdNR-qciv2cHIsNeMPICgWd21xT', t:{ ja:'月末棚卸（アプリで入力）', en:'Month-end stocktake (app)', vi:'Kiểm kê cuối tháng (app)' }, s:{ ja:'6枚 ・ 未開封だけ数える', en:'6 pages', vi:'6 trang' } },
+    { k:'tanaoroshi_sheet', st:'all', ver:'Ver1.0', d:'2026-10-15', id:'1gCZUJrnY8hPqwBqFEl6W-8IM_Rtfg-uP', t:{ ja:'月末棚卸（総括表に入力・アプリ導入前の店）', en:'Month-end stocktake (sheet)', vi:'Kiểm kê (bảng tổng hợp)' }, s:{ ja:'6枚', en:'6 pages', vi:'6 trang' } },
+    { k:'kasuhara', st:'all', ver:'Ver1.1', d:'2026-09-25', id:'1jEsOKkX8ymAoswDcpSQ9bkvFPOXCjAoH', t:{ ja:'カスタマーハラスメント対応', en:'Customer harassment response', vi:'Ứng phó quấy rối từ khách' }, s:{ ja:'8枚 ・ 10/1から義務', en:'8 pages', vi:'8 trang' } },
+    { k:'kasuhara_post_app', st:'all', ver:'', d:'2026-09-25', id:'1ifORxQ23xTtmJHIn_l44inKfryUsqVsA', t:{ ja:'カスハラ対応 掲示用（アプリ導入店）', en:'Harassment notice (app stores)', vi:'Bảng thông báo (CH có app)' }, s:{ ja:'A4横 ・ 店に貼る', en:'A4 landscape', vi:'A4 ngang' } },
+    { k:'kasuhara_post_noapp', st:'all', ver:'', d:'2026-09-25', id:'1qt36An5GXtSYmC5232tmU3rKo7luOENa', t:{ ja:'カスハラ対応 掲示用（アプリ未導入店）', en:'Harassment notice (no-app stores)', vi:'Bảng thông báo (CH chưa có app)' }, s:{ ja:'A4横', en:'A4 landscape', vi:'A4 ngang' } },
+    { k:'kasuhara_record', st:'all', ver:'', d:'2026-09-25', id:'13thFrUPEwDf_oCAGnmFag832MwjJQ11x', t:{ ja:'カスハラ対応 記録様式', en:'Harassment record form', vi:'Mẫu ghi nhận' }, s:{ ja:'A4縦', en:'A4 portrait', vi:'A4 dọc' } },
+    { k:'nippou', st:'test', ver:'Ver0.2', d:'2026-10-17', id:'1-xh8jC0X1VktXbnJoZeJVx-FzpoXvtQY', t:{ ja:'日報の出し方と数字の直し方', en:'Daily report how-to', vi:'Cách nộp báo cáo ngày' }, s:{ ja:'6枚', en:'6 pages', vi:'6 trang' } },
+    { k:'teishutsu', st:'test', ver:'Ver0.2', d:'2026-10-20', id:'1RHbeW5cjfKKlQS9Gsu4XoJ9b_ZIOwOa0', t:{ ja:'提出物のルール', en:'Submission rules', vi:'Quy tắc nộp' }, s:{ ja:'6枚 ・ 毎日の必須3つ', en:'6 pages', vi:'6 trang' } },
+    { k:'gaikokujin', st:'test', ver:'Ver0.2', d:'2026-10-17', id:'1WDcLguvTiXAIv0L86fGczQXbQ8qkIbEx', t:{ ja:'外国人スタッフの就労ルール', en:'Foreign staff work rules', vi:'Quy định lao động nước ngoài' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
+    { k:'joho', st:'test', ver:'Ver0.2', d:'2026-10-17', id:'1iUABWGeXuT8ss_7l7pFXGYHDTqZoHYsh', t:{ ja:'情報管理', en:'Information handling', vi:'Quản lý thông tin' }, s:{ ja:'3枚＋名簿', en:'3 pages + roster', vi:'3 trang + danh sách' } },
+    { k:'genkin', st:'test', ver:'Ver0.2', d:'2026-10-16', id:'1dSMzDF8q8X31GD_8i5yv9Bnm2LhaydQq', t:{ ja:'現金管理', en:'Cash handling', vi:'Quản lý tiền mặt' }, s:{ ja:'3枚＋記録表', en:'3 pages + log', vi:'3 trang + sổ' } },
+    { k:'bouka', st:'test', ver:'Ver0.2', d:'2026-10-16', id:'1D_iCweG6jr5iNMd8OeQvIjbFHEvkQeQ9', t:{ ja:'防火・避難', en:'Fire safety & evacuation', vi:'Phòng cháy & sơ tán' }, s:{ ja:'3枚＋記録表', en:'3 pages + log', vi:'3 trang + sổ' } },
+    { k:'shiire', st:'test', ver:'Ver0.1', d:'2026-10-19', id:'1_z9dlOqoLPDvpL9_KNQ_GWOvuxjdHCXl', t:{ ja:'仕入情報の扱い', en:'Supplier information', vi:'Thông tin nhà cung cấp' }, s:{ ja:'全体図＋手順3枚', en:'4 pages', vi:'4 trang' } },
+    { k:'katteguchi', st:'test', ver:'Ver0.1', d:'2026-10-19', id:'1IxfbDyJU-UBBk3orCqylHy9dmjbT5tFS', t:{ ja:'勝手口・立入禁止・撮影されたとき', en:'Back door & filming', vi:'Cửa sau & khi bị quay phim' }, s:{ ja:'全体図＋手順3枚', en:'4 pages', vi:'4 trang' } },
+    { k:'unagi_shikomi', st:'test', ver:'Ver0.2', d:'2026-10-14', id:'18eq39gQcZ6SRl4HlR7aSp7uJtoCgDLHY', t:{ ja:'仕込み｜鰻', en:'Prep: eel', vi:'Sơ chế: lươn' }, s:{ ja:'2枚 ・ 田中さんのレシピ', en:'2 pages', vi:'2 trang' } },
+    { k:'unagi_jo', st:'test', ver:'Ver0.2', d:'2026-10-14', id:'1Z4db4p2U7LBcSGlJGl1NSHWsVTB_XIP-', t:{ ja:'商品｜鰻ひつまぶし 上', en:'Dish: Unagi hitsumabushi (superior)', vi:'Món: Unagi hitsumabushi (thượng)' }, s:{ ja:'2枚', en:'2 pages', vi:'2 trang' } },
+    { k:'koushin', st:'hq', ver:'Ver0.2', d:'2026-10-17', id:'1TPiGS9rg5kPy5P1nVUsBdieGrje7NCch', t:{ ja:'更新ルール（マニュアルの直し方）', en:'Update rules', vi:'Quy tắc cập nhật' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
+    { k:'haccp', st:'hq', ver:'Ver0.2', d:'2026-10-18', id:'1kNBe5DhUF5qVCrb3PmdH0GruiMUG4woX', t:{ ja:'HACCP（衛生管理計画と記録）', en:'HACCP', vi:'HACCP' }, s:{ ja:'3枚＋日誌', en:'3 pages + log', vi:'3 trang + nhật ký' } },
+    { k:'harassment', st:'hq', ver:'Ver0.1', d:'2026-10-11', id:'1Mj5Bxs1bXcLXXDCL5FPMA7lHIf59VDkw', t:{ ja:'社内ハラスメント相談窓口', en:'Internal harassment desk', vi:'Đầu mối tư vấn quấy rối' }, s:{ ja:'3枚＋掲示用', en:'3 pages + notice', vi:'3 trang + bảng' } },
+    { k:'keijibutsu', st:'hq', ver:'Ver0.1', d:'2026-10-11', id:'1B84rgXD5PmHVB--BIdlYya9G76Qg0oPD', t:{ ja:'店の掲示物3つ（避難経路図・禁煙・アレルギー）', en:'3 required notices', vi:'3 bảng bắt buộc' }, s:{ ja:'1枚', en:'1 page', vi:'1 trang' } },
+    { k:'kaigyo', st:'hq', ver:'Ver0.1', d:'2026-10-11', id:'1oJkZ5VqtoYE_XvpZbmCKvOU4Ry0gpf3D', t:{ ja:'開業時の届出と掲示', en:'Opening filings & notices', vi:'Thủ tục khai trương' }, s:{ ja:'1枚＋表2枚', en:'3 pages', vi:'3 trang' } },
+    { k:'hikitsugi', st:'hq', ver:'Ver0.1', d:'2026-10-11', id:'1TGqyWNYbbeYstwpG7GDu6IiK_uj-0XdG', t:{ ja:'引き継ぎ', en:'Shift handover', vi:'Bàn giao ca' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
+    { k:'heiten_bouhan', st:'hq', ver:'Ver0.1', d:'2026-10-11', id:'1v6kXrKStsN9sbWgmQWlqnOU7A_5Pd-N5', t:{ ja:'閉店時の防犯', en:'Closing security', vi:'An ninh khi đóng cửa' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
+    { k:'hacchu', st:'hq', ver:'Ver0.1', d:'2026-10-11', id:'1_nhec62WNZaXcX27NkEl_Nu2MbM8eHaL', t:{ ja:'発注と在庫', en:'Ordering & stock', vi:'Đặt hàng & tồn kho' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
+    { k:'tenpomae', st:'hq', ver:'Ver0.1', d:'2026-10-19', id:'1NqZdw3IprP6XZuW4cRPC9-tb0LEKzs9X', t:{ ja:'店舗前準備', en:'Storefront prep', vi:'Chuẩn bị mặt tiền' }, s:{ ja:'1枚', en:'1 page', vi:'1 trang' } },
+    { k:'ck_besshi', st:'hq', ver:'Ver0.1', d:'2026-10-21', id:'1Yyf4K94WEytKIu5HRQjG-tUIYBPRAb6a', t:{ ja:'開店閉店チェック別紙（店の裏と納品の箱）', en:'Open/close check annex', vi:'Phụ lục kiểm tra mở/đóng' }, s:{ ja:'1枚', en:'1 page', vi:'1 trang' } },
+    { k:'sevendays_besshi', st:'hq', ver:'Ver0.1', d:'2026-10-21', id:'1cCHQXJT8IEb9EwrHsxtPX48yYA3Wk3_Q', t:{ ja:'7DAYS 1日目別紙（勝手口とバックヤード）', en:'7DAYS day-1 annex', vi:'Phụ lục ngày 1' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
+    { k:'hyouji', st:'hqonly', ver:'Ver0.1', d:'2026-10-04', id:'1BZbVxCqoxPwvA_Dsy9yGO5_V5yGc7qSV', t:{ ja:'表示ルール（総額表示・原産地・景品表示）', en:'Display rules', vi:'Quy tắc hiển thị' }, s:{ ja:'3枚＋チェック表 ・ 本部資料（店舗には出さない）', en:'HQ only', vi:'Chỉ HQ' } }
+  ];
+  const kantanUrl_ = (m) => `https://drive.google.com/file/d/${m.id}/view`;
+  const KANTAN_ST = { all: { ja:'全店', en:'All stores', vi:'Tất cả' }, test: { ja:'現場テスト中', en:'Field test', vi:'Đang thử nghiệm' }, hq: { ja:'本部確認中', en:'HQ review', vi:'HQ đang xem' }, hqonly: { ja:'本部資料', en:'HQ only', vi:'Chỉ HQ' } };
+  function kantanSection_(role) {
+    const isHq = role === 'hq';
+    const list = KANTAN_MANUALS.filter(m => isHq || m.st === 'all');
+    if (!list.length) return '';
+    const row = (m) => `<div class="mrow" data-openurl="${esc(openUrlFor(kantanUrl_(m)))}"><div class="mi">${svg('book')}</div><div class="mt"><b>${esc(L(m.t))}</b><span>${[m.ver, m.d ? m.d.slice(5).replace('-', '/') : '', L(m.s)].filter(Boolean).map(esc).join(' ・ ')}</span></div>${isHq ? `<span class="mchip mchip--${m.st}">${esc(L(KANTAN_ST[m.st]))}</span>` : ''}<span class="chev">${svg('chev')}</span></div>`;
+    const order = ['all', 'test', 'hq', 'hqonly'];
+    const groups = order.map(st => ({ st, items: list.filter(m => m.st === st) })).filter(g => g.items.length);
+    return `
+      <div class="sec-h" style="margin:6px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'1枚マニュアル（かんたん版）', en:'One-page manuals', vi:'Cẩm nang 1 trang' })}</h2></div>
+      ${isHq ? groups.map(g => `<div class="idlabel" style="margin:8px 2px 2px">${esc(L(KANTAN_ST[g.st]))}（${g.items.length}）</div><div class="card" style="padding:2px 0">${g.items.map(row).join('')}</div>`).join('')
+             : `<div class="card" style="padding:2px 0">${list.map(row).join('')}</div>`}
+      ${isHq ? `<p class="hint" style="display:block;margin:4px 2px 10px">${L({ ja:'店舗の画面には「全店」だけが出ます。状態はいる・いらないスプシのK列が正。版が上がったら同じIDのPDFを置換（アプリの直しは要りません）', en:'Stores see only “All stores”.', vi:'Cửa hàng chỉ thấy mục “Tất cả”.' })}</p>` : ''}`;
+  }
   APP_VIEWS.manual = () => {
     const role = getRole();
     /* ★2026-08-28 増田さんのご要望＝マニュアルは【全業態共通】だけを出す。
@@ -4769,6 +4818,7 @@
       ${NOTE({ ja:'◆ 大項目をタップすると中の資料が開きます。業態別のマニュアル・レシピは「業態別マニュアル・レシピ」からご覧ください。',
                en:'Tap a section to see its documents. Business-type manuals & recipes are under "By business type".',
                vi:'Chạm vào mục lớn để xem tài liệu. Cẩm nang theo loại hình nằm ở "Theo loại hình".' })}
+      ${kantanSection_(role)}
       <div class="sec-h" style="margin:6px 2px 6px"><span class="bar"></span><h2 style="font-size:13px">${L({ ja:'全業態共通', en:'All types', vi:'Chung' })}</h2></div>
       <!-- ⚠️ map に manualRow をそのまま渡さない＝mapは第2引数に「番号」を渡すため、
            それが業態の指定として効いてしまう（2026-08-28 実際に23件のテストが落ちた）。 -->

@@ -302,6 +302,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .mrow .mi svg { width: 20px; height: 20px; }
 .mrow .mt { flex: 1; }
 .mrow .mt b { font-size: 14px; }
+.mchip { flex: none; font-size: 10px; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: #EFEAE2; color: #6B635A; white-space: nowrap; }   /* ★2026-10-22 1枚マニュアルの状態の札（本部だけ） */
+.mchip--all { background: #5C6E58; color: #fff; } .mchip--test { background: #C9A24B; color: #fff; } .mchip--hq { background: #EFEAE2; color: #6B635A; } .mchip--hqonly { background: #9A9388; color: #fff; }
 .mrow .mt span { display: block; font-size: 11px; color: var(--gray); }
 .mrow .chev { color: #C9BEB2; display: inline-flex; }
 .mrow .chev svg { width: 18px; height: 18px; }
