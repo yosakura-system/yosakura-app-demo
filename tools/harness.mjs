@@ -7426,8 +7426,21 @@ console.log('== 2026-10-23 神田さん「きょうの流れ・レシピ・発�
   ok(h.indexOf('data-ph="rc_unagi_nami"') >= 0 && h.indexOf('data-ph="rc_yaki"') >= 0, '鰻の店＝レシピ＝鰻丼・発注＝焼いた鰻');
   seed('manager', '和牛世桜 広島店'); location.hash = '#/home'; h = registry.app.innerHTML;
   ok(ph(h, 'pb-coverimg') === 'rc_wagyu_hitsu' || ph(h, 'pb-coverimg') === 'rc_unagi_jo', '和牛の店（店長の既定の店が鰻になる環境では鰻）＝業態の写真（実際 ' + ph(h, 'pb-coverimg') + '）');
+  // ★2026-10-23 寿司・手巻き・日本料理も実物写真（本部ドライブ 0.写真 から切り出した gy_*）
   seed('manager', '手巻き寿司世桜 難波店'); location.hash = '#/home'; h = registry.app.innerHTML;
-  ok(ph(h, 'pb-coverimg') === 'kyou_first_dish', '手巻き（写真がまだ無い業態）＝共通の写真のまま（実際 ' + ph(h, 'pb-coverimg') + '）');
+  ok(ph(h, 'pb-coverimg') === 'gy_temaki_top', '手巻きの店＝きょうの流れは鰻おにぎり（実際 ' + ph(h, 'pb-coverimg') + '）');
+  location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
+  ok(h.indexOf('data-ph="gy_temaki_recipe"') >= 0 && h.indexOf('data-ph="gy_temaki_order"') >= 0, '手巻きの店＝レシピ＝和牛おにぎり・発注＝握りの板');
+  seed('manager', '寿司世桜 心斎橋店'); location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(ph(h, 'pb-coverimg') === 'gy_sushi_top', '寿司の店＝きょうの流れは握りの板（実際 ' + ph(h, 'pb-coverimg') + '）');
+  location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
+  ok(h.indexOf('data-ph="gy_sushi_recipe"') >= 0 && h.indexOf('data-ph="gy_sushi_order"') >= 0, '寿司の店＝レシピ＝押し寿司を作る手・発注＝握り');
+  seed('manager', '日本料理世桜本店'); location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(ph(h, 'pb-coverimg') === 'gy_washoku_top', '日本料理の店＝きょうの流れはコースの卓（実際 ' + ph(h, 'pb-coverimg') + '）');
+  location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
+  ok(h.indexOf('data-ph="gy_washoku_recipe"') >= 0 && h.indexOf('data-ph="gy_washoku_order"') >= 0, '日本料理の店＝レシピ・発注もコースの写真');
+  ['gy_sushi_top','gy_sushi_recipe','gy_sushi_order','gy_temaki_top','gy_temaki_recipe','gy_temaki_order','gy_washoku_top','gy_washoku_recipe','gy_washoku_order'].forEach(k =>
+    ok(new RegExp('"' + k + '": ' + "'data:image/webp;base64,").test(code), 'ソース＝' + k + ' が埋め込み済み'));
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); }); location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
   ok(h.indexOf('data-ph="miru_recipe"') >= 0 && h.indexOf('data-ph="miru_order"') >= 0, '本部の全店表示＝共通の写真');
   ok(/PHOTO_GY = \{/.test(code) && /kyou_first_dish: \{ unagi:'rc_unagi_jo'/.test(code), 'ソース＝業態→写真の対応表 PHOTO_GY（MOTONの実物のキーだけ）');

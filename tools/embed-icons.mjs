@@ -71,8 +71,15 @@ const keepLines = (() => { const m = app.match(/\/\* <embed-icons> \*\/[\s\S]*?\
 app = between(app, 'embed-icons', [`  const IMG_LOGO = '${LOGO}';`, `  const IMG_ICON = '${ICON}';`].concat(keepLines).join('\n'));
 /* ★2026-10-16 案Bのボタン写真（icons/photo/*.webp・Geminiで生成）も同じ要領で埋め込む＝OneDriveが消しても画面は変わらない */
 const photoDir = path.join(ROOT, 'icons', 'photo');
-const photoFiles = fs.existsSync(photoDir) ? fs.readdirSync(photoDir).filter(f => f.endsWith('.webp')).sort() : [];
-const PHOTOS = photoFiles.map(f => `    ${JSON.stringify(f.replace(/\.webp$/, ''))}: 'data:image/webp;base64,${readIcon('icons/photo/' + f).toString('base64')}'`).join(',\n');
+/* ★2026-10-23 一覧も git＋作業ツリーの和集合にする。icons/photo は skip-worktree で実体が消えていることがあり、
+   作業ツリーだけを見ると、新しく足した1枚のために既存の写真が全部落ちる（v438 の作業で実際に起きた） */
+const PHOTO_EXT = ['.webp', '.jpeg', '.jpg', '.png'];   // 2026-10-23 rc_*（レシピの品）・hq_st_*（店舗カード jpeg）も icons/photo の実ファイルから埋める
+const isPhoto = (f) => PHOTO_EXT.some(e => f.endsWith(e));
+const gitPhotoFiles = (() => { try { return execSync('git ls-tree --name-only HEAD icons/photo/', { cwd: ROOT }).toString().split(String.fromCharCode(10)).map(s => s.trim().slice('icons/photo/'.length)).filter(isPhoto); } catch (_) { return []; } })();
+const wtPhotoFiles = fs.existsSync(photoDir) ? fs.readdirSync(photoDir).filter(isPhoto) : [];
+const photoFiles = [...new Set([...gitPhotoFiles, ...wtPhotoFiles])].sort();
+const photoMime = (f) => f.endsWith('.png') ? 'image/png' : f.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
+const PHOTOS = photoFiles.map(f => `    ${JSON.stringify(f.slice(0, f.lastIndexOf('.')))}: 'data:${photoMime(f)};base64,${readIcon('icons/photo/' + f).toString('base64')}'`).join(',' + String.fromCharCode(10));
 app = between(app, 'embed-photos', `  const PHOTOS = {\n${PHOTOS}\n  };`);
 console.log(`　・ボタン写真（案B）　${photoFiles.length}枚`);
 fs.writeFileSync(appPath, app);
