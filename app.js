@@ -4757,16 +4757,16 @@
      入口＝マニュアル →「世桜とは・理念」→「世桜10訓（スライド）」。 */
 
   /* ★2026-10-22 神田さん「棚卸マニュアルとか、すでにリリースしたマニュアルもアプリで見れるように」
-     ＝1枚マニュアル（かんたん版）。PDFは Drive「マニュアル_かんたん版」（リンクを知っている人は閲覧）。IDは台帳 05/_生成スクリプト/_drive_links.json と同じ＝版が上がっても同じIDに置換（URLは変えない）。
+     ＝1枚マニュアル（かんたん版）。全店配布の6本は manual/ に同じ名前で置く（版が上がったら同名で置換）。本部向けは Drive「マニュアル_かんたん版」（個別共有）。IDは台帳 05/_生成スクリプト/_drive_links.json と同じ＝版が上がっても同じIDに置換（URLは変えない）。
      st＝'all' 全店に配布済み／'test' 現場テスト中／'hq' 本部確認中（たたき台）／'hqonly' 本部資料（店舗には出さない）。
      店舗（スタッフ・店長・オーナー）には 'all' だけ。本部には全部を状態の札つきで。状態の正＝いる・いらないスプシ K列（変わったらここを直す） */
   const KANTAN_MANUALS = [
-    { k:'tanaoroshi_app', st:'all', ver:'Ver1.0', d:'2026-10-15', id:'1z_HqPmdNR-qciv2cHIsNeMPICgWd21xT', t:{ ja:'月末棚卸（アプリで入力）', en:'Month-end stocktake (app)', vi:'Kiểm kê cuối tháng (app)' }, s:{ ja:'6枚 ・ 未開封だけ数える', en:'6 pages', vi:'6 trang' } },
-    { k:'tanaoroshi_sheet', st:'all', ver:'Ver1.0', d:'2026-10-15', id:'1gCZUJrnY8hPqwBqFEl6W-8IM_Rtfg-uP', t:{ ja:'月末棚卸（総括表に入力・アプリ導入前の店）', en:'Month-end stocktake (sheet)', vi:'Kiểm kê (bảng tổng hợp)' }, s:{ ja:'6枚', en:'6 pages', vi:'6 trang' } },
-    { k:'kasuhara', st:'all', ver:'Ver1.1', d:'2026-09-25', id:'1jEsOKkX8ymAoswDcpSQ9bkvFPOXCjAoH', t:{ ja:'カスタマーハラスメント対応', en:'Customer harassment response', vi:'Ứng phó quấy rối từ khách' }, s:{ ja:'8枚 ・ 10/1から義務', en:'8 pages', vi:'8 trang' } },
-    { k:'kasuhara_post_app', st:'all', ver:'', d:'2026-09-25', id:'1ifORxQ23xTtmJHIn_l44inKfryUsqVsA', t:{ ja:'カスハラ対応 掲示用（アプリ導入店）', en:'Harassment notice (app stores)', vi:'Bảng thông báo (CH có app)' }, s:{ ja:'A4横 ・ 店に貼る', en:'A4 landscape', vi:'A4 ngang' } },
-    { k:'kasuhara_post_noapp', st:'all', ver:'', d:'2026-09-25', id:'1qt36An5GXtSYmC5232tmU3rKo7luOENa', t:{ ja:'カスハラ対応 掲示用（アプリ未導入店）', en:'Harassment notice (no-app stores)', vi:'Bảng thông báo (CH chưa có app)' }, s:{ ja:'A4横', en:'A4 landscape', vi:'A4 ngang' } },
-    { k:'kasuhara_record', st:'all', ver:'', d:'2026-09-25', id:'13thFrUPEwDf_oCAGnmFag832MwjJQ11x', t:{ ja:'カスハラ対応 記録様式', en:'Harassment record form', vi:'Mẫu ghi nhận' }, s:{ ja:'A4縦', en:'A4 portrait', vi:'A4 dọc' } },
+    { k:'tanaoroshi_app', st:'all', ver:'Ver1.0', d:'2026-10-15', pdf:'tanaoroshi_kantan.pdf', id:'1z_HqPmdNR-qciv2cHIsNeMPICgWd21xT', t:{ ja:'月末棚卸（アプリで入力）', en:'Month-end stocktake (app)', vi:'Kiểm kê cuối tháng (app)' }, s:{ ja:'6枚 ・ 未開封だけ数える', en:'6 pages', vi:'6 trang' } },
+    { k:'tanaoroshi_sheet', st:'all', ver:'Ver1.0', d:'2026-10-15', pdf:'tanaoroshi_soukatsu.pdf', id:'1gCZUJrnY8hPqwBqFEl6W-8IM_Rtfg-uP', t:{ ja:'月末棚卸（総括表に入力・アプリ導入前の店）', en:'Month-end stocktake (sheet)', vi:'Kiểm kê (bảng tổng hợp)' }, s:{ ja:'6枚', en:'6 pages', vi:'6 trang' } },
+    { k:'kasuhara', st:'all', ver:'Ver1.1', d:'2026-09-25', pdf:'kasuhara.pdf', id:'1jEsOKkX8ymAoswDcpSQ9bkvFPOXCjAoH', t:{ ja:'カスタマーハラスメント対応', en:'Customer harassment response', vi:'Ứng phó quấy rối từ khách' }, s:{ ja:'8枚 ・ 10/1から義務', en:'8 pages', vi:'8 trang' } },
+    { k:'kasuhara_post_app', st:'all', ver:'', d:'2026-09-25', pdf:'kasuhara_post_app.pdf', id:'1ifORxQ23xTtmJHIn_l44inKfryUsqVsA', t:{ ja:'カスハラ対応 掲示用（アプリ導入店）', en:'Harassment notice (app stores)', vi:'Bảng thông báo (CH có app)' }, s:{ ja:'A4横 ・ 店に貼る', en:'A4 landscape', vi:'A4 ngang' } },
+    { k:'kasuhara_post_noapp', st:'all', ver:'', d:'2026-09-25', pdf:'kasuhara_post_noapp.pdf', id:'1qt36An5GXtSYmC5232tmU3rKo7luOENa', t:{ ja:'カスハラ対応 掲示用（アプリ未導入店）', en:'Harassment notice (no-app stores)', vi:'Bảng thông báo (CH chưa có app)' }, s:{ ja:'A4横', en:'A4 landscape', vi:'A4 ngang' } },
+    { k:'kasuhara_record', st:'all', ver:'', d:'2026-09-25', pdf:'kasuhara_record.pdf', id:'13thFrUPEwDf_oCAGnmFag832MwjJQ11x', t:{ ja:'カスハラ対応 記録様式', en:'Harassment record form', vi:'Mẫu ghi nhận' }, s:{ ja:'A4縦', en:'A4 portrait', vi:'A4 dọc' } },
     { k:'nippou', st:'test', ver:'Ver0.2', d:'2026-10-17', id:'1-xh8jC0X1VktXbnJoZeJVx-FzpoXvtQY', t:{ ja:'日報の出し方と数字の直し方', en:'Daily report how-to', vi:'Cách nộp báo cáo ngày' }, s:{ ja:'6枚', en:'6 pages', vi:'6 trang' } },
     { k:'teishutsu', st:'test', ver:'Ver0.2', d:'2026-10-20', id:'1RHbeW5cjfKKlQS9Gsu4XoJ9b_ZIOwOa0', t:{ ja:'提出物のルール', en:'Submission rules', vi:'Quy tắc nộp' }, s:{ ja:'6枚 ・ 毎日の必須3つ', en:'6 pages', vi:'6 trang' } },
     { k:'gaikokujin', st:'test', ver:'Ver0.2', d:'2026-10-17', id:'1WDcLguvTiXAIv0L86fGczQXbQ8qkIbEx', t:{ ja:'外国人スタッフの就労ルール', en:'Foreign staff work rules', vi:'Quy định lao động nước ngoài' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
@@ -4790,7 +4790,9 @@
     { k:'sevendays_besshi', st:'hq', ver:'Ver0.1', d:'2026-10-21', id:'1cCHQXJT8IEb9EwrHsxtPX48yYA3Wk3_Q', t:{ ja:'7DAYS 1日目別紙（勝手口とバックヤード）', en:'7DAYS day-1 annex', vi:'Phụ lục ngày 1' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
     { k:'hyouji', st:'hqonly', ver:'Ver0.1', d:'2026-10-04', id:'1BZbVxCqoxPwvA_Dsy9yGO5_V5yGc7qSV', t:{ ja:'表示ルール（総額表示・原産地・景品表示）', en:'Display rules', vi:'Quy tắc hiển thị' }, s:{ ja:'3枚＋チェック表 ・ 本部資料（店舗には出さない）', en:'HQ only', vi:'Chỉ HQ' } }
   ];
-  const kantanUrl_ = (m) => `https://drive.google.com/file/d/${m.id}/view`;
+  /* 全店配布（st:'all'）はアプリの公開先 manual/ のPDF（ログイン不要・9/29の方針）。Driveの「マニュアル_かんたん版」は個別共有＝店舗の端末では開けない（10/22 権限を確認）。本部向け（test／hq）はDriveのまま */
+  const KANTAN_PDF_BASE = 'https://yosakura-system.github.io/yosakura-app-preview/manual/';
+  const kantanUrl_ = (m) => m.pdf ? KANTAN_PDF_BASE + m.pdf : `https://drive.google.com/file/d/${m.id}/view`;
   const KANTAN_ST = { all: { ja:'全店', en:'All stores', vi:'Tất cả' }, test: { ja:'現場テスト中', en:'Field test', vi:'Đang thử nghiệm' }, hq: { ja:'本部確認中', en:'HQ review', vi:'HQ đang xem' }, hqonly: { ja:'本部資料', en:'HQ only', vi:'Chỉ HQ' } };
   function kantanSection_(role) {
     const isHq = role === 'hq';

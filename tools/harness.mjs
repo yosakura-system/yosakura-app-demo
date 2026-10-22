@@ -6613,19 +6613,20 @@ console.log('== 2026-10-22 神田さん「棚卸マニュアルとか、すで�
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/app/manual'; let h = registry.app.innerHTML;
   ok(/1枚マニュアル（かんたん版）/.test(h) && /月末棚卸（アプリで入力）/.test(h) && /カスタマーハラスメント対応/.test(h), '店長のマニュアル画面＝先頭に1枚マニュアル（棚卸・カスハラ）');
-  ok(/data-openurl="[^"]*drive\.google\.com\/file\/d\/1z_HqPmdNR-qciv2cHIsNeMPICgWd21xT\/view/.test(h), '棚卸（アプリで入力）＝台帳のDrive IDで開く（版が上がっても同じID）');
+  ok(/data-openurl="[^"]*yosakura-app-preview\/manual\/tanaoroshi_kantan\.pdf/.test(h) && /manual\/kasuhara\.pdf/.test(h) && !/drive\.google\.com/.test(h), '全店配布＝アプリの公開先 manual/ のPDF（ログイン不要）。店舗の画面にDriveのリンクは無い');
   ok(!/日報の出し方と数字の直し方/.test(h) && !/HACCP（衛生管理計画と記録）/.test(h) && !/表示ルール（総額表示/.test(h) && !/class="mchip/.test(h), '店舗には全店リリース済みだけ（現場テスト中・本部確認中・本部資料は出ない・札も無し）');
-  const nStore = (h.match(/class="mrow" data-openurl="[^"]*drive\.google\.com\/file\/d\//g) || []).length;
+  const nStore = (h.match(/class="mrow" data-openurl="[^"]*yosakura-app-preview\/manual\//g) || []).length;
   ok(nStore === 6, '店舗に出る1枚マニュアル＝6本（棚卸2・カスハラ4）: ' + nStore);
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/app/manual'; ok(/月末棚卸（アプリで入力）/.test(registry.app.innerHTML) && !/現場テスト中/.test(registry.app.innerHTML), 'スタッフも同じ（全店だけ）');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); });
   location.hash = '#/app/manual'; h = registry.app.innerHTML;
-  const nHq = (h.match(/class="mrow" data-openurl="[^"]*drive\.google\.com\/file\/d\//g) || []).length;
+  const nHq = (h.match(/class="mrow" data-openurl="[^"]*(drive\.google\.com\/file\/d\/|yosakura-app-preview\/manual\/)/g) || []).length;
   ok(nHq === 28 && /mchip--all">全店</.test(h) && /mchip--test">現場テスト中</.test(h) && /mchip--hq">本部確認中</.test(h) && /mchip--hqonly">本部資料</.test(h), '本部には全部（28本）を状態の札つきで（全店／現場テスト中／本部確認中／本部資料）: ' + nHq);
   ok(/全店（6）/.test(h) && /現場テスト中（10）/.test(h) && /本部確認中（11）/.test(h) && /本部資料（1）/.test(h), '本部の並び＝状態ごとにまとめて件数つき');
   ok(/状態はいる・いらないスプシのK列が正/.test(h), '本部向けの注記＝状態の正はいる・いらないスプシ');
   { const ids = (code.match(/id:'(1[A-Za-z0-9_-]{25,})'/g) || []).map(x => x.slice(4, -1)); ok(ids.length === 28 && new Set(ids).size === 28, 'ソース＝Drive IDは28本すべて別（重複なし）'); }
+  { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 6 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の6本のPDFが manual/ に実在する: ' + pdfs.join(',')); }
 }
 
 console.log('== 2026-10-22 本部の見え方＝案Bの本部画面（神田さん「B案の本部画面を基準に」。10/20 の「準備中」は引退）==');
