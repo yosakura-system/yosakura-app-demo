@@ -1343,6 +1343,8 @@ html[data-theme="pb"] .pb-rdish--prep, html[data-theme="pb"] .pb-rhero--prep { p
 html[data-theme="pb"] .pb-rdish__badge { position: absolute; top: 8px; left: 8px; background: rgba(40,32,28,.78); color: #fff; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; }   /* 準備中の札（2026-10-22） */
 html[data-theme="pb"] .pb-rhero { position: relative; display: block; width: 100%; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--paper); font: inherit; text-align: left; }
 html[data-theme="pb"] .pb-rhero__img { width: 100%; height: 190px; object-fit: cover; display: block; }
+/* ★2026-10-22 神田さん「iPadでレシピの一番上の写真がアップすぎて不細工」＝横長の画面では高さ190pxのまま幅だけ広がり、料理の真ん中だけが切り取られていた。横幅に比例した高さ（5:2）にして写真を広く見せる */
+@media (min-width: 700px) { html[data-theme="pb"] .pb-rhero__img { height: auto; aspect-ratio: 5 / 2; max-height: 360px; } }
 html[data-theme="pb"] .pb-rhero__cap { position: absolute; inset: auto 0 0 0; padding: 34px 14px 12px; background: linear-gradient(transparent, rgba(20,15,12,.85)); color: #fff; }
 html[data-theme="pb"] .pb-rhero__cap b { font-family: var(--serif); font-size: 20px; display: block; letter-spacing: .02em; }
 html[data-theme="pb"] .pb-rhero__cap span { font-size: 12px; opacity: .9; }
