@@ -918,13 +918,19 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 /* ★2026-10-22 神田さん「品目・基準在庫をタッチしたら画面がブレブレ」＝入力欄が15pxだとiOSがタップのたびに拡大・縮小する→16px。
    スマホ幅では6列（品目・基準・発注数・単位・確認日・区分）が1行に潰れて使えない→品目名を1行目、残りを2行目に折り返す（見出し行は消し、欄の薄字で示す） */
 .zk-edit input, .zk-edit select, .zk-in input { font-size: 16px; }
-@media (max-width: 600px) {
+/* 2026-10-22 神田さん「スマホだと文字が枠に収まっていない」＝折り返しの境を 760px に広げ、1行のときも各欄に最小幅を持たせる */
+.zk-edit input:nth-child(1) { min-width: 7em; }
+.zk-edit input:nth-child(2), .zk-edit input:nth-child(3) { min-width: 4.2em; }
+.zk-edit input:nth-child(4) { min-width: 3.5em; }
+.zk-edit select { min-width: 5.5em; }
+@media (max-width: 760px) {
   .zk-head { display: none; }
   .zk-edit { flex-wrap: wrap; row-gap: 6px; margin-bottom: 12px; }
-  .zk-edit > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
-  .zk-edit input:nth-child(1) { flex: 1 1 100%; }   /* 縮める余地を残す（iPhoneで幅を超えて横スクロールが出た） */
-  .zk-edit input:nth-child(2), .zk-edit input:nth-child(3), .zk-edit input:nth-child(4) { flex: 1 1 0; text-align: center; }
-  .zk-edit select { flex: 1.6 1 0; }
+  .zk-edit > * { min-width: 0 !important; max-width: 100%; box-sizing: border-box; }
+  .zk-edit input:nth-child(1) { flex: 1 1 100%; }   /* 1行目＝品目名（iPhoneで幅を超えて横スクロールが出たので縮める余地を残す） */
+  .zk-edit input:nth-child(2), .zk-edit input:nth-child(3), .zk-edit input:nth-child(4) { flex: 1 1 28%; text-align: center; }   /* 2行目＝基準・発注数・単位 */
+  .zk-edit select:nth-of-type(1) { flex: 1 1 34% !important; }   /* 3行目＝確認日・区分（区分の inline flex より優先） */
+  .zk-edit select:nth-of-type(2) { flex: 1 1 58% !important; }
 }
 
 /* ホームの3タブ（2026-09-18） */

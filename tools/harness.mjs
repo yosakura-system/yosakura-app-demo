@@ -1488,12 +1488,12 @@ console.log('== 使い方が役割ごとに変わる（紙のガイドと同じ�
   const staff = g('staff', S_HIROSHIMA), mgr = g('manager', S_HIROSHIMA);
   const own = g('owner', 'owned'), hq = g('hq', 'all');
   ok(/この端末での使い方/.test(staff), '使い方の画面が出る');
-  ok(/お名前を登録/.test(staff) && /開いて提出/.test(staff), '店舗＝出すことだけが書いてある');
-  ok(!/本部ダッシュボード/.test(staff) && !/資料をマニュアルにひも付/.test(staff),
+  ok(/下のタブは2つ/.test(staff) && /撮って出すだけ/.test(staff) && /在庫の数/.test(staff), '店舗＝出すことだけが書いてある（10/22 新アプリ版）');
+  ok(!/本部タブ/.test(staff) && !/提出物管理/.test(staff) && !/店の数字/.test(staff),
      '店舗に、本部だけの話は出さない');
-  ok(/日報を出す/.test(mgr) && /実施状況を確認/.test(mgr), '店長＝出す＋確かめるまで');
+  ok(/日報は一度入れるだけ/.test(mgr) && /在庫の数と発注リスト/.test(mgr) && /店の数字/.test(mgr), '店長＝出す＋数字を見るまで（10/22 新アプリ版）');
   ok(/所有店舗すべて|見る店舗を切り替え/.test(own), 'オーナー＝複数店の見方が書いてある');
-  ok(/加盟店・提出物管理/.test(hq) && /お知らせを配る/.test(hq) && /勉強会を登録/.test(hq),
+  ok(/本部タブ/.test(hq) && /お知らせを配る/.test(hq) && /勉強会は自動で並ぶ/.test(hq) && /下のタブは4つ/.test(hq),
      '本部＝全店の管理・配信・登録が書いてある');
   ['staff', 'manager', 'owner', 'hq'].forEach(r => {
     const h = g(r, r === 'hq' ? 'all' : r === 'owner' ? 'owned' : S_HIROSHIMA);
@@ -3526,28 +3526,24 @@ console.log('== 使い方ガイドのアプリ内掲載（2026-08-31 構築MTG �
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_guide_tab', 'detail'); });
   location.hash = '#/app/guide';
   h = registry.app.innerHTML;
-  ok(/スタッフの皆さまへ/.test(h) && /guide\/staff-01\.jpg/.test(h) && /guide\/staff-10\.jpg/.test(h), 'スタッフ向け＝配布ガイドのスライド10枚がそのまま載る');
-  ok(/data-go="\/app\/kyou"/.test(h), 'ボタンから実際の画面へ飛べる');
+  ok(/スタッフの皆さまへ/.test(h) && !/guide\/staff-01\.jpg/.test(h) && /在庫の数/.test(h) && /この画面を開く/.test(h), 'スタッフ向け＝いまのアプリの画面ごとのカード（10/22 スライド掲載は終了）');
+  ok(/data-go="\/home"/.test(h) && /data-go="\/app\/zaiko"/.test(h) && /data-go="\/miru"/.test(h), 'ボタンから実際の画面（きょうやること・在庫・見る）へ飛べる');
   // ③ 店長向け＝オーナー店長用スライド17枚
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_guide_tab', 'detail'); });
   location.hash = '#/app/guide';
   h = registry.app.innerHTML;
-  ok(/店長・オーナー様へ/.test(h) && /guide\/owner-01\.jpg/.test(h) && /guide\/owner-17\.jpg/.test(h), '店長向け＝配布ガイドのスライド17枚がそのまま載る');
-  ok(/data-go="\/app\/soukatsu\?tab=summary"/.test(h), '数字の見方＝日報のサマリータブへ直接飛べる');
-  /* 画像の実体は「git が持っているか」で確かめる（2026-09-01 変更）。
-     ローカルの実体はOneDriveの写真ビュー経由で定期削除される＝無いのが定常状態（skip-worktree済み）。
-     配信物（preview）には実体があるので、gitが追跡していれば配信は成立する */
-  {
-    const { execSync } = await import('node:child_process');
-    const tracked = execSync('git ls-files guide', { cwd: APP.replace(/app\.js$/, '') }).toString();
-    ok(/owner-17\.jpg/.test(tracked) && /staff-10\.jpg/.test(tracked), 'スライド画像をgitが追跡している（ローカル実体は無くてよい）');
-  }
+  ok(/店長・オーナー様へ/.test(h) && !/guide\/owner-01\.jpg/.test(h) && /日報は一度入れるだけ/.test(h) && !/本部タブ/.test(h), '店長向け＝いまのアプリの画面ごとのカード（本部の項目は出ない）');
+  ok(/data-go="\/num"/.test(h) && /data-go="\/app\/numdetail"/.test(h) && /data-go="\/app\/soukatsu"/.test(h), '数字の見方＝店の数字・くわしく・日報へ直接飛べる');
   // ③b 初めて開いたとき（タブ未選択）はスライドが最初に見える（2026-08-31 神田さんの実機報告＝
   //     「使い方ガイドを押してもスライドが出ない」。入口で必ずスライドへたどり着けるようにする）
   run(() => { setLS('manager', S, 'ja'); localStorage.removeItem('yosakura_guide_tab'); });
   location.hash = '#/app/guide';
   h = registry.app.innerHTML;
-  ok(/guide\/owner-01\.jpg/.test(h), 'ガイドを開くと最初から配布スライドが見える（タブ未選択の初期表示）');
+  ok(/日報は一度入れるだけ/.test(h) && /この画面を開く/.test(h), 'ガイドを開くと最初からくわしいガイド（画面ごとのカード）が見える（タブ未選択の初期表示）');
+  run(() => { setLS('hq', S, 'ja'); localStorage.setItem('yosakura_guide_tab', 'detail'); });
+  location.hash = '#/app/guide';
+  h = registry.app.innerHTML;
+  ok(/本部の皆さまへ/.test(h) && /data-go="\/hq"/.test(h) && /data-go="\/app\/teishutsu"/.test(h), '本部向け＝本部タブ・提出物管理のカードが足される');
   // ③c 「使い方ガイド」カードはツアーを直接開かず、必ずガイドのページへ移動する
   //     （ツアーだけ開くとスライドへの入口が無くなる＝2026-08-31 実機で発覚）
   const gsrc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
@@ -7314,8 +7310,8 @@ console.log('== 2026-10-21 永井さん「在庫チェックに消耗品管理�
   ok(/if \(own\.includes\(ls\)\) return ls;/.test(code) && !/return normalizeStore\(\(a\.stores \|\| \[\]\)\[0\] \|\| STORES\[0\]\);/.test(code), 'ソース＝先頭固定の行は消えている');
   // 品目タブのスマホ幅
   const cssN = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
-  ok(/\.zk-edit input, \.zk-edit select, \.zk-in input \{ font-size: 16px; \}/.test(cssN) && /@media \(max-width: 600px\) \{\s*\.zk-head \{ display: none; \}\s*\.zk-edit \{ flex-wrap: wrap;/.test(cssN), 'CSS＝在庫の入力欄は16px（iOSの拡大を止める）・スマホ幅は品目名＋2行目に折り返す');
-  ok(/overscroll-behavior-y: contain;\s*overflow-x: hidden;/.test(cssN) && /\.zk-edit > \* \{ min-width: 0; max-width: 100%; box-sizing: border-box; \}/.test(cssN), 'CSS＝スクロール領域（.appmain）は横に動かさない・品目タブの欄は幅を超えない（神田さん「横にスライドできてフラフラ」）');
+  ok(/\.zk-edit input, \.zk-edit select, \.zk-in input \{ font-size: 16px; \}/.test(cssN) && /@media \(max-width: 760px\) \{\s*\.zk-head \{ display: none; \}\s*\.zk-edit \{ flex-wrap: wrap;/.test(cssN) && /\.zk-edit select:nth-of-type\(2\) \{ flex: 1 1 58% !important; \}/.test(cssN), 'CSS＝在庫の入力欄は16px（iOSの拡大を止める）・760px以下は品目名＋基準/発注数/単位＋確認日/区分の3行に折り返す（10/22 神田さん「枠に収まっていない」）');
+  ok(/overscroll-behavior-y: contain;\s*overflow-x: hidden;/.test(cssN) && /\.zk-edit > \* \{ min-width: 0 !important; max-width: 100%; box-sizing: border-box; \}/.test(cssN), 'CSS＝スクロール領域（.appmain）は横に動かさない・品目タブの欄は幅を超えない（神田さん「横にスライドできてフラフラ」）');
   ok(/\.ckov \{ overflow-x: auto;/.test(cssN), 'CSS＝本部の店舗×項目の表（.ckov）は自分の中で横に動く（.appmain を止めた分の受け皿）');
   seed3('牛カツ世桜 長堀橋店'); run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'nagai', name: '永井', role: 'manager', stores: S3 })); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); });
   location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
