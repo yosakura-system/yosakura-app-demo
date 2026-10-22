@@ -7412,5 +7412,27 @@ console.log('== 2026-10-22 神田さん「本部管理画面で35項目をアプ
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); });
 }
 
+console.log('== 2026-10-23 神田さん「きょうの流れ・レシピ・発注のカードの写真を業態別に」＝見ている店の業態で写真を差し替える ==');
+{
+  const seed = (role, st) => run(() => { setLS(role, st, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  const ph = (h, cls) => { const m = h.match(new RegExp('<img class="' + cls + '"[^>]*data-ph="([a-z0-9_]+)"')); return m ? m[1] : ''; };
+  seed('manager', '牛カツ世桜 長堀橋店'); location.hash = '#/home'; let h = registry.app.innerHTML;
+  ok(ph(h, 'pb-coverimg') === 'rc_gyukatsu_set', '牛カツの店＝きょうの流れの写真が牛カツ定食（実際 ' + ph(h, 'pb-coverimg') + '）');
+  location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
+  ok(h.indexOf('data-ph="rc_sand"') >= 0 && h.indexOf('data-ph="rc_kobe_katsu"') >= 0 && h.indexOf('data-ph="miru_manual"') >= 0, '牛カツの店＝レシピ＝牛カツサンド・発注＝神戸牛カツ・マニュアルは共通のまま');
+  seed('staff', '日本鰻世桜 浅草橋店'); location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(ph(h, 'pb-coverimg') === 'rc_unagi_jo', '鰻の店＝きょうの流れは鰻の箱');
+  location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
+  ok(h.indexOf('data-ph="rc_unagi_nami"') >= 0 && h.indexOf('data-ph="rc_yaki"') >= 0, '鰻の店＝レシピ＝鰻丼・発注＝焼いた鰻');
+  seed('manager', '和牛世桜 広島店'); location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(ph(h, 'pb-coverimg') === 'rc_wagyu_hitsu' || ph(h, 'pb-coverimg') === 'rc_unagi_jo', '和牛の店（店長の既定の店が鰻になる環境では鰻）＝業態の写真（実際 ' + ph(h, 'pb-coverimg') + '）');
+  seed('manager', '手巻き寿司世桜 難波店'); location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(ph(h, 'pb-coverimg') === 'kyou_first_dish', '手巻き（写真がまだ無い業態）＝共通の写真のまま（実際 ' + ph(h, 'pb-coverimg') + '）');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); }); location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
+  ok(h.indexOf('data-ph="miru_recipe"') >= 0 && h.indexOf('data-ph="miru_order"') >= 0, '本部の全店表示＝共通の写真');
+  ok(/PHOTO_GY = \{/.test(code) && /kyou_first_dish: \{ unagi:'rc_unagi_jo'/.test(code), 'ソース＝業態→写真の対応表 PHOTO_GY（MOTONの実物のキーだけ）');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

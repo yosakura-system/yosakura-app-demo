@@ -1864,9 +1864,25 @@
     const byId = { hygiene_d:'kyou_hygiene', hygiene_m:'kyou_hygiene', tip_photo:'kyou_first_dish', genkin_photo:'num_register', nikkei_idle:'kyou_nippou', nikkei_close:'kyou_nippou', utsuwa:'kyou_utsuwa', pop:'kyou_check_idle', pop_week:'kyou_check_idle', staffroom:'kyou_hygiene', compliance:'miru_manual' };
     return byId[m.id] || '';
   };
-  const pbImg_ = (key, cls) => (typeof PHOTOS !== 'undefined' && PHOTOS[key])
-    ? `<img class="${cls || 'pb-th'}" src="${PHOTOS[key]}" alt="" loading="lazy">`
-    : `<span class="${cls || 'pb-th'} pb-th--empty">${svg('check')}</span>`;
+  /* ★2026-10-23 神田さん「きょうの流れ・レシピ・発注のカードの写真を、ログインした業態別の写真に」
+     ＝カードの写真キーを、見ている店の業態（storeGyotai）で差し替える。写真はすべて MOTON の実物（PHOTOS に埋め込み済みの物から選んだ）。
+     無い業態（手巻き）といまは本部の「全店」表示は共通の写真のまま。足すときは PHOTO_GY に業態コード→PHOTOS のキーを書く */
+  const PHOTO_GY = {
+    kyou_first_dish: { unagi:'rc_unagi_jo',   gyukatsu:'rc_gyukatsu_set', wagyu:'rc_wagyu_hitsu', sushi:'hq_st_sushi', washoku:'hq_st_nihon' },
+    miru_recipe:     { unagi:'rc_unagi_nami', gyukatsu:'rc_sand',         wagyu:'rc_wagyudon' },
+    miru_order:      { unagi:'rc_yaki',       gyukatsu:'rc_kobe_katsu',   wagyu:'rc_bbq' }
+  };
+  const pbGyKey_ = (key) => {
+    try {
+      const m = PHOTO_GY[key]; if (!m) return key;
+      const st = (getRole() === 'hq' && getStoreSel() === 'all') ? null : visibleStores()[0];
+      const g = st ? storeGyotai(st) : null;
+      return (g && m[g] && PHOTOS[m[g]]) ? m[g] : key;
+    } catch (e) { return key; }
+  };
+  const pbImg_ = (key0, cls) => { const key = pbGyKey_(key0); return (typeof PHOTOS !== 'undefined' && PHOTOS[key])
+    ? `<img class="${cls || 'pb-th'}" src="${PHOTOS[key]}" alt="" loading="lazy" data-ph="${key}">`
+    : `<span class="${cls || 'pb-th'} pb-th--empty">${svg('check')}</span>`; };
   const pbDateLabel_ = () => { const d = new Date(); return LANG === 'ja' ? `${d.getMonth() + 1}月${d.getDate()}日 ${L(WDAY_LABELS[d.getDay()])}曜日` : `${d.getMonth() + 1}/${d.getDate()} ${L(WDAY_LABELS[d.getDay()])}`; };
   const pbSlotKey_ = (k) => k === 'asa' ? 'asa' : k === 'shime' ? 'shime' : 'mid';
   const PB_SLOTS = [['asa', { ja:'開店前', en:'Before opening', vi:'Trước mở cửa' }], ['mid', { ja:'営業中', en:'During service', vi:'Trong ca' }], ['shime', { ja:'締め', en:'Closing', vi:'Đóng cửa' }]];
