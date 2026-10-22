@@ -183,8 +183,6 @@ body {
 .devview-bar ~ .hdr { padding-top: 10px; }
 /* ★2026-10-20 本部IDの見え方切替（本部｜店舗責任者｜スタッフ）＝帯の中に3つのボタン */
 /* ★2026-10-22 店舗責任者・スタッフの見え方＝「届きません」を常時（永井さんの基準在庫が本部IDの見え方で消えていた） */
-.viewas-note { background: #8E354A; font-weight: 700; cursor: default; }   /* 2026-10-22 上の切替の帯は廃止＝注意行＋「本部に戻る」だけ */
-.viewas-note .viewas-btn { margin-left: 8px; padding: 2px 10px; font-size: 11px; }
 .viewas-btn { border: 1px solid rgba(255,255,255,.55); background: transparent; color: #fff; font: inherit; font-weight: 700; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
 .viewas-btn.on { background: #fff; color: #7a5c1e; }
 

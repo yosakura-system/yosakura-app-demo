@@ -682,8 +682,9 @@
     const cur = getRole();
     /* ★2026-10-22 神田さん「本部画面に入れるようになったので、1番上の黄色の切り替え（表示：本部｜店舗責任者｜スタッフ）はもう不要」
        ＝切替は右上の「本部・全店」（設定シート・役割と店舗）に一本化。残すのは店舗の見え方のときの赤い注意行だけ（＋本部へ戻るボタン） */
-    if (cur === 'hq') return '';
-    return `<div class="devview-bar viewas-note">${L({ ja:'この見え方は確認用です。提出・保存は本部・店舗に届きません。店の仕事は店長IDでログインしてください。', en:'Preview only: submissions are not sent. Sign in with the store manager ID for store work.', vi:'Chỉ xem thử: không gửi đi. Dùng ID quản lý cửa hàng cho công việc của cửa hàng.' })} <button type="button" class="viewas-btn" data-viewas="hq">${L({ ja:'本部に戻る', en:'Back to HQ', vi:'Về HQ' })}</button></div>`;
+    /* ★2026-10-22 13:57 神田さん「上の注意書きは不要。本部で店長と兼任しているのは3人だけで、その3人には伝えてある。上に固定されて邪魔」
+       ＝赤い注意行も出さない。本部へ戻るのは右上のチップ（設定シートの役割）。保存・提出を止める toast（確認用の表示では…）はそのまま */
+    return '';
   };
   // 通信が「ログインしてください」と言ってきたときの受け（トークン切れ・再発行後も含む）
   /* ログインが外れたとき（2026-09-03 神田さんの実機＝「急にログイン画面になった」）。

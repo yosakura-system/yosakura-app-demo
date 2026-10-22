@@ -3682,10 +3682,10 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   // ① 対象アカウント（kanda・本部）が店舗表示に切り替えると、戻るバナーが全画面に出る
   seedAuth('kanda', 'hq', 'staff');
   location.hash = '#/home';
-  ok(!/viewas-bar/.test(registry.app.innerHTML) && /rc-role">店舗iPad</.test(registry.app.innerHTML) && /viewas-note/.test(registry.app.innerHTML) && /data-viewas="hq">本部に戻る/.test(registry.app.innerHTML), '店舗表示中＝上の切替の帯は無い（10/22廃止）。右上のチップがスタッフ・赤い注意行に「本部に戻る」');
+  ok(!/viewas-bar/.test(registry.app.innerHTML) && /rc-role">店舗iPad</.test(registry.app.innerHTML) && !/viewas-note/.test(registry.app.innerHTML) && !/devview-bar/.test(registry.app.innerHTML), '店舗表示中＝上の帯も注意行も無い（10/22 両方廃止）。右上のチップが店舗iPad（戻るのもそこから）');
   ok(!/本部メニュー/.test(registry.app.innerHTML), '店舗表示中は本部メニューが消える（見え方が本当に店舗側になる）');
   location.hash = '#/app/kizuki';
-  ok(/data-viewas="hq"/.test(registry.app.innerHTML) && !/viewas-bar/.test(registry.app.innerHTML), 'アプリ画面にも注意行（本部に戻る）は出る・切替の帯は出ない');
+  ok(!/devview-bar/.test(registry.app.innerHTML), 'アプリ画面にも帯・注意行は出ない');
   // ② 本部の表示に戻っているときはバナーを出さない
   seedAuth('kanda', 'hq', 'hq');
   location.hash = '#/home';
@@ -6701,7 +6701,7 @@ console.log('== 2026-10-22 本部の見え方＝案Bの本部画面（神田さ�
   location.hash = '#/home?tab=genba'; ok(!/本部の画面は準備中です/.test(registry.app.innerHTML), '旧タブを直接開いても準備中は出ない');
   ok(/"hq_st_gyukatsu": 'data:image/.test(code) && /"hq_st_nihon": 'data:image/.test(code), 'ソース＝店舗カードの写真6枚（案Bの見本と同じ）が埋め込み');
   ok(/const hqPrep_ = \(\) => \{ return false;/.test(code), 'ソース＝準備中の1枚は引退');
-  ok(!/viewas-bar/.test(code) && /if \(cur === 'hq'\) return '';/.test(code) && /if \(getAuth\(\) && !devViewAllowed\(\)\) return;   \/\/ ★ログイン済み＝役割は変えられない（開発者ビューだけ例外）/.test(code), 'ソース＝上の切替の帯は廃止。見え方の切替は右上の設定シート（本部IDは役割のボタンが効く）');
+  ok(!/viewas-bar/.test(code) && !/viewas-note/.test(code) && /if \(getAuth\(\) && !devViewAllowed\(\)\) return;   \/\/ ★ログイン済み＝役割は変えられない（開発者ビューだけ例外）/.test(code), 'ソース＝上の切替の帯も注意行も廃止。見え方の切替は右上の設定シート（本部IDは役割のボタンが効く）');
 }
 
 console.log('== 2026-10-20 見る・注文する・見出しを案Bの見本に ==');
@@ -7330,7 +7330,7 @@ console.log('== 2026-10-22 永井さん「基準在庫を設定しても消え�
   seedHq('manager');
   location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
   let h = registry.app.innerHTML;
-  ok(/rc-role">店長</.test(h) && /viewas-note/.test(h) && /提出・保存は本部・店舗に届きません/.test(h) && /店長IDでログインしてください/.test(h), '店舗責任者の見え方＝帯に「届きません・店長IDで」が常に出る');
+  ok(/rc-role">店長</.test(h) && !/viewas-note/.test(h) && !/devview-bar/.test(h), '店舗責任者の見え方＝帯も注意行も無し（10/22 神田さん「不要」）。見え方＝帯に「届きません・店長IDで」が常に出る');
   ok(/保存していない編集を復元しました/.test(h) && /id="zk_s\d+" value="9"/.test(h), '下書き（基準在庫9）が復元されている');
   const btn = doc.getElementById('saveZkMaster'); ok(!!btn, '保存ボタンがある'); if (btn) btn.onclick();
   ok(!JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').some(r => r.kind === 'zaikomaster'), '保存を押しても端末の記録に zaikomaster は増えない（「保存しました」を出さない）');
