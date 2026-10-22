@@ -6607,6 +6607,43 @@ console.log('== 2026-10-20 日報＝案Bの見本の並び（店舗側） ==');
   ok(/id="submitSk"/.test(registry.app.innerHTML) && !/data-sktab=/.test(registry.app.innerHTML), '案Bの店舗側＝日報は開けて、タブ（入力／推移／最近）は出ない');
 }
 
+console.log('== 2026-10-22 神田さん「B案の見る・注文すると同じ設計に」＝レシピ／マニュアル／発注／その他の4画面を案Bの型で ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const seedM = (role, st) => run(() => { setLS(role || 'manager', st || S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_links', JSON.stringify([{ title:'備品・食材 発注フォーム（パートナーズ）', url:'https://example.com/order', mcat:'print', desc:'本部の注文フォーム' }, { title:'【世桜】アレルギー表（牛カツ）', url:'https://docs.google.com/spreadsheets/d/abc/edit', mcat:'recipe' }])); });
+  seedM(); location.hash = '#/home?tab=miru'; let h = registry.app.innerHTML;
+  ok(/data-open="recipes"/.test(h) && /data-open="manualtop"/.test(h) && /data-open="ordertop"/.test(h) && /data-open="othertop"/.test(h) && !/data-tab="other"/.test(h), '見る・注文するの4つのタイル＝案Bの型の4画面へ（旧の一覧へは行かない）');
+  location.hash = '#/app/recipes'; h = registry.app.innerHTML;
+  ok(/pb-app--recipes/.test(h) && /<div class="pb-ttl">レシピ<\/div>/.test(h) && /1枚の形（田中さんのカードから）/.test(h), 'レシピ＝案Bの枠（戻る・明朝の題・1行の説明）');
+  ok(/class="pb-rhero"/.test(h) && /鰻ひつまぶし 上（1尾）/.test(h) && /1TwtB6kXYMD5qotEKB7eKO6rUl09UrnqtuL4_nE8ipyo/.test(h), '主役のカード＝鰻ひつまぶし上（田中さんのレシピ文書へ）');
+  ok(/<h2>この店の品<\/h2><small>牛カツ<\/small>/.test(h) && /牛カツサンド/.test(h) && /1c3ScRsA_UaFX3snNEUXEUnlRRVJ8-4h8ccwUD1mWigQ/.test(h) && /class="pb-rdish__img"/.test(h), '牛カツの店＝「この店の品」に牛カツの品（写真つき・文書へ）');
+  ok(/<h2>ほかの業態<\/h2>/.test(h) && /<h2>鰻<\/h2>/.test(h) && /<h2>和牛<\/h2>/.test(h) && !/<h2>牛カツ<\/h2>/.test(h), 'ほかの業態＝鰻・和牛が業態ごとに（自店の業態は重ねない）');
+  ok(/全業態レシピ管理表/.test(h), 'レシピの正＝全業態レシピ管理表、と注記');
+  seedM('manager', '寿司世桜 心斎橋店'); location.hash = '#/app/recipes'; h = registry.app.innerHTML;
+  ok(/この業態のレシピはまだ整備中です/.test(h) && /<h2>ほかの業態<\/h2>/.test(h), '文書の無い業態（寿司）＝「整備中」と出し、ほかの業態は見える');
+  seedM(); location.hash = '#/app/manualtop'; h = registry.app.innerHTML;
+  ok(/<div class="pb-ttl">マニュアル<\/div>/.test(h) && /class="pb-use"/.test(h) && /食物アレルギー/.test(h) && /data-open="emergency"/.test(h) && /data-open="manual\?cat=hygiene"/.test(h) && /data-open="manual\?cat=storeops"/.test(h), 'マニュアル＝よく使う4つ（アレルギー・緊急・衛生・仕事の手順）');
+  ok(/docs\.google\.com\/spreadsheets\/d\/abc/.test(h), 'アレルギー＝本部が登録したアレルギー表のリンクを使う');
+  ok(/1枚マニュアル（かんたん版）/.test(h) && /月末棚卸（アプリで入力）/.test(h), 'マニュアルの中に1枚マニュアル（かんたん版）');
+  ok(/<h2>全部の資料<\/h2>/.test(h) && /class="pb-mgrid"/.test(h) && /data-open="manual\?cat=service"/.test(h) && /data-open="gyotaiman"/.test(h), '全部の資料＝本部の目次の分類を格子で（押すとその分類を開いた目次へ）');
+  location.hash = '#/app/manual?cat=hygiene'; h = registry.app.innerHTML;
+  ok(/data-mfoldbody="hygiene">/.test(h) && /data-mfoldbody="service" hidden/.test(h), '目次＝?cat の分類だけ開いた状態・ほかは畳んだまま');
+  location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
+  ok(/<div class="pb-ttl">備品・食材を注文する<\/div>/.test(h) && /class="pb-orow"/.test(h) && /example\.com\/order/.test(h) && !/カタログ/.test(h) && !/発注する（準備中）/.test(h), '発注＝本部が登録した注文先の行だけ（見本のカタログ・準備中ボタンは出さない）');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_links', '[]'); }); location.hash = '#/app/ordertop';
+  ok(/注文先はまだ登録されていません/.test(registry.app.innerHTML), '注文先が無い＝「まだ登録されていません」');
+  seedM(); location.hash = '#/app/othertop'; h = registry.app.innerHTML;
+  ok(/class="pb-chips pb-chips--4"/.test(h) && /data-open="guide"/.test(h) && /data-open="faq"/.test(h) && /data-open="whistle"/.test(h) && /data-open="study"/.test(h), 'その他＝使い方・ルール集・相談・通報・勉強会の4つのチップ');
+  // 本部の見え方でも案Bの枠
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); localStorage.setItem('yosakura_demo_links', '[]'); });
+  location.hash = '#/app/recipes'; h = registry.app.innerHTML;
+  ok(/pb-app--recipes/.test(h) && !/class="appbar"/.test(h) && /<h2>業態ごと<\/h2>/.test(h) && /<h2>牛カツ<\/h2>/.test(h), '本部（全店）＝案Bの枠で、業態ごとに全部の品');
+  location.hash = '#/app/manual'; ok(/pb-app--manual/.test(registry.app.innerHTML) && !/class="appbar"/.test(registry.app.innerHTML), '本部の見え方でも機能の画面は案Bの枠（旧デザインの見出しは出ない）');
+  ok(/pb-app--manual/.test(registry.app.innerHTML) && !/class="appbar"/.test(registry.app.innerHTML), '本部の見え方でも機能の画面は案Bの枠（旧デザインの見出しは出ない）');
+  { const ids = (code.match(/id:'(1[A-Za-z0-9_-]{25,})', ph:|id:'(1[A-Za-z0-9_-]{25,})' \}/g) || []).length; ok(ids === 17, 'ソース＝レシピの品17品に文書IDがある: ' + ids); }
+  ok(/"rc_unagi": 'data:image/.test(code) && /"rc_sand": 'data:image/.test(code), 'ソース＝品の写真（案Bの見本と同じ）が埋め込み');
+}
+
 console.log('== 2026-10-22 神田さん「棚卸マニュアルとか、すでにリリースしたマニュアルもアプリで見れるように」＝マニュアル画面に1枚マニュアル（かんたん版）==');
 {
   const S = '牛カツ世桜 長堀橋店';
@@ -6625,7 +6662,7 @@ console.log('== 2026-10-22 神田さん「棚卸マニュアルとか、すで�
   ok(nHq === 28 && /mchip--all">全店</.test(h) && /mchip--test">現場テスト中</.test(h) && /mchip--hq">本部確認中</.test(h) && /mchip--hqonly">本部資料</.test(h), '本部には全部（28本）を状態の札つきで（全店／現場テスト中／本部確認中／本部資料）: ' + nHq);
   ok(/全店（6）/.test(h) && /現場テスト中（10）/.test(h) && /本部確認中（11）/.test(h) && /本部資料（1）/.test(h), '本部の並び＝状態ごとにまとめて件数つき');
   ok(/状態はいる・いらないスプシのK列が正/.test(h), '本部向けの注記＝状態の正はいる・いらないスプシ');
-  { const ids = (code.match(/id:'(1[A-Za-z0-9_-]{25,})'/g) || []).map(x => x.slice(4, -1)); ok(ids.length === 28 && new Set(ids).size === 28, 'ソース＝Drive IDは28本すべて別（重複なし）'); }
+  { const ids = (code.match(/st:'(?:all|test|hq|hqonly)'[^\n]*?id:'(1[A-Za-z0-9_-]{25,})'/g) || []).map(x => x.replace(/^.*id:'/, '').slice(0, -1)); ok(ids.length === 28 && new Set(ids).size === 28, 'ソース＝1枚マニュアルのDrive IDは28本すべて別（重複なし）: ' + ids.length); }
   { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 6 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の6本のPDFが manual/ に実在する: ' + pdfs.join(',')); }
 }
 
@@ -6812,7 +6849,7 @@ console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース�
   location.hash = '#/home?tab=miru';
   const m = registry.app.innerHTML;
   ok(/class="pb-tiles"/.test(m) && (m.match(/class="pb-tile"/g) || []).length === 4, 'pb：見る・注文するは4つの写真タイル');
-  ok(/data-open="gyotaiman"/.test(m) && /data-open="manual"/.test(m) && /data-tab="other"/.test(m), 'pb：レシピ・マニュアル・その他へつながる');
+  ok(/data-open="recipes"/.test(m) && /data-open="manualtop"/.test(m) && /data-open="othertop"/.test(m), 'pb：レシピ・マニュアル・その他へつながる（2026-10-22 案Bの型の4画面）');
   location.hash = '#/home?tab=other';
   ok(/data-open="guide"|data-open="faq"/.test(registry.app.innerHTML), 'pb：その他は今までの一覧（使い方・ルール集）');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
