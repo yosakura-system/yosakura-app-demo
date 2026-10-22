@@ -323,12 +323,12 @@ console.log('== 店舗運営チェック：全スタッフに出る入口（2026
   let mgrTab = '';
   try { run(()=> setLS('manager',S_HIROSHIMA,'ja')); location.hash = '#/home?tab=genba'; mgrTab = registry.app.innerHTML; }
   catch(e){ FAIL++; console.log('  ✗ hqcheck tab(mgr) threw: '+e.message); }
-  ok(/店舗運営チェック/.test(hqTab), '★本部の報告タブに「店舗運営チェック」が並ぶ');
-  ok(/店舗運営チェック/.test(mgrTab), '★店長にも「店舗運営チェック」が出る（2026-08-28 全スタッフへ開放）');
+  ok(/SVチェック/.test(hqTab), '★本部の報告タブに「SVチェック」（旧 店舗運営チェック・2026-10-22 改名）が並ぶ');
+  ok(/SVチェック/.test(mgrTab), '★店長にも「SVチェック」が出る（2026-08-28 全スタッフへ開放＝見本と原本の入口）');
   let stTab = '';
   try { run(()=> setLS('staff',S_HIROSHIMA,'ja')); location.hash = '#/home?tab=genba'; stTab = registry.app.innerHTML; }
   catch(e){ FAIL++; console.log('  ✗ hqcheck tab(staff) threw: '+e.message); }
-  ok(/店舗運営チェック/.test(stTab), '★スタッフ（店舗iPad）にも出る（アルバイトを含む全スタッフが操作できる）');
+  ok(/SVチェック/.test(stTab), '★スタッフ（店舗iPad）にも出る（アルバイトを含む全スタッフが操作できる＝見本と原本の入口）');
   // ② 未登録＝案内と「資料リンクの管理」への導線が出る（空の器で終わらせない）
   for (const lang of ['ja','en','vi']) {
     const v = renderView('hqcheck','hq','all',lang);
@@ -5414,7 +5414,7 @@ console.log('== タスク（試行・神田さんのIDだけ）2026-09-15 神田
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
-console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要望＝紙でなくアプリ・2人同時入力・LINE共有 ==');
+console.log('== SVチェック（本部）2026-09-16 神田さんのご要望＝紙でなくアプリ・2人同時入力・LINE共有 ==');
 {
   const seedAuth = (uid, role) => run(() => {
     setLS(role, 'all', 'ja');
@@ -5427,14 +5427,14 @@ console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要�
     { kind:'svcheck', store:'本部', item:`${S}|${D}|36`, note: JSON.stringify({ v:'na', by:'神田', t:3 }), t: 5002, id:'s3' },
     { kind:'svcheck', store:'本部', item:`${S}|${D}|meta`, note: JSON.stringify({ menu:'牛カツ定食', orderAt:'13:35', servedAt:'13:47', summary:'全体に良い', by:'神田', t:4 }), t: 5003, id:'s4' },
   ]};
-  // ① 本部＝巡回チェックが出る。段階タブ・○×対象外・原本Noと配点
+  // ① 本部＝SVチェックが出る。段階タブ・○×対象外・原本Noと配点
   seedAuth('kanda', 'hq');
   await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/hqcheck';
   let h = registry.app.innerHTML;
-  ok(/id="sv_store"/.test(h) && /data-vctab="jisshoku"/.test(h) && /data-vctab="report"/.test(h), '本部には巡回チェック（段階タブ＋結果）が出る');
-  ok(/No\.3<\/span>/.test(h) && /暖簾が汚くないか/.test(h), '最初の段階＝外観に原本No.3が出る（番号・文言は原本のまま）');
-  ok(/data-svv="ok"[^>]*data-svno="3"/.test(h) && /data-svv="ng"[^>]*data-svno="3"/.test(h) && /data-svv="na"[^>]*data-svno="3"/.test(h), '各項目に ○・×・対象外 の3つ');
+  ok(/id="sv_store"/.test(h) && /data-vctab="D"/.test(h) && /data-vctab="report"/.test(h), '本部にはSVチェック（A〜Hのタブ＋結果）が出る');
+  ok(/No\.8<\/span>/.test(h) && /看板の電気がついているか/.test(h) && !/暖簾/.test(h), '最初のタブ＝A 店頭・表示に原本No.8が出る（番号は原本・項目は出来栄え基準35項目・2026-10-22）');
+  ok(/data-svv="ok"[^>]*data-svno="8"/.test(h) && /data-svv="ng"[^>]*data-svno="8"/.test(h) && /data-svv="na"[^>]*data-svno="8"/.test(h), '各項目に ○・×・対象外 の3つ');
   ok(/チェックの見本・原本/.test(h), '従来の見本・原本リンクも残る');
   // ② 実食の段階＝同期で届いた○×が反映（2人の入力が1つに）・メニュー欄
   location.hash = '#/app/hqcheck';
@@ -5442,16 +5442,16 @@ console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要�
   ok(/case 'svcheck':[^\n]*svcT\[k\]==null \|\| t>=svcT\[k\]/.test(srcH), '同期＝店舗|日付|No ごとに最新が正（別の端末の入力を上書きし合わない）');
   ok(/set\('yosakura_demo_svcheck', curS\)/.test(srcH), '届いたキーだけ差し替える（端末側の入力を消さない）');
   ok(/kind:'svcheck', store:'本部'/.test(srcH), '★保存の行は store=本部＝店舗端末には返らない（本部の評価を店舗iPadへ流さない）');
-  // ③ 店舗の方には巡回チェックを出さない（従来どおりリンクだけ）
+  // ③ 店舗の方にはSVチェックを出さない（従来どおりリンクだけ）
   seedAuth('ipad', 'staff');
   await new Promise(r=>setTimeout(r, 50));
   location.hash = '#/app/hqcheck';
   h = registry.app.innerHTML;
-  ok(!/id="sv_store"/.test(h) && !/data-vctab=/.test(h), '★店舗の方には巡回チェックが出ない');
+  ok(!/id="sv_store"/.test(h) && !/data-vctab=/.test(h), '★店舗の方にはSVチェックが出ない');
   ok(/チェックの見本・原本/.test(h), '店舗の方には従来の見本・原本の入口だけ');
   // ④ 作りの保証
   ok(/'T9'|'T23'|'T24'|'T42'|'T53'/.test(srcH), 'お客様体験（71接点）から5接点を配点なしで入れている');
-  ok(/navigator\.share\(\{ title: '世桜 巡回チェック', text \}\)/.test(srcH), 'LINE共有＝共有シート（navigator.share）。使えない端末はコピーに落ちる');
+  ok(/navigator\.share\(\{ title: '世桜 SVチェック', text \}\)/.test(srcH), 'LINE共有＝共有シート（navigator.share）。使えない端末はコピーに落ちる');
   ok(/function svJpegsToPdf_\(jpegs\)/.test(srcH) && /\/Filter \/DCTDecode/.test(srcH), 'A4のPDF（1〜2枚・写真つき）を外部ライブラリなしで作る');
   ok(/navigator\.canShare\(\{ files \}\)/.test(srcH), 'PDF・画像は共有シートに添付して送る（LINEを選べる）');
   ok(/apiGet_\(\{ action: 'photo', id: String\(p\)\.replace\(\/\^p:\/, ''\) \}\)/.test(srcH), 'レポートの写真はサーバー経由で取る（画像URL直読みは書き出せない）＝2026-10-12 からPOST');
@@ -5460,17 +5460,17 @@ console.log('== 巡回チェック（本部）2026-09-16 神田さんのご要�
   ok(/data-svphoto=/.test(srcH) && /\.slice\(0, 5\); phsLocal\.push\(key\)/.test(srcH), '写真は項目ごとに複数（最大6枚・1回1枚）');
   seedAuth('kanda', 'hq'); await new Promise(r=>setTimeout(r, 50)); location.hash = '#/app/hqcheck';
   const hS = registry.app.innerHTML;
-  ok(/details class="svstd" data-svstd="3"/.test(hS) && /基準（あるべき姿/.test(hS), '各項目に「基準（あるべき姿」の欄がある');
-  ok(/data-svstdphoto="3"/.test(hS) && /data-svstdtext="3"/.test(hS), '本部がスクショ・正解写真と基準文を登録できる');
+  ok(/details class="svstd" data-svstd="8"/.test(hS) && /基準（あるべき姿/.test(hS), '各項目に「基準（あるべき姿」の欄がある');
+  ok(/data-svstdphoto="8"/.test(hS) && /data-svstdtext="8"/.test(hS), '本部がスクショ・正解写真と基準文を登録できる');
   const manN = (srcH.match(/, man:\['mn\d+'/g) || []).length;
-  ok(manN === 44, '44項目すべてに関連マニュアルが紐づく（実際 ' + manN + '）');
+  ok(manN === 35, '35項目すべてに関連マニュアルが紐づく（実際 ' + manN + '）');
   ok(/std:'アラカルト10分以内→○/.test(srcH) && /std:'冷蔵5℃以下・冷凍−18℃以下/.test(srcH), '基準の文言は原本に書かれているものだけ（作らない）');
   ok(/case 'svstd':/.test(srcH) && /set\('yosakura_demo_svstd', curT\)/.test(srcH), '基準は本部共通で合流する（No ごと最新が正）');
   ok(/素材：/.test(hS) && /drive\.google\.com\/drive\/folders\/1CtU_lfi_VXqXv4uAAIFnGsadJrx4GnuK/.test(hS), '基準欄から「07.世桜×MOTON」の素材フォルダ（料理写真・POP・看板）を開ける');
   ok(/番号は【世桜】店舗管理チェックシート_原本のNo/.test(srcH), 'レポートの文面に「番号は原本のNo」と入る（原本へ転記できる）');
   ok(/ae\.tagName && \/\^\(TEXTAREA\|INPUT\)\$\/\.test\(ae\.tagName\)/.test(srcH), 'メモ入力中は合流の描き直しをしない（書きかけが消えない）');
   const svN = (srcH.match(/\{ no:(?:\d+|'T\d+'),\s+pt:\d, ph:'/g) || []).length;
-  ok(svN === 44, '項目は 39（原本）＋5（体験）＝44（実際 ' + svN + '）');
+  ok(svN === 35, '項目は出来栄え基準の35（原本34＋体験1）（実際 ' + svN + '）');
   FETCH_ROWS = { ok:false };
   run(() => { setLS('hq', 'all', 'ja'); });
 }
@@ -5583,7 +5583,7 @@ console.log('== 今日・今週・月次で出すもの＝店舗を一発で選�
   {
     const src = code;
     ok(/closest\('\[data-viewstore\],\[data-kyou\],/.test(src) && /t\.dataset\.kyou !== undefined/.test(src), '店舗チップの押下＝委譲イベントで処理（画面ごとの登録に依存しない）');
-    ok(!/querySelectorAll\('\[data-kyou\]'\)/.test(src), '画面ごとの onclick 登録（巡回チェック画面でしか効かなかった）は残っていない');
+    ok(!/querySelectorAll\('\[data-kyou\]'\)/.test(src), '画面ごとの onclick 登録（SVチェック画面でしか効かなかった）は残っていない');
   }
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_kyou_store'); });
 }
@@ -5646,7 +5646,7 @@ console.log('== 数字の要確認（本部）2026-09-17 神田さん「要確�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
-console.log('== 巡回チェックの履歴・比較（2026-09-17 神田さん「結果を残す・年間グラフ・店舗一覧で比較」）==');
+console.log('== SVチェックの履歴・比較（2026-09-17 神田さん「結果を残す・年間グラフ・店舗一覧で比較」）==');
 {
   const S1 = '牛カツ世桜 長堀橋店', S2 = '日本料理世桜本店';
   const ym = (n) => { const d = new Date(); d.setDate(15); d.setMonth(d.getMonth() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-15`; };
@@ -5655,7 +5655,7 @@ console.log('== 巡回チェックの履歴・比較（2026-09-17 神田さん�
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
   location.hash = '#/app/hqcheck?tab=hist&store=' + encodeURIComponent(S1);
   const h = registry.app.innerHTML;
-  ok(/data-vctab="hist"/.test(h) && /店舗の比較（直近12か月/.test(h), '巡回チェックに「履歴・比較」タブがあり、店舗一覧が出る');
+  ok(/data-vctab="hist"/.test(h) && /店舗の比較（直近12か月/.test(h), 'SVチェックに「履歴・比較」タブがあり、店舗一覧が出る');
   ok((h.match(/class="svh-row/g) || []).length >= 5, '店舗一覧＝全店が1行ずつ（月ごとの参考スコア）');
   ok(/svh-c (g|y|r)">\d+<\/td>/.test(h), '月のセルに参考スコアが色つきで入る');
   ok(/class="svchart"/.test(h) && (h.match(/svc-dot/g) || []).length >= 3 && /polyline/.test(h), '選んだ店舗の年間グラフ（SVG）に3回分の点と折れ線が出る');
@@ -5670,55 +5670,55 @@ console.log('== 巡回チェックの履歴・比較（2026-09-17 神田さん�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
-console.log('== 巡回チェック＝実施時間・確認方法・表示する軸（2026-09-17 神田さん）==');
+console.log('== SVチェック＝実施時間・確認方法・表示する軸（2026-09-17 神田さん）==');
 {
   const S = '牛カツ世桜 長堀橋店';
-  const sv = {}; sv[`${S}|2026-09-17|meta`] = { time:'13:35', method:'video', summary:'' }; sv[`${S}|2026-09-17|3`] = { v:'ok', by:'神田', t:1 };
-  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_sv_sel', JSON.stringify({ store:S, date:'2026-09-17', tab:'gaikan', axis:'all' })); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
-  location.hash = '#/app/hqcheck?tab=gaikan&date=2026-09-17&store=' + encodeURIComponent(S);
+  const sv = {}; sv[`${S}|2026-09-17|meta`] = { time:'13:35', method:'video', summary:'' }; sv[`${S}|2026-09-17|8`] = { v:'ok', by:'神田', t:1 };
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_sv_sel', JSON.stringify({ store:S, date:'2026-09-17', tab:'A', axis:'all' })); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
+  location.hash = '#/app/hqcheck?tab=A&date=2026-09-17&store=' + encodeURIComponent(S);
   let h = registry.app.innerHTML;
   ok(/id="sv_time"[^>]*value="13:35"/.test(h), '実施時間の欄があり、保存した値が入る');
   ok(/id="sv_method"/.test(h) && /<option value="video" selected>② ビデオ通話/.test(h) && /① 防犯カメラ/.test(h) && /③ 現地入り/.test(h), '確認方法＝原本の①〜③から選べる（保存した②が選択）');
   ok(/data-svaxis="all"/.test(h) && /data-svaxis="eisei"/.test(h) && /data-svaxis="okyakusama"/.test(h), '表示する軸＝すべて／衛生・安全／お客様目線');
-  ok(/No\.3/.test(h) && /暖簾/.test(h), 'すべて＝外観の項目（No.3）が出る');
-  location.hash = '#/app/hqcheck?tab=gaikan&axis=eisei';
+  ok(/No\.8/.test(h) && /看板の電気/.test(h), 'すべて＝A 店頭・表示の項目（No.8）が出る');
+  location.hash = '#/app/hqcheck?tab=A&axis=eisei';
   h = registry.app.innerHTML;
-  ok(!/暖簾/.test(h) && /data-vctab="gaikan"[^>]*>外観<small>0\/0<\/small>/.test(h), '衛生・安全の軸＝外観（お客様目線のみ）は0/0で項目が出ない');
-  location.hash = '#/app/hqcheck?tab=kitchen&axis=eisei';
+  ok(!/看板の電気/.test(h) && /data-vctab="A"[^>]*>A 店頭・表示<small>0\/0<\/small>/.test(h), '衛生・安全の軸＝A 店頭・表示（お客様目線のみ）は0/0で項目が出ない');
+  location.hash = '#/app/hqcheck?tab=F&axis=eisei';
   h = registry.app.innerHTML;
-  ok(/No\.87/.test(h) && /庫内温度/.test(h), '衛生・安全の軸＝キッチンの項目（No.87 庫内温度）が出る');
+  ok(/No\.87/.test(h) && /庫内温度/.test(h), '衛生・安全の軸＝F キッチン衛生の項目（No.87 庫内温度）が出る');
   location.hash = '#/app/hqcheck?tab=report&axis=all';
   h = registry.app.innerHTML;
   ok(/方法：ビデオ通話/.test(h) && /実施：13:35/.test(h), 'レポート文に「方法」と「実施時間」が入る');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
-console.log('== 巡回チェック＝指摘の写真は判定前でも貼れる・基準欄と分ける（2026-09-17 神田さん実機）==');
+console.log('== SVチェック＝指摘の写真は判定前でも貼れる・基準欄と分ける（2026-09-17 神田さん実機）==');
 {
   const S = '牛カツ世桜 長堀橋店';
   const sv = {}; sv[`${S}|2026-09-17|8`] = { v:'na', by:'神田', t:1 };
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
-  location.hash = '#/app/hqcheck?tab=gaikan&date=2026-09-17&store=' + encodeURIComponent(S);
+  location.hash = '#/app/hqcheck?tab=A&date=2026-09-17&store=' + encodeURIComponent(S);
   const h = registry.app.innerHTML;
-  ok(/data-svphoto="3"/.test(h) && /指摘・現場の写真/.test(h), '判定前の項目（No.3）にも「指摘・現場の写真」ボタンが出る');
+  ok(/data-svphoto="8"/.test(h) && /指摘・現場の写真/.test(h), '判定前の項目（No.8）にも「指摘・現場の写真」ボタンが出る');
   ok(/data-svmemo="8"/.test(h), '対象外にした項目（No.8）にもメモ欄が出る');
   ok(/正解写真（全店共通）/.test(h) && /基準（あるべき姿・全店共通）/.test(h) && /今日の指摘はここでなく下の「メモ」へ/.test(h), '基準欄＝「全店共通」「正解写真」と分かる名前・案内');
   ok(/function svApplyDomFor_/.test(code) && /svStdPush\(no, \{\}, phs\);\s*svApplyDomFor_\(no\)/.test(code), '基準欄の写真＝開いたままでも差し替えて反映する');
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
-console.log('== 巡回チェック＝タップが固まる（2026-09-17 神田さん実機）＝ソースで固定 ==');
+console.log('== SVチェック＝タップが固まる（2026-09-17 神田さん実機）＝ソースで固定 ==');
 {
   ok(/最後の入力時刻\) < 3000\) return false/.test(code), '入力中の保護は「直近3秒以内に入力があったとき」だけ（iPhoneでカーソルが残っても固まらない）');
   ok(/document\.activeElement\.blur\(\); \} catch \(e\) \{\} 最後の入力時刻 = 0; render\(\);/.test(code), 'タブのタップ＝カーソルを外してから描き直す');
-  ok(!/写真の操作中 = true;\s*toast\(L\(\{ ja:'写真を読み込んでいます/.test(code) && (code.match(/finally \{ 写真の操作を終える_\(\); \}/g) || []).length >= 2, '巡回チェックの写真読み込み＝終える処理を finally で必ず通す（立ったまま固まらない）');
+  ok(!/写真の操作中 = true;\s*toast\(L\(\{ ja:'写真を読み込んでいます/.test(code) && (code.match(/finally \{ 写真の操作を終える_\(\); \}/g) || []).length >= 2, 'SVチェックの写真読み込み＝終える処理を finally で必ず通す（立ったまま固まらない）');
   ok(/finally \{ try \{ bindSvItems_\(\); \} catch \(e\) \{\} \}/.test(code), 'svApplyDom＝例外が出てもボタンの処理を付け直す');
 }
 
-console.log('== 巡回チェックの履歴＝その日の結果を選んで削除（2026-09-17 神田さん）==');
+console.log('== SVチェックの履歴＝その日の結果を選んで削除（2026-09-17 神田さん）==');
 {
   const S = '牛カツ世桜 長堀橋店';
-  const sv = {}; [3, 8, 22].forEach(no => sv[`${S}|2026-09-10|${no}`] = { v:'ok', by:'神田', t:1 }); sv[`${S}|2026-09-10|meta`] = { summary:'テスト' };
+  const sv = {}; [8, 10, 22].forEach(no => sv[`${S}|2026-09-10|${no}`] = { v:'ok', by:'神田', t:1 }); sv[`${S}|2026-09-10|meta`] = { summary:'テスト' };
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
   location.hash = '#/app/hqcheck?tab=hist&store=' + encodeURIComponent(S);
   const h = registry.app.innerHTML;
@@ -5740,11 +5740,11 @@ console.log('== A4レポート＝写真を全部載せる（2026-09-17 神田さ
 console.log('== A4レポートの共有＝作ってから押した瞬間に共有シート（2026-09-17 神田さん）＝ソースで固定 ==');
 {
   ok(/window\._svReady = \{ files, text, n: pages\.length/.test(code) && /id = 'svReadyPanel'/.test(code), 'レポートは作ってから「共有する」ボタンを出す');
-  ok(/t\.dataset\.svsharego !== undefined/.test(code) && /navigator\.share\(\{ files: r\.files, title: '世桜 巡回チェック', text: r\.text \}\)/.test(code), '共有は押した瞬間（クリックの中）に呼ぶ');
+  ok(/t\.dataset\.svsharego !== undefined/.test(code) && /navigator\.share\(\{ files: r\.files, title: '世桜 SVチェック', text: r\.text \}\)/.test(code), '共有は押した瞬間（クリックの中）に呼ぶ');
   ok(/function svOpenReady_/.test(code) && /t\.dataset\.svshareopen !== undefined/.test(code), '共有シートが使えない端末は「開いて見る」で別タブへ');
 }
 
-console.log('== 巡回チェック＝保存の失敗を黙らせない・端末は縮小版・レポートは更新（2026-09-17 神田さん）==');
+console.log('== SVチェック＝保存の失敗を黙らせない・端末は縮小版・レポートは更新（2026-09-17 神田さん）==');
 {
   ok(/const svSaveSafely_ = \(key, o, label\)/.test(code) && /r\.photos = r\.photos\.filter\(p => p && !isDataUrl\(p\)\)/.test(code), '保存に失敗したら写真を落として保存し直し、画面に知らせる');
   ok((code.match(/const key = await photoLocalPut_\(d\)/g) || []).length === 2, '端末の保存領域に写真を置かない（IndexedDBのキーだけ）＝指摘写真・基準写真');
@@ -5756,7 +5756,7 @@ console.log('== 巡回チェック＝保存の失敗を黙らせない・端末�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
-console.log('== 巡回チェックの写真＝localStorage に置かない（IndexedDB）2026-09-17 神田さん ==');
+console.log('== SVチェックの写真＝localStorage に置かない（IndexedDB）2026-09-17 神田さん ==');
 {
   ok(/indexedDB\.open\('yosakura_photos', 1\)/.test(code) && /async function photoLocalPut_/.test(code), '写真の中身は IndexedDB へ');
   ok((code.match(/const key = await photoLocalPut_\(d\)/g) || []).length === 2 && !/写真を縮小_\(d, 480\)/.test(code), '指摘写真・基準写真とも行には idb:キー だけ持つ');
@@ -7387,6 +7387,29 @@ console.log('== 2026-10-22 神田さん「食物アレルギーをカードボ�
   ok(['allergy_gyukatsu.pdf', 'allergy_unagi.pdf', 'allergy_wagyu.pdf'].every(f => fs.existsSync(new URL('../manual/' + f, import.meta.url)) && fs.statSync(new URL('../manual/' + f, import.meta.url)).size > 100000), 'アレルギー表のPDF3本が manual/ に実在する（各100KB超）');
   ok(/ALLERGY_TABLES = \{[\s\S]*?gyukatsu: \{ pdf:'allergy_gyukatsu\.pdf', id:'1fkax360lOtD15t1DibYCzpNBJ_cfZBOTMu_az5-lq5c', d:'2026-10-05' \}/.test(code), 'ソース＝牛カツは 10/5 の新しいスライド（9行）の方を元にしている');
   ok(/html\[data-theme="pb"\] \.pb-chips--home \{ grid-template-columns: 1fr 1fr; \}/.test(fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8')), 'CSS＝ホームのカード4枚は2列（3列だと「食物アレルギー」がはみ出す）');
+}
+
+console.log('== 2026-10-22 神田さん「本部管理画面で35項目をアプリでSVチェック・結果をPDFでLINEへ・改善点の写真も複数」＝項目を出来栄え基準35項目に ==');
+{
+  const seedAuth = (uid, role) => run(() => { setLS(role, 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid, name:'神田', role, stores:['*'] })); localStorage.removeItem('yosakura_sv_sel'); localStorage.removeItem('yosakura_demo_svcheck'); });
+  seedAuth('kanda', 'hq'); location.hash = '#/home?tab=hq'; let h = registry.app.innerHTML;
+  ok(/<button class="pb-strip" data-open="hqcheck"[^>]*><img[^>]*><span><b>SVチェック（出来栄え基準 35項目）<\/b>店を選んで ○×・写真・メモ → 結果をPDFでLINEへ<\/span>/.test(h), '本部タブ（案B）に「SVチェック（出来栄え基準 35項目）」の入口がある');
+  location.hash = '#/app/hqcheck?date=2026-10-22&store=' + encodeURIComponent('牛カツ世桜 長堀橋店'); h = registry.app.innerHTML;
+  const tabs = [...new Set((h.match(/data-vctab="([A-H])"/g) || []).map(x => x.slice(-2, -1)))];
+  ok(tabs.join('') === 'ABCDEFGH' && /data-vctab="A"[^>]*>A 店頭・表示<small>0\/3<\/small>/.test(h) && /data-vctab="F"[^>]*>F キッチン衛生<small>0\/7<\/small>/.test(h), 'タブ＝A〜Hの8分類（出来栄え基準のまま）・件数つき（A 3・F 7）');
+  ok(/data-svno="8"/.test(h) && /data-svno="10"/.test(h) && /data-svno="11"/.test(h) && !/data-svno="3"/.test(h), 'A＝8・10・11の3項目（旧No.3 暖簾は無い）');
+  ok(/<div class="svit-p">開店時と日没後に、看板・A看板・行灯の点灯を外から確認。<\/div>/.test(h) && /<ul class="svit-c"><li>□ 営業中は看板が点いている<\/li><li>□ 切れた電球・消えた文字が無い<\/li><li>□ A看板が決めた位置にある<\/li><\/ul>/.test(h), '各項目に確認ポイントと評価基準3つ（店に渡したPDFと同じ文）');
+  ok(/本部専用：SVチェック（店舗の出来栄え基準 35項目/.test(h) && /写真は項目ごとに6枚まで/.test(h), '説明文＝35項目・写真は項目ごとに6枚まで');
+  location.hash = '#/app/hqcheck?tab=C'; h = registry.app.innerHTML;
+  ok(/data-svno="95"/.test(h) && /svit-tag svit-hear">聞く＝スタッフに確認</.test(h) && (h.match(/svit-hear/g) || []).length === 2, 'C ご注文＝No.95（アレルギー表）と32（世桜BOOK）に「聞く＝スタッフに確認」の印');
+  const hearN = (code.match(/hear:true/g) || []).length;
+  ok(hearN === 5 && /no:95,[^\n]*hear:true/.test(code) && /no:32,[^\n]*hear:true/.test(code) && /no:111,[^\n]*hear:true/.test(code) && /no:99,[^\n]*hear:true/.test(code) && /no:101,[^\n]*hear:true/.test(code), 'ソース＝聞く印は5項目（95・32・111・99・101＝PDFの10・12・33・34・35）');
+  location.hash = '#/app/hqcheck?tab=D'; h = registry.app.innerHTML;
+  ok(/id="sv_menu"/.test(h) && /id="sv_orderAt"/.test(h) && /data-svno="28"/.test(h) && /data-svno="93"/.test(h), 'D 提供・実食＝実食メニュー／注文→提供時刻の欄＋No.28・93');
+  ok(/band\('35項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）'\)/.test(code) && /項目＝店舗の出来栄え基準 35項目（2026-10-22）/.test(code), 'PDFレポート＝35項目の結果一覧（A〜H順）と注記');
+  ok(/const base = `世桜_SVチェック_\$\{svState\.store\}_\$\{svState\.date\}`/.test(code) && /title: '世桜 SVチェック'/.test(code), 'PDFのファイル名・共有の題＝SVチェック');
+  ok(/phs\.length < 6 \? `<label class="svph-add">/.test(code), '改善点の写真＝どの項目にも6枚まで貼れる（そのまま）');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); });
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);

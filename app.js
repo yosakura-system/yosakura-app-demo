@@ -130,13 +130,13 @@
       vi: 'Ứng dụng đã tải lại khi chọn ảnh (bộ nhớ máy). Vui lòng chọn lại ảnh.'
     })), 600);
   }
-  /* ★巡回チェックで「メモにカーソルがある間は作り直さない」保護＝iPhoneではボタンを押してもカーソルが外れない（ボタンにフォーカスが移らない）ため、
+  /* ★SVチェックで「メモにカーソルがある間は作り直さない」保護＝iPhoneではボタンを押してもカーソルが外れない（ボタンにフォーカスが移らない）ため、
      タブや軸を押しても描き直されず「固まった」ように見えた（2026-09-17 神田さん実機）。→ 保護は直近3秒以内に入力があったときだけ */
   let 最後の入力時刻 = 0;
   try { document.addEventListener('input', () => { 最後の入力時刻 = Date.now(); }, true); document.addEventListener('keydown', () => { 最後の入力時刻 = Date.now(); }, true); } catch (e) {}
   function 画面を作り直してよい_() {
     if (写真の操作中) return false;
-    try { const ae = document.activeElement; if (ae && ae.tagName && /^(TEXTAREA|INPUT)$/.test(ae.tagName) && String(location.hash || '').indexOf('/app/hqcheck') !== -1 && (Date.now() - 最後の入力時刻) < 3000) return false; } catch (e) {} // 巡回チェックでメモ入力中は描き直さない
+    try { const ae = document.activeElement; if (ae && ae.tagName && /^(TEXTAREA|INPUT)$/.test(ae.tagName) && String(location.hash || '').indexOf('/app/hqcheck') !== -1 && (Date.now() - 最後の入力時刻) < 3000) return false; } catch (e) {} // SVチェックでメモ入力中は描き直さない
     try {
       const t = document.getElementById('photoThumbs');
       if (t && t.querySelector && t.querySelector('.pt')) return false; // 貼った写真がある＝消さない
@@ -425,8 +425,8 @@
     /* ★2026-08-28 構築MTG決定＝名称は「店舗運営チェック」。本部用と加盟店用で項目を分けず、
        アルバイトを含む全スタッフが操作・閲覧できる（実施者の記録で本部チェックかセルフかを判別する）。 */
     { id:'hqcheck', group:'storeops', icon:'check', roles:['staff','manager','owner','hq'],
-      name:{ ja:'店舗運営チェック', en:'Store Operations Check', vi:'Kiểm tra vận hành' },
-      desc:{ ja:'巡回チェック（本部）・見本と原本', en:'Store visit check (HQ) / sample & master', vi:'Kiểm tra khi đi cửa hàng (HQ)' } },
+      name:{ ja:'SVチェック', en:'SV check', vi:'Kiểm tra SV' },   // 2026-10-22 神田さんの言葉に（出来栄え基準 35項目）
+      desc:{ ja:'店舗の出来栄え基準 35項目を ○×・写真・メモで。結果はPDFでLINEへ', en:'35 store standards: mark, photos, notes. Share the PDF.', vi:'35 tiêu chuẩn: chấm, ảnh, ghi chú. Chia sẻ PDF.' } },
     { id:'guide', group:'other', icon:'play', roles:['staff','manager','owner','hq'],
       name:{ ja:'使い方ガイド', en:'How to use', vi:'Hướng dẫn' },
       desc:{ ja:'このアプリの使い方（1分）', en:'Quick app guide (1 min)', vi:'Hướng dẫn nhanh (1 phút)' } },
@@ -2280,6 +2280,7 @@
     return `<main class="screen pb-home pb-hq">
       <div class="pb-sec"><h2>${L({ ja:'店舗', en:'Stores', vi:'Cửa hàng' })}</h2><small>${L({ ja:'押すとその店の画面（確認用）・戻るときは上の「本部」', en:'Tap to open the store view; “HQ” above to return', vi:'Chạm để xem CH; “HQ” ở trên để quay lại' })}</small></div>
       <div class="pb-hqstores">${cards}</div>
+      <button class="pb-strip" data-open="hqcheck" style="margin-top:10px">${pbImg_('miru_manual', 'pb-th pb-th--s')}<span><b>${L({ ja:'SVチェック（出来栄え基準 35項目）', en:'SV check (35 items)', vi:'Kiểm tra SV (35 mục)' })}</b>${L({ ja:'店を選んで ○×・写真・メモ → 結果をPDFでLINEへ', en:'Pick a store, mark, add photos, share the PDF', vi:'Chọn cửa hàng, chấm, thêm ảnh, chia sẻ PDF' })}</span>${svg('chev')}</button>
       <div class="pb-sec"><h2>${L({ ja:'全店 きょう', en:'All stores today', vi:'Tất cả hôm nay' })}</h2><small>${L({ ja:'●＝提出済み ・ 赤＝締切超過', en:'● done, red = overdue', vi:'● xong, đỏ = trễ' })}</small></div>
       <div class="pb-card"><div class="pb-hqgrid"><span></span>${COLS.map(([h]) => `<span class="h">${esc(h)}</span>`).join('')}<span class="h">${L({ ja:'レジ締め', en:'Register', vi:'Két' })}</span>${grid}</div><div class="pb-hqnote">${L({ ja:'点線＝その店では対象外の項目、またはUSENレジが無い店。レジ締めの赤＝現金の過不足あり。定休日は全部点線', en:'Dashed = not applicable or no USEN register. Red register = cash difference.', vi:'Nét đứt = không áp dụng. Đỏ = lệch tiền mặt.' })}</div></div>
       <div class="pb-sec"><h2>${L({ ja:'レジ締め', en:'Register close', vi:'Chốt két' })}</h2><small>${L({ ja:`USENから毎朝 ・ ${regi.length}店`, en:`From USEN each morning, ${regi.length} stores`, vi:`Từ USEN mỗi sáng, ${regi.length} CH` })}</small></div>
@@ -5204,70 +5205,64 @@
      ★アプリの中に採点画面は作り込まない（9/1前に新機能を足さない）。
      ★URLはコードに書かない＝「資料リンクの管理」（大項目＝本部チェック）で本部が登録する。
        登録すれば再配信なしでここに並ぶ（サーベイの集約シートと同じ作り）。 */
-  /* ---------- 巡回チェック（本部・2026-09-16） ----------
+  /* ---------- SVチェック（本部・2026-09-16） ----------
      ★神田さんのご要望＝紙でなくアプリで。2人が同じ画面を見ながら別々の端末で入力し、1つの結果（レポート）にしてLINEで共有する。
      項目＝正本「店舗運営管理（確認項目）」111項目からの抜粋39（番号・配点は原本のまま＝新しいシートを立てない）
           ＋お客様体験（満足・不満足マップ71接点）から5接点（配点なし・参考）。
      保存＝kind:svcheck。1項目1行（item=店舗|日付|No・最新が正）＝2人が別の項目を同時に入れても上書きし合わない。
           store は「本部」＝店舗端末には返さない（本部の評価を店舗iPadへ流さない）。90日削除の対象外。
      採点方式は本部で未確定＝○×＋メモを正とし、点数は「参考スコア」（対象外を除いた配点の合計が分母）。 */
+  /* ★2026-10-22 神田さん「本部管理画面で35項目をアプリでSVチェック」＝項目を「店舗の出来栄え基準 35項目」（05/_出来栄え基準_項目.py と同じ・店へ事前共有したPDFと同じ番号順）に差し替え。
+     段階＝A〜H の8分類（出来栄え基準のまま）。no・pt＝原本のNo・配点のまま（保存キー 店舗|日付|No は変わらない＝過去の結果もそのまま読める）。
+     p＝確認ポイント／c＝評価基準（全部できていれば ○）／hear＝スタッフに聞いて確かめる項目（神田さん 10/22＝10・12・33・34・35）。
+     man／mat／std は旧44項目から No で引き継ぎ（新しい5項目＝10・11・26・95・93 は近いマニュアルを付けた）。 */
   const SV_PHASES = [
-    ['gaikan',   { ja:'外観',        en:'Outside',   vi:'Bên ngoài' }],
-    ['deai',     { ja:'お出迎え',    en:'Welcome',   vi:'Đón khách' }],
-    ['order',    { ja:'ご注文',      en:'Order',     vi:'Gọi món' }],
-    ['jisshoku', { ja:'実食',        en:'Tasting',   vi:'Thử món' }],
-    ['hall',     { ja:'お食事中',    en:'Dining',    vi:'Dùng bữa' }],
-    ['kaikei',   { ja:'会計・見送り', en:'Checkout',  vi:'Thanh toán' }],
-    ['kitchen',  { ja:'キッチン',    en:'Kitchen',   vi:'Bếp' }],
-    ['anzen',    { ja:'安全',        en:'Safety',    vi:'An toàn' }],
-    ['shikumi',  { ja:'人・仕組み',  en:'People',    vi:'Con người' }],
+    ['A', { ja:'A 店頭・表示', en:"A Front & signage", vi:"A Mặt tiền & biển" }],
+    ['B', { ja:'B お出迎え・お見送り', en:"B Welcome & send-off", vi:"B Đón & tiễn" }],
+    ['C', { ja:'C ご注文', en:"C Order", vi:"C Gọi món" }],
+    ['D', { ja:'D 提供・実食', en:"D Serving & tasting", vi:"D Phục vụ & thử món" }],
+    ['E', { ja:'E ホール・清潔', en:"E Hall & cleanliness", vi:"E Sảnh & sạch sẽ" }],
+    ['F', { ja:'F キッチン衛生', en:"F Kitchen hygiene", vi:"F Vệ sinh bếp" }],
+    ['G', { ja:'G 安全', en:"G Safety", vi:"G An toàn" }],
+    ['H', { ja:'H 秘密保持', en:"H Confidentiality", vi:"H Bảo mật" }],
   ];
   /* no＝原本のNo（数字）／'T'付き＝お客様体験の接点No（配点なし）。pt＝原本の配点。tag＝該当店のみ等 */
   const SV_ITEMS = [
-    { no:3,   pt:1, ph:'gaikan',   t:'暖簾が汚くないか', man:['mn049'], mat:[{ t:'店舗の素材（07.世桜×MOTON）', u:'https://drive.google.com/drive/folders/1CtU_lfi_VXqXv4uAAIFnGsadJrx4GnuK' }] },
-    { no:8,   pt:2, ph:'gaikan',   t:'看板の電気がついているか', man:['mn049'], mat:[{ t:'牛カツ長堀 A看板', u:'https://drive.google.com/drive/folders/1kFyeFubhshUB96NS20VOPpGLd9lfddkX' }, { t:'店舗の素材（07.世桜×MOTON）', u:'https://drive.google.com/drive/folders/1CtU_lfi_VXqXv4uAAIFnGsadJrx4GnuK' }] },
-    { no:'T9',  pt:0, ph:'deai',   t:'最初の一声「いらっしゃいませ」（体験）', tag:'体験', man:['mn018','mn020'] },
-    { no:22,  pt:2, ph:'deai',     t:'お客様の顔を見て明るく感じのいい接客ができているか', man:['mn016','mn018'] },
-    { no:23,  pt:2, ph:'deai',     t:'挨拶・声掛けができているか', man:['mn020','mn018'] },
-    { no:30,  pt:2, ph:'order',    t:'メニュー説明・おすすめの提案はしているか', man:['mn018','mn022'], mat:[{ t:'メニュー表（牛カツ長堀）', u:'https://drive.google.com/drive/folders/1mhvHAfD8quuuarV8pED-PPQTW8CxJSdg' }] },
-    { no:'T23', pt:0, ph:'order',  t:'アレルギーの確認（体験）', tag:'体験', man:['mn018'] },
-    { no:'T24', pt:0, ph:'order',  t:'オーダーの復唱（体験）', tag:'体験', man:['mn018'] },
-    { no:31,  pt:2, ph:'order',    t:'食べ方POPをお食事提供までに渡せているか', tag:'世桜らしさ', man:['mn018'], mat:[{ t:'食べ方POP', u:'https://drive.google.com/drive/folders/1JFmjyINjhvKXaJ7vFq6SBXU4kxtBnA9W' }] },
-    { no:32,  pt:2, ph:'order',    t:'世桜BOOKを状況に応じてお客様に渡せているか', tag:'世桜らしさ', man:['mn009','mn118'], mat:[{ t:'世桜BOOK', u:'https://drive.google.com/drive/folders/10gV8ZUqVTlCsQnWZUsTbdNAaZY9-sfYn' }] },
-    { no:28,  pt:2, ph:'jisshoku', t:'商品注文してから何分で提供されているか（アラカルト10分以内→○／業態により微調整あり）', tag:'時刻を記入', man:['mn018'], std:'アラカルト10分以内→○／10分以上→×（コースは〇分＝原本で未記入）※業態により微調整あり' },
-    { no:47,  pt:3, ph:'jisshoku', t:'料理の温度と状態、味は問題ないか', man:['mn125','mn124','mn126'], mat:[{ t:'料理写真（業態別）', u:'https://drive.google.com/drive/folders/1-sPEoe8m-Z0eyOudYpsMdGUzbxFmacFz' }, { t:'牛カツ_写真', u:'https://drive.google.com/drive/folders/1z8tLLwbJFVSRguRu7i-CFlWrMw2semcb' }] },
-    { no:85,  pt:5, ph:'jisshoku', t:'食材の配置・盛付けがマニュアルの写真・図と一致している', man:['mn125','mn124','mn126'], mat:[{ t:'料理写真（業態別）', u:'https://drive.google.com/drive/folders/1-sPEoe8m-Z0eyOudYpsMdGUzbxFmacFz' }, { t:'牛カツ_写真', u:'https://drive.google.com/drive/folders/1z8tLLwbJFVSRguRu7i-CFlWrMw2semcb' }] },
-    { no:39,  pt:2, ph:'jisshoku', t:'配膳前に盛り付けや配置の確認ができているか（wチェック）', man:['mn018'] },
-    { no:43,  pt:2, ph:'jisshoku', t:'商品の説明がされているか（配膳時）', man:['mn022'], mat:[{ t:'メニュー表（牛カツ長堀）', u:'https://drive.google.com/drive/folders/1mhvHAfD8quuuarV8pED-PPQTW8CxJSdg' }] },
-    { no:36,  pt:1, ph:'jisshoku', t:'牛カツ着火剤の確認ができるか', tag:'牛カツ店のみ', man:['mn125'], mat:[{ t:'牛カツ_写真', u:'https://drive.google.com/drive/folders/1z8tLLwbJFVSRguRu7i-CFlWrMw2semcb' }] },
-    { no:41,  pt:2, ph:'jisshoku', t:'カットするスタッフのレベルは合格レベルか（演出）', tag:'該当店のみ', man:['mn018'] },
-    { no:42,  pt:2, ph:'jisshoku', t:'撮影のお声がけができているか', tag:'世桜らしさ', man:['mn059','mn116'] },
-    { no:13,  pt:2, ph:'hall',     t:'テーブル・椅子・床に汚れやゴミが放置されていないか', man:['mn047'], mat:[{ t:'卓上POP（牛カツ長堀）', u:'https://drive.google.com/drive/folders/1-fAwHX-SWxedo6q3GcNg9tTaDfQe2l-V' }] },
-    { no:16,  pt:3, ph:'hall',     t:'トイレの便器に汚れはないか', man:['mn047','mn109'] },
-    { no:18,  pt:3, ph:'hall',     t:'トイレ裏のコードに埃が溜まっていないか', man:['mn047','mn109'] },
-    { no:29,  pt:3, ph:'hall',     t:'事前ケア・中間ケアは実施されているか', man:['mn023'] },
-    { no:48,  pt:3, ph:'hall',     t:'お冷が半分になってから即時対応できているか（3分以上→×）', man:['mn018'], std:'半分になってから即時対応→○／3分以上→×' },
-    { no:'T42', pt:0, ph:'hall',   t:'感想のヒアリング（体験）', tag:'体験', man:['mn016'] },
-    { no:50,  pt:5, ph:'kaikei',   t:'サプライズ＝マニュアル通りの流れで行い、全員で盛り上がれているか', tag:'該当時のみ', man:['mn027','mn028'], mat:[{ t:'BDカード', u:'https://drive.google.com/drive/folders/1zvicUe3stEI9dawLFJ_oXXoxQS9ZUJLG' }] },
-    { no:51,  pt:5, ph:'kaikei',   t:'サプライズ＝適切な演出ができているか（ライト等のタイミング）', tag:'該当時のみ', man:['mn027','mn028'], mat:[{ t:'BDカード', u:'https://drive.google.com/drive/folders/1zvicUe3stEI9dawLFJ_oXXoxQS9ZUJLG' }] },
-    { no:49,  pt:2, ph:'kaikei',   t:'チェキの提供ができているか', tag:'導入店舗のみ', man:['mn116','mn117'] },
-    { no:'T53', pt:0, ph:'kaikei', t:'Google口コミのご案内（体験）', tag:'体験', man:['mn030'], mat:[{ t:'QRコード', u:'https://drive.google.com/drive/folders/1jA6FqCytggoSw2K2Cefs77C-pNSiyZDY' }, { t:'口コミPOP（牛カツ長堀）', u:'https://drive.google.com/drive/folders/1ddPGvAViyuDpNsgn1RSms7wrA1MSUDql' }] },
-    { no:56,  pt:5, ph:'kaikei',   t:'お帰りの挨拶ができているか（外までお見送り）', man:['mn018'] },
-    { no:70,  pt:3, ph:'kitchen',  t:'ダスターは用途に分けて使用しているか', man:['mn039','mn047'] },
-    { no:71,  pt:3, ph:'kitchen',  t:'不衛生な行動がないか（鼻・髪・スマホに触れた後そのまま作業など）', man:['mn036','mn035'] },
-    { no:87,  pt:3, ph:'kitchen',  t:'冷凍・冷蔵庫の庫内温度は適切か（冷蔵5℃以下・冷凍−18℃以下）', man:['mn038'], std:'冷蔵5℃以下・冷凍−18℃以下（原本1シート目は表記が入れ替わっている＝本部へお伝え済み）' },
-    { no:88,  pt:3, ph:'kitchen',  t:'食品の賞味期限管理として期限シールを貼れているか', man:['mn038','mn093'] },
-    { no:91,  pt:3, ph:'kitchen',  t:'賞味期限切れの食材がないか', man:['mn038'] },
-    { no:92,  pt:3, ph:'kitchen',  t:'破損した機材や保存容器・什器などはないか', man:['mn046'] },
-    { no:94,  pt:3, ph:'kitchen',  t:'オーダー票と相違がないか（配膳前）', man:['mn096'] },
-    { no:107, pt:3, ph:'anzen',    t:'火器・刃物の扱いが適切か', man:['mn060'] },
-    { no:108, pt:3, ph:'anzen',    t:'床の水・油による転倒リスクがないか', man:['mn047'] },
-    { no:111, pt:3, ph:'anzen',    t:'消火器の期限が切れていないか', man:['mn060'] },
-    { no:62,  pt:2, ph:'shikumi',  t:'制服の着こなしが規定通りであるか', man:['mn010','mn091'], std:'インナーは白または黒の無地（原本の文はここで切れている）' },
-    { no:99,  pt:3, ph:'shikumi',  t:'外部への情報漏えい防止（調理方法などを口外しない）', man:['mn011'] },
-    { no:101, pt:3, ph:'shikumi',  t:'秘密保持の契約をしているスタッフのみを雇用しているか（日雇い含む）', tag:'オーナー確認', man:['mn068'] },
-    { no:105, pt:2, ph:'shikumi',  t:'桜チェックリストが活用されているか', tag:'世桜の仕組み', man:['mn108'], std:'桜チェックリストを活用しているか（13-2 桜チェックシート）' },
-    { no:102, pt:2, ph:'shikumi',  t:'定期清掃リストを活用されているか', man:['mn109','mn110','mn111'], std:'定期清掃リストを活用し、実施できているか（清掃箇所確認）' },
+    { no:8, pt:2, ph:'A', t:"看板の電気がついているか", p:"開店時と日没後に、看板・A看板・行灯の点灯を外から確認。", c:["営業中は看板が点いている", "切れた電球・消えた文字が無い", "A看板が決めた位置にある"], man:['mn049'], mat:[{ t:'牛カツ長堀 A看板', u:'https://drive.google.com/drive/folders/1kFyeFubhshUB96NS20VOPpGLd9lfddkX' }, { t:'店舗の素材（07.世桜×MOTON）', u:'https://drive.google.com/drive/folders/1CtU_lfi_VXqXv4uAAIFnGsadJrx4GnuK' }] },
+    { no:10, pt:2, ph:'A', t:"金額やメニュー表示に間違いがないか", p:"メニュー表・店頭の表示・POPの金額と、レジの金額を照らす。", c:["税込の金額が書いてある", "メニュー表とレジの金額が同じ", "終了した商品・古い金額のPOPが残っていない"], man:['mn054','mn031'] },
+    { no:11, pt:2, ph:'A', t:"本部指定のもの以外の販促物を使っていないか", p:"店内・店頭のPOP・のぼり・掲示物を1つずつ見る。", c:["本部が配ったもの以外の販促物が無い", "自作のPOPを出すときは本部に確認している", "汚れ・破れたPOPを出していない"], man:['mn031'] },
+    { no:'T9', pt:0, ph:'B', t:"最初の一声「いらっしゃいませ」", p:"お客様が入口に立った瞬間に、誰かが顔を向けて声を出せているか（本部が実際に入店して体験）。", c:["入店から3秒以内に声が出る", "顔を上げて目を合わせる", "作業中でも「いらっしゃいませ」だけは全員が言う"], tag:'体験', man:['mn018','mn020'] },
+    { no:22, pt:2, ph:'B', t:"お客様の顔を見て、明るく感じのいい接客ができているか", p:"案内・注文・配膳の各場面で、お客様の目を見て話しているか。", c:["目線を合わせて話している", "表情が明るい（無表情で声だけになっていない）", "お客様の反応を見て間を取っている"], man:['mn016','mn018'] },
+    { no:23, pt:2, ph:'B', t:"挨拶・声掛けができているか", p:"すれ違い・通路・退店時の声掛けを、営業中に観察。", c:["すれ違うときに会釈か一言がある", "困っている様子のお客様に自分から声を掛けている", "「はい、ただいま」の返事が出る"], man:['mn020','mn018'] },
+    { no:26, pt:2, ph:'B', t:"ご案内時の声かけ・予約確認・人数確認ができているか", p:"入口で予約の有無・人数を確認してから席へ案内しているか。", c:["「ご予約はございますか」と最初に聞く", "人数を確認してから席を決める", "待ち時間があるときは見通しを伝える"], man:['mn018'] },
+    { no:56, pt:5, ph:'B', t:"お帰りの挨拶ができているか（外までお見送り）", p:"退店時に店頭まで出て見送っているか。", c:["席を立ったら片付けより先にお見送り", "できる限り店頭まで出る", "お客様の方を向いて「ありがとうございました」"], man:['mn018'] },
+    { no:30, pt:2, ph:'C', t:"メニュー説明・おすすめの提案はしているか", p:"初めてのお客様に、おすすめと食べ方を一言添えているか。", c:["おすすめの理由を1つ添えている", "量・価格・追加料金を先に伝えている", "断られたおすすめを繰り返さない"], man:['mn018','mn022'], mat:[{ t:'メニュー表（牛カツ長堀）', u:'https://drive.google.com/drive/folders/1mhvHAfD8quuuarV8pED-PPQTW8CxJSdg' }] },
+    { no:95, pt:1, ph:'C', t:"アレルギー表をすぐiPadで見せられるか", p:"「アレルギーは？」と聞かれたときに、何秒で表を出せるか。", c:["アレルギー表の置き場所（iPad・紙）を全員が知っている", "聞かれて30秒以内に見せられる", "分からないことは推測で答えず、責任者・キッチンに確認する"], hear:true, man:['mn018','mn017'] },
+    { no:31, pt:2, ph:'C', t:"食べ方POPをお食事提供までに渡せているか", p:"提供前に食べ方POPがテーブルにあるか。", c:["料理が届く前にPOPがテーブルにある", "POPが汚れていない・破れていない", "多言語の案内が必要なお客様には該当の面を向ける"], tag:'世桜らしさ', man:['mn018'], mat:[{ t:'食べ方POP', u:'https://drive.google.com/drive/folders/1JFmjyINjhvKXaJ7vFq6SBXU4kxtBnA9W' }] },
+    { no:32, pt:2, ph:'C', t:"世桜BOOKを状況に応じてお客様に渡せているか", p:"コース・記念日など、渡す場面で渡せているか。", c:["渡す場面が店で決まっている", "渡すときに一言添えている", "在庫が切れていない"], tag:'世桜らしさ', hear:true, man:['mn009','mn118'], mat:[{ t:'世桜BOOK', u:'https://drive.google.com/drive/folders/10gV8ZUqVTlCsQnWZUsTbdNAaZY9-sfYn' }] },
+    { no:28, pt:2, ph:'D', t:"注文から何分で提供されているか", p:"本部が実際に注文し、時刻を記録する。", c:["アラカルトは10分以内（業態により調整あり）", "遅れるときは聞かれる前に一言ある", "コースは店で決めた間隔で出ている"], tag:'時刻を記入', man:['mn018'], std:'アラカルト10分以内→○／10分以上→×（コースは〇分＝原本で未記入）※業態により微調整あり' },
+    { no:47, pt:3, ph:'D', t:"料理の温度と状態、味は問題ないか", p:"本部が実食して確認。", c:["温かいものが温かい・冷たいものが冷たい", "焼き加減・揚げ加減が合格の写真と同じ", "味が普段と違わない"], man:['mn125','mn124','mn126'], mat:[{ t:'料理写真（業態別）', u:'https://drive.google.com/drive/folders/1-sPEoe8m-Z0eyOudYpsMdGUzbxFmacFz' }, { t:'牛カツ_写真', u:'https://drive.google.com/drive/folders/1z8tLLwbJFVSRguRu7i-CFlWrMw2semcb' }] },
+    { no:85, pt:5, ph:'D', t:"食材の配置・盛付けが、マニュアルの写真・図と一致している", p:"提供前に盛り付けを完成写真と見比べる。", c:["完成写真と同じ配置・同じ量", "器のふちに汚れが無い", "付け合わせ・薬味が揃っている"], man:['mn125','mn124','mn126'], mat:[{ t:'料理写真（業態別）', u:'https://drive.google.com/drive/folders/1-sPEoe8m-Z0eyOudYpsMdGUzbxFmacFz' }, { t:'牛カツ_写真', u:'https://drive.google.com/drive/folders/1z8tLLwbJFVSRguRu7i-CFlWrMw2semcb' }] },
+    { no:93, pt:2, ph:'D', t:"汚れや異物混入などがないか（配膳前）", p:"出す前に器・料理の表面・ふちを見ているか。", c:["器のふち・裏に汚れが無い", "髪の毛・包装の破片などが無い", "気づいたら出さずにキッチンへ戻す"], man:['mn018','mn096'] },
+    { no:43, pt:2, ph:'D', t:"商品の説明がされているか（配膳時）", p:"置くときに料理名と食べ方を一言添えているか。", c:["「お待たせいたしました。〇〇でございます」と料理名を言う", "熱い器は注意を添える", "食べ方は短く（長い説明で食事を止めない）"], man:['mn022'], mat:[{ t:'メニュー表（牛カツ長堀）', u:'https://drive.google.com/drive/folders/1mhvHAfD8quuuarV8pED-PPQTW8CxJSdg' }] },
+    { no:42, pt:2, ph:'D', t:"撮影のお声がけができているか", p:"料理が届いたあと、写真を撮りたそうなお客様に声を掛けているか。", c:["スマホを構えたお客様に「お撮りしましょうか」と一言", "撮影のあとに口コミのご案内につなげている（富士山2店）"], tag:'世桜らしさ', man:['mn059','mn116'] },
+    { no:13, pt:2, ph:'E', t:"テーブル・椅子・床に汚れやゴミが放置されていないか", p:"お客様の目線の高さで、席と床を見る。", c:["退店後の卓が5分以内に整う", "床にゴミ・食べこぼしが無い", "椅子の座面・背もたれに汚れが無い"], man:['mn047'], mat:[{ t:'卓上POP（牛カツ長堀）', u:'https://drive.google.com/drive/folders/1-fAwHX-SWxedo6q3GcNg9tTaDfQe2l-V' }] },
+    { no:16, pt:3, ph:'E', t:"トイレの便器に汚れはないか", p:"営業中に1回以上、便器・床・手洗いを確認（桜チェック）。", c:["便器の内側・ふちに汚れが無い", "床が乾いている", "紙・石けんが切れていない"], man:['mn047','mn109'] },
+    { no:18, pt:3, ph:'E', t:"トイレ裏のコードに埃が溜まっていないか", p:"便座のコード・コンセントまわりを見る。", c:["コード・コンセントに埃が無い", "水がかかる位置にコードが無い"], man:['mn047','mn109'] },
+    { no:29, pt:3, ph:'E', t:"事前ケア・中間ケアは実施されているか", p:"料理が出る前と途中で、卓に声を掛けているか。", c:["提供前に「お待たせしております」など一言", "お食事の途中で空いた皿・飲み物を見ている", "感想を1回は伺っている"], man:['mn023'] },
+    { no:48, pt:3, ph:'E', t:"お冷が半分になってから即時対応できているか", p:"グラスの残量を見て動けているか。", c:["半分になったら声を掛ける（3分以上放置は×）", "お代わりを聞くときにお客様の会話を遮らない"], man:['mn018'], std:'半分になってから即時対応→○／3分以上→×' },
+    { no:70, pt:3, ph:'F', t:"ダスターは用途に分けて使用しているか", p:"色・置き場で用途が分かれているか。", c:["用途ごとに色か置き場が分かれている", "床用と卓用が混ざっていない", "洗って干す場所が決まっている"], man:['mn039','mn047'] },
+    { no:71, pt:3, ph:'F', t:"不衛生な行動がないか", p:"髪・顔・スマホに触れた手で、そのまま食材に触れていないか。", c:["触れたら手を洗う", "調理中にスマホを触らない", "手袋の運用が決まっている"], man:['mn036','mn035'] },
+    { no:87, pt:3, ph:'F', t:"冷凍・冷蔵庫の庫内温度は適切か", p:"庫内温度計を見る。記録があるか。", c:["冷蔵 5℃以下", "冷凍 −18℃以下", "温度の記録が毎日ある（OPENチェック）"], man:['mn038'], std:'冷蔵5℃以下・冷凍−18℃以下（原本1シート目は表記が入れ替わっている＝本部へお伝え済み）' },
+    { no:88, pt:3, ph:'F', t:"食品の賞味期限管理として期限シールを貼れているか", p:"開封した容器・仕込み品にラベルがあるか。", c:["開封日・期限のラベルがある", "文字が読める", "ラベルの運用が全員同じ"], man:['mn038','mn093'] },
+    { no:91, pt:3, ph:'F', t:"賞味期限切れの食材がないか", p:"冷蔵庫・常温棚を1つずつ見る。", c:["期限切れが1つも無い", "先入先出になっている", "怪しいものは使わず責任者に聞く"], man:['mn038'] },
+    { no:92, pt:3, ph:'F', t:"破損した機材や保存容器・什器などはないか", p:"器・容器・まな板の欠け・ひびを見る。", c:["欠けた器・ひびの入った容器を使っていない", "破損したものは分けて置いてある"], man:['mn046'] },
+    { no:94, pt:3, ph:'F', t:"オーダー票と相違がないか（配膳前）", p:"配膳前に伝票と料理を照合しているか。", c:["出す前に伝票と照らす人が決まっている", "卓番・品名・数が合っている", "違いに気づいたらキッチンに戻す"], man:['mn096'] },
+    { no:107, pt:3, ph:'G', t:"火器・刃物の扱いが適切か", p:"火のそば・包丁の置き場・持ち方を見る。", c:["火のそばに燃えるものが無い", "包丁は決めた場所に刃を奥にして置く", "持って歩くときは刃を下に"], man:['mn060'] },
+    { no:108, pt:3, ph:'G', t:"床の水・油による転倒リスクがないか", p:"厨房の床・洗い場まわりを見る。", c:["床が濡れていない・油が溜まっていない", "濡れたらすぐ拭く", "マットがずれていない"], man:['mn047'] },
+    { no:111, pt:3, ph:'G', t:"消火器の期限が切れていないか", p:"消火器のラベルの期限を見る。置き場が決まっているか。", c:["期限内", "置き場が決まっていて物でふさがれていない", "全員が場所を知っている"], hear:true, man:['mn060'] },
+    { no:99, pt:3, ph:'H', t:"外部への情報漏えい防止（調理方法などを口外しない）", p:"お客様に「どうやって焼いているの？」と聞かれたときの答え方が決まっているか。", c:["調理方法・レシピを口外しない", "画面の撮影・転送・SNS投稿をしない", "聞かれたときの答え方が決まっている"], hear:true, man:['mn011'] },
+    { no:101, pt:3, ph:'H', t:"秘密保持の契約をしているスタッフのみを雇用しているか", p:"オーナーに確認（日雇い・スポットも含む）。", c:["全員分の秘密保持の書面がある", "スポットワークの人にも渡している", "退職者のアプリのログインを止めている"], tag:'オーナー確認', hear:true, man:['mn068'] },
   ];
   /* ★描画のたびに写真入りの保存データをJSON.parseし直していた（1項目ごとに何度も＝44項目×基準×スコア）→ 重い（2026-09-17 神田さん実機「めちゃくちゃ重たい」）。
      文字列が同じなら前回の結果を返す（総括表の getSk と同じ考え方） */
@@ -5283,7 +5278,7 @@
       return true;
     } catch (e) { toast(L({ ja:`保存できませんでした（${label}）。画面を更新してもう一度お試しください`, en:`Could not save (${label}).`, vi:`Không lưu được (${label}).` })); return false; }
   };
-  const saveSv = (o) => { _svC = null; svReadyClear_(); return svSaveSafely_('yosakura_demo_svcheck', o, '巡回チェック'); };
+  const saveSv = (o) => { _svC = null; svReadyClear_(); return svSaveSafely_('yosakura_demo_svcheck', o, 'SVチェック'); };
   /* 作成済みのレポートは、内容が変わったら破棄（古いレポートを共有しない） */
   function svReadyClear_() { try { window._svReady = null; const p = document.getElementById('svReadyPanel'); if (p) p.remove(); } catch (e) {} }
   /* 端末に残す写真は縮小版（480px）。送るのは元サイズ */
@@ -5430,7 +5425,7 @@
   function svReportText() {
     const sc = svScore(), m = svMeta();
     const d = svState.date.replace(/-/g, '/');
-    const L1 = [`【世桜 巡回チェック】${svState.store}　${d}（${svWd(svState.date)}）`];
+    const L1 = [`【世桜 SVチェック】${svState.store}　${d}（${svWd(svState.date)}）`];
     const who = [...new Set(SV_ITEMS.map(it => (svAns(it.no) || {}).by).filter(Boolean))].join('・');
     L1.push(`確認者：${who || '本部'}　方法：${svMethodLabel_(m.method)}` + (m.time ? `　実施：${m.time}` : '') + (m.menu ? `　実食：${m.menu}` : '') + (m.orderAt && m.servedAt ? `（注文${m.orderAt}→提供${m.servedAt}）` : ''));
     L1.push(`結果：原本項目 ○${sc.ok}／×${sc.ng}／対象外${sc.na}` + (sc.pct != null ? `　参考スコア ${sc.pct}%` : '') + (sc.expN ? `　体験 ○${sc.expOk}/${sc.expN}` : ''));
@@ -5478,8 +5473,10 @@
     const showMemo = true;   // ★メモ欄は常に出す（2026-10-06 神田さん「コメント欄が無かったらダメ」＝○×の前でも書ける。対象外でも可）
     const phs = Array.isArray(a.photos) ? a.photos.filter(Boolean) : [];
     return `<div class="svit ${a.v ? 'v-' + a.v : ''}" data-svno="${esc(String(it.no))}" data-sig="${esc(svSig(a, svStdOf(it.no)))}">
-        <div class="svit-h"><span class="svit-no">${typeof it.no === 'number' ? 'No.' + it.no : '体験'}</span>${it.pt ? `<span class="svit-pt pt${it.pt}">${it.pt}点</span>` : ''}${it.tag ? `<span class="svit-tag">${esc(it.tag)}</span>` : ''}${a.by ? `<span class="svit-by">${esc(a.by)}</span>` : ''}</div>
+        <div class="svit-h"><span class="svit-no">${typeof it.no === 'number' ? 'No.' + it.no : '体験'}</span>${it.pt ? `<span class="svit-pt pt${it.pt}">${it.pt}点</span>` : ''}${it.hear ? `<span class="svit-tag svit-hear">${esc(L({ ja:'聞く＝スタッフに確認', en:'Ask staff', vi:'Hỏi nhân viên' }))}</span>` : ''}${it.tag ? `<span class="svit-tag">${esc(it.tag)}</span>` : ''}${a.by ? `<span class="svit-by">${esc(a.by)}</span>` : ''}</div>
         <div class="svit-t">${esc(it.t)}</div>
+        ${it.p ? `<div class="svit-p">${esc(it.p)}</div>` : ''}
+        ${Array.isArray(it.c) && it.c.length ? `<ul class="svit-c">${it.c.map(x => `<li>□ ${esc(x)}</li>`).join('')}</ul>` : ''}
         <div class="svjudge">
           <button data-svv="ok" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'ok'}">○</button>
           <button data-svv="ng" data-svno="${esc(String(it.no))}" aria-pressed="${a.v === 'ng'}">×</button>
@@ -5495,7 +5492,7 @@
   }
   /* 画面を作り直さずに反映する（プツプツ対策）＝変わった項目だけ差し替え、上の進捗とタブの件数を書き換える。
      入力中の項目（メモにカーソルがある）は触らない */
-  /* 巡回チェックの項目の操作（画面を作り直さず、その項目だけ差し替える） */
+  /* SVチェックの項目の操作（画面を作り直さず、その項目だけ差し替える） */
   function bindSvItems_() {
     const byId = (id) => document.getElementById(id);
     const svPushLocal = (no, patch) => {
@@ -5648,7 +5645,7 @@
       g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, SV_PAGE_W, SV_PAGE_H);
       g.fillStyle = '#8E354A'; g.fillRect(0, 0, SV_PAGE_W, 14);
       g.fillStyle = '#6B635A'; g.font = `22px ${F}`; g.textBaseline = 'top';
-      g.fillText(`世桜 巡回チェック レポート　${svState.store}　${svState.date.replace(/-/g, '/')}（${svWd(svState.date)}）`, M, 34);
+      g.fillText(`世桜 SVチェック レポート　${svState.store}　${svState.date.replace(/-/g, '/')}（${svWd(svState.date)}）`, M, 34);
       g.fillStyle = '#D9D2C8'; g.fillRect(M, 68, W, 2);
       pages.push(c); y = 90;
     };
@@ -5661,7 +5658,7 @@
     const band = (t) => { ensure(64); y += 10; g.fillStyle = '#8E354A'; g.fillRect(M, y, W, 40); g.fillStyle = '#FFFFFF'; g.font = `bold 24px ${F}`; g.fillText(t, M + 14, y + 7); y += 52; };
     newPage();
     // 表題と要約
-    g.fillStyle = '#1A1A1A'; g.font = `bold 40px ${F}`; g.fillText('巡回チェック レポート', M, y); y += 56;
+    g.fillStyle = '#1A1A1A'; g.font = `bold 40px ${F}`; g.fillText('SVチェック レポート', M, y); y += 56;
     const who = [...new Set(SV_ITEMS.map(it => (svAns(it.no) || {}).by).filter(Boolean))].join('・') || '本部';
     text(`店舗：${svState.store}　　日付：${svState.date.replace(/-/g, '/')}（${svWd(svState.date)}）　　確認者：${who}　　方法：${svMethodLabel_(m.method)}` + (m.time ? `　　実施：${m.time}` : ''), 22, '#1A1A1A');
     if (m.menu || m.orderAt) text(`実食：${m.menu || '—'}` + (m.orderAt && m.servedAt ? `（注文 ${m.orderAt} → 提供 ${m.servedAt}）` : ''), 22, '#1A1A1A');
@@ -5677,6 +5674,19 @@
     const ngPh = SV_PHASES.map(([k, l]) => { const n = SV_ITEMS.filter(i => i.ph === k && (svAns(i.no) || {}).v === 'ng').length; return n ? `${L(l)} ${n}` : ''; }).filter(Boolean).join('　');
     g.fillText(ngPh ? `× の内訳：${ngPh}` : '× はありません', M + 330, y + 62);
     y += 136;
+    /* ★2026-10-22 35項目の結果を全部並べる（店に渡した出来栄え基準と同じ順・番号）＝○×だけ先に全体が見える */
+    band('35項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）');
+    SV_PHASES.forEach(([k, l]) => {
+      const its = SV_ITEMS.filter(i => i.ph === k); if (!its.length) return;
+      ensure(32); g.fillStyle = '#6B635A'; g.font = `bold 20px ${F}`; g.fillText(L(l), M, y); y += 28;
+      its.forEach((it, idx) => {
+        const a = svAns(it.no) || {}; const mk = a.v === 'ok' ? '○' : a.v === 'ng' ? '×' : a.v === 'na' ? '－' : '　';
+        const col = a.v === 'ng' ? '#8E354A' : a.v === 'ok' ? '#3f6b3a' : '#6B635A';
+        ensure(26); g.font = `bold 20px ${F}`; g.fillStyle = col; g.fillText(mk, M + 10, y);
+        g.font = `19px ${F}`; g.fillStyle = '#1A1A1A'; g.fillText(`${typeof it.no === 'number' ? 'No.' + it.no : '体験'}　${it.t}${it.hear ? '　（聞く）' : ''}`, M + 44, y); y += 26;
+      });
+      y += 6;
+    });
     /* 写真＝先に全部読んでおく（1枚ずつ待たない）。載せるのは ○・×・対象外を問わず写真のある項目すべて（2026-09-17 神田さん） */
     const imgCache = {};
     {
@@ -5745,7 +5755,7 @@
     // 注記・ページ番号
     pages.forEach((pc, i) => {
       const pg = pc.getContext('2d'); pg.fillStyle = '#6B635A'; pg.font = `16px ${F}`; pg.textBaseline = 'top';
-      pg.fillText('※ 番号は【世桜】店舗管理チェックシート_原本のNo。採点方式は本部で確定待ちのため点数は参考です。', M, SV_PAGE_H - 44);
+      pg.fillText('※ 番号は【世桜】店舗管理チェックシート_原本のNo。項目＝店舗の出来栄え基準 35項目（2026-10-22）。採点方式は本部で確定待ちのため点数は参考です。', M, SV_PAGE_H - 44);
       pg.textAlign = 'right'; pg.fillText(`${i + 1} / ${pages.length}`, SV_PAGE_W - M, SV_PAGE_H - 44); pg.textAlign = 'left';
     });
     return pages;
@@ -5781,7 +5791,7 @@
     toast(L({ ja:'レポートを作っています…', en:'Building the report…', vi:'Đang tạo báo cáo…' }));
     const pages = await svBuildPages_();
     const jpegs = pages.map(c => ({ w: c.width, h: c.height, bytes: svDataUrlBytes_(c.toDataURL('image/jpeg', 0.86)) }));
-    const base = `世桜_巡回チェック_${svState.store}_${svState.date}`;
+    const base = `世桜_SVチェック_${svState.store}_${svState.date}`;
     let files;
     if (asImages) files = jpegs.map((j, i) => new File([j.bytes], `${base}_${i + 1}.jpg`, { type: 'image/jpeg' }));
     else files = [new File([svJpegsToPdf_(jpegs)], `${base}.pdf`, { type: 'application/pdf' })];
@@ -5805,7 +5815,7 @@
       return;
     }
     // 画面が結果タブでないとき＝従来どおりその場で試す
-    try { if (navigator.share && (!navigator.canShare || navigator.canShare({ files }))) { await navigator.share({ files, title: '世桜 巡回チェック', text }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { if (navigator.share && (!navigator.canShare || navigator.canShare({ files }))) { await navigator.share({ files, title: '世桜 SVチェック', text }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
     svOpenReady_();
   }
   /* 作ってあるレポートを開く（共有シートが使えない端末の逃げ道） */
@@ -5830,14 +5840,14 @@
       </div>`;
     if (!isHQ) return `${NOTE({ ja:'◆ 店舗を見る基準（店舗管理チェックシート）の見本と原本への入口です。', en:'◆ Entry to the store-check sample and master sheet.', vi:'◆ Lối vào bản mẫu và bản gốc.' })}${links}`;
 
-    /* 本部＝巡回チェック本体 */
+    /* 本部＝SVチェック本体 */
     const stores = visibleStores();
     { const q = currentRoute().params; const qs = q.get('store'), qt = q.get('tab'), qa = q.get('axis'), qd = q.get('date'); if (qs && stores.includes(qs)) svState.store = qs; if (qt) svState.tab = qt; if (qd && /^\d{4}-\d{2}-\d{2}$/.test(qd)) svState.date = qd; /* ?date= で日付も指定できる（履歴からの導線・テスト用） */ if (qa && SV_AXES.some(a => a[0] === qa)) svState.axis = qa; }
     if (!svState.store || !stores.includes(svState.store)) svState.store = (getStoreSel() !== 'all' && stores.includes(getStoreSel())) ? getStoreSel() : (stores[0] || '');
     if (!svState.store && !svState.date) svSelLoad_();
     if (!svState.date) svState.date = svTodayStr();
     svSelSave_();
-    if (!svState.tab) svState.tab = SV_PHASES[0][0];
+    if (!svState.tab || (svState.tab !== 'report' && svState.tab !== 'hist' && !SV_PHASES.some(x => x[0] === svState.tab))) svState.tab = SV_PHASES[0][0];   // 旧の段階名（gaikan 等）が端末に残っていても A から
     const sc = svScore(); const m = svMeta();
     const cnt = (ph) => { const its = svItemsFor_(ph); return [its.filter(i => { const a = svAns(i.no); return a && a.v; }).length, its.length]; };
     const tabs = SV_PHASES.map(([k, l]) => { const [d, n] = cnt(k); return `<button data-vctab="${k}" class="vctab ${svState.tab === k ? 'on' : ''} ${d === n ? 'done' : ''}">${esc(L(l))}<small>${d}/${n}</small></button>`; }).join('')
@@ -5870,7 +5880,7 @@
       const idx = SV_PHASES.findIndex(p => p[0] === svState.tab);
       const prev = idx > 0 ? SV_PHASES[idx - 1][0] : null, next = idx < SV_PHASES.length - 1 ? SV_PHASES[idx + 1][0] : 'report';
       body = `
-        ${svState.tab === 'jisshoku' ? `<div class="card svmeta">
+        ${svState.tab === 'D' ? `<div class="card svmeta">
           <label class="fl">${esc(L({ ja:'実食メニュー／注文時刻→提供時刻', en:'Dish / ordered → served', vi:'Món / gọi → phục vụ' }))}</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <input id="sv_menu" type="text" placeholder="${esc(L({ ja:'例）牛カツ定食', en:'e.g. Gyukatsu set', vi:'VD: Set Gyukatsu' }))}" value="${esc(m.menu || '')}" style="flex:2;min-width:120px">
@@ -5884,7 +5894,7 @@
         </div>`;
     }
     return `
-      ${NOTE({ ja:'◆ 本部専用：巡回チェック（正本39項目の抜粋＋お客様体験5接点）。2人で別々の端末から入力しても1つの結果になります（約10秒ごとに合流）。', en:'◆ HQ only: store visit check. Two people can enter from separate devices; results merge.', vi:'◆ Chỉ HQ: kiểm tra khi đi cửa hàng. Hai người nhập từ hai máy, kết quả gộp chung.' })}
+      ${NOTE({ ja:'◆ 本部専用：SVチェック（店舗の出来栄え基準 35項目・店へ事前共有したPDFと同じ番号）。2人で別々の端末から入力しても1つの結果になります（約10秒ごとに合流）。写真は項目ごとに6枚まで。', en:'◆ HQ only: store visit check. Two people can enter from separate devices; results merge.', vi:'◆ Chỉ HQ: kiểm tra khi đi cửa hàng. Hai người nhập từ hai máy, kết quả gộp chung.' })}
       <div class="card svhead">
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <select id="sv_store" style="flex:2;min-width:150px">${stores.map(st => `<option${st === svState.store ? ' selected' : ''}>${esc(st)}</option>`).join('')}</select>
@@ -9858,18 +9868,18 @@
       if (t.dataset.svsharego !== undefined) {
         const r = window._svReady; if (!r) { toast(L({ ja:'先に「レポートを共有」でレポートを作ってください', en:'Build the report first.', vi:'Hãy tạo báo cáo trước.' })); return; }
         try {
-          if (navigator.share && (!navigator.canShare || navigator.canShare({ files: r.files }))) { navigator.share({ files: r.files, title: '世桜 巡回チェック', text: r.text }).catch(err => { if (!(err && err.name === 'AbortError')) svOpenReady_(); }); return; }
+          if (navigator.share && (!navigator.canShare || navigator.canShare({ files: r.files }))) { navigator.share({ files: r.files, title: '世桜 SVチェック', text: r.text }).catch(err => { if (!(err && err.name === 'AbortError')) svOpenReady_(); }); return; }
         } catch (err) {}
         svOpenReady_(); return;
       }
       if (t.dataset.svshareopen !== undefined) { svOpenReady_(); return; }
-      // 巡回チェックの履歴＝その日の結果を削除（2段階）2026-09-17
+      // SVチェックの履歴＝その日の結果を削除（2段階）2026-09-17
       if (t.dataset.svdel !== undefined) { svState.delArm = svState.store + '|' + t.dataset.svdel; svState.tab = 'hist'; render(true); return; }
       if (t.dataset.svdelno !== undefined) { svState.delArm = ''; render(true); return; }
       if (t.dataset.svdelgo !== undefined) { const n = svDeleteVisit_(svState.store, t.dataset.svdelgo); svState.delArm = ''; svState.tab = 'hist'; toast(L({ ja:`${n}件を消しました`, en:`Deleted ${n}`, vi:`Đã xoá ${n}` })); render(true); return; }
-      // 巡回チェック＝表示する軸（すべて／衛生・安全／お客様目線）2026-09-17
+      // SVチェック＝表示する軸（すべて／衛生・安全／お客様目線）2026-09-17
       if (t.dataset.svaxis !== undefined) { svState.axis = t.dataset.svaxis; try { document.activeElement && document.activeElement.blur && document.activeElement.blur(); } catch (err) {} 最後の入力時刻 = 0; render(true); return; }
-      // 巡回チェックの履歴＝店舗行を押す→その店の年間推移／訪問を押す→その日の結果（2026-09-17）
+      // SVチェックの履歴＝店舗行を押す→その店の年間推移／訪問を押す→その日の結果（2026-09-17）
       if (t.dataset.svhist !== undefined) { svState.store = t.dataset.svhist; svState.tab = 'hist'; 最後の入力時刻 = 0; render(true); return; }
       if (t.dataset.svopen !== undefined) { svState.date = t.dataset.svopen; svState.tab = 'report'; 最後の入力時刻 = 0; render(true); return; }
       if (t.dataset.htab !== undefined) {
@@ -11990,7 +12000,7 @@
       saveLinks(links); const t = Date.now(); lastSync = t; render(true);
       postReport({ kind:'linkset', store:'', note: JSON.stringify(links), t });
     });
-    // 巡回チェック（本部）＝1項目1行で保存。2人同時入力のため、この画面のあいだは約10秒ごとに合流する
+    // SVチェック（本部）＝1項目1行で保存。2人同時入力のため、この画面のあいだは約10秒ごとに合流する
     const svPush = (no, patch) => {
       const all = getSv(); const k = svKey(no); const a = getAuth();
       const cur = Object.assign({}, all[k] || {}, patch, { by: (a && a.name) || '本部', t: Date.now() });
@@ -12015,7 +12025,7 @@
     if (svShare) svShare.onclick = async () => {
       const text = svReportText();
       try {
-        if (navigator.share) { await navigator.share({ title: '世桜 巡回チェック', text }); return; }
+        if (navigator.share) { await navigator.share({ title: '世桜 SVチェック', text }); return; }
       } catch (e) { if (e && e.name === 'AbortError') return; }
       try { await navigator.clipboard.writeText(text); toast(L({ ja:'共有シートが使えないため、文面をコピーしました。LINEに貼り付けてください', en:'Copied. Paste into LINE.', vi:'Đã sao chép. Dán vào LINE.' })); }
       catch (e) { toast(L({ ja:'コピーできませんでした。下の文面を長押しでコピーしてください', en:'Could not copy. Long-press the text below.', vi:'Không sao chép được. Nhấn giữ văn bản bên dưới.' })); }
@@ -12278,7 +12288,7 @@
       const meta = getCkMeta(); meta[key] = { by: submitterLabel(), t };
       try { localStorage.setItem('yosakura_demo_ckmeta', JSON.stringify(meta)); } catch (e) {}
       /* ★2026-09-23 神田さん「この画面がプチプチなる」＝チェックのたびに画面全体を描き直していたのが原因
-         （本部の巡回チェックで直した「プツプツ対策」と同じ考え方）。該当の行と、上の件数・進捗バーだけを
+         （本部のSVチェックで直した「プツプツ対策」と同じ考え方）。該当の行と、上の件数・進捗バーだけを
          直接書き換える。CSSは .check.done のクラスだけで見た目が決まるので、行はクラスの付け外しで足りる。
          画面全体は再描画しないため、ちらつきが起きようがない。 */
       row.classList.toggle('done', !!day[id]);
@@ -12884,7 +12894,7 @@
           if (commtryT[kk] == null || t >= commtryT[kk]) { commtryT[kk]=t; commtryOn[kk]=!(p2 && p2.on === false); } } break;
         case 'linkset': { const p=pj(r.note); if (Array.isArray(p) && (linksetT==null || t>=linksetT)) { linkset=p; linksetT=t; } } break; // 資料リンク一覧は最新版が正
         case 'faqset': { const p=pj(r.note); if (Array.isArray(p) && (faqsetT==null || t>=faqsetT)) { faqset=p; faqsetT=t; } } break; // よくある質問（本部追加分）は最新版が正
-        // 巡回チェック（本部）＝店舗|日付|No ごとに最新が正（2人同時入力の合流）
+        // SVチェック（本部）＝店舗|日付|No ごとに最新が正（2人同時入力の合流）
         case 'svcheck': { const p=pj(r.note) || {}; const k=r.item; if (!k) break; if (svcT[k]==null || t>=svcT[k]) { if (Array.isArray(r.photos) && r.photos.length) p.photos = r.photos; svc[k]=p; svcT[k]=t; } } break;
         // 基準（あるべき姿）＝項目No ごと最新が正（本部共通）
         case 'svstd': { const p=pj(r.note) || {}; const k=String(r.item || ''); if (!k) break; if (svstdT[k]==null || t>=svstdT[k]) { if (Array.isArray(r.photos) && r.photos.length) p.photos = r.photos; svstd[k]=p; svstdT[k]=t; } } break;
@@ -12989,7 +12999,7 @@
     if (linkset !== null) set('yosakura_demo_links', linkset); // linksetが無い同期では既存の資料リンクを保持
     if (faqset !== null) set('yosakura_demo_faq', faqset); // faqsetが無い同期では既存のよくある質問を保持
     if (hqtask !== null) set('yosakura_demo_hqtask', hqtask); // hqtaskが無い同期では端末のタスクを保持（黙って消さない）
-    /* ★巡回チェック＝キーごとに「新しいほう」を残す（2026-09-16 神田さんの実機報告＝×にした直後の合流で元に戻る。
+    /* ★SVチェック＝キーごとに「新しいほう」を残す（2026-09-16 神田さんの実機報告＝×にした直後の合流で元に戻る。
        送った行がまだサーバーの応答に載っていない一瞬に、古い行で端末の入力を上書きしていた） */
     if (Object.keys(svc).length) {
       let curS = {}; try { curS = JSON.parse(localStorage.getItem('yosakura_demo_svcheck')) || {}; } catch (_) {}
@@ -13096,7 +13106,7 @@
           // ★写真の作業中は描き直さない（貼った写真と選択中の入力欄が消えるため）。取り込み自体は済んでいる
           // ★同期の描き直しでは位置を保つ（2026-08-31 ユンさんの報告＝チェックのたびに同期→再描画で先頭へ戻っていた）
           if (!画面を作り直してよい_()) { /* 何もしない＝次の自然な描き直しで追いつく */ }
-          else if (String(location.hash || '').indexOf('/app/hqcheck') !== -1) { try { svApplyDom(); } catch (e) {} }   // 巡回チェック＝項目だけ差し替え（プツプツ対策）
+          else if (String(location.hash || '').indexOf('/app/hqcheck') !== -1) { try { svApplyDom(); } catch (e) {} }   // SVチェック＝項目だけ差し替え（プツプツ対策）
           else if (String(location.hash || '').indexOf('/app/inbox') !== -1) {
             /* ★受信箱は同期で描き直さない（2026-09-08 神田さんの実機報告＝処理中に画面がプツプツ途切れる。
                対応ボタンの直後にも同期→全画面の作り直しが走り、写真が読み直されていた）。
@@ -13277,7 +13287,7 @@
   } catch (e) {}
   migrateStoreNames(); // 端末に残っている旧い店舗表記を、正式名称へ寄せ直す
   fpSlim_();           // ★v285：1食目写真（お試し）の写真の中身を localStorage から IndexedDB へ逃がす＝5MBの壁で同期が止まる原因を取り除く
-  photoLocalLoadAll_().then(() => { try { if (String(location.hash || '').indexOf('/app/hqcheck') !== -1) render(true); } catch (e) {} });   // 写真の中身（IndexedDB）を読み込んでから巡回チェックを描き直す
+  photoLocalLoadAll_().then(() => { try { if (String(location.hash || '').indexOf('/app/hqcheck') !== -1) render(true); } catch (e) {} });   // 写真の中身（IndexedDB）を読み込んでからSVチェックを描き直す
   写真選択中の再読み込みを報告_(); // ★前回、写真の選択中に再読み込みが起きていたら画面に出す（★render より先＝bindが印を読むため）
   render();
   /* ★起動時の強制同期はしない（2026-09-24 神田さん「接客から戻って触ろうとするとプチプチ」）＝render→bind の自動同期で足りる。

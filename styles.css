@@ -616,6 +616,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .svit-pt { padding: 0 6px; border-radius: 2px; background: #EFEAE2; }
 .svit-pt.pt3, .svit-pt.pt5 { background: #F6E4E8; color: #8E354A; font-weight: 700; }
 .svit-tag { padding: 0 6px; border-radius: 2px; background: #E8EDE6; color: #3f6b3a; }
+.svit-hear { background: #FBF1F2; color: #8E354A; }   /* 2026-10-22 聞く＝スタッフに確認 */
+.svit-p { font-size: 12px; color: var(--soft, #6B6459); line-height: 1.5; margin: -4px 0 4px; }
+.svit-c { list-style: none; margin: 0 0 8px; padding: 0; font-size: 12px; line-height: 1.55; color: var(--ink, #1f1f1f); }
 .svit-by { margin-left: auto; }
 .svit-t { font-size: 14px; font-weight: 600; line-height: 1.5; margin: 4px 0 8px; overflow-wrap: anywhere; }
 .svjudge { display: flex; gap: 6px; }
@@ -643,7 +646,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .svph button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 11px; border: 0; background: rgba(26,26,26,.75); color: #fff; font-size: 14px; line-height: 22px; padding: 0; }
 .svph-add { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 72px; height: 72px; border: 1.5px dashed var(--line, #DED8CE); border-radius: 6px; color: #6B6459; font-size: 11px; overflow: hidden; }
 .svph-add svg { width: 22px; height: 22px; }
-.svph-add input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; font-size: 40px; }   /* 透明な入力を重ねる＝iPhoneのホーム画面版でも開く */
+.svph-add input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; font-size: 40px; }
+html[data-theme="pb"] .svph-add input, html[data-theme="pb"] .svph-add input[type="file"] { opacity: 0 !important; background: none; border: 0; box-shadow: none; padding: 0; }   /* 2026-10-22 案Bのテーマで透明の入力欄が「ファイルを選択」のまま見えていた */   /* 透明な入力を重ねる＝iPhoneのホーム画面版でも開く */
 
 /* 巡回チェック＝基準（あるべき姿） */
 .svstd { margin-top: 8px; border: 1px dashed var(--line, #DED8CE); border-radius: 6px; padding: 4px 10px; background: #FBFAF7; }
