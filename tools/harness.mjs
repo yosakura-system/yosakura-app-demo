@@ -5860,6 +5860,34 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
   seed('manager', 'order'); location.hash = '#/app/zaiko'; const hOr = registry.app.innerHTML;
   ok(/data-zkorder="牛肉"/.test(hOr) && !/data-zkorder="油"/.test(hOr) && !/data-zkorder="パン粉"/.test(hOr), '発注リスト＝基準未満の牛肉だけ（油は発注済み・パン粉は基準どおり）');
   ok(/発注の目安 <b>1<\/b>kg/.test(hOr), '発注リストに「発注の目安」＝基準−残り（牛肉 5−4＝1kg）');
+  {
+    /* ★2026-10-22 永井さん「発注数表示もできますか？ 定数2 在庫数1→発注数3。定数を下回ったら記載の発注数を発注するフローに」 */
+    const cssO = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+    const masterO = { kind:'zaikomaster', store:S, item:S, note: JSON.stringify({ items:[{ n:'牛肉', std:5, u:'kg', ord:3 }, { n:'パン粉', std:3, u:'袋', ord:'' }, { n:'油', std:2, u:'缶' }], by:'永井' }), photos:[], t: t0 - 3600e3 };
+    const countO = { kind:'zaiko', store:S, item: dk, note: JSON.stringify({ q:{ '牛肉':4, 'パン粉':1, '油':1 }, by:'スタッフ' }), photos:[], t: t0 - 600e3 };
+    const seedO = (tab) => run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([masterO, countO])); localStorage.setItem('yosakura_zk_tab', tab); });
+    seedO('order');
+    location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hO2 = registry.app.innerHTML;
+    const rowO = (n) => (hO2.match(new RegExp('<div class="zk-row low"><div><b>' + n + '</b>[^]*?</span>')) || [''])[0];
+    ok(/発注数 <b>3<\/b>kg/.test(rowO('牛肉')) && !/発注の目安/.test(rowO('牛肉')), '発注数を入れた品目＝発注リストに「発注数 3kg」（基準−残りの1ではない）');
+    ok(/発注の目安 <b>2<\/b>袋/.test(rowO('パン粉')) && !/発注数/.test(rowO('パン粉')), '発注数が空の品目＝従来どおり「発注の目安」＝基準−残り（パン粉 3−1＝2袋）');
+    location.hash = '#/app/kyou'; const kO = registry.app.innerHTML;
+    ok(/発注が必要な品目/.test(kO) && /<b>牛肉<\/b><span>残り 4kg ／ 発注数 <b>3<\/b>kg/.test(kO), '今日出すものの赤い箱にも「発注数 3kg」');
+    seedO('in'); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hI2 = registry.app.innerHTML;
+    ok(/<b>牛肉<\/b><small>基準 5kg ／ 発注数 3kg<\/small>/.test(hI2) && /<b>パン粉<\/b><small>基準 3袋<\/small>/.test(hI2), '在庫数を入力＝品目の下に「基準 5kg ／ 発注数 3kg」（空の品目には出ない）');
+    seedO('now'); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hN2 = registry.app.innerHTML;
+    ok(/基準 5kg ／ 発注数 3kg/.test(hN2), 'いまの在庫にも「発注数」');
+    seedO('items'); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hM2 = registry.app.innerHTML;
+    ok(/<span>基準在庫<\/span><span>発注数<\/span><span>単位<\/span>/.test(hM2) && /id="zk_o0" value="3"/.test(hM2) && /id="zk_o1" value=""/.test(hM2), '品目・基準在庫タブ＝「発注数」の欄（基準在庫の右・空でもよい）');
+    doc.getElementById('zk_n0').value = '牛肉'; doc.getElementById('zk_s0').value = '5'; doc.getElementById('zk_o0').value = '4'; doc.getElementById('zk_u0').value = 'kg';
+    doc.getElementById('zk_n1').value = 'パン粉'; doc.getElementById('zk_s1').value = '3'; doc.getElementById('zk_u1').value = '袋';
+    doc.getElementById('saveZkMaster').onclick();
+    const svO = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').filter(r => r.kind === 'zaikomaster').sort((a, b) => b.t - a.t)[0];
+    const itO = svO ? JSON.parse(svO.note).items : [];
+    ok(itO.some(it => it.n === '牛肉' && it.std === 5 && it.ord === 4) && itO.some(it => it.n === 'パン粉' && it.ord === ''), '保存＝発注数が品目ごとに記録される（空は空のまま）');
+    ok(/ord: String\(\(document\.getElementById\('zk_o' \+ i\)/.test(code), 'ソース＝下書き（zkCollect_）にも発注数が入る');
+    ok(/\.zk-head span:nth-child\(3\), \.zk-edit input:nth-child\(3\) \{ flex: 0\.6;[^}]*text-align: right/.test(cssO) && /\.zk-head span:nth-child\(5\), \.zk-edit select/.test(cssO), 'CSS＝6列（品目・基準在庫・発注数・単位・確認日・区分）');
+  }
   seed('staff', 'order'); location.hash = '#/app/zaiko'; const hOrS = registry.app.innerHTML;
   ok(/牛肉/.test(hOrS) && !/data-zkorder=/.test(hOrS), 'スタッフには発注リストは見えるが「発注した」は出ない');
   seed('manager'); location.hash = '#/app/kyou'; const kyou = registry.app.innerHTML;
