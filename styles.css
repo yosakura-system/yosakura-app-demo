@@ -1327,6 +1327,9 @@ html[data-theme="pb"] .pb-rdish__img { width: 100%; aspect-ratio: 1; object-fit:
 html[data-theme="pb"] .pb-rdish__ph { display: grid; place-items: center; width: 100%; aspect-ratio: 1; background: var(--kinari); color: var(--gray); }
 html[data-theme="pb"] .pb-rdish__ph svg { width: 28px; height: 28px; }
 html[data-theme="pb"] .pb-rdish > span:last-child { display: block; font-size: 12px; padding: 6px 8px; font-weight: 500; line-height: 1.35; }
+html[data-theme="pb"] .pb-rdish--prep, html[data-theme="pb"] .pb-rhero--prep { position: relative; cursor: default; }
+html[data-theme="pb"] .pb-rdish--prep .pb-rdish__img, html[data-theme="pb"] .pb-rhero--prep .pb-rhero__img { filter: saturate(.55) brightness(.92); }
+html[data-theme="pb"] .pb-rdish__badge { position: absolute; top: 8px; left: 8px; background: rgba(40,32,28,.78); color: #fff; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; }   /* 準備中の札（2026-10-22） */
 html[data-theme="pb"] .pb-rhero { position: relative; display: block; width: 100%; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--paper); font: inherit; text-align: left; }
 html[data-theme="pb"] .pb-rhero__img { width: 100%; height: 190px; object-fit: cover; display: block; }
 html[data-theme="pb"] .pb-rhero__cap { position: absolute; inset: auto 0 0 0; padding: 34px 14px 12px; background: linear-gradient(transparent, rgba(20,15,12,.85)); color: #fff; }

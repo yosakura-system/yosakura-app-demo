@@ -6614,11 +6614,12 @@ console.log('== 2026-10-22 神田さん「B案の見る・注文すると同じ�
   seedM(); location.hash = '#/home?tab=miru'; let h = registry.app.innerHTML;
   ok(/data-open="recipes"/.test(h) && /data-open="manualtop"/.test(h) && /data-open="ordertop"/.test(h) && /data-open="othertop"/.test(h) && !/data-tab="other"/.test(h), '見る・注文するの4つのタイル＝案Bの型の4画面へ（旧の一覧へは行かない）');
   location.hash = '#/app/recipes'; h = registry.app.innerHTML;
-  ok(/pb-app--recipes/.test(h) && /<div class="pb-ttl">レシピ<\/div>/.test(h) && /1枚の形（田中さんのカードから）/.test(h), 'レシピ＝案Bの枠（戻る・明朝の題・1行の説明）');
-  ok(/class="pb-rhero"/.test(h) && /鰻ひつまぶし 上（1尾）/.test(h) && /1TwtB6kXYMD5qotEKB7eKO6rUl09UrnqtuL4_nE8ipyo/.test(h), '主役のカード＝鰻ひつまぶし上（田中さんのレシピ文書へ）');
-  ok(/<h2>この店の品<\/h2><small>牛カツ<\/small>/.test(h) && /牛カツサンド/.test(h) && /1c3ScRsA_UaFX3snNEUXEUnlRRVJ8-4h8ccwUD1mWigQ/.test(h) && /class="pb-rdish__img"/.test(h), '牛カツの店＝「この店の品」に牛カツの品（写真つき・文書へ）');
+  ok(/pb-app--recipes/.test(h) && /<div class="pb-ttl">レシピ<\/div>/.test(h) && /1枚の形。合格した人が、同じ形に作るためのもの。監修が終わった品から出します。/.test(h), 'レシピ＝案Bの枠（戻る・明朝の題・1行の説明）');
+  ok(/class="pb-rhero pb-rhero--prep"/.test(h) && /鰻ひつまぶし 上（1尾）/.test(h) && /レシピは準備中/.test(h) && !/docs\.google\.com\/document/.test(h), '主役のカード＝鰻ひつまぶし上は「準備中」（監修前＝文書へは飛ばない）');
+  ok(/<h2>この店の品<\/h2><small>牛カツ<\/small>/.test(h) && /牛カツサンド/.test(h) && (h.match(/class="pb-rdish pb-rdish--prep"/g) || []).length === 17 && !/data-openurl="[^"]*docs\.google/.test(h) && (h.match(/pb-rdish__badge">準備中</g) || []).length >= 17, '牛カツの店＝品は17品すべて「準備中」の札つき・押せない（監修が終わるまで文書へ紐付けない）');
+  ok((h.match(/class="pb-rdish__img" src="data:image\/webp/g) || []).length === 15, '品の写真＝MOTONの実物15枚（webp）が入っている（いくら乗せ・鰻と和牛は写真なし）');
   ok(/<h2>ほかの業態<\/h2>/.test(h) && /<h2>鰻<\/h2>/.test(h) && /<h2>和牛<\/h2>/.test(h) && !/<h2>牛カツ<\/h2>/.test(h), 'ほかの業態＝鰻・和牛が業態ごとに（自店の業態は重ねない）');
-  ok(/全業態レシピ管理表/.test(h), 'レシピの正＝全業態レシピ管理表、と注記');
+  ok(/監修が終わった品から出します/.test(h), '注記＝監修が終わった品から出す');
   seedM('manager', '寿司世桜 心斎橋店'); location.hash = '#/app/recipes'; h = registry.app.innerHTML;
   ok(/この業態のレシピはまだ整備中です/.test(h) && /<h2>ほかの業態<\/h2>/.test(h), '文書の無い業態（寿司）＝「整備中」と出し、ほかの業態は見える');
   seedM(); location.hash = '#/app/manualtop'; h = registry.app.innerHTML;
@@ -6640,8 +6641,8 @@ console.log('== 2026-10-22 神田さん「B案の見る・注文すると同じ�
   ok(/pb-app--recipes/.test(h) && !/class="appbar"/.test(h) && /<h2>業態ごと<\/h2>/.test(h) && /<h2>牛カツ<\/h2>/.test(h), '本部（全店）＝案Bの枠で、業態ごとに全部の品');
   location.hash = '#/app/manual'; ok(/pb-app--manual/.test(registry.app.innerHTML) && !/class="appbar"/.test(registry.app.innerHTML), '本部の見え方でも機能の画面は案Bの枠（旧デザインの見出しは出ない）');
   ok(/pb-app--manual/.test(registry.app.innerHTML) && !/class="appbar"/.test(registry.app.innerHTML), '本部の見え方でも機能の画面は案Bの枠（旧デザインの見出しは出ない）');
-  { const ids = (code.match(/id:'(1[A-Za-z0-9_-]{25,})', ph:|id:'(1[A-Za-z0-9_-]{25,})' \}/g) || []).length; ok(ids === 17, 'ソース＝レシピの品17品に文書IDがある: ' + ids); }
-  ok(/"rc_unagi": 'data:image/.test(code) && /"rc_sand": 'data:image/.test(code), 'ソース＝品の写真（案Bの見本と同じ）が埋め込み');
+  ok(!/RECIPE_DOC/.test(code) && !/docs\.google\.com\/document\/d\/\$\{/.test(code), 'ソース＝田中さんの文書への紐付けは外した（card: が付いた品だけ開ける）');
+  ok(/"rc_unagi_jo": 'data:image\/webp/.test(code) && /"rc_sand": 'data:image\/webp/.test(code) && !/"rc_unagi": 'data:image/.test(code) && !/"rc_wagyukibako"/.test(code), 'ソース＝写真はMOTONの実物（webp）に差し替え・案Bの見本の写真は残っていない');
 }
 
 console.log('== 2026-10-22 神田さん「棚卸マニュアルとか、すでにリリースしたマニュアルもアプリで見れるように」＝マニュアル画面に1枚マニュアル（かんたん版）==');
