@@ -5586,7 +5586,7 @@ console.log('== 今日・今週・月次で出すもの＝店舗を一発で選�
   // 店舗チップの押下は委譲イベント（どの画面でも効く）＝ソースで固定
   {
     const src = code;
-    ok(/closest\('\[data-kyou\],/.test(src) && /t\.dataset\.kyou !== undefined/.test(src), '店舗チップの押下＝委譲イベントで処理（画面ごとの登録に依存しない）');
+    ok(/closest\('\[data-viewstore\],\[data-kyou\],/.test(src) && /t\.dataset\.kyou !== undefined/.test(src), '店舗チップの押下＝委譲イベントで処理（画面ごとの登録に依存しない）');
     ok(!/querySelectorAll\('\[data-kyou\]'\)/.test(src), '画面ごとの onclick 登録（巡回チェック画面でしか効かなかった）は残っていない');
   }
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_kyou_store'); });
@@ -6640,14 +6640,21 @@ console.log('== 2026-10-22 本部の見え方＝案Bの本部画面（神田さ�
   let h = registry.app.innerHTML;
   ok(!/本部の画面は準備中です/.test(h) && /class="tabbar"/.test(h) && /data-tab="hq"/.test(h) && /きょうやること/.test(h) && /店の数字/.test(h) && /見る・注文する/.test(h), '本部の見え方＝準備中は出ない。下のタブは案Bの4つ（きょうやること／見る・注文する／店の数字／本部）');
   const nRows = (h.match(/class="pb-hqrow/g) || []).length;
-  ok(/全店 きょう/.test(h) && nRows >= 10 && /data-open="kyou\?store=/.test(h), 'きょうやること＝全店の行（' + nRows + '店）。押すとその店のきょうやること');
+  ok(/全店 きょう/.test(h) && nRows >= 10 && /data-viewstore="/.test(h) && !/data-open="kyou/.test(h), 'きょうやること＝全店の行（' + nRows + '店）。押すとその店の案Bの画面（旧デザインの一覧へは飛ばない）');
+  { /* ★2026-10-22 神田さん「ベトナム2店（未使用）の残が別々」＝ファンケビン店が日本時間で数えられていた */
+    const rowOf = (st) => (h.match(new RegExp('<button type="button" class="pb-hqrow [a-z]*" data-viewstore="' + st + '">[^]*?</button>')) || [''])[0];
+    const kst = (r) => (r.match(/<span class="kst">([^<]*)<\/span>/) || [])[1] || '?';
+    ok(rowOf('牛カツ世桜 ファンケビン店') && kst(rowOf('牛カツ世桜 ファンケビン店')) === kst(rowOf('日本鰻世桜 ホーチミン店')), 'ベトナム2店の残・超過は同じ（' + kst(rowOf('牛カツ世桜 ファンケビン店')) + '／' + kst(rowOf('日本鰻世桜 ホーチミン店')) + '）');
+    ok(/const overseas = \/ハノイ\|ファンケビン\|ホーチミン\/\.test\(name\);/.test(code), 'ソース＝海外店の判定にファンケビン（旧ハノイ）が入っている');
+    ok(/if \(t\.dataset\.viewstore\) \{ setRole\('manager'\); setStoreSel\(t\.dataset\.viewstore\);/.test(code), 'ソース＝店舗カード・全店の行を押すと店舗責任者の見え方でその店を開く');
+  }
   ok(/<b>本部<\/b>/.test(h) && /・全店</.test(h), '見出し＝本部／日付・全店');
   location.hash = '#/home?tab=hq'; h = registry.app.innerHTML;
   const nCards = (h.match(/class="pb-hqst"/g) || []).length;
   ok(/<h2>店舗<\/h2>/.test(h) && nCards === nRows && (h.match(/class="pb-hqst__img"/g) || []).length === nCards, '本部タブ＝店舗カード（写真つき・全店 ' + nCards + '枚）');
   ok(/<span class="h">OPEN<\/span>/.test(h) && /<span class="h">CLOSE<\/span>/.test(h) && /<span class="h">在庫<\/span>/.test(h) && /<span class="h">日報<\/span>/.test(h) && /<span class="h">レジ締め<\/span>/.test(h) && (h.match(/class="pb-dot/g) || []).length === nCards * 5, '全店きょうの表＝店×5項目（OPEN・CLOSE・在庫・日報・レジ締め）');
   ok(/<h2>レジ締め<\/h2>/.test(h) && /<h2>ロス率 ・ 人件費率 ・ 今月<\/h2>/.test(h) && /<h2>返答待ち<\/h2>/.test(h) && /<h2>提出物の設定<\/h2>/.test(h) && /data-open="news\?tab=post"/.test(h), '本部タブ＝レジ締め・ロス率/人件費率・返答待ち・提出物の設定・お知らせを出す');
-  ok(/data-open="inbox"|未対応の報告はありません/.test(h) && /data-open="teishutsu"/.test(h), '押す先＝受信箱・提出物管理');
+  ok(/data-open="inbox"|未対応の報告はありません/.test(h) && /data-open="teishutsu"/.test(h) && (h.match(/data-viewstore="/g) || []).length === nCards, '押す先＝受信箱・提出物管理。店舗カードは店の画面（確認用）');
   { const row = (h.match(/<div class="pb-bar"><span>[^<]*長堀橋店<\/span><i[^>]*><\/i><b>[^<]*<\/b>/) || [''])[0]; ok(/−¥1,000/.test(row) && /#B5533C/.test(row), 'レジ締め＝長堀橋の昨日の過不足 −¥1,000（赤）: ' + row.slice(-40)); }
   ok(/ロス率（ロス÷売上）/.test(h) && /<span>[^<]*長堀橋店<\/span><i[^>]*><\/i><b>2\.0％<\/b>/.test(h) && /<span>[^<]*長堀橋店<\/span><i[^>]*><\/i><b>30\.0％<\/b>/.test(h), 'ロス率 2.0％（2,000÷100,000）・人件費率 30.0％（30,000÷100,000）が今月の日報から出る');
   ok(!/日報の入力時間/.test(h), '案Bの「日報の入力時間」は記録が無いので出さない');

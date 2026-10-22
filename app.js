@@ -2218,11 +2218,9 @@
     const live = rows.filter(r => !r.holiday);
     const nOv = live.filter(r => r.overdue).length, nRem = live.filter(r => !r.overdue && r.remain).length, nOk = live.filter(r => !r.remain).length;
     return `<main class="screen pb-home pb-hq">
-      <div class="pb-sec"><h2>${L({ ja:'全店 きょう', en:'All stores today', vi:'Tất cả hôm nay' })}</h2><small>${L({ ja:'赤＝締切超過 ・ 押すとその店の「きょうやること」', en:'Red = overdue. Tap for the store', vi:'Đỏ = quá hạn' })}</small></div>
+      <div class="pb-sec"><h2>${L({ ja:'全店 きょう', en:'All stores today', vi:'Tất cả hôm nay' })}</h2><small>${L({ ja:'赤＝締切超過 ・ 押すとその店の画面（確認用）', en:'Red = overdue. Tap to open the store view', vi:'Đỏ = quá hạn. Chạm để xem CH' })}</small></div>
       <div class="ksum"><span class="ksum-i ov"><b>${nOv}</b>${esc(L({ ja:'店 締切超過', en:' overdue', vi:' quá hạn' }))}</span><span class="ksum-i rem"><b>${nRem}</b>${esc(L({ ja:'店 未提出あり', en:' pending', vi:' còn thiếu' }))}</span><span class="ksum-i ok"><b>${nOk}</b>${esc(L({ ja:'店 完了', en:' done', vi:' xong' }))}</span></div>
-      ${rows.map(r => `<button type="button" class="pb-hqrow ${r.holiday ? 'hol' : r.overdue ? 'ov' : r.remain ? 'rem' : 'ok'}" data-open="kyou?store=${encodeURIComponent(r.st)}"><span class="kname">${esc(storeShort(r.st))}</span><span class="kbar"><i style="width:${r.holiday ? 0 : r.pct}%"></i></span><span class="kpct">${r.holiday ? L({ ja:'定休', en:'closed', vi:'nghỉ' }) : r.pct + '%'}</span><span class="kst">${r.holiday ? '' : r.overdue ? `${L({ ja:'超過', en:'late', vi:'trễ' })} ${r.overdue}` : r.remain ? `${L({ ja:'残', en:'left', vi:'còn' })} ${r.remain}` : L({ ja:'完了', en:'done', vi:'xong' })}</span></button>`).join('')}
-      <div class="pb-sec"><h2>${L({ ja:'今週 ・ 今月', en:'This week / month', vi:'Tuần / tháng này' })}</h2><small>${L({ ja:'週次・月次の提出物', en:'Weekly & monthly', vi:'Tuần & tháng' })}</small></div>
-      <button type="button" class="mini" data-open="kyou?store=all">${L({ ja:'全店の今週・月末の提出物を見る', en:'Weekly & monthly items, all stores', vi:'Xem mục tuần & tháng' })}</button>
+      ${rows.map(r => `<button type="button" class="pb-hqrow ${r.holiday ? 'hol' : r.overdue ? 'ov' : r.remain ? 'rem' : 'ok'}" data-viewstore="${esc(r.st)}"><span class="kname">${esc(storeShort(r.st))}</span><span class="kbar"><i style="width:${r.holiday ? 0 : r.pct}%"></i></span><span class="kpct">${r.holiday ? L({ ja:'定休', en:'closed', vi:'nghỉ' }) : r.pct + '%'}</span><span class="kst">${r.holiday ? '' : r.overdue ? `${L({ ja:'超過', en:'late', vi:'trễ' })} ${r.overdue}` : r.remain ? `${L({ ja:'残', en:'left', vi:'còn' })} ${r.remain}` : L({ ja:'完了', en:'done', vi:'xong' })}</span></button>`).join('')}
     </main>`;
   }
   function pbHq_() {
@@ -2230,7 +2228,7 @@
     const yen0 = (n) => '¥' + Math.abs(Number(n) || 0).toLocaleString('en-US');
     /* 1 店舗カード（押すとその店の「きょうやること」） */
     const cards = STORES.map(st => { const s = kyouStoreStats_(st, 'daily'); const b = s.holiday ? [L({ ja:'定休', en:'closed', vi:'nghỉ' }), 'hol'] : s.overdue ? [`${L({ ja:'超過', en:'late', vi:'trễ' })} ${s.overdue}`, 'late'] : s.remain ? [`${L({ ja:'残', en:'left', vi:'còn' })} ${s.remain}`, ''] : [L({ ja:'完了', en:'done', vi:'xong' }), 'ok'];
-      return `<button type="button" class="pb-hqst" data-open="kyou?store=${encodeURIComponent(st)}">${hqStPhoto_(st)}<span class="b ${b[1]}">${b[0]}</span><span class="n">${esc(storeShort(st))}</span><span class="s">${esc(hqGyotaiLb_(st))}</span></button>`; }).join('');
+      return `<button type="button" class="pb-hqst" data-viewstore="${esc(st)}">${hqStPhoto_(st)}<span class="b ${b[1]}">${b[0]}</span><span class="n">${esc(storeShort(st))}</span><span class="s">${esc(hqGyotaiLb_(st))}</span></button>`; }).join('');
     /* 2 全店きょう＝店×（OPEN・CLOSE・在庫・日報・レジ締め）。●＝提出済み・赤＝締切超過・点線＝その店では対象外（写真の店はOPEN/CLOSEの写真で判定） */
     const COLS = [['OPEN', it => /^ck_open/.test(String(it.m.id))], ['CLOSE', it => /^ck_close/.test(String(it.m.id))], [L({ ja:'在庫', en:'Stock', vi:'Kho' }), it => it.m.id === 'zaiko'], [L({ ja:'日報', en:'Report', vi:'B.cáo' }), it => it.m.id === 'nippou' || it.m.linkApp === 'soukatsu']];
     const regiRec = (st) => { const rec = sk.find(r => r && r.store === st && r.date === hqYday_(st)); return rec && (rec.src === 'usen' || rec.pos) ? rec : null; };
@@ -2254,7 +2252,7 @@
     const cut = (t) => { const x = String(t || '').replace(/\s+/g, ' ').trim(); return x.length > 60 ? x.slice(0, 60) + '…' : x; };
     const inbox = open.slice(0, 5).map(i => `<div class="pb-inboxrow"><span class="ic">${svg('inbox')}</span><div><div class="k">${esc(L(i.label))} ・ ${esc(storeShort(i.store))}</div><div class="t">${esc(cut([i.title, i.detail].filter(Boolean).join('：')))}</div><div class="by">${esc(timeAgo(i.t || 0))}</div></div><button type="button" class="mini" data-open="inbox">${L({ ja:'見る', en:'Open', vi:'Xem' })}</button></div>`).join('');
     return `<main class="screen pb-home pb-hq">
-      <div class="pb-sec"><h2>${L({ ja:'店舗', en:'Stores', vi:'Cửa hàng' })}</h2><small>${L({ ja:'押すとその店の「きょうやること」', en:'Tap for the store’s today', vi:'Chạm để xem hôm nay' })}</small></div>
+      <div class="pb-sec"><h2>${L({ ja:'店舗', en:'Stores', vi:'Cửa hàng' })}</h2><small>${L({ ja:'押すとその店の画面（確認用）・戻るときは上の「本部」', en:'Tap to open the store view; “HQ” above to return', vi:'Chạm để xem CH; “HQ” ở trên để quay lại' })}</small></div>
       <div class="pb-hqstores">${cards}</div>
       <div class="pb-sec"><h2>${L({ ja:'全店 きょう', en:'All stores today', vi:'Tất cả hôm nay' })}</h2><small>${L({ ja:'●＝提出済み ・ 赤＝締切超過', en:'● done, red = overdue', vi:'● xong, đỏ = trễ' })}</small></div>
       <div class="pb-card"><div class="pb-hqgrid"><span></span>${COLS.map(([h]) => `<span class="h">${esc(h)}</span>`).join('')}<span class="h">${L({ ja:'レジ締め', en:'Register', vi:'Két' })}</span>${grid}</div><div class="pb-hqnote">${L({ ja:'点線＝その店では対象外の項目、またはUSENレジが無い店。レジ締めの赤＝現金の過不足あり。定休日は全部点線', en:'Dashed = not applicable or no USEN register. Red register = cash difference.', vi:'Nét đứt = không áp dụng. Đỏ = lệch tiền mặt.' })}</div></div>
@@ -8123,7 +8121,7 @@
 
   // 店舗メタ（業態・タイムゾーン・コース店か）を店舗名から導出
   function storeMeta(name) {
-    const overseas = /ハノイ|ホーチミン/.test(name);
+    const overseas = /ハノイ|ファンケビン|ホーチミン/.test(name);   // ★2026-10-22 神田さん「ベトナム2店の残が別々」＝ハノイ店→ファンケビン店に改名したとき、ここが旧名のまま＝ファンケビンだけ日本時間で締切を数えていた
     const course = /おまかせ/.test(name); // コース主体店（1食目写真は対象外）
     let gyotai = 'other';
     if (/日本料理世桜/.test(name)) gyotai = 'nihon';
@@ -9695,10 +9693,11 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
+      const t = e.target.closest('[data-viewstore],[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.numstore) { try { localStorage.setItem('yosakura_num_store', t.dataset.numstore); } catch (e2) {} render(); return; }
+      if (t.dataset.viewstore) { setRole('manager'); setStoreSel(t.dataset.viewstore); try { localStorage.setItem(KYOU_LS, t.dataset.viewstore); } catch (err) {} if (location.hash === '#/home') render(); else go('/home'); return; }   // ★2026-10-22 本部タブの店舗カード・全店の行＝その店の案Bの画面を開く
       if (t.dataset.viewas) { const r = t.dataset.viewas; setRole(r); if (r === 'hq') setStoreSel('all'); else { const sl = getStoreSel(); if (sl === 'all' || sl === 'owned' || !STORES.includes(sl)) setStoreSel(STORES[0]); } render(); return; }
       if (t.dataset.devexit) { setRole('hq'); setStoreSel('all'); toast(L({ ja:'本部の表示に戻しました', en:'Back to HQ view', vi:'Đã về chế độ HQ' })); render(); return; }
       if (t.dataset.inboxrefresh) { render(true); return; }  // 「新しい報告が届きました」＝押したときだけ描き直す
