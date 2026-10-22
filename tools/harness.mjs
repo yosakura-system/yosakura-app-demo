@@ -5851,6 +5851,24 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
     run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([masterOff])); });
     location.hash = '#/app/kyou'; const kOff = registry.app.innerHTML;
     ok(!/在庫数の入力（締め）/.test(kOff), '今日確認する品目が無い日は「在庫数の入力」を今日出すものに出さない');
+    {
+      /* ★2026-10-22 神田さん「在庫の数は全店舗に出しといてほしい」＝既定が器（週1回）だけの店（広島など）でも、きょうの流れに在庫の行が出て、入力タブから品目登録へ行ける */
+      const SH = '和牛世桜 広島店';
+      run(() => { setLS('manager', SH, 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'in'); });
+      location.hash = '#/app/kyou'; const kH = registry.app.innerHTML;
+      ok(/在庫数の入力（締め）/.test(kH), '既定が器だけの店（広島）でも「在庫数の入力」が今日出すものに出る');
+      location.hash = '#/app/zaiko'; const zH = registry.app.innerHTML;
+      ok(/品目がまだ登録されていません/.test(zH) && /data-zktab="items"/.test(zH) && !/今日は確認日の品目がありません/.test(zH), '入力タブ＝毎日の品目が無い店は「まだ登録されていません」＋登録ボタン（器だけの空画面にしない）');
+      run(() => { setLS('staff', SH, 'ja'); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'in'); });
+      location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const zS = registry.app.innerHTML;
+      ok(/店長に「品目・基準在庫」の登録を頼んでください/.test(zS) && !/data-zktab="items"/.test(zS), 'スタッフには「店長に登録を頼んでください」');
+      // 店長が品目を保存すれば従来どおり入力欄が出る
+      const mH = { kind:'zaikomaster', store:SH, item:SH, note: JSON.stringify({ items:[{ n:'和牛', std:5, u:'kg' }], by:'店長' }), photos:[], t: t0 - 3600e3 };
+      run(() => { setLS('manager', SH, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([mH])); localStorage.setItem('yosakura_zk_tab', 'in'); });
+      location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const zM = registry.app.innerHTML;
+      ok(/data-zkname="和牛"/.test(zM) && /id="submitZk"/.test(zM), '品目を保存した後は入力欄と提出ボタン');
+      ok(/const zkDailyItems_ = \(store\) => zkMaster\(store\)\.filter\(it => zkFreqOf\(it\) !== 'week'\);/.test(code) && /function zkDueToday\(store, dow\) \{ const m = zkDailyItems_\(store\); return !m\.length \|\| m\.some/.test(code), 'ソース＝判定は器（週1回）を除いた毎日の品目で。無ければ出す');
+    }
     ok(/'日本鰻世桜 富士山店': \[/.test(code) && /'牛カツ世桜 富士山店': \[/.test(code) && /n:'固形燃料（1箱280個）', std:1000/.test(code) && /n:'TO弁当', std:140/.test(code), '富士山2店の品目が既定に入っている（長田さんの発注シート）');
     ok(/f:'mon,thu'/.test(code) && /f:'sat'/.test(code), '富士山の食材＝月・木、備品＝土');
   }
@@ -6021,7 +6039,7 @@ console.log('== 在庫＝長堀橋の品目は最初から入っている・写�
   const kyou = renderView('kyou', 'manager', S, 'ja');
   ok(!/在庫チェック表の写真/.test(kyou) && /在庫数の入力（締め）/.test(kyou), '今日出すもの＝写真の項目は消え、在庫数の入力だけ');
   const other = renderView('zaiko', 'staff', '日本料理世桜本店', 'ja');
-  ok(/器（週に1回）/.test(other) && !/品目がまだ登録されていません/.test(other), '紙の既定が無い店にも、画面292から業態の器が最初から入る（店長は足すだけ）');
+  ok(/器（週に1回）/.test(other) && /zk-later/.test(other), '紙の既定が無い店にも、画面292から業態の器が最初から入る（店長は足すだけ）');   // ★2026-10-22 毎日の品目が無い店には「まだ登録されていません」の案内も出す（器の折りたたみはそのまま）
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
@@ -7192,6 +7210,30 @@ console.log('== 2026-10-21 永井さん「在庫チェックに消耗品管理�
   ok(/value="輪ゴム"[\s\S]{0,80}id="zk_s\d+" value="30"/.test(h) && /value="レジロール（大／小）"[\s\S]{0,80}id="zk_s\d+" value="5"/.test(h), '発注目安＝輪ゴム30・レジロール5');
 }
 
+{
+  console.log('== 2026-10-22 永井さん「店舗を選択できない」＝ログイン済みの店長は許された店の中なら端末の選択に従う ==');
+  const S3 = ['日本料理世桜本店', '牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店'];
+  const seed3 = (storeSel, role) => run(() => { setLS(role || 'manager', storeSel, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'nagai', name: '永井', role: role || 'manager', stores: S3 })); localStorage.setItem('yosakura_demo_reports', '[]'); });
+  const who = () => (registry.app.innerHTML.match(/<div class="hdr__who"><b>([^<]*)<\/b>/) || [])[1] || '';
+  seed3('牛カツ世桜 長堀橋店'); location.hash = '#/app/kyou';
+  ok(/長堀橋/.test(who()), '店長（3店）が長堀橋を選んだら、画面は長堀橋（' + who() + '）');
+  seed3('手巻き寿司世桜 難波店'); location.hash = '#/app/kyou';
+  ok(/難波/.test(who()), '難波を選んだら難波（' + who() + '）');
+  seed3('和牛世桜 広島店'); location.hash = '#/app/kyou';
+  ok(/本店/.test(who()) && !/広島/.test(who()), '許されていない店（広島）が端末に残っていても先頭の本店（' + who() + '）');
+  seed3('牛カツ世桜 長堀橋店', 'staff'); location.hash = '#/app/kyou';
+  ok(/長堀橋/.test(who()), 'スタッフIDでも同じ（許された店の中なら選択どおり）');
+  run(() => { setLS('manager', '和牛世桜 広島店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'x', name: 'x', role: 'manager', stores: ['*'] })); localStorage.setItem('yosakura_demo_reports', '[]'); });
+  location.hash = '#/app/kyou';
+  ok(/広島/.test(who()), '店舗が * のIDは全店から選べる');
+  ok(/if \(own\.includes\(ls\)\) return ls;/.test(code) && !/return normalizeStore\(\(a\.stores \|\| \[\]\)\[0\] \|\| STORES\[0\]\);/.test(code), 'ソース＝先頭固定の行は消えている');
+  // 品目タブのスマホ幅
+  const cssN = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  ok(/\.zk-edit input, \.zk-edit select, \.zk-in input \{ font-size: 16px; \}/.test(cssN) && /@media \(max-width: 600px\) \{\s*\.zk-head \{ display: none; \}\s*\.zk-edit \{ flex-wrap: wrap;/.test(cssN), 'CSS＝在庫の入力欄は16px（iOSの拡大を止める）・スマホ幅は品目名＋2行目に折り返す');
+  seed3('牛カツ世桜 長堀橋店'); run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'nagai', name: '永井', role: 'manager', stores: S3 })); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_zk_tab', 'items'); });
+  location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  ok(/id="zk_s0" value="[^"]*" placeholder="基準"/.test(registry.app.innerHTML) && /id="zk_o0" value="[^"]*" placeholder="発注数"/.test(registry.app.innerHTML) && /id="zk_u0" value="[^"]*" placeholder="単位"/.test(registry.app.innerHTML), '品目タブ＝欄の薄字が「基準」「発注数」「単位」（見出し行が消えるスマホ幅でも分かる）');
+}
 console.log('== 2026-10-22 永井さん「基準在庫を設定しても消える（2、3回）」＝本部ID（nagai）の店舗責任者の見え方では保存を止めて下書きを残す ==');
 {
   const S = '牛カツ世桜 長堀橋店';

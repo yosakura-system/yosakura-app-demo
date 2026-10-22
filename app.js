@@ -526,7 +526,15 @@
   const getStoreSel = () => {
     const a = getAuth();
     // ★ログイン済みのスタッフ・店長＝自店に固定（他店を選ぶ余地を残さない）
-    if (a && (a.role === 'staff' || a.role === 'manager')) return normalizeStore((a.stores || [])[0] || STORES[0]);
+    /* ★2026-10-22 永井さん「店舗を選択できない」＝ここが許された店の先頭に固定していた（8/25）。8/29 に「店長でも複数店なら切替」で選択肢を広げたのに、
+       選んだ店を読むここが先頭のままだった＝本店・長堀橋・難波の3店を持つ店長が、どれを押しても本店に戻る。許された店の中なら端末の選択に従う（外れていれば先頭） */
+    if (a && (a.role === 'staff' || a.role === 'manager')) {
+      const own = (a.stores || []).map(x => normalizeStore(x)).filter(Boolean);
+      const ls = normalizeStore(localStorage.getItem(LS.store) || '');
+      if (own.includes('*')) return STORES.includes(ls) ? ls : STORES[0];
+      if (own.includes(ls)) return ls;
+      return own[0] || STORES[0];
+    }
     return normalizeStore(localStorage.getItem(LS.store) || STORES[0]);
   };
   const setStoreSel = (s) => localStorage.setItem(LS.store, s);
@@ -3162,7 +3170,11 @@
   const zkFreqLabel = (f) => { const o = ZK_FREQ_OPTS.find(x => x[0] === f); return o ? L(o[1]) : f.split(',').map(d => ZK_DOW_JA[d] || d).join('・'); };
   function zkDue(it, dow) { const f = zkFreqOf(it); if (!f) return true; if (f === 'week') return false; const d = ZK_DOW[dow == null ? new Date().getDay() : dow]; return f.split(',').includes(d); }
   /* 今日確認する品目があるか（品目未登録なら true＝登録を促す画面を出す） */
-  function zkDueToday(store, dow) { const m = zkMaster(store); return !m.length || m.some(it => zkDue(it, dow)); }
+  /* ★2026-10-22 神田さん「在庫の数は全店舗に出しといてほしい。項目に書き足す必要はない＝自分で入力・編集して使える機能として」
+     ＝長堀橋・富士山2店以外は既定が器（週1回）だけ→「今日確認する品目が無い」で毎日はじかれ、きょうの流れに一度も出ていなかった。
+     毎日の品目（器以外）が1つも無い店は、品目の登録の入口として出す。毎日の品目があって今日が確認日でない日だけ出さない（9/19 のまま） */
+  const zkDailyItems_ = (store) => zkMaster(store).filter(it => zkFreqOf(it) !== 'week');
+  function zkDueToday(store, dow) { const m = zkDailyItems_(store); return !m.length || m.some(it => zkDue(it, dow)); }
   function zkStore() {
     const vis = visibleStores(); if (vis.length <= 1) return vis[0] || '';
     let s = ''; try { s = localStorage.getItem(ZK_LS_STORE) || ''; } catch (e) {}
@@ -3300,7 +3312,7 @@
         const draft = zkDraft(store, today);   // 端末に残した下書き（今日の提出が無いときだけ使う）
         body = `
         <div class="hint" style="display:block">${isToday ? L({ ja:'今日の入力があります。直すときはそのまま上書きして提出してください。', en:'Today’s counts exist; resubmit to overwrite.', vi:'Đã có số hôm nay; gửi lại để ghi đè.' }) : (l ? `${L({ ja:'前回', en:'Last', vi:'Lần trước' })} ${esc(l.dk)}${l.by ? `（${esc(l.by)}）` : ''}${L({ ja:'の数を薄く出しています。今日の数を入れてください。', en:' counts shown faintly; enter today’s.', vi:' hiển thị mờ; nhập số hôm nay.' })}` : L({ ja:'締めの時点の数を入れてください（0.5などの小数も可）。', en:'Enter counts at close (decimals OK).', vi:'Nhập số lúc chốt ca (được nhập số lẻ).' }))}</div>
-        ${zkIsDefault(store) ? `<p class="hint" style="display:block">${L({ ja:'品目は在庫チェック表から写してあります。直したいときは店長が「品目・基準在庫」タブから。', en:'Items were copied from the stock sheet; the manager can edit them in the Items tab.', vi:'Mặt hàng chép từ bảng kiểm kho; quản lý sửa ở tab Mặt hàng.' })}</p>` : ''}
+        ${zkIsDefault(store) && zkDailyItems_(store).length ? `<p class="hint" style="display:block">${L({ ja:'品目は在庫チェック表から写してあります。直したいときは店長が「品目・基準在庫」タブから。', en:'Items were copied from the stock sheet; the manager can edit them in the Items tab.', vi:'Mặt hàng chép từ bảng kiểm kho; quản lý sửa ở tab Mặt hàng.' })}</p>` : ''}
         ${(() => {
           /* ★今日確認する品目を先に出し、確認日でない品目は折りたたむ（2026-09-19 長田さん：毎日／週2／週1の品目がある） */
           const dow = new Date().getDay();
@@ -3312,7 +3324,9 @@
           const hasFreq = m.some(it => zkFreqOf(it));
           let h = '';
           if (hasFreq) h += `<div class="zk-today">${L({ ja:'今日確認する品目', en:'Items to check today', vi:'Kiểm hôm nay' })}（${ZK_DOW_JA[ZK_DOW[dow]]}曜）<span class="zk-n">${due.length}</span></div>`;
-          h += due.length ? rowsOf(due) : `<div class="muted" style="margin:6px 0 10px">${L({ ja:'今日は確認日の品目がありません。', en:'Nothing scheduled today.', vi:'Hôm nay không có mặt hàng cần kiểm.' })}</div>`;
+          h += due.length ? rowsOf(due) : (!zkDailyItems_(store).length
+            ? `<div class="muted" style="margin:6px 0 10px">${L({ ja:'品目がまだ登録されていません。', en:'No items registered yet.', vi:'Chưa đăng ký mặt hàng.' })}${zkMgr() ? ` <button class="mini" data-zktab="items">${L({ ja:'品目を登録する', en:'Register items', vi:'Đăng ký' })}</button>` : L({ ja:'店長に「品目・基準在庫」の登録を頼んでください。', en:'Ask your manager to register items.', vi:'Nhờ quản lý đăng ký.' })}</div>`   /* ★2026-10-22 毎日の品目が無い店（既定が器だけ）＝登録の入口 */
+            : `<div class="muted" style="margin:6px 0 10px">${L({ ja:'今日は確認日の品目がありません。', en:'Nothing scheduled today.', vi:'Hôm nay không có mặt hàng cần kiểm.' })}</div>`);
           if (later.length) h += `<details class="zk-later" data-zklater><summary>${L({ ja:'今日は確認日ではない品目', en:'Not scheduled today', vi:'Không kiểm hôm nay' })}（${later.length}）— ${L({ ja:'必要なら開いて入力', en:'open to enter anyway', vi:'mở để nhập' })}</summary>${rowsOf(later)}</details>`;
           return h; })()}
         <label class="fld"><span>${L({ ja:'名前', en:'Your name', vi:'Tên bạn' })}</span><input type="text" id="zk_by" value="${esc(getUserName() || '')}"></label>
@@ -3364,7 +3378,7 @@
         <div class="hint" style="display:block">${L({ ja:'在庫チェック表と同じ順で品目を入れてください。基準在庫＝これを下回ったら発注する数。発注数＝下回ったときに頼む数（空なら基準との差を目安に出します）。単位は「本」「袋」「kg」など。区分（冷凍庫など）を入れると、その見出しで分かれて並びます。品目の名前を変えると、前に数えた数は新しい名前には引き継がれません。', en:'List items in the same order as the stock sheet. Minimum = order when below this.', vi:'Nhập mặt hàng theo thứ tự bảng kiểm kho. Định mức = đặt hàng khi thấp hơn.' })}</div>
         ${draftNote}<div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'発注数', en:'Order qty', vi:'Số đặt' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span><span>${L({ ja:'確認日', en:'Check', vi:'Ngày' })}</span><span>${L({ ja:'区分', en:'Group', vi:'Nhóm' })}</span></div>
         ${(() => { zkGroupOpts_ = Array.from(new Set(m.concat(rows).map(it => String(it.g || '').trim()).filter(Boolean).concat(['冷凍庫', '冷蔵庫', '常温', '備品']))); /* ★2026-10-21 下書きで足した新しい区分も候補に（無いと「区分なし」に戻る） */ return ''; })()}
-        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="zk-grp" style="margin-top:${i ? 14 : 2}px">${esc(r.g)}</div>` : ''}<div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="0"><input type="text" inputmode="decimal" id="zk_o${i}" value="${r.ord != null ? esc(String(r.ord)) : ''}" placeholder="—"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'本', en:'pcs', vi:'cái' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${((r.n || r.g) ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select><select id="zk_g${i}" style="flex:0.9;min-width:0"><option value="">${L({ ja:'区分なし', en:'No group', vi:'Không' })}</option>${zkGroupOpts_.map(g => `<option value="${esc(g)}"${g === String(r.g || '').trim() ? ' selected' : ''}>${esc(g)}</option>`).join('')}<option value="__new">${L({ ja:'＋新しい区分', en:'+ New group', vi:'+ Nhóm mới' })}</option></select><input type="text" id="zk_gn${i}" placeholder="${L({ ja:'新しい区分名', en:'New group', vi:'Nhóm mới' })}" style="flex:0.9;min-width:0;display:none"></div>`).join('')}
+        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="zk-grp" style="margin-top:${i ? 14 : 2}px">${esc(r.g)}</div>` : ''}<div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="${L({ ja:'基準', en:'min', vi:'định mức' })}"><input type="text" inputmode="decimal" id="zk_o${i}" value="${r.ord != null ? esc(String(r.ord)) : ''}" placeholder="${L({ ja:'発注数', en:'order', vi:'số đặt' })}"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'単位', en:'unit', vi:'đơn vị' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${((r.n || r.g) ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select><select id="zk_g${i}" style="flex:0.9;min-width:0"><option value="">${L({ ja:'区分なし', en:'No group', vi:'Không' })}</option>${zkGroupOpts_.map(g => `<option value="${esc(g)}"${g === String(r.g || '').trim() ? ' selected' : ''}>${esc(g)}</option>`).join('')}<option value="__new">${L({ ja:'＋新しい区分', en:'+ New group', vi:'+ Nhóm mới' })}</option></select><input type="text" id="zk_gn${i}" placeholder="${L({ ja:'新しい区分名', en:'New group', vi:'Nhóm mới' })}" style="flex:0.9;min-width:0;display:none"></div>`).join('')}
         ${missing.length ? `<div style="margin:6px 0 4px"><button class="mini" id="zkFromDefault">${L({ ja:'本部が写した品目を取り込む', en:'Add HQ-listed items', vi:'Thêm mặt hàng do HQ nhập' })}（${missing.length}）</button>
           <span class="muted" style="font-size:12px">${L({ ja:'紙の在庫表・朝礼シートから本部が写した品目のうち、この一覧に無いものを空の行に足します（足したら保存）', en:'Adds items HQ copied from the paper sheets that are not in this list', vi:'Thêm các mặt hàng HQ đã nhập mà danh sách chưa có' })}</span></div>` : ''}
         <div style="margin:6px 0 10px"><button class="mini" id="zkFromTana">${L({ ja:'月次棚卸の品目を取り込む', en:'Import stocktake items', vi:'Nhập mặt hàng từ kiểm kê' })}${(() => { const n = zkTanaNames(store).length; return n ? `（${n}）` : ''; })()}</button>
