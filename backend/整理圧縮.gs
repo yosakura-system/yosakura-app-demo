@@ -95,3 +95,22 @@ function 圧縮_(書き込む) {
   Logger.log(JSON.stringify(結果, null, 2));
   return 結果;
 }
+
+/* ■ 月1回の自動圧縮（2026-10-24 神田さん「まずは1をお願いします」）
+ *   毎月1日 2時台（日本時間）に 整理圧縮を実行 と同じ処理（バックアップ付き）。
+ *   ★トリガーは英字の別名で登録する（日本語名の関数は「設定済み」と出ても毎回静かに失敗する）
+ *   予約＝ 整理圧縮_月次の予約() を1回実行／解除＝ 整理圧縮_月次の予約を解除() */
+function compactMonthly() { return 整理圧縮を実行(); }
+
+function 整理圧縮_月次の予約() {
+  var exists = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === 'compactMonthly'; });
+  if (exists.length) { Logger.log('予約済み（' + exists.length + '件）'); return { 結果: '予約済み' }; }
+  ScriptApp.newTrigger('compactMonthly').timeBased().onMonthDay(1).atHour(2).inTimezone('Asia/Tokyo').create();
+  Logger.log('予約しました：毎月1日 2時台に整理圧縮（バックアップ付き）');
+  return { 結果: '予約しました', いつ: '毎月1日 2時台' };
+}
+
+function 整理圧縮_月次の予約を解除() {
+  var n = 0; ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'compactMonthly') { ScriptApp.deleteTrigger(t); n++; } });
+  Logger.log('解除：' + n + '件'); return { 解除: n };
+}
