@@ -2835,7 +2835,7 @@
       <span class="kind ${r.cat==='food'?'a':'b'}">${esc(kzCatLabel(r.cat))}</span>
       <div class="body">
         <div class="l1">${esc(r.note||'—')}</div>
-        <div class="l2">${esc(r.store)} ・ ${timeAgo(r.t)}</div>
+        <div class="l2">${esc(r.store)}${r.who ? ' ・ ' + esc(r.who) : ''} ・ ${timeAgo(r.t)}</div>
         ${hqAckLine('kizuki', r.t, r.store)}
         ${(r.photos && r.photos.length) ? `<div class="rep-photos">${r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" alt="" data-full="${photoFull(p)}" loading="lazy">`).join('')}</div>` : ''}
       </div>
@@ -9574,7 +9574,7 @@
       items.push({ kind, label, t, store, title, detail, photos: photos || [], key, state: ack.state || '', by: ack.by, memo: ack.memo });
     };
     try {
-      getKz().filter(r => vis.includes(r.store)).forEach(r => add('kizuki', { ja:'気づき', en:'Insight', vi:'Ghi nhận' }, r.t, r.store, kzCatLabel(r.cat), r.note, r.photos));
+      getKz().filter(r => vis.includes(r.store)).forEach(r => add('kizuki', { ja:'気づき', en:'Insight', vi:'Ghi nhận' }, r.t, r.store, kzCatLabel(r.cat) + (r.who ? '・' + r.who : ''), r.note, r.photos));   // 投稿者のお名前（2026-10-23）
       getReports().filter(r => (r.kind === 'a' || r.kind === 'b') && vis.includes(r.store)).forEach(r => add('waste', { ja:'食べ残し', en:'Waste', vi:'Đồ thừa' }, r.t, r.store, r.item, L(r.note) || '', r.photos));
       getFP().filter(r => vis.includes(r.store)).forEach(r => add('firstphoto', { ja:'1食目写真', en:'First-plate', vi:'Ảnh món đầu' }, r.t, r.store, r.item || '', '', r.photos));
       /* ★detail はここで切らない（2026-09-05 神田さんの実機報告＝気づき・コメントの全文が見えず、
@@ -11749,12 +11749,13 @@
       const thumbsEl = document.getElementById('photoThumbs');
       const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0,4) : [];
       const t = Date.now();
-      const arr = getKz(); arr.push({ store, cat, note, photos, t });
+      const who = getUserName();   // ★2026-10-23 神田さん「誰が投稿したか分かるように」＝右上で登録したお名前を気づきにも付ける（未登録なら空）
+      const arr = getKz(); arr.push({ store, cat, note, photos, t, who });
       try { saveKz(arr.slice(-80)); } catch (e) { saveKz(arr.slice(-30)); }
       lastSync = t; // 直後の重複同期を抑止（postReportがforce同期）
       toast(L({ ja:'気づきを共有しました。ありがとうございます！', en:'Insight shared. Thank you!', vi:'Đã gửi. Cảm ơn!' }));
       render();
-      postReport({ kind:'kizuki', store, item:cat, note, photos, t });
+      postReport({ kind:'kizuki', store, item:cat, note, photos, t, level: who });   // 本部データの level 列＝投稿者のお名前（気づきは level を使っていなかった）
     };
 
     // 中間報告（長堀橋トライアル）：数字は空欄=0でよい。ただし全部空の送信だけは止める
@@ -12875,7 +12876,7 @@
         case 'staffm': case 'chukan': case 'chukandraft': case 'skdraft': case 'nouhindraft': case 'gsnap': case 'handover':
         case 'newslike': case 'newsread': case 'newscmt': case 'kinshu': case 'commcmt': case 'zaiko': case 'zaikomaster': case 'zaikoorder':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
-        case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id }); break;
+        case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id, who: String(r.level || '') }); break;   // level＝投稿者のお名前（2026-10-23）
         case 'route': route.push({ store, route:r.item, t, id }); break;
         case 'open': { const p=pj(r.note); open.push({ store, date:p.date||'', denom:p.denom||{}, total:Number(p.total)||0, t, id }); } break;
         case 'soukatsu': { const p=pj(r.note); sk.push(Object.assign({ store, t, id }, p)); } break;

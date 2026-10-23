@@ -7447,5 +7447,35 @@ console.log('== 2026-10-23 神田さん「きょうの流れ・レシピ・発�
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); });
 }
 
+console.log('== 2026-10-23 神田さん「気づきは誰が投稿したか分かるように」＝右上で登録したお名前を気づきに付ける（案1） ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_uname', 'テスト 太郎'); localStorage.removeItem('yosakura_demo_kizuki'); });
+  location.hash = '#/app/kizuki';
+  doc.getElementById('kz_note').value = '雨の日に傘袋をお渡ししたら喜ばれました';
+  doc.getElementById('submitKz').onclick();
+  const kz = JSON.parse(localStorage.getItem('yosakura_demo_kizuki') || '[]'); const last = kz[kz.length - 1] || {};
+  ok(last.note === '雨の日に傘袋をお渡ししたら喜ばれました' && last.who === 'テスト 太郎', '気づきの記録に投稿者のお名前（who）が残る（実際 ' + JSON.stringify(last.who) + '）');
+  // 本部データから同期で戻ってきた形（level 列＝お名前）で画面に出る
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'kizuki', store:S, item:'service', level:'テスト 太郎', note:'雨の日に傘袋をお渡ししたら喜ばれました', photos:[], t: Date.now(), id:'kzwho1' },
+    { kind:'kizuki', store:S, item:'other', level:'', note:'名前なしの投稿', photos:[], t: Date.now() - 1000, id:'kzwho2' },
+  ]};
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  await new Promise(r => setTimeout(r, 50));
+  location.hash = '#/app/kizuki'; const h = registry.app.innerHTML;
+  ok(/牛カツ世桜 長堀橋店 ・ テスト 太郎 ・ /.test(h), '最近の気づきに「店 ・ お名前 ・ 時刻」で出る');
+  const i2 = h.indexOf('名前なしの投稿');
+  ok(i2 >= 0 && /牛カツ世桜 長堀橋店 ・ (たった今|\d)/.test(h.slice(i2, i2 + 200)) && !/ ・  ・ /.test(h), 'お名前を登録していない端末＝名前なし（空の「 ・ 」を出さない）');
+  run(() => { setLS('hq', 'all', 'ja'); });
+  await new Promise(r => setTimeout(r, 50));
+  location.hash = '#/app/inbox'; const hi = registry.app.innerHTML;
+  ok(/サービス・テスト 太郎/.test(hi) || /テスト 太郎/.test(hi), '本部の受信箱＝気づきの題に「分類・お名前」（実際 ' + JSON.stringify((hi.match(/.{0,30}テスト 太郎.{0,10}/) || [''])[0]) + '）');
+  FETCH_ROWS = { ok:false };
+  ok(code.includes("postReport({ kind:'kizuki', store, item:cat, note, photos, t, level: who })"), 'ソース＝本部へは level 列にお名前を載せて送る');
+  ok(code.includes("case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id, who: String(r.level || '') })"), 'ソース＝同期で level 列をお名前（who）として読む');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); localStorage.removeItem('yosakura_demo_uname'); localStorage.removeItem('yosakura_demo_kizuki'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
