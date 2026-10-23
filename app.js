@@ -5156,9 +5156,11 @@
   };
   APP_VIEWS.ordertop = () => {
     const role = getRole();
-    const rows = getLinks().filter(l => l && isHttp(l.url) && /発注|注文|パートナーズ|仕入/.test(String(l.title || '')));
+    /* ★2026-10-23 増田さん「12-18.発注リストは開業時の初期在庫のリスト＝店舗ごとに発注先と品が違う。一旦外して『準備中』に。店舗ごとのリストを後で上げる」
+       ＝題に「12-18」か「発注リスト」を含む注文先は出さない（資料リンクの管理に残っていても）。店舗ごとの注文先が登録されたら、この除外は外す */
+    const rows = getLinks().filter(l => l && isHttp(l.url) && /発注|注文|パートナーズ|仕入/.test(String(l.title || '')) && !/12-18|発注リスト/.test(String(l.title || '')));
     const rowsHtml = rows.length ? `<div class="pb-card" style="padding-top:0">${rows.map(l => `<button type="button" class="pb-orow" data-openurl="${esc(openUrlFor(l.url))}"><span class="st">${svg('box')}</span><span><span class="nm">${esc(l.title)}</span>${l.desc ? `<br><span class="sub">${esc(l.desc)}</span>` : ''}</span><span class="rt">${svg('chev')}</span></button>`).join('')}</div>`
-      : `<div class="pb-card"><div class="muted">${L({ ja:'注文先はまだ登録されていません。本部が「資料リンクの管理」で登録すると、ここに出ます。', en:'No order links registered yet. HQ registers them in Document links.', vi:'Chưa có liên kết đặt hàng. HQ đăng ký ở Quản lý liên kết.' })}</div>${role === 'hq' ? `<button type="button" class="mini" data-open="materials" style="margin-top:8px">${L({ ja:'資料リンクの管理を開く', en:'Open Document links', vi:'Mở Quản lý liên kết' })}</button>` : ''}</div>`;
+      : `<div class="pb-card"><div class="muted">${L({ ja:'店舗ごとの注文先リストを準備中です。できしだい、ここに出ます。それまでは、これまでどおりの方法でご注文ください。', en:'Store-specific order lists are being prepared and will appear here. Until then, order as you do now.', vi:'Danh sách đặt hàng theo cửa hàng đang được chuẩn bị. Trong lúc chờ, hãy đặt hàng như hiện nay.' })}</div>${role === 'hq' ? `<button type="button" class="mini" data-open="materials" style="margin-top:8px">${L({ ja:'資料リンクの管理を開く', en:'Open Document links', vi:'Mở Quản lý liên kết' })}</button>` : ''}</div>`;
     return `${rowsHtml}<p class="pb-note">${L({ ja:'在庫の数で足りない物は、「きょうやること」の在庫の画面（発注リスト）に出ます。', en:'Items short in stock appear in the order list under Today.', vi:'Hàng thiếu sẽ hiện trong danh sách đặt ở Hôm nay.' })}</p>`;
   };
   APP_VIEWS.othertop = () => {

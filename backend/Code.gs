@@ -762,3 +762,38 @@ function parsePhotos(s) { try { return s ? JSON.parse(s) : []; } catch (_) { ret
 function json(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
+
+/* ★2026-10-23 原さん（寿司世桜 心斎橋店）「名前の漢字を 原 和宏 に」＝提出の記録に残っている提出者名を直す
+   ・reports の note（JSONの文字列）に入っている「原 和弘」を「原 和宏」に置き換える（それ以外の文字は触らない）
+   ・集約スプシ（世桜アプリ_集約データ）は毎朝6時の aggRebuild が reports から作り直すので、reports を直せば翌朝そろう
+   ・_users の名前は別途直した（認証_名前を変更 でも可）
+   使い方＝ 提出者名を訂正('原 和弘', '原 和宏')  → 実行ログに何行直したかが出る。下見は 提出者名を訂正_下見('原 和弘')
+   貼る場所＝「世桜アプリ_本部データ」の Apps Script にこのファイルを足す。デプロイは不要（エディタから実行するだけ） */
+function 提出者名を訂正_下見(before) {
+  return 提出者名を訂正_(before, null, false);
+}
+function 提出者名を訂正(before, after) {
+  return 提出者名を訂正_(before, after, true);
+}
+function 提出者名を訂正_(before, after, write) {
+  before = String(before || ''); after = String(after || '');
+  if (!before) throw new Error('直す前の名前を入れてください');
+  if (write && !after) throw new Error('直した後の名前を入れてください');
+  var sh = getSheet();
+  var last = sh.getLastRow(); if (last < 2) return { 行: 0 };
+  var noteCol = HEADERS.indexOf('note') + 1;
+  var vals = sh.getRange(2, noteCol, last - 1, 1).getValues();
+  var hit = [];
+  for (var i = 0; i < vals.length; i++) {
+    var v = String(vals[i][0] == null ? '' : vals[i][0]);
+    if (v.indexOf(before) !== -1) hit.push({ row: i + 2, kind: String(sh.getRange(i + 2, HEADERS.indexOf('kind') + 1).getValue()), v: v });
+  }
+  if (write) {
+    hit.forEach(function (h) { sh.getRange(h.row, noteCol).setValue(h.v.split(before).join(after)); });
+  }
+  var out = { 書き込み: write ? '実行した' : '下見のみ', 直す前: before, 直した後: after, 行: hit.length, 行番号: hit.map(function (h) { return h.row + '(' + h.kind + ')'; }) };
+  Logger.log(JSON.stringify(out)); return out;
+}
+/* エディタの「実行」は引数を渡せないので、原さんの分は名前入りの入口を用意（下見→本番の順に実行） */
+function 提出者名を訂正_原さん_下見() { return 提出者名を訂正_('原 和弘', '原 和宏', false); }
+function 提出者名を訂正_原さん() { return 提出者名を訂正_('原 和弘', '原 和宏', true); }

@@ -6629,7 +6629,10 @@ console.log('== 2026-10-22 神田さん「B案の見る・注文すると同じ�
   location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
   ok(/<div class="pb-ttl">備品・食材を注文する<\/div>/.test(h) && /class="pb-orow"/.test(h) && /example\.com\/order/.test(h) && !/カタログ/.test(h) && !/発注する（準備中）/.test(h), '発注＝本部が登録した注文先の行だけ（見本のカタログ・準備中ボタンは出さない）');
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_links', '[]'); }); location.hash = '#/app/ordertop';
-  ok(/注文先はまだ登録されていません/.test(registry.app.innerHTML), '注文先が無い＝「まだ登録されていません」');
+  ok(/店舗ごとの注文先リストを準備中です/.test(registry.app.innerHTML) && !/注文先はまだ登録されていません/.test(registry.app.innerHTML), '注文先が無い＝「店舗ごとの注文先リストを準備中」（2026-10-23 増田さん）');
+  // ★2026-10-23 増田さん＝開業時の「12-18.発注リスト」は店舗ごとに違うので一旦出さない
+  run(() => { localStorage.setItem('yosakura_demo_links', JSON.stringify([{ title:'12-18.【世桜】発注リスト', url:'https://example.com/12-18', desc:'' }, { title:'備品の注文（パートナーズ）', url:'https://example.com/order2', desc:'' }])); }); location.hash = '#/app/ordertop';
+  ok(!/12-18/.test(registry.app.innerHTML) && /example\.com\/order2/.test(registry.app.innerHTML), '題に「12-18」「発注リスト」を含む注文先は出さない・ほかの注文先は出る');
   seedM(); location.hash = '#/app/othertop'; h = registry.app.innerHTML;
   ok(/class="pb-chips pb-chips--4"/.test(h) && /data-open="guide"/.test(h) && /data-open="faq"/.test(h) && /data-open="whistle"/.test(h) && /data-open="study"/.test(h), 'その他＝使い方・ルール集・相談・通報・勉強会の4つのチップ');
   // 本部の見え方でも案Bの枠
