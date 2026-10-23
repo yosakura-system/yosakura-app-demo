@@ -248,6 +248,21 @@ function 認証_店舗を変更(uid, storesSlash) {
   Logger.log(JSON.stringify(out)); return out;
 }
 
+/* ★2026-10-23 原さん（心斎橋）「名前の漢字を 原 和宏 に直して」＝名前だけ書き換える（パスワード・役割・店舗は触らない）。
+   認証_利用者を登録 を使うと仮パスワードに戻って全端末ログアウトになるので、名前だけはこちら。
+   使い方＝ 認証_名前を変更('hara', '原 和宏')。端末に残っている名前は本人が右上から直す（次のログインからはこの名前が入る） */
+function 認証_名前を変更(uid, name) {
+  var rec = auth_find_(uid);
+  if (!rec) throw new Error('見つかりません: ' + uid);
+  var before = rec.name;
+  rec.name = String(name || '').trim();
+  if (!rec.name) throw new Error('名前を入れてください');
+  rec.updated = new Date();
+  auth_write_(rec);
+  var out = { uid: uid, 変更前: before, 変更後: rec.name, パスワード: '変更していません（そのまま使えます）' };
+  Logger.log(JSON.stringify(out)); return out;
+}
+
 function 認証_削除(uid) {
   var rec = auth_find_(uid);
   if (!rec) { Logger.log('見つかりません: ' + uid); return { 結果: '見つかりません' }; }

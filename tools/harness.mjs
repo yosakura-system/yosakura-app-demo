@@ -7489,5 +7489,23 @@ console.log('== 2026-10-23 神田さん「店の裏・段ボール・仕入先�
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); });
 }
 
+console.log('== 2026-10-23 原さん（心斎橋）の紙の在庫チェックシート5枚＝既定品目（毎日31・週1回83） ==');
+{
+  const S = '寿司世桜 心斎橋店';
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.removeItem('yosakura_zk_tab'); localStorage.removeItem('yosakura_demo_reports'); });
+  location.hash = '#/app/zaiko';
+  const h = registry.app.innerHTML;
+  ok(/data-zkname="はまぐり（生）"/.test(h) && /data-zkname="中トロ柵"/.test(h) && /data-zkname="米（寿司シャリ米・土日祝は発注不可）"/.test(h), '毎日の紙の品目が最初から入っている（はまぐり・中トロ柵・米）');
+  ok(/キッチン冷凍冷蔵・常温（毎日）/.test(h) && /カウンター冷蔵冷凍（毎日）/.test(h), '毎日の2つの見出し');
+  const iLater = h.indexOf('zk-later'); const iHama = h.indexOf('data-zkname="はまぐり（生）"'); const iChoco = h.indexOf('data-zkname="チョコペン（黒・茶）"');
+  ok(iHama >= 0 && iLater > iHama && iChoco > iLater, '週1回の品目（チョコペン）は「今日は確認日ではない」側、毎日の品目は上');
+  ok(/data-zkname="ドンペリ"/.test(h) && /data-zkname="レシートロール（端末用）"/.test(h) && /data-zkname="海鮮丼出汁つゆ"/.test(h), '週1回の4枚の品目も入っている（ドンペリ・レシートロール・海鮮丼出汁つゆ）');
+  ok(/data-zkname="海鮮丼皿"/.test(h), '寿司の器（画面292）は後ろに残る');
+  ok(!/客用/.test(h.replace(/お客様用/g, '')), '「客用」でなく「お客様用」');
+  const m = (h.match(/data-zkname="/g) || []).length;
+  ok(m >= 114, `品目が114以上（${m}）`);
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
