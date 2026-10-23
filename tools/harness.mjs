@@ -6028,8 +6028,9 @@ console.log('== 在庫＝長堀橋の品目は最初から入っている・写�
   run(() => { setLS('staff', S, 'ja'); localStorage.removeItem('yosakura_zk_tab'); });
   location.hash = '#/app/zaiko';
   const h = registry.app.innerHTML;
-  ok(/data-zkname="白だし"/.test(h) && /data-zkname="ビール（瓶）"/.test(h) && /data-zkname="焼肉のタレ"/.test(h), '品目が登録なしでも入っている（在庫チェック表の転記）');
-  ok(/食材管理①（毎日）/.test(h) && /食材管理②（月・木に確認）/.test(h) && /ドリンク管理（毎日）/.test(h), '紙と同じ3つの区分の見出し');
+  ok(/data-zkname="白だし"/.test(h) && /data-zkname="アサヒビール"/.test(h) && /data-zkname="焼き肉タレ"/.test(h) && /data-zkname="和牛シート（仕込み前）"/.test(h), '品目が登録なしでも入っている（10/23 永井さんの在庫管理シートの転記）');
+  ok(/食材管理（毎日）/.test(h) && /ドリンク（毎日・常温、冷蔵すべて）/.test(h) && /食材管理（月曜日・週1）/.test(h) && /消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）/.test(h) && /消耗品管理（第1、第3 水曜日）/.test(h), 'シートの赤い見出し（コメントごと）が区分の見出しになる');
+  ok(/冷凍/.test(h) && /コンロ下/.test(h), '場所の列が品目の下の小さい字に出る（冷凍・コンロ下）');
   ok(/id="submitZk"/.test(h) && /在庫チェック表から写してあります/.test(h), 'スタッフはそのまま数を入れて提出できる');
   ok((h.match(/data-zkname="/g) || []).length >= 40, `品目が40以上ある（${(h.match(/data-zkname="/g) || []).length}）`);
   const kyou = renderView('kyou', 'manager', S, 'ja');
@@ -6276,7 +6277,7 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in'); });
   location.hash = '#/app/zaiko';
   const z3 = registry.app.innerHTML;
-  ok(/器（週に1回）/.test(z3) && /牛カツ皿（運ぶ皿）/.test(z3) && /食材管理①（毎日）/.test(z3), '長堀橋＝紙から写した既定の後ろに器が足される（既存の品目は残る）');
+  ok(/器（週に1回）/.test(z3) && /牛カツ皿（運ぶ皿）/.test(z3) && /食材管理（毎日）/.test(z3), '長堀橋＝紙から写した既定の後ろに器が足される（既存の品目は残る）');
   run(() => { setLS('manager', '日本料理世桜本店', 'ja'); localStorage.setItem('yosakura_zk_tab', 'in'); });
   location.hash = '#/app/zaiko';
   const z4 = registry.app.innerHTML;
@@ -7229,11 +7230,11 @@ console.log('== 2026-10-21 永井さん「在庫の区分の終わりに空白�
   const grpOf = (b) => { const m = b.match(/<select id=\"zk_g\d+\"[\s\S]*?<\/select>/); const s = m ? (m[0].match(/<option value=\"([^\"]*)\" selected/) || ['', ''])[1] : ''; return s; };
   const nameOf = (b) => (b.match(/id=\"zk_n\d+\" value=\"([^\"]*)\"/) || ['', ''])[1];
   const freqOf = (b) => { const m = b.match(/<select id=\"zk_f\d+\"[\s\S]*?<\/select>/); return m ? (m[0].match(/<option value=\"([^\"]*)\" selected/) || ['', ''])[1] : ''; };
-  const empty1 = blocks.filter(b => !nameOf(b) && /^食材管理①/.test(grpOf(b)));
-  const empty2 = blocks.filter(b => !nameOf(b) && /^食材管理②/.test(grpOf(b)));
-  ok(empty1.length === 5 && empty2.length === 5, '食材管理①・②のそれぞれに、区分入りの空の行が5つ（神田さん 10/21「5つくらい常に」）');
-  ok(empty2.every(b => freqOf(b) === 'mon,thu'), '食材管理②の空の行は確認日が「月・木」');
-  const lastIdx1 = Math.max(...blocks.map((b, i) => /^食材管理①/.test(grpOf(b)) && nameOf(b) ? i : -1)); const firstEmpty1 = blocks.findIndex(b => !nameOf(b) && /^食材管理①/.test(grpOf(b)));
+  const empty1 = blocks.filter(b => !nameOf(b) && /^食材管理（毎日）/.test(grpOf(b)));
+  const empty2 = blocks.filter(b => !nameOf(b) && /^ドリンク（毎日/.test(grpOf(b)));
+  ok(empty1.length === 5 && empty2.length === 5, '食材管理（毎日）・ドリンクのそれぞれに、区分入りの空の行が5つ（神田さん 10/21「5つくらい常に」）');
+  ok(empty2.every(b => freqOf(b) === ''), 'ドリンクの空の行は確認日が「毎日」');
+  const lastIdx1 = Math.max(...blocks.map((b, i) => /^食材管理（毎日）/.test(grpOf(b)) && nameOf(b) ? i : -1)); const firstEmpty1 = blocks.findIndex(b => !nameOf(b) && /^食材管理（毎日）/.test(grpOf(b)));
   ok(firstEmpty1 === lastIdx1 + 1, '空の行は、その区分の最後の品目のすぐ下');
   const tailEmpty = blocks.filter(b => !nameOf(b) && !grpOf(b)).length; ok(tailEmpty >= 8, 'いちばん下の区分なしの空き行は8行以上のまま');
   ok(!/<div class=\"zk-grp\"[^>]*>食材管理①[^<]*<\/div>[\s\S]*?<div class=\"zk-grp\"[^>]*>食材管理①/.test(registry.app.innerHTML), '区分の見出しは1回ずつ（空の行で見出しが増えない）');
@@ -7285,17 +7286,17 @@ console.log('== 2026-10-21 永井さん「在庫チェックに消耗品管理�
   location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
   const h = registry.app.innerHTML;
   ok(/<div class="zk-grp"[^>]*>消耗品（ホール）第二・第四の火<\/div>/.test(h) && /<div class="zk-grp"[^>]*>消耗品（キッチン・トイレ）月・木<\/div>/.test(h), '2つの見出しが出る');
-  ok(/value="ボールペン（黒）"/.test(h) && /value="レジロール（大／小）"/.test(h) && /value="クリアファイル"/.test(h) && /value="輪ゴム"/.test(h), 'ホール＝ボールペン〜クリアファイル（19品）');
-  ok(/value="ハンドソープ（詰替）"/.test(h) && /value="ゴミ袋（90ℓ）"/.test(h) && /value="ゴミ袋（45ℓ）"/.test(h) && /value="トイレの消臭剤"/.test(h), 'キッチン・トイレ＝ハンドソープ〜ゴミ袋45ℓ（12品）');
-  ok(!/排水ネット|グリスト専用ネット|半透明袋|マウスウォッシュ/.test(h), '紙で消してある4品は入れない');
+  ok(/value="ボールペン（黒）"/.test(h) && /value="レジロール（大／小）"/.test(h) && /value="クリアファイル"/.test(h) && /value="輪ゴム"/.test(h), 'ホール＝ボールペン〜クリアファイル（18品）');
+  ok(/value="ハンドソープ（詰替）"/.test(h) && /value="ゴミ袋 90L"/.test(h) && /value="ゴミ袋 45L"/.test(h) && /value="トイレの消臭剤"/.test(h) && !/value="ゴミ袋（90ℓ）"/.test(h), 'キッチン・トイレ＝ハンドソープは残り、ゴミ袋・消臭剤は10/23のシートの名前だけ（重複なし）');
+  ok(!/排水ネット|グリスト専用ネット|マウスウォッシュ/.test(h) && /value="半透明袋"/.test(h), '紙で消してある品は入れない（半透明袋だけは10/23のシートに載ったので入る）');
   const bl = h.split('<div class="zk-edit">').slice(1);
   const blk = (b) => (b.match(/id="zk_n\d+" value="([^"]*)"/) || ['', ''])[1];
   const grp = (b) => (b.match(/<select id="zk_g\d+"[\s\S]*?<\/select>/) || [''])[0];
   const frq = (b) => ((b.match(/<select id="zk_f\d+"[\s\S]*?<\/select>/) || [''])[0].match(/<option value="([^"]*)" selected/) || ['', ''])[1];
   const hallRows = bl.filter(b => /<option value="消耗品（ホール）第二・第四の火" selected>/.test(grp(b)));
   const kitRows = bl.filter(b => /<option value="消耗品（キッチン・トイレ）月・木" selected>/.test(grp(b)));
-  ok(hallRows.filter(b => blk(b)).length === 19 && hallRows.filter(b => !blk(b)).length === 5 && hallRows.every(b => frq(b) === 'tue'), 'ホール＝19品＋空欄5・確認日は火');
-  ok(kitRows.filter(b => blk(b)).length === 12 && kitRows.filter(b => !blk(b)).length === 5 && kitRows.every(b => frq(b) === 'mon,thu'), 'キッチン・トイレ＝12品＋空欄5・確認日は月・木');
+  ok(hallRows.filter(b => blk(b)).length === 18 && hallRows.filter(b => !blk(b)).length === 5 && hallRows.every(b => frq(b) === 'tue'), 'ホール＝18品（封筒は10/23のシート側へ）＋空欄5・確認日は火');
+  ok(kitRows.filter(b => blk(b)).length === 5 && kitRows.filter(b => !blk(b)).length === 5 && kitRows.every(b => frq(b) === 'mon,thu'), 'キッチン・トイレ＝5品（7品は10/23のシート側へ）＋空欄5・確認日は月・木');
   ok(/value="輪ゴム"[\s\S]{0,80}id="zk_s\d+" value="30"/.test(h) && /value="レジロール（大／小）"[\s\S]{0,80}id="zk_s\d+" value="5"/.test(h), '発注目安＝輪ゴム30・レジロール5');
 }
 

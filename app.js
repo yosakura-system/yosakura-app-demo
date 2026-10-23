@@ -3214,20 +3214,87 @@
      g＝紙の区分（入力画面の見出し）。店長が「品目・基準在庫」で保存すれば、以後は保存した内容が正 */
   const ZK_DEFAULT_ITEMS = {
     '牛カツ世桜 長堀橋店': [
-      { g:'食材管理①（毎日）', n:'白だし', std:1, u:'本' }, { g:'食材管理①（毎日）', n:'米', std:2, u:'袋' }, { g:'食材管理①（毎日）', n:'ガリ', std:2, u:'袋' },
-      { g:'食材管理①（毎日）', n:'わさび', std:2, u:'パック' }, { g:'食材管理①（毎日）', n:'卵', std:1, u:'パック' }, { g:'食材管理①（毎日）', n:'サーロイン肉', std:'', u:'' },
-      { g:'食材管理①（毎日）', n:'神戸牛', std:'', u:'' }, { g:'食材管理①（毎日）', n:'バッター粉', std:3, u:'袋' }, { g:'食材管理①（毎日）', n:'パン粉', std:3, u:'袋' },
-      { g:'食材管理①（毎日）', n:'食パン（6枚切り）', std:1, u:'袋' }, { g:'食材管理①（毎日）', n:'青ネギ（カット）小', std:1, u:'パック' }, { g:'食材管理①（毎日）', n:'三つ葉', std:0, u:'袋' },
-      { g:'食材管理①（毎日）', n:'キャベツ', std:1, u:'玉' }, { g:'食材管理①（毎日）', n:'ミニトマト', std:20, u:'個' }, { g:'食材管理①（毎日）', n:'大根おろし（冷凍）', std:2, u:'袋' },
-      { g:'食材管理①（毎日）', n:'いくら（冷凍）', std:4, u:'パック' }, { g:'食材管理①（毎日）', n:'うなぎ', std:'', u:'箱' },
-      { g:'食材管理②（月・木に確認）', n:'塩', std:0, u:'袋' }, { g:'食材管理②（月・木に確認）', n:'抹茶塩', std:0, u:'袋' }, { g:'食材管理②（月・木に確認）', n:'ピンク塩', std:0, u:'袋' },
-      { g:'食材管理②（月・木に確認）', n:'唐辛子', std:0, u:'袋' }, { g:'食材管理②（月・木に確認）', n:'山椒', std:0, u:'缶' }, { g:'食材管理②（月・木に確認）', n:'油', std:'', u:'缶' },
-      { g:'食材管理②（月・木に確認）', n:'柚子皮（冷凍）', std:0, u:'袋' }, { g:'食材管理②（月・木に確認）', n:'焼肉のタレ', std:5, u:'本' }, { g:'食材管理②（月・木に確認）', n:'ポン酢', std:0, u:'本' },
-      { g:'食材管理②（月・木に確認）', n:'金箔', std:0, u:'本' }, { g:'食材管理②（月・木に確認）', n:'胡麻ドレッシング', std:0, u:'本' }, { g:'食材管理②（月・木に確認）', n:'マヨネーズ', std:0, u:'本' },
-      { g:'食材管理②（月・木に確認）', n:'固形燃料', std:'', u:'箱' }, { g:'食材管理②（月・木に確認）', n:'サーモン', std:'', u:'' }, { g:'食材管理②（月・木に確認）', n:'和牛ごはん仕込み', std:'', u:'' },
-      { g:'ドリンク管理（毎日）', n:'ビール（瓶）', std:20, u:'本' }, { g:'ドリンク管理（毎日）', n:'コーラ（瓶）', std:15, u:'本' }, { g:'ドリンク管理（毎日）', n:'梅酒', std:2, u:'本' },
-      { g:'ドリンク管理（毎日）', n:'獺祭', std:2, u:'本' }, { g:'ドリンク管理（毎日）', n:'宇治茶（茶葉）', std:0, u:'袋' }, { g:'ドリンク管理（毎日）', n:'ほうじ茶（茶葉）', std:0, u:'袋' },
-      { g:'ドリンク管理（毎日）', n:'コーラゼロ', std:'', u:'本' }, { g:'ドリンク管理（毎日）', n:'炭酸水', std:'', u:'本' },
+      /* ★2026-10-23 永井さん（店舗責任者）の「在庫管理シート」から転記＝これまでの既定（9/17の紙＋10/21の消耗品2枚）を置き換え。
+         g＝シートの赤い見出し（コメントもそのまま）・f＝見出しの曜日（第1、第3水曜はアプリに無いので「水」＋見出しで示す）・p＝場所の列。
+         発注数の単位がシートの単位とちがう品目（和牛シート 40kg・和牛肉ご飯用 10kg・神戸牛 10kg・サーモン 半尾）は発注数を空欄＝永井さんに確認中。
+         保存されたらこの既定は使われない（店長の保存が正） */
+      { g:'食材管理（毎日）', n:'和牛シート（仕込み前）', std:60, u:'枚', p:'冷凍' },
+      { g:'食材管理（毎日）', n:'和牛シート（仕込み後）', std:'', u:'枚', p:'冷凍' },
+      { g:'食材管理（毎日）', n:'和牛肉ご飯用（仕込み前）', std:30, u:'個', p:'冷凍' },
+      { g:'食材管理（毎日）', n:'和牛肉ご飯用（仕込み後）', std:'', u:'個', p:'冷凍' },
+      { g:'食材管理（毎日）', n:'BBQ用端材', std:'', u:'g', p:'冷凍' },
+      { g:'食材管理（毎日）', n:'神戸牛', std:20, u:'個', p:'冷凍' },
+      { g:'食材管理（毎日）', n:'鰻', std:30, u:'尾', p:'冷凍' },
+      { g:'食材管理（毎日）', n:'イクラ', std:2, u:'P', ord:6, p:'冷凍' },
+      { g:'食材管理（毎日）', n:'わさび', std:1, u:'P', ord:2, p:'冷凍' },
+      { g:'食材管理（毎日）', n:'柚子皮', std:1, u:'P', ord:2, p:'冷凍' },
+      { g:'食材管理（毎日）', n:'おろし', std:2, u:'P', ord:2, p:'冷凍' },
+      { g:'食材管理（毎日）', n:'キャベツ（1袋＝1玉）', std:1, u:'玉', ord:3, p:'冷蔵' },
+      { g:'食材管理（毎日）', n:'ミニトマト', std:1, u:'個', ord:3, p:'冷蔵' },
+      { g:'食材管理（毎日）', n:'三つ葉', std:1, u:'P', ord:2, p:'冷蔵' },
+      { g:'食材管理（毎日）', n:'青ネギ', std:0.5, u:'P', ord:1, p:'冷蔵' },
+      { g:'食材管理（毎日）', n:'卵', std:2, u:'個', ord:2, p:'冷蔵' },
+      { g:'食材管理（毎日）', n:'サーモン', std:300, u:'g', p:'冷蔵' },
+      { g:'食材管理（毎日）', n:'食パン（6枚切り）', std:1, u:'P', ord:2, p:'キッチン棚' },
+      { g:'食材管理（毎日）', n:'ゴマドレッシング', std:1, u:'本', ord:2, p:'キッチン棚' },
+      { g:'食材管理（毎日）', n:'お米', std:2, u:'袋', ord:2, p:'キッチン棚' },
+      { g:'ドリンク（毎日・常温、冷蔵すべて）', n:'アサヒビール', std:30, u:'本', ord:24, p:'常温、冷蔵すべて' },
+      { g:'ドリンク（毎日・常温、冷蔵すべて）', n:'獺祭', std:1, u:'本', ord:2, p:'常温、冷蔵すべて' },
+      { g:'ドリンク（毎日・常温、冷蔵すべて）', n:'梅酒', std:2, u:'本', ord:6, p:'常温、冷蔵すべて' },
+      { g:'ドリンク（毎日・常温、冷蔵すべて）', n:'コカ・コーラ', std:15, u:'本', ord:20, p:'常温、冷蔵すべて' },
+      { g:'ドリンク（毎日・常温、冷蔵すべて）', n:'コカ・コーラ ゼロ', std:15, u:'本', ord:20, p:'常温、冷蔵すべて' },
+      { g:'ドリンク（毎日・常温、冷蔵すべて）', n:'ジンジャーエール', std:5, u:'本', ord:5, p:'常温、冷蔵すべて' },
+      { g:'ドリンク（毎日・常温、冷蔵すべて）', n:'炭酸水', std:2, u:'本', ord:1, p:'常温、冷蔵すべて' },
+      { g:'ドリンク（毎日・常温、冷蔵すべて）', n:'宇治茶（袋）', std:1, u:'袋', ord:3, p:'キッチン棚' },
+      { g:'ドリンク（毎日・常温、冷蔵すべて）', n:'ほうじ茶（袋）', std:1, u:'袋', ord:3, p:'キッチン棚' },
+      { g:'ドリンク（毎日・常温、冷蔵すべて）', n:'販売用 宇治茶', std:5, u:'袋', ord:5, p:'キッチン棚' },
+      { g:'食材管理（月曜日・週1）', n:'ガリ', std:3, u:'P', ord:2, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'白だし', std:3, u:'本', ord:3, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'抹茶塩', std:0.5, u:'P', ord:1, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'ステーキシーズニング', std:0.5, u:'本', ord:1, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'ピンクソルト', std:0.5, u:'P', ord:2, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'一味', std:0.2, u:'P', ord:1, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'精製塩', std:0.2, u:'P', ord:1, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'七味', std:0.2, u:'P', ord:1, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'唐辛子粉', std:0.2, u:'P', ord:1, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'焼き肉タレ', std:4, u:'本', ord:10, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'ポン酢', std:2, u:'本', ord:2, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'バッター粉', std:2, u:'P', ord:4, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'金箔', std:1, u:'個', ord:3, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'パン粉', std:3, u:'P', ord:10, p:'キッチン棚', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'パン粉（3階）', std:'', u:'P', p:'3階', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'鰻のタレ（3階段ボール）', std:0.5, u:'個', ord:1, p:'3階', f:'mon' },
+      { g:'食材管理（月曜日・週1）', n:'油', std:1, u:'缶', ord:1, p:'コンロ下', f:'mon' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'ラップ（長い）', std:2, u:'本', ord:2, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'ラップ（短い）', std:1, u:'本', ord:1, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'クッキングシート', std:2, u:'本', f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'ペーパータオル', std:2, u:'本', ord:6, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'キッチンペーパー', std:0.5, u:'P', ord:1, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'ニトリル手袋（S）', std:2, u:'P', ord:4, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'ニトリル手袋（M）', std:2, u:'P', ord:4, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'ニトリル手袋（L）', std:2, u:'P', ord:4, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'トイレットペーパー', std:1, u:'P', ord:1, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'スポンジ（黄色）', std:2, u:'個', ord:2, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'スポンジ（緑）', std:2, u:'個', ord:2, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'スポンジ（灰色）', std:2, u:'個', ord:2, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'スポンジ（グラス用）', std:2, u:'個', ord:2, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'ゴミ袋 90L', std:2, u:'P', ord:3, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'ゴミ袋 45L', std:1, u:'P', ord:3, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'トイレ用ふき取りシート', std:1, u:'P', ord:2, f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'マスキングテープ', std:1, u:'個', ord:4, p:'レジ下', f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'レジロール', std:2, u:'個', ord:10, p:'レジ下', f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'封筒', std:0.5, u:'P', ord:2, p:'レジ下', f:'tue' },
+      { g:'消耗品管理（火曜日・週1・1、2階のすべて、キッチン棚、ソファー下）', n:'固形燃料 35g', std:100, u:'個', ord:300, p:'3階', f:'tue' },
+      { g:'消耗品管理（第1、第3 水曜日）', n:'食洗器用 洗剤', std:1, u:'本', ord:2, p:'ソファー下、キッチン下', f:'wed' },
+      { g:'消耗品管理（第1、第3 水曜日）', n:'中性洗剤（詰替）', std:0.3, u:'本', ord:1, p:'ソファー下、キッチン下', f:'wed' },
+      { g:'消耗品管理（第1、第3 水曜日）', n:'ハイター（液体）', std:0.3, u:'本', ord:1, p:'ソファー下、キッチン下', f:'wed' },
+      { g:'消耗品管理（第1、第3 水曜日）', n:'マジックリン（緑）', std:0.3, u:'本', ord:1, p:'ソファー下、キッチン下', f:'wed' },
+      { g:'消耗品管理（第1、第3 水曜日）', n:'アルコール消毒液（詰替）', std:0.3, u:'本', ord:1, p:'ソファー下、キッチン下', f:'wed' },
+      { g:'消耗品管理（第1、第3 水曜日）', n:'トイレ用洗剤', std:0.3, u:'本', ord:1, p:'ソファー下、キッチン下', f:'wed' },
+      { g:'消耗品管理（第1、第3 水曜日）', n:'トイレの消臭剤', std:0.3, u:'個', ord:0.3, p:'ソファー下、キッチン下', f:'wed' },
+      { g:'消耗品管理（第1、第3 水曜日）', n:'半透明袋', std:1, u:'袋', ord:1, p:'ソファー下、キッチン下', f:'wed' },
+      { g:'消耗品管理（第1、第3 水曜日）', n:'マジックペン', std:3, u:'本', ord:5, f:'wed' },
+      /* ★2026-10-21 の消耗品2枚（ホール／キッチン・トイレ）は永井さんの10/23のシートに無いが、消さずに残す（重複する名前だけ除いた）。要らなければ品目・基準在庫で消してください */
       /* ★2026-10-21 永井さん「在庫チェックにこの2枚も」＝紙の消耗品管理2枚から転記（発注：アスクル・在庫数は未使用（未開封）を数える）。
          ホール＝第二・第四（火）→ 確認日は「火」（第二・第四は見出しで示す）。キッチン＝毎週（月・木）。
          紙で線を引いて消してある品目（排水ネット・グリスト専用ネット・半透明袋（小）・マウスウォッシュ）は入れていない。std＝紙の発注目安 */
@@ -3247,23 +3314,14 @@
       { g:'消耗品（ホール）第二・第四の火', n:'ゼムクリップ', std:0, u:'袋', f:'tue' },
       { g:'消耗品（ホール）第二・第四の火', n:'付箋（細）', std:0, u:'束', f:'tue' },
       { g:'消耗品（ホール）第二・第四の火', n:'付箋（太）', std:0, u:'束', f:'tue' },
-      { g:'消耗品（ホール）第二・第四の火', n:'封筒', std:0, u:'袋', f:'tue' },
       { g:'消耗品（ホール）第二・第四の火', n:'レジロール（大／小）', std:5, u:'ロール', f:'tue' },
       { g:'消耗品（ホール）第二・第四の火', n:'クリアファイル', std:2, u:'枚', f:'tue' },
       { g:'消耗品（キッチン・トイレ）月・木', n:'ハンドソープ（詰替）', std:0, u:'本', f:'mon,thu' },
-      { g:'消耗品（キッチン・トイレ）月・木', n:'中性洗剤（詰替）', std:0, u:'本', f:'mon,thu' },
-      { g:'消耗品（キッチン・トイレ）月・木', n:'ハイター（液体）', std:0, u:'本', f:'mon,thu' },
       { g:'消耗品（キッチン・トイレ）月・木', n:'ハイター（泡）', std:0, u:'本', f:'mon,thu' },
-      { g:'消耗品（キッチン・トイレ）月・木', n:'マジックリン（緑）', std:0, u:'本', f:'mon,thu' },
       { g:'消耗品（キッチン・トイレ）月・木', n:'アルコール（消毒用）', std:0, u:'本', f:'mon,thu' },
       { g:'消耗品（キッチン・トイレ）月・木', n:'食洗機専用洗剤', std:0, u:'本', f:'mon,thu' },
-      { g:'消耗品（キッチン・トイレ）月・木', n:'ゴミ袋（90ℓ）', std:0, u:'袋', f:'mon,thu' },
-      { g:'消耗品（キッチン・トイレ）月・木', n:'トイレ用洗剤', std:0, u:'本', f:'mon,thu' },
       { g:'消耗品（キッチン・トイレ）月・木', n:'トイレ用拭取シート', std:0, u:'袋', f:'mon,thu' },
-      { g:'消耗品（キッチン・トイレ）月・木', n:'トイレの消臭剤', std:0, u:'個', f:'mon,thu' },
-      { g:'消耗品（キッチン・トイレ）月・木', n:'ゴミ袋（45ℓ）', std:0, u:'袋', f:'mon,thu' },
     ],
-    /* 富士山2店＝長田さんの発注シート（備品＝土曜に確認・発注／食材＝月曜・木曜に確認・発注）9/19の写真から転記。std＝紙の「定数」（この数まで持つ）。f＝確認する曜日 */
     '日本鰻世桜 富士山店': [
       /* 毎日チェック＝朝礼シート（9/19 長田さん）。std＝紙の「○以下で発注」。仕込み済み数は記録だけ（基準なし＝発注リストに出ない） */
       { g:'毎日チェック（朝礼シート）', n:'鰻残数（仕込み前）', std:160, u:'尾', f:'' }, { g:'毎日チェック（朝礼シート）', n:'明日の最低鰻仕込み数（50尾以上必須）', std:'', u:'尾', f:'' }, { g:'毎日チェック（朝礼シート）', n:'全和牛残数（仕込み前）', std:80, u:'個', f:'' },
@@ -3417,6 +3475,8 @@
      ＝品目ごとに「発注数」（下回ったときに頼む数）を持てる。入れてあれば発注リスト・今日出すもの・入力画面に「発注数 3」と出す。空なら従来どおり「発注の目安」＝基準−残り */
   const zkOrdOf_ = (it) => { const v = it && it.ord; return (v != null && v !== '' && !isNaN(Number(v)) && Number(v) > 0) ? Number(v) : null; };
   const zkOrdHtml_ = (x) => x.ord != null ? `${L({ ja:'発注数', en:'order', vi:'số đặt' })} <b>${x.ord}</b>${esc(x.u)}` : `${L({ ja:'発注の目安', en:'order', vi:'cần đặt' })} <b>${x.need}</b>${esc(x.u)}`;
+  /* ★2026-10-23 永井さん「どこに発注するかをスタッフが見られると分かりやすい」＝場所（p）と発注先（v）を品目の下の小さい字に */
+  const zkPlaceSmall_ = (it) => (it.p ? ` ・ ${esc(it.p)}` : '') + (it.v ? ` ・ ${L({ ja:'発注先', en:'order from', vi:'đặt tại' })} ${esc(it.v)}` : '');
   const zkOrdSmall_ = (it) => zkOrdOf_(it) != null ? ` ／ ${L({ ja:'発注数', en:'order', vi:'số đặt' })} ${zkOrdOf_(it)}${esc(it.u || '')}` : '';
   function zkLow(store) {
     const m = zkMaster(store); const l = zkLatest(store); if (!m.length || !l) return [];
@@ -3467,7 +3527,7 @@
           const dow = new Date().getDay();
           const rowsOf = (list) => list.map(([it, i]) => { const cur = l && l.q[it.n]; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
             const prev = list[list.indexOf(list.find(x => x[1] === i)) - 1]; const head = (it.g && (!prev || prev[0].g !== it.g)) ? `<div class="zk-grp" style="margin-top:${prev ? 16 : 4}px">${esc(it.g)}</div>` : '';
-            return `${head}<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}${zkOrdSmall_(it)}</small></label>
+            return `${head}<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}${zkOrdSmall_(it)}${zkPlaceSmall_(it)}</small></label>
             ${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:-1" aria-label="-">−</button>` : ''}<input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${isToday && cur != null ? esc(String(cur)) : (draft[it.n] != null ? esc(String(draft[it.n])) : '')}" placeholder="${!isToday && cur != null ? esc(String(cur)) : '0'}">${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:1" aria-label="+">＋</button>` : ''}<span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
           const all = m.map((it, i) => [it, i]); const due = all.filter(([it]) => zkDue(it, dow)); const later = all.filter(([it]) => !zkDue(it, dow));
           const hasFreq = m.some(it => zkFreqOf(it));
@@ -3527,7 +3587,7 @@
         <div class="hint" style="display:block">${L({ ja:'在庫チェック表と同じ順で品目を入れてください。基準在庫＝これを下回ったら発注する数。発注数＝下回ったときに頼む数（空なら基準との差を目安に出します）。単位は「本」「袋」「kg」など。区分（冷凍庫など）を入れると、その見出しで分かれて並びます。品目の名前を変えると、前に数えた数は新しい名前には引き継がれません。', en:'List items in the same order as the stock sheet. Minimum = order when below this.', vi:'Nhập mặt hàng theo thứ tự bảng kiểm kho. Định mức = đặt hàng khi thấp hơn.' })}</div>
         ${draftNote}<div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'発注数', en:'Order qty', vi:'Số đặt' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span><span>${L({ ja:'確認日', en:'Check', vi:'Ngày' })}</span><span>${L({ ja:'区分', en:'Group', vi:'Nhóm' })}</span></div>
         ${(() => { zkGroupOpts_ = Array.from(new Set(m.concat(rows).map(it => String(it.g || '').trim()).filter(Boolean).concat(['冷凍庫', '冷蔵庫', '常温', '備品']))); /* ★2026-10-21 下書きで足した新しい区分も候補に（無いと「区分なし」に戻る） */ return ''; })()}
-        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="zk-grp" style="margin-top:${i ? 14 : 2}px">${esc(r.g)}</div>` : ''}<div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="${L({ ja:'基準', en:'min', vi:'định mức' })}"><input type="text" inputmode="decimal" id="zk_o${i}" value="${r.ord != null ? esc(String(r.ord)) : ''}" placeholder="${L({ ja:'発注数', en:'order', vi:'số đặt' })}"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'単位', en:'unit', vi:'đơn vị' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${((r.n || r.g) ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select><select id="zk_g${i}" style="flex:0.9;min-width:0"><option value="">${L({ ja:'区分なし', en:'No group', vi:'Không' })}</option>${zkGroupOpts_.map(g => `<option value="${esc(g)}"${g === String(r.g || '').trim() ? ' selected' : ''}>${esc(g)}</option>`).join('')}<option value="__new">${L({ ja:'＋新しい区分', en:'+ New group', vi:'+ Nhóm mới' })}</option></select><input type="text" id="zk_gn${i}" placeholder="${L({ ja:'新しい区分名', en:'New group', vi:'Nhóm mới' })}" style="flex:0.9;min-width:0;display:none"></div>`).join('')}
+        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="zk-grp" style="margin-top:${i ? 14 : 2}px">${esc(r.g)}</div>` : ''}<div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="${L({ ja:'基準', en:'min', vi:'định mức' })}"><input type="text" inputmode="decimal" id="zk_o${i}" value="${r.ord != null ? esc(String(r.ord)) : ''}" placeholder="${L({ ja:'発注数', en:'order', vi:'số đặt' })}"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'単位', en:'unit', vi:'đơn vị' })}"><input type="text" id="zk_p${i}" value="${esc(r.p || '')}" placeholder="${L({ ja:'場所', en:'place', vi:'nơi để' })}"><input type="text" id="zk_v${i}" value="${esc(r.v || '')}" placeholder="${L({ ja:'発注先', en:'supplier', vi:'nơi đặt' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${((r.n || r.g) ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select><select id="zk_g${i}" style="flex:0.9;min-width:0"><option value="">${L({ ja:'区分なし', en:'No group', vi:'Không' })}</option>${zkGroupOpts_.map(g => `<option value="${esc(g)}"${g === String(r.g || '').trim() ? ' selected' : ''}>${esc(g)}</option>`).join('')}<option value="__new">${L({ ja:'＋新しい区分', en:'+ New group', vi:'+ Nhóm mới' })}</option></select><input type="text" id="zk_gn${i}" placeholder="${L({ ja:'新しい区分名', en:'New group', vi:'Nhóm mới' })}" style="flex:0.9;min-width:0;display:none"></div>`).join('')}
         ${missing.length ? `<div style="margin:6px 0 4px"><button class="mini" id="zkFromDefault">${L({ ja:'本部が写した品目を取り込む', en:'Add HQ-listed items', vi:'Thêm mặt hàng do HQ nhập' })}（${missing.length}）</button>
           <span class="muted" style="font-size:12px">${L({ ja:'紙の在庫表・朝礼シートから本部が写した品目のうち、この一覧に無いものを空の行に足します（足したら保存）', en:'Adds items HQ copied from the paper sheets that are not in this list', vi:'Thêm các mặt hàng HQ đã nhập mà danh sách chưa có' })}</span></div>` : ''}
         <div style="margin:6px 0 10px"><button class="mini" id="zkFromTana">${L({ ja:'月次棚卸の品目を取り込む', en:'Import stocktake items', vi:'Nhập mặt hàng từ kiểm kê' })}${(() => { const n = zkTanaNames(store).length; return n ? `（${n}）` : ''; })()}</button>
@@ -3553,7 +3613,7 @@
     const wkDone = getZk('zaiko').some(r => r.store === store && (parseNote(r.note) || {}).wk && weekKeyOf(dateKeyFor(store, r.t)) === weekKeyOf(today));
     const storeSel = vis.length > 1 ? `<label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="zk_store">${vis.map(x => `<option${x === store ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : '';
     const rows = all.map(([it, i]) => { const cur = l && l.q[it.n]; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
-      return `<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}${zkOrdSmall_(it)}${cur != null && cur !== '' ? ` ・ ${L({ ja:'前回', en:'last', vi:'lần trước' })} ${esc(String(cur))}` : ''}</small></label>
+      return `<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}${zkOrdSmall_(it)}${zkPlaceSmall_(it)}${cur != null && cur !== '' ? ` ・ ${L({ ja:'前回', en:'last', vi:'lần trước' })} ${esc(String(cur))}` : ''}</small></label>
       ${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:-1" aria-label="-">−</button>` : ''}<input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${draft[it.n] != null ? esc(String(draft[it.n])) : ''}" placeholder="${cur != null && cur !== '' ? esc(String(cur)) : '0'}">${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:1" aria-label="+">＋</button>` : ''}<span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
     const body = all.length ? `
       ${wkDone ? `<div class="hint" style="display:block">${L({ ja:'今週はもう数えています。直すときはそのまま入れ直して提出してください。', en:'Already counted this week; resubmit to correct.', vi:'Tuần này đã đếm; gửi lại để sửa.' })}</div>` : ''}
@@ -11867,6 +11927,8 @@
         const i = empty.id.slice(4); empty.value = d.n;
         const sEl = document.getElementById('zk_s' + i); if (sEl) sEl.value = d.std != null && d.std !== '' ? String(d.std) : '';
         const uEl = document.getElementById('zk_u' + i); if (uEl) uEl.value = d.u || '';
+        const pEl = document.getElementById('zk_p' + i); if (pEl) pEl.value = d.p || '';   // 2026-10-23 場所・発注先
+        const vEl = document.getElementById('zk_v' + i); if (vEl) vEl.value = d.v || '';
         const gEl = document.getElementById('zk_g' + i); if (gEl) gEl.value = d.g || '';
         const fEl = document.getElementById('zk_f' + i); if (fEl) fEl.value = zkFreqOf(d);
         added++;
@@ -11885,7 +11947,7 @@
     /* ★2026-10-21 打つたびに下書き（品目の欄があるとき＝品目タブ）。zk_store（店舗の切替）は除く＝切替の瞬間に別の店の下書きを作らない */
     const zkCollect_ = () => { const out = []; for (let i = 0; i < 400; i++) { const nEl = document.getElementById('zk_n' + i); if (!nEl) break;
       const gv = String((document.getElementById('zk_g' + i) || {}).value || '').trim(); const g = gv === '__new' ? String((document.getElementById('zk_gn' + i) || {}).value || '').trim() : gv;
-      out.push({ n: String(nEl.value || '').trim(), std: String((document.getElementById('zk_s' + i) || {}).value || '').trim(), ord: String((document.getElementById('zk_o' + i) || {}).value || '').trim(), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g, f: String((document.getElementById('zk_f' + i) || {}).value || '') }); } return out; };
+      out.push({ n: String(nEl.value || '').trim(), std: String((document.getElementById('zk_s' + i) || {}).value || '').trim(), ord: String((document.getElementById('zk_o' + i) || {}).value || '').trim(), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g, f: String((document.getElementById('zk_f' + i) || {}).value || ''), p: String((document.getElementById('zk_p' + i) || {}).value || '').trim(), v: String((document.getElementById('zk_v' + i) || {}).value || '').trim() }); } return out; };
     if (document.getElementById('zk_n0') && zkMgr()) {
       const keep = () => zkDraftSave_(zkStore(), zkCollect_());
       document.querySelectorAll('input[id^="zk_"]:not(#zk_store), select[id^="zk_"]:not(#zk_store)').forEach(el => { el.addEventListener('input', keep); el.addEventListener('change', keep); });
@@ -11905,7 +11967,7 @@
         const name = String(nEl.value || '').trim(); if (!name) continue;
         const sv = String((document.getElementById('zk_s' + i) || {}).value || '').trim();
         const ov = String((document.getElementById('zk_o' + i) || {}).value || '').trim();   // ★2026-10-22 発注数（空＝基準との差を目安に）
-        items.push({ n: name, std: sv === '' ? '' : (Number(sv) || 0), ord: ov === '' ? '' : (Number(ov) || 0), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g: (() => { const gv = String((document.getElementById('zk_g' + i) || {}).value || '').trim(); return gv === '__new' ? String((document.getElementById('zk_gn' + i) || {}).value || '').trim() : gv; })(), f: String((document.getElementById('zk_f' + i) || {}).value || '') });
+        items.push({ n: name, std: sv === '' ? '' : (Number(sv) || 0), ord: ov === '' ? '' : (Number(ov) || 0), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g: (() => { const gv = String((document.getElementById('zk_g' + i) || {}).value || '').trim(); return gv === '__new' ? String((document.getElementById('zk_gn' + i) || {}).value || '').trim() : gv; })(), f: String((document.getElementById('zk_f' + i) || {}).value || ''), p: String((document.getElementById('zk_p' + i) || {}).value || '').trim(), v: String((document.getElementById('zk_v' + i) || {}).value || '').trim() });   // 2026-10-23 場所・発注先
       }
       if (!items.length) { toast(L({ ja:'品目を1つ以上入れてください', en:'Enter at least one item', vi:'Nhập ít nhất một mặt hàng' })); return; }
       const t = Date.now();

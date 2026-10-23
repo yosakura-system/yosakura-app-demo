@@ -914,6 +914,7 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
 .zk-head span:nth-child(2), .zk-edit input:nth-child(2) { flex: 0.6; min-width: 0; text-align: right; }
 .zk-head span:nth-child(3), .zk-edit input:nth-child(3) { flex: 0.6; min-width: 0; text-align: right; }   /* 発注数（2026-10-22 永井さん） */
 .zk-head span:nth-child(4), .zk-edit input:nth-child(4) { flex: 0.5; min-width: 0; }
+.zk-edit input:nth-child(5), .zk-edit input:nth-child(6) { flex: 0.8; min-width: 4.5em; }   /* 場所・発注先（2026-10-23 永井さん） */
 .zk-head span:nth-child(5), .zk-edit select { flex: 0.7; min-width: 0; padding: 8px 4px; }
 .zk-grp { background: var(--suou); color: #fff; font-weight: 700; font-size: 15px; padding: 8px 12px; border-radius: 8px; margin: 14px 0 6px; }
 .zk-today { font-size: 17px; font-weight: 700; color: var(--suou); border-left: 5px solid var(--suou); padding: 2px 0 2px 10px; margin: 4px 0 8px; display: flex; align-items: center; gap: 8px; }
@@ -933,6 +934,7 @@ html[data-theme="hp"] .svready { border-color: #333333; background: #F8F8F8; }
   .zk-edit > * { min-width: 0 !important; max-width: 100%; box-sizing: border-box; }
   .zk-edit input:nth-child(1) { flex: 1 1 100%; }   /* 1行目＝品目名（iPhoneで幅を超えて横スクロールが出たので縮める余地を残す） */
   .zk-edit input:nth-child(2), .zk-edit input:nth-child(3), .zk-edit input:nth-child(4) { flex: 1 1 28%; text-align: center; }   /* 2行目＝基準・発注数・単位 */
+  .zk-edit input:nth-child(5), .zk-edit input:nth-child(6) { flex: 1 1 46%; }   /* 3行目＝場所・発注先 */
   .zk-edit select:nth-of-type(1) { flex: 1 1 34% !important; }   /* 3行目＝確認日・区分（区分の inline flex より優先） */
   .zk-edit select:nth-of-type(2) { flex: 1 1 58% !important; }
 }
