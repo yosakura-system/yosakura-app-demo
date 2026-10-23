@@ -5433,7 +5433,7 @@ console.log('== SVチェック（本部）2026-09-16 神田さんのご要望＝
   location.hash = '#/app/hqcheck';
   let h = registry.app.innerHTML;
   ok(/id="sv_store"/.test(h) && /data-vctab="D"/.test(h) && /data-vctab="report"/.test(h), '本部にはSVチェック（A〜Hのタブ＋結果）が出る');
-  ok(/No\.8<\/span>/.test(h) && /看板の電気がついているか/.test(h) && !/暖簾/.test(h), '最初のタブ＝A 店頭・表示に原本No.8が出る（番号は原本・項目は出来栄え基準35項目・2026-10-22）');
+  ok(/No\.8<\/span>/.test(h) && /看板の電気がついているか/.test(h) && !/暖簾/.test(h), '最初のタブ＝A 店頭・表示に原本No.8が出る（番号は原本・項目は出来栄え基準37項目・2026-10-22）');
   ok(/data-svv="ok"[^>]*data-svno="8"/.test(h) && /data-svv="ng"[^>]*data-svno="8"/.test(h) && /data-svv="na"[^>]*data-svno="8"/.test(h), '各項目に ○・×・対象外 の3つ');
   ok(/チェックの見本・原本/.test(h), '従来の見本・原本リンクも残る');
   // ② 実食の段階＝同期で届いた○×が反映（2人の入力が1つに）・メニュー欄
@@ -5463,14 +5463,14 @@ console.log('== SVチェック（本部）2026-09-16 神田さんのご要望＝
   ok(/details class="svstd" data-svstd="8"/.test(hS) && /基準（あるべき姿/.test(hS), '各項目に「基準（あるべき姿」の欄がある');
   ok(/data-svstdphoto="8"/.test(hS) && /data-svstdtext="8"/.test(hS), '本部がスクショ・正解写真と基準文を登録できる');
   const manN = (srcH.match(/, man:\['mn\d+'/g) || []).length;
-  ok(manN === 35, '35項目すべてに関連マニュアルが紐づく（実際 ' + manN + '）');
+  ok(manN === 37, '37項目すべてに関連マニュアルが紐づく（実際 ' + manN + '）');
   ok(/std:'アラカルト10分以内→○/.test(srcH) && /std:'冷蔵5℃以下・冷凍−18℃以下/.test(srcH), '基準の文言は原本に書かれているものだけ（作らない）');
   ok(/case 'svstd':/.test(srcH) && /set\('yosakura_demo_svstd', curT\)/.test(srcH), '基準は本部共通で合流する（No ごと最新が正）');
   ok(/素材：/.test(hS) && /drive\.google\.com\/drive\/folders\/1CtU_lfi_VXqXv4uAAIFnGsadJrx4GnuK/.test(hS), '基準欄から「07.世桜×MOTON」の素材フォルダ（料理写真・POP・看板）を開ける');
   ok(/番号は【世桜】店舗管理チェックシート_原本のNo/.test(srcH), 'レポートの文面に「番号は原本のNo」と入る（原本へ転記できる）');
   ok(/ae\.tagName && \/\^\(TEXTAREA\|INPUT\)\$\/\.test\(ae\.tagName\)/.test(srcH), 'メモ入力中は合流の描き直しをしない（書きかけが消えない）');
   const svN = (srcH.match(/\{ no:(?:\d+|'T\d+'),\s+pt:\d, ph:'/g) || []).length;
-  ok(svN === 35, '項目は出来栄え基準の35（原本34＋体験1）（実際 ' + svN + '）');
+  ok(svN === 37, '項目は出来栄え基準の37（原本36＋体験1）（実際 ' + svN + '）');
   FETCH_ROWS = { ok:false };
   run(() => { setLS('hq', 'all', 'ja'); });
 }
@@ -7389,24 +7389,24 @@ console.log('== 2026-10-22 神田さん「食物アレルギーをカードボ�
   ok(/html\[data-theme="pb"\] \.pb-chips--home \{ grid-template-columns: 1fr 1fr; \}/.test(fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8')), 'CSS＝ホームのカード4枚は2列（3列だと「食物アレルギー」がはみ出す）');
 }
 
-console.log('== 2026-10-22 神田さん「本部管理画面で35項目をアプリでSVチェック・結果をPDFでLINEへ・改善点の写真も複数」＝項目を出来栄え基準35項目に ==');
+console.log('== 2026-10-22 神田さん「本部管理画面で37項目をアプリでSVチェック・結果をPDFでLINEへ・改善点の写真も複数」＝項目を出来栄え基準37項目に ==');
 {
   const seedAuth = (uid, role) => run(() => { setLS(role, 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid, name:'神田', role, stores:['*'] })); localStorage.removeItem('yosakura_sv_sel'); localStorage.removeItem('yosakura_demo_svcheck'); });
   seedAuth('kanda', 'hq'); location.hash = '#/home?tab=hq'; let h = registry.app.innerHTML;
-  ok(/<button class="pb-strip" data-open="hqcheck"[^>]*><img[^>]*><span><b>SVチェック（出来栄え基準 35項目）<\/b>店を選んで ○×・写真・メモ → 結果をPDFでLINEへ<\/span>/.test(h), '本部タブ（案B）に「SVチェック（出来栄え基準 35項目）」の入口がある');
+  ok(/<button class="pb-strip" data-open="hqcheck"[^>]*><img[^>]*><span><b>SVチェック（出来栄え基準 37項目）<\/b>店を選んで ○×・写真・メモ → 結果をPDFでLINEへ<\/span>/.test(h), '本部タブ（案B）に「SVチェック（出来栄え基準 37項目）」の入口がある');
   location.hash = '#/app/hqcheck?date=2026-10-22&store=' + encodeURIComponent('牛カツ世桜 長堀橋店'); h = registry.app.innerHTML;
   const tabs = [...new Set((h.match(/data-vctab="([A-H])"/g) || []).map(x => x.slice(-2, -1)))];
-  ok(tabs.join('') === 'ABCDEFGH' && /data-vctab="A"[^>]*>A 店頭・表示<small>0\/3<\/small>/.test(h) && /data-vctab="F"[^>]*>F キッチン衛生<small>0\/7<\/small>/.test(h), 'タブ＝A〜Hの8分類（出来栄え基準のまま）・件数つき（A 3・F 7）');
+  ok(tabs.join('') === 'ABCDEFGH' && /data-vctab="A"[^>]*>A 店頭・表示<small>0\/4<\/small>/.test(h) && /data-vctab="F"[^>]*>F キッチン衛生<small>0\/7<\/small>/.test(h), 'タブ＝A〜Hの8分類（出来栄え基準のまま）・件数つき（A 4・F 7）');
   ok(/data-svno="8"/.test(h) && /data-svno="10"/.test(h) && /data-svno="11"/.test(h) && !/data-svno="3"/.test(h), 'A＝8・10・11の3項目（旧No.3 暖簾は無い）');
   ok(/<div class="svit-p">開店時と日没後に、看板・A看板・行灯の点灯を外から確認。<\/div>/.test(h) && /<ul class="svit-c"><li>□ 営業中は看板が点いている<\/li><li>□ 切れた電球・消えた文字が無い<\/li><li>□ A看板が決めた位置にある<\/li><\/ul>/.test(h), '各項目に確認ポイントと評価基準3つ（店に渡したPDFと同じ文）');
-  ok(/本部専用：SVチェック（店舗の出来栄え基準 35項目/.test(h) && /写真は項目ごとに6枚まで/.test(h), '説明文＝35項目・写真は項目ごとに6枚まで');
+  ok(/本部専用：SVチェック（店舗の出来栄え基準 37項目/.test(h) && /写真は項目ごとに6枚まで/.test(h), '説明文＝37項目・写真は項目ごとに6枚まで');
   location.hash = '#/app/hqcheck?tab=C'; h = registry.app.innerHTML;
   ok(/data-svno="95"/.test(h) && /svit-tag svit-hear">聞く＝スタッフに確認</.test(h) && (h.match(/svit-hear/g) || []).length === 2, 'C ご注文＝No.95（アレルギー表）と32（世桜BOOK）に「聞く＝スタッフに確認」の印');
   const hearN = (code.match(/hear:true/g) || []).length;
   ok(hearN === 5 && /no:95,[^\n]*hear:true/.test(code) && /no:32,[^\n]*hear:true/.test(code) && /no:111,[^\n]*hear:true/.test(code) && /no:99,[^\n]*hear:true/.test(code) && /no:101,[^\n]*hear:true/.test(code), 'ソース＝聞く印は5項目（95・32・111・99・101＝PDFの10・12・33・34・35）');
   location.hash = '#/app/hqcheck?tab=D'; h = registry.app.innerHTML;
   ok(/id="sv_menu"/.test(h) && /id="sv_orderAt"/.test(h) && /data-svno="28"/.test(h) && /data-svno="93"/.test(h), 'D 提供・実食＝実食メニュー／注文→提供時刻の欄＋No.28・93');
-  ok(/band\('35項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）'\)/.test(code) && /項目＝店舗の出来栄え基準 35項目（2026-10-22）/.test(code), 'PDFレポート＝35項目の結果一覧（A〜H順）と注記');
+  ok(/band\('37項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）'\)/.test(code) && /項目＝店舗の出来栄え基準 37項目（2026-10-22）/.test(code), 'PDFレポート＝37項目の結果一覧（A〜H順）と注記');
   ok(/const base = `世桜_SVチェック_\$\{svState\.store\}_\$\{svState\.date\}`/.test(code) && /title: '世桜 SVチェック'/.test(code), 'PDFのファイル名・共有の題＝SVチェック');
   ok(/phs\.length < 6 \? `<label class="svph-add">/.test(code), '改善点の写真＝どの項目にも6枚まで貼れる（そのまま）');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); });
@@ -7475,6 +7475,17 @@ console.log('== 2026-10-23 神田さん「気づきは誰が投稿したか分�
   ok(code.includes("postReport({ kind:'kizuki', store, item:cat, note, photos, t, level: who })"), 'ソース＝本部へは level 列にお名前を載せて送る');
   ok(code.includes("case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id, who: String(r.level || '') })"), 'ソース＝同期で level 列をお名前（who）として読む');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); localStorage.removeItem('yosakura_demo_uname'); localStorage.removeItem('yosakura_demo_kizuki'); });
+}
+
+console.log('== 2026-10-23 神田さん「店の裏・段ボール・仕入先の件を臨店でチェックできるように」＝原本No.1・No.100を戻して37項目 ==');
+{
+  ok(/no:1, pt:1, ph:'A', t:"ゴミや段ボールを見える場所に出していないか"/.test(code) && /勝手口は使うとき以外閉まっていて、中が見えない/.test(code), 'A 店頭・表示に原本No.1（段ボール・勝手口）がある');
+  ok(/no:100, pt:1, ph:'H', t:"仕入れている商材の箱がお客様の目に触れる場所にないか"/.test(code) && /聞かれたら仕入先は答えず、食材・産地・アレルギーは正確に答える/.test(code), 'H 秘密保持に原本No.100（仕入先の箱・ラベル）がある');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/app/hqcheck'; const h = registry.app.innerHTML;
+  ok(/No\.1<\/span>/.test(h) && /ゴミや段ボールを見える場所に出していないか/.test(h), 'SVチェックの画面＝Aタブの先頭に No.1 が出る');
+  ok(!/no:1,[^\n]*hear:true/.test(code) && !/no:100,[^\n]*hear:true/.test(code), 'No.1・No.100 は見て確かめる項目（「聞く」印なし）');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); });
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);

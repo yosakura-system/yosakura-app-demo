@@ -425,8 +425,8 @@
     /* ★2026-08-28 構築MTG決定＝名称は「店舗運営チェック」。本部用と加盟店用で項目を分けず、
        アルバイトを含む全スタッフが操作・閲覧できる（実施者の記録で本部チェックかセルフかを判別する）。 */
     { id:'hqcheck', group:'storeops', icon:'check', roles:['staff','manager','owner','hq'],
-      name:{ ja:'SVチェック', en:'SV check', vi:'Kiểm tra SV' },   // 2026-10-22 神田さんの言葉に（出来栄え基準 35項目）
-      desc:{ ja:'店舗の出来栄え基準 35項目を ○×・写真・メモで。結果はPDFでLINEへ', en:'35 store standards: mark, photos, notes. Share the PDF.', vi:'35 tiêu chuẩn: chấm, ảnh, ghi chú. Chia sẻ PDF.' } },
+      name:{ ja:'SVチェック', en:'SV check', vi:'Kiểm tra SV' },   // 2026-10-22 神田さんの言葉に（出来栄え基準 37項目）
+      desc:{ ja:'店舗の出来栄え基準 37項目を ○×・写真・メモで。結果はPDFでLINEへ', en:'37 store standards: mark, photos, notes. Share the PDF.', vi:'35 tiêu chuẩn: chấm, ảnh, ghi chú. Chia sẻ PDF.' } },
     { id:'guide', group:'other', icon:'play', roles:['staff','manager','owner','hq'],
       name:{ ja:'使い方ガイド', en:'How to use', vi:'Hướng dẫn' },
       desc:{ ja:'このアプリの使い方（1分）', en:'Quick app guide (1 min)', vi:'Hướng dẫn nhanh (1 phút)' } },
@@ -2306,7 +2306,7 @@
     return `<main class="screen pb-home pb-hq">
       <div class="pb-sec"><h2>${L({ ja:'店舗', en:'Stores', vi:'Cửa hàng' })}</h2><small>${L({ ja:'押すとその店の画面（確認用）・戻るときは上の「本部」', en:'Tap to open the store view; “HQ” above to return', vi:'Chạm để xem CH; “HQ” ở trên để quay lại' })}</small></div>
       <div class="pb-hqstores">${cards}</div>
-      <button class="pb-strip" data-open="hqcheck" style="margin-top:10px">${pbImg_('miru_manual', 'pb-th pb-th--s')}<span><b>${L({ ja:'SVチェック（出来栄え基準 35項目）', en:'SV check (35 items)', vi:'Kiểm tra SV (35 mục)' })}</b>${L({ ja:'店を選んで ○×・写真・メモ → 結果をPDFでLINEへ', en:'Pick a store, mark, add photos, share the PDF', vi:'Chọn cửa hàng, chấm, thêm ảnh, chia sẻ PDF' })}</span>${svg('chev')}</button>
+      <button class="pb-strip" data-open="hqcheck" style="margin-top:10px">${pbImg_('miru_manual', 'pb-th pb-th--s')}<span><b>${L({ ja:'SVチェック（出来栄え基準 37項目）', en:'SV check (35 items)', vi:'Kiểm tra SV (35 mục)' })}</b>${L({ ja:'店を選んで ○×・写真・メモ → 結果をPDFでLINEへ', en:'Pick a store, mark, add photos, share the PDF', vi:'Chọn cửa hàng, chấm, thêm ảnh, chia sẻ PDF' })}</span>${svg('chev')}</button>
       <div class="pb-sec"><h2>${L({ ja:'全店 きょう', en:'All stores today', vi:'Tất cả hôm nay' })}</h2><small>${L({ ja:'●＝提出済み ・ 赤＝締切超過', en:'● done, red = overdue', vi:'● xong, đỏ = trễ' })}</small></div>
       <div class="pb-card"><div class="pb-hqgrid"><span></span>${COLS.map(([h]) => `<span class="h">${esc(h)}</span>`).join('')}<span class="h">${L({ ja:'レジ締め', en:'Register', vi:'Két' })}</span>${grid}</div><div class="pb-hqnote">${L({ ja:'点線＝その店では対象外の項目、またはUSENレジが無い店。レジ締めの赤＝現金の過不足あり。定休日は全部点線', en:'Dashed = not applicable or no USEN register. Red register = cash difference.', vi:'Nét đứt = không áp dụng. Đỏ = lệch tiền mặt.' })}</div></div>
       <div class="pb-sec"><h2>${L({ ja:'レジ締め', en:'Register close', vi:'Chốt két' })}</h2><small>${L({ ja:`USENから毎朝 ・ ${regi.length}店`, en:`From USEN each morning, ${regi.length} stores`, vi:`Từ USEN mỗi sáng, ${regi.length} CH` })}</small></div>
@@ -5238,7 +5238,7 @@
      保存＝kind:svcheck。1項目1行（item=店舗|日付|No・最新が正）＝2人が別の項目を同時に入れても上書きし合わない。
           store は「本部」＝店舗端末には返さない（本部の評価を店舗iPadへ流さない）。90日削除の対象外。
      採点方式は本部で未確定＝○×＋メモを正とし、点数は「参考スコア」（対象外を除いた配点の合計が分母）。 */
-  /* ★2026-10-22 神田さん「本部管理画面で35項目をアプリでSVチェック」＝項目を「店舗の出来栄え基準 35項目」（05/_出来栄え基準_項目.py と同じ・店へ事前共有したPDFと同じ番号順）に差し替え。
+  /* ★2026-10-22 神田さん「本部管理画面で37項目をアプリでSVチェック」＝項目を「店舗の出来栄え基準 37項目」（05/_出来栄え基準_項目.py と同じ・店へ事前共有したPDFと同じ番号順）に差し替え。
      段階＝A〜H の8分類（出来栄え基準のまま）。no・pt＝原本のNo・配点のまま（保存キー 店舗|日付|No は変わらない＝過去の結果もそのまま読める）。
      p＝確認ポイント／c＝評価基準（全部できていれば ○）／hear＝スタッフに聞いて確かめる項目（神田さん 10/22＝10・12・33・34・35）。
      man／mat／std は旧44項目から No で引き継ぎ（新しい5項目＝10・11・26・95・93 は近いマニュアルを付けた）。 */
@@ -5254,6 +5254,7 @@
   ];
   /* no＝原本のNo（数字）／'T'付き＝お客様体験の接点No（配点なし）。pt＝原本の配点。tag＝該当店のみ等 */
   const SV_ITEMS = [
+    { no:1, pt:1, ph:'A', t:"ゴミや段ボールを見える場所に出していないか", p:"店の裏・勝手口・搬出入口を外から見る。空箱は畳んで決めた場所に、ゴミと分けてあるか。", c:["空箱は畳んで決めた場所にある（山積みにしない）", "勝手口は使うとき以外閉まっていて、中が見えない", "ゴミと空箱が分けてあり、通路をふさいでいない"], man:['mn049'] },   // ★2026-10-23 神田さん＝店の裏（10/18 富士山店の件）を臨店で見られるように、原本No.1を戻した
     { no:8, pt:2, ph:'A', t:"看板の電気がついているか", p:"開店時と日没後に、看板・A看板・行灯の点灯を外から確認。", c:["営業中は看板が点いている", "切れた電球・消えた文字が無い", "A看板が決めた位置にある"], man:['mn049'], mat:[{ t:'牛カツ長堀 A看板', u:'https://drive.google.com/drive/folders/1kFyeFubhshUB96NS20VOPpGLd9lfddkX' }, { t:'店舗の素材（07.世桜×MOTON）', u:'https://drive.google.com/drive/folders/1CtU_lfi_VXqXv4uAAIFnGsadJrx4GnuK' }] },
     { no:10, pt:2, ph:'A', t:"金額やメニュー表示に間違いがないか", p:"メニュー表・店頭の表示・POPの金額と、レジの金額を照らす。", c:["税込の金額が書いてある", "メニュー表とレジの金額が同じ", "終了した商品・古い金額のPOPが残っていない"], man:['mn054','mn031'] },
     { no:11, pt:2, ph:'A', t:"本部指定のもの以外の販促物を使っていないか", p:"店内・店頭のPOP・のぼり・掲示物を1つずつ見る。", c:["本部が配ったもの以外の販促物が無い", "自作のPOPを出すときは本部に確認している", "汚れ・破れたPOPを出していない"], man:['mn031'] },
@@ -5288,6 +5289,7 @@
     { no:108, pt:3, ph:'G', t:"床の水・油による転倒リスクがないか", p:"厨房の床・洗い場まわりを見る。", c:["床が濡れていない・油が溜まっていない", "濡れたらすぐ拭く", "マットがずれていない"], man:['mn047'] },
     { no:111, pt:3, ph:'G', t:"消火器の期限が切れていないか", p:"消火器のラベルの期限を見る。置き場が決まっているか。", c:["期限内", "置き場が決まっていて物でふさがれていない", "全員が場所を知っている"], hear:true, man:['mn060'] },
     { no:99, pt:3, ph:'H', t:"外部への情報漏えい防止（調理方法などを口外しない）", p:"お客様に「どうやって焼いているの？」と聞かれたときの答え方が決まっているか。", c:["調理方法・レシピを口外しない", "画面の撮影・転送・SNS投稿をしない", "聞かれたときの答え方が決まっている"], hear:true, man:['mn011'] },
+    { no:100, pt:1, ph:'H', t:"仕入れている商材の箱がお客様の目に触れる場所にないか", p:"お客様から見える所と店の裏に、仕入先の名前・ラベルが見える箱や容器が無いか。", c:["仕入先の名前・ラベルがお客様から見える所に無い", "保管中の箱・袋は元の表示のまま（期限・アレルゲンが分かる）", "聞かれたら仕入先は答えず、食材・産地・アレルギーは正確に答える"], man:['mn011'] },   // ★2026-10-23 原本No.100を戻した（仕入情報の扱いマニュアルと対）
     { no:101, pt:3, ph:'H', t:"秘密保持の契約をしているスタッフのみを雇用しているか", p:"オーナーに確認（日雇い・スポットも含む）。", c:["全員分の秘密保持の書面がある", "スポットワークの人にも渡している", "退職者のアプリのログインを止めている"], tag:'オーナー確認', hear:true, man:['mn068'] },
   ];
   /* ★描画のたびに写真入りの保存データをJSON.parseし直していた（1項目ごとに何度も＝44項目×基準×スコア）→ 重い（2026-09-17 神田さん実機「めちゃくちゃ重たい」）。
@@ -5700,8 +5702,8 @@
     const ngPh = SV_PHASES.map(([k, l]) => { const n = SV_ITEMS.filter(i => i.ph === k && (svAns(i.no) || {}).v === 'ng').length; return n ? `${L(l)} ${n}` : ''; }).filter(Boolean).join('　');
     g.fillText(ngPh ? `× の内訳：${ngPh}` : '× はありません', M + 330, y + 62);
     y += 136;
-    /* ★2026-10-22 35項目の結果を全部並べる（店に渡した出来栄え基準と同じ順・番号）＝○×だけ先に全体が見える */
-    band('35項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）');
+    /* ★2026-10-22 37項目の結果を全部並べる（店に渡した出来栄え基準と同じ順・番号）＝○×だけ先に全体が見える */
+    band('37項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）');
     SV_PHASES.forEach(([k, l]) => {
       const its = SV_ITEMS.filter(i => i.ph === k); if (!its.length) return;
       ensure(32); g.fillStyle = '#6B635A'; g.font = `bold 20px ${F}`; g.fillText(L(l), M, y); y += 28;
@@ -5781,7 +5783,7 @@
     // 注記・ページ番号
     pages.forEach((pc, i) => {
       const pg = pc.getContext('2d'); pg.fillStyle = '#6B635A'; pg.font = `16px ${F}`; pg.textBaseline = 'top';
-      pg.fillText('※ 番号は【世桜】店舗管理チェックシート_原本のNo。項目＝店舗の出来栄え基準 35項目（2026-10-22）。採点方式は本部で確定待ちのため点数は参考です。', M, SV_PAGE_H - 44);
+      pg.fillText('※ 番号は【世桜】店舗管理チェックシート_原本のNo。項目＝店舗の出来栄え基準 37項目（2026-10-22）。採点方式は本部で確定待ちのため点数は参考です。', M, SV_PAGE_H - 44);
       pg.textAlign = 'right'; pg.fillText(`${i + 1} / ${pages.length}`, SV_PAGE_W - M, SV_PAGE_H - 44); pg.textAlign = 'left';
     });
     return pages;
@@ -5920,7 +5922,7 @@
         </div>`;
     }
     return `
-      ${NOTE({ ja:'◆ 本部専用：SVチェック（店舗の出来栄え基準 35項目・店へ事前共有したPDFと同じ番号）。2人で別々の端末から入力しても1つの結果になります（約10秒ごとに合流）。写真は項目ごとに6枚まで。', en:'◆ HQ only: store visit check. Two people can enter from separate devices; results merge.', vi:'◆ Chỉ HQ: kiểm tra khi đi cửa hàng. Hai người nhập từ hai máy, kết quả gộp chung.' })}
+      ${NOTE({ ja:'◆ 本部専用：SVチェック（店舗の出来栄え基準 37項目・店へ事前共有したPDFと同じ番号）。2人で別々の端末から入力しても1つの結果になります（約10秒ごとに合流）。写真は項目ごとに6枚まで。', en:'◆ HQ only: store visit check. Two people can enter from separate devices; results merge.', vi:'◆ Chỉ HQ: kiểm tra khi đi cửa hàng. Hai người nhập từ hai máy, kết quả gộp chung.' })}
       <div class="card svhead">
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <select id="sv_store" style="flex:2;min-width:150px">${stores.map(st => `<option${st === svState.store ? ' selected' : ''}>${esc(st)}</option>`).join('')}</select>
