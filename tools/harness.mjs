@@ -6418,6 +6418,7 @@ console.log('== 2026-10-12 セキュリティ＝第三者に流れない仕組�
      && /k\.startsWith\('yosakura_'\) && !LOGOUT_KEEP\.has\(k\)/.test(code), '★ログアウトで端末を空にする（yosakura_*・IndexedDB・Cache）');
   ok(!/\?token=' \+ encodeURIComponent\(authToken\(\)\)\)\)/.test(code.replace(/apiGet_[\s\S]*?\n  \};/, '')), '★一覧の読みはトークンをURLに載せない（api:2 はPOST）');
   ok(/const isPrivPhoto = \(p\) => typeof p === 'string' && p\.slice\(0, 2\) === 'p:'/.test(code) && /privPhotoSrc_\(p\)/.test(code), '★お金の写真（p:）はログイン経由で表示');
+  ok(/<!--" \+ String\(p\)\.replace\(\/-\/g, '\.'\) \+ "-->/.test(code), '★お金の写真の仮の枠＝IDの「--」でSVGが壊れない（10/23 心斎橋の納品書が「？」）');
   ok(!/const arr = getWhistle\(\); arr\.push\(/.test(code), '★公益通報の本文を端末に残さない');
   ok(/富士山のオーナー＝鰻・牛カツの2店を所有/.test(code), '配布JSのオーナー例に実名が無い');
   const csrc2 = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');

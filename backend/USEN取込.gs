@@ -297,3 +297,12 @@ function ensureUsenImportTrigger() {
   ScriptApp.newTrigger('importUsen').timeBased().everyHours(1).create();
   Logger.log('設定しました（1時間ごと）'); return { 結果: '設定しました（1時間ごと）' };
 }
+
+/* ★2026-10-24 本店（日本料理世桜本店）の UMaTレジ を同じ入口で取り込む＝店舗コード101。設定値 USEN_STORE_MAP に既定7店＋101を書く（1回だけ実行・デプロイ不要） */
+function USEN店舗表に本店を足す() {
+  var m = JSON.parse(JSON.stringify(usen_storeMap_()));
+  m['101'] = '日本料理世桜本店';
+  PropertiesService.getScriptProperties().setProperty('USEN_STORE_MAP', JSON.stringify(m));
+  Logger.log('USEN_STORE_MAP = ' + JSON.stringify(usen_storeMap_()));
+  return usen_storeMap_();
+}

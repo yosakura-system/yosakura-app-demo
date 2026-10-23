@@ -1348,7 +1348,7 @@
   /* ★2026-10-12 お金の写真（日計レポート・納品書）はサーバーが「p:ID」で返す＝公開リンクが無いので、ログイン経由でbase64を取って表示する。
      読み込みが終わるまでは薄い枠（置き場所ごとに違うSVG）を出し、終わったら同じ枠の img を差し替える */
   const isPrivPhoto = (p) => typeof p === 'string' && p.slice(0, 2) === 'p:';
-  const privPh_ = (p) => "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='4' height='3'><rect width='4' height='3' fill='#eee'/><!--" + p + "--></svg>");
+  const privPh_ = (p) => "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='4' height='3'><rect width='4' height='3' fill='#eee'/><!--" + String(p).replace(/-/g, '.') + "--></svg>");   // ★2026-10-23 IDに「--」が入るとSVGのコメントが壊れて「？」になる（心斎橋の納品書）＝コメント内の - は . に（IDの文字は英数_-だけ＝重ならない）
   const privLoading_ = {};
   function privPhotoSrc_(p) {
     if (photoMem[p]) return photoMem[p];
