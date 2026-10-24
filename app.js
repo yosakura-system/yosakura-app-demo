@@ -13043,7 +13043,8 @@
     let hqSlimCut_ = '';   // 本部の端末で総括表を持つ最初の営業日（YYYY-MM-DD）＝下の保存前の間引きで使う
     if (getRole() === 'hq' && rows.length > 1500) {   // 控えが多い本部の端末だけ（少ない端末・試験は従来どおり全部持つ）
       const cut = (() => { const d = new Date(Date.now() + 9 * 3600e3); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 2, 1) - 9 * 3600e3; })();   // 前々月の1日（JST）から＝数値・原価率の前月・前々月が出る
-      const HEAVY = new Set(['soukatsu', 'ckdone', 'subrec', 'hqack', 'kinshu', 'chukan', 'chukandraft', 'skdraft', 'nouhindraft', 'handover', 'zaiko', 'zaikoorder', 'open']);
+      /* ★2026-10-24 hqack（受信箱の対応済み）は間引かない＝気づき（kizuki）は端末に残るのに対応済みの印だけ落ちると、本部の受信箱で「未対応」に戻って見える */
+      const HEAVY = new Set(['soukatsu', 'ckdone', 'subrec', 'kinshu', 'chukan', 'chukandraft', 'skdraft', 'nouhindraft', 'handover', 'zaiko', 'zaikoorder', 'open']);
       rows = rows.filter(r => !(r && HEAVY.has(r.kind) && (Number(r.t) || 0) < cut));
       hqSlimCut_ = new Date(cut + 9 * 3600e3).toISOString().slice(0, 10);
     }

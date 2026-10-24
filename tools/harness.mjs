@@ -7511,5 +7511,14 @@ console.log('== 2026-10-23 原さん（心斎橋）の紙の在庫チェック�
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); });
 }
 
+console.log('== 2026-10-24 黙って戻る穴2つ＝投稿の公開指定は90日で消さない／本部の端末で対応済み（hqack）を間引かない ==');
+{
+  const gsP = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
+  const keepP = (gsP.match(/PURGE_KEEP_KINDS\s*=\s*\[[^\]]*\]/) || [''])[0];
+  ok(/'commmod'/.test(keepP) && /'commroll'/.test(keepP) && /'commtry'/.test(keepP), 'GAS＝投稿の公開・横展開・お試しの指定は90日削除から守る（要貼り替え）');
+  const heavyP = (code.match(/const HEAVY = new Set\(\[[^\]]*\]\)/) || [''])[0];
+  ok(!!heavyP && !/'hqack'/.test(heavyP), '本部の端末の間引きに hqack を入れない（気づきが未対応に戻らない）');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

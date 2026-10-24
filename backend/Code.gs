@@ -54,6 +54,9 @@ var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide',
                          /* ★2026-09-15 神田さん判断＝みんなの投稿・いいね・コメントは90日で消さない
                             （「1店舗への指摘が全店舗の教育になる」9/14決定＝古い投稿も教材として残す） */
                          'community', 'commlike', 'commcmt',
+                         /* ★2026-10-24 公開・横展開・お試しの指定も守る＝投稿（community）は恒久なのに、指定だけ90日で消えると
+                            公開済みの投稿が「確認待ち」に戻り、店から見えなくなる（app.js commState の既定は pending） */
+                         'commmod', 'commroll', 'commtry',
                          'hqtask',    // 本部の個人タスク（試行・2026-09-15）＝消えると困るもの
                          'svcheck',   // 巡回チェック（本部・2026-09-16）＝巡回の記録は消さない
                          'svstd',     // 巡回チェックの基準（あるべき姿・スクショ）＝恒久
