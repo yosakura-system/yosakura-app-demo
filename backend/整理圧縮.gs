@@ -16,6 +16,7 @@
  *   ・linkset（資料リンク一覧）＝全体で1つ。1行が一覧まるごと＝1行20KB                                    ★2026-10-24
  *   ・svstd（SVチェックの基準）＝item（項目No）ごと                                                     ★2026-10-24
  *   それ以外の種類（写真提出・気づき・サーベイ・対応済み・お知らせ・月次等）は一切触らない。
+ *   ★2026-10-24〜 数字台帳（数字台帳.gs）＝実行のたびに数字の行を台帳へ写す。数字_移す=true なら前月1日より前の数字を reports から外す
  *   ※ monthly は総括表取込の行（src:'drive'）を「全部の値」で比べる作りのため対象にしない（app.js monthlyDV）
  *
  * ■ 外に出すもの（消さずに「_控え」タブへ移す）★2026-10-24
@@ -44,8 +45,38 @@ function 整理圧縮_下見() { return 圧縮_(false); }
 function 整理圧縮を実行() {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) { Logger.log('別の処理が実行中のため見送り'); return { 見送り: true }; }
-  try { return 圧縮_(true); }
+  try {
+    /* ★2026-10-24 数字台帳（数字台帳.gs）＝先に数字の新しい行を台帳へ写す→ reports を圧縮（数字_移す なら古い数字を外す）→ 台帳の古い版も外す */
+    var 写した = (typeof 数字台帳_同期_ === 'function') ? 数字台帳_同期_(true) : 0;
+    var 結果 = 圧縮_(true);
+    結果.数字台帳に写した = 写した;
+    if (typeof 数字台帳_圧縮_ === 'function') 結果.数字台帳の古い版 = 数字台帳_圧縮_();
+    Logger.log(JSON.stringify({ 数字台帳に写した: 結果.数字台帳に写した, 数字台帳の古い版: 結果.数字台帳の古い版 }));
+    return 結果;
+  }
   finally { lock.releaseLock(); }
+}
+
+/* 「最新の1行だけ残す」鍵（数字台帳.gs の台帳の圧縮も同じ鍵を使う） */
+function 圧縮_鍵_(r, p) {
+  var kind = String(r[2] || '');
+  if (kind === 'soukatsu') {
+    if (!p || !p.date) return null;
+    var d = p.date;
+    var ds = (d && d.getTime) ? Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy-MM-dd') : String(d);
+    /* ★出どころごとに最新1行を残す（2026-09-30）。以前は src の有無だけで分けていたため、
+       USENレジの行（src:'usen'）と総括表の行（src:'drive'）が同じ鍵になり、片方が消えてしまう */
+    return 'sk|' + r[3] + '|' + ds + '|' + (p.src ? String(p.src) : 'app');
+  }
+  if (kind === 'ckdone') return 'ck|' + r[3] + '|' + String(r[4] || '');
+  if (kind === 'gsnap') {
+    var it = r[4];
+    var ds2 = (it && it.getTime) ? Utilities.formatDate(it, 'Asia/Tokyo', 'yyyy-MM-dd') : String(it || '');
+    return 'gs|' + r[3] + '|' + ds2;
+  }
+  if (kind === 'svcheck' || kind === 'svstd' || kind === 'hqtask') return r[4] ? kind + '|' + String(r[4]) : null;   // app.js と同じ＝item ごと
+  if (kind === 'linkset') return 'linkset';
+  return null; // 圧縮の対象外＝必ず残す
 }
 
 function 圧縮_(書き込む) {
@@ -56,26 +87,6 @@ function 圧縮_(書き込む) {
   var vals = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
   var errCut = Date.now() - 圧縮_エラー残す日数 * 86400000;
 
-  var keyOf = function (r, p) {
-    var kind = String(r[2] || '');
-    if (kind === 'soukatsu') {
-      if (!p || !p.date) return null;
-      var d = p.date;
-      var ds = (d && d.getTime) ? Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy-MM-dd') : String(d);
-      /* ★出どころごとに最新1行を残す（2026-09-30）。以前は src の有無だけで分けていたため、
-         USENレジの行（src:'usen'）と総括表の行（src:'drive'）が同じ鍵になり、片方が消えてしまう */
-      return 'sk|' + r[3] + '|' + ds + '|' + (p.src ? String(p.src) : 'app');
-    }
-    if (kind === 'ckdone') return 'ck|' + r[3] + '|' + String(r[4] || '');
-    if (kind === 'gsnap') {
-      var it = r[4];
-      var ds2 = (it && it.getTime) ? Utilities.formatDate(it, 'Asia/Tokyo', 'yyyy-MM-dd') : String(it || '');
-      return 'gs|' + r[3] + '|' + ds2;
-    }
-    if (kind === 'svcheck' || kind === 'svstd' || kind === 'hqtask') return r[4] ? kind + '|' + String(r[4]) : null;   // app.js と同じ＝item ごと
-    if (kind === 'linkset') return 'linkset';
-    return null; // 圧縮の対象外＝必ず残す
-  };
 
   var best = {};           // key -> { i, t }  最新の行
   var drop = {};           // 消してよい行の添え字 -> 理由
@@ -88,13 +99,27 @@ function 圧縮_(書き込む) {
     if (kindName === 'apperr') { if (t && t < errCut) { drop[i] = 'apperr'; 内訳.apperr++; } continue; }
     var p = null; var note = String(r[6] || '');
     if (note.charAt(0) === '{') { try { p = JSON.parse(note); } catch (e) { p = null; } }
-    var k = keyOf(r, p);
+    var k = 圧縮_鍵_(r, p);
     if (!k) continue;
     var cur = best[k];
     if (!cur) { best[k] = { i: i, t: t }; continue; }
     if (t >= cur.t) { drop[cur.i] = kindName; best[k] = { i: i, t: t }; }
     else drop[i] = kindName;
     内訳[kindName] = (内訳[kindName] || 0) + 1;
+  }
+  /* ★数字台帳へ移す（2026-10-24・数字_移す=true のときだけ）＝前月1日より前の業務日の数字の行を reports から外す。
+     台帳に写し済み（idがある）行だけ。読み（apiRead_）は台帳から同じ行を返すので、端末から見た中身は変わらない */
+  内訳.数字台帳へ = 0;
+  if (typeof 数字_移す !== 'undefined' && 数字_移す && typeof 数字_台帳_ === 'function') {
+    var ledIds = {}; 数字_値_(数字_台帳_()).forEach(function (l) { if (l[0]) ledIds[String(l[0])] = 1; });
+    var cut = 数字_移す境目_();
+    for (var j = 0; j < vals.length; j++) {
+      if (drop[j] || !vals[j][0] || !ledIds[String(vals[j][0])]) continue;
+      if (数字_移す種類.indexOf(String(vals[j][2])) === -1) continue;
+      var pj = null; var nj = String(vals[j][6] || '');
+      if (nj.charAt(0) === '{') { try { pj = JSON.parse(nj); } catch (e) { pj = null; } }
+      if (数字_業務日_(vals[j], pj) < cut) { drop[j] = '数字台帳へ'; 内訳.数字台帳へ++; }
+    }
   }
   var idx = Object.keys(drop).map(Number).sort(function (a, b) { return a - b; });
   var 結果 = {
@@ -118,13 +143,14 @@ function 圧縮_(書き込む) {
     var ar = ss.getSheetByName(圧縮_控えタブ);
     if (!ar) { ar = ss.insertSheet(圧縮_控えタブ); ar.appendRow(['移した日時', '理由'].concat(HEADERS)); }
     var stamp = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd HH:mm');
-    var copy = idx.map(function (j) { return [stamp, drop[j] === 'apperr' ? 'エラー記録（4日より前）' : '上書き済みの古い版'].concat(vals[j]); });
-    ar.getRange(ar.getLastRow() + 1, 1, copy.length, copy[0].length).setValues(copy);
+    var copy = idx.filter(function (j) { return drop[j] !== '数字台帳へ'; })   // 数字台帳へ移す行は台帳に残っている＝控えには写さない
+                  .map(function (j) { return [stamp, drop[j] === 'apperr' ? 'エラー記録（4日より前）' : '上書き済みの古い版'].concat(vals[j]); });
+    if (copy.length) ar.getRange(ar.getLastRow() + 1, 1, copy.length, copy[0].length).setValues(copy);
     結果.控えに移した = copy.length;
     // ③ 下の行から、つながった塊ごとに消す（シート上の行番号＝添え字+2）。新しい提出は一番下に足されるので影響しない
     var deleted = 0, k2 = idx.length - 1;
     while (k2 >= 0) {
-      if (Date.now() - t0 > 300000) { 結果.時間切れ = '残り ' + (k2 + 1) + ' 行は次回（控えには写し済み）'; break; }
+      if (Date.now() - t0 > 300000) { 結果.時間切れ = '残り ' + (k2 + 1) + ' 行は次回（控え・台帳には写し済み）'; break; }
       var end = idx[k2], start = end;
       while (k2 - 1 >= 0 && idx[k2 - 1] === start - 1) { k2--; start = idx[k2]; }
       sh.deleteRows(start + 2, end - start + 1);

@@ -443,6 +443,7 @@ function apiRead_(p, u) {
   var lastRow = sh.getLastRow();
   var store = p ? p.store : '';
   var out = [];
+  var readIds = {};   // 今回読んだ窓の id（数字台帳から重ねて返さないため）
   if (lastRow >= 2) {
     var startRow = Math.max(2, lastRow - READ_TAIL + 1);
     var numRows = lastRow - startRow + 1;
@@ -450,6 +451,7 @@ function apiRead_(p, u) {
     for (var i = values.length - 1; i >= 0; i--) {
       var r = values[i];
       if (!r[0]) continue;
+      readIds[String(r[0])] = 1;
       if (store && store !== 'all' && r[3] !== store) continue;
       if (u && typeof auth_row_ok_ === 'function' && !auth_row_ok_(u, String(r[2] || ''), String(r[3] || ''), String(r[4] || ''))) continue; // ★自店の分だけ返す（hqackはitem内の店舗名で判定）
       var photos = parsePhotos(r[7]);
@@ -462,7 +464,13 @@ function apiRead_(p, u) {
       if (out.length >= RETURN_MAX) break;
     }
   }
-  return { ok: true, reports: out };
+  /* ★2026-10-24 数字台帳（数字台帳.gs）＝窓に無い数字の行（前月より前・窓から押し出された分）を台帳から足す。
+     同じ門番（店で絞る・本部だけの種類）を通す。台帳が無い・読めないときは従来どおり reports だけ */
+  var fromLedger = 0;
+  if (typeof 数字_履歴_ === 'function') {
+    try { var hist = 数字_履歴_(u, store, readIds); fromLedger = hist.length; if (hist.length) out = out.concat(hist); } catch (le) {}
+  }
+  return { ok: true, reports: out, fromLedger: fromLedger };
 }
 
 function photoAction_(p, u) {

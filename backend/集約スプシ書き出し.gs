@@ -188,7 +188,7 @@ function aggCover_(ss) {
 function aggRebuild() {
   var src = getSheet(); // Code.gs の reports シート
   var last = src.getLastRow();
-  var vals = last >= 2 ? src.getRange(2, 1, last - 1, HEADERS.length).getValues() : [];
+  var vals = (typeof 数字_全値_ === 'function') ? 数字_全値_() : (last >= 2 ? src.getRange(2, 1, last - 1, HEADERS.length).getValues() : []);   // ★台帳だけにある数字も集約（2026-10-24）
   var recs = [];
   for (var i = 0; i < vals.length; i++) {
     var r = vals[i];

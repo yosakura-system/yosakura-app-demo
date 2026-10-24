@@ -103,7 +103,7 @@ function skwb_isOurNote_(note) {
 function skwb_rows_(stores, fromDate, withApp) {
   var sh = getSheet(); var last = sh.getLastRow(); var map = {};
   if (last < 2) return map;
-  var vals = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  var vals = ((typeof 数字_全値_ === 'function') ? 数字_全値_() : sh.getRange(2, 1, last - 1, HEADERS.length).getValues());   // ★台帳も見る＝40日さかのぼる手動の書き戻しでも前月より前が欠けない（2026-10-24）
   for (var i = 0; i < vals.length; i++) {
     var kindRow = String(vals[i][2]);
     /* ★Googleの口コミ件数（毎晩の取得・kind:'gsnap'・item＝日付・note {src:'places', gained}）＝「本日の口コミ獲得」の出どころ（2026-10-15） */

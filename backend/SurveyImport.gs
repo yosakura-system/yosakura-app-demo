@@ -78,6 +78,12 @@ function seenSurveyKeys_(sh) {
     if (values[i][2] !== SURVEY_KIND) continue;
     seen[surveyCanonStore_(values[i][3]) + '||' + Number(values[i][1] || 0)] = true;
   }
+  /* ★2026-10-24 数字台帳も見る＝台帳に移した回答・90日で reports から消えた回答を、取り込み直さない */
+  try {
+    if (typeof 数字_値_ === 'function' && typeof 数字_台帳_ === 'function') {
+      数字_値_(数字_台帳_()).forEach(function (r) { if (r[2] === SURVEY_KIND) seen[surveyCanonStore_(r[3]) + '||' + Number(r[1] || 0)] = true; });
+    }
+  } catch (e) {}
   return seen;
 }
 

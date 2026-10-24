@@ -138,7 +138,7 @@ function usen_canon_(p) {
 function usen_既存_() {
   var sh = getSheet(); var last = sh.getLastRow(); var map = {};
   if (last < 2) return map;
-  var vals = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  var vals = ((typeof 数字_全値_ === 'function') ? 数字_全値_() : sh.getRange(2, 1, last - 1, HEADERS.length).getValues());   // ★台帳に移した行も「入っている」と見る（2026-10-24）
   for (var i = 0; i < vals.length; i++) {
     if (String(vals[i][2]) !== 'soukatsu') continue;
     var t = Number(vals[i][1]) || 0; var p; try { p = JSON.parse(vals[i][6] || '{}'); } catch (e) { continue; }
