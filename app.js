@@ -8929,6 +8929,9 @@
      総括表が空欄（取込行に項目が無い）はずれにしない＝空欄は総括表書き戻し.gs が埋める。総括表側のセルには同じずれがメモで付く。
      書き戻しを始めた 10月から（9月はレジ締めの誤りがあり、一覧が埋まるため） */
   const NUM_POS_SINCE = '2026-10-01';
+  /* ★2026-10-24 神田さん「全店舗にリリースされる前の数字のエラーはお知らせであがらないように」＝全店で使い始めた10/20より前の日は要確認に出さない
+     （普段の値＝中央値の計算には前の日も使う） */
+  const NUM_CHECK_SINCE = '2026-10-20';
   const NUM_POS_FIELDS = [['cash', '現金', '円'], ['card', 'カード', '円'], ['net', '純売上', '円'], ['guests', '客数', '人'], ['disc', '値引き', '円']];
   let _numPosCache = null;
   function numPosPairs_() {
@@ -8966,18 +8969,15 @@
         const lunch = numN_(r.lunch), err = numN_(r.err), cash = numN_(r.cash), card = numN_(r.card);
         const add = (code, vals) => out.push({ store: st, date: r.date, code, vals, src: skSrcKey(r) });
         if (!sales || sales <= 0) return;
+        if (r.date < NUM_CHECK_SINCE) return;
         // アプリ入力は 2026-09-02（フード・ドリンクを点数→金額に切替した日）より前を見ない（神田さん 2026-09-17）。シート取込は最初から金額なので対象
         if (r.src !== 'drive' && r.date < '2026-09-02') return;
         if (food != null && drink != null && Math.abs((food + drink) - sales) > Math.max(1000, sales * 0.02)) add('sum', `フード${food.toLocaleString()}＋ドリンク${drink.toLocaleString()}＝${(food + drink).toLocaleString()}／売上${sales.toLocaleString()}`);
         // 個数疑い＝1,000円未満だけ（増田さん 2026-09-17＝海外のお客様が多くキャッシュレス中心。フードが4桁の日もあるので4桁以上は拾わない）
         if (food != null && food > 0 && food < 1000) add('count', `フード${food.toLocaleString()}・ドリンク${drink == null ? '—' : drink.toLocaleString()}／売上${sales.toLocaleString()}`);
         if (!guests) add('guest', `売上${sales.toLocaleString()}・客数なし`);
-        { const pr = numPosPairs_()[st + '||' + r.date];
-          if (pr && pr.drive && pr.usen) {
-            const diff = NUM_POS_FIELDS.filter(f => { const a = numN_(pr.drive[f[0]]); if (a == null || a === 0) return false; const b = numN_(pr.usen[f[0]]) || 0; return Math.abs(a - b) > (f[0] === 'net' ? 1 : 0); })
-              .map(f => `${f[1]} 総括表${numN_(pr.drive[f[0]]).toLocaleString()}${f[2]}／POS${(numN_(pr.usen[f[0]]) || 0).toLocaleString()}${f[2]}`);
-            if (diff.length) out.push({ store: st, date: r.date, code: 'pos', vals: diff.join('・'), src: 'drive' });
-          } }
+        /* ★2026-10-24 神田さん「総括表とレジの自動取得の数字が違うときは、セルにコメントを残す形で」＝総括表とPOSのずれは要確認に出さない。
+           総括表書き戻し.gs が、ずれたセルに【USEN照合】のメモを付ける（値は上書きしない）。上書きするか・客数はどちらが正かは未決 */
         // 前週同曜日との比較は外した（2026-09-17 神田さん＝インバウンドが中心で同じお客様が来るわけではない。売上の増減は異常ではない）
         if (err != null && err !== 0) add('reg', `レジ差${err.toLocaleString()}円`);
         if (lunch != null && lunch > sales) add('lunch', `昼${lunch.toLocaleString()}／合計${sales.toLocaleString()}`);
@@ -9025,7 +9025,7 @@
           <span class="ksum-i ok"><b>${list.length - open.length}</b>${L({ ja:'件 確認済み', en:' checked', vi:' đã xác nhận' })}</span>
           <button type="button" class="mini" data-numall="${showAll ? '0' : '1'}">${showAll ? L({ ja:'未確認だけ表示', en:'Open only', vi:'Chỉ chưa xác nhận' }) : L({ ja:'確認済みも表示', en:'Show checked', vi:'Hiện cả đã xác nhận' })}</button>
         </div>
-        <p class="hint" style="display:block">${L({ ja:'※ 検査は8つ＝フード＋ドリンク≠売上／フードとドリンクが逆（普段のフード比の半分未満）／フードが1,000円未満（個数の疑い）／客数が空／総括表とPOS（USENレジ）が違う（10月から・総括表に入っている項目だけ。総括表のそのセルにも同じ内容のメモが付きます）／レジ差≠0／昼＞合計／現金＋カード＞売上（コード決済の行が総括表に無いため、少ない分は拾いません）。売上・客単価の増減そのものは見ません（お客様は日によって違うため）。アプリ提出もシート取込も同じ基準です。「確認済み」は本部・店長の端末で共有されます（同期で届きます）。店長・オーナーは自店の分だけが出ます。', en:'7 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'7 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
+        <p class="hint" style="display:block">${L({ ja:'※ 全店で使い始めた10/20以降の日だけを見ます。検査は7つ＝フード＋ドリンク≠売上／フードとドリンクが逆（普段のフード比の半分未満）／フードが1,000円未満（個数の疑い）／客数が空／レジ差≠0／昼＞合計／現金＋カード＞売上（コード決済の行が総括表に無いため、少ない分は拾いません）。総括表とレジの数字の違いは、ここには出さず、総括表のそのセルにメモで残します。売上・客単価の増減そのものは見ません（お客様は日によって違うため）。アプリ提出もシート取込も同じ基準です。「確認済み」は本部・店長の端末で共有されます（同期で届きます）。店長・オーナーは自店の分だけが出ます。', en:'7 checks on app and sheet rows alike. "Checked" is stored on this device only.', vi:'7 kiểm tra cho cả app và sheet. "Đã xác nhận" chỉ lưu trên máy này.' })}</p>
       </div>
       ${rows || `<div class="card"><p class="muted">${L({ ja:'要確認の数字はありません', en:'Nothing to check', vi:'Không có gì cần xác nhận' })}</p></div>`}`;
   };

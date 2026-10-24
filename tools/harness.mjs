@@ -5613,7 +5613,7 @@ console.log('== 数字の要確認（本部）2026-09-17 神田さん「要確�
   ok(/フード＋ドリンク≠売上/.test(h) && /42,000/.test(h), '合計が合わない日を拾う');
   ok(!/<b>現金＋カード＞売上<\/b>/.test(h), '現金＋カード＜売上は拾わない（コード決済の行が総括表に無いため）');
   ok(!/客単価が普段と違う/.test(h) && !/客単価2,610/.test(h), '客単価の外れ値は拾わない（2026-10-07 神田さん「日々結構波が多い」）');
-  ok(/総括表とPOSが違う/.test(h) && /客数 総括表42人／POS40人/.test(h), '総括表とPOSのずれを拾う（客数 総括表42／POS40）');
+  ok(!/総括表とPOSが違う<\/b>/.test(h) && !/客数 総括表42人／POS40人/.test(h), '総括表とPOSのずれは要確認に出さない（2026-10-24 神田さん＝総括表のセルのメモで残す）');
   ok(!new RegExp(d(6) + '[\s\S]{0,300}総括表とPOSが違う').test(h) && !/値引き 総括表/.test(h), '一致している日・総括表が空欄の項目はずれにしない');
   ok(/客数が空/.test(h) && /レジ差が0でない/.test(h) && /レジ差500円/.test(h), '客数なし・レジ差≠0 を拾う');
   ok(!/前週同曜日/.test(h), '前週同曜日との比較は出さない（2026-09-17 神田さん＝売上の増減は異常ではない）');
@@ -6363,7 +6363,7 @@ ok(code.indexOf('起動時の強制同期はしない') !== -1 && code.indexOf('
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(bar)); localStorage.removeItem('yosakura_numcheck_ack'); });
   location.hash = '#/app/numcheck';
   ok(!/フードとドリンクが逆では？/.test(registry.app.innerHTML), '普段からドリンクが多い店は拾わない（業態の違いを異常にしない）');
-  ok(/検査は8つ＝/.test(code), '画面の説明が「検査は8つ」になっている');
+  ok(/検査は7つ＝/.test(code) && /10\/20以降の日だけ/.test(code), '画面の説明が「検査は7つ」・10/20以降だけ（2026-10-24 総括表とPOSのずれはメモへ）');
 }
 // ==== v284b: 公益通報の種類ボタンはスマホ幅で2列（styles.css） ====
 {
@@ -7518,6 +7518,19 @@ console.log('== 2026-10-24 黙って戻る穴2つ＝投稿の公開指定は90�
   ok(/'commmod'/.test(keepP) && /'commroll'/.test(keepP) && /'commtry'/.test(keepP), 'GAS＝投稿の公開・横展開・お試しの指定は90日削除から守る（要貼り替え）');
   const heavyP = (code.match(/const HEAVY = new Set\(\[[^\]]*\]\)/) || [''])[0];
   ok(!!heavyP && !/'hqack'/.test(heavyP), '本部の端末の間引きに hqack を入れない（気づきが未対応に戻らない）');
+}
+
+console.log('== 2026-10-24 神田さん「全店リリース前（10/20より前）の数字のエラーは要確認に出さない」 ==');
+{
+  const S = '寿司世桜 心斎橋店';
+  const bad = (date) => ({ store: S, date, sales: 101400, guests: 21, foodamt: '23', drinkamt: '8', t: Date.parse(date + 'T12:00:00+09:00'), src: 'drive' });
+  const rows = [bad('2026-10-10'), bad('2026-10-21')];
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(rows)); });
+  location.hash = '#/app/numcheck';
+  const h = registry.app.innerHTML;
+  ok(/2026-10-21/.test(h) && !/2026-10-10/.test(h), '10/21 の個数疑いは出る・10/10（全店リリース前）は出ない');
+  location.hash = '#/home';
+  run(() => { localStorage.removeItem('yosakura_demo_soukatsu'); localStorage.removeItem('yosakura_auth'); });
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
