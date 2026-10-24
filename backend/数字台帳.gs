@@ -19,7 +19,7 @@
 var 数字_台帳タブ = '数字台帳';
 var 数字_種類 = ['soukatsu', 'gsnap', 'survey', 'monthly', 'svcheck', 'svstd'];   // 台帳へ写す種類
 var 数字_移す種類 = ['soukatsu', 'gsnap', 'survey', 'monthly', 'svcheck'];      // reports から外す種類（svstd＝基準＝設定なので残す）
-var 数字_移す = false;   // ★③で true にする（apiRead_ が台帳を返すのを本番で確かめてから）
+var 数字_移す = true;    // ★2026-10-24 16:04 本番で true（試験＝足りない0・中身違い0を確かめてから。2,246行を移して reports 7,122→4,854行）
 
 function 数字_台帳_() {
   var ss = getSS_();
