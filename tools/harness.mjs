@@ -6908,6 +6908,8 @@ console.log('== 2026-10-15 納品書の読み取り（実物11件の回帰）と
   ok(okRun && / 0 failed/.test(out), '納品書OCRの回帰（長堀橋の実物11件）がすべて通る' + (okRun ? '' : '\n' + out.slice(-800)));
   let out2 = '', ok2 = true; try { out2 = execFileSync(process.execPath, [fileURLToPath(new URL('./skwb-slips-test.mjs', import.meta.url))], { encoding: 'utf8' }); } catch (e) { ok2 = false; out2 = String(e.stdout || e.message); }
   ok(ok2 && / 0 failed/.test(out2), '仕入の内訳の書き戻し（10月・長堀橋の並び）＝仕入先ごとに合計・名畑は酒10%の行・無い仕入先は(予備)・本部請求は書かない');
+  let out3 = '', ok3 = true; try { out3 = execFileSync(process.execPath, [fileURLToPath(new URL('./skwb-overwrite-test.mjs', import.meta.url))], { encoding: 'utf8' }); } catch (e) { ok3 = false; out3 = String(e.stdout || e.message); }
+  ok(ok3 && / 0 failed/.test(out3), '書き戻し＝11/1以降はレジが正（増田さん 10/25）＝10月分はメモだけ・11月分はレジで上書きして前の数字をメモに' + (ok3 ? '' : '\n' + out3));
   const S = '牛カツ世桜 長堀橋店'; const dk = new Date(Date.now() - 5 * 3600e3).toLocaleDateString('en-CA');
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([
     { kind:'nouhindraft', store:S, item: dk, note: JSON.stringify({ src:'ocr', v:'フレッシュ青果', a8:1944, total:1944, conf:'low', photo:'PHOTO_TWO1234567', part:'1/2' }), photos:[], t: Date.now() - 2000, id:'m1' },

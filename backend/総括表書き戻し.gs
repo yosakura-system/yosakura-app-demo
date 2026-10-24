@@ -154,7 +154,7 @@ function skwb_logSheet_() {
 function skwb_lastWritten_(sh) {
   var map = {}; var last = sh.getLastRow(); if (last < 2) return map;
   var vals = sh.getRange(2, 1, last - 1, 10).getValues();
-  vals.forEach(function (r) { if (r[9] === '書いた' || r[9] === '書き直した') map[r[4] + '|' + r[5] + '|' + r[6]] = r[8]; });
+  vals.forEach(function (r) { if (r[9] === '書いた' || r[9] === '書き直した' || r[9] === 'レジで上書き') map[r[4] + '|' + r[5] + '|' + r[6]] = r[8]; });
   return map;
 }
 
@@ -219,7 +219,10 @@ function skwb_実行_(書き込む, days, only) {
   var rows = skwb_rows_(stores, fromDate, withApp);
   var logSh = skwb_logSheet_(); var 前回 = skwb_lastWritten_(logSh);
   var 結果 = { 書き込み: 書き込む ? '実行した' : '★下見のみ（書き込みなし）', 店舗: stores, 対象: fromDate + '〜', アプリ分: withApp ? '含む' : '含まない（SKWB_APP=false）',
-               書く: 0, 書き直す: 0, 同じ: 0, ずれ: 0, 止めた: [], 一覧: [] };
+               書く: 0, 書き直す: 0, レジで上書き: 0, 同じ: 0, ずれ: 0, 止めた: [], 一覧: [] };
+  /* ★2026-10-25 増田さん「11月からはレジが正」＝この日以降の分は、レジの項目が店の打った数字と違えばレジの数字で上書きする。
+     前の数字はメモに残す（黙って消さない）。毎朝40日分を見直すので、あとからレジを訂正した日も翌朝に直る。10月分は今まで通り（メモだけ） */
+  var 上書き開始 = String(getSetting_('SKWB_REG_OVERWRITE_SINCE', '2026-11-01'));
   var 記録 = []; var 見つからない = {};
   stores.forEach(function (store) {
     var src = srcs.filter(function (s) { return s.store === store; })[0];
@@ -266,10 +269,14 @@ function skwb_実行_(書き込む, days, only) {
           row.結果 = '書く'; 結果.書く++;
         } else if (same) { row.結果 = '同じ'; 結果.同じ++; 結果.一覧.push(row); clearNote(); return; }
         else if (prevSame) { row.結果 = '書き直す'; 結果.書き直す++; }
+        else if (!it.text && it.usen && w.src === 'usen' && e.date >= 上書き開始) { row.結果 = 'レジで上書き'; 結果.レジで上書き++; }
         else { row.結果 = 'ずれ（上書きしない）'; 結果.ずれ++; }
         結果.一覧.push(row);
-        var 済 = row.結果 === '書く' ? '書いた' : row.結果 === '書き直す' ? '書き直した' : 'ずれ';
-        if (書き込む && 済 !== 'ずれ') { cell().setValue(want); clearNote(); }
+        var 済 = row.結果 === '書く' ? '書いた' : row.結果 === '書き直す' ? '書き直した' : row.結果 === 'レジで上書き' ? 'レジで上書き' : 'ずれ';
+        if (書き込む && 済 === 'レジで上書き') {
+          cell().setValue(want);
+          cell().setNote('【レジで上書き】店で打った数字は ' + (skwb_num_(cur) != null ? Number(skwb_num_(cur)).toLocaleString() : String(cur)) + (it.unit || '') + ' でした。11月からはレジが正のため、レジの数字に直しました（' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'M/d') + ' 自動）。')   // 印が SKWB_NOTE_TAGS と違う＝次の回で消さない
+        } else if (書き込む && 済 !== 'ずれ') { cell().setValue(want); clearNote(); }
         if (書き込む && 済 === 'ずれ' && !it.text) {
           var 今日 = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'M/d');
           var txt = SKWB_NOTE_TAGS[w.src] + srcName + 'では ' + Number(want).toLocaleString() + (it.unit || '') + ' です（' + 今日 + ' 自動確認）。\nどちらが正しいか、ご確認ください。総括表の数字が正しければ、このままで大丈夫です。';
