@@ -3611,7 +3611,7 @@
     const m = zkMaster(store); const l = zkLatest(store); if (!m.length || !l) return [];
     const ord = zkOrdered(store);
     return m.filter(it => it.std != null && it.std !== '' && l.q[it.n] != null && l.q[it.n] !== '' && Number(l.q[it.n]) < Number(it.std) && !(ord[it.n] && ord[it.n] > (l.qt[it.n] || l.t)))
-            .map(it => ({ n: it.n, u: it.u || '', q: Number(l.q[it.n]), std: Number(it.std), need: Math.max(0, Number(it.std) - Number(l.q[it.n])), ord: zkOrdOf_(it) }));
+            .map(it => ({ n: it.n, u: it.u || '', q: Number(l.q[it.n]), std: Number(it.std), need: Math.max(0, Math.ceil(Number(it.std) - Number(l.q[it.n]) - 1e-9)), ord: zkOrdOf_(it) }));   // ★2026-10-24 神田さん「発注の単位は整数で」＝足りない分を切り上げ（1−0.8＝0.19999…を1に）
   }
   /* 月次棚卸（kind:'monthly' の closeDetail）に載っている品目名＝在庫の品目にそろえる材料（最新の月から） */
   function zkTanaNames(store) {

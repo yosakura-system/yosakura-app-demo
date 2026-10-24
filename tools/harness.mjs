@@ -7533,5 +7533,13 @@ console.log('== 2026-10-24 神田さん「全店リリース前（10/20より前
   run(() => { localStorage.removeItem('yosakura_demo_soukatsu'); localStorage.removeItem('yosakura_auth'); });
 }
 
+console.log('== 2026-10-24 神田さん「発注の単位は整数で」＝発注の目安は切り上げた整数 ==');
+{
+  const m = code.match(/need: Math\.max\(0, Math\.ceil\(Number\(it\.std\) - Number\(l\.q\[it\.n\]\) - 1e-9\)\)/);
+  ok(!!m, '発注の目安＝基準−残りを切り上げ（整数）');
+  const need = (std, q) => Math.max(0, Math.ceil(std - q - 1e-9));
+  ok(need(1, 0.8) === 1 && need(3, 2) === 1 && need(5, 2.5) === 3 && need(2, 2) === 0 && need(1, 1.2) === 0, '1−0.8＝1・3−2＝1・5−2.5＝3・ちょうど＝0・多い＝0');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
