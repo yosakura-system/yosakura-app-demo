@@ -2328,14 +2328,33 @@
       tile('miru_order', 'ordertop', { ja:'発注', en:'Order', vi:'Đặt hàng' }, { ja:'備品・食材の注文先へ', en:'To order forms', vi:'Đến form đặt hàng' }),
       tile('miru_howto', 'othertop', { ja:'その他', en:'More', vi:'Khác' }, { ja:'使い方・ルール集・相談・勉強会', en:'How-to, FAQ, consult', vi:'Hướng dẫn, quy tắc' }),
     ].join('');
-    const st = visibleStores()[0];
-    const ymNow = st ? ymOfDate(dateKeyFor(st, Date.now())) : '';
-    const sv = st ? getSurvey().filter(r => r && r.store === st && r.sat >= 1 && ymOfDate(dateKeyFor(st, r.t)) === ymNow) : [];
+    /* ★2026-10-24 神田さん「全店の合計」と「店を選んで見る」を両方＝本部・複数店のオーナーは、全店（合計）と1店ずつを切り替える。
+       これまでは店の一覧の先頭（本店）の数字だけが出ていた。選んだ店は端末に覚える（yosakura_voice_store） */
+    const vis = visibleStores();
+    const multi = vis.length > 1;
+    let vSel = 'all'; try { vSel = localStorage.getItem('yosakura_voice_store') || 'all'; } catch (e) {}
+    if (!multi) vSel = vis[0] || ''; else if (vSel !== 'all' && !vis.includes(vSel)) vSel = 'all';
+    const vStores = vSel === 'all' ? vis : (vSel ? [vSel] : []);
+    const st = vStores[0];
+    const sv = getSurvey().filter(r => r && vStores.includes(r.store) && r.sat >= 1 && ymOfDate(dateKeyFor(r.store, r.t)) === ymOfDate(dateKeyFor(r.store, Date.now())));
     const svAvg = sv.length ? (sv.reduce((a, r) => a + r.sat, 0) / sv.length).toFixed(1) : null;
     const svLow = sv.filter(r => r.sat <= 3).length;
-    let g = null; try { const gs = st ? gsnapsOf(st) : []; if (gs.length) { const last = gs[gs.length - 1]; const mon = gs.filter(x => String(x._d).slice(0, 7) === String(last._d).slice(0, 7)); g = { total: last.total, rating: last.rating, gained: mon.length > 1 ? (Number(last.total) || 0) - (Number(mon[0].total) || 0) : null }; } } catch (e) {}
+    let g = null;
+    try {
+      let tot = 0, wsum = 0, wn = 0, gain = 0, hasGain = false, any = false;
+      vStores.forEach(s => {
+        const gs = gsnapsOf(s); if (!gs.length) return;
+        const last = gs[gs.length - 1]; const t0 = Number(last.total); if (!isFinite(t0)) return;
+        any = true; tot += t0;
+        if (last.rating != null && isFinite(Number(last.rating))) { wsum += Number(last.rating) * t0; wn += t0; }
+        const mon = gs.filter(x => String(x._d).slice(0, 7) === String(last._d).slice(0, 7));
+        if (mon.length > 1) { gain += t0 - (Number(mon[0].total) || 0); hasGain = true; }
+      });
+      if (any) g = { total: tot, rating: wn ? wsum / wn : null, gained: hasGain ? gain : null };   // 星は件数で重みをつけた平均
+    } catch (e) {}
     const gHalf = g && g.total != null ? `<button class="pb-voicehalf" data-open="greview"><div class="l">${L({ja:'Google口コミ',en:'Google reviews',vi:'Đánh giá Google'})}</div><div class="v">${g.rating != null ? Number(g.rating).toFixed(1) : '—'}</div><div class="d">${L({ja:'通算',en:'Total',vi:'Tổng'})} ${Number(g.total).toLocaleString('ja-JP')}${L({ja:'件',en:'',vi:''})}${g.gained != null ? ` ・ ${L({ja:'今月',en:'this month',vi:'tháng này'})} ${g.gained >= 0 ? '+' : ''}${g.gained}` : ''}</div></button>` : '';
-    const voice = st ? `<div class="pb-sec"><h2>${L({ja:'お客様の声',en:'Guest feedback',vi:'Ý kiến khách'})}</h2><small>${L({ja:'自動 ・ 毎晩記録',en:'Automatic',vi:'Tự động'})}</small></div>
+    const voiceSeg = multi ? `<div class="pb-numseg pb-voiceseg"><button type="button" class="${vSel === 'all' ? 'on' : ''}" data-voicest="all">${L({ja:'全店',en:'All',vi:'Tất cả'})}</button>${vis.map(x => `<button type="button" class="${x === vSel ? 'on' : ''}" data-voicest="${esc(x)}">${esc(storeShort(x))}</button>`).join('')}</div>` : '';
+    const voice = st ? `<div class="pb-sec"><h2>${L({ja:'お客様の声',en:'Guest feedback',vi:'Ý kiến khách'})}${multi && vSel === 'all' ? L({ja:'（全店）',en:' (all)',vi:' (tất cả)'}) : ''}</h2><small>${L({ja:'自動 ・ 毎晩記録',en:'Automatic',vi:'Tự động'})}</small></div>${voiceSeg}
       <div class="pb-card pb-voice">${gHalf}<button class="pb-voicehalf" data-open="survey?tab=voice"><div class="l">${L({ja:'サーベイ満足度',en:'Survey score',vi:'Điểm khảo sát'})}</div><div class="v">${svAvg || '—'}</div><div class="d">${L({ja:'今月',en:'This month',vi:'Tháng này'})} ${sv.length}${L({ja:'件',en:'',vi:''})}${svLow ? ` ・ ${L({ja:'低評価',en:'low',vi:'thấp'})} ${svLow}${L({ja:'件',en:'',vi:''})}` : ''}</div></button></div>` : '';
     const em = `<button class="pb-strip pb-strip--em" data-open="emergency">${pbImg_('miru_emergency', 'pb-th pb-th--s')}<span><b>${L({ja:'緊急のとき',en:'Emergency',vi:'Khẩn cấp'})}</b>${L({ja:'火事・けが・食中毒の疑い・お客様の重大なお申し出',en:'Fire, injury, food poisoning, serious complaint',vi:'Cháy, thương tích, ngộ độc, khiếu nại'})}</span>${svg('chev')}</button>`;
     const search = `<label class="pb-search">${svg('search')}<input id="pbq" type="search" placeholder="${esc(L({ja:'言葉で探す（例：鰻　アレルギー　棚卸）',en:'Search (e.g. eel, allergy, stock)',vi:'Tìm (vd: lươn, dị ứng)'}))}" autocomplete="off" enterkeyhint="search"></label><div id="pbqres"></div>`;
@@ -10067,7 +10086,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-viewstore],[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
+      const t = e.target.closest('[data-viewstore],[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-voicest],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.numstore) { try { localStorage.setItem('yosakura_num_store', t.dataset.numstore); } catch (e2) {} render(); return; }
@@ -10134,6 +10153,7 @@
         postReport({ kind:'numack', store: k.split('|')[0], item: k, note: JSON.stringify({ on, by: getUserName() || submitterLabel() }), t: now });
         return;
       }
+      if (t.dataset.voicest) { try { localStorage.setItem('yosakura_voice_store', t.dataset.voicest); } catch (e2) {} render(true); return; }   // ★2026-10-24 お客様の声＝全店／1店の切り替え
       if (t.dataset.numall !== undefined) { localStorage.setItem('yosakura_numcheck_all', t.dataset.numall); render(true); return; }
       // 今日出すもの／今週／月次／提出履歴の店舗チップ（2026-09-17＝画面ごとの登録でなく委譲に。どの画面でも効く）
       if (t.dataset.kyou !== undefined) { try { localStorage.setItem(KYOU_LS, t.dataset.kyou); } catch (err) {} if (currentRoute().params.get('s') || currentRoute().params.get('store')) go(currentRoute().path); else render(true); return; }

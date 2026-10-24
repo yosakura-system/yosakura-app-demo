@@ -7541,5 +7541,20 @@ console.log('== 2026-10-24 神田さん「発注の単位は整数で」＝発�
   ok(need(1, 0.8) === 1 && need(3, 2) === 1 && need(5, 2.5) === 3 && need(2, 2) === 0 && need(1, 1.2) === 0, '1−0.8＝1・3−2＝1・5−2.5＝3・ちょうど＝0・多い＝0');
 }
 
+console.log('== 2026-10-24 神田さん「お客様の声＝全店の合計と店を選んで見るの両方」 ==');
+{
+  const A = '寿司世桜 心斎橋店', B = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.removeItem('yosakura_voice_store');
+    localStorage.setItem('yosakura_demo_survey', JSON.stringify([{ store: A, t: Date.now() - 3600e3, sat: 5 }, { store: B, t: Date.now() - 7200e3, sat: 3 }])); });
+  location.hash = '#/home?tab=miru'; let h = registry.app.innerHTML;
+  ok(/お客様の声（全店）/.test(h) && /data-voicest="all"/.test(h) && /data-voicest="寿司世桜 心斎橋店"/.test(h), '本部＝「全店」と店のチップが出る');
+  ok(/<div class="v">4\.0<\/div><div class="d">今月 2件 ・ 低評価 1件/.test(h), '全店＝2店の合計（2件・平均4.0・低評価1）');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_voice_store', A);   // run は端末の記録を消すので入れ直す
+    localStorage.setItem('yosakura_demo_survey', JSON.stringify([{ store: A, t: Date.now() - 3600e3, sat: 5 }, { store: B, t: Date.now() - 7200e3, sat: 3 }])); });
+  location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
+  ok(/<div class="v">5\.0<\/div><div class="d">今月 1件/.test(h) && !/お客様の声（全店）/.test(h), '心斎橋を選ぶ＝その店だけ（1件・5.0）');
+  run(() => { localStorage.removeItem('yosakura_voice_store'); localStorage.removeItem('yosakura_demo_survey'); localStorage.removeItem('yosakura_theme'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
