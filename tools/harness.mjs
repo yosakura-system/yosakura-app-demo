@@ -7602,5 +7602,20 @@ console.log('== 2026-10-25 ログインが外れたときの説明＝原因は�
 { const srcL = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/パスワードが変わったときや、本部がIDを登録し直したときに外れます。新しいパスワードでもう一度ログインしてください/.test(srcL) && !/古い端末から順に外れます/.test(srcL), 'ログイン画面の説明＝パスワードが変わったとき・登録し直したとき（上限で古い順に、は書かない）'); }
 
+console.log('== 2026-10-25 神田さん「器じゃないものがカテゴリ分けされてる」「食物アレルギーから戻れない」 ==');
+{
+  const S = '寿司世桜 心斎橋店';
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/app/zaiko?wk=1&x=utw1';
+  const z = registry.app.innerHTML;
+  const gi = (t) => z.indexOf('<div class="zk-grp"' ) >= 0 ? z.indexOf(t) : -1;
+  ok(/>器（週に1回）</.test(z) && />店内収納棚（常温）（週1回）</.test(z), '心斎橋の週1回＝器と棚の品は別の見出し');
+  ok(gi('海鮮丼皿') > 0 && gi('海鮮丼皿') < gi('店内収納棚（常温）（週1回）') && gi('店内収納棚（常温）（週1回）') < gi('チョコペン'), '器が先・チョコペンは棚の見出しの下');
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/function openDoc_\(u, title\) \{\s*if \(isStandalone\(\) && inAppScope_\(u\)/.test(src) && !/window\.open\(u, '_blank', 'noopener'\);\r?\n    \}\);/.test(src), '資料を開く入口＝ホーム画面版でアプリ内のPDFは戻るつきの表示（openDoc_）');
+  ok(/data-pdfvclose/.test(src) && /'戻る'/.test(src), 'PDFの表示に「戻る」がある');
+  run(() => { localStorage.removeItem('yosakura_theme'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

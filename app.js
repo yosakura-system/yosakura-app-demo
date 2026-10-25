@@ -669,11 +669,49 @@
      対象は DEV_VIEW_UIDS（getRole の上で定義）にある本部アカウントだけ。ログイン・権限・保存はすべて本部のまま、
      「画面の見え方」だけを店舗iPad・店長・オーナーに切り替える。確認中は上部に戻るバナーを常時出す。 */
   const devViewAllowed = () => { const a = getAuth(); return !!a && a.role === 'hq'; };   // ★2026-10-20 本部IDは全員
+  /* ★2026-10-25 神田さん「食物アレルギーから画面入ったら元に戻れない」＝ホーム画面版（standalone）では、アプリと同じ場所のPDFが同じ窓で開き、戻るボタンが無くなる。
+     ホーム画面版でアプリの中のPDFを開くときだけ、アプリの上に「戻る」つきの表示を重ねる（pdf.js で描く）。ブラウザで開いているときは今までどおり新しいタブ */
+  const inAppScope_ = (u) => { try { const x = new URL(u, location.href); const dir = location.pathname.slice(0, location.pathname.lastIndexOf('/') + 1); return x.origin === location.origin && x.pathname.startsWith(dir); } catch (e) { return false; } };
+  let _pdfjsP = null;
+  const loadPdfjs_ = () => _pdfjsP || (_pdfjsP = new Promise((ok, ng) => { if (window.pdfjsLib) return ok(window.pdfjsLib); const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = () => { try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; ok(window.pdfjsLib); } catch (e) { ng(e); } }; s.onerror = () => { _pdfjsP = null; ng(new Error('pdfjs')); }; document.head.appendChild(s); }));
+  function pdfView_(u, title) {
+    const old = document.getElementById('pdfv'); if (old) old.remove();
+    const ov = document.createElement('div'); ov.id = 'pdfv';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#f4f1ea;display:flex;flex-direction:column';
+    ov.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;background:#fffdf8;border-bottom:1px solid #e3ddd0">
+      <button type="button" data-pdfvclose style="font-size:17px;font-weight:700;padding:10px 14px;border:1px solid #d8d0c0;border-radius:10px;background:#fff;color:#7a2a3a">‹ ${esc(L({ ja:'戻る', en:'Back', vi:'Quay lại' }))}</button>
+      <div style="flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(title || '')}</div>
+      <button type="button" data-pdfvzoom style="font-size:15px;padding:10px 12px;border:1px solid #d8d0c0;border-radius:10px;background:#fff">${esc(L({ ja:'拡大', en:'Zoom', vi:'Phóng to' }))}</button></div>
+      <div data-pdfvbody style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:8px 8px calc(env(safe-area-inset-bottom) + 16px)"><div class="muted" style="padding:16px">${esc(L({ ja:'読み込んでいます…', en:'Loading…', vi:'Đang tải…' }))}</div></div>`;
+    document.body.appendChild(ov);
+    const body = ov.querySelector('[data-pdfvbody]'); let zoom = 1;
+    const close = () => { ov.remove(); window.removeEventListener('hashchange', close); };
+    ov.querySelector('[data-pdfvclose]').onclick = close; window.addEventListener('hashchange', close);
+    ov.querySelector('[data-pdfvzoom]').onclick = (e) => { zoom = zoom === 1 ? 2 : 1; body.querySelectorAll('canvas').forEach(c => { c.style.width = (zoom * 100) + '%'; }); e.currentTarget.textContent = zoom === 1 ? L({ ja:'拡大', en:'Zoom', vi:'Phóng to' }) : L({ ja:'元の大きさ', en:'Fit', vi:'Vừa màn hình' }); };
+    loadPdfjs_().then(lib => lib.getDocument(u).promise).then(async (doc) => {
+      if (!document.body.contains(ov)) return; body.innerHTML = '';
+      const cw = Math.max(320, body.clientWidth - 16), dpr = Math.min(3, window.devicePixelRatio || 1);
+      for (let n = 1; n <= doc.numPages; n++) {
+        if (!document.body.contains(ov)) return;
+        const pg = await doc.getPage(n); const v0 = pg.getViewport({ scale: 1 });
+        const sc = Math.min(1600, cw * dpr * 2) / v0.width; const vp = pg.getViewport({ scale: sc });
+        const c = document.createElement('canvas'); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+        c.style.cssText = `display:block;width:${zoom * 100}%;height:auto;margin:0 0 8px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12)`;
+        body.appendChild(c); await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      }
+    }).catch(() => { if (document.body.contains(ov)) body.innerHTML = `<div class="muted" style="padding:16px">${esc(L({ ja:'開けませんでした。電波のよい所でもう一度押してください。', en:'Could not open. Please try again with a better connection.', vi:'Không mở được. Hãy thử lại khi có mạng tốt hơn.' }))}</div>`; });
+  }
+  /* 資料を開く入口はここ1つ＝ホーム画面版でアプリの中のPDFだけ pdfView_、それ以外は新しいタブ */
+  function openDoc_(u, title) {
+    if (isStandalone() && inAppScope_(u) && /[.]pdf([?#]|$)/i.test(String(u))) { pdfView_(u, title); return; }
+    window.open(u, '_blank', 'noopener');
+  }
   const inDevView = () => devViewAllowed() && getRole() !== 'hq';
   document.addEventListener('input', (e) => { const el = e.target; if (!el || el.id !== 'pbq') return; const box = document.getElementById('pbqres'); if (box) box.innerHTML = pbSearchHTML_(el.value); });   // ★2026-10-20 見る・注文するの「言葉で探す」
   document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pbqopen],[data-pbqurl]') : null; if (!b) return; e.preventDefault();
     if (b.dataset.pbqopen) { go('/app/' + b.dataset.pbqopen); return; }
-    const u = b.dataset.pbqurl || ''; if (!isHttp(u)) { toast(L({ ja:'この資料はまだ登録されていません', en:'This document is not registered yet', vi:'Tài liệu này chưa được đăng ký' })); return; } window.open(openUrlFor(u), '_blank', 'noopener'); });
+    const u = b.dataset.pbqurl || ''; if (!isHttp(u)) { toast(L({ ja:'この資料はまだ登録されていません', en:'This document is not registered yet', vi:'Tài liệu này chưa được đăng ký' })); return; } openDoc_(openUrlFor(u), (b.textContent || '').trim()); });
   document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pwchange]') : null; if (b) { e.preventDefault(); try { openPwChangeSheet_(); } catch (e2) {} } });
   /* ★2026-10-20 本部IDのときは全画面の上に「表示：本部｜店舗責任者｜スタッフ」を常に出す（神田さん「本部のメンバーも新デザインを期待」）。
      店舗責任者＝役割 manager の見え方。ログイン・権限・保存は本部のまま。押すとその見え方で描き直す */
@@ -3761,16 +3799,20 @@
     const vis = visibleStores(); const store = zkStore();
     const lead = L({ ja:'週に1回、都合のよい日に数えます。欠け・ひびのある器は使わずに破棄してください。', en:'Count once a week, any day. Discard chipped or cracked pieces.', vi:'Đếm mỗi tuần 1 lần. Bỏ đồ mẻ/nứt.' });
     if (isPb() && getRole() !== 'hq') _pbHead = { t: L({ ja:'器の数と欠け', en:'Tableware count & chips', vi:'Đếm bát đĩa & đồ mẻ' }), d: lead };
-    const all = zkMaster(store).map((it, i) => [it, i]).filter(([it]) => zkFreqOf(it) === 'week');
+    /* ★2026-10-25 神田さん「器じゃないものがカテゴリ分けされてる」＝週1回の品（心斎橋の棚・デザート・ドリンク）も全部「器」の見出しの下に出ていた。器を先に、ほかは元の区分の見出しで */
+    const isTw_ = (it) => /^器（/.test(String(it.g || ''));
+    const all0 = zkMaster(store).map((it, i) => [it, i]).filter(([it]) => zkFreqOf(it) === 'week');
+    const all = all0.filter(([it]) => isTw_(it)).concat(all0.filter(([it]) => !isTw_(it)));
     const l = zkLatest(store); const today = dateKeyFor(store, Date.now()); const draft = zkDraft(store, today);
     const wkDone = getZk('zaiko').some(r => r.store === store && (parseNote(r.note) || {}).wk && weekKeyOf(dateKeyFor(store, r.t)) === weekKeyOf(today));
     const storeSel = vis.length > 1 ? `<label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="zk_store">${vis.map(x => `<option${x === store ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : '';
-    const rows = all.map(([it, i]) => { const cur = l && l.q[it.n]; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
-      return `<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}${zkOrdSmall_(it)}${zkPlaceSmall_(it)}${cur != null && cur !== '' ? ` ・ ${L({ ja:'前回', en:'last', vi:'lần trước' })} ${esc(String(cur))}` : ''}</small></label>
+    const grpOf_ = (it) => isTw_(it) ? ZK_TW_G : (String(it.g || '').trim() || L({ ja:'その他（週に1回）', en:'Other (weekly)', vi:'Khác (hàng tuần)' }));
+    const rows = all.map(([it, i], k) => { const cur = l && l.q[it.n]; const gh = (k === 0 || grpOf_(all[k - 1][0]) !== grpOf_(it)) ? `<div class="zk-grp" style="margin-top:${k ? 14 : 4}px">${esc(grpOf_(it))}</div>` : ''; const below = it.std != null && it.std !== '' && cur != null && cur !== '' && Number(cur) < Number(it.std);
+      return `${gh}<div class="zk-in${below ? ' low' : ''}"><label for="zk_q${i}"><b>${esc(it.n)}</b><small>${L({ ja:'基準', en:'min', vi:'định mức' })} ${it.std != null && it.std !== '' ? esc(String(it.std)) : '—'}${esc(it.u || '')}${zkOrdSmall_(it)}${zkPlaceSmall_(it)}${cur != null && cur !== '' ? ` ・ ${L({ ja:'前回', en:'last', vi:'lần trước' })} ${esc(String(cur))}` : ''}</small></label>
       ${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:-1" aria-label="-">−</button>` : ''}<input type="text" inputmode="decimal" id="zk_q${i}" data-zkname="${esc(it.n)}" value="${draft[it.n] != null ? esc(String(draft[it.n])) : ''}" placeholder="${cur != null && cur !== '' ? esc(String(cur)) : '0'}">${isPb() ? `<button type="button" class="zk-st" data-zkstep="${i}:1" aria-label="+">＋</button>` : ''}<span class="muted">${esc(it.u || '')}</span></div>`; }).join('');
     const body = all.length ? `
       ${wkDone ? `<div class="hint" style="display:block">${L({ ja:'今週はもう数えています。直すときはそのまま入れ直して提出してください。', en:'Already counted this week; resubmit to correct.', vi:'Tuần này đã đếm; gửi lại để sửa.' })}</div>` : ''}
-      <div class="zk-grp" style="margin-top:4px">${esc(ZK_TW_G)}</div>${rows}
+      ${rows}
       <label class="fld"><span>${L({ ja:'名前', en:'Your name', vi:'Tên bạn' })}</span><input type="text" id="zk_by" value="${esc(getUserName() || '')}"></label>
       <button class="btn-primary" id="submitZk">${L({ ja:'器の数を提出する', en:'Submit tableware count', vi:'Gửi số bát đĩa' })}</button>`
       : `<div class="muted">${L({ ja:'この店の器の品目はまだありません。店長が「在庫」の「品目・基準在庫」で足せます。', en:'No tableware items for this store yet. The manager can add them under Items.', vi:'Chưa có mặt hàng bát đĩa. Quản lý có thể thêm ở mục Mặt hàng.' })}</div>`;
@@ -5806,7 +5848,7 @@
       svStdPush(no, {}, phs); svApplyDomFor_(no);
     });
     document.querySelectorAll('img[data-svstdview]').forEach(im => im.onclick = () => { try { window.open(im.dataset.svstdview, '_blank'); } catch (e) {} });
-    document.querySelectorAll('.svstd [data-openurl]').forEach(b => b.onclick = () => { try { window.open(b.dataset.openurl, '_blank'); } catch (e) {} });
+    document.querySelectorAll('.svstd [data-openurl]').forEach(b => b.onclick = () => { try { openDoc_(b.dataset.openurl, (b.textContent || '').trim()); } catch (e) {} });
     document.querySelectorAll('[data-svphdel]').forEach(b => b.onclick = () => {
       const it = SV_ITEMS.find(i => String(i.no) === b.dataset.svphdel); if (!it) return;
       const cur = svAns(it.no) || {}; const phs = (cur.photos || []).filter(Boolean); phs.splice(Number(b.dataset.svphi), 1);
@@ -12376,7 +12418,7 @@
     document.querySelectorAll('[data-openurl]').forEach(b => b.onclick = () => {
       const u = b.dataset.openurl;
       if (!isHttp(u)) { toast(L({ ja:'この資料はまだ登録されていません', en:'This document is not registered yet', vi:'Tài liệu này chưa được đăng ký' })); return; }
-      window.open(u, '_blank', 'noopener');
+      openDoc_(u, ((b.querySelector('b,.nm') || b).textContent || '').trim());
     });
 
     // ③ 口コミQR：保存・開く・コピー
