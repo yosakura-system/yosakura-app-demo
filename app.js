@@ -6476,7 +6476,7 @@
           <label class="fld"><span>${L({ja:'キャンセル 累計（自動計算）',en:'Cancel total (auto)',vi:'Hủy tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_cancel" placeholder="31700" value="${skCum0.cancel || ''}"></label>
           <label class="fld"><span>${L({ja:'レジ締め担当',en:'Cash-up by',vi:'Người chốt sổ'})}</span><input type="text" id="sk_closer" placeholder="${L({ja:'担当者名',en:'staff name',vi:'tên NV'})}"></label>
         </div>
-        ${(skSlipsLoad_(vis[0], skEditTarget_().date || skDefaultDate_(vis[0]), null), skSlipsHtml_())}   // ★2026-10-20 既定の日付（12時前は前日）で読む＝翌朝に撮った納品書が前日の日報に出る
+        ${(/* ★2026-10-20 既定の日付（12時前は前日）で読む＝翌朝に撮った納品書が前日の日報に出る。★2026-10-25 このメモがテンプレートの外にあり画面に文字で出ていた（神田さんの実機）＝${}の中へ */ skSlipsLoad_(vis[0], skEditTarget_().date || skDefaultDate_(vis[0]), null), skSlipsHtml_())}
         <div class="sk-grid">
           ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_cash"><input type="hidden" id="sk_card">'}
           <label class="fld"><span>${L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'})}</span><input type="text" inputmode="numeric" id="sk_lunch" placeholder="186400" value="${skChukanToday(vis[0]) != null ? skChukanToday(vis[0]) : ''}"></label>

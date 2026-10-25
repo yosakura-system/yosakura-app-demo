@@ -7558,5 +7558,16 @@ console.log('== 2026-10-24 神田さん「お客様の声＝全店の合計と�
   run(() => { localStorage.removeItem('yosakura_voice_store'); localStorage.removeItem('yosakura_demo_survey'); localStorage.removeItem('yosakura_theme'); });
 }
 
+console.log('== 2026-10-25 神田さんの実機「日報の画面にコードのメモ（// ★2026-10-20…）が文字で出ている」 ==');
+{
+  for (const role of ['staff', 'manager']) {
+    run(() => { setLS(role, '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+    location.hash = '#/app/soukatsu?x=memo' + role;
+    const tx = String(registry.app.innerHTML || '').replace(/<[^>]*>/g, '');
+    ok(!/\/\/ ★|\/\* ★/.test(tx) && /納品書/.test(tx), `日報の画面にコードのメモが出ない（${role}）`);
+  }
+  run(() => { localStorage.removeItem('yosakura_theme'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
