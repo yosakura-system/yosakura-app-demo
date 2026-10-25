@@ -11317,9 +11317,9 @@
           en:'Enter the ID and password provided by HQ.',
           vi:'Nhập ID và mật khẩu do HQ cung cấp.' })}</p>
         ${localStorage.getItem('yosakura_auth_dropped') === '1' ? `<p class="hint" style="display:block;color:#8a6d3b;text-align:left">${L({
-          ja:'※ この端末のログインが外れました。1つのIDで同時に使える端末には上限があり、別の端末で新しくログインすると、古い端末から順に外れます（本部がIDを登録し直したときも外れます）。もう一度ログインしてください。入力した内容は端末に残っています。',
-          en:'This device was signed out. Each ID can stay signed in on a limited number of devices; newer sign-ins push out older ones. Please sign in again — your entered data is kept on this device.',
-          vi:'Thiết bị này đã bị đăng xuất. Mỗi ID chỉ đăng nhập được trên số thiết bị giới hạn. Vui lòng đăng nhập lại; dữ liệu đã nhập vẫn còn.' })}</p>` : ''}
+          ja:'※ この端末のログインが外れました。パスワードが変わったときや、本部がIDを登録し直したときに外れます。新しいパスワードでもう一度ログインしてください。入力した内容は端末に残っています。',   // ★2026-10-25 牛カツ長堀橋のスタッフさん「同時に使うと外れる？」＝実際の原因はパスワード変更（上限20台には届いていない）。上限の話は外した
+          en:'This device was signed out. This happens when the password changes or the ID is re-registered. Please sign in again with the new password — your entered data is kept on this device.',
+          vi:'Thiết bị này đã bị đăng xuất. Điều này xảy ra khi mật khẩu thay đổi hoặc ID được đăng ký lại. Vui lòng đăng nhập lại bằng mật khẩu mới; dữ liệu đã nhập vẫn còn.' })}</p>` : ''}
         <label class="fld"><span>ID</span><input type="text" id="au_id" autocapitalize="none" autocomplete="username"></label>
         <label class="fld"><span>${L({ ja:'パスワード', en:'Password', vi:'Mật khẩu' })}</span><input type="password" id="au_pw" autocomplete="current-password"></label>
         <p class="hint" id="au_err" style="display:none;color:#b23"></p>

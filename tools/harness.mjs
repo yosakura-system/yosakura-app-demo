@@ -7598,5 +7598,9 @@ console.log('== 2026-10-25 神田さん「昨日のレジ締めに過不足と�
   run(() => { localStorage.removeItem('yosakura_theme'); localStorage.removeItem('yosakura_demo_soukatsu'); });
 }
 
+console.log('== 2026-10-25 ログインが外れたときの説明＝原因はパスワード変更・ID登録し直し（上限の話は外す） ==');
+{ const srcL = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/パスワードが変わったときや、本部がIDを登録し直したときに外れます。新しいパスワードでもう一度ログインしてください/.test(srcL) && !/古い端末から順に外れます/.test(srcL), 'ログイン画面の説明＝パスワードが変わったとき・登録し直したとき（上限で古い順に、は書かない）'); }
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
