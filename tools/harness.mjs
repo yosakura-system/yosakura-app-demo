@@ -7575,7 +7575,7 @@ console.log('== 2026-10-25 神田さん「永井さんの在庫管理シート�
   const count = { kind:'zaiko', store:S, item: dk, note: JSON.stringify({ q:{ '和牛シート（仕込み前）':50, '和牛肉ご飯用（仕込み前）':30, 'サーモン':200, 'イクラ':1 }, by:'スタッフ' }), photos:[], t: t0 - 600e3 };
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([count])); localStorage.setItem('yosakura_zk_tab', 'order'); });
   location.hash = '#/app/zaiko?x=nagai1025'; const h = String(registry.app.innerHTML || '').replace(/<[^>]*>/g, '');
-  ok(/和牛シート（仕込み前）[\s\S]*?発注数 40kg/.test(h), '和牛シート＝60枚を下回った（50）→発注数 40kg');
+  ok(/和牛シート（仕込み前）[\s\S]*?発注数 50kg/.test(h), '和牛シート＝60枚を下回った（50）→発注数 50kg（10/25 永井さん）');
   ok(/サーモン[\s\S]*?発注数 半尾/.test(h) && /イクラ[\s\S]*?発注数 6P/.test(h), 'サーモン＝半尾・イクラ＝数字だけは品目の単位（6P）');
   ok(!/和牛肉ご飯用（仕込み前）[\s\S]{0,40}?発注数 10kg/.test(h), '和牛肉ご飯用＝30個ちょうどは下回っていない＝出ない');
   run(() => { localStorage.removeItem('yosakura_zk_tab'); });
