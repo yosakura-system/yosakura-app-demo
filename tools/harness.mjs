@@ -5883,10 +5883,10 @@ console.log('== 在庫（数と発注）＝2026-09-18 長堀橋の現場の声 =
     seedO('order');
     location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hO2 = registry.app.innerHTML;
     const rowO = (n) => (hO2.match(new RegExp('<div class="zk-row low"><div><b>' + n + '</b>[^]*?</span>')) || [''])[0];
-    ok(/発注数 <b>3<\/b>kg/.test(rowO('牛肉')) && !/発注の目安/.test(rowO('牛肉')), '発注数を入れた品目＝発注リストに「発注数 3kg」（基準−残りの1ではない）');
+    ok(/発注数 <b>3kg<\/b>/.test(rowO('牛肉')) && !/発注の目安/.test(rowO('牛肉')), '発注数を入れた品目＝発注リストに「発注数 3kg」（基準−残りの1ではない）');
     ok(/発注の目安 <b>2<\/b>袋/.test(rowO('パン粉')) && !/発注数/.test(rowO('パン粉')), '発注数が空の品目＝従来どおり「発注の目安」＝基準−残り（パン粉 3−1＝2袋）');
     location.hash = '#/app/kyou'; const kO = registry.app.innerHTML;
-    ok(/発注が必要な品目/.test(kO) && /<b>牛肉<\/b><span>残り 4kg ／ 発注数 <b>3<\/b>kg/.test(kO), '今日出すものの赤い箱にも「発注数 3kg」');
+    ok(/発注が必要な品目/.test(kO) && /<b>牛肉<\/b><span>残り 4kg ／ 発注数 <b>3kg<\/b>/.test(kO), '今日出すものの赤い箱にも「発注数 3kg」');
     seedO('in'); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hI2 = registry.app.innerHTML;
     ok(/<b>牛肉<\/b><small>基準 5kg ／ 発注数 3kg<\/small>/.test(hI2) && /<b>パン粉<\/b><small>基準 3袋<\/small>/.test(hI2), '在庫数を入力＝品目の下に「基準 5kg ／ 発注数 3kg」（空の品目には出ない）');
     seedO('now'); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko'; const hN2 = registry.app.innerHTML;
@@ -7567,6 +7567,35 @@ console.log('== 2026-10-25 神田さんの実機「日報の画面にコード�
     ok(!/\/\/ ★|\/\* ★/.test(tx) && /納品書/.test(tx), `日報の画面にコードのメモが出ない（${role}）`);
   }
   run(() => { localStorage.removeItem('yosakura_theme'); });
+}
+
+console.log('== 2026-10-25 神田さん「永井さんの在庫管理シートどおりに」＝定数を下回ったら決まった量（単位つき 40kg など）を発注 ==');
+{
+  const S = '牛カツ世桜 長堀橋店'; const t0 = Date.now(); const dk = new Date(t0 + 9 * 3600e3).toISOString().slice(0, 10);
+  const count = { kind:'zaiko', store:S, item: dk, note: JSON.stringify({ q:{ '和牛シート（仕込み前）':50, '和牛肉ご飯用（仕込み前）':30, 'サーモン':200, 'イクラ':1 }, by:'スタッフ' }), photos:[], t: t0 - 600e3 };
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify([count])); localStorage.setItem('yosakura_zk_tab', 'order'); });
+  location.hash = '#/app/zaiko?x=nagai1025'; const h = String(registry.app.innerHTML || '').replace(/<[^>]*>/g, '');
+  ok(/和牛シート（仕込み前）[\s\S]*?発注数 40kg/.test(h), '和牛シート＝60枚を下回った（50）→発注数 40kg');
+  ok(/サーモン[\s\S]*?発注数 半尾/.test(h) && /イクラ[\s\S]*?発注数 6P/.test(h), 'サーモン＝半尾・イクラ＝数字だけは品目の単位（6P）');
+  ok(!/和牛肉ご飯用（仕込み前）[\s\S]{0,40}?発注数 10kg/.test(h), '和牛肉ご飯用＝30個ちょうどは下回っていない＝出ない');
+  run(() => { localStorage.removeItem('yosakura_zk_tab'); });
+}
+
+console.log('== 2026-10-25 神田さん「昨日のレジ締めに過不足と理由が無い・押すと当日の日報になる」 ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const dk = new Date(Date.now() - 5 * 3600e3).toLocaleDateString('en-CA'); const yd = new Date(dk + 'T12:00:00Z'); yd.setUTCDate(yd.getUTCDate() - 1); const y = yd.toISOString().slice(0, 10);
+  const seed = (note) => run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+      { store:S, date:y, errnote: note, memo:'', posWait:true, t: Date.now() - 7200e3 },
+      { store:S, date:y, sales:420000, net:382446, guests:80, cash:113100, card:299000, err:-1000, src:'usen', t: Date.now() - 3600e3 } ])); });
+  seed(''); location.hash = '#/home?x=regi1'; let h = String(registry.app.innerHTML || '');
+  const card = (h.match(/<button class="pb-row pb-regi"[\s\S]*?<\/button>/) || [''])[0];
+  ok(card.includes('data-skedit="' + S + '||' + y + '"'), '昨日のレジ締め＝押すと前日（' + y + '）の日報が開く');
+  ok(/現金の過不足 −¥1,000/.test(card) && /押して理由を選んでください/.test(card), '過不足が0でない＝金額と「押して理由を選んでください」');
+  seed('レジの打ち間違い'); location.hash = '#/home?x=regi2'; h = String(registry.app.innerHTML || '');
+  ok(/理由：レジの打ち間違い/.test(h) && !/押して理由を選んでください/.test(h), '理由を選んだあと＝「理由：レジの打ち間違い」');
+  run(() => { localStorage.removeItem('yosakura_theme'); localStorage.removeItem('yosakura_demo_soukatsu'); });
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);

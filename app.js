@@ -1914,7 +1914,7 @@
     if (!hasNum) {
       const msg = USEN_STORES.includes(store) ? L({ja:'まだ届いていません。レジの数字は毎朝自動で入ります',en:'Not in yet. Register data arrives every morning.',vi:'Chưa có. Số liệu két tự vào mỗi sáng.'})
         : L({ja:'まだありません。日報を出すと、ここに出ます',en:'Nothing yet. It shows here after the daily report.',vi:'Chưa có. Hiện ở đây sau báo cáo ngày.'});
-      return `${head}<div class="pb-card"><button class="pb-row pb-regi" data-tsub="soukatsu"><span class="pb-rowtx"><span class="pb-sub">${msg}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
+      return `${head}<div class="pb-card"><button class="pb-row pb-regi" data-skedit="${esc(store + '||' + yday)}"><span class="pb-rowtx"><span class="pb-sub">${msg}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
     }
     const net = netOk ? Number(rec.net) : Number(rec.sales);
     const parts = [`${L({ja:'売上',en:'Sales',vi:'Doanh thu'})} ${yen(net)}${netOk ? L({ja:'（税抜）',en:' (excl. tax)',vi:' (chưa thuế)'}) : L({ja:'（税込）',en:' (incl. tax)',vi:' (gồm thuế)'})}`];
@@ -1925,7 +1925,11 @@
     if (rec.emoney) sub.push(`${L({ja:'電子マネー',en:'E-money',vi:'Ví điện tử'})} ${yen(rec.emoney)}`);
     if (rec.disc) sub.push(`${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})} ${yen(rec.disc)}`);
     const g = Number(rec.guests) || 0; if (g && net) sub.push(`${L({ja:'客単価',en:'Per guest',vi:'Mỗi khách'})} ${yen(Math.round(Number(net) / g))}`);
-    return `${head}<div class="pb-card"><button class="pb-row pb-regi" data-tsub="soukatsu"><span class="pb-rowtx"><span class="pb-nm">${parts.join(' ・ ')}</span>${sub.length ? `<span class="pb-sub">${sub.join(' ・ ')}</span>` : ''}</span><span class="pb-rt">${svg('chev')}</span></button></div>`;
+    /* ★2026-10-25 神田さん「案Bは昨日のレジ締めに過不足と理由が出ていたのに、いまはどこにも無い」＝過不足が0でない日は、金額と理由（選んだもの）をここに。
+       理由は日報（前日分）で選ぶ＝押すと前日の日報が開く（これまでは既定の日付で開き、前日分を出したあとは当日の日報になっていた） */
+    const errV = Number(rec.err) || 0;
+    const errLine = errV ? `<span class="pb-sub" style="color:var(--suou,#8b2e3a)">${L({ja:'現金の過不足',en:'Cash difference',vi:'Chênh lệch tiền mặt'})} ${errV > 0 ? '+' : '−'}${yen(Math.abs(errV))}${rec.errnote ? ` ・ ${L({ja:'理由',en:'Reason',vi:'Lý do'})}：${esc(rec.errnote)}` : ` ・ <b>${L({ja:'押して理由を選んでください',en:'Tap to choose the reason',vi:'Chạm để chọn lý do'})}</b>`}</span>` : '';
+    return `${head}<div class="pb-card"><button class="pb-row pb-regi" data-skedit="${esc(store + '||' + yday)}"><span class="pb-rowtx"><span class="pb-nm">${parts.join(' ・ ')}</span>${sub.length ? `<span class="pb-sub">${sub.join(' ・ ')}</span>` : ''}${errLine}</span><span class="pb-rt">${svg('chev')}</span></button></div>`;
   }
   /* 1行＝写真・名前・いまの状態・開く。開く先と印（data-tsub / data-tsubmode / data-tsubphoto / data-tdid / data-openurl）は subItemRow と同じ＝反応は変えない */
   /* ★2026-10-20 案Bの見本と同じ呼び名（ホームの行だけ。提出物の正式名と本部の画面はそのまま） */
@@ -3235,14 +3239,14 @@
     '牛カツ世桜 長堀橋店': [
       /* ★2026-10-23 永井さん（店舗責任者）の「在庫管理シート」から転記＝これまでの既定（9/17の紙＋10/21の消耗品2枚）を置き換え。
          g＝シートの赤い見出し（コメントもそのまま）・f＝見出しの曜日（第1、第3水曜はアプリに無いので「水」＋見出しで示す）・p＝場所の列。
-         発注数の単位がシートの単位とちがう品目（和牛シート 40kg・和牛肉ご飯用 10kg・神戸牛 10kg・サーモン 半尾）は発注数を空欄＝永井さんに確認中。
+         発注数の単位がシートの単位とちがう品目（和牛シート 40kg・和牛肉ご飯用 10kg・神戸牛 10kg・サーモン 半尾）は、10/25 にシートどおり単位つきで入れた（定数を下回ったらその量を発注）。BBQ用端材・鰻の発注数は永井さんに確認中。
          保存されたらこの既定は使われない（店長の保存が正） */
-      { g:'食材管理（毎日）', n:'和牛シート（仕込み前）', std:60, u:'枚', p:'冷凍' },
+      { g:'食材管理（毎日）', n:'和牛シート（仕込み前）', std:60, u:'枚', ord:'40kg', p:'冷凍' },
       { g:'食材管理（毎日）', n:'和牛シート（仕込み後）', std:'', u:'枚', p:'冷凍' },
-      { g:'食材管理（毎日）', n:'和牛肉ご飯用（仕込み前）', std:30, u:'個', p:'冷凍' },
+      { g:'食材管理（毎日）', n:'和牛肉ご飯用（仕込み前）', std:30, u:'個', ord:'10kg', p:'冷凍' },
       { g:'食材管理（毎日）', n:'和牛肉ご飯用（仕込み後）', std:'', u:'個', p:'冷凍' },
       { g:'食材管理（毎日）', n:'BBQ用端材', std:'', u:'g', p:'冷凍' },
-      { g:'食材管理（毎日）', n:'神戸牛', std:20, u:'個', p:'冷凍' },
+      { g:'食材管理（毎日）', n:'神戸牛', std:20, u:'個', ord:'10kg', p:'冷凍' },
       { g:'食材管理（毎日）', n:'鰻', std:30, u:'尾', p:'冷凍' },
       { g:'食材管理（毎日）', n:'イクラ', std:2, u:'P', ord:6, p:'冷凍' },
       { g:'食材管理（毎日）', n:'わさび', std:1, u:'P', ord:2, p:'冷凍' },
@@ -3253,7 +3257,7 @@
       { g:'食材管理（毎日）', n:'三つ葉', std:1, u:'P', ord:2, p:'冷蔵' },
       { g:'食材管理（毎日）', n:'青ネギ', std:0.5, u:'P', ord:1, p:'冷蔵' },
       { g:'食材管理（毎日）', n:'卵', std:2, u:'個', ord:2, p:'冷蔵' },
-      { g:'食材管理（毎日）', n:'サーモン', std:300, u:'g', p:'冷蔵' },
+      { g:'食材管理（毎日）', n:'サーモン', std:300, u:'g', ord:'半尾', p:'冷蔵' },
       { g:'食材管理（毎日）', n:'食パン（6枚切り）', std:1, u:'P', ord:2, p:'キッチン棚' },
       { g:'食材管理（毎日）', n:'ゴマドレッシング', std:1, u:'本', ord:2, p:'キッチン棚' },
       { g:'食材管理（毎日）', n:'お米', std:2, u:'袋', ord:2, p:'キッチン棚' },
@@ -3621,11 +3625,12 @@
   }
   /* ★2026-10-22 永井さん（牛カツ長堀橋）「発注数表示もできますか？ 例：定数2 在庫数1→発注数3。定数を下回ったら記載の発注数を発注するフローにしたい」
      ＝品目ごとに「発注数」（下回ったときに頼む数）を持てる。入れてあれば発注リスト・今日出すもの・入力画面に「発注数 3」と出す。空なら従来どおり「発注の目安」＝基準−残り */
-  const zkOrdOf_ = (it) => { const v = it && it.ord; return (v != null && v !== '' && !isNaN(Number(v)) && Number(v) > 0) ? Number(v) : null; };
-  const zkOrdHtml_ = (x) => x.ord != null ? `${L({ ja:'発注数', en:'order', vi:'số đặt' })} <b>${x.ord}</b>${esc(x.u)}` : `${L({ ja:'発注の目安', en:'order', vi:'cần đặt' })} <b>${x.need}</b>${esc(x.u)}`;
+  /* ★2026-10-25 神田さん「永井さんのシートどおりに」＝発注数は単位つきでもよい（和牛シートは「60枚を下回ったら 40kg」）。数字だけなら品目の単位を付ける。返すのは表示用の文字（単位込み） */
+  const zkOrdOf_ = (it) => { const v = it && it.ord; if (v == null || v === '') return null; const s = String(v).normalize('NFKC').replace(/\s+/g, '').trim(); if (!s) return null; if (!isNaN(Number(s))) return Number(s) > 0 ? s + (it.u || '') : null; return s; };
+  const zkOrdHtml_ = (x) => x.ord != null ? `${L({ ja:'発注数', en:'order', vi:'số đặt' })} <b>${esc(x.ord)}</b>` : `${L({ ja:'発注の目安', en:'order', vi:'cần đặt' })} <b>${x.need}</b>${esc(x.u)}`;
   /* ★2026-10-23 永井さん「どこに発注するかをスタッフが見られると分かりやすい」＝場所（p）と発注先（v）を品目の下の小さい字に */
   const zkPlaceSmall_ = (it) => (it.p ? ` ・ ${esc(it.p)}` : '') + (it.v ? ` ・ ${L({ ja:'発注先', en:'order from', vi:'đặt tại' })} ${esc(it.v)}` : '');
-  const zkOrdSmall_ = (it) => zkOrdOf_(it) != null ? ` ／ ${L({ ja:'発注数', en:'order', vi:'số đặt' })} ${zkOrdOf_(it)}${esc(it.u || '')}` : '';
+  const zkOrdSmall_ = (it) => zkOrdOf_(it) != null ? ` ／ ${L({ ja:'発注数', en:'order', vi:'số đặt' })} ${esc(zkOrdOf_(it))}` : '';
   function zkLow(store) {
     const m = zkMaster(store); const l = zkLatest(store); if (!m.length || !l) return [];
     const ord = zkOrdered(store);
@@ -3735,7 +3740,7 @@
         <div class="hint" style="display:block">${L({ ja:'在庫チェック表と同じ順で品目を入れてください。基準在庫＝これを下回ったら発注する数。発注数＝下回ったときに頼む数（空なら基準との差を目安に出します）。単位は「本」「袋」「kg」など。区分（冷凍庫など）を入れると、その見出しで分かれて並びます。品目の名前を変えると、前に数えた数は新しい名前には引き継がれません。', en:'List items in the same order as the stock sheet. Minimum = order when below this.', vi:'Nhập mặt hàng theo thứ tự bảng kiểm kho. Định mức = đặt hàng khi thấp hơn.' })}</div>
         ${draftNote}<div class="zk-head"><span>${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><span>${L({ ja:'基準在庫', en:'Minimum', vi:'Định mức' })}</span><span>${L({ ja:'発注数', en:'Order qty', vi:'Số đặt' })}</span><span>${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span><span>${L({ ja:'確認日', en:'Check', vi:'Ngày' })}</span><span>${L({ ja:'区分', en:'Group', vi:'Nhóm' })}</span></div>
         ${(() => { zkGroupOpts_ = Array.from(new Set(m.concat(rows).map(it => String(it.g || '').trim()).filter(Boolean).concat(['冷凍庫', '冷蔵庫', '常温', '備品']))); /* ★2026-10-21 下書きで足した新しい区分も候補に（無いと「区分なし」に戻る） */ return ''; })()}
-        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="zk-grp" style="margin-top:${i ? 14 : 2}px">${esc(r.g)}</div>` : ''}<div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="${L({ ja:'基準', en:'min', vi:'định mức' })}"><input type="text" inputmode="decimal" id="zk_o${i}" value="${r.ord != null ? esc(String(r.ord)) : ''}" placeholder="${L({ ja:'発注数', en:'order', vi:'số đặt' })}"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'単位', en:'unit', vi:'đơn vị' })}"><input type="text" id="zk_p${i}" value="${esc(r.p || '')}" placeholder="${L({ ja:'場所', en:'place', vi:'nơi để' })}"><input type="text" id="zk_v${i}" value="${esc(r.v || '')}" placeholder="${L({ ja:'発注先', en:'supplier', vi:'nơi đặt' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${((r.n || r.g) ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select><select id="zk_g${i}" style="flex:0.9;min-width:0"><option value="">${L({ ja:'区分なし', en:'No group', vi:'Không' })}</option>${zkGroupOpts_.map(g => `<option value="${esc(g)}"${g === String(r.g || '').trim() ? ' selected' : ''}>${esc(g)}</option>`).join('')}<option value="__new">${L({ ja:'＋新しい区分', en:'+ New group', vi:'+ Nhóm mới' })}</option></select><input type="text" id="zk_gn${i}" placeholder="${L({ ja:'新しい区分名', en:'New group', vi:'Nhóm mới' })}" style="flex:0.9;min-width:0;display:none"></div>`).join('')}
+        ${rows.map((r, i) => `${(r.g && (i === 0 || (rows[i - 1] || {}).g !== r.g)) ? `<div class="zk-grp" style="margin-top:${i ? 14 : 2}px">${esc(r.g)}</div>` : ''}<div class="zk-edit"><input type="text" id="zk_n${i}" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên' })}"><input type="text" inputmode="decimal" id="zk_s${i}" value="${r.std != null ? esc(String(r.std)) : ''}" placeholder="${L({ ja:'基準', en:'min', vi:'định mức' })}"><input type="text" id="zk_o${i}" value="${r.ord != null ? esc(String(r.ord)) : ''}" placeholder="${L({ ja:'発注数', en:'order', vi:'số đặt' })}"><input type="text" id="zk_u${i}" value="${esc(r.u || '')}" placeholder="${L({ ja:'単位', en:'unit', vi:'đơn vị' })}"><input type="text" id="zk_p${i}" value="${esc(r.p || '')}" placeholder="${L({ ja:'場所', en:'place', vi:'nơi để' })}"><input type="text" id="zk_v${i}" value="${esc(r.v || '')}" placeholder="${L({ ja:'発注先', en:'supplier', vi:'nơi đặt' })}"><select id="zk_f${i}">${ZK_FREQ_OPTS.map(([v, t]) => `<option value="${v}"${((r.n || r.g) ? zkFreqOf(r) : '') === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select><select id="zk_g${i}" style="flex:0.9;min-width:0"><option value="">${L({ ja:'区分なし', en:'No group', vi:'Không' })}</option>${zkGroupOpts_.map(g => `<option value="${esc(g)}"${g === String(r.g || '').trim() ? ' selected' : ''}>${esc(g)}</option>`).join('')}<option value="__new">${L({ ja:'＋新しい区分', en:'+ New group', vi:'+ Nhóm mới' })}</option></select><input type="text" id="zk_gn${i}" placeholder="${L({ ja:'新しい区分名', en:'New group', vi:'Nhóm mới' })}" style="flex:0.9;min-width:0;display:none"></div>`).join('')}
         ${missing.length ? `<div style="margin:6px 0 4px"><button class="mini" id="zkFromDefault">${L({ ja:'本部が写した品目を取り込む', en:'Add HQ-listed items', vi:'Thêm mặt hàng do HQ nhập' })}（${missing.length}）</button>
           <span class="muted" style="font-size:12px">${L({ ja:'紙の在庫表・朝礼シートから本部が写した品目のうち、この一覧に無いものを空の行に足します（足したら保存）', en:'Adds items HQ copied from the paper sheets that are not in this list', vi:'Thêm các mặt hàng HQ đã nhập mà danh sách chưa có' })}</span></div>` : ''}
         <div style="margin:6px 0 10px"><button class="mini" id="zkFromTana">${L({ ja:'月次棚卸の品目を取り込む', en:'Import stocktake items', vi:'Nhập mặt hàng từ kiểm kê' })}${(() => { const n = zkTanaNames(store).length; return n ? `（${n}）` : ''; })()}</button>
@@ -12118,7 +12123,7 @@
         const name = String(nEl.value || '').trim(); if (!name) continue;
         const sv = String((document.getElementById('zk_s' + i) || {}).value || '').trim();
         const ov = String((document.getElementById('zk_o' + i) || {}).value || '').trim();   // ★2026-10-22 発注数（空＝基準との差を目安に）
-        items.push({ n: name, std: sv === '' ? '' : (Number(sv) || 0), ord: ov === '' ? '' : (Number(ov) || 0), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g: (() => { const gv = String((document.getElementById('zk_g' + i) || {}).value || '').trim(); return gv === '__new' ? String((document.getElementById('zk_gn' + i) || {}).value || '').trim() : gv; })(), f: String((document.getElementById('zk_f' + i) || {}).value || ''), p: String((document.getElementById('zk_p' + i) || {}).value || '').trim(), v: String((document.getElementById('zk_v' + i) || {}).value || '').trim() });   // 2026-10-23 場所・発注先
+        items.push({ n: name, std: sv === '' ? '' : (Number(sv) || 0), ord: ov === '' ? '' : (!isNaN(Number(ov.normalize('NFKC'))) ? (Number(ov.normalize('NFKC')) || 0) : ov.normalize('NFKC')), u: String((document.getElementById('zk_u' + i) || {}).value || '').trim(), g: (() => { const gv = String((document.getElementById('zk_g' + i) || {}).value || '').trim(); return gv === '__new' ? String((document.getElementById('zk_gn' + i) || {}).value || '').trim() : gv; })(), f: String((document.getElementById('zk_f' + i) || {}).value || ''), p: String((document.getElementById('zk_p' + i) || {}).value || '').trim(), v: String((document.getElementById('zk_v' + i) || {}).value || '').trim() });   // 2026-10-23 場所・発注先
       }
       if (!items.length) { toast(L({ ja:'品目を1つ以上入れてください', en:'Enter at least one item', vi:'Nhập ít nhất một mặt hàng' })); return; }
       const t = Date.now();
