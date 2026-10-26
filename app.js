@@ -2898,6 +2898,7 @@
         <div class="l1">${esc(r.note||'—')}</div>
         <div class="l2">${esc(r.store)}${r.who ? ' ・ ' + esc(r.who) : ''} ・ ${timeAgo(r.t)}</div>
         ${hqAckLine('kizuki', r.t, r.store)}
+        ${kzInFaq(ackKey('kizuki', r.t, r.store)) ? `<div class="l2" style="color:#2a7">${L({ ja:'この気づきは、全店のよくある質問に載りました', en:'This insight is now in the shared FAQ', vi:'Ghi nhận này đã được đưa vào FAQ chung' })}</div>` : ''}
         ${(r.photos && r.photos.length) ? `<div class="rep-photos">${r.photos.map(p=>`<img class="rep-photo" src="${photoThumb(p)}" alt="" data-full="${photoFull(p)}" loading="lazy">`).join('')}</div>` : ''}
       </div>
     </div>`;
@@ -8166,6 +8167,10 @@
     return fixed.concat(mine);
   }
   let faqEditId = null; // 編集中の項目（本部のみ）
+  /* ★気づき→よくある質問（2026-10-26 神田さん「①②両方進めて」）。受信箱の気づきから下書きを作り、本部が直して載せる。
+     店名・投稿者は質問集に出さない（kz に元の気づきのキーだけ持つ＝送ったお店に「載りました」を返すため）。 */
+  let faqDraft = null;   // { kz, q, a }
+  const kzInFaq = (key) => { try { return getFaq().some(f => f && f.kz === key); } catch (e) { return false; } };
 
   APP_VIEWS.faq = () => {
     const role = getRole(), isHQ = role === 'hq';
@@ -8206,11 +8211,12 @@
       ${rows || `<div class="card"><div class="muted">${L({ ja:'まだ項目がありません。', en:'No entries yet.', vi:'Chưa có mục nào.' })}</div></div>`}
       ${isHQ ? `<div class="card"><h3>${esc(L({ ja:'項目を追加（本部）', en:'Add an entry (HQ)', vi:'Thêm mục (HQ)' }))}</h3>
         <label class="fl">${esc(L({ ja:'分類', en:'Category', vi:'Phân loại' }))}</label>
+        ${faqDraft ? `<p class="hint" style="display:block;color:var(--sumi)">${esc(L({ ja:'気づきから下書きを作りました。質問の形に直して、分類を選んでから追加してください。', en:'Drafted from an insight. Rephrase it as a question, pick a category, then add.', vi:'Bản nháp từ ghi nhận. Sửa thành câu hỏi, chọn phân loại rồi thêm.' }))}</p>` : ''}
         <select id="faq_cat">${FAQ_CATS.map(c => `<option value="${c.v}">${esc(L(c.t))}</option>`).join('')}</select>
         <label class="fl">${esc(L({ ja:'質問', en:'Question', vi:'Câu hỏi' }))}</label>
-        <input id="faq_q" type="text" placeholder="${esc(L({ ja:'例）備品が足りないときは？', en:'e.g. What if supplies run out?', vi:'VD: Khi thiếu vật tư?' }))}">
+        <input id="faq_q" type="text" value="${faqDraft ? esc(faqDraft.q) : ''}" placeholder="${esc(L({ ja:'例）備品が足りないときは？', en:'e.g. What if supplies run out?', vi:'VD: Khi thiếu vật tư?' }))}">
         <label class="fl">${esc(L({ ja:'答え', en:'Answer', vi:'Trả lời' }))}</label>
-        <textarea id="faq_a" rows="3"></textarea>
+        <textarea id="faq_a" rows="3">${faqDraft ? esc(faqDraft.a) : ''}</textarea>
         <button class="btn" id="faqAdd" style="margin-top:8px">${esc(L({ ja:'追加する', en:'Add', vi:'Thêm' }))}</button>
         <p class="hint">${esc(L({ ja:'※ 追加・編集・削除は全店の端末に反映されます。会議で決まったルールも修正できます（元の出典は残ります）。', en:'Adds, edits and deletes sync to all devices. Rules decided in meetings can also be edited (the source note remains).', vi:'Thêm, sửa, xoá sẽ đồng bộ mọi máy. Quy định từ cuộc họp cũng có thể sửa (vẫn giữ ghi chú nguồn).' }))}</p>
       </div>` : ''}`;
@@ -9968,7 +9974,7 @@
           const shortTxt = long ? dfull.slice(0, 90).replace(/\n/g, '／') + '…' : dfull;
           return `<div class="l2 ackdetail" style="color:var(--sumi)"><span class="dshort"${exp ? ' style="display:none"' : ''}>${esc(shortTxt)}</span><span class="dfull" style="white-space:pre-wrap${exp ? '' : ';display:none'}">${esc(dfull)}</span>${btn}</div>`;
         })()}
-        ${st}</div></div>`;
+        ${st}${i.kind === 'kizuki' ? `<div class="l2" style="display:block;margin-top:6px">${kzInFaq(i.key) ? `<span style="color:#2a7">${L({ja:'よくある質問に載せ済み',en:'Added to FAQ',vi:'Đã đưa vào FAQ'})}</span>` : `<button class="mini" data-kzfaq="${esc(i.key)}">${L({ja:'よくある質問に載せる',en:'Add to FAQ',vi:'Đưa vào FAQ'})}</button>`}</div>` : ''}</div></div>`;
     };
     // 種類の絞り込みチップ（未対応の件数つき）。押すと同じ位置のまま切り替わる
     const kindsSeen = {};
@@ -10133,7 +10139,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-viewstore],[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-voicest],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
+      const t = e.target.closest('[data-viewstore],[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-voicest],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-kzfaq],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.numstore) { try { localStorage.setItem('yosakura_num_store', t.dataset.numstore); } catch (e2) {} render(); return; }
@@ -10226,6 +10232,15 @@
       if (t.dataset.gdtab) { localStorage.setItem('yosakura_guide_tab', t.dataset.gdtab); render(true); return; }
       /* ★受信箱の4操作＝押した行の中だけを書き換える（2026-09-08 神田さんの実機報告＝
          renderのたびに写真が読み直されて画面がプツプツ途切れる）。行が見つからないときだけ従来のrenderに退避 */
+      if (t.dataset.kzfaq) {
+        // 気づき→よくある質問の下書き。答え＝本部が「メモを付けて完了」で返した内容（あれば）
+        const it = collectHqItems(STORES.slice()).find(x => x.key === t.dataset.kzfaq);
+        if (!it) { toast(L({ ja:'気づきが見つかりません', en:'Insight not found', vi:'Không tìm thấy ghi nhận' })); return; }
+        faqDraft = { kz: it.key, q: String(it.detail || ''), a: String(it.memo || '') };
+        go('/app/faq');
+        setTimeout(() => { const q = document.getElementById('faq_q'); if (q) { q.scrollIntoView({ block:'center' }); q.focus(); } }, 300);
+        return;
+      }
       if (t.dataset.ackdone) {
         setAck(t.dataset.ackdone, 'done', '');
         const st = t.closest('.ackst');
@@ -12343,7 +12358,7 @@
       const a = ((byId('faq_a') || {}).value || '').trim();
       const cat = (byId('faq_cat') || {}).value || 'other';
       if (!q || !a) { toast(L({ ja:'質問と答えの両方を入力してください', en:'Enter both a question and an answer', vi:'Nhập cả câu hỏi và câu trả lời' })); return; }
-      const list = getFaq(); list.push({ id:'fq' + Date.now(), cat, q, a });
+      const list = getFaq(); const it = { id:'fq' + Date.now(), cat, q, a }; if (faqDraft && faqDraft.kz) it.kz = faqDraft.kz; list.push(it); faqDraft = null;
       saveFaq(list); const t = Date.now(); lastSync = t; faqEditId = null;
       toast(L({ ja:'追加しました', en:'Added', vi:'Đã thêm' })); render();
       postReport({ kind:'faqset', store:'', note: JSON.stringify(list), t });

@@ -7617,5 +7617,24 @@ console.log('== 2026-10-25 神田さん「器じゃないものがカテゴリ�
   run(() => { localStorage.removeItem('yosakura_theme'); });
 }
 
+console.log('== 2026-10-26 神田さん「①②両方進めて」＝気づき→よくある質問（受信箱から下書き・送ったお店に「載りました」） ==');
+{
+  const S = '寿司世桜 心斎橋店', T = Date.now() - 3600000, K = `kizuki|${T}|${S}`;
+  const KZ = () => localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([{ store:S, cat:'service', note:'テイスティングの対応が分からなかった', photos:[], t:T, id:'k1' }]));
+  const FQ = () => localStorage.setItem('yosakura_demo_faq', JSON.stringify([{ id:'fq1', cat:'guest', q:'お客様にお酒のテイスティングを頼まれたら？', a:'（答え）', kz:K }]));
+  run(() => { localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([{ store:S, cat:'service', note:'テイスティングの対応が分からなかった', photos:[], t:T, id:'k1' }])); localStorage.setItem('yosakura_demo_faq', '[]'); setLS('hq', 'all', 'ja'); });
+  location.hash = '#/app/inbox';
+  ok(/data-kzfaq="kizuki\|/.test(registry.app.innerHTML), '受信箱の気づきに「よくある質問に載せる」');
+  run(() => { KZ(); FQ(); setLS('hq', 'all', 'ja'); });
+  location.hash = '#/app/inbox';
+  ok(/よくある質問に載せ済み/.test(registry.app.innerHTML) && !/data-kzfaq=/.test(registry.app.innerHTML), '載せたら受信箱は「載せ済み」');
+  run(() => { KZ(); FQ(); setLS('manager', S, 'ja'); });
+  location.hash = '#/app/kizuki';
+  ok(/全店のよくある質問に載りました/.test(registry.app.innerHTML), '送ったお店の気づき一覧に「載りました」');
+  location.hash = '#/app/faq';
+  ok(/テイスティングを頼まれたら/.test(registry.app.innerHTML) && !/id="faq_q"/.test(registry.app.innerHTML), '店舗のFAQに出る・追加欄は出ない');
+  run(() => { localStorage.removeItem('yosakura_demo_kizuki'); localStorage.removeItem('yosakura_demo_faq'); });
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
