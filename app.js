@@ -941,7 +941,11 @@
        既定の日付＝12時より前で前日分がまだ無ければ前日、それ以外（閉店後など）は当日 */
     let hm = '00:00'; try { hm = nowHMFor(st) || '00:00'; } catch (e) {}
     return (!done && hm < '12:00') ? y : t; };
-  const SK_KT_ROWS = 8;
+  /* ★2026-10-26 常山さん「9名以上も入れたい・＋で足せるように」＝最初は8行、＋で1行ずつ最大13行。
+     13＝総括表の勤怠の行数（総括表書き戻し.gs skwb_kintai_ が最大13行まで書く）。それより多いと総括表に入らず黙って落ちるため上限にする */
+  const SK_KT_ROWS = 13, SK_KT_SHOW = 8;
+  const skKtShowUpTo_ = (n) => { for (let i = 0; i < SK_KT_ROWS; i++) { const r = document.querySelector(`[data-ktrow="${i}"]`); if (r && i < n) r.style.display = ''; }
+    const shown = document.querySelectorAll('[data-ktrow]:not([style*="none"])').length; const b = document.querySelector('[data-ktadd]'); if (b) b.style.display = shown >= SK_KT_ROWS ? 'none' : ''; };
   const skStaffNames_ = (store) => { try { const rows = getReports().filter(x => x && x.kind === 'staffm' && x.store === store).sort((a, b) => (Number(b.t) || 0) - (Number(a.t) || 0)); const p = rows.length ? parseNote(rows[0].note) : null; return (p && Array.isArray(p.names)) ? p.names.map(x => String(x.n || '').trim()).filter(Boolean) : []; } catch (e) { return []; } };
   const skKintaiText_ = (arr) => Array.isArray(arr) ? arr.map(k => `${k.n || ''} ${k.s || ''}〜${k.e || ''}`.trim()).join('／') : '';
   const skKintaiHours_ = (arr) => { let h = 0; (arr || []).forEach(k => { const a = /^(\d{1,2}):(\d{2})$/.exec(k.s || ''), b = /^(\d{1,2}):(\d{2})$/.exec(k.e || ''); if (!a || !b) return; let m = (Number(b[1]) * 60 + Number(b[2])) - (Number(a[1]) * 60 + Number(a[2])); if (m < 0) m += 1440; h += m / 60; }); return Math.round(h * 10) / 10; };
@@ -6546,11 +6550,12 @@
           <summary style="cursor:pointer;font-weight:600">${L({ ja:'勤怠を入れる（任意・総括表の勤怠と同じ形）', en:'Attendance (optional, same as the summary sheet)', vi:'Chấm công (tùy chọn, giống bảng tổng kết)' })}</summary>
           <p class="hint" style="display:block;margin:6px 0 8px">${L({ ja:'名簿から選んで、出勤・退勤を入れるだけ。時間と金額は総括表が計算します。', en:'Pick the name, enter in/out. Hours and pay are calculated by the summary sheet.', vi:'Chọn tên, nhập giờ vào/ra. Giờ và lương do bảng tổng kết tính.' })}</p>
           <datalist id="sk_ktlist">${skStaffNames_(vis[0]).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
-          ${Array.from({ length: SK_KT_ROWS }, (_, i) => `<div class="sk-grid">
+          ${Array.from({ length: SK_KT_ROWS }, (_, i) => `<div class="sk-grid" data-ktrow="${i}"${i >= SK_KT_SHOW ? ' style="display:none"' : ''}>
             <label class="fld"><span>${L({ ja:'氏名', en:'Name', vi:'Tên' })} ${i + 1}</span><input type="text" id="sk_kt${i}_n" list="sk_ktlist" placeholder="${L({ ja:'名簿から', en:'from roster', vi:'từ danh sách' })}"></label>
             <label class="fld"><span>${L({ ja:'出勤', en:'In', vi:'Vào' })}</span><input type="time" id="sk_kt${i}_s"></label>
             <label class="fld"><span>${L({ ja:'退勤', en:'Out', vi:'Ra' })}</span><input type="time" id="sk_kt${i}_e"></label>
           </div>`).join('')}
+          <button type="button" class="btn sm" data-ktadd="1" style="margin-top:6px">${L({ ja:'＋ 1人追加（13人まで）', en:'+ Add a person (up to 13)', vi:'+ Thêm 1 người (tối đa 13)' })}</button>
         </details>
         <div class="idlabel" style="margin-top:14px">${L({ ja:'勤怠・ロス（総括表の項目）', en:'Staffing & loss (summary-sheet items)', vi:'Nhân sự & hao hụt (mục bảng tổng kết)' })}</div>
         <p class="hint" style="display:block;margin:-2px 0 8px">${L({ ja:'人時生産性・人件費率は自動で出ます。', en:'Productivity and labor % are calculated.', vi:'Năng suất và % nhân sự tự tính.' })}</p>
@@ -10139,7 +10144,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-viewstore],[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-voicest],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-kzfaq],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
+      const t = e.target.closest('[data-viewstore],[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-voicest],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-kzfaq],[data-ktadd],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.numstore) { try { localStorage.setItem('yosakura_num_store', t.dataset.numstore); } catch (e2) {} render(); return; }
@@ -10232,6 +10237,12 @@
       if (t.dataset.gdtab) { localStorage.setItem('yosakura_guide_tab', t.dataset.gdtab); render(true); return; }
       /* ★受信箱の4操作＝押した行の中だけを書き換える（2026-09-08 神田さんの実機報告＝
          renderのたびに写真が読み直されて画面がプツプツ途切れる）。行が見つからないときだけ従来のrenderに退避 */
+      if (t.dataset.ktadd) {   // 勤怠の行を1つ出す（描き直さない＝入力中の値を消さない）
+        const hid = document.querySelector('[data-ktrow][style*="none"]');
+        if (hid) { hid.style.display = ''; const inp = hid.querySelector('input'); if (inp) inp.focus(); }
+        skKtShowUpTo_(0);
+        return;
+      }
       if (t.dataset.kzfaq) {
         // 気づき→よくある質問の下書き。答え＝本部が「メモを付けて完了」で返した内容（あれば）
         const it = collectHqItems(STORES.slice()).find(x => x.key === t.dataset.kzfaq);
@@ -12925,7 +12936,7 @@
         }
         set('sk_date', rec.date); if (rec.store) sEl.value = rec.store;   // どの日・どの店舗を直しているかを欄にも出す
         SK_FIELDS.map(f => f.k).concat(['cancelt', 'order', 'note']).forEach(k => set('sk_' + k, rec[k]));
-        for (let i = 0; i < SK_KT_ROWS; i++) { const k = (Array.isArray(rec.kintai) ? rec.kintai[i] : null) || {}; set(`sk_kt${i}_n`, k.n || ''); set(`sk_kt${i}_s`, k.s || ''); set(`sk_kt${i}_e`, k.e || ''); }
+        for (let i = 0; i < SK_KT_ROWS; i++) { const k = (Array.isArray(rec.kintai) ? rec.kintai[i] : null) || {}; set(`sk_kt${i}_n`, k.n || ''); set(`sk_kt${i}_s`, k.s || ''); set(`sk_kt${i}_e`, k.e || ''); } skKtShowUpTo_(Array.isArray(rec.kintai) ? rec.kintai.length : 0);
         SK_COUNTRIES.concat(SK_VISITKIND).forEach(cn => {
           const c = (rec.cty && typeof rec.cty === 'object') ? rec.cty[cn.k] : null;
           set('sk_cty_' + cn.k + '_g', c ? c.g : ''); set('sk_cty_' + cn.k + '_p', c ? c.p : '');

@@ -6503,7 +6503,7 @@ console.log('== 2026-10-15 勤怠（任意）＝総括表の勤怠と同じ形�
   location.hash = '#/app/soukatsu';
   let h = registry.app.innerHTML;
   ok(/<details[^>]*id="sk_kintai"/.test(h) && /勤怠を入れる（任意・総括表の勤怠と同じ形）/.test(h) && /総括表が計算します/.test(h), '日報に「勤怠を入れる（任意）」の折りたたみがある');
-  ok(/id="sk_kt0_n"/.test(h) && /id="sk_kt7_e"/.test(h) && !/id="sk_kt8_n"/.test(h), '勤怠の行は8行（氏名・出勤・退勤）');
+  ok(/id="sk_kt0_n"/.test(h) && /id="sk_kt7_e"/.test(h) && /id="sk_kt12_e"/.test(h) && !/id="sk_kt13_n"/.test(h), '勤怠の行は最大13行（最初は8行・10/26 常山さん）');
   ok(/<datalist id="sk_ktlist"><option value="AA"><option value="BB"><\/datalist>/.test(h), '氏名の候補＝総括表「勤怠表」の最新の名簿（AA・BB。古い月のZZは出ない）');
   ok(/id="sk_staffct"/.test(h) && /id="sk_hours"/.test(h), '勤務人数・総労働時間の欄はそのまま（勤怠を入れると自動で入る）');
   // 提出＝2人ぶん入れる → kintai に残り、人数・時間が自動
@@ -7634,6 +7634,19 @@ console.log('== 2026-10-26 神田さん「①②両方進めて」＝気づき�
   location.hash = '#/app/faq';
   ok(/テイスティングを頼まれたら/.test(registry.app.innerHTML) && !/id="faq_q"/.test(registry.app.innerHTML), '店舗のFAQに出る・追加欄は出ない');
   run(() => { localStorage.removeItem('yosakura_demo_kizuki'); localStorage.removeItem('yosakura_demo_faq'); });
+}
+
+console.log('== 2026-10-26 常山さん「勤怠を9名以上・＋で足せるように」＝最初8行・＋で13行まで（総括表の勤怠は13行） ==');
+{
+  run(() => { setLS('manager', '寿司世桜 心斎橋店', 'ja'); });
+  location.hash = '#/app/soukatsu';
+  const h = registry.app.innerHTML;
+  const rows = (h.match(/data-ktrow="\d+"/g) || []).length, hidden = (h.match(/data-ktrow="\d+" style="display:none"/g) || []).length;
+  ok(rows === 13 && hidden === 5, '勤怠の行＝13（最初に見えるのは8）');
+  ok(/data-ktadd="1"/.test(h) && /1人追加（13人まで）/.test(h), '＋ 1人追加 のボタンがある');
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  const gs = fs.readFileSync(new URL('../backend/総括表書き戻し.gs', import.meta.url), 'utf8');
+  ok(/const SK_KT_ROWS = 13/.test(src) && /rows\.length < 13/.test(gs), 'アプリの上限13＝総括表へ書く行数13（超えると黙って落ちる）');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
