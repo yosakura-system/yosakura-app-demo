@@ -3957,6 +3957,14 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-
   run(() => { setLS('manager', '日本鰻世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   ok(/まず品目を登録する（貼り付け）/.test(registry.app.innerHTML) && !/白だし（本）/.test(registry.app.innerHTML), '既定が無い店（鰻長堀橋）は従来どおり空＝貼り付けから');
+  // 2026-10-27 広島＝総括表（202609）棚卸表の品目と単価が最初から入る（備品は入れない）
+  run(() => { setLS('manager', '和牛世桜 広島店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
+  location.hash = '#/app/pl';
+  { const hh = registry.app.innerHTML;
+    ok(/id="tn_f0_n"[^>]*value="ステーキしーずにんぐ（個）"/.test(hh) && /id="tn_f6_n"[^>]*value="和牛ブロック（kg）"/.test(hh) && /id="tn_f6_u"[^>]*value="8964"/.test(hh), '広島＝総括表の並び・単価（和牛ブロック 8964）');
+    ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 23 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 7, '広島＝食材23・飲料7');
+    ok(!/value="箸（袋）"/.test(hh) && !/value="ガスバーナー/.test(hh), '広島＝備品（箸・ガスバーナー）は入れない');
+    ok(/id="tn_d3_n"[^>]*value="びーる（本）"/.test(hh) && /id="tn_d3_r"[^>]*data-r="10"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), '広島＝お酒10%・お茶8%'); }
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   // ③b 画面304＝税率ボタンで 10%→8% に切り替えると金額が変わる（お茶など）
