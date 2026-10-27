@@ -201,7 +201,10 @@ function skwb_want_(it, e) {
   if (it.gs && e.gs != null) return { v: e.gs, src: 'gs', zero: e.gs === 0 };   // Googleの件数（取得があった日は0も書く＝2026-10-17）。取得が無い日はアプリの値へ
   /* ★2026-10-26 Airレジ（店舗コード102＝日本鰻世桜 富士山店）は客数を送らない（レジの客数＝会計数・お店は人数を打っていない）→ 客数はアプリの日報の値へ。0を書かない。103＝日本鰻世桜 長堀橋店は客数を打っている（10/28確認）＝USENと同じ扱い */
   var noRegGuests = it.k === 'guests' && e.usen && String(e.usen.usenCode || '') === '102';
-  if (it.usen && e.usen && !noRegGuests) {
+  /* ★2026-10-28 Airレジ（102・103）でカード・電子マネーが両方無く、売上＞現金の日＝CSVの支払方法の内訳が出ていない（設定OFF）→ 0を書かずアプリの値へ。現金＝売上の日は本当に0 */
+  var airNoSplit = (it.k === 'card' || it.k === 'emoney') && e.usen && ['102', '103'].indexOf(String(e.usen.usenCode || '')) >= 0 &&
+    e.usen.card == null && e.usen.emoney == null && (skwb_num_(e.usen.sales) || 0) > (skwb_num_(e.usen.cash) || 0);
+  if (it.usen && e.usen && !noRegGuests && !airNoSplit) {
     var u = pick(e.usen);
     if (u != null) return { v: u, src: 'usen', zero: false };
     if (!it.appFallback && e.usen.sales != null) return { v: 0, src: 'usen', zero: true };     // USENが0＝0を書く（2026-10-17）。sales の無い行（集計だけ）は0と見なさない
