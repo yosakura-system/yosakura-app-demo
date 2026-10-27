@@ -180,6 +180,7 @@ function usen_readFolder_() {
 function usen_api_(data) {
   if (data && data.kind === 'skwb' && typeof skwb_api_ === 'function') return skwb_api_(data);   // ★2026-10-07 総括表への書き戻し（総括表書き戻し.gs）
   if (data && data.kind === 'usenx') return usenx_api_(data);                               // ★2026-10-15 伝票明細の集計（国別・フード/ドリンク）
+  if (data && data.kind === 'opsreport' && typeof opsreport_api_ === 'function') return opsreport_api_(data);   // ★2026-10-28 神田さんのPCの朝の報告（見守り.gs）
   if (!data || data.kind !== 'usen_import') return null;
   var key = String(getSetting_('USEN_POST_KEY', '') || '');
   if (!key || String(data.key || '') !== key) return { ok: false, error: 'USEN_KEY' };

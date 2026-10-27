@@ -57,7 +57,7 @@ function mimamori_run_(sinceTs, isTest) {
   var found = [];
 
   /* ① エラーの控え */
-  var errs = rows.filter(function (r) { return r.kind === 'apperr' && r.ts > sinceTs; });
+  var errs = rows.filter(function (r) { return r.kind === 'apperr' && r.ts > sinceTs && r.item !== 'TASKOK'; });   // ★2026-10-28 PCの朝の報告（TASKOK）は朝の点検メールにだけ載せる。TASK★ はここにも出す
   if (errs.length) {
     var lines = errs.map(function (r) {
       var n = {}; try { n = JSON.parse(r.note || '{}'); } catch (e) {}
@@ -173,3 +173,115 @@ function mimamori_stopped_(rows, now) {
 
 function mimamori_fmt_(ts) { return Utilities.formatDate(new Date(Number(ts) || 0), 'Asia/Tokyo', 'M/d H:mm'); }
 function mimamori_sheetUrl_() { try { return SpreadsheetApp.getActiveSpreadsheet().getUrl(); } catch (e) { return ''; } }
+
+
+/* ============================================================
+ * ★2026-10-28 朝の点検メール（毎日 5:30・見つかっても見つからなくても必ず1通）
+ *   神田さん「エラーを言われな気づかないようじゃダメ。指摘される前に自分で自動でバックチェックできる体制を」
+ *   「最近エラーのメールも届いてないけど、ちゃんとバックチェックこちらも自動でとれてるの？」
+ *   → 毎時の見守りは「見つかったときだけ」送るので、届かない＝正常なのか止まっているのか分からなかった。
+ *     朝の点検は必ず送る＝届かない日はこのGASのトリガーが止まっている印。
+ *
+ * ■ 見るもの（昨日の営業日ぶん）
+ *   ① レジの取込＝USEN_STORE_MAP の全店（USEN7店＋本店101＋鰻富士山102＋鰻長堀橋103）に、きのうの締め（src:'usen'・sales あり）が届いたか
+ *   ② PCの自動タスク＝神田さんのPCの朝の報告（kind:'apperr' item:'TASK…'・ops_morning_report.py が 5:15 に送る）。無ければ★（PC側が止まっている）
+ *   ③ エラーの控え（apperr）24時間の件数と内訳
+ *   ④ 総括表への書き戻し＝下見（書かない）で「まだ書けていない」「止めた」を数える
+ *   ⑤ 提出が止まった店（おととい提出あり・きのう無し）
+ * ■ 送り先＝MIMAMORI_MAIL_TO（未設定ならこのGASを動かしている人）。トリガー登録＝見守り_朝の点検トリガー登録() を1回実行
+ * ============================================================ */
+function mimamoriDaily() { return 見守り_朝の点検(); }
+function 見守り_朝の点検トリガー登録() {
+  var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'mimamoriDaily'; });
+  if (!has) ScriptApp.newTrigger('mimamoriDaily').timeBased().everyDays(1).atHour(5).nearMinute(30).inTimezone('Asia/Tokyo').create();
+  Logger.log(has ? '登録済み（毎日 5:30 mimamoriDaily）' : '登録しました（毎日 5:30 mimamoriDaily）');
+  return { ok: true, registered: true };
+}
+function 見守り_朝の点検_いますぐ() { return 見守り_朝の点検(); }
+
+function 見守り_朝の点検() {
+  var now = new Date(); var nowTs = now.getTime();
+  var ymd = Utilities.formatDate(new Date(nowTs - 24 * 3600 * 1000), 'Asia/Tokyo', 'yyyy-MM-dd');
+  var dow = Number(Utilities.formatDate(new Date(nowTs - 24 * 3600 * 1000), 'Asia/Tokyo', 'u'));
+  var rows = mimamori_recentRows_(nowTs - 3 * 24 * 3600 * 1000);
+  var ng = 0; var sec = [];
+
+  /* ① レジの取込（全店） */
+  var map = (typeof usen_storeMap_ === 'function') ? usen_storeMap_() : {};
+  var stores = []; Object.keys(map).forEach(function (c) { if (stores.indexOf(map[c]) === -1) stores.push(map[c]); });
+  var hasY = {};
+  rows.forEach(function (r) {
+    if (r.kind !== 'soukatsu') return;
+    var n = {}; try { n = JSON.parse(r.note || '{}'); } catch (e) {}
+    if (n.src === 'usen' && String(n.date || '') === ymd && n.sales != null && n.sales !== '') hasY[r.store] = true;
+  });
+  var ok1 = [], ng1 = [];
+  stores.forEach(function (s) {
+    if (hasY[s]) ok1.push(s);
+    else if (dow === 7 && /京都祇園/.test(s)) ok1.push(s + '（日曜定休）');
+    else ng1.push(s);
+  });
+  if (ng1.length) ng++;
+  sec.push((ng1.length ? '★' : '○') + '① レジの取込（' + ymd + '）　届いた ' + ok1.length + '／' + stores.length + ' 店' +
+    (ng1.length ? '\n　届いていない：' + ng1.join('・') + '\n　→ 総括表の現金・カード・客数が空のまま。PCの 06/…/_自動取込ログ.txt を見て送り直す' : ''));
+
+  /* ② PCの自動タスクの報告（ops_morning_report.py） */
+  var tasks = rows.filter(function (r) { return r.kind === 'apperr' && /^TASK/.test(r.item) && r.ts > nowTs - 24 * 3600 * 1000; });
+  if (!tasks.length) { ng++; sec.push('★② PCの自動タスク　きょうの報告が届いていない（神田さんのPCの「世桜_朝の報告」が動いていない／PCが起動していない／本番に送れていない）'); }
+  else {
+    var bad = tasks.filter(function (r) { return /★/.test(r.item); });
+    if (bad.length) ng++;
+    sec.push((bad.length ? '★' : '○') + '② PCの自動タスク\n' + tasks.map(function (r) {
+      var n = {}; try { n = JSON.parse(r.note || '{}'); } catch (e) {}
+      return '　' + mimamori_fmt_(r.ts) + '　' + String(n.msg || '').slice(0, 400);
+    }).join('\n'));
+  }
+
+  /* ③ エラーの控え（24時間） */
+  var errs = rows.filter(function (r) { return r.kind === 'apperr' && !/^TASK/.test(r.item) && r.ts > nowTs - 24 * 3600 * 1000; });
+  var byItem = {}; errs.forEach(function (r) { var k = r.item || '?'; byItem[k] = (byItem[k] || 0) + 1; });
+  if (errs.length) {
+    sec.push('△③ エラーの控え（24時間）　' + errs.length + ' 件　' + Object.keys(byItem).map(function (k) { return k + '=' + byItem[k]; }).join('　') + '\n' +
+      errs.slice(-5).map(function (r) { var n = {}; try { n = JSON.parse(r.note || '{}'); } catch (e) {}
+        return '　' + mimamori_fmt_(r.ts) + '　' + (r.item || '') + '　' + (r.store || n.store || '') + '　' + String(n.msg || '').slice(0, 80); }).join('\n') +
+      (errs.length > 5 ? '\n　（ほか ' + (errs.length - 5) + ' 件＝毎時の見守りメールに全件）' : ''));
+  } else sec.push('○③ エラーの控え（24時間）　0 件');
+
+  /* ④ 総括表への書き戻し（下見＝書かない） */
+  try {
+    if (typeof skwb_実行_ === 'function') {
+      var r4 = skwb_実行_(false, 3);
+      var rest = Number(r4.書く || 0) + Number(r4.書き直す || 0);
+      var stopped = (r4.止めた || []).slice(0, 8);
+      var bad4 = rest > 0 || stopped.length > 0;
+      if (bad4) ng++;
+      sec.push((bad4 ? '★' : '○') + '④ 総括表への書き戻し（直近3日）　まだ書けていない ' + rest + '　ずれ（店の値と違う・上書きしない） ' + Number(r4.ずれ || 0) +
+        (stopped.length ? '\n　止めた：\n' + stopped.map(function (s) { return '　・' + String(s).slice(0, 160); }).join('\n') : '') +
+        (rest > 0 ? '\n　→ 「まだ書けていない」は 4時の書き戻しが走らなかったか、総括表のタブ・ラベルが変わった印' : ''));
+    }
+  } catch (e4) { ng++; sec.push('★④ 総括表への書き戻し　下見でエラー：' + String(e4).slice(0, 200)); }
+
+  /* ⑤ 提出が止まった店 */
+  var stopped5 = mimamori_stopped_(rows, now);
+  if (stopped5.length) { ng++; sec.push('★⑤ おとといは提出があったのに、きのう1件も無い店：' + stopped5.join('・') + '\n　→ 休業か、端末が止まっているか（ログイン・容量・電波）'); }
+  else sec.push('○⑤ 提出が止まった店　なし');
+
+  var subject = '【世桜アプリ 朝の点検】' + Utilities.formatDate(now, 'Asia/Tokyo', 'M/d') + (ng ? '　★ ' + ng + ' 件' : '　○ 全部OK');
+  var body = sec.join('\n\n') + '\n\n---\n○＝問題なし　△＝見ておく　★＝対応が要る\nこのメールが届かない日は、本番GASのトリガーが止まっています（script.google.com → トリガー）\n本部データ: ' + mimamori_sheetUrl_();
+  var to = getSetting_('MIMAMORI_MAIL_TO', '') || Session.getEffectiveUser().getEmail();
+  if (to) MailApp.sendEmail({ to: String(to), subject: subject, body: body, name: '世桜アプリ 見守り' });
+  return { ok: true, ng: ng, to: to, sections: sec.length };
+}
+
+/* ★PC側の朝の報告を受ける入口（USEN取込.gs の usen_api_ から kind:'opsreport' で呼ばれる・合言葉＝USEN_POST_KEY）
+   行の形＝kind:'apperr' store:'本部' item:'TASKOK'／'TASK★' note:{code:'TASK', path:'PC', msg}。毎時の見守り①にも載る（★のときだけ目立つ） */
+function opsreport_api_(data) {
+  var key = String(getSetting_('USEN_POST_KEY', '') || '');
+  if (!key || String(data.key || '') !== key) return { ok: false, error: 'USEN_KEY' };
+  var msg = String(data.msg || '').slice(0, 1500);
+  var bad = data.ng === true || /★/.test(msg);
+  var sh = getSheet();
+  var id = Utilities.getUuid();
+  sh.appendRow([id, Date.now(), 'apperr', '本部', bad ? 'TASK★' : 'TASKOK', '', JSON.stringify({ code: 'TASK', path: 'PC', msg: msg }), '[]']);
+  return { ok: true, id: id, item: bad ? 'TASK★' : 'TASKOK' };
+}
