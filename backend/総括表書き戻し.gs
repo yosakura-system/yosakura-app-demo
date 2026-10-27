@@ -199,8 +199,8 @@ function skwb_want_(it, e) {
   /* ★2026-10-17 昼のみ売上＝USENの伝票明細（会計が店ごとの区切り時刻より前）が主。区切りの無い店（富士山牛カツ・祇園）は送られてこないのでアプリの値へ */
   if (it.k === 'lunch' && e.usen && e.usen.lunch15 != null && e.usen.lunch15 !== '') { var lv = skwb_num_(e.usen.lunch15) || 0; return { v: lv, src: 'usen', zero: lv === 0 }; }
   if (it.gs && e.gs != null) return { v: e.gs, src: 'gs', zero: e.gs === 0 };   // Googleの件数（取得があった日は0も書く＝2026-10-17）。取得が無い日はアプリの値へ
-  /* ★2026-10-26 Airレジ（店舗コード102＝日本鰻世桜 富士山店・10/27 103＝日本鰻世桜 長堀橋店）は客数を送らない（レジの客数＝会計数・お店は人数を打っていない）→ 客数はアプリの日報の値へ。0を書かない */
-  var noRegGuests = it.k === 'guests' && e.usen && ['102', '103'].indexOf(String(e.usen.usenCode || '')) >= 0;
+  /* ★2026-10-26 Airレジ（店舗コード102＝日本鰻世桜 富士山店）は客数を送らない（レジの客数＝会計数・お店は人数を打っていない）→ 客数はアプリの日報の値へ。0を書かない。103＝日本鰻世桜 長堀橋店は客数を打っている（10/28確認）＝USENと同じ扱い */
+  var noRegGuests = it.k === 'guests' && e.usen && String(e.usen.usenCode || '') === '102';
   if (it.usen && e.usen && !noRegGuests) {
     var u = pick(e.usen);
     if (u != null) return { v: u, src: 'usen', zero: false };
