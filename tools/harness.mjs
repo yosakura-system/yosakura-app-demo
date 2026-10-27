@@ -3962,6 +3962,7 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
     ok(/id="tn_f0_n"[^>]*value="ステーキしーずにんぐ（個）"/.test(hh) && /id="tn_f6_n"[^>]*value="和牛ブロック（kg）"/.test(hh) && /id="tn_f6_u"[^>]*value="8964"/.test(hh), '広島＝総括表の並び・単価（和牛ブロック 8964）');
+    ok(/id="tn_f5_u"[^>]*value="2808"/.test(hh) && /id="tn_d3_u"[^>]*value="231"/.test(hh) && /id="tn_f22_u"[^>]*value="1783"/.test(hh), '広島＝肉以外は税抜→税込（米 2,600→2,808・びーる 210→231）・たいやきは税込のまま（10/27 谷口さん回答）');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 23 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 7, '広島＝食材23・飲料7');
     ok(!/value="箸（袋）"/.test(hh) && !/value="ガスバーナー/.test(hh), '広島＝備品（箸・ガスバーナー）は入れない');
     ok(/id="tn_d3_n"[^>]*value="びーる（本）"/.test(hh) && /id="tn_d3_r"[^>]*data-r="10"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), '広島＝お酒10%・お茶8%'); }
