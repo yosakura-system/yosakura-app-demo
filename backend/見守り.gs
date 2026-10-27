@@ -279,7 +279,7 @@ function opsreport_api_(data) {
   var key = String(getSetting_('USEN_POST_KEY', '') || '');
   if (!key || String(data.key || '') !== key) return { ok: false, error: 'USEN_KEY' };
   var msg = String(data.msg || '').slice(0, 1500);
-  var bad = data.ng === true || /★/.test(msg);
+  var bad = data.ng === true;   // ★の有無でなくPC側の判定（Airレジの「内訳の列が無い」のような毎日の注意書きで★にしない）
   var sh = getSheet();
   var id = Utilities.getUuid();
   sh.appendRow([id, Date.now(), 'apperr', '本部', bad ? 'TASK★' : 'TASKOK', '', JSON.stringify({ code: 'TASK', path: 'PC', msg: msg }), '[]']);
