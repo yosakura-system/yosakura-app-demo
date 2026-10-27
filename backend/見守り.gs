@@ -69,6 +69,17 @@ function mimamori_run_(sinceTs, isTest) {
     found.push('【エラーの控えが ' + errs.length + ' 件】' + (drops ? '　ログインが外れた=' + drops : '') + (keeps ? '　外れかけたが続行=' + keeps : '') + '\n' + lines.join('\n'));
   }
 
+  /* ⓪ 朝の点検（mimamoriDaily 5:30）が動いていない＝トリガーが止まった印（★2026-10-28 朝の点検は★がある日だけ送るので、届かない＝正常。止まったことは毎時のこちらが見る） */
+  if (!isTest && hour >= 7) {
+    var p0 = PropertiesService.getScriptProperties();
+    var dts = Number(p0.getProperty('MIMAMORI_DAILY_TS') || 0);
+    var today0 = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd');
+    if (dts && now.getTime() - dts > 26 * 3600 * 1000 && p0.getProperty('MIMAMORI_DAILY_ALERTED') !== today0) {
+      p0.setProperty('MIMAMORI_DAILY_ALERTED', today0);
+      found.push('【朝の点検（5:30）がきょう動いていない】最後に動いた: ' + mimamori_fmt_(dts) + '\n→ script.google.com → トリガー で mimamoriDaily が残っているか・失敗していないかを見る。無ければ 見守り_朝の点検トリガー登録() を実行');
+    }
+  }
+
   /* ② ログインし直しが多いID（tokens の増え方） */
   var relog = mimamori_relogins_(now);
   if (relog.length) found.push('【24時間に3回以上ログインし直したID】\n' + relog.map(function (x) { return '・' + x.uid + '（' + x.name + '）　' + x.count + '回'; }).join('\n'));
@@ -188,6 +199,8 @@ function mimamori_sheetUrl_() { try { return SpreadsheetApp.getActiveSpreadsheet
  *   ③ エラーの控え（apperr）24時間の件数と内訳
  *   ④ 総括表への書き戻し＝下見（書かない）で「まだ書けていない」「止めた」を数える
  *   ⑤ 提出が止まった店（おととい提出あり・きのう無し）
+ *   ⑥ 見守りの仕組みそのもの＝毎時の見守りの最終実行（3時間以上空いたら★）・前回あったトリガーが消えていないか（一覧をプロパティに覚えて比べる）
+ *   ※ 朝の点検が止まったことは、毎時の見守り（mimamoriHourly）が MIMAMORI_DAILY_TS を見て知らせる（互いに見張る＝両方同時に止まらない限り気づける）
  * ■ 送り先＝MIMAMORI_MAIL_TO（未設定ならこのGASを動かしている人）。トリガー登録＝見守り_朝の点検トリガー登録() を1回実行
  * ============================================================ */
 function mimamoriDaily() { return 見守り_朝の点検(); }
@@ -265,11 +278,26 @@ function 見守り_朝の点検() {
     }
   } catch (e4) { ng++; sec.push('★④ 総括表への書き戻し　下見でエラー：' + String(e4).slice(0, 200)); }
 
+  /* ⑥ 見守りの仕組みそのもの（毎時の見守りの最終実行・トリガーの減り） */
+  try {
+    var p6 = PropertiesService.getScriptProperties();
+    var hts = Number(p6.getProperty(MIMAMORI_LAST_KEY) || 0);
+    var l6 = [];
+    if (!hts || nowTs - hts > 3 * 3600 * 1000) { ng++; l6.push('★毎時の見守り（mimamoriHourly）が3時間以上動いていない（最後: ' + (hts ? mimamori_fmt_(hts) : '記録なし') + '）→ トリガー画面で確認。無ければ 見守り_トリガー登録() を実行'); }
+    var cur6 = ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); }).sort();
+    var prev6 = []; try { prev6 = JSON.parse(p6.getProperty('MIMAMORI_TRIGGER_SNAPSHOT') || '[]'); } catch (e6a) {}
+    var lost6 = prev6.filter(function (f) { return cur6.indexOf(f) === -1; });
+    if (lost6.length) { ng++; l6.push('★前回あったトリガーが消えている：' + lost6.join('・') + '（消したのでなければ登録し直す）'); }
+    p6.setProperty('MIMAMORI_TRIGGER_SNAPSHOT', JSON.stringify(cur6));
+    sec.push((l6.length ? '★' : '○') + '⑥ 見守りの仕組み　毎時の見守り 最終 ' + (hts ? mimamori_fmt_(hts) : '記録なし') + '　トリガー ' + cur6.length + ' 本' + (l6.length ? '\n　' + l6.join('\n　') : ''));
+  } catch (e6) { ng++; sec.push('★⑥ 見守りの仕組み　確認でエラー：' + String(e6).slice(0, 200)); }
+
   /* ⑤ 提出が止まった店 */
   var stopped5 = mimamori_stopped_(rows, now);
   if (stopped5.length) { ng++; sec.push('★⑤ おとといは提出があったのに、きのう1件も無い店：' + stopped5.join('・') + '\n　→ 休業か、端末が止まっているか（ログイン・容量・電波）'); }
   else sec.push('○⑤ 提出が止まった店　なし');
 
+  try { PropertiesService.getScriptProperties().setProperty('MIMAMORI_DAILY_TS', String(nowTs)); } catch (eD) {}   // ★毎時の見守りが「朝の点検が止まった」を見るための印
   var subject = '【世桜アプリ 朝の点検】' + Utilities.formatDate(now, 'Asia/Tokyo', 'M/d') + (ng ? '　★ ' + ng + ' 件' : '　○ 全部OK');
   var body = sec.join('\n\n') + '\n\n---\n○＝問題なし　△＝見ておく　★＝対応が要る\n問題（★）が無い朝は送りません\n本部データ: ' + mimamori_sheetUrl_();
   var to = getSetting_('MIMAMORI_MAIL_TO', '') || Session.getEffectiveUser().getEmail();
