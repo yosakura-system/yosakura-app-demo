@@ -176,7 +176,7 @@ function mimamori_sheetUrl_() { try { return SpreadsheetApp.getActiveSpreadsheet
 
 
 /* ============================================================
- * ★2026-10-28 朝の点検メール（毎日 5:30・見つかっても見つからなくても必ず1通）
+ * ★2026-10-28 朝の点検（毎日 5:30・★が1つでもあった朝だけメール。問題が無い日は送らない＝神田さん「動いてるなら報告は不要」）
  *   神田さん「エラーを言われな気づかないようじゃダメ。指摘される前に自分で自動でバックチェックできる体制を」
  *   「最近エラーのメールも届いてないけど、ちゃんとバックチェックこちらも自動でとれてるの？」
  *   → 毎時の見守りは「見つかったときだけ」送るので、届かない＝正常なのか止まっているのか分からなかった。
@@ -226,8 +226,12 @@ function 見守り_朝の点検() {
     (ng1.length ? '\n　届いていない：' + ng1.join('・') + '\n　→ 総括表の現金・カード・客数が空のまま。PCの 06/…/_自動取込ログ.txt を見て送り直す' : ''));
 
   /* ② PCの自動タスクの報告（ops_morning_report.py） */
-  var tasks = rows.filter(function (r) { return r.kind === 'apperr' && /^TASK/.test(r.item) && r.ts > nowTs - 24 * 3600 * 1000; });
-  if (!tasks.length) { ng++; sec.push('★② PCの自動タスク　きょうの報告が届いていない（神田さんのPCの「世桜_朝の報告」が動いていない／PCが起動していない／本番に送れていない）'); }
+  var tasksAll = rows.filter(function (r) { return r.kind === 'apperr' && /^TASK/.test(r.item); });
+  var tasks = tasksAll.filter(function (r) { return r.ts > nowTs - 24 * 3600 * 1000; });
+  if (!tasks.length) {
+    if (tasksAll.length) { ng++; sec.push('★② PCの自動タスク　きょうの報告が届いていない（神田さんのPCの「Yosakura_OpsReport」が動いていない／PCが起動していない／本番に送れていない）'); }
+    else sec.push('△② PCの自動タスク　報告が届いたことがない（本番の受け口 opsreport が未デプロイのあいだはこの表示）');   // ★届いたことが無い＝入口未デプロイ。★にしない
+  }
   else {
     var bad = tasks.filter(function (r) { return /★/.test(r.item); });
     if (bad.length) ng++;
@@ -253,9 +257,9 @@ function 見守り_朝の点検() {
       var r4 = skwb_実行_(false, 3);
       var rest = Number(r4.書く || 0) + Number(r4.書き直す || 0);
       var stopped = (r4.止めた || []).slice(0, 8);
-      var bad4 = rest > 0 || stopped.length > 0;
+      var bad4 = rest > 0;   // ★「止めた」は毎日同じ行が出る（お客様層の国の列など）ので△扱い。★は書けていない行があるときだけ
       if (bad4) ng++;
-      sec.push((bad4 ? '★' : '○') + '④ 総括表への書き戻し（直近3日）　まだ書けていない ' + rest + '　ずれ（店の値と違う・上書きしない） ' + Number(r4.ずれ || 0) +
+      sec.push((bad4 ? '★' : (stopped.length ? '△' : '○')) + '④ 総括表への書き戻し（直近3日）　まだ書けていない ' + rest + '　ずれ（店の値と違う・上書きしない） ' + Number(r4.ずれ || 0) +
         (stopped.length ? '\n　止めた：\n' + stopped.map(function (s) { return '　・' + String(s).slice(0, 160); }).join('\n') : '') +
         (rest > 0 ? '\n　→ 「まだ書けていない」は 4時の書き戻しが走らなかったか、総括表のタブ・ラベルが変わった印' : ''));
     }
@@ -267,10 +271,10 @@ function 見守り_朝の点検() {
   else sec.push('○⑤ 提出が止まった店　なし');
 
   var subject = '【世桜アプリ 朝の点検】' + Utilities.formatDate(now, 'Asia/Tokyo', 'M/d') + (ng ? '　★ ' + ng + ' 件' : '　○ 全部OK');
-  var body = sec.join('\n\n') + '\n\n---\n○＝問題なし　△＝見ておく　★＝対応が要る\nこのメールが届かない日は、本番GASのトリガーが止まっています（script.google.com → トリガー）\n本部データ: ' + mimamori_sheetUrl_();
+  var body = sec.join('\n\n') + '\n\n---\n○＝問題なし　△＝見ておく　★＝対応が要る\n問題（★）が無い朝は送りません\n本部データ: ' + mimamori_sheetUrl_();
   var to = getSetting_('MIMAMORI_MAIL_TO', '') || Session.getEffectiveUser().getEmail();
-  if (to) MailApp.sendEmail({ to: String(to), subject: subject, body: body, name: '世桜アプリ 見守り' });
-  return { ok: true, ng: ng, to: to, sections: sec.length };
+  if (ng && to) MailApp.sendEmail({ to: String(to), subject: subject, body: body, name: '世桜アプリ 見守り' });   // ★問題が無い朝は送らない
+  return { ok: true, ng: ng, sent: !!(ng && to), to: to, sections: sec.length };
 }
 
 /* ★PC側の朝の報告を受ける入口（USEN取込.gs の usen_api_ から kind:'opsreport' で呼ばれる・合言葉＝USEN_POST_KEY）
