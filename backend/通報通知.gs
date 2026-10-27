@@ -75,7 +75,6 @@ function notifyWhistle_(data, id) {
   // ② 本部へメール
   var to = whistleMailTo_();
   if (!to) return;
-  var head = body.length > 120 ? body.slice(0, 120) + '…' : body;
   // ★区分で件名を分ける（2026-09-25 構築MTG／増田さん 9/24「公益通報とカスハラを分ける」）。古い端末の送信（kind2なし）は種類から判定
   var HARASS = { customer: 1, power: 1, sexual: 1, abuse: 1 };
   var isHarass = p.kind2 ? (p.kind2 === 'harass') : !!HARASS[String(p.cat || '')];
@@ -86,9 +85,9 @@ function notifyWhistle_(data, id) {
     '日時　：' + whenS,
     '種類　：' + cat,
     '店舗　：' + store,
-    '本文　：' + head,
     '',
-    '全文はアプリ（本部でログイン）→ その他 → 相談・通報窓口 で確認してください。',
+    '内容はメールに載せていません（2026-10-27〜・担当者だけが読むため）。',
+    'アプリの「相談・通報窓口」（本部でログイン → その他）で確認してください。',
     '受付：平日9:00〜18:00／回答：原則、翌営業日（相談窓口＝世桜本部）'
   ];
   if (String(p.cat || '') === 'customer') {

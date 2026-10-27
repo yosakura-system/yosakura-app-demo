@@ -7392,7 +7392,7 @@ console.log('== 2026-10-22 神田さん「食物アレルギーをカードボ�
   seed('hq', '牛カツ世桜 富士山店'); location.hash = '#/home'; location.hash = '#/app/manualtop'; h = registry.app.innerHTML;   // 本部のホームは本部画面（カード無し）＝マニュアル画面で見る
   ok(new RegExp('data-openurl="' + PDF + 'allergy_gyukatsu\\.pdf"><b>食物アレルギー').test(h), '本部が店を選んで見るとき＝マニュアル画面の食物アレルギーはその店の業態の表が1回で開く');
   ok(['allergy_gyukatsu.pdf', 'allergy_unagi.pdf', 'allergy_wagyu.pdf'].every(f => fs.existsSync(new URL('../manual/' + f, import.meta.url)) && fs.statSync(new URL('../manual/' + f, import.meta.url)).size > 100000), 'アレルギー表のPDF3本が manual/ に実在する（各100KB超）');
-  ok(/ALLERGY_TABLES = \{[\s\S]*?gyukatsu: \{ pdf:'allergy_gyukatsu\.pdf', id:'1fkax360lOtD15t1DibYCzpNBJ_cfZBOTMu_az5-lq5c', d:'2026-10-05' \}/.test(code), 'ソース＝牛カツは 10/5 の新しいスライド（9行）の方を元にしている');
+  ok(/ALLERGY_TABLES = \{[\s\S]*?gyukatsu: \{ pdf:'allergy_gyukatsu\.pdf', id:'1fkax360lOtD15t1DibYCzpNBJ_cfZBOTMu_az5-lq5c', d:'2026-10-05'[^}]*\}/.test(code), 'ソース＝牛カツは 10/5 の新しいスライド（9行）の方を元にしている');
   ok(/html\[data-theme="pb"\] \.pb-chips--home \{ grid-template-columns: 1fr 1fr; \}/.test(fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8')), 'CSS＝ホームのカード4枚は2列（3列だと「食物アレルギー」がはみ出す）');
 }
 
@@ -7647,6 +7647,60 @@ console.log('== 2026-10-26 常山さん「勤怠を9名以上・＋で足せる�
   const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   const gs = fs.readFileSync(new URL('../backend/総括表書き戻し.gs', import.meta.url), 'utf8');
   ok(/const SK_KT_ROWS = 13/.test(src) && /rows\.length < 13/.test(gs), 'アプリの上限13＝総括表へ書く行数13（超えると黙って落ちる）');
+}
+
+console.log('== 2026-10-27 本部への質問の推奨案（神田さん了承）＝D1 相談は担当者だけ／D2 CLOSEは施錠後／D3 発注済みは届くまで／B7 アレルギー表の確認中 ==');
+{
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  // D2 CLOSE の最後の項目＝施錠のあとに押す・打刻を含めない（ホール・キッチンの2か所）
+  ok((src.match(/ja:'シャッター・鍵・キーボックス（施錠のあとに押す）'/g) || []).length === 2 && !/ja:'退勤・戸締り',en:'Clock out & lock up',vi:'Chấm công & khóa cửa'/.test(src),
+     'CLOSEの最後＝「シャッター・鍵・キーボックス（施錠のあとに押す）」（旧「退勤・戸締り」・打刻を含めない）');
+  ok(!/d:\{ja:'退勤の打刻／シャッター/.test(src), 'CLOSEの説明から打刻を外した（終えた時刻は日報の退勤）');
+  // D3 発注した→届くまで「発注済み」。届く前に数えても「発注が必要」に戻らない
+  const S = '牛カツ世桜 長堀橋店'; const t0 = Date.now();
+  const dk = new Date(t0 + 9 * 3600e3).toISOString().slice(0, 10);
+  const master = { kind:'zaikomaster', store:S, item:S, note: JSON.stringify({ items:[{ n:'油', std:2, u:'缶' }, { n:'パン粉', std:3, u:'袋' }], by:'永井' }), photos:[], t: t0 - 5 * 3600e3 };
+  const c1 = { kind:'zaiko', store:S, item: dk, note: JSON.stringify({ q:{ '油':1, 'パン粉':5 } }), photos:[], t: t0 - 4 * 3600e3 };
+  const od = { kind:'zaikoorder', store:S, item: dk, note: JSON.stringify({ items:['油'], by:'永井' }), photos:[], t: t0 - 3 * 3600e3 };
+  const c2 = { kind:'zaiko', store:S, item: dk, note: JSON.stringify({ q:{ '油':1 } }), photos:[], t: t0 - 2 * 3600e3 };
+  const seedZ = (rows) => run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_demo_reports', JSON.stringify(rows)); localStorage.setItem('yosakura_zk_tab', 'order'); });
+  seedZ([master, c1, od, c2]); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  let h = registry.app.innerHTML;
+  ok(/発注済み（届くまで）/.test(h) && !/zk-row low"><div><b>油</.test(h), '発注したあと届く前に数えても（残り1＜基準2）「発注が必要」に戻らず「発注済み（届くまで）」に出る');
+  const c3 = { kind:'zaiko', store:S, item: dk, note: JSON.stringify({ q:{ '油':3 } }), photos:[], t: t0 - 3600e3 };
+  const c4 = { kind:'zaiko', store:S, item: dk, note: JSON.stringify({ q:{ '油':1 } }), photos:[], t: t0 - 600e3 };
+  seedZ([master, c1, od, c2, c3, c4]); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  h = registry.app.innerHTML;
+  ok(/zk-row low"><div><b>油</.test(h) && !/発注済み（届くまで）/.test(h), '届いて基準以上（3）が入ったあと、また基準を下回れば（1）新しく「発注が必要」に出る');
+  seedZ([master, c1]); location.hash = '#/app/kyou'; location.hash = '#/app/zaiko';
+  ok(/zk-row low"><div><b>油</.test(registry.app.innerHTML), '「発注した」を押していなければ従来どおり「発注が必要」');
+  // B7 アレルギー表の確認中＝既定は全業態 false（見た目は変わらない）。印があればカードと一覧に出る
+  ok((src.match(/checking:false \}/g) || []).length === 3 && /sub: a\.checking \? ALLERGY_CHECKING_L/.test(src) && /a\.checking \? ` ・ <b style="color:#b3261e">\$\{L\(ALLERGY_CHECKING_L\)\}/.test(src),
+     'アレルギー表に「確認中」の印（既定は全業態 false）。印があればホームのカードと表の一覧に「確認中・案内の前に責任者へ」');
+  run(() => { setLS('manager', S, 'ja'); });
+  location.hash = '#/app/allergy';
+  ok(!/確認中・案内の前に責任者へ/.test(registry.app.innerHTML), '既定（印なし）では「確認中」は出ない');
+  // D1 本部の相談一覧が空のときの説明
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_demo_whistle', '[]'); });
+  location.hash = '#/app/whistle';
+  ok(/担当者だけが見られる設定のときは、担当者以外には表示されません/.test(registry.app.innerHTML), '本部の相談一覧が空＝担当者だけの設定のときの説明が出る');
+  // D1 バックエンド＝WHISTLE_READERS（空なら従来どおり本部は全員）
+  const vm = await import('vm');
+  let READERS = null;
+  const ctx = { console, JSON, Date, Math, String, Number, Array, Object,
+    getSetting_: (k, d) => d, CacheService: { getScriptCache: () => null }, Utilities: { getUuid: () => 'u' }, Logger: { log() {} },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => (k === 'WHISTLE_READERS' ? READERS : null) }) } };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8'), ctx);
+  const hq1 = { uid:'hq1', role:'hq' }, hq2 = { uid:'hq2', role:'hq' }, mgr = { uid:'m1', role:'manager', stores:[S] };
+  const can = (u) => ctx.auth_row_ok_(u, 'whistle', '', 'power');
+  READERS = null; ok(can(hq1) && can(hq2) && !can(mgr), 'WHISTLE_READERS 未設定＝従来どおり本部は全員・店舗は読めない');
+  READERS = ''; ok(can(hq1) && can(hq2), 'WHISTLE_READERS 空＝本部は全員');
+  READERS = ' hq1 , x9 '; ok(can(hq1) && !can(hq2) && !can(mgr), 'WHISTLE_READERS に載った本部IDだけ読める（ほかの本部・店舗は読めない）');
+  READERS = 'hq1'; ok(ctx.auth_row_ok_(hq2, 'nippou', S, '') === true, '相談以外の本部の読みは変わらない');
+  const mail = fs.readFileSync(new URL('../backend/通報通知.gs', import.meta.url), 'utf8');
+  ok(!/'本文　：'/.test(mail) && !/body\.slice\(0, 120\)/.test(mail) && /内容はメールに載せていません/.test(mail) && /sh\.appendRow\(\[whenS, store, cat, body/.test(mail),
+     '通知メールに本文を載せない（カスハラの記録スプシへの1行はそのまま）');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);

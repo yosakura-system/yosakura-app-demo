@@ -57,6 +57,11 @@ var AUTH_LOCK_FAILS = 10; var AUTH_LOCK_SEC = 900;
 function auth_cache_() { try { return CacheService.getScriptCache(); } catch (e) { return null; } }
 
 function authOn_() { return getSetting_('ENABLE_AUTH', false) === true; }
+/* 相談・通報を読める本部IDの一覧（空＝制限なし）。数字だけのuidでも文字列で比べる */
+function auth_whistle_readers_() {
+  var v = ''; try { v = PropertiesService.getScriptProperties().getProperty('WHISTLE_READERS') || ''; } catch (e) {}
+  return String(v).split(',').map(function (x) { return x.trim(); }).filter(function (x) { return x; });
+}
 
 /* ===== シート ===== */
 function auth_sheet_() {
@@ -375,6 +380,12 @@ function auth_row_ok_(u, kind, store, item) {
   /* ★本部の個人タスク（試行・2026-09-15 神田さんのご要望）＝item に持ち主のuid。本人にしか返さない
      （本部の他の方にも出さない＝一元管理表との二重管理にならない範囲で本人が試す） */
   if (kind === 'hqtask') return !!u && u.role === 'hq' && String(item || '') === String(u.uid || '');
+  /* ★2026-10-27 相談・通報は担当者だけ（神田さん了承の推奨案A）。スクリプトプロパティ WHISTLE_READERS（uidをカンマ区切り）に
+     載った本部IDにだけ返す。★未設定・空のあいだは従来どおり本部の役割は全員＝担当者が決まるまで挙動を変えない */
+  if (kind === 'whistle' && u && u.role === 'hq') {
+    var wr = auth_whistle_readers_();
+    if (wr.length) return wr.indexOf(String(u.uid || '')) !== -1;
+  }
   if (!u || u.role === 'hq') return true;
   if (AUTH_HQ_READ_KINDS.indexOf(kind) !== -1) return false;      // ★公益通報・ご意見は本部のみ
   if (AUTH_PUBLIC_KINDS.indexOf(kind) !== -1) return true;

@@ -3674,10 +3674,23 @@
   /* ★2026-10-23 永井さん「どこに発注するかをスタッフが見られると分かりやすい」＝場所（p）と発注先（v）を品目の下の小さい字に */
   const zkPlaceSmall_ = (it) => (it.p ? ` ・ ${esc(it.p)}` : '') + (it.v ? ` ・ ${L({ ja:'発注先', en:'order from', vi:'đặt tại' })} ${esc(it.v)}` : '');
   const zkOrdSmall_ = (it) => zkOrdOf_(it) != null ? ` ／ ${L({ ja:'発注数', en:'order', vi:'số đặt' })} ${esc(zkOrdOf_(it))}` : '';
+  /* ★2026-10-27 神田さん了承（本部への質問D3）＝「発注した」のあと、届く前に数えるとまた「発注が必要」に出て二重発注になる件。
+     発注した印のあと「基準以上」の数え（＝届いた）が来るまでは「発注済み（届くまで）」に置く。基準以上が来たら印は効かなくなる
+     （その後また基準を下回れば、新しく「発注が必要」に出る）。返すのは 品目名→発注した時刻（届くまでの物だけ） */
+  function zkPending_(store) {
+    const ord = zkOrdered(store); const names = Object.keys(ord); if (!names.length) return {};
+    const m = zkMaster(store); const std = {}; m.forEach(it => { if (it.std != null && it.std !== '') std[it.n] = Number(it.std); });
+    const out = {}; names.forEach(n => { out[n] = ord[n]; });
+    getZk('zaiko').filter(r => r.store === store).forEach(r => {   // 1回だけ読む（描画のたびに品目ごとに読み直さない）
+      const q = (parseNote(r.note) || {}).q || {};
+      Object.keys(out).forEach(n => { if (r.t > out[n] && q[n] != null && q[n] !== '' && std[n] != null && Number(q[n]) >= std[n]) delete out[n]; });
+    });
+    return out;
+  }
   function zkLow(store) {
     const m = zkMaster(store); const l = zkLatest(store); if (!m.length || !l) return [];
-    const ord = zkOrdered(store);
-    return m.filter(it => it.std != null && it.std !== '' && l.q[it.n] != null && l.q[it.n] !== '' && Number(l.q[it.n]) < Number(it.std) && !(ord[it.n] && ord[it.n] > (l.qt[it.n] || l.t)))
+    const pend = zkPending_(store);
+    return m.filter(it => it.std != null && it.std !== '' && l.q[it.n] != null && l.q[it.n] !== '' && Number(l.q[it.n]) < Number(it.std) && !pend[it.n])
             .map(it => ({ n: it.n, u: it.u || '', q: Number(l.q[it.n]), std: Number(it.std), need: Math.max(0, Math.ceil(Number(it.std) - Number(l.q[it.n]) - 1e-9)), ord: zkOrdOf_(it) }));   // ★2026-10-24 神田さん「発注の単位は整数で」＝足りない分を切り上げ（1−0.8＝0.19999…を1に）
   }
   /* 月次棚卸（kind:'monthly' の closeDetail）に載っている品目名＝在庫の品目にそろえる材料（最新の月から） */
@@ -3757,11 +3770,11 @@
           <div class="zk-list">${rows}</div>`;
       }
     } else if (tab === 'order') {
-      const recent = Object.keys(ord).filter(n => l && ord[n] > (l.qt[n] || l.t));
+      const recent = Object.keys(zkPending_(store)).filter(n => !low.some(x => x.n === n));   // ★10/27 届くまで（基準以上の数えが来るまで）
       body = low.length ? `<div class="zk-list">${low.map(x => `<div class="zk-row low"><div><b>${esc(x.n)}</b><br><span>${L({ ja:'残り', en:'left', vi:'còn' })} ${x.q}${esc(x.u)} ／ ${L({ ja:'基準', en:'min', vi:'định mức' })} ${x.std}${esc(x.u)} ／ ${zkOrdHtml_(x)}</span></div>${zkMgr() ? `<button class="mini" data-zkorder="${esc(x.n)}">${L({ ja:'発注した', en:'Ordered', vi:'Đã đặt' })}</button>` : ''}</div>`).join('')}</div>
-        <div class="hint">${zkMgr() ? L({ ja:'「発注した」を押すと一覧から外れます（次の在庫入力でまた判定します）。', en:'“Ordered” removes it until the next count.', vi:'“Đã đặt” sẽ ẩn đến lần nhập sau.' }) : L({ ja:'発注は店長が行います。', en:'The manager places orders.', vi:'Quản lý sẽ đặt hàng.' })}</div>`
+        <div class="hint">${zkMgr() ? L({ ja:'「発注した」を押すと、届いて基準以上の数が入るまで「発注済み」に移ります。', en:'“Ordered” moves it to Ordered until a count at or above the minimum.', vi:'“Đã đặt” chuyển sang Đã đặt đến khi số tồn đạt định mức.' }) : L({ ja:'発注は店長が行います。', en:'The manager places orders.', vi:'Quản lý sẽ đặt hàng.' })}</div>`
         : `<div class="muted">${l ? L({ ja:'いま基準を下回っている品目はありません。', en:'No items below minimum.', vi:'Không có hàng dưới định mức.' }) : L({ ja:'まだ在庫数の入力がありません。', en:'No counts yet.', vi:'Chưa có số tồn.' })}</div>`;
-      if (recent.length) body += `<div class="idlabel" style="margin-top:12px">${L({ ja:'発注済み（次の入力まで）', en:'Ordered (until next count)', vi:'Đã đặt (đến lần nhập sau)' })}</div><div class="muted">${recent.map(esc).join('、')}</div>`;
+      if (recent.length) body += `<div class="idlabel" style="margin-top:12px">${L({ ja:'発注済み（届くまで）', en:'Ordered (until delivered)', vi:'Đã đặt (đến khi nhận hàng)' })}</div><div class="muted">${recent.map(esc).join('、')}</div>`;
     } else {
       /* 空の行は必ず8行以上残す（品目が24を超える店＝富士山で、追加する行が無くなっていた 2026-09-19） */
       /* ★2026-10-21 永井さん（牛カツ長堀橋）「区分の終わり（食材管理①・②）に空白の欄がほしい」＝区分ごとの末尾に空の行を2つ。
@@ -4110,8 +4123,10 @@
        d:{ja:'iPad／スピーカー／決済端末／看板用バッテリー（電源はOFFに）'}},
       {ja:'電源OFF',en:'Power off',vi:'Tắt nguồn',
        d:{ja:'各種電気／エアコン／換気扇／ガス元栓（桜やバックヤードも確認）'}},
-      {ja:'退勤・戸締り',en:'Clock out & lock up',vi:'Chấm công & khóa cửa',
-       d:{ja:'退勤の打刻／シャッター・鍵を閉めてキーボックスへ（番号は必ずバラバラに）'}} ] },
+      /* ★2026-10-27 神田さん了承（本部への質問D2）＝旧「退勤・戸締り」。打刻を含めると施錠の前に押す＝未完了を完了扱いになるため、
+         施錠のあとに押す項目にして打刻を外した（終えた時刻は日報の退勤）。項目IDは位置で決まる＝保存済みのチェックはそのまま */
+      {ja:'シャッター・鍵・キーボックス（施錠のあとに押す）',en:'Shutter, lock & key box (tap after locking)',vi:'Cửa cuốn, khóa & hộp chìa (bấm sau khi khóa)',
+       d:{ja:'シャッター・鍵を閉めてキーボックスへ（番号は必ずバラバラに）。終えた時刻は日報の「退勤」へ'}} ] },
     { g:{ja:'キッチン',en:'Kitchen',vi:'Bếp'}, items:[
       {ja:'フライヤー',en:'Fryer',vi:'Bếp chiên',
        d:{ja:'電源を落として元栓を閉める／油のカスを網で取り除く／フライヤーと周りを拭き上げ／清掃対象日は油を抜いて清掃'}},
@@ -4148,8 +4163,8 @@
        d:{ja:'仕込み表（急ぎは「★」をつける）／発注の申し送り'}},
       {ja:'電源OFF',en:'Power off',vi:'Tắt nguồn',
        d:{ja:'各種電気／エアコン／換気扇／ガス元栓／食洗機（桜やバックヤードも確認）'}},
-      {ja:'退勤・戸締り',en:'Clock out & lock up',vi:'Chấm công & khóa cửa',
-       d:{ja:'退勤の打刻／シャッター・鍵を閉めてキーボックスへ（番号は必ずバラバラに）'}} ] }
+      {ja:'シャッター・鍵・キーボックス（施錠のあとに押す）',en:'Shutter, lock & key box (tap after locking)',vi:'Cửa cuốn, khóa & hộp chìa (bấm sau khi khóa)',
+       d:{ja:'シャッター・鍵を閉めてキーボックスへ（番号は必ずバラバラに）。終えた時刻は日報の「退勤」へ'}} ] }
   ];
   /* アイドルタイム＝昼営業を締めて、夜営業を開ける。本部のシートどおり「クローズ→オープン」の2部構成。 */
   const IDLE_GROUPS = [
@@ -5126,17 +5141,20 @@
      そこで表を A4横1枚のPDFにしてアプリに同梱し、ログイン中の店の業態の表を押した瞬間に開く（1枚マニュアルと同じ開き方）。
      本部の表が変わったら manual/allergy_*.pdf を入れ替えて d: を更新して配信。表が無い業態（日本料理・寿司・手巻き）は「本部で準備中」と出す（黙って別の業態の表を出さない）。
      id: は本部ドライブの元のスライド（本部の方が直すとき用。アプリからは開かない） */
+  /* ★2026-10-27 神田さん了承（本部への質問B7）＝料理・原材料・仕入先を変えて表を直すまでのあいだは checking:true にして配信する。
+     カードと表の一覧に「確認中・案内の前に責任者へ」が出る（表はそのまま開く）。本部の依頼でアプリ担当が切り替える。既定は全業態 false */
   const ALLERGY_TABLES = {
-    gyukatsu: { pdf:'allergy_gyukatsu.pdf', id:'1fkax360lOtD15t1DibYCzpNBJ_cfZBOTMu_az5-lq5c', d:'2026-10-05' },
-    unagi:    { pdf:'allergy_unagi.pdf',    id:'1pqpMH_70AFvOSVOxlw7gQkV498zW_0bKiCbOBFTmJnw', d:'2026-07-14' },
-    wagyu:    { pdf:'allergy_wagyu.pdf',    id:'1yJd85_aID0z_6DnABVNzYUmLpH-FqcHUH-gj7HZaIVY', d:'2026-07-14' }
+    gyukatsu: { pdf:'allergy_gyukatsu.pdf', id:'1fkax360lOtD15t1DibYCzpNBJ_cfZBOTMu_az5-lq5c', d:'2026-10-05', checking:false },
+    unagi:    { pdf:'allergy_unagi.pdf',    id:'1pqpMH_70AFvOSVOxlw7gQkV498zW_0bKiCbOBFTmJnw', d:'2026-07-14', checking:false },
+    wagyu:    { pdf:'allergy_wagyu.pdf',    id:'1yJd85_aID0z_6DnABVNzYUmLpH-FqcHUH-gj7HZaIVY', d:'2026-07-14', checking:false }
   };
+  const ALLERGY_CHECKING_L = { ja:'確認中・案内の前に責任者へ', en:'Under review — ask the manager before answering', vi:'Đang kiểm tra — hỏi quản lý trước khi trả lời' };
   const allergyFor_ = (store) => { const gy = store ? storeGyotai(store) : null; return gy && ALLERGY_TABLES[gy] ? Object.assign({ gy }, ALLERGY_TABLES[gy]) : null; };
   /* ボタンに付ける属性と小さい説明＝表がある業態は直接PDF（1回で開く）。無い業態と本部の「全店」は選ぶ画面（allergy）へ */
   const allergyInfo_ = (store) => {   // store＝画面が使っている店（ホームは自分の store を渡す＝同じ店で判定する）
     const hqAll = getRole() === 'hq' && getStoreSel() === 'all';
     const st = store || (hqAll ? null : visibleStores()[0]); const a = st ? allergyFor_(st) : null;
-    if (a) return { attr: `data-openurl="${esc(KANTAN_PDF_BASE + a.pdf)}"`, sub: { ja:'押すと、この店の表', en:'Tap to open this store’s table', vi:'Chạm để mở bảng của cửa hàng' }, direct: true };
+    if (a) return { attr: `data-openurl="${esc(KANTAN_PDF_BASE + a.pdf)}"`, sub: a.checking ? ALLERGY_CHECKING_L : { ja:'押すと、この店の表', en:'Tap to open this store’s table', vi:'Chạm để mở bảng của cửa hàng' }, direct: true, checking: !!a.checking };
     return { attr: 'data-open="allergy"', sub: hqAll ? { ja:'業態を選んで開く', en:'Choose a business type', vi:'Chọn loại hình' } : { ja:'この業態は本部で準備中', en:'Being prepared by HQ', vi:'HQ đang chuẩn bị' }, direct: false };
   };
   const KANTAN_ST = { all: { ja:'全店', en:'All stores', vi:'Tất cả' }, test: { ja:'現場テスト中', en:'Field test', vi:'Đang thử nghiệm' }, hq: { ja:'本部確認中', en:'HQ review', vi:'HQ đang xem' }, hqonly: { ja:'本部資料', en:'HQ only', vi:'Chỉ HQ' } };
@@ -5221,7 +5239,7 @@
     const lead = mine ? '' : hqAll ? L({ ja:'業態を選んでください。店舗のホームでは、その店の業態の表が1回で開きます。', en:'Choose a type. On a store’s home, its own table opens in one tap.', vi:'Chọn loại hình. Ở trang chủ cửa hàng, bảng của cửa hàng mở trong 1 chạm.' })
       : L({ ja:`${esc(gyotaiLabel(gy) || '')}のアレルギー表は本部で準備中です。できたら、ホームの「食物アレルギー」から1回で開きます。`, en:'The table for this type is being prepared by HQ.', vi:'Bảng cho loại hình này đang được HQ chuẩn bị.' });
     const rows = GYOTAI.filter(g => ALLERGY_TABLES[g.code]).sort((a, b) => (b.code === gy) - (a.code === gy)).map(g => { const a = ALLERGY_TABLES[g.code];   // 自店の業態を先頭に
-      return `<button type="button" class="pb-orow" data-openurl="${esc(KANTAN_PDF_BASE + a.pdf)}"><span class="st">${svg('book')}</span><span><span class="nm">${esc(gyotaiLabel(g.code))}</span><br><span class="sub">${esc(a.d.replace(/-/g, '/'))} ・ ${L({ ja:'1枚', en:'1 page', vi:'1 trang' })}</span></span><span class="rt">${svg('chev')}</span></button>`; }).join('');
+      return `<button type="button" class="pb-orow" data-openurl="${esc(KANTAN_PDF_BASE + a.pdf)}"><span class="st">${svg('book')}</span><span><span class="nm">${esc(gyotaiLabel(g.code))}</span><br><span class="sub">${esc(a.d.replace(/-/g, '/'))} ・ ${L({ ja:'1枚', en:'1 page', vi:'1 trang' })}${a.checking ? ` ・ <b style="color:#b3261e">${L(ALLERGY_CHECKING_L)}</b>` : ''}</span></span><span class="rt">${svg('chev')}</span></button>`; }).join('');
     return `${lead ? `<div class="pb-card"><div class="muted">${lead}</div></div>` : ''}<div class="pb-card" style="padding-top:0">${rows}</div>
       <p class="pb-note">${L({ ja:'表に無いこと・分からないことは、推測で答えずに本部へ確認します。', en:'If it is not in the table or unclear, ask HQ instead of guessing.', vi:'Nếu không có trong bảng hoặc không rõ, hỏi HQ, không đoán.' })}</p>`;
   };
@@ -10813,7 +10831,7 @@
             <div class="body"><div class="l2" style="color:var(--suou);font-weight:700">${esc(whistleCatLabel(r.cat))}</div><div class="l1" style="white-space:normal">${esc(r.body||'—')}</div>
             <div class="l2">${r.anon ? L({ ja:'匿名', en:'Anonymous', vi:'Ẩn danh' }) : esc(r.store||'—')} ・ ${timeAgo(r.t)}</div></div>
             <button class="mini ${done.includes(r.t)?'on':''}" data-whdone="${r.t}">${done.includes(r.t) ? L({ ja:'対応済', en:'Done', vi:'Đã xử lý' }) : L({ ja:'未対応', en:'Open', vi:'Chưa xử lý' })}</button>
-          </div>`).join('') : `<div class="muted">${L({ ja:'まだ通報はありません', en:'No reports yet', vi:'Chưa có báo cáo' })}</div>`}
+          </div>`).join('') : `<div class="muted">${L({ ja:'まだ通報はありません。担当者だけが見られる設定のときは、担当者以外には表示されません。', en:'No reports yet. When limited to designated staff, others do not see them.', vi:'Chưa có báo cáo. Khi chỉ người phụ trách được xem, người khác sẽ không thấy.' })}</div>`}
         </div>
         <p class="hint" style="overflow-wrap:anywhere">${L({ ja:'※ 9/25 構築MTG決定＝窓口は世桜本部 yosakura.fc@gmail.com ／受付 平日9:00〜18:00／回答 原則翌営業日／カスハラは「カスハラ対応記録」に記録。公益通報はハラスメントと分けて扱う', en:'HQ to decide report address, handler, anonymity, retention and response flow (pending).', vi:'HQ quyết định địa chỉ, người phụ trách, ẩn danh, lưu trữ và quy trình (chưa chốt).' })}</p>`;
     }
