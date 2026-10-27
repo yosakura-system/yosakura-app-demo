@@ -5839,7 +5839,7 @@
       const phsLocal = (cur.photos || []).filter(Boolean).slice(0, 5); phsLocal.push(key);
       /* サーバーへは中身（元サイズ）を photos として送る。同期でサーバーのIDに置き換わる */
       const all = getSv(); const k = svKey(it.no); const a = getAuth();
-      const next = Object.assign({}, cur, { photos: phsLocal, by: (a && a.name) || '本部', t: Date.now() });
+      const next = Object.assign({}, cur, { photos: phsLocal, pt: Date.now(), by: (a && a.name) || '本部', t: Date.now() });   // pt＝写真を変えた時刻（2026-10-27）
       all[k] = next; saveSv(all);
       postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phsLocal.length })), photos: photosForSend_(phsLocal), t: next.t });
       svApplyDomFor_(it.no); svApplyDom();
@@ -5876,7 +5876,7 @@
       const it = SV_ITEMS.find(i => String(i.no) === b.dataset.svphdel); if (!it) return;
       const cur = svAns(it.no) || {}; const phs = (cur.photos || []).filter(Boolean); phs.splice(Number(b.dataset.svphi), 1);
       const all = getSv(); const k = svKey(it.no); const a = getAuth();
-      const next = Object.assign({}, cur, { photos: phs, by: (a && a.name) || '本部', t: Date.now() });
+      const next = Object.assign({}, cur, { photos: phs, pt: Date.now(), by: (a && a.name) || '本部', t: Date.now() });
       all[k] = next; saveSv(all);
       postReport({ kind:'svcheck', store:'本部', item:k, note: JSON.stringify(Object.assign({}, next, { photos: undefined, nph: phs.length })), photos: photosForSend_(phs), t: next.t });
       svApplyDomFor_(it.no); svApplyDom();
@@ -13148,7 +13148,7 @@
   // バックエンドの全行を、各機能のローカルキーへ振り分け（バックエンドが正）。パース失敗も安全。
   function distribute(rows) {
     const numack = {}, numackT = {};   // 数字の要確認の「確認済み」＝キーごとに最新が正（2026-09-24）
-    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}, monthlyD={}, monthlyDV={}, monthlyCV={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null; const svc={}, svcT={}; const svstd={}, svstdT={};
+    const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}, monthlyD={}, monthlyDV={}, monthlyCV={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null; const svc={}, svcT={}, svcPh={}, svcPT={}; const svstd={}, svstdT={};
     /* ★同じ提出が何行にもなっているとき、1件にまとめて見せる（2026-09-03 実機で発覚）。
        受け取り側は1回のPOSTごとに1行を足す作りのため、返事が届かずに送り直されると
        中身が同じ行が並ぶ（長堀橋店の日計レポートが同じ写真で8行）。
@@ -13243,7 +13243,7 @@
         case 'linkset': { const p=pj(r.note); if (Array.isArray(p) && (linksetT==null || t>=linksetT)) { linkset=p; linksetT=t; } } break; // 資料リンク一覧は最新版が正
         case 'faqset': { const p=pj(r.note); if (Array.isArray(p) && (faqsetT==null || t>=faqsetT)) { faqset=p; faqsetT=t; } } break; // よくある質問（本部追加分）は最新版が正
         // SVチェック（本部）＝店舗|日付|No ごとに最新が正（2人同時入力の合流）
-        case 'svcheck': { const p=pj(r.note) || {}; const k=r.item; if (!k) break; if (svcT[k]==null || t>=svcT[k]) { if (Array.isArray(r.photos) && r.photos.length) p.photos = r.photos; svc[k]=p; svcT[k]=t; } } break;
+        case 'svcheck': { const p=pj(r.note) || {}; const k=r.item; if (!k) break; const pt=Number(p.pt)||t; if (svcPT[k]==null || pt>=svcPT[k]) { svcPh[k]=Array.isArray(r.photos)?r.photos:[]; svcPT[k]=pt; } if (svcT[k]==null || t>=svcT[k]) { svc[k]=p; svcT[k]=t; } } break;   // ★写真は pt（写真を最後に変えた時刻）が新しい行の分＝○×・メモの保存で写真が減らない（2026-10-27 長堀橋で3枚→1枚）
         // 基準（あるべき姿）＝項目No ごと最新が正（本部共通）
         case 'svstd': { const p=pj(r.note) || {}; const k=String(r.item || ''); if (!k) break; if (svstdT[k]==null || t>=svstdT[k]) { if (Array.isArray(r.photos) && r.photos.length) p.photos = r.photos; svstd[k]=p; svstdT[k]=t; } } break;
         // タスク（試行）＝本人のuidの行だけ・最新版が正（バックエンドも本人にしか返さないが、端末側でも念のため絞る）
@@ -13351,7 +13351,15 @@
        送った行がまだサーバーの応答に載っていない一瞬に、古い行で端末の入力を上書きしていた） */
     if (Object.keys(svc).length) {
       let curS = {}; try { curS = JSON.parse(localStorage.getItem('yosakura_demo_svcheck')) || {}; } catch (_) {}
-      Object.keys(svc).forEach(k => { const lt = Number((curS[k] || {}).t) || 0; if (lt > (svcT[k] || 0)) return; curS[k] = svc[k]; });
+      /* ★写真だけは別に合流する（2026-10-27）＝サーバーの行は pt が新しい行の写真（svcPh）、端末は自分の pt。新しいほうの写真を残す。
+         ○×・メモは従来どおり t が新しいほう。これで「写真を足した端末」と「○×を押した端末」が同じ項目を同時に触っても、写真が減らない */
+      Object.keys(svc).forEach(k => {
+        const cur = curS[k] || {}; const lt = Number(cur.t) || 0, lpt = Number(cur.pt) || 0;
+        const sv = Object.assign({}, svc[k], { photos: svcPh[k] || [], pt: svcPT[k] || 0 }); const spt = Number(sv.pt) || 0;
+        if (lt > (svcT[k] || 0)) { if (spt > lpt) { cur.photos = sv.photos; cur.pt = spt; curS[k] = cur; } return; }
+        if (lpt > spt) { sv.photos = cur.photos || []; sv.pt = lpt; }
+        curS[k] = sv;
+      });
       set('yosakura_demo_svcheck', curS);
     }
     if (Object.keys(svstd).length) {

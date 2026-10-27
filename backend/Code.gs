@@ -548,8 +548,12 @@ function doPost(e) {
     if (dup) return json({ ok: true, id: dup, duplicate: true });
     var id = Utilities.getUuid();
     var ts = data.t || Date.now();
+    /* ★SVチェックの写真＝「写真を最後に変えた端末」の分を正にする（2026-10-27 長堀橋で2台同時入力＝○×を押した端末の保存が後勝ちで3枚→1枚）。
+       note.pt＝写真を変えた時刻。届いた行の pt が、同じ項目の直近の行より古ければ、写真は直近の行のまま足す（届いた写真は保存しない） */
+    if (String(data.kind || '') === 'svcheck') { var kp = svcheck_keepPhotos_(sh, data); if (kp) { data.photos = []; data._keepPhotoIds = kp.ids; data.note = kp.note; } }
     var input = Array.isArray(data.photos) ? data.photos.slice(0, 6) : [];
     var photoIds = input.map(function (x) { return savePhoto(x, data); });   // ★お金の写真は公開リンクにしない（2026-10-12）
+    if (data._keepPhotoIds) photoIds = data._keepPhotoIds;
     sh.appendRow([id, ts, data.kind || '', data.store || '', data.item || '', data.level || '', normNote(data.note), JSON.stringify(photoIds)]);
     // ★公益通報は本部へメールで知らせる（通報通知.gs・通知先はスクリプト プロパティ WHISTLE_MAIL_TO。未設定なら何もしない・2026-09-24）
     try { if (typeof notifyWhistle_ === 'function' && String(data.kind || '') === 'whistle') notifyWhistle_(data, id); } catch (e) {}
@@ -808,3 +812,35 @@ function 提出者名を訂正_(before, after, write) {
 /* エディタの「実行」は引数を渡せないので、原さんの分は名前入りの入口を用意（下見→本番の順に実行） */
 function 提出者名を訂正_原さん_下見() { return 提出者名を訂正_('原 和弘', '原 和宏', false); }
 function 提出者名を訂正_原さん() { return 提出者名を訂正_('原 和弘', '原 和宏', true); }
+
+/* ★2026-10-26 日本鰻世桜 富士山店の Airレジ を同じ入口（usen_import）で取り込む＝店舗コード102。設定値 USEN_STORE_MAP に足す（1回だけ実行・デプロイ不要・airregi_import.py） */
+function USEN店舗表に鰻富士山を足す() {
+  var m = JSON.parse(JSON.stringify(usen_storeMap_()));
+  m['102'] = '日本鰻世桜 富士山店';
+  PropertiesService.getScriptProperties().setProperty('USEN_STORE_MAP', JSON.stringify(m));
+  Logger.log('USEN_STORE_MAP = ' + JSON.stringify(usen_storeMap_()));
+  return usen_storeMap_();
+}
+
+/* ★SVチェック（kind=svcheck）＝同じ項目（店舗|日付|No）の直近の行を直近600行から探し、写真を変えた時刻（note.pt）を比べる。
+   直近の行のほうが新しければ { ids: その行の写真ID, note: pt と nph を直近の行に合わせた note } を返す。それ以外は null（届いた行のまま） */
+function svcheck_keepPhotos_(sh, data) {
+  try {
+    var item = String(data.item || ''); if (!item) return null;
+    var inNote = {}; try { inNote = JSON.parse(data.note || '{}') || {}; } catch (e) { inNote = {}; }
+    var inPt = Number(inNote.pt) || 0;
+    var last = sh.getLastRow(); if (last < 2) return null;
+    var start = Math.max(2, last - 600 + 1);
+    var vals = sh.getRange(start, 1, last - start + 1, 8).getValues();
+    for (var i = vals.length - 1; i >= 0; i--) {
+      if (String(vals[i][2]) !== 'svcheck' || String(vals[i][4]) !== item) continue;
+      var n = {}; try { n = JSON.parse(vals[i][6] || '{}') || {}; } catch (e) { n = {}; }
+      var pt = Number(n.pt) || Number(vals[i][1]) || 0;   // pt の無い古い行は、行の時刻
+      if (pt <= inPt) return null;
+      var ids = []; try { ids = JSON.parse(vals[i][7] || '[]') || []; } catch (e) { ids = []; }
+      inNote.pt = pt; inNote.nph = ids.length;
+      return { ids: ids, note: JSON.stringify(inNote) };
+    }
+  } catch (err) {}
+  return null;
+}

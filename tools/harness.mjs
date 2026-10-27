@@ -5463,7 +5463,7 @@ console.log('== SVチェック（本部）2026-09-16 神田さんのご要望＝
   ok(/function svJpegsToPdf_\(jpegs\)/.test(srcH) && /\/Filter \/DCTDecode/.test(srcH), 'A4のPDF（1〜2枚・写真つき）を外部ライブラリなしで作る');
   ok(/navigator\.canShare\(\{ files \}\)/.test(srcH), 'PDF・画像は共有シートに添付して送る（LINEを選べる）');
   ok(/apiGet_\(\{ action: 'photo', id: String\(p\)\.replace\(\/\^p:\/, ''\) \}\)/.test(srcH), 'レポートの写真はサーバー経由で取る（画像URL直読みは書き出せない）＝2026-10-12 からPOST');
-  ok(/const lt = Number\(\(curS\[k\] \|\| \{\}\)\.t\) \|\| 0; if \(lt > \(svcT\[k\] \|\| 0\)\) return;/.test(srcH), '★合流＝端末のほうが新しい入力は古い行で巻き戻さない（×が元に戻る不具合の再発防止）');
+  ok(/const lt = Number\(cur\.t\) \|\| 0, lpt = Number\(cur\.pt\) \|\| 0;[\s\S]{0,400}?if \(lt > \(svcT\[k\] \|\| 0\)\) \{ if \(spt > lpt\)/.test(srcH), '★合流＝端末のほうが新しい入力は古い行で巻き戻さない（×が元に戻る不具合の再発防止）。10/27 から写真だけは pt で別に合流');
   ok(/indexOf\('\/app\/hqcheck'\) !== -1\) \{ try \{ svApplyDom\(\); \}/.test(srcH), '合流のときは画面を作り直さず項目だけ差し替える（プツプツ対策）');
   ok(/data-svphoto=/.test(srcH) && /\.slice\(0, 5\); phsLocal\.push\(key\)/.test(srcH), '写真は項目ごとに複数（最大6枚・1回1枚）');
   seedAuth('kanda', 'hq'); await new Promise(r=>setTimeout(r, 50)); location.hash = '#/app/hqcheck';
@@ -7709,6 +7709,36 @@ console.log('== 2026-10-27 本部への質問の推奨案（神田さん了承�
   const mail = fs.readFileSync(new URL('../backend/通報通知.gs', import.meta.url), 'utf8');
   ok(!/'本文　：'/.test(mail) && !/body\.slice\(0, 120\)/.test(mail) && /内容はメールに載せていません/.test(mail) && /sh\.appendRow\(\[whenS, store, cat, body/.test(mail),
      '通知メールに本文を載せない（カスハラの記録スプシへの1行はそのまま）');
+}
+
+console.log('== 2026-10-27 SVチェックの写真＝2台で同じ項目を触っても減らない（長堀橋 16番で3枚→1枚） ==');
+{
+  const S = '日本鰻世桜 長堀橋店', D = '2026-10-27', K = `${S}|${D}|16`;
+  const seed = (local) => run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'神田', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(local ? { [K]: local } : {})); });
+  const read = () => (JSON.parse(localStorage.getItem('yosakura_demo_svcheck') || '{}')[K]) || {};
+  // ① サーバーに2行＝メモの新しい行（写真1枚・pt 古い）と、写真を足した行（3枚・pt 新しい）→ メモは新しい行・写真は3枚
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'svcheck', store:'本部', item:K, note: JSON.stringify({ v:'ng', memo:'石鹸も', by:'神田', t:5010, pt:5001, nph:1 }), photos:['p1'], t:5010, id:'a1' },
+    { kind:'svcheck', store:'本部', item:K, note: JSON.stringify({ v:'ng', memo:'床', by:'常山', t:5005, pt:5005, nph:3 }), photos:['p1','p2','p3'], t:5005, id:'a2' },
+  ]};
+  seed(null); location.hash = '#/app/hqcheck'; await new Promise(r => setTimeout(r, 80));
+  let x = read();
+  ok(x.memo === '石鹸も' && Array.isArray(x.photos) && x.photos.length === 3 && x.pt === 5005, '○×・メモは最新の行、写真は pt が新しい行の3枚');
+  // ② 端末の行のほうが新しい（○×を押した直後）が、写真はサーバーのほうが新しい → 端末の○×を残して写真だけ3枚に
+  seed({ v:'ok', memo:'端末', by:'神田', t:5020, pt:5001, photos:['p1'] }); location.hash = '#/app/hqcheck'; await new Promise(r => setTimeout(r, 80));
+  x = read(); ok(x.v === 'ok' && x.memo === '端末' && x.photos.length === 3 && x.pt === 5005, '端末の○×・メモは残り、写真だけ新しいほう（3枚）になる');
+  // ③ 端末で写真を消した直後（pt 新しい・1枚）に、古い3枚の行が届いても戻らない
+  seed({ v:'ng', memo:'床', by:'常山', t:5030, pt:5030, photos:['p1'] }); location.hash = '#/app/hqcheck'; await new Promise(r => setTimeout(r, 80));
+  x = read(); ok(x.photos.length === 1 && x.pt === 5030, '消した直後は消したまま（写真の時刻が新しい端末が正）');
+  // ④ pt の無い古い行だけ＝従来どおり最新の行の写真
+  FETCH_ROWS = { ok:true, reports:[ { kind:'svcheck', store:'本部', item:K, note: JSON.stringify({ v:'ng', by:'神田', t:5040 }), photos:['q1','q2'], t:5040, id:'a3' } ]};
+  seed(null); location.hash = '#/app/hqcheck'; await new Promise(r => setTimeout(r, 80));
+  x = read(); ok(x.photos.length === 2 && x.pt === 5040, 'pt の無い古い行は行の時刻を写真の時刻として扱う');
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/photos: phsLocal, pt: Date\.now\(\)/.test(src) && /photos: phs, pt: Date\.now\(\)/.test(src), '写真を足す・消すときだけ pt を更新する（○×・メモの保存では触らない）');
+  const gs = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
+  ok(/function svcheck_keepPhotos_/.test(gs) && /data\._keepPhotoIds/.test(gs) && /if \(pt <= inPt\) return null;/.test(gs), 'サーバーも同じ決まり＝pt の古い行は直近の写真のまま足す（夜の整理圧縮で古い行が消えても写真が残る）');
+  FETCH_ROWS = { ok:true, reports:[] };
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
