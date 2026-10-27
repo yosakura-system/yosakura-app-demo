@@ -821,6 +821,14 @@ function USEN店舗表に鰻富士山を足す() {
   Logger.log('USEN_STORE_MAP = ' + JSON.stringify(usen_storeMap_()));
   return usen_storeMap_();
 }
+/* ★2026-10-27 日本鰻世桜 長堀橋店の Airレジ（井戸さん・会社統一のAirID）＝店舗コード103（1回だけ実行・デプロイ不要・airregi_import.py --store=長堀橋） */
+function USEN店舗表に鰻長堀橋を足す() {
+  var m = JSON.parse(JSON.stringify(usen_storeMap_()));
+  m['103'] = '日本鰻世桜 長堀橋店';
+  PropertiesService.getScriptProperties().setProperty('USEN_STORE_MAP', JSON.stringify(m));
+  Logger.log('USEN_STORE_MAP = ' + JSON.stringify(usen_storeMap_()));
+  return usen_storeMap_();
+}
 
 /* ★SVチェック（kind=svcheck）＝同じ項目（店舗|日付|No）の直近の行を直近600行から探し、写真を変えた時刻（note.pt）を比べる。
    直近の行のほうが新しければ { ids: その行の写真ID, note: pt と nph を直近の行に合わせた note } を返す。それ以外は null（届いた行のまま） */
