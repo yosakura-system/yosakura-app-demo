@@ -3993,6 +3993,14 @@ console.log('== 2026-10-28 月末棚卸＝今月の行から1回で棚卸タブ�
     ok(!/value="花火（箱）"/.test(hh), '心斎橋＝花火（食材でない）は入れない');
     ok(/value="海苔 1\/3切り（パック）"/.test(hh) && /value="海苔 2つ切り（パック）"/.test(hh) && /value="神戸ワインセレクト 赤（本）"/.test(hh), '心斎橋＝品名の（ ）は空白に（単位欄と区別）');
     ok(/id="tn_d8_n"[^>]*value="ビール（本）"/.test(hh) && /id="tn_d8_u"[^>]*value="221"/.test(hh) && /id="tn_d8_r"[^>]*data-r="10"/.test(hh) && /id="tn_d0_n"[^>]*value="炭酸水（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh) && /id="tn_d26_n"[^>]*value="のんある梅酒（本）"/.test(hh) && /id="tn_d26_r"[^>]*data-r="8"/.test(hh), '心斎橋＝お酒10%・炭酸水／のんある梅酒8%'); }
+  // 2026-10-29 京都祇園＝石本さんの「食品在庫の一覧」（LINE）を既定に。単価は未着＝空欄で出る
+  run(() => { setLS('manager', '日本鰻世桜 京都祇園店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); localStorage.removeItem('yosakura_demo_monthly'); });
+  location.hash = '#/app/pl';
+  { const hh = registry.app.innerHTML;
+    ok(/id="tn_f0_n"[^>]*value="鰻（匹）"/.test(hh) && /id="tn_f0_u"[^>]*value=""/.test(hh) && /id="tn_f13_n"[^>]*value="創味白だし（本）"/.test(hh), '京都祇園＝一覧の並び（先頭 鰻・末尾 創味白だし）・単価は空欄');
+    ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 14 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 10, '京都祇園＝食材14・飲料10');
+    ok(/value="玉子（パック 10個）"/.test(hh) && /value="いくら ますこ（トレー 200g）"/.test(hh) && /value="ほうじ茶（袋 30包）"/.test(hh), '京都祇園＝単位は一覧のまま・（ ）は空白に');
+    ok(/id="tn_d0_n"[^>]*value="ビール プレミアム（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="10"/.test(hh) && /id="tn_d2_n"[^>]*value="ノンアルコールビール（本）"/.test(hh) && /id="tn_d2_r"[^>]*data-r="8"/.test(hh) && /id="tn_d9_r"[^>]*data-r="8"/.test(hh), '京都祇園＝お酒10%・ノンアル/お茶8%'); }
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   // ③b 画面304＝税率ボタンで 10%→8% に切り替えると金額が変わる（お茶など）
