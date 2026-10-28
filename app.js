@@ -1907,7 +1907,7 @@
     if (!m) return '';
     const own = { ck_open_photo:'kyou_check_open', ck_close_photo:'kyou_check_close', ichishoku:'kyou_first_dish', utsuwa:'kyou_utsuwa' }[m.id]; if (own) return own;
     if (m.ckMode) return ({ open:'kyou_check_open', idle:'kyou_check_idle', sakura:'kyou_check_sakura', close:'kyou_check_close', hygiene:'kyou_hygiene' })[m.ckMode] || 'kyou_check_open';
-    const byApp = { openphoto:'kyou_open_photo', firstphoto:'kyou_first_dish', soukatsu:'kyou_nippou', chukan:'kyou_nippou', zaiko:'kyou_stock', kizuki:'kyou_kizuki', kinshu:'num_register', pl:'kyou_tanaoroshi', storevideo:'miru_howto', handover:'kyou_handover', surveyqr:'kyou_survey' };
+    const byApp = { openphoto:'kyou_open_photo', firstphoto:'kyou_first_dish', soukatsu:'kyou_nippou', chukan:'kyou_nippou', zaiko:'kyou_stock', kizuki:'kyou_kizuki', kinshu:'num_register', pl:'kyou_tanaoroshi', storevideo:'miru_howto', handover:'kyou_handover', surveyqr:'kyou_survey', tanaoroshi:'kyou_tanaoroshi' };
     if (m.linkApp && byApp[m.linkApp]) return byApp[m.linkApp];
     if (m.id && byApp[m.id]) return byApp[m.id];
     const byId = { hygiene_d:'kyou_hygiene', hygiene_m:'kyou_hygiene', tip_photo:'kyou_first_dish', genkin_photo:'num_register', nikkei_idle:'kyou_nippou', nikkei_close:'kyou_nippou', utsuwa:'kyou_utsuwa', pop:'kyou_check_idle', pop_week:'kyou_check_idle', staffroom:'kyou_hygiene', compliance:'miru_manual' };
@@ -8718,7 +8718,12 @@
          以前は両方とも同じ「数値・原価率」の画面へ飛んでおり、同じものが2つ並んでいるように見えていた。
          PLからはリンクを外し、何をするものかを画面に出す。**項目の統廃合は本部の一覧が正なので、こちらでは行わない。** */
       { id:'monthlynum', name:{ja:'総括表の締め（毎月5日まで）',en:'Monthly summary close (by the 5th)',vi:'Chốt tổng kết tháng (đến ngày 5)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'monthly', linkApp:'pl',
-        how:{ja:'前月の売上・仕入・在庫を入力すると原価率まで出ます',en:'Enter last month’s sales, purchases and stock to get the cost ratio',vi:'Nhập doanh thu, nhập hàng, tồn kho tháng trước để ra giá vốn'} },
+        how:{ja:'前月の売上・仕入・在庫を入力すると原価率まで出ます（棚卸は「月末棚卸」の行から）',en:'Enter last month’s sales, purchases and stock to get the cost ratio',vi:'Nhập doanh thu, nhập hàng, tồn kho tháng trước để ra giá vốn'} },
+      /* ★2026-10-28 神田さん「月末棚卸をアプリでできるようになったけど、入口が分かりにくい。総括表の締めから外に出して、今月の業務としてすぐにワンクリックで入れるように」
+         ＝今月の行に「月末棚卸」を1件。押すと数値・原価率の棚卸タブを直接開く（pl?tab=tana）。済みの判定＝その月の棚卸（closeDetail）が保存されているか（detect:'tana'）。
+         autoAdd＝本部が保存した一覧に無くても「総括表の締め」の直後に足す。総括表の締めの行はそのまま（棚卸タブも残る＝入口が2つになるだけで中身は1つ） */
+      { id:'tanaoroshi', autoAdd:true, after:'monthlynum', name:{ja:'月末棚卸（月末に数えて保存）',en:'Month-end stocktake',vi:'Kiểm kê cuối tháng'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'none', detect:'tana', linkApp:'pl?tab=tana',
+        how:{ja:'月末に、口に入れる物すべてを数えて保存してください。やり方は画面の「1枚マニュアル」から',en:'At month end, count everything edible and save. See the one-page guide on the screen',vi:'Cuối tháng, đếm mọi thứ ăn được rồi lưu. Xem hướng dẫn 1 trang trên màn hình'} },
       { id:'pl',         name:{ja:'PL・損益（前月分を月末まで）',en:'P&L (previous month, by month end)',vi:'Lãi lỗ (tháng trước)'}, oblig:'required', freq:'monthly', due:'23:59', target:'all', hqReview:'each', detect:'none',
         how:{ja:'人件費・家賃なども含む損益の集計です。現在はアプリでは受けておらず、本部のPLシートへご入力ください',en:'P&L including labour and rent. Not yet handled in the app — please use the HQ P&L sheet',vi:'Lãi lỗ gồm nhân sự, thuê mặt bằng. Chưa có trong ứng dụng — vui lòng dùng bảng P&L của HQ'} },
       /* ★2026-08-12：この2件はアプリで受けていなかった（グループLINEへ送る運用のまま残っていた）。
@@ -8934,6 +8939,7 @@
       if (m.detect === 'video')  return getReports().some(r => r.kind === 'video' && r.store === store && inScope(r.t));
       // ★対象日の月で判定する（以前は常に「今月」だったため、先月ぶんの確認ができなかった）
       if (m.detect === 'monthly') return getMonthly().some(r => r.store === store && r.ym === dk.slice(0, 7));
+      if (m.detect === 'tana')    return getMonthly().some(r => r.store === store && r.ym === dk.slice(0, 7) && Array.isArray(r.closeDetail) && r.closeDetail.length > 0);   // ★2026-10-28 月末棚卸＝その月の棚卸（品目の内訳）が保存されていれば済み
       if (m.detect === 'subrec' || m.detect === 'didit') return subRows(SUB_KINDS.open).some(r => r.store === store && String(r.item || '').split('|')[0] === m.id && inScope(r.t));
     } catch (e) {}
     return false;

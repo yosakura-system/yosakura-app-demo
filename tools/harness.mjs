@@ -3962,6 +3962,24 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
     ok(/id="tn_f0_n"[^>]*value="ステーキしーずにんぐ（個）"/.test(hh) && /id="tn_f6_n"[^>]*value="和牛ブロック（kg）"/.test(hh) && /id="tn_f6_u"[^>]*value="8964"/.test(hh), '広島＝総括表の並び・単価（和牛ブロック 8964）');
+console.log('== 2026-10-28 月末棚卸＝今月の行から1回で棚卸タブへ（総括表の締めから外へ出す） ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.removeItem('yosakura_demo_monthly'); });
+  location.hash = '#/home';
+  let h = registry.app.innerHTML; let mo = h.slice(h.indexOf('id="pbmo"'));
+  ok(/data-tsub="pl\?tab=tana"/.test(mo) && /月末棚卸/.test(mo), '今月に「月末棚卸」の行があり、押すと棚卸タブ（pl?tab=tana）を直接開く');
+  ok(mo.indexOf('総括表の締め') >= 0 && mo.indexOf('総括表の締め') < mo.indexOf('月末棚卸'), '並び＝総括表の締めの直後（締めの行は残す）');
+  ok(!/class="pb-row done"[^>]*data-tsub="pl\?tab=tana"/.test(mo), '棚卸をまだ保存していない月は未提出');
+  const ym = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store: S, ym, close: 1000, closeDetail: [{ k:'f0', name:'米', u:100, q:10, amt:1000 }], t: Date.now() }])); });   // run は端末を作り直すので役割も入れ直す
+  location.hash = '#/home'; h = registry.app.innerHTML; mo = h.slice(h.indexOf('id="pbmo"'));
+  ok(/class="pb-row done"[^>]*data-tsub="pl\?tab=tana"/.test(mo), '棚卸を保存した月は「出しました」（済み）になる');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); }); location.hash = '#/app/pl?tab=tana'; h = registry.app.innerHTML;   // 店長で開く（店舗iPad＝staff は数字を見るだけ）
+  ok(/data-pltab="tana" class="on"/.test(h) && /id="tnSave"/.test(h), '行の飛び先 pl?tab=tana ＝店長で開くと棚卸タブが開いた状態（保存ボタンが見える）');
+  const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  ok(/id:'tanaoroshi', autoAdd:true, after:'monthlynum'/.test(src), '本部が保存した一覧にも「総括表の締め」の直後に自動で足す（autoAdd）');
+}
     ok(/id="tn_f5_u"[^>]*value="2808"/.test(hh) && /id="tn_d3_u"[^>]*value="222"/.test(hh) && /id="tn_f22_u"[^>]*value="1783"/.test(hh), '広島＝肉以外は税抜→税込（米 2,600→2,808・びーる 10月から税抜202→222）・たいやきは税込のまま（10/27 谷口さん回答）');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 23 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 7, '広島＝食材23・飲料7');
     ok(!/value="箸（袋）"/.test(hh) && !/value="ガスバーナー/.test(hh), '広島＝備品（箸・ガスバーナー）は入れない');
