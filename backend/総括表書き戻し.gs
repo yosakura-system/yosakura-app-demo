@@ -526,6 +526,8 @@ function skwb_supply_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果
 }
 /* ① 下見（書き込みなし）＝今月と前月ぶん */
 function 総括表書き戻し_下見() { return skwb_実行_(false, 40); }
+/* ①' 直近3日を全店に書く（エディタから手で流す用・2026-10-28。4:40の自動が止まった朝に、デプロイを待たずに最新のコードで書き戻す） */
+function 総括表書き戻し_直近3日_書込() { var r = skwb_実行_(true, 3); Logger.log(JSON.stringify({ 書く: r.書く, 書き直す: r.書き直す, 同じ: r.同じ, ずれ: r.ずれ, 止めた: r.止めた, 所要秒: r.所要秒 }, null, 1)); return r; }
 /* ② 書き込み実行 */
 function 総括表に書き戻す() {
   var lock = LockService.getScriptLock();
