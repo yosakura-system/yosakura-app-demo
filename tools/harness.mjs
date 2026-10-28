@@ -3891,7 +3891,7 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-
   location.hash = '#/app/pl';
   h = registry.app.innerHTML;
   ok(/棚卸（月末・口に入れる物すべて）/.test(h) && /食材・飲料・酒・油・調味料/.test(h), '棚卸タブが開き「口に入れる物すべて（食材・飲料・酒・油・調味料）」と明記（Ver0.8・2026-10-10 神田さん）');
-  ok(/数えるのは未開封だけ（開封済みは 0）/.test(h) && /仕込み前の和牛と鰻だけは、開封済みも数えます/.test(h) && /品名の（ ）の単位で入れてください/.test(h) && !/鰻（尾）/.test(h), '未開封のみ・和牛と鰻は例外・単位は品名の（ ）（Ver0.8→2026-10-29 kg/尾の決め打ちを外した）');
+  ok(/数えるのは未開封だけ（開封済みは 0）/.test(h) && /和牛（はかりで量って kg/.test(h) && /鰻（尾）/.test(h), '未開封のみ・和牛kg・鰻尾のルールが画面に書いてある（Ver0.8・2026-10-29 神田さん「kg・尾に統一」）');
   ok(!/0\.25／0\.5／0\.75／1/.test(h), '旧「0.25/0.5/0.75/1で概算」の説明文は出ない');
   ok(/包材や消耗品は数えません/.test(h), '包材・消耗品は対象外（PL別項目）と明記');
   ok(/id="tn_f0_n"/.test(h) && /id="tn_d0_n"/.test(h), '食材・飲料の品目行がある');
@@ -3999,7 +3999,7 @@ console.log('== 2026-10-28 月末棚卸＝今月の行から1回で棚卸タブ�
   run(() => { setLS('manager', '日本鰻世桜 京都祇園店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); localStorage.removeItem('yosakura_demo_monthly'); });
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
-    ok(/id="tn_f0_n"[^>]*value="鰻（匹）"/.test(hh) && /id="tn_f0_u"[^>]*value=""/.test(hh) && /id="tn_f13_n"[^>]*value="創味白だし（本）"/.test(hh), '京都祇園＝一覧の並び（先頭 鰻・末尾 創味白だし）・単価は空欄');
+    ok(/id="tn_f0_n"[^>]*value="鰻（尾）"/.test(hh) && /id="tn_f0_u"[^>]*value=""/.test(hh) && /id="tn_f13_n"[^>]*value="創味白だし（本）"/.test(hh), '京都祇園＝一覧の並び（先頭 鰻・末尾 創味白だし）・単価は空欄');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 14 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 10, '京都祇園＝食材14・飲料10');
     ok(/value="玉子（パック 10個）"/.test(hh) && /value="いくら ますこ（トレー 200g）"/.test(hh) && /value="ほうじ茶（袋 30包）"/.test(hh), '京都祇園＝単位は一覧のまま・（ ）は空白に');
     ok(/id="tn_d0_n"[^>]*value="ビール プレミアム（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="10"/.test(hh) && /id="tn_d2_n"[^>]*value="ノンアルコールビール（本）"/.test(hh) && /id="tn_d2_r"[^>]*data-r="8"/.test(hh) && /id="tn_d9_r"[^>]*data-r="8"/.test(hh), '京都祇園＝お酒10%・ノンアル/お茶8%'); }

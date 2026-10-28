@@ -7829,7 +7829,7 @@
        単位は一覧のまま（和牛＝包/100g・いくら＝トレー/200g・米＝袋/5kg・玉子＝パック/10個（購入は1箱/200個だがパックで数える）・ほうじ茶＝袋/30包）。品名の（ ）は空白に。
        単価＝「価格は明日以降に連絡」＝未着なので空（届いたら入れる）。税率＝お酒10%・ノンアル/ジュース/お茶8% */
     '日本鰻世桜 京都祇園店': [
-      ['鰻（匹）', null], ['和牛（包 100g）', null], ['いくら ますこ（トレー 200g）', null], ['米（袋 5kg）', null], ['玉子（パック 10個）', null],
+      ['鰻（尾）', null], ['和牛（kg）', null], ['いくら ますこ（トレー 200g）', null], ['米（袋 5kg）', null], ['玉子（パック 10個）', null],
       ['鰻タレ 西日本（箱）', null], ['鰻タレ 東日本（箱）', null],
       ['刻み海苔（袋）', null], ['冷凍柚子（袋）', null], ['冷凍わさび（袋）', null], ['ガリ（袋）', null], ['山椒（袋）', null], ['七味（袋）', null], ['創味白だし（本）', null],
       'd',
@@ -7929,9 +7929,9 @@
         <h3>${L({ ja:'棚卸（月末・口に入れる物すべて）', en:'Stocktake (month-end: everything edible)', vi:'Kiểm kê (cuối tháng: mọi thứ ăn uống được)' })} — ${esc(storeShort(store))}</h3>
         ${tnGuideRow}
         ${/* ★2026-10-31施行の新ルール（10/9 構築MTG決定・月末棚卸マニュアル Ver0.8）＝未開封だけ数える・開封済みは0。
-             仕込み前の和牛・鰻だけは開封済みも数える。旧「0.25/0.5/0.75/1で概算」（8/18決定）は廃止。
-             ★2026-10-29 神田さんOK＝単位は「品名の（ ）」で読む（店ごとに kg／包、尾／匹が違う＝京都祇園は和牛（包）・鰻（匹））。説明文から kg・尾の決め打ちを外した */''}
-        <p class="hint" style="display:block">${L({ ja:'月末に数えて入力してください。対象は口に入れる物すべて（食材・飲料・酒・油・調味料）。数えるのは未開封だけ（開封済みは 0）。仕込み前の和牛と鰻だけは、開封済みも数えます。数量は品名の（ ）の単位で入れてください（例：和牛（kg）は 500g＝0.5）。包材や消耗品は数えません（PLで別に管理します）。', en:'Count at month end. Everything edible counts (food, drinks, alcohol, oil, seasonings). Count unopened items only (opened = 0). Only raw wagyu and eel are counted even if opened. Enter quantities in the unit shown in ( ) after the item name (e.g. wagyu (kg): 500g = 0.5). Packaging and supplies are not counted (managed separately in P&L).', vi:'Cuối tháng đếm và nhập. Chỉ đếm hàng chưa mở (đã mở = 0). Riêng bò wagyu và lươn chưa sơ chế đếm cả khi đã mở. Nhập số lượng theo đơn vị trong ( ) sau tên món (vd: bò wagyu (kg): 500g = 0.5). Không đếm bao bì, vật tư.' })}</p>
+             仕込み前の和牛（kg）・鰻（尾）だけは開封済みも数える。旧「0.25/0.5/0.75/1で概算」（8/18決定）は廃止。
+             ★2026-10-29 神田さん「棚卸の単位は kg・尾に統一」＝京都祇園の既定品目も 和牛（kg）・鰻（尾）に合わせた（石本さんの一覧は包・匹だったが統一） */''}
+        <p class="hint" style="display:block">${L({ ja:'月末に数えて入力してください。対象は口に入れる物すべて（食材・飲料・酒・油・調味料）。数えるのは未開封だけ（開封済みは 0）。仕込み前の和牛（はかりで量って kg・例 500g＝0.5）と鰻（尾）だけは、開封済みも数えます。数量は単価の単位に合わせてください。包材や消耗品は数えません（PLで別に管理します）。', en:'Count at month end. Everything edible counts (food, drinks, alcohol, oil, seasonings). Count unopened items only (opened = 0). Only raw wagyu (weigh in kg, e.g. 500g = 0.5) and eel (pieces) are counted even if opened. Use the same unit as the unit price. Packaging and supplies are not counted (managed separately in P&L).', vi:'Cuối tháng đếm và nhập. Chỉ đếm hàng chưa mở (đã mở = 0). Riêng bò wagyu chưa sơ chế (cân, kg; 500g = 0.5) và lươn (con) đếm cả khi đã mở. Dùng cùng đơn vị với đơn giá. Không đếm bao bì, vật tư.' })}</p>
         <label class="fld"><span>${L({ ja:'対象月', en:'Month', vi:'Tháng' })}</span><input type="month" id="tn_ym" value="${esc(nowYm)}"></label>
         <input type="hidden" id="tn_fcount" value="${fRows.length}"><input type="hidden" id="tn_dcount" value="${dRows.length}">
         ${tnEmpty ? tnPaste : ''}
