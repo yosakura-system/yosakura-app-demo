@@ -335,8 +335,16 @@ function skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記�
     結果.一覧.push(row);
     var 済 = row.結果 === '書く' ? '書いた' : row.結果 === '書き直す' ? '書き直した' : 'ずれ';
     if (書き込む && 済 !== 'ずれ') {
-      sh.getRange(rr + 1, C.n + 1).setValue(name);
-      ['sh', 'sm', 'eh', 'em'].forEach(function (f) { if (fmls[rr][C[f]]) return; sh.getRange(rr + 1, C[f] + 1).setValue(want[f] == null ? '' : want[f]); });
+      /* ★2026-10-28 書けないセル（総括表の入力規則に無い値など）で例外になると、その店の書き戻しが丸ごと SERVER_ERROR で止まっていた（牛カツ長堀橋 10/26〜）。
+         1行ずつ try で包み、書けなかった行は「止めた」に理由つきで残して次へ進む */
+      try {
+        sh.getRange(rr + 1, C.n + 1).setValue(name);
+        ['sh', 'sm', 'eh', 'em'].forEach(function (f) { if (fmls[rr][C[f]]) return; sh.getRange(rr + 1, C[f] + 1).setValue(want[f] == null ? '' : want[f]); });
+      } catch (eK) {
+        結果.止めた.push(store + ' ' + e.date + '：勤怠' + (i + 1) + '（' + name + ' ' + (k.s || '') + '〜' + (k.e || '') + '）を書けない＝' + String(eK && eK.message || eK).slice(0, 120));
+        if (row.結果 === '書く') 結果.書く--; else 結果.書き直す--;
+        row.結果 = '止めた'; return;
+      }
     }
     if (書き込む) 記録.push([new Date(), store, e.date, '勤怠' + (i + 1), book.name, String(day), a1, curName, name, 済, 'アプリ日報']);
   });
