@@ -340,6 +340,7 @@ function skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記�
       try {
         sh.getRange(rr + 1, C.n + 1).setValue(name);
         ['sh', 'sm', 'eh', 'em'].forEach(function (f) { if (fmls[rr][C[f]]) return; sh.getRange(rr + 1, C[f] + 1).setValue(want[f] == null ? '' : want[f]); });
+        SpreadsheetApp.flush();   // ★入力規則の違反は次の読み書きまで遅れて出る（10/28 本番＝C77 氏名の選択肢に無い）。ここで出させて catch する
       } catch (eK) {
         結果.止めた.push(store + ' ' + e.date + '：勤怠' + (i + 1) + '（' + name + ' ' + (k.s || '') + '〜' + (k.e || '') + '）を書けない＝' + String(eK && eK.message || eK).slice(0, 120));
         if (row.結果 === '書く') 結果.書く--; else 結果.書き直す--;
