@@ -3891,7 +3891,7 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-
   location.hash = '#/app/pl';
   h = registry.app.innerHTML;
   ok(/棚卸（月末・口に入れる物すべて）/.test(h) && /食材・飲料・酒・油・調味料/.test(h), '棚卸タブが開き「口に入れる物すべて（食材・飲料・酒・油・調味料）」と明記（Ver0.8・2026-10-10 神田さん）');
-  ok(/数えるのは未開封だけ（開封済みは 0）/.test(h) && /和牛（はかりで量って kg/.test(h) && /鰻（尾）/.test(h), '未開封のみ・和牛kg・鰻尾のルールが画面に書いてある（Ver0.8）');
+  ok(/数えるのは未開封だけ（開封済みは 0）/.test(h) && /仕込み前の和牛と鰻だけは、開封済みも数えます/.test(h) && /品名の（ ）の単位で入れてください/.test(h) && !/鰻（尾）/.test(h), '未開封のみ・和牛と鰻は例外・単位は品名の（ ）（Ver0.8→2026-10-29 kg/尾の決め打ちを外した）');
   ok(!/0\.25／0\.5／0\.75／1/.test(h), '旧「0.25/0.5/0.75/1で概算」の説明文は出ない');
   ok(/包材や消耗品は数えません/.test(h), '包材・消耗品は対象外（PL別項目）と明記');
   ok(/id="tn_f0_n"/.test(h) && /id="tn_d0_n"/.test(h), '食材・飲料の品目行がある');
@@ -3971,6 +3971,8 @@ console.log('== 2026-10-28 月末棚卸＝今月の行から1回で棚卸タブ�
   ok(/data-tsub="pl\?tab=tana"/.test(mo) && /月末棚卸/.test(mo), '今月に「月末棚卸」の行があり、押すと棚卸タブ（pl?tab=tana）を直接開く');
   ok(mo.indexOf('総括表の締め') >= 0 && mo.indexOf('総括表の締め') < mo.indexOf('月末棚卸'), '並び＝総括表の締めの直後（締めの行は残す）');
   ok(!/class="pb-row done"[^>]*data-tsub="pl\?tab=tana"/.test(mo), '棚卸をまだ保存していない月は未提出');
+  { const row = mo.slice(mo.indexOf('data-tsub="pl?tab=tana"')); const seg = row.slice(0, row.indexOf('</button>') > 0 ? row.indexOf('</button>') : 3000);
+    ok(/pb-min">目安<b>40分<\/b>/.test(seg), '月末棚卸の目安は40分（数える30〜40分＋入力10分・神田さん 2026-10-29）'); }
   const ym = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store: S, ym, close: 1000, closeDetail: [{ k:'f0', name:'米', u:100, q:10, amt:1000 }], t: Date.now() }])); });   // run は端末を作り直すので役割も入れ直す
   location.hash = '#/home'; h = registry.app.innerHTML; mo = h.slice(h.indexOf('id="pbmo"'));
