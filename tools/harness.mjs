@@ -3984,6 +3984,15 @@ console.log('== 2026-10-28 月末棚卸＝今月の行から1回で棚卸タブ�
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 23 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 7, '広島＝食材23・飲料7');
     ok(!/value="箸（袋）"/.test(hh) && !/value="ガスバーナー/.test(hh), '広島＝備品（箸・ガスバーナー）は入れない');
     ok(/id="tn_d3_n"[^>]*value="びーる（本）"/.test(hh) && /id="tn_d3_r"[^>]*data-r="10"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), '広島＝お酒10%・お茶8%'); }
+  // 2026-10-28 心斎橋＝総括表（202609）棚卸表の品目と単価が最初から入る（神田さん「空白の店舗は過去の総括表から拾ってアプリに」）
+  run(() => { setLS('manager', '寿司世桜 心斎橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); localStorage.removeItem('yosakura_demo_monthly'); });
+  location.hash = '#/app/pl';
+  { const hh = registry.app.innerHTML;
+    ok(/id="tn_f0_n"[^>]*value="チョコペン（本）"/.test(hh) && /id="tn_f0_u"[^>]*value="110"/.test(hh) && /id="tn_f54_n"[^>]*value="本まぐろブロック（本）"/.test(hh) && /id="tn_f54_u"[^>]*value="6500"/.test(hh), '心斎橋＝総括表の並び・単価（先頭チョコペン 110・末尾 本まぐろブロック 6500）');
+    ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 55 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 28, '心斎橋＝食材55（①29＋②26）・飲料28');
+    ok(!/value="花火（箱）"/.test(hh), '心斎橋＝花火（食材でない）は入れない');
+    ok(/value="海苔 1\/3切り（パック）"/.test(hh) && /value="海苔 2つ切り（パック）"/.test(hh) && /value="神戸ワインセレクト 赤（本）"/.test(hh), '心斎橋＝品名の（ ）は空白に（単位欄と区別）');
+    ok(/id="tn_d8_n"[^>]*value="ビール（本）"/.test(hh) && /id="tn_d8_u"[^>]*value="221"/.test(hh) && /id="tn_d8_r"[^>]*data-r="10"/.test(hh) && /id="tn_d0_n"[^>]*value="炭酸水（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh) && /id="tn_d26_n"[^>]*value="のんある梅酒（本）"/.test(hh) && /id="tn_d26_r"[^>]*data-r="8"/.test(hh), '心斎橋＝お酒10%・炭酸水／のんある梅酒8%'); }
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   // ③b 画面304＝税率ボタンで 10%→8% に切り替えると金額が変わる（お茶など）
