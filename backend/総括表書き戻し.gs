@@ -291,6 +291,8 @@ function skwb_実行_(書き込む, days, only) {
       });
       /* ★勤怠（アプリの日報・任意）＝総括表の勤怠の行へ（氏名・出勤の時/分・退勤の時/分。合計・外時間・金額は式）2026-10-15 */
       if (e.app && Array.isArray(e.app.kintai) && e.app.kintai.length) skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);
+      /* ★人件費（アプリ日報「人件費（当日・円）」）→ 勤怠の「当日計・金額計」へ（2026-10-28 増田さん「勤怠欄は使う店だけ。1日の人件費の金額が分かればよい」＝総括表の注記「I92に直接金額を入力すれば人件費率が出る」どおり） */
+      if (e.app && skwb_num_(e.app.laborcost)) skwb_laborcost_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果, 記録, 書き込む);
       /* ★国別（レジの客層「国籍」＝伝票明細の集計 pcty）→ 顧客情報の「国」の行の下の組数・人数へ（2026-10-15 神田さん「レジ客層が主・転記するだけ」） */
       if (e.usen && e.usen.pcty) skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);
       else if (e.app && e.app.cty && typeof e.app.cty === 'object') skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む);   // ★レジの無い店＝日報の国別（2026-10-15）
@@ -306,6 +308,45 @@ function skwb_実行_(書き込む, days, only) {
   return 結果;
 }
 
+/* 人件費（アプリ日報の「人件費（当日・円）」）→ 勤怠関連の「当日計」行の「金額計」の列（総括表Ver.3.0＝I92）。
+   総括表の注記＝「別で人件費管理されてる場合、ここに細かい入力は不要。当日計・金額計（I92）のセルに直接金額を入力すれば人件費率が表示されます」
+   ・セルは既定で =SUM(T77:U89)（勤怠の行のPA金額の合計）の式。勤怠の行（氏名）が1つも埋まっていない日だけ、その式を金額で置き換える
+   ・勤怠の行が埋まっている日は書かない（式が消えて合計が壊れる）＝止めたに1回
+   ・店が手で入れた金額と違えば「ずれ」（上書きしない・メモ）。前回こちらが書いた値なら書き直す */
+function skwb_laborcost_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果, 記録, 書き込む) {
+  var norm = function (v) { return String(v == null ? '' : v).normalize('NFKC').replace(/[\s　]/g, ''); };
+  var want = Math.round(skwb_num_(e.app.laborcost) || 0); if (!want) return;
+  var hdr = -1, nameRow = -1;
+  for (var r = 40; r < vals.length; r++) if (norm(vals[r][1]) === '氏名' && vals[r].some(function (x) { return norm(x).indexOf('勤務時間') !== -1; })) { nameRow = r; break; }
+  var amtCol = -1, totRow = -1;
+  for (var r2 = (nameRow >= 0 ? nameRow + 1 : 60); r2 < vals.length; r2++) {
+    for (var c = 0; c < vals[r2].length; c++) if (norm(vals[r2][c]) === '金額計') { amtCol = c; hdr = r2; break; }
+    if (hdr >= 0) break;
+  }
+  if (hdr >= 0) for (var r3 = hdr + 1; r3 < Math.min(vals.length, hdr + 3); r3++) if (norm(vals[r3][1]) === '当日計') { totRow = r3; break; }
+  if (amtCol < 0 || totRow < 0) { var w0 = store + ' ' + book.name + '：勤怠の「金額計」「当日計」が見つからない（人件費 ' + want + '円）'; if (結果.止めた.indexOf(w0) === -1) 結果.止めた.push(w0); return; }
+  if (nameRow >= 0) {
+    var filled = 0;
+    for (var r4 = nameRow + 1; r4 < hdr; r4++) { if (norm(vals[r4][1]) === '当日計') break; if (norm(vals[r4][2]) !== '') filled++; }
+    if (filled) { var w1 = store + ' ' + e.date + '：勤怠の行に氏名が ' + filled + ' 人入っているので、人件費の金額（' + want + '円）は書かない（金額計は勤怠の合計の式のまま）'; if (結果.止めた.indexOf(w1) === -1) 結果.止めた.push(w1); return; }
+  }
+  var a1 = skwb_a1_(totRow, amtCol); var cur = vals[totRow][amtCol]; var key = book.name + '|' + day + '|' + a1;
+  var isSumFormula = /^=SUM\(/i.test(String(fmls[totRow][amtCol] || ''));
+  var row = { 店舗: store, 日付: e.date, 項目: '人件費（当日）', セル: day + '!' + a1, いま: isSumFormula ? '（勤怠の合計の式）' : (cur === '' ? '（空欄）' : cur), 書く値: want, 出どころ: 'アプリ日報' };
+  if (fmls[totRow][amtCol] && !isSumFormula) { row.結果 = '式なので書かない'; 結果.一覧.push(row); return; }
+  if (isSumFormula || cur === '' || cur == null) { row.結果 = '書く'; 結果.書く++; }
+  else if (skwb_num_(cur) === want) { row.結果 = '同じ'; 結果.同じ++; 結果.一覧.push(row); return; }
+  else if (前回[key] != null && skwb_num_(前回[key]) === skwb_num_(cur)) { row.結果 = '書き直す'; 結果.書き直す++; }
+  else { row.結果 = 'ずれ（上書きしない）'; 結果.ずれ++; }
+  結果.一覧.push(row);
+  var 済 = row.結果 === '書く' ? '書いた' : row.結果 === '書き直す' ? '書き直した' : 'ずれ';
+  if (書き込む && 済 !== 'ずれ') { sh.getRange(totRow + 1, amtCol + 1).setValue(want); if (skwb_isOurNote_(notes[totRow][amtCol])) sh.getRange(totRow + 1, amtCol + 1).setNote(''); }
+  if (書き込む && 済 === 'ずれ') {
+    var txt = SKWB_NOTE_TAGS.app + 'アプリ日報では人件費 ' + Number(want).toLocaleString() + '円です（' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'M/d') + ' 自動確認）。\nどちらが正しいか、ご確認ください。';
+    if (String(notes[totRow][amtCol] || '') !== txt) sh.getRange(totRow + 1, amtCol + 1).setNote(txt);
+  }
+  if (書き込む) 記録.push([new Date(), store, e.date, '人件費（当日）', book.name, String(day), a1, isSumFormula ? '(式)' : cur, want, 済, 'アプリ日報']);
+}
 /* 勤怠の行＝「氏名」の見出し（同じ行に「勤務時間」）の下、最大13行。列＝C 氏名／G 出勤の時／I 出勤の分／L 退勤の時／N 退勤の分（総括表Ver.3.0 で確認）。
    1行を1単位で扱う＝氏名が空なら書く・同じ氏名で時刻も同じなら同じ・前回こちらが書いた氏名なら書き直す・それ以外はずれ（上書きしない） */
 function skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む) {
