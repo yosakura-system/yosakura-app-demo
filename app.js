@@ -4423,13 +4423,13 @@
         {ja:'ダスターの洗浄・干し',en:'Wash dusters',vi:'Giặt khăn lau',
          d:{ja:'各種ダスターはきれいに洗浄し、乾きやすいように干す'}}
       ]},
-      { g:{ja:'lunch後：退勤・戸締り',en:'After lunch: clock out',vi:'Sau trưa: tan ca'}, items:[
-        {ja:'退勤の打刻',en:'Clock out',vi:'Chấm công ra',
-         d:{ja:'丁寧に手を洗い・退勤の打刻をする（打刻をしてから着替えをする）'}},
+      { g:{ja:'lunch後：戸締り・退勤',en:'After lunch: lock up & clock out',vi:'Sau trưa: khóa cửa & tan ca'}, items:[
         {ja:'電気・ガス・エアコン・給湯器をOFF',en:'Power off utilities',vi:'Tắt điện/ga/điều hòa',
          d:{ja:'店内電気・ガスの元栓・エアコン・給湯器をOFF（店舗前・換気扇はON）'}},
         {ja:'鍵を閉め、キーボックスへ',en:'Lock up & key box',vi:'Khóa cửa & hộp chìa',
-         d:{ja:'鍵を閉め、キーボックスに入れて帰る'}}
+         d:{ja:'鍵を閉め、キーボックスに入れて帰る'}},
+        {ja:'退勤の打刻（戸締りのあと）',en:'Clock out (after locking up)',vi:'Chấm công ra (sau khi khóa cửa)',
+         d:{ja:'施錠まで終えてから、速やかに着替えて各店の勤怠システムで退勤の打刻をする（着替えも勤務時間・10/28 本部決定）'}}
       ]},
       { g:{ja:'dinner前：出勤・準備',en:'Before dinner: clock-in & prep',vi:'Trước tối: vào ca'}, items:[
         {ja:'タイムカード打刻（dinner）',en:'Clock in (dinner)',vi:'Chấm công (tối)',
@@ -4525,13 +4525,13 @@
         {ja:'制服の片付け',en:'Uniforms away',vi:'Cất đồng phục',
          d:{ja:'ハンガーに制服をかけ、ファブリーズ（換気扇の下にかける）'}}
       ]},
-      { g:{ja:'退勤・戸締り',en:'Clock out & lock up',vi:'Tan ca & khóa cửa'}, items:[
-        {ja:'退勤の打刻',en:'Clock out',vi:'Chấm công ra',
-         d:{ja:'丁寧に手を洗い・退勤の打刻をする（打刻をしてから着替えをする）'}},
+      { g:{ja:'戸締り・退勤',en:'Lock up & clock out',vi:'Khóa cửa & tan ca'}, items:[
         {ja:'電気・ガスの元栓・エアコン・給湯器をOFF',en:'Power off utilities',vi:'Tắt điện/ga/điều hòa',
          d:{ja:'看板は店舗内に入れる'}},
         {ja:'鍵を閉め、キーボックスに入れて帰る',en:'Lock up & key box',vi:'Khóa cửa & hộp chìa',
-         d:{ja:'鍵が閉まっているか確認'}}
+         d:{ja:'鍵が閉まっているか確認'}},
+        {ja:'退勤の打刻（戸締りのあと）',en:'Clock out (after locking up)',vi:'Chấm công ra (sau khi khóa cửa)',
+         d:{ja:'施錠まで終えてから、速やかに着替えて各店の勤怠システムで退勤の打刻をする（着替えも勤務時間・10/28 本部決定）'}}
       ]}
     ]
   };

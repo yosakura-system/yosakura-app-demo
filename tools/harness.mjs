@@ -7702,6 +7702,12 @@ console.log('== 2026-10-27 本部への質問の推奨案（神田さん了承�
   ok((src.match(/ja:'シャッター・鍵・キーボックス（施錠のあとに押す）'/g) || []).length === 2 && !/ja:'退勤・戸締り',en:'Clock out & lock up',vi:'Chấm công & khóa cửa'/.test(src),
      'CLOSEの最後＝「シャッター・鍵・キーボックス（施錠のあとに押す）」（旧「退勤・戸締り」・打刻を含めない）');
   ok(!/d:\{ja:'退勤の打刻／シャッター/.test(src), 'CLOSEの説明から打刻を外した（終えた時刻は日報の退勤）');
+  // 手巻き（難波）の初期チェックリスト＝退勤の打刻は戸締りのあと（10/28 本部決定・10/29 神田OK）。lunch後と閉店の2か所
+  ok((src.match(/ja:'退勤の打刻（戸締りのあと）'/g) || []).length === 2 && !/打刻をしてから着替え/.test(src), '手巻きの初期チェック＝「退勤の打刻（戸締りのあと）」が2か所・旧「打刻をしてから着替え」は無い');
+  for (const g of ["g:{ja:'lunch後：戸締り・退勤'", "g:{ja:'戸締り・退勤'"]) {
+    const i = src.indexOf(g); const seg = src.slice(i, src.indexOf(']}', i));
+    ok(i > 0 && seg.indexOf('鍵を閉め') > 0 && seg.indexOf('退勤の打刻') > seg.indexOf('鍵を閉め') && seg.indexOf('をOFF') < seg.indexOf('鍵を閉め'), g + '：電源OFF→鍵→退勤の打刻の順');
+  }
   // D3 発注した→届くまで「発注済み」。届く前に数えても「発注が必要」に戻らない
   const S = '牛カツ世桜 長堀橋店'; const t0 = Date.now();
   const dk = new Date(t0 + 9 * 3600e3).toISOString().slice(0, 10);
