@@ -5769,6 +5769,37 @@ console.log('== SVチェック＝実施時間・確認方法・表示する軸�
   run(() => { setLS('hq', 'all', 'ja'); });
 }
 
+console.log('== SVレポートに「前回」＝同じ店の直近のチェックのトータルと各項目の○×（v473・2026-10-31 高原社長／神田さん「旧アプリの結果も反映」）==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const sv = {};
+  // 前々回（9/17・旧アプリの形そのまま）／前回（10/6）／今回（10/29）。消した日（del:1・v 空）は数えない
+  [8, 16, 29, 48].forEach(no => sv[`${S}|2026-09-17|${no}`] = { v:'ok', by:'神田', t:1 });
+  sv[`${S}|2026-10-06|8`] = { v:'ok', by:'神田', t:1 }; sv[`${S}|2026-10-06|16`] = { v:'ok', by:'神田', t:1 }; sv[`${S}|2026-10-06|18`] = { v:'ng', memo:'石鹸が空', by:'神田', t:1 };
+  sv[`${S}|2026-10-06|29`] = { v:'ok', by:'神田', t:1 }; sv[`${S}|2026-10-06|88`] = { v:'na', by:'神田', t:1 }; sv[`${S}|2026-10-06|meta`] = { summary:'前回の総評', time:'13:00' };
+  sv[`${S}|2026-10-20|8`] = { v:'', memo:'', del:1, by:'神田', t:2 }; sv[`${S}|2026-10-20|meta`] = { summary:'', del:1, by:'神田', t:2 };
+  sv[`${S}|2026-10-29|8`] = { v:'ng', memo:'軒下のライト', by:'神田', t:3 }; sv[`${S}|2026-10-29|16`] = { v:'ng', memo:'石鹸が半分', by:'神田', t:3 }; sv[`${S}|2026-10-29|18`] = { v:'ok', by:'神田', t:3 };
+  sv[`${S}|2026-10-29|29`] = { v:'ok', memo:'自然な会話', by:'神田', t:3 }; sv[`${S}|2026-10-29|88`] = { v:'ng', by:'神田', t:3 }; sv[`${S}|2026-10-29|meta`] = { summary:'今回の総評', time:'19:40' };
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_sv_sel', JSON.stringify({ store:S, date:'2026-10-29', tab:'report', axis:'all' })); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(sv)); });
+  location.hash = '#/app/hqcheck?tab=report&date=2026-10-29&store=' + encodeURIComponent(S);
+  let h = registry.app.innerHTML;
+  ok(/前回：2026\/10\/06（火）　参考スコア \d+%（○3／×1／対象外1）/.test(h), 'レポート文に「前回」＝同じ店の直近（10/6）のトータル（消した10/20は飛ばす・9/17は前々回なので出ない）');
+  ok(/No\.8 看板の電気[^\n]*（前回 ○）/.test(h) && /No\.16 トイレ[^\n]*（前回 ○）/.test(h) && /No\.88 [^\n]*（前回 －）/.test(h), '× の各項目に前回の○×（○・－）が付く');
+  ok(/事前ケア・中間ケア[^\n]*自然な会話（前回 ○）/.test(h), '良かった点にも前回の○×が付く');
+  ok(/■ 前回×→今回○：No\.18 /.test(h) && /■ 前回○→今回×：No\.8 看板の電気がついているか／No\.16 トイレ/.test(h), '前回からの変化（×→○・○→×）を1行ずつ');
+  // 初回の店＝「前回：なし」
+  location.hash = '#/app/hqcheck?tab=report&date=2026-09-17&store=' + encodeURIComponent(S);
+  h = registry.app.innerHTML;
+  ok(/前回：なし（この店は今回が初回）/.test(h) && !/（前回 /.test(h), '前の記録が無い日＝「前回：なし」。項目にも付かない');
+  // 他の店の記録は混ざらない
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_sv_sel', JSON.stringify({ store:S, date:'2026-10-29', tab:'report', axis:'all' })); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] })); const o = Object.assign({}, sv); o['日本料理世桜本店|2026-10-27|8'] = { v:'ng', by:'神田', t:1 }; localStorage.setItem('yosakura_demo_svcheck', JSON.stringify(o)); });
+  location.hash = '#/app/hqcheck?tab=report&date=2026-10-29&store=' + encodeURIComponent(S);
+  h = registry.app.innerHTML;
+  ok(/前回：2026\/10\/06/.test(h), '別の店の記録（本店 10/27）は前回に数えない');
+  ok(/function svPrevVisit_/.test(code) && /前回 \$\{pv\.date\.replace/.test(code) && /g\.fillText\(pm \? `前回 \$\{pm\}` : '前回 　', M \+ W - 96, y\)/.test(code), 'PDF＝スコア枠に前回のトータル、37項目の一覧の右に前回の○×');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
 console.log('== SVチェック＝指摘の写真は判定前でも貼れる・基準欄と分ける（2026-09-17 神田さん実機）==');
 {
   const S = '牛カツ世桜 長堀橋店';
@@ -7489,7 +7520,7 @@ console.log('== 2026-10-22 神田さん「本部管理画面で37項目をアプ
   ok(hearN === 5 && /no:95,[^\n]*hear:true/.test(code) && /no:32,[^\n]*hear:true/.test(code) && /no:111,[^\n]*hear:true/.test(code) && /no:99,[^\n]*hear:true/.test(code) && /no:101,[^\n]*hear:true/.test(code), 'ソース＝聞く印は5項目（95・32・111・99・101＝PDFの10・12・33・34・35）');
   location.hash = '#/app/hqcheck?tab=D'; h = registry.app.innerHTML;
   ok(/id="sv_menu"/.test(h) && /id="sv_orderAt"/.test(h) && /data-svno="28"/.test(h) && /data-svno="93"/.test(h), 'D 提供・実食＝実食メニュー／注文→提供時刻の欄＋No.28・93');
-  ok(/band\('37項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）'\)/.test(code) && /項目＝店舗の出来栄え基準 37項目（2026-10-22）/.test(code), 'PDFレポート＝37項目の結果一覧（A〜H順）と注記');
+  ok(/37項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）/.test(code) && /右＝前回 \$\{pv\.date\.slice\(5\)/.test(code) && /項目＝店舗の出来栄え基準 37項目（2026-10-22）/.test(code), 'PDFレポート＝37項目の結果一覧（A〜H順）と注記');
   ok(/const base = `世桜_SVチェック_\$\{svState\.store\}_\$\{svState\.date\}`/.test(code) && /title: '世桜 SVチェック'/.test(code), 'PDFのファイル名・共有の題＝SVチェック');
   ok(/phs\.length < 6 \? `<label class="svph-add">/.test(code), '改善点の写真＝どの項目にも6枚まで貼れる（そのまま）');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_theme'); });

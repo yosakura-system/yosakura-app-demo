@@ -5644,6 +5644,21 @@
     return { num, den, pct: den ? Math.round(num / den * 100) : null, ok, ng, na, ans, expOk, expN, total: SV_ITEMS.length };
   }
   const svWd = (d) => { try { return ['日','月','火','水','木','金','土'][new Date(d + 'T00:00:00').getDay()]; } catch (e) { return ''; } };
+  /* ★v473（2026-10-31 高原社長「トータル点数の先月分と、各項目の先月の○×も」）＝同じ店の、いま見ている日より前で一番新しい訪問（回答が1つでもある日）。
+     旧・巡回チェック（9/16〜）の記録も同じ形（店舗|日付|No）なので、そのまま前回として出る。消した日（del:1＝v が空）は数えない */
+  function svPrevVisit_(store, date) {
+    const all = getSv(); const days = {};
+    Object.keys(all).forEach(k => {
+      const p = k.split('|'); if (p.length < 3 || p[0] !== store) return;
+      const d = p[1], no = p.slice(2).join('|'); if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d >= date) return;
+      const e = all[k] || {}; if (no === 'meta' || !e.v) return;
+      (days[d] = days[d] || {})[no] = e;
+    });
+    const ds = Object.keys(days).sort(); if (!ds.length) return null;
+    const d = ds[ds.length - 1]; const ans = days[d];
+    const mk = (no) => { const v = (ans[no] || {}).v; return v === 'ok' ? '○' : v === 'ng' ? '×' : v === 'na' ? '－' : ''; };
+    return Object.assign({ date: d, ans, mk }, svScoreOf(no => ans[no] || null));
+  }
   /* ---------- 履歴＝保存されている全回答（店舗|日付|No）を「訪問」ごとにまとめる（2026-09-17 神田さん）
      結果はすでに1項目1行で本部データに残っている（svcheck・90日削除の保護あり）。ここではそれを店舗×日付に束ね、
      月1回の巡回を年間の時系列で見る・店舗どうしを比べる、ための形にする。 */
@@ -5738,10 +5753,20 @@
     const who = [...new Set(SV_ITEMS.map(it => (svAns(it.no) || {}).by).filter(Boolean))].join('・');
     L1.push(`確認者：${who || '本部'}　方法：${svMethodLabel_(m.method)}` + (m.time ? `　実施：${m.time}` : '') + (m.menu ? `　実食：${m.menu}` : '') + (m.orderAt && m.servedAt ? `（注文${m.orderAt}→提供${m.servedAt}）` : ''));
     L1.push(`結果：原本項目 ○${sc.ok}／×${sc.ng}／対象外${sc.na}` + (sc.pct != null ? `　参考スコア ${sc.pct}%` : '') + (sc.expN ? `　体験 ○${sc.expOk}/${sc.expN}` : ''));
+    /* v473 前回＝同じ店の直近のチェック（トータルと、下の各項目に（前回 ○／×／－）） */
+    const pv = svPrevVisit_(svState.store, svState.date);
+    L1.push(pv ? `前回：${pv.date.replace(/-/g, '/')}（${svWd(pv.date)}）　参考スコア ${pv.pct != null ? pv.pct + '%' : '—'}（○${pv.ok}／×${pv.ng}／対象外${pv.na}）` : '前回：なし（この店は今回が初回）');
+    const pvMk = (no) => { const k = pv ? pv.mk(no) : ''; return k ? `（前回 ${k}）` : ''; };
     const good = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ok' && (a.memo || '').trim(); });
     const bad  = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ng'; });
-    if (good.length) { L1.push('■ 良かった点'); good.forEach(it => L1.push(`・${it.t.split('（')[0]}：${svAns(it.no).memo.trim()}`)); }
-    if (bad.length)  { L1.push('■ 気になる点（×）'); bad.forEach(it => { const a = svAns(it.no); L1.push(`・${typeof it.no === 'number' ? 'No.' + it.no + ' ' : ''}${it.t.split('（')[0]}` + ((a.memo || '').trim() ? `：${a.memo.trim()}` : '')); }); }
+    if (good.length) { L1.push('■ 良かった点'); good.forEach(it => L1.push(`・${it.t.split('（')[0]}：${svAns(it.no).memo.trim()}${pvMk(it.no)}`)); }
+    if (bad.length)  { L1.push('■ 気になる点（×）'); bad.forEach(it => { const a = svAns(it.no); L1.push(`・${typeof it.no === 'number' ? 'No.' + it.no + ' ' : ''}${it.t.split('（')[0]}` + ((a.memo || '').trim() ? `：${a.memo.trim()}` : '') + pvMk(it.no)); }); }
+    if (pv) {
+      const up = SV_ITEMS.filter(it => pv.mk(it.no) === '×' && (svAns(it.no) || {}).v === 'ok');
+      const down = SV_ITEMS.filter(it => pv.mk(it.no) === '○' && (svAns(it.no) || {}).v === 'ng');
+      if (up.length) L1.push('■ 前回×→今回○：' + up.map(it => (typeof it.no === 'number' ? 'No.' + it.no + ' ' : '') + it.t.split('（')[0]).join('／'));
+      if (down.length) L1.push('■ 前回○→今回×：' + down.map(it => (typeof it.no === 'number' ? 'No.' + it.no + ' ' : '') + it.t.split('（')[0]).join('／'));
+    }
     if ((m.summary || '').trim()) { L1.push('■ 総評'); L1.push(m.summary.trim()); }
     L1.push('※ 番号は【世桜】店舗管理チェックシート_原本のNo。採点方式は本部で確定待ちのため点数は参考です');
     return L1.join('\n');
@@ -5982,9 +6007,12 @@
     g.font = `20px ${F}`; g.fillStyle = '#6B635A';
     const ngPh = SV_PHASES.map(([k, l]) => { const n = SV_ITEMS.filter(i => i.ph === k && (svAns(i.no) || {}).v === 'ng').length; return n ? `${L(l)} ${n}` : ''; }).filter(Boolean).join('　');
     g.fillText(ngPh ? `× の内訳：${ngPh}` : '× はありません', M + 330, y + 62);
+    /* v473 前回（同じ店の直近のチェック）＝トータルを並べる */
+    const pv = svPrevVisit_(svState.store, svState.date);
+    g.fillText(pv ? `前回 ${pv.date.replace(/-/g, '/')}（${svWd(pv.date)}）：${pv.pct != null ? pv.pct + '%' : '—'}　○ ${pv.ok}　× ${pv.ng}　対象外 ${pv.na}` : '前回：なし（この店は今回が初回）', M + 330, y + 92);
     y += 136;
     /* ★2026-10-22 37項目の結果を全部並べる（店に渡した出来栄え基準と同じ順・番号）＝○×だけ先に全体が見える */
-    band('37項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）');
+    band(pv ? `37項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）　右＝前回 ${pv.date.slice(5).replace('-', '/')}` : '37項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）');
     SV_PHASES.forEach(([k, l]) => {
       const its = SV_ITEMS.filter(i => i.ph === k); if (!its.length) return;
       ensure(32); g.fillStyle = '#6B635A'; g.font = `bold 20px ${F}`; g.fillText(L(l), M, y); y += 28;
@@ -5992,7 +6020,9 @@
         const a = svAns(it.no) || {}; const mk = a.v === 'ok' ? '○' : a.v === 'ng' ? '×' : a.v === 'na' ? '－' : '　';
         const col = a.v === 'ng' ? '#8E354A' : a.v === 'ok' ? '#3f6b3a' : '#6B635A';
         ensure(26); g.font = `bold 20px ${F}`; g.fillStyle = col; g.fillText(mk, M + 10, y);
-        g.font = `19px ${F}`; g.fillStyle = '#1A1A1A'; g.fillText(`${typeof it.no === 'number' ? 'No.' + it.no : '体験'}　${it.t}${it.hear ? '　（聞く）' : ''}`, M + 44, y); y += 26;
+        g.font = `19px ${F}`; g.fillStyle = '#1A1A1A'; g.fillText(`${typeof it.no === 'number' ? 'No.' + it.no : '体験'}　${it.t}${it.hear ? '　（聞く）' : ''}`, M + 44, y);
+        if (pv) { const pm = pv.mk(it.no); g.font = `bold 20px ${F}`; g.fillStyle = pm === '×' ? '#8E354A' : pm === '○' ? '#3f6b3a' : '#6B635A'; g.fillText(pm ? `前回 ${pm}` : '前回 　', M + W - 96, y); }
+        y += 26;
       });
       y += 6;
     });
