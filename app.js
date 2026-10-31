@@ -7904,22 +7904,23 @@
     const rec = getMonthly().find(r => r.store === store && r.ym === nowYm) || {};
     const block = (type, label, rows) => `
       <div class="idlabel" style="margin-top:${type === 'f' ? '4' : '14'}px">${L(label)}</div>
-      <div style="display:flex;gap:6px;font-size:11px;color:#8a8478;margin-bottom:4px">
-        <span style="flex:1.2;min-width:0">${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span>
-        <span style="width:52px;flex:none;text-align:center">${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span>
-        <span style="flex:0.7;min-width:0;text-align:right">${L({ ja:'単価（税込）', en:'Unit ¥ (incl.)', vi:'Đơn giá (gồm thuế)' })}</span>
-        <span style="width:44px;flex:none;text-align:center">${L({ ja:'税率', en:'Tax', vi:'Thuế' })}</span>
-        <span style="flex:0.55;min-width:0;text-align:right">${L({ ja:'数量', en:'Qty', vi:'SL' })}</span>
-        <span style="width:64px;flex:none;text-align:right">${L({ ja:'税抜額', en:'Excl. tax', vi:'Chưa thuế' })}</span>
+      ${/* ★v472（2026-10-31 神田さん「単価も見にくい」）＝見出しと行を同じクラス（styles.css .tn-*）で幅をそろえ、760px以下は2行に折り返して各欄に小さな見出しを付ける（在庫の .zk-edit と同じ型） */''}
+      <div class="tn-head">
+        <span class="tn-n">${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span>
+        <span class="tn-un">${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span>
+        <span class="tn-u">${L({ ja:'単価（税込）', en:'Unit ¥ (incl.)', vi:'Đơn giá (gồm thuế)' })}</span>
+        <span class="tn-r">${L({ ja:'税率', en:'Tax', vi:'Thuế' })}</span>
+        <span class="tn-q">${L({ ja:'数量', en:'Qty', vi:'SL' })}</span>
+        <span class="tn-a">${L({ ja:'税抜額', en:'Excl. tax', vi:'Chưa thuế' })}</span>
       </div>
       ${rows.map((r, i) => `
-        <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
-          <input type="text" id="tn_${type}${i}_n" value="${esc(tnSplitUnit(r.n).name)}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên hàng' })}" style="flex:1.2;min-width:0;padding:10px 8px">
-          <input type="text" id="tn_${type}${i}_un" value="${esc(r.un != null && String(r.un).trim() !== '' ? String(r.un).trim() : tnSplitUnit(r.n).un)}" placeholder="${L({ ja:'尾・kg', en:'unit', vi:'ĐV' })}" style="width:52px;flex:none;text-align:center;padding:10px 4px">
-          <input type="text" inputmode="numeric" id="tn_${type}${i}_u" value="${r.u != null ? esc(String(r.u)) : ''}" placeholder="0" style="flex:0.7;min-width:0;text-align:right;padding:10px 8px">
-          <button type="button" class="mini" id="tn_${type}${i}_r" data-r="${r.r === 10 || r.r === 8 ? r.r : (type === 'd' ? 10 : 8)}" title="${esc(L({ ja:'押すと 8%／10% が切り替わります', en:'Tap to switch 8% / 10%', vi:'Chạm để đổi 8% / 10%' }))}" style="width:44px;flex:none;padding:8px 0;text-align:center">${r.r === 10 || r.r === 8 ? r.r : (type === 'd' ? 10 : 8)}%</button>
-          <input type="text" inputmode="decimal" id="tn_${type}${i}_q" value="${r.q != null ? esc(String(r.q)) : ''}" placeholder="0" style="flex:0.55;min-width:0;text-align:right;padding:10px 8px">
-          <span id="tn_${type}${i}_amt" class="muted" style="width:64px;flex:none;text-align:right;font-size:12px;overflow:hidden;text-overflow:ellipsis">—</span>
+        <div class="tn-row">
+          <label class="tn-c tn-n"><span class="tn-l">${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span><input type="text" id="tn_${type}${i}_n" value="${esc(tnSplitUnit(r.n).name)}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên hàng' })}"></label>
+          <label class="tn-c tn-un"><span class="tn-l">${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span><input type="text" id="tn_${type}${i}_un" value="${esc(r.un != null && String(r.un).trim() !== '' ? String(r.un).trim() : tnSplitUnit(r.n).un)}" placeholder="${L({ ja:'尾・kg', en:'unit', vi:'ĐV' })}"></label>
+          <label class="tn-c tn-u"><span class="tn-l">${L({ ja:'単価（税込）', en:'Unit ¥ (incl.)', vi:'Đơn giá' })}</span><input type="text" inputmode="numeric" id="tn_${type}${i}_u" value="${r.u != null ? esc(String(r.u)) : ''}" placeholder="0"></label>
+          <div class="tn-c tn-r"><span class="tn-l">${L({ ja:'税率', en:'Tax', vi:'Thuế' })}</span><button type="button" class="mini" id="tn_${type}${i}_r" data-r="${r.r === 10 || r.r === 8 ? r.r : (type === 'd' ? 10 : 8)}" title="${esc(L({ ja:'押すと 8%／10% が切り替わります', en:'Tap to switch 8% / 10%', vi:'Chạm để đổi 8% / 10%' }))}" style="width:100%;padding:8px 0;text-align:center">${r.r === 10 || r.r === 8 ? r.r : (type === 'd' ? 10 : 8)}%</button></div>
+          <label class="tn-c tn-q"><span class="tn-l">${L({ ja:'数量', en:'Qty', vi:'SL' })}</span><input type="text" inputmode="decimal" id="tn_${type}${i}_q" value="${r.q != null ? esc(String(r.q)) : ''}" placeholder="0"></label>
+          <div class="tn-c tn-a"><span class="tn-l">${L({ ja:'税抜額', en:'Excl. tax', vi:'Chưa thuế' })}</span><span id="tn_${type}${i}_amt" class="muted tn-amt">—</span></div>
         </div>`).join('')}
       <button type="button" class="mini" data-tnadd="${type}" style="margin:2px 0 6px">${esc(L({ ja:'＋ 品目を足す（4行）', en:'+ Add rows (4)', vi:'+ Thêm dòng (4)' }))}</button>`;
     const fRows = tanaRowsFor(store, nowYm, 'f'), dRows = tanaRowsFor(store, nowYm, 'd');

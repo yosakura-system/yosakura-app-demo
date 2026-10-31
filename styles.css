@@ -1366,3 +1366,35 @@ html[data-theme="pb"] .pb-chips--4 .pb-chip { padding: 12px 8px; }
 html[data-theme="pb"] .pb-chips--4 .pb-chip b { display: block; font-size: 14px; }
 html[data-theme="pb"] .pb-chips--4 .pb-chip small { display: block; font-size: 11px; color: var(--gray); margin-top: 2px; }
 @media (min-width: 900px) { html[data-theme="pb"] .pb-rlist { grid-template-columns: repeat(6, 1fr); } html[data-theme="pb"] .pb-use, html[data-theme="pb"] .pb-mgrid { grid-template-columns: repeat(4, 1fr); } }
+
+/* 棚卸の行（2026-10-31 v472 神田さん「単価も見にくい」）＝見出しと行を同じクラスで幅をそろえ、760px以下は2行に折り返して各欄に小さな見出し（在庫の .zk-edit と同じ型） */
+.tn-head { display: flex; gap: 6px; font-size: 11px; color: #8a8478; margin-bottom: 4px; }
+.tn-head .tn-u, .tn-head .tn-q, .tn-head .tn-a { text-align: right; }
+.tn-head .tn-un, .tn-head .tn-r { text-align: center; }
+.tn-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: flex-end; }
+.tn-c { display: flex; flex-direction: column; min-width: 0; }
+.tn-l { display: none; font-size: 11px; color: #8a8478; margin-bottom: 2px; white-space: nowrap; }
+.tn-row input { width: 100%; box-sizing: border-box; min-width: 0; font-size: 16px; padding: 10px 8px; }
+.tn-row .tn-un input { text-align: center; padding: 10px 4px; }
+.tn-row .tn-u input, .tn-row .tn-q input { text-align: right; }
+.tn-row .tn-r .mini { width: 100%; box-sizing: border-box; }
+.tn-amt { display: block; text-align: right; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-bottom: 12px; }
+.tn-n { flex: 1.2 1 0; min-width: 0; }
+.tn-un { flex: 0 0 56px; }
+.tn-u { flex: 0.9 1 0; min-width: 5.5em; }
+.tn-r { flex: 0 0 48px; }
+.tn-q { flex: 0.6 1 0; min-width: 4em; }
+.tn-a { flex: 0 0 76px; }
+@media (max-width: 760px) {
+  .tn-head { display: none; }
+  .tn-l { display: block; }
+  .tn-row { flex-wrap: wrap; row-gap: 6px; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+  .tn-row > * { max-width: 100%; box-sizing: border-box; }
+  .tn-n { flex: 1 1 62%; }                         /* 1行目＝品目・単位 */
+  .tn-un { flex: 1 1 26%; }
+  .tn-u { flex: 1 1 30%; min-width: 0; }           /* 2行目＝単価・税率・数量・税抜額 */
+  .tn-r { flex: 0 0 52px; }
+  .tn-q { flex: 1 1 20%; min-width: 0; }
+  .tn-a { flex: 1 1 22%; }
+  .tn-amt { padding-bottom: 12px; }
+}
