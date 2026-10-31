@@ -7685,11 +7685,31 @@
     /* ★スタッフ（店舗iPad）は読むだけ。入力欄は出さない（2026-08-12 アクション8-③）。
        店舗iPadは共用のため、月次の数値を誰でも書き換えられる状態にしない。
        売上と原価率は下の「月別の推移」で見られる。 */
+    /* ★タブ化（2026-09-01 棚卸の実装に合わせて）。神田さんのUI原則＝役割が違うものは縦に積まずタブで分ける。
+       月次数値／棚卸（業者別の内訳→月末在庫へ自動反映）／月別の推移 の3タブ */
+    const PLT = [
+      { v:'input',   t:{ ja:'月次数値', en:'Numbers', vi:'Số liệu' } },
+      { v:'tana',    t:{ ja:'棚卸', en:'Stocktake', vi:'Kiểm kê' } },
+      { v:'history', t:{ ja:'月別の推移', en:'History', vi:'Lịch sử' } }
+    ];
+    const urlPlTab = currentRoute().params.get('tab');
+    const plTab = PLT.some(o => o.v === urlPlTab) ? urlPlTab
+      : PLT.some(o => o.v === localStorage.getItem('yosakura_pl_tab')) ? localStorage.getItem('yosakura_pl_tab') : 'input';
+    /* ★v471（2026-10-31 長田さん「棚卸を店舗iPadからもできるように」→神田さん「全店舗、同じ形で」）＝スタッフにも棚卸タブだけ出す。
+       月次の売上・仕入の入力欄と保存は今までどおり出さない（8/12 アクション8-③）。保存者は「店舗iPad（店名）」で残る */
     if (!canSeeProfit()) {
+      const PLS = [ { v:'history', t:{ ja:'売上・原価率', en:'Sales & cost', vi:'Doanh thu & giá vốn' } }, { v:'tana', t:{ ja:'棚卸', en:'Stocktake', vi:'Kiểm kê' } } ];
+      const sTab = plTab === 'tana' ? 'tana' : 'history';
+      const sSeg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="pltab">${PLS.map(o => `<button type="button" data-pltab="${o.v}" class="${o.v === sTab ? 'on' : ''}">${L(o.t)}</button>`).join('')}</div></div>`;
+      if (sTab === 'tana') return `
+        ${NOTE({ ja:'◆ 月末の棚卸はここから入力できます（月次の売上・仕入の入力は店長・オーナー様・本部が行います）', en:'◆ Enter the month-end stocktake here (monthly numbers are entered by manager/owner/HQ)', vi:'◆ Nhập kiểm kê cuối tháng tại đây (số liệu tháng do quản lý/chủ/HQ nhập)' })}
+        ${sSeg}
+        ${tanaCard(store, nowYm)}`;
       const m0 = rows[0];
       const c0 = m0 ? plCalc(m0) : null;
       return `
         ${NOTE({ ja:'◆ お店の売上と原価率を見られます（入力は店長・オーナー様・本部が行います）', en:'◆ View sales and cost ratio (entry is done by manager/owner/HQ)', vi:'◆ Xem doanh thu và tỷ lệ giá vốn (nhập liệu do quản lý/chủ/HQ)' })}
+        ${sSeg}
         <div class="card"><h3>${L({ ja:'直近の月', en:'Latest month', vi:'Tháng gần nhất' })} — ${esc(storeShort(store))}</h3>
           ${c0 ? `<div class="stat-row">
             <div class="stat"><div class="n">${yen(c0.sales)}</div><div class="k">${L({ ja:'売上', en:'Sales', vi:'Doanh thu' })}</div></div>
@@ -7702,16 +7722,6 @@
         </div>`;
     }
 
-    /* ★タブ化（2026-09-01 棚卸の実装に合わせて）。神田さんのUI原則＝役割が違うものは縦に積まずタブで分ける。
-       月次数値／棚卸（業者別の内訳→月末在庫へ自動反映）／月別の推移 の3タブ */
-    const PLT = [
-      { v:'input',   t:{ ja:'月次数値', en:'Numbers', vi:'Số liệu' } },
-      { v:'tana',    t:{ ja:'棚卸', en:'Stocktake', vi:'Kiểm kê' } },
-      { v:'history', t:{ ja:'月別の推移', en:'History', vi:'Lịch sử' } }
-    ];
-    const urlPlTab = currentRoute().params.get('tab');
-    const plTab = PLT.some(o => o.v === urlPlTab) ? urlPlTab
-      : PLT.some(o => o.v === localStorage.getItem('yosakura_pl_tab')) ? localStorage.getItem('yosakura_pl_tab') : 'input';
     const plTabSeg = `<div class="card" style="text-align:center;padding:10px 14px"><div class="seg" data-seg="pltab">${PLT.map(o => `<button type="button" data-pltab="${o.v}" class="${o.v === plTab ? 'on' : ''}">${L(o.t)}</button>`).join('')}</div></div>`;
     return `
       ${NOTE({ ja:'◆ 月次の売上・仕入・在庫を入力→原価率を自動計算。前月末在庫は今月の月初在庫へ自動で引き継ぎます', en:'◆ Enter monthly sales/purchases/stock → cost ratio auto-calculated', vi:'◆ Nhập doanh thu/nhập hàng/tồn kho → tự tính giá vốn' })}
@@ -7845,6 +7855,9 @@
     let type = 'f';
     return src.reduce((acc, it) => { if (it === 'd') { type = 'd'; return acc; } acc.push({ n: it[0], t: type, u: it[1], q: null, r: it[2] || (type === 'd' ? 10 : 8) }); return acc; }, []);
   };
+  /* ★v471（2026-10-31 長田さん「単位が埋もれて見えない」）＝単位は品名の末尾のかっこ書き。画面では品名と単位を分けて出し、保存は今までどおり「鰻（尾）」の1つの文字列（本部の集計・在庫の品目合わせ・総括表の書き戻しを変えない）。un も残す */
+  const tnSplitUnit = (n) => { const t = String(n || '').trim(); const m = t.match(/^(.*?)[ 　]*[（(]([^（）() 　]{1,6})[）)]$/);   /* 単位＝空白なし6文字まで。「パック 10個」「トレー 200g」は品名のまま */ return m && m[1].trim() ? { name: m[1].trim(), un: m[2].trim() } : { name: t, un: '' }; };
+  const tnJoinUnit = (name, un) => { const a = String(name || '').trim(), b = String(un || '').trim(); if (!a || !b) return a; if (/[（(][^（）()]*[）)]$/.test(a)) return a; return a + '（' + b + '）'; };
   const getTnDrafts = () => { try { return JSON.parse(localStorage.getItem('yosakura_tn_draft')) || {}; } catch { return {}; } };
   function tanaRowsFor(store, ym, type) {
     const rec = getMonthly().find(r => r.store === store && r.ym === ym);
@@ -7868,7 +7881,7 @@
     /* 「まだ単価を1つも入れていない」店・月だけ、総括表にあって登録に無い品目を足す（単価を入れて運用中の一覧には足さない） */
     const unset = src.every(d => d.u == null || d.u === '' || Number(d.u) === 0);
     const rows = src.map(d => {
-      const r = { n: d.n, u: d.u, q: d.q, r: d.r };
+      const r = { n: d.n, un: d.un, u: d.u, q: d.q, r: d.r };
       const hit = r.n ? dmap[keyOf(r.n)] : null;
       if (hit) seen[keyOf(r.n)] = true;
       /* 画面309＝単価が空の行は「まだ設定していない行」＝品名（単位）も総括表の書き方にそろえる。単価が入っている行は名前も単価も触らない */
@@ -7893,6 +7906,7 @@
       <div class="idlabel" style="margin-top:${type === 'f' ? '4' : '14'}px">${L(label)}</div>
       <div style="display:flex;gap:6px;font-size:11px;color:#8a8478;margin-bottom:4px">
         <span style="flex:1.2;min-width:0">${L({ ja:'品目', en:'Item', vi:'Mặt hàng' })}</span>
+        <span style="width:52px;flex:none;text-align:center">${L({ ja:'単位', en:'Unit', vi:'ĐV' })}</span>
         <span style="flex:0.7;min-width:0;text-align:right">${L({ ja:'単価（税込）', en:'Unit ¥ (incl.)', vi:'Đơn giá (gồm thuế)' })}</span>
         <span style="width:44px;flex:none;text-align:center">${L({ ja:'税率', en:'Tax', vi:'Thuế' })}</span>
         <span style="flex:0.55;min-width:0;text-align:right">${L({ ja:'数量', en:'Qty', vi:'SL' })}</span>
@@ -7900,7 +7914,8 @@
       </div>
       ${rows.map((r, i) => `
         <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
-          <input type="text" id="tn_${type}${i}_n" value="${esc(r.n || '')}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên hàng' })}" style="flex:1.2;min-width:0;padding:10px 8px">
+          <input type="text" id="tn_${type}${i}_n" value="${esc(tnSplitUnit(r.n).name)}" placeholder="${L({ ja:'品目名', en:'Item', vi:'Tên hàng' })}" style="flex:1.2;min-width:0;padding:10px 8px">
+          <input type="text" id="tn_${type}${i}_un" value="${esc(r.un != null && String(r.un).trim() !== '' ? String(r.un).trim() : tnSplitUnit(r.n).un)}" placeholder="${L({ ja:'尾・kg', en:'unit', vi:'ĐV' })}" style="width:52px;flex:none;text-align:center;padding:10px 4px">
           <input type="text" inputmode="numeric" id="tn_${type}${i}_u" value="${r.u != null ? esc(String(r.u)) : ''}" placeholder="0" style="flex:0.7;min-width:0;text-align:right;padding:10px 8px">
           <button type="button" class="mini" id="tn_${type}${i}_r" data-r="${r.r === 10 || r.r === 8 ? r.r : (type === 'd' ? 10 : 8)}" title="${esc(L({ ja:'押すと 8%／10% が切り替わります', en:'Tap to switch 8% / 10%', vi:'Chạm để đổi 8% / 10%' }))}" style="width:44px;flex:none;padding:8px 0;text-align:center">${r.r === 10 || r.r === 8 ? r.r : (type === 'd' ? 10 : 8)}%</button>
           <input type="text" inputmode="decimal" id="tn_${type}${i}_q" value="${r.q != null ? esc(String(r.q)) : ''}" placeholder="0" style="flex:0.55;min-width:0;text-align:right;padding:10px 8px">
@@ -11740,10 +11755,12 @@
       for (let i = 0; i < dN; i++) tnIds.push('d' + i);
       const tnNum = (id) => { const v = Number((byId(id) && byId(id).value || '').toString().replace(/[^0-9.]/g, '')); return isNaN(v) ? 0 : v; };
       const tnRow = (k) => {
-        const name = (byId('tn_' + k + '_n') && byId('tn_' + k + '_n').value || '').trim();
+        const nameRaw = (byId('tn_' + k + '_n') && byId('tn_' + k + '_n').value || '').trim();
+        const un = (byId('tn_' + k + '_un') && byId('tn_' + k + '_un').value || '').trim();
+        const name = tnJoinUnit(nameRaw, un);   // v471＝保存する品名は今までどおり「品名（単位）」
         const u = tnNum('tn_' + k + '_u'), q = tnNum('tn_' + k + '_q');
         const rEl = byId('tn_' + k + '_r'); const r = rEl && (rEl.dataset.r === '10' || rEl.dataset.r === '8') ? Number(rEl.dataset.r) : (k[0] === 'd' ? 10 : 8);
-        return { k, name, u, q, r, amt: taxNet(Math.round(u * q), r) };   // 画面304＝単価は税込・金額は税抜
+        return { k, name, un, u, q, r, amt: taxNet(Math.round(u * q), r) };   // 画面304＝単価は税込・金額は税抜
       };
       const tnRecalc = () => {
         let f = 0, d = 0;
@@ -11770,7 +11787,7 @@
         const items = tnIds.map(k => {
           const r = tnRow(k);
           const uEl = byId('tn_' + k + '_u'), qEl = byId('tn_' + k + '_q');
-          return { n: r.name, t: k[0], u: (uEl && uEl.value.trim() !== '') ? r.u : null, q: (qEl && qEl.value.trim() !== '') ? r.q : null, r: r.r };
+          return { n: r.name, un: r.un, t: k[0], u: (uEl && uEl.value.trim() !== '') ? r.u : null, q: (qEl && qEl.value.trim() !== '') ? r.q : null, r: r.r };
         });
         for (let i = 0; i < 4; i++) items.push({ n: '', t: b.dataset.tnadd, u: null, q: null, r: null });
         const drafts = getTnDrafts(); drafts[tnDraftKey(store, ym)] = items;
@@ -11814,7 +11831,7 @@
           /* 数量は小数2桁まで（2026-10-10 マニュアルVer0.8＝和牛は kg で入れる。1.3kg が 1.25 に丸まらないように。
              旧＝0.25刻みへ寄せる（8/18決定の概算カウント）は 10/31 の新ルールで廃止） */
           const q = Math.round(r.q * 100) / 100;
-          detail.push({ n: r.name, t: k[0], u: r.u, q, r: r.r, a: taxNet(Math.round(r.u * q), r.r) });   // 画面304＝u は税込単価・a は税抜金額
+          detail.push({ n: r.name, un: r.un, t: k[0], u: r.u, q, r: r.r, a: taxNet(Math.round(r.u * q), r.r) });   // 画面304＝u は税込単価・a は税抜金額
         });
         if (!detail.length) { toast(L({ ja:'品目を1つ以上入力してください', en:'Enter at least one item', vi:'Nhập ít nhất 1 mặt hàng' })); return; }
         const total = detail.reduce((s, d) => s + d.a, 0);

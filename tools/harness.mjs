@@ -3883,7 +3883,7 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-
 {
   const S = '牛カツ世桜 長堀橋店';
   const ymNow2 = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
-  const prevYm2 = (() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
+  const prevYm2 = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);   /* ★2026-10-31＝31日に setMonth(-1) すると当月へ戻る（9/31→10/1）。1日に寄せてから */ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
   // ① 店長のpl画面にタブが出て、棚卸タブにルールが書いてある
   let h = renderView('pl', 'manager', S, 'ja');
   ok(/data-pltab="tana"/.test(h) && /data-pltab="input"/.test(h) && /data-pltab="history"/.test(h), 'pl画面が3タブになる（月次数値・棚卸・月別の推移）');
@@ -3919,11 +3919,11 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-
   run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
-    ok(/id="tn_f0_n"[^>]*value="白だし（本）"/.test(hh) && /id="tn_f0_u"[^>]*value="2101"/.test(hh), '長堀橋＝棚卸タブに白だし 2101（税抜1945→税込）が最初から入る');
-    ok(/id="tn_d0_n"[^>]*value="ビール（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="10"/.test(hh), '飲料の先頭＝ビール（10%）');
+    ok(/id="tn_f0_n"[^>]*value="白だし"/.test(hh) && /id="tn_f0_un"[^>]*value="本"/.test(hh) && /id="tn_f0_u"[^>]*value="2101"/.test(hh), '長堀橋＝棚卸タブに白だし 2101（税抜1945→税込）が最初から入る');
+    ok(/id="tn_d0_n"[^>]*value="ビール"/.test(hh) && /id="tn_d0_un"[^>]*value="本"/.test(hh) && /id="tn_d0_r"[^>]*data-r="10"/.test(hh), '飲料の先頭＝ビール（10%）');
     ok(/id="tn_d1_r"[^>]*data-r="8"/.test(hh) && /id="tn_d4_r"[^>]*data-r="8"/.test(hh), 'コーラ・宇治茶は8%');
-    ok(/id="tn_f30_n"[^>]*value="鰻（尾）"/.test(hh) && /id="tn_f30_u"[^>]*value="799.2"/.test(hh), '鰻＝尾で数える（鰻単価表 加盟店価格 37,000円/50尾→1尾 740円→税込 799.2・神田さん 2026-10-29）');
-    ok(/id="tn_f17_n"[^>]*value="抹茶塩（g）"/.test(hh) && /id="tn_f17_u"[^>]*value="3.89"/.test(hh) && /id="tn_f29_n"[^>]*value="固形燃料（個）"/.test(hh) && /id="tn_f29_r"[^>]*data-r="10"/.test(hh), '塩系は g 単価・固形燃料は10%（総括表どおり）');
+    ok(/id="tn_f30_n"[^>]*value="鰻"/.test(hh) && /id="tn_f30_un"[^>]*value="尾"/.test(hh) && /id="tn_f30_u"[^>]*value="799.2"/.test(hh), '鰻＝尾で数える（鰻単価表 加盟店価格 37,000円/50尾→1尾 740円→税込 799.2・神田さん 2026-10-29）');
+    ok(/id="tn_f17_n"[^>]*value="抹茶塩"/.test(hh) && /id="tn_f17_un"[^>]*value="g"/.test(hh) && /id="tn_f17_u"[^>]*value="3.89"/.test(hh) && /id="tn_f29_n"[^>]*value="固形燃料"/.test(hh) && /id="tn_f29_un"[^>]*value="個"/.test(hh) && /id="tn_f29_r"[^>]*data-r="10"/.test(hh), '塩系は g 単価・固形燃料は10%（総括表どおり）');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 32 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 7, '食材32（総括表31＋サーモン）・飲料7');
     ok(!/まず品目を登録する（貼り付け）/.test(hh), '品目が入っているので「まず品目を登録する」は畳まれる'); }
   // ③d 画面306＝品目だけ保存済み（単価が空）の店にも、同じ品名の既定の単価が入る（9/25 に長堀橋へ38品目を数量・単価空で保存済み）
@@ -3936,11 +3936,11 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
     ok(/id="tn_f0_u"[^>]*value="2101"/.test(hh), '保存済みで単価が空の白だしに既定の2101が入る');
-    ok(/id="tn_f1_n"[^>]*value="サーロイン肉（kg）"/.test(hh) && /id="tn_f1_u"[^>]*value="8856"/.test(hh), '「サーロイン肉」（単位なし）は総括表の「サーロイン肉（kg）」8856（税抜8200→税込）に読み替わる');
+    ok(/id="tn_f1_n"[^>]*value="サーロイン肉"/.test(hh) && /id="tn_f1_un"[^>]*value="kg"/.test(hh) && /id="tn_f1_u"[^>]*value="8856"/.test(hh), '「サーロイン肉」（単位なし）は総括表の「サーロイン肉（kg）」8856（税抜8200→税込）に読み替わる');
     ok(/id="tn_f2_u"[^>]*value="5000"/.test(hh), '店が入れた単価（油 5000）はそのまま＝既定で上書きしない');
-    ok(/id="tn_d0_n"[^>]*value="コーラ（本）"/.test(hh) && /id="tn_d0_u"[^>]*value="122"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), '「コーラ 瓶（本）」は総括表の「コーラ（本）」122（名畑＝税込のまま）・8%に読み替わる');
-    ok(/id="tn_f3_n"[^>]*value="ワサビ（個）"/.test(hh) && /id="tn_f3_u"[^>]*value="1058"/.test(hh), '「わさび（パック）」は総括表の「ワサビ（個）」1058（単位も総括表に合わせる）');
-    ok(/id="tn_f4_n"[^>]*value="サーモン（g）"/.test(hh) && /id="tn_f4_u"[^>]*value="3.3"/.test(hh), '「サーモン（パック）」は「サーモン（g）」3.3（永井さん 9/29 税込3,300円/kg）に読み替わる');
+    ok(/id="tn_d0_n"[^>]*value="コーラ"/.test(hh) && /id="tn_d0_un"[^>]*value="本"/.test(hh) && /id="tn_d0_u"[^>]*value="122"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), '「コーラ 瓶（本）」は総括表の「コーラ（本）」122（名畑＝税込のまま）・8%に読み替わる');
+    ok(/id="tn_f3_n"[^>]*value="ワサビ"/.test(hh) && /id="tn_f3_un"[^>]*value="個"/.test(hh) && /id="tn_f3_u"[^>]*value="1058"/.test(hh), '「わさび（パック）」は総括表の「ワサビ（個）」1058（単位も総括表に合わせる）');
+    ok(/id="tn_f4_n"[^>]*value="サーモン"/.test(hh) && /id="tn_f4_un"[^>]*value="g"/.test(hh) && /id="tn_f4_u"[^>]*value="3.3"/.test(hh), '「サーモン（パック）」は「サーモン（g）」3.3（永井さん 9/29 税込3,300円/kg）に読み替わる');
     ok(!/value="サーロインブロック（個）"/.test(hh), '単価を入れて運用中の一覧（油 5000）には、総括表の品目を勝手に足さない'); }
   // ③d2 単価を1つも入れていない一覧（9/25 の長堀橋の状態）＝総括表にあって登録に無い品目を末尾に足す
   run(() => {
@@ -3951,8 +3951,8 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-
   });
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
-    ok(/id="tn_f1_n"[^>]*value="鰻（尾）"/.test(hh) && /id="tn_f1_u"[^>]*value="799.2"/.test(hh), '「うなぎ（箱）」は「鰻（尾）」799.2に読み替わる');
-    ok(/value="サーロインブロック（個）"/.test(hh) && /value="固形燃料（個）"/.test(hh) && /value="コーラ（本）"/.test(hh), '総括表にあって登録に無い品目（サーロインブロック・固形燃料・コーラ）は末尾に足される');
+    ok(/id="tn_f1_n"[^>]*value="鰻"/.test(hh) && /id="tn_f1_un"[^>]*value="尾"/.test(hh) && /id="tn_f1_u"[^>]*value="799.2"/.test(hh), '「うなぎ（箱）」は「鰻（尾）」799.2に読み替わる');
+    ok(/value="サーロインブロック"/.test(hh) && /value="固形燃料"/.test(hh) && /_un"[^>]*value="個"/.test(hh) && /value="コーラ"/.test(hh), '総括表にあって登録に無い品目（サーロインブロック・固形燃料・コーラ）は末尾に足される');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 32 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 7, '足した結果＝食材32（総括表31＋サーモン）・飲料7'); }
   run(() => { setLS('manager', '日本鰻世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
@@ -3961,7 +3961,7 @@ console.log('== 棚卸（2026-09-01 長田さんのご質問への回答。2026-
   run(() => { setLS('manager', '和牛世桜 広島店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
-    ok(/id="tn_f0_n"[^>]*value="ステーキしーずにんぐ（個）"/.test(hh) && /id="tn_f6_n"[^>]*value="和牛ブロック（kg）"/.test(hh) && /id="tn_f6_u"[^>]*value="8964"/.test(hh), '広島＝総括表の並び・単価（和牛ブロック 8964）');
+    ok(/id="tn_f0_n"[^>]*value="ステーキしーずにんぐ"/.test(hh) && /id="tn_f0_un"[^>]*value="個"/.test(hh) && /id="tn_f6_n"[^>]*value="和牛ブロック"/.test(hh) && /id="tn_f6_un"[^>]*value="kg"/.test(hh) && /id="tn_f6_u"[^>]*value="8964"/.test(hh), '広島＝総括表の並び・単価（和牛ブロック 8964）');
 console.log('== 2026-10-28 月末棚卸＝今月の行から1回で棚卸タブへ（総括表の締めから外へ出す） ==');
 {
   const S = '牛カツ世桜 長堀橋店';
@@ -3985,24 +3985,24 @@ console.log('== 2026-10-28 月末棚卸＝今月の行から1回で棚卸タブ�
     ok(/id="tn_f5_u"[^>]*value="2808"/.test(hh) && /id="tn_d3_u"[^>]*value="222"/.test(hh) && /id="tn_f22_u"[^>]*value="1783"/.test(hh), '広島＝肉以外は税抜→税込（米 2,600→2,808・びーる 10月から税抜202→222）・たいやきは税込のまま（10/27 谷口さん回答）');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 23 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 7, '広島＝食材23・飲料7');
     ok(!/value="箸（袋）"/.test(hh) && !/value="ガスバーナー/.test(hh), '広島＝備品（箸・ガスバーナー）は入れない');
-    ok(/id="tn_d3_n"[^>]*value="びーる（本）"/.test(hh) && /id="tn_d3_r"[^>]*data-r="10"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), '広島＝お酒10%・お茶8%'); }
+    ok(/id="tn_d3_n"[^>]*value="びーる"/.test(hh) && /id="tn_d3_un"[^>]*value="本"/.test(hh) && /id="tn_d3_r"[^>]*data-r="10"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh), '広島＝お酒10%・お茶8%'); }
   // 2026-10-28 心斎橋＝総括表（202609）棚卸表の品目と単価が最初から入る（神田さん「空白の店舗は過去の総括表から拾ってアプリに」）
   run(() => { setLS('manager', '寿司世桜 心斎橋店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); localStorage.removeItem('yosakura_demo_monthly'); });
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
-    ok(/id="tn_f0_n"[^>]*value="チョコペン（本）"/.test(hh) && /id="tn_f0_u"[^>]*value="110"/.test(hh) && /id="tn_f54_n"[^>]*value="本まぐろブロック（本）"/.test(hh) && /id="tn_f54_u"[^>]*value="6500"/.test(hh), '心斎橋＝総括表の並び・単価（先頭チョコペン 110・末尾 本まぐろブロック 6500）');
+    ok(/id="tn_f0_n"[^>]*value="チョコペン"/.test(hh) && /id="tn_f0_un"[^>]*value="本"/.test(hh) && /id="tn_f0_u"[^>]*value="110"/.test(hh) && /id="tn_f54_n"[^>]*value="本まぐろブロック"/.test(hh) && /id="tn_f54_un"[^>]*value="本"/.test(hh) && /id="tn_f54_u"[^>]*value="6500"/.test(hh), '心斎橋＝総括表の並び・単価（先頭チョコペン 110・末尾 本まぐろブロック 6500）');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 55 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 28, '心斎橋＝食材55（①29＋②26）・飲料28');
     ok(!/value="花火（箱）"/.test(hh), '心斎橋＝花火（食材でない）は入れない');
-    ok(/value="海苔 1\/3切り（パック）"/.test(hh) && /value="海苔 2つ切り（パック）"/.test(hh) && /value="神戸ワインセレクト 赤（本）"/.test(hh), '心斎橋＝品名の（ ）は空白に（単位欄と区別）');
-    ok(/id="tn_d8_n"[^>]*value="ビール（本）"/.test(hh) && /id="tn_d8_u"[^>]*value="221"/.test(hh) && /id="tn_d8_r"[^>]*data-r="10"/.test(hh) && /id="tn_d0_n"[^>]*value="炭酸水（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh) && /id="tn_d26_n"[^>]*value="のんある梅酒（本）"/.test(hh) && /id="tn_d26_r"[^>]*data-r="8"/.test(hh), '心斎橋＝お酒10%・炭酸水／のんある梅酒8%'); }
+    ok(/value="海苔 1\/3切り"/.test(hh) && /value="海苔 2つ切り"/.test(hh) && /value="神戸ワインセレクト 赤"/.test(hh) && /_un"[^>]*value="パック"/.test(hh), '心斎橋＝品名の（ ）は空白に（単位欄と区別）');
+    ok(/id="tn_d8_n"[^>]*value="ビール"/.test(hh) && /id="tn_d8_un"[^>]*value="本"/.test(hh) && /id="tn_d8_u"[^>]*value="221"/.test(hh) && /id="tn_d8_r"[^>]*data-r="10"/.test(hh) && /id="tn_d0_n"[^>]*value="炭酸水"/.test(hh) && /id="tn_d0_un"[^>]*value="本"/.test(hh) && /id="tn_d0_r"[^>]*data-r="8"/.test(hh) && /id="tn_d26_n"[^>]*value="のんある梅酒"/.test(hh) && /id="tn_d26_un"[^>]*value="本"/.test(hh) && /id="tn_d26_r"[^>]*data-r="8"/.test(hh), '心斎橋＝お酒10%・炭酸水／のんある梅酒8%'); }
   // 2026-10-29 京都祇園＝石本さんの「食品在庫の一覧」（LINE）を既定に。単価は未着＝空欄で出る
   run(() => { setLS('manager', '日本鰻世桜 京都祇園店', 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); localStorage.removeItem('yosakura_demo_monthly'); });
   location.hash = '#/app/pl';
   { const hh = registry.app.innerHTML;
-    ok(/id="tn_f0_n"[^>]*value="鰻（尾）"/.test(hh) && /id="tn_f0_u"[^>]*value=""/.test(hh) && /id="tn_f13_n"[^>]*value="創味白だし（本）"/.test(hh), '京都祇園＝一覧の並び（先頭 鰻・末尾 創味白だし）・単価は空欄');
+    ok(/id="tn_f0_n"[^>]*value="鰻"/.test(hh) && /id="tn_f0_un"[^>]*value="尾"/.test(hh) && /id="tn_f0_u"[^>]*value=""/.test(hh) && /id="tn_f13_n"[^>]*value="創味白だし"/.test(hh) && /id="tn_f13_un"[^>]*value="本"/.test(hh), '京都祇園＝一覧の並び（先頭 鰻・末尾 創味白だし）・単価は空欄');
     ok((hh.match(/id="tn_f\d+_n"[^>]*value="[^"]+"/g) || []).length === 14 && (hh.match(/id="tn_d\d+_n"[^>]*value="[^"]+"/g) || []).length === 10, '京都祇園＝食材14・飲料10');
     ok(/value="玉子（パック 10個）"/.test(hh) && /value="いくら ますこ（トレー 200g）"/.test(hh) && /value="ほうじ茶（袋 30包）"/.test(hh), '京都祇園＝単位は一覧のまま・（ ）は空白に');
-    ok(/id="tn_d0_n"[^>]*value="ビール プレミアム（本）"/.test(hh) && /id="tn_d0_r"[^>]*data-r="10"/.test(hh) && /id="tn_d2_n"[^>]*value="ノンアルコールビール（本）"/.test(hh) && /id="tn_d2_r"[^>]*data-r="8"/.test(hh) && /id="tn_d9_r"[^>]*data-r="8"/.test(hh), '京都祇園＝お酒10%・ノンアル/お茶8%'); }
+    ok(/id="tn_d0_n"[^>]*value="ビール プレミアム"/.test(hh) && /id="tn_d0_un"[^>]*value="本"/.test(hh) && /id="tn_d0_r"[^>]*data-r="10"/.test(hh) && /id="tn_d2_n"[^>]*value="ノンアルコールビール"/.test(hh) && /id="tn_d2_un"[^>]*value="本"/.test(hh) && /id="tn_d2_r"[^>]*data-r="8"/.test(hh) && /id="tn_d9_r"[^>]*data-r="8"/.test(hh), '京都祇園＝お酒10%・ノンアル/お茶8%'); }
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
   location.hash = '#/app/pl';
   // ③b 画面304＝税率ボタンで 10%→8% に切り替えると金額が変わる（お茶など）
@@ -4033,9 +4033,39 @@ console.log('== 2026-10-28 月末棚卸＝今月の行から1回で棚卸タブ�
   h = registry.app.innerHTML;
   ok(/id="tn_f0_n"[^>]*value="米"/.test(h) && /id="tn_f0_u"[^>]*value="3000"/.test(h), '前月の品目名と単価が今月に引き継がれる');
   ok(/id="tn_f0_q"[^>]*value=""/.test(h), '数量は空（毎月数え直す）');
-  // ⑤ スタッフ（店舗iPad）には入力タブが出ない（読み取り専用のまま）
+  // ⑤ v471（2026-10-31 長田さん「店舗iPadからも棚卸を」→神田さん「全店舗、同じ形で」）＝スタッフにも棚卸タブだけ出る。月次数値の欄・保存は出ない（8/12 アクション8-③は維持）
   h = renderView('pl', 'staff', S, 'ja');
-  ok(!/data-pltab/.test(h) && !/tnSave/.test(h), 'スタッフには棚卸の入力が出ない（従来どおり閲覧のみ）');
+  ok(/data-pltab="tana"/.test(h) && /data-pltab="history"/.test(h) && !/data-pltab="input"/.test(h), 'スタッフの数値画面＝「売上・原価率」「棚卸」の2タブ（月次数値タブは無い）');
+  ok(!/tnSave/.test(h) && !/pl_sales/.test(h) && !/plSave/.test(h) && /原価率/.test(h), 'スタッフの既定は売上・原価率（入力欄・保存ボタンなし）');
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); localStorage.setItem('yosakura_tn_ym', ymNow2);
+    localStorage.setItem('yosakura_demo_monthly', JSON.stringify([{ store: S, ym: prevYm2, closeDetail: [{ n: '鰻（尾）', t: 'f', u: 799.2, q: 3, a: 2220 }, { n: '米', t: 'f', u: 3000, q: 1, a: 2778 }], t: 1 }])); });
+  location.hash = '#/app/pl?tab=tana';
+  h = registry.app.innerHTML;
+  ok(/id="tnSave"/.test(h) && /id="tn_f0_n"/.test(h) && !/pl_sales/.test(h) && !/plSave/.test(h), 'スタッフでも棚卸タブに品目行と保存ボタンが出る（月次数値の欄は出ない）');
+  ok(/id="tn_f0_n"[^>]*value="鰻"/.test(h) && /id="tn_f0_un"[^>]*value="尾"/.test(h) && /id="tn_f0_q"[^>]*value=""/.test(h), '単位は品名のかっこ書きから分かれて「単位」欄に出る（鰻（尾）→ 鰻／尾・数量は空）');
+  ok(/id="tn_f1_n"[^>]*value="米"/.test(h) && /id="tn_f1_un"[^>]*value=""/.test(h), '単位の無い品名はそのまま・単位欄は空');
+  ok(/>単位</.test(h), '見出し行に「単位」');
+  /* 擬似DOMは value 属性を .value に写さないので、画面に出ている品名・単位・単価もテスト側で入れる */
+  doc.getElementById('tn_f0_n').value = '鰻'; doc.getElementById('tn_f0_un').value = '尾'; doc.getElementById('tn_f0_u').value = '799.2'; doc.getElementById('tn_f0_q').value = '5';
+  doc.getElementById('tn_f1_n').value = '米'; doc.getElementById('tn_f1_un').value = ''; doc.getElementById('tn_f1_u').value = '3000'; doc.getElementById('tn_f1_q').value = '2';
+  doc.getElementById('tn_f2_n').value = 'たまご'; doc.getElementById('tn_f2_un').value = 'パック'; doc.getElementById('tn_f2_u').value = '339'; doc.getElementById('tn_f2_q').value = '2';
+  doc.getElementById('tn_f3_n').value = '和牛（kg）'; doc.getElementById('tn_f3_un').value = 'kg'; doc.getElementById('tn_f3_u').value = '1000'; doc.getElementById('tn_f3_q').value = '1.3';
+  doc.getElementById('tn_ym').value = ymNow2;
+  doc.getElementById('tnSave').onclick();
+  const monS = JSON.parse(localStorage.getItem('yosakura_demo_monthly') || '[]').find(r => r.store === S && r.ym === ymNow2);
+  ok(!!monS && monS.closeDetail.length === 4 && monS.closeDetail[0].n === '鰻（尾）' && monS.closeDetail[0].un === '尾' && monS.closeDetail[0].q === 5, 'スタッフの保存＝今月の記録に入る。品名は今までどおり「鰻（尾）」（単位は un にも残る）');
+  ok(monS.closeDetail[1].n === '米' && monS.closeDetail[2].n === 'たまご（パック）' && monS.closeDetail[2].un === 'パック', '品名と単位を分けて打っても「たまご（パック）」で保存される（単位なしは「米」のまま）');
+  ok(monS.closeDetail[3].n === '和牛（kg）' && monS.closeDetail[3].q === 1.3, '品名にかっこ書きが残っていても二重にならない（和牛（kg）＋kg → 和牛（kg））');
+  ok(/店舗iPad/.test(String(monS.by || '')), '保存者は「店舗iPad（…）」で残る');
+  h = registry.app.innerHTML;
+  ok(/id="tn_f0_n"[^>]*value="鰻"/.test(h) && /id="tn_f0_un"[^>]*value="尾"/.test(h) && /id="tn_f0_q"[^>]*value="5"/.test(h) && /id="tn_f2_un"[^>]*value="パック"/.test(h), '保存後に開き直しても品名・単位・数量が同じ形で出る（往復）');
+  // 店長の画面は今までどおり3タブ・月次数値あり
+  h = renderView('pl', 'manager', S, 'ja');
+  ok(/data-pltab="input"/.test(h) && /data-pltab="tana"/.test(h) && /data-pltab="history"/.test(h), '店長は今までどおり3タブ');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'tana'); });
+  location.hash = '#/app/pl?tab=tana';
+  h = registry.app.innerHTML;
+  ok(/id="tn_f0_un"/.test(h) && /id="tnSave"/.test(h), '店長の棚卸タブにも単位欄が出る');
   // ⑥ 月次数値タブで月末在庫を内訳と違う値に直したら、内訳は外れる（食い違いを残さない）
   run(() => {
     setLS('manager', S, 'ja'); localStorage.setItem('yosakura_pl_tab', 'input');
@@ -4064,7 +4094,7 @@ console.log('== 2026-10-28 月末棚卸＝今月の行から1回で棚卸タブ�
   ok(draft[3].t === 'd' && draft[3].n === 'ビール（瓶）' && draft[4].u === 130, '「飲料」行より下は飲料として入る（読点区切りも可）');
   location.hash = '#/app/pl?x=reimport';
   h = registry.app.innerHTML;
-  ok(/id="tn_f0_n"[^>]*value="米"/.test(h) && /id="tn_d0_n"[^>]*value="ビール（瓶）"/.test(h), '取り込んだ品目が行に展開される');
+  ok(/id="tn_f0_n"[^>]*value="米"/.test(h) && /id="tn_d0_n"[^>]*value="ビール"/.test(h) && /id="tn_d0_un"[^>]*value="瓶"/.test(h), '取り込んだ品目が行に展開される');
   // 保存すると下書きは消える（保存済みが正になる）
   doc.getElementById('tn_f0_n').value = '米'; doc.getElementById('tn_f0_u').value = '3000'; doc.getElementById('tn_f0_q').value = '1';
   doc.getElementById('tn_ym').value = ymNow2;
