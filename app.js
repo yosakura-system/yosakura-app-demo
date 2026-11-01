@@ -6015,16 +6015,16 @@
     band(pv ? `37項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）　右＝前回 ${pv.date.slice(5).replace('-', '/')}` : '37項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）');
     SV_PHASES.forEach(([k, l]) => {
       const its = SV_ITEMS.filter(i => i.ph === k); if (!its.length) return;
-      ensure(32); g.fillStyle = '#6B635A'; g.font = `bold 20px ${F}`; g.fillText(L(l), M, y); y += 28;
+      ensure(30); g.fillStyle = '#6B635A'; g.font = `bold 20px ${F}`; g.fillText(L(l), M, y); y += 26;
       its.forEach((it, idx) => {
         const a = svAns(it.no) || {}; const mk = a.v === 'ok' ? '○' : a.v === 'ng' ? '×' : a.v === 'na' ? '－' : '　';
         const col = a.v === 'ng' ? '#8E354A' : a.v === 'ok' ? '#3f6b3a' : '#6B635A';
-        ensure(26); g.font = `bold 20px ${F}`; g.fillStyle = col; g.fillText(mk, M + 10, y);
+        ensure(24); g.font = `bold 20px ${F}`; g.fillStyle = col; g.fillText(mk, M + 10, y);
         g.font = `19px ${F}`; g.fillStyle = '#1A1A1A'; g.fillText(`${typeof it.no === 'number' ? 'No.' + it.no : '体験'}　${it.t}${it.hear ? '　（聞く）' : ''}`, M + 44, y);
         if (pv) { const pm = pv.mk(it.no); g.font = `bold 20px ${F}`; g.fillStyle = pm === '×' ? '#8E354A' : pm === '○' ? '#3f6b3a' : '#6B635A'; g.fillText(pm ? `前回 ${pm}` : '前回 　', M + W - 96, y); }
-        y += 26;
+        y += 24;   // v476 26→24・区切り 6→4（No.101 が2枚目にはみ出した＝神田さん 2026-11-01「1枚目に収めて」）
       });
-      y += 6;
+      y += 4;
     });
     /* 写真＝先に全部読んでおく（1枚ずつ待たない）。載せるのは ○・×・対象外を問わず写真のある項目すべて（2026-09-17 神田さん） */
     const imgCache = {};
