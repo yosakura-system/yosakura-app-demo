@@ -550,7 +550,12 @@ function 総括表を取り込む() {
 }
 
 /* トリガー用の英字名（日本語の関数名を時間トリガーに指定すると不明なエラーになることがある） */
-function importSoukatsu() { return 総括表を取り込む(); }
+function importSoukatsu() {
+  var r = 総括表を取り込む();
+  /* ★2026-11-01 神田さん「アプリに入力されたら総括表に反映するように」＝毎時のついでに、新しく保存された棚卸を総括表の期末棚卸高へ（総括表棚卸転記.gs） */
+  try { if (typeof sktn_自動_ === 'function') sktn_自動_(); } catch (e) { Logger.log('棚卸転記: ' + (e && e.message || e)); }
+  return r;
+}
 
 /* ③ 1時間ごとの自動実行を設定（重複は作らない） */
 function ensureSoukatsuImportTrigger() {
