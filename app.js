@@ -6033,64 +6033,77 @@
       const loaded = await Promise.all(all.map(p => svLoadImage_(p)));
       all.forEach((p, i) => { imgCache[p] = loaded[i]; });
     }
-    /* 写真を3枚ずつ段にして全部描く（段ごとにページを確かめる） */
-    const drawPhotos = (phs) => {
-      const bw = 300, bh = 200, gap = 14;
-      for (let i = 0; i < phs.length; i += 3) {
-        ensure(bh + 12);
-        let x = M + 14;
-        for (const p of phs.slice(i, i + 3)) {
-          const im = imgCache[p];
-          g.fillStyle = '#EFEAE2'; g.fillRect(x, y, bw, bh);
-          if (im) {
-            const r = Math.max(bw / im.width, bh / im.height); const dw = im.width * r, dh = im.height * r;
-            g.save(); g.beginPath(); g.rect(x, y, bw, bh); g.clip(); g.drawImage(im, x + (bw - dw) / 2, y + (bh - dh) / 2, dw, dh); g.restore();
-          } else { g.fillStyle = '#6B635A'; g.font = `18px ${F}`; g.fillText('（写真を読めませんでした）', x + 20, y + 90); }
-          g.strokeStyle = '#D9D2C8'; g.lineWidth = 2; g.strokeRect(x, y, bw, bh);
-          x += bw + gap;
+    /* ★2026-11-01 神田さん「ちゃんとA4に2枚にまとめられるか」＝1枚目は37項目まで。2枚目からを別の紙に起こし、
+       2枚に収まらなければ写真を段階的に小さく（3枚/段→4→6→8）・字を少し小さくして描き直す。写真は全部載せる（2026-09-17 の決めごとはそのまま）。
+       それでも収まらないときだけ3枚目以降になる（写真が非常に多いとき） */
+    const SV_FIT = [{ per: 3, bw: 300, bh: 200, fs: 0 }, { per: 4, bw: 262, bh: 175, fs: 0 }, { per: 6, bw: 170, bh: 114, fs: -1 }, { per: 8, bw: 125, bh: 84, fs: -2 }];
+    const renderBody_ = (fit) => {
+      const T = (t, size, color, bold, lh) => text(t, size + fit.fs, color, bold, lh);
+      /* 写真を3枚ずつ段にして全部描く（段ごとにページを確かめる） */
+      const drawPhotos = (phs) => {
+        const bw = fit.bw, bh = fit.bh, gap = 14;
+        for (let i = 0; i < phs.length; i += fit.per) {
+          ensure(bh + 12);
+          let x = M + 14;
+          for (const p of phs.slice(i, i + fit.per)) {
+            const im = imgCache[p];
+            g.fillStyle = '#EFEAE2'; g.fillRect(x, y, bw, bh);
+            if (im) {
+              const r = Math.max(bw / im.width, bh / im.height); const dw = im.width * r, dh = im.height * r;
+              g.save(); g.beginPath(); g.rect(x, y, bw, bh); g.clip(); g.drawImage(im, x + (bw - dw) / 2, y + (bh - dh) / 2, dw, dh); g.restore();
+            } else { g.fillStyle = '#6B635A'; g.font = `18px ${F}`; g.fillText('（写真を読めませんでした）', x + 20, y + 90); }
+            g.strokeStyle = '#D9D2C8'; g.lineWidth = 2; g.strokeRect(x, y, bw, bh);
+            x += bw + gap;
+          }
+          y += bh + 12;
         }
-        y += bh + 12;
+      };
+      const itemPhotos = (it) => ((svAns(it.no) || {}).photos || []).filter(Boolean);
+      // 良かった点（メモか写真のある○）
+      const good = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ok' && ((a.memo || '').trim() || (a.photos || []).length); });
+      if (good.length) {
+        band('良かった点');
+        for (const it of good) {
+          const a = svAns(it.no);
+          T(`・${it.t.split('（')[0]}` + ((a.memo || '').trim() ? `：${a.memo.trim()}` : ''), 22);
+          const phs = itemPhotos(it); if (phs.length) { drawPhotos(phs); y += 4; }
+        }
       }
-    };
-    const itemPhotos = (it) => ((svAns(it.no) || {}).photos || []).filter(Boolean);
-    // 良かった点（メモか写真のある○）
-    const good = SV_ITEMS.filter(it => { const a = svAns(it.no); return a && a.v === 'ok' && ((a.memo || '').trim() || (a.photos || []).length); });
-    if (good.length) {
-      band('良かった点');
-      for (const it of good) {
-        const a = svAns(it.no);
-        text(`・${it.t.split('（')[0]}` + ((a.memo || '').trim() ? `：${a.memo.trim()}` : ''), 22);
-        const phs = itemPhotos(it); if (phs.length) { drawPhotos(phs); y += 4; }
-      }
-    }
-    // 気になる点（×）＋写真（全部）
-    const bad = SV_ITEMS.filter(it => (svAns(it.no) || {}).v === 'ng');
-    band(bad.length ? `気になる点（× ${bad.length}件）` : '気になる点（×）');
-    if (!bad.length) text('× はありませんでした。', 22, '#6B635A');
-    for (const it of bad) {
-      const a = svAns(it.no) || {};
-      ensure(56);
-      g.fillStyle = '#FBF1F2'; g.fillRect(M, y, 6, 30);
-      text(`${typeof it.no === 'number' ? 'No.' + it.no + '　' : ''}${it.t}` + (it.pt ? `（${it.pt}点）` : ''), 23, '#8E354A', true);
-      if ((a.memo || '').trim()) text(`　${a.memo.trim()}`, 21, '#1A1A1A');
-      const phs = itemPhotos(it); if (phs.length) drawPhotos(phs);
-      y += 6;
-    }
-    // その他の気づき（対象外にしたが、メモか写真のある項目）＝扉の安全・A看板など、項目外の指摘がここに残る
-    const other = SV_ITEMS.filter(it => { const a = svAns(it.no) || {}; return a.v === 'na' && ((a.memo || '').trim() || (a.photos || []).length); });
-    if (other.length) {
-      band(`その他の気づき（対象外・${other.length}件）`);
-      for (const it of other) {
+      // 気になる点（×）＋写真（全部）
+      const bad = SV_ITEMS.filter(it => (svAns(it.no) || {}).v === 'ng');
+      band(bad.length ? `気になる点（× ${bad.length}件）` : '気になる点（×）');
+      if (!bad.length) T('× はありませんでした。', 22, '#6B635A');
+      for (const it of bad) {
         const a = svAns(it.no) || {};
         ensure(56);
-        text(`${typeof it.no === 'number' ? 'No.' + it.no + '　' : ''}${it.t}`, 23, '#6B635A', true);
-        if ((a.memo || '').trim()) text(`　${a.memo.trim()}`, 21, '#1A1A1A');
+        g.fillStyle = '#FBF1F2'; g.fillRect(M, y, 6, 30);
+        T(`${typeof it.no === 'number' ? 'No.' + it.no + '　' : ''}${it.t}` + (it.pt ? `（${it.pt}点）` : ''), 23, '#8E354A', true);
+        if ((a.memo || '').trim()) T(`　${a.memo.trim()}`, 21, '#1A1A1A');
         const phs = itemPhotos(it); if (phs.length) drawPhotos(phs);
         y += 6;
       }
+      // その他の気づき（対象外にしたが、メモか写真のある項目）＝扉の安全・A看板など、項目外の指摘がここに残る
+      const other = SV_ITEMS.filter(it => { const a = svAns(it.no) || {}; return a.v === 'na' && ((a.memo || '').trim() || (a.photos || []).length); });
+      if (other.length) {
+        band(`その他の気づき（対象外・${other.length}件）`);
+        for (const it of other) {
+          const a = svAns(it.no) || {};
+          ensure(56);
+          T(`${typeof it.no === 'number' ? 'No.' + it.no + '　' : ''}${it.t}`, 23, '#6B635A', true);
+          if ((a.memo || '').trim()) T(`　${a.memo.trim()}`, 21, '#1A1A1A');
+          const phs = itemPhotos(it); if (phs.length) drawPhotos(phs);
+          y += 6;
+        }
+      }
+      // 総評
+      if ((m.summary || '').trim()) { band('総評'); T(m.summary.trim(), 22); }
+    };
+    const bodyStart = pages.length;   // ここまで＝1枚目（37項目）
+    for (const fit of SV_FIT) {
+      pages.length = bodyStart; newPage();
+      renderBody_(fit);
+      if (pages.length <= 2) break;
     }
-    // 総評
-    if ((m.summary || '').trim()) { band('総評'); text(m.summary.trim(), 22); }
     // 注記・ページ番号
     pages.forEach((pc, i) => {
       const pg = pc.getContext('2d'); pg.fillStyle = '#6B635A'; pg.font = `16px ${F}`; pg.textBaseline = 'top';

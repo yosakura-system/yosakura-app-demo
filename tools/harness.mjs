@@ -3710,7 +3710,7 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   ok(/const pwChangeBanner_ = \(\) => pwChangeDue_\(\)\s/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 【見本】のパスワード変更の帯は出さない（押すと本部ID自身の変更が開くため）');
   // ④ ソース＝対象は許可リストのみ・ログイン済みの役割切替は開発者ビューだけ例外
   const dsrc = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/const DEV_VIEW_UIDS = \['kanda', 'masuda', 'yosakura-fc', 'tsuneyama'\];/.test(dsrc), '対象は許可リスト（kanda・masuda・本部共有ID・tsuneyama）だけ');
+  ok(/const DEV_VIEW_UIDS = \['kanda', 'masuda', 'yosakura-fc', 'tsuneyama', 'takahara'\];/.test(dsrc), '対象は許可リスト（kanda・masuda・本部共有ID・tsuneyama・takahara＝2026-11-01 神田さん「社長にも全ての権限」）だけ');
   ok(/if \(getAuth\(\) && !devViewAllowed\(\)\) return;/.test(dsrc), 'ログイン済みの役割切替は開発者ビューだけ例外');
   ok(/data-devexit/.test(dsrc) && /setRole\('hq'\); setStoreSel\('all'\);/.test(dsrc), 'バナーを押すと本部の表示（全店）へ戻る');
   // 後始末＝以後のテストにログイン状態を残さない
@@ -5837,7 +5837,8 @@ console.log('== SVチェックの履歴＝その日の結果を選んで削除�
 
 console.log('== A4レポート＝写真を全部載せる（2026-09-17 神田さん）＝ソースで固定 ==');
 {
-  ok(/const drawPhotos = \(phs\) => \{/.test(code) && /for \(let i = 0; i < phs\.length; i \+= 3\)/.test(code), '写真は3枚ずつ段にして全部描く（1項目3枚の制限なし）');
+  ok(/const drawPhotos = \(phs\) => \{/.test(code) && /for \(let i = 0; i < phs\.length; i \+= fit\.per\)/.test(code), '写真は段にして全部描く（1項目3枚の制限なし・段の枚数は2枚に収める設定で変わる）');
+  ok(/const SV_FIT = \[\{ per: 3, bw: 300, bh: 200, fs: 0 \}, \{ per: 4/.test(code) && /pages\.length = bodyStart; newPage\(\);/.test(code) && /if \(pages\.length <= 2\) break;/.test(code), '2026-11-01 神田さん「A4に2枚に」＝2枚目からを別の紙に起こし、収まらなければ写真を縮めて描き直す（3→4→6→8枚/段）');
   ok(!/\.filter\(Boolean\)\.slice\(0, 3\);\s*const TH/.test(code) && !/\+\$\{more\}枚/.test(code), '「+N枚」の省略は無くなった');
   ok(/const good = SV_ITEMS\.filter[^\n]*\n[\s\S]{0,600}const phs = itemPhotos\(it\); if \(phs\.length\) \{ drawPhotos\(phs\); y \+= 4; \}/.test(code), '良かった点（○）の写真も載る');
   ok(/その他の気づき（対象外・/.test(code) && /a\.v === 'na' && \(\(a\.memo \|\| ''\)\.trim\(\) \|\| \(a\.photos \|\| \[\]\)\.length\)/.test(code), '対象外でもメモ・写真のある項目は「その他の気づき」に載る');
