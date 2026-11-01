@@ -501,7 +501,7 @@
   const roleKeys = () => TAIKEN ? ['staff', 'manager', 'owner'] : ROLE_KEYS_ALL;
   /* 開発者ビューの対象（2026-09-01 神田さんのご要望・2026-09-03 増田さんを追加）＝本部のこのアカウントだけ、
      端末で選んだ役割を「見え方」として使える。ログイン・権限・保存は本部のまま。 */
-  const DEV_VIEW_UIDS = ['kanda', 'masuda', 'yosakura-fc', 'tsuneyama'];   // 2026-09-30 神田さん「常山さんも本部だけでなく加盟店の画面としても使えるように」   // 2026-09-18 増田さん「まだできてない」＝本部共有ID（yosakura-fc）でログインしている可能性→同じ扱いに
+  const DEV_VIEW_UIDS = ['kanda', 'masuda', 'yosakura-fc', 'tsuneyama', 'takahara'];   // 2026-11-01 神田さん「高原社長にも全ての権限」＝役割の見え方切替も社長に   // 2026-09-30 神田さん「常山さんも本部だけでなく加盟店の画面としても使えるように」   // 2026-09-18 増田さん「まだできてない」＝本部共有ID（yosakura-fc）でログインしている可能性→同じ扱いに
   const getRole = () => {
     const a = getAuth();
     if (a && a.role) {
@@ -5998,8 +5998,8 @@
     if (m.menu || m.orderAt) text(`実食：${m.menu || '—'}` + (m.orderAt && m.servedAt ? `（注文 ${m.orderAt} → 提供 ${m.servedAt}）` : ''), 22, '#1A1A1A');
     y += 6;
     // スコア枠
-    ensure(136);
-    g.fillStyle = '#F7F4EF'; g.fillRect(M, y, W, 120);
+    ensure(166);
+    g.fillStyle = '#F7F4EF'; g.fillRect(M, y, W, 150);
     g.fillStyle = '#8E354A'; g.font = `bold 64px ${F}`; g.fillText(sc.pct != null ? sc.pct + '%' : '—', M + 24, y + 18);
     g.fillStyle = '#6B635A'; g.font = `20px ${F}`; g.fillText('参考スコア（対象外を除いた配点が分母）', M + 24, y + 92);   // 64pxの数字（y+18〜y+82）と重ならない位置（2026-09-17 神田さん実機）
     g.fillStyle = '#1A1A1A'; g.font = `bold 26px ${F}`;
@@ -6009,8 +6009,8 @@
     g.fillText(ngPh ? `× の内訳：${ngPh}` : '× はありません', M + 330, y + 62);
     /* v473 前回（同じ店の直近のチェック）＝トータルを並べる */
     const pv = svPrevVisit_(svState.store, svState.date);
-    g.fillText(pv ? `前回 ${pv.date.replace(/-/g, '/')}（${svWd(pv.date)}）：${pv.pct != null ? pv.pct + '%' : '—'}　○ ${pv.ok}　× ${pv.ng}　対象外 ${pv.na}` : '前回：なし（この店は今回が初回）', M + 330, y + 92);
-    y += 136;
+    g.fillText(pv ? `前回 ${pv.date.replace(/-/g, '/')}（${svWd(pv.date)}）：${pv.pct != null ? pv.pct + '%' : '—'}　○ ${pv.ok}　× ${pv.ng}　対象外 ${pv.na}` : '前回：なし（この店は今回が初回）', M + 24, y + 122);   // v474 左の「参考スコア（…）」と同じ行で重なったため下の行へ（神田さん 2026-11-01）
+    y += 166;
     /* ★2026-10-22 37項目の結果を全部並べる（店に渡した出来栄え基準と同じ順・番号）＝○×だけ先に全体が見える */
     band(pv ? `37項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）　右＝前回 ${pv.date.slice(5).replace('-', '/')}` : '37項目の結果（○＝全部できている　×＝1つでも欠けている　－＝対象外）');
     SV_PHASES.forEach(([k, l]) => {
