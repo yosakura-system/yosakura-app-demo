@@ -58,6 +58,15 @@ var FCM_STORES = [
 function FCM_下見() { return fcm_実行_(false, fcm_前月_()); }
 function FCM_CSV書き出し() { return fcm_実行_(true, fcm_前月_()); }
 function FCM_CSV書き出し_月指定() { var ym = '2026-09'; return fcm_実行_(true, ym); }   // ← ここを直して実行
+function FCM_下見_月指定() { var ym = '2026-09'; return fcm_実行_(false, ym); }        // ← ここを直して実行（書き込みなし）
+/* 加盟店PLの読み取りだけを点検（どのファイル・どの行を読んだか） */
+function FCM_PL点検() {
+  var ym = '2026-09'; var year = ym.slice(0, 4), mo = Number(ym.slice(5, 7)) - 1;
+  FCM_STORES.forEach(function (s) {
+    var r = fcm_PL_(s, year);
+    Logger.log(s[0] + '：' + (r.name || 'ファイルなし') + '｜' + ym + ' 人件費 ' + r.labor[mo] + '／諸経費 ' + r.other[mo] + '／売上 ' + r.sales[mo] + '｜月の列 ' + r.labor.length + (r.debug ? '｜' + r.debug : ''));
+  });
+}
 function fcmMonthlyExport() { return fcm_実行_(true, fcm_前月_()); }                   // トリガー用（ローマ字名）
 function ensureFcmTrigger() {
   var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'fcmMonthlyExport'; });
@@ -101,7 +110,7 @@ function fcm_PL_(st, year) {
   var sh = null;
   ss.getSheets().forEach(function (s) { var n = s.getName(); if (!sh && n.indexOf('年間収支') !== -1 && n.indexOf('率') === -1) sh = s; });
   if (!sh) return { name: f.getName() + '（年間収支タブなし）', labor: [], other: [], sales: [] };
-  var v = sh.getRange(1, 1, Math.min(sh.getLastRow(), 80), Math.min(sh.getLastColumn(), 20)).getValues();
+  var v = sh.getRange(1, 1, Math.min(sh.getLastRow(), 80), Math.min(sh.getLastColumn(), 20)).getDisplayValues();   // ★表示文字で読む（月の見出し「1月」が日付セルの版がある）
   // 月の見出し行＝「1月」〜「12月」が並ぶ行
   var mcol = {}, hdr = -1;
   for (var i = 0; i < v.length && hdr < 0; i++) {
@@ -112,7 +121,7 @@ function fcm_PL_(st, year) {
   if (hdr < 0) return { name: f.getName() + '（月の見出しなし）', labor: [], other: [], sales: [] };
   var row = function (re) { for (var i = hdr + 1; i < v.length; i++) for (var j = 0; j < 4; j++) if (re.test(fcm_str_(v[i][j]))) return v[i]; return null; };
   var rEmp = row(/^人件費\(社員\)$/), rPart = row(/^人件費\(アルバイト\)$/), rWel = row(/^法定福利費$/), rSga = row(/^販売管理費$/), rSales = row(/^店舗売上\(税抜\)$/);
-  var out = { name: f.getName(), labor: [], other: [], sales: [] };
+  var out = { name: f.getName(), labor: [], other: [], sales: [], debug: 'タブ=' + sh.getName() + ' 見出し行=' + (hdr + 1) + ' 社員' + (rEmp ? '○' : '×') + ' バイト' + (rPart ? '○' : '×') + ' 法定' + (rWel ? '○' : '×') + ' 販管費' + (rSga ? '○' : '×') + ' 売上' + (rSales ? '○' : '×') };
   for (var mo = 0; mo < 12; mo++) {
     var c = mcol[mo]; if (c == null) continue;
     var g = function (r) { return r ? fcm_num_(r[c]) : null; };
