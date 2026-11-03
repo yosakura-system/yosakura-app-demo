@@ -15,8 +15,9 @@
  *   売上     ＝集約スプシ『月次PL』純売上(税抜)。空なら加盟店PLの店舗売上(税抜)
  *   客数     ＝『月次PL』客数
  *   食材原価 ＝『月次PL』期首棚卸＋当月仕入−期末棚卸（仕入が空なら売上原価の欄）。棚卸が0の店は仕入額のまま＝ログに△
+ *             ★原価率が15%未満か80%超（仕入の記入漏れ等）で、加盟店PLの売上原価が15〜80%なら PL の値（2026-11-03）
  *   人件費   ＝★加盟店PL（★新 加盟店PL_<店>_<年>『年間収支』）の 人件費(社員)＋人件費(アルバイト)＋法定福利費（神田さん 2026-11-03「人件費はPLの数値を」）
- *             PLがまだ入っていない月（3つとも空か0）は総括表の人件費で代用＝ログに△
+ *             PLのその月が未記入（店舗売上か人件費が空・0）なら PL の人件費・諸経費は使わず、人件費は総括表で代用＝ログに△（2026-11-03）
  *   諸経費   ＝加盟店PLの 販売管理費 − 人件費(社員＋アルバイト＋法定福利)【整理】家賃・ロイヤリティ等を含む。山盛さんの定義が違えばここを直す
  *   稼働人時 ＝『総括表_日別』総労働時間 の月合計（アプリの日報・総括表取込の勤怠欄）。20日分に満たない店は空欄（部分合計を出さない）
  *   ★値が 0 の項目は空欄で出す（0＝未入力の印。空欄なら取り込んでも更新されない）
@@ -129,14 +130,14 @@ function fcm_PL読む_(st, year) {
   }
   if (hdr < 0) return { name: f.getName() + '（月の見出しなし）', labor: [], other: [], sales: [] };
   var row = function (re) { for (var i = hdr + 1; i < v.length; i++) for (var j = 0; j < 4; j++) if (re.test(fcm_str_(v[i][j]))) return v[i]; return null; };
-  var rEmp = row(/^人件費\(社員\)$/), rPart = row(/^人件費\(アルバイト\)$/), rWel = row(/^法定福利費$/), rSga = row(/^販売管理費$/), rSales = row(/^店舗売上\(税抜\)$/);
+  var rEmp = row(/^人件費\(社員\)$/), rPart = row(/^人件費\(アルバイト\)$/), rWel = row(/^法定福利費$/), rSga = row(/^販売管理費$/), rSales = row(/^店舗売上\(税抜\)$/), rCogs = (function () { for (var i = hdr + 1; i < v.length; i++) for (var j = 0; j < 4; j++) if (fcm_str_(v[i][j]) === '売上原価' && (fcm_str_(v[i][j + 1]) === '' || fcm_num_(v[i][j + 1]) != null)) return v[i]; return null; })();   // ★「売上原価」は区分見出し（期首棚卸の行）にもある＝右隣が数字か空の行＝項目の行（見出しの行は右隣が「期首棚卸高」）
   var out = { name: f.getName(), labor: [], other: [], sales: [], debug: 'タブ=' + sh.getName() + ' 見出し行=' + (hdr + 1) + ' 社員' + (rEmp ? '○' : '×') + ' バイト' + (rPart ? '○' : '×') + ' 法定' + (rWel ? '○' : '×') + ' 販管費' + (rSga ? '○' : '×') + ' 売上' + (rSales ? '○' : '×') };
   for (var mo = 0; mo < 12; mo++) {
     var c = mcol[mo]; if (c == null) continue;
     var g = function (r) { return r ? fcm_num_(r[c]) : null; };
     var e = g(rEmp), p = g(rPart), w = g(rWel), sga = g(rSga), s = g(rSales);
     var lab = (e == null && p == null && w == null) ? null : (e || 0) + (p || 0) + (w || 0);
-    out.labor[mo] = lab; out.sales[mo] = s;
+    out.labor[mo] = lab; out.sales[mo] = s; out.cogs = out.cogs || []; out.cogs[mo] = g(rCogs);
     out.other[mo] = (sga != null && sga !== 0) ? sga - (lab || 0) : null;
   }
   return out;
@@ -234,8 +235,16 @@ function fcm_行_(ym) {
     if (!plv.name) w.push('加盟店PLが見つからない');
     else if (!plv.labor.length) w.push(plv.name);
     else {
-      labor = plv.labor[mo]; other = plv.other[mo];
-      if (net == null && plv.sales[mo]) { net = plv.sales[mo]; w.push('売上は加盟店PL'); }
+      var plSales = plv.sales[mo], plLab = plv.labor[mo];
+      // ★その月の加盟店PLが記入済み（店舗売上と人件費がどちらも入っている）ときだけ人件費・諸経費を使う（2026-11-03 バックチェック：未記入月は固定費だけの諸経費 103,000 等が出ていた）
+      if (plSales && plLab) { labor = plLab; other = plv.other[mo]; } else if (plv.other[mo]) w.push('加盟店PLが未記入の月＝人件費・諸経費はPLから出さない');
+      if (!net && plSales) { net = plSales; w.push('売上は加盟店PL'); }   // ★総括表が0（未記入の月）でも切替える
+      // ★総括表が月の途中までしか入っていない月（純売上が加盟店PLの9割未満）＝売上・原価は PL、客数は部分なので出さない（富士山2店の4〜7月）
+      if (net && plSales && net < plSales * 0.9) { w.push('総括表が月の途中まで（' + Math.round(net) + '）＝売上・原価は加盟店PL・客数は出さない'); net = plSales; guests = null; cogs = null; }
+      // ★食材原価：総括表の原価率が15%未満か80%超（仕入の記入漏れ等）で、加盟店PLの売上原価が15〜80%なら PL に切替える（10/20 実績反映案と同じ考え方）
+      var pc = plv.cogs ? plv.cogs[mo] : null, base = net || plSales;
+      var okRate = function (x) { return x != null && base && x / base >= 0.15 && x / base <= 0.8; };
+      if (!okRate(cogs) && okRate(pc)) { w.push('食材原価は加盟店PL（総括表 ' + (cogs == null ? '空' : Math.round(cogs)) + '）'); cogs = pc; }
     }
     if (labor == null || labor === 0) { if (laborSk != null) { labor = laborSk; w.push('加盟店PLの人件費が未入力→総括表'); } else { labor = null; w.push('人件費なし'); } }
     if (cogs != null && cogs < 0) { w.push('食材原価がマイナス（' + Math.round(cogs) + '）＝総括表の棚卸を確認・出さない'); cogs = null; }   // ★期末棚卸＞期首＋仕入のとき
