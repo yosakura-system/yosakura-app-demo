@@ -23,7 +23,7 @@
  *   4. ensurePlTrigger()      … 毎朝6:20の自動実行（importMonthlyPl で登録）
  */
 var PL_TAB = '月次PL';
-var PL_CACHE = 'PL_CACHE_V5';   // ★読み方を変えたら末尾の番号を上げる（控えを捨てて全部読み直す）
+var PL_CACHE = 'PL_CACHE_V6';   // ★読み方を変えたら末尾の番号を上げる（控えを捨てて全部読み直す）
 var PL_HEADER = ['店舗', '年月', '現金売上', 'カード売上', '売上計', '純売上(税抜)', '客数', '客単価',
   '売上原価', '原価率(棚卸込み)%', '仕入率%', '人件費', '人件費率%', '管理可能利益', '管理可能利益率%',
   '期首棚卸', '当月仕入', '期末棚卸', '昼のみ売上', '口コミ件数(月間)', 'チップ総額', '鰻尾数', '月総日数', '稼働日数', '総括表の版', 'ファイル', '読んだ日時'];
@@ -188,7 +188,7 @@ function pl_1冊を読む_(store, b) {
     if (cF >= 0) { var a = num(sv[p.r][cF]), b2 = num(sv[p.r][cD]); if (a != null || b2 != null) return (a || 0) + (b2 || 0); }
     return last(p);
   };
-  o.inv0 = sumRow(findRow(/^期首棚卸高/));   // ★Ver.3.0 は「期首棚卸高（前月末在庫高）」 o.buy = sumRow(findRow(/^当月仕入高$/)); o.inv1 = sumRow(findRow(/^期末棚卸高$/));
+  o.inv0 = sumRow(findRow(/^期首棚卸高/)); o.buy = sumRow(findRow(/^当月仕入高$/)); o.inv1 = sumRow(findRow(/^期末棚卸高$/));   // ★期首は前方一致＝Ver.3.0 は「期首棚卸高（前月末在庫高）」
   o.review = below(findRow(/累計口コミ獲得数/), 4); o.tip = below(findRow(/^◎チップ$/), 3); o.eel = below(findRow(/鰻使用尾数/), 4);
   // --- 【売上台帳】タブ＝昼のみ売上の合計・月総日数・稼働日数 ---
   ss.getSheets().some(function (sh) {
