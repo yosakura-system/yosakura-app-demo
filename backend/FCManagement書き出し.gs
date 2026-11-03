@@ -18,7 +18,8 @@
  *   人件費   ＝★加盟店PL（★新 加盟店PL_<店>_<年>『年間収支』）の 人件費(社員)＋人件費(アルバイト)＋法定福利費（神田さん 2026-11-03「人件費はPLの数値を」）
  *             PLがまだ入っていない月（3つとも空か0）は総括表の人件費で代用＝ログに△
  *   諸経費   ＝加盟店PLの 販売管理費 − 人件費(社員＋アルバイト＋法定福利)【整理】家賃・ロイヤリティ等を含む。山盛さんの定義が違えばここを直す
- *   稼働人時 ＝『総括表_日別』総労働時間 の月合計（アプリの日報・総括表取込の勤怠欄）。1日も無い店は空欄
+ *   稼働人時 ＝『総括表_日別』総労働時間 の月合計（アプリの日報・総括表取込の勤怠欄）。20日分に満たない店は空欄（部分合計を出さない）
+ *   ★値が 0 の項目は空欄で出す（0＝未入力の印。空欄なら取り込んでも更新されない）
  *   各予算   ＝空欄（予算は本部の手入力）
  *   海外2店（ファンケビン・ホーチミン）＝データが無いので出さない
  *   国籍別   ＝別ファイル「FC Management_国籍別_YYYY-MM.csv」（店舗名,店舗コード,対象月,区分,組数,人数＝『総括表_国別内訳』の月合計）。
@@ -172,7 +173,7 @@ function fcm_実行_(書き込む, ym) {
   }
   // --- 行を組む ---
   var rows = [], ctyRows = [], notes = [];
-  var v = function (x) { return x == null ? '' : String(Math.round(x)); };
+  var v = function (x) { return (x == null || x === 0) ? '' : String(Math.round(x)); };   // ★0＝未入力の印なので空欄で出す（0を取り込むと「0円」で上書きされる）
   FCM_STORES.forEach(function (s) {
     var app = s[0], name = s[1], code = s[2]; var r = byStore[app]; var w = [];
     var net = null, guests = null, cogs = null, laborSk = null;
@@ -193,7 +194,7 @@ function fcm_実行_(書き込む, ym) {
     if (labor == null || labor === 0) { if (laborSk != null) { labor = laborSk; w.push('加盟店PLの人件費が未入力→総括表'); } else { labor = null; w.push('人件費なし'); } }
     if (net == null) w.push('売上なし');
     var hh = hours[app] != null ? Math.round(hours[app] * 10) / 10 : null;
-    if (hh == null) w.push('総労働時間なし'); else if (hdays[app] < 20) w.push('総労働時間は' + hdays[app] + '日分だけ');
+    if (hh == null) w.push('総労働時間なし'); else if (hdays[app] < 20) { w.push('総労働時間は' + hdays[app] + '日分だけ＝出さない'); hh = null; }   // ★月の大半が無い店の合計は人時として意味が無い
     rows.push([name, code, fcm_月表記_(ym), v(net), v(guests), v(cogs), v(labor), hh == null ? '' : String(hh), v(other), '', '', '', '', '']);
     notes.push((w.length ? '△ ' : '○ ') + name + '：売上 ' + v(net) + '／客数 ' + v(guests) + '／原価 ' + v(cogs) + '／人件費 ' + v(labor) + '／人時 ' + (hh == null ? '' : hh) + '／諸経費 ' + v(other) + (w.length ? '　' + w.join('・') : '') + (plv.name ? '　PL=' + plv.name : ''));
     var cm = cty[app] || {};
