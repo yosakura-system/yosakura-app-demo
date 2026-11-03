@@ -4,7 +4,7 @@
  *
  * ■ なにをするか（2026-10-20 山盛さん「自動で分かる数値は全部自動で」→ 2026-11-02 神田さん「正体は Web アプリ FC Management」）
  *   FC Management の本部入力にある「CSVインポート」の雛形と同じ列で、1店×1か月＝1行の CSV を Drive に出す。
- *   神田さんは月1回、本部入力 →「CSVを選択」でこのファイルを選ぶだけ（1クリック）。
+ *   神田さんは月1回、本部入力 →「CSVを選択」→「○行を取り込む」の2クリック。
  *
  * ■ 雛形の列（2026-11-03 アプリの「テンプレート」から確認。文字コード UTF-8・BOMなし・改行 LF）
  *   店舗名,店舗コード,対象月,売上,客数,食材原価,人件費,稼働人時,諸経費,売上予算,客数予算,食材原価予算,人件費予算,諸経費予算
@@ -34,6 +34,7 @@
  *   FCM_下見()                 … 前月分の中身をログに出すだけ（書き込みなし）
  *   FCM_CSV書き出し()           … 前月分の CSV を Drive に出す
  *   FCM_CSV書き出し_月指定()    … 中の ym を直して実行（例 '2026-09'）
+ *   FCM_CSV書き出し_期間()      … 中の from〜to を直して実行＝複数月を1つのCSVに（過去分の一括取り込み。6項目が全部空の行は出さない）
  *   ensureFcmTrigger()         … 毎月5日 7時の自動実行を登録（関数名は fcmMonthlyExport）
  */
 var FCM_FOLDER_PROP = 'FCM_FOLDER_ID';
@@ -68,6 +69,7 @@ function FCM_PL点検() {
     Logger.log(s[0] + '：' + (r.name || 'ファイルなし') + '｜' + ym + ' 人件費 ' + r.labor[mo] + '／諸経費 ' + r.other[mo] + '／売上 ' + r.sales[mo] + '｜月の列 ' + r.labor.length + (r.debug ? '｜' + r.debug : ''));
   });
 }
+function FCM_CSV書き出し_期間() { var from = '2026-01', to = '2026-08'; return fcm_期間_(true, from, to); }   // ← ここを直して実行
 function fcmMonthlyExport() { return fcm_実行_(true, fcm_前月_()); }                   // トリガー用（ローマ字名）
 function ensureFcmTrigger() {
   var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'fcmMonthlyExport'; });
@@ -87,6 +89,7 @@ function fcm_ym_(v) {   // セルの年月（Date でも文字でも）→ 'yyyy
 function fcm_num_(v) { if (v === '' || v == null) return null; var n = Number(String(v).replace(/[,¥￥\s]/g, '')); return isNaN(n) ? null : n; }
 function fcm_月表記_(ym) { return Number(ym.slice(0, 4)) + '年' + Number(ym.slice(5, 7)) + '月'; }
 function fcm_str_(v) { return String(v == null ? '' : v).replace(/\s/g, '').replace(/（/g, '(').replace(/）/g, ')'); }
+function fcm_翌月_(ym) { var y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)) + 1; if (m > 12) { m = 1; y++; } return y + '-' + ('0' + m).slice(-2); }
 
 /* ---------- 加盟店PL（年間収支タブ）を読む：店×年 → {name, labor[12], other[12], sales[12]}（月は 0 始まり） ---------- */
 function fcm_PLファイル_(st, year) {
@@ -105,7 +108,12 @@ function fcm_PLファイル_(st, year) {
   cands.sort(function (a, b) { return b.rank - a.rank || b.m - a.m; });
   return cands[0].f;
 }
+var FCM_PL_CACHE = {};   // 店×年 → 読んだ結果（期間書き出しで同じファイルを何度も開かない）
 function fcm_PL_(st, year) {
+  var ck = st[0] + '|' + year; if (FCM_PL_CACHE[ck]) return FCM_PL_CACHE[ck];
+  var r = fcm_PL読む_(st, year); FCM_PL_CACHE[ck] = r; return r;
+}
+function fcm_PL読む_(st, year) {
   var f = fcm_PLファイル_(st, year); if (!f) return { name: null, labor: [], other: [], sales: [] };
   var ss = SpreadsheetApp.openById(f.getId());
   var sh = null;
@@ -136,6 +144,44 @@ function fcm_PL_(st, year) {
 
 /* ---------- 本体 ---------- */
 function fcm_実行_(書き込む, ym) {
+  var r = fcm_行_(ym);
+  var csv = [FCM_HEADER].concat(r.rows).map(function (x) { return x.join(','); }).join('\n') + '\n';
+  var csvCty = [FCM_CTY_HEADER].concat(r.ctyRows).map(function (x) { return x.join(','); }).join('\n') + '\n';
+  Logger.log('対象月 ' + ym + '（' + fcm_月表記_(ym) + '）' + r.rows.length + '店・国籍別 ' + r.ctyRows.length + '行\n' + r.notes.join('\n'));
+  Logger.log('----- 実績CSV -----\n' + csv);
+  if (!書き込む) { Logger.log('書き込みはしていません（下見）'); return csv; }
+  return fcm_保存_(csv, csvCty, ym);
+}
+/* 期間をまとめて1つのCSVに（過去分の一括取り込み用）。6項目が全部空の行は出さない */
+function fcm_期間_(書き込む, from, to) {
+  var rows = [], cty = [], logs = []; var ym = from;
+  while (ym <= to) {
+    var r = fcm_行_(ym);
+    r.rows.forEach(function (x) { if (x.slice(3, 9).some(function (v) { return v !== ''; })) rows.push(x); });
+    cty = cty.concat(r.ctyRows); logs.push('【' + ym + '】\n' + r.notes.join('\n'));
+    ym = fcm_翌月_(ym);
+  }
+  var csv = [FCM_HEADER].concat(rows).map(function (x) { return x.join(','); }).join('\n') + '\n';
+  var csvCty = [FCM_CTY_HEADER].concat(cty).map(function (x) { return x.join(','); }).join('\n') + '\n';
+  Logger.log(from + '〜' + to + '：' + rows.length + '行（値のある店×月だけ）・国籍別 ' + cty.length + '行\n' + logs.join('\n'));
+  Logger.log('----- 実績CSV -----\n' + csv);
+  if (!書き込む) return csv;
+  return fcm_保存_(csv, csvCty, from + '〜' + to);
+}
+function fcm_保存_(csv, csvCty, tag) {
+  var folder = fcm_フォルダ_(aggSs_());
+  var put = function (fname, text) {
+    var old = folder.getFilesByName(fname); while (old.hasNext()) old.next().setTrashed(true);
+    return folder.createFile(Utilities.newBlob(text, 'text/csv', fname));   // UTF-8・BOMなし（雛形と同じ）
+  };
+  var f1 = put('FC Management_実績_' + tag + '.csv', csv);
+  var f2 = put('FC Management_国籍別_' + tag + '.csv', csvCty);
+  Logger.log('書き出し：' + f1.getName() + '\n' + f1.getUrl() + '\n→ FC Management の 本部入力 →「CSVを選択」→「○行を取り込む」\n国籍別（参考）：' + f2.getUrl());
+  return f1.getUrl();
+}
+
+/* 1か月分の行を組む（書き込みなし）→ {rows, ctyRows, notes} */
+function fcm_行_(ym) {
   if (!/^\d{4}-\d{2}$/.test(ym)) throw new Error('ym は 2026-09 の形で：' + ym);
   var year = ym.slice(0, 4), mo = Number(ym.slice(5, 7)) - 1;
   var ss = aggSs_();
@@ -200,21 +246,7 @@ function fcm_実行_(書き込む, ym) {
     var cm = cty[app] || {};
     Object.keys(cm).sort().forEach(function (kb) { ctyRows.push([name, code, fcm_月表記_(ym), (typeof AGG_CTY === 'object' && AGG_CTY[kb]) || kb, String(cm[kb].g), String(cm[kb].p)]); });
   });
-  var csv = [FCM_HEADER].concat(rows).map(function (r) { return r.join(','); }).join('\n') + '\n';
-  var csvCty = [FCM_CTY_HEADER].concat(ctyRows).map(function (r) { return r.join(','); }).join('\n') + '\n';
-  Logger.log('対象月 ' + ym + '（' + fcm_月表記_(ym) + '）' + rows.length + '店・国籍別 ' + ctyRows.length + '行\n' + notes.join('\n'));
-  Logger.log('----- 実績CSV -----\n' + csv);
-  if (!書き込む) { Logger.log('書き込みはしていません（下見）'); return csv; }
-  // --- Drive へ（同じ名前は置き換え） ---
-  var folder = fcm_フォルダ_(ss);
-  var put = function (fname, text) {
-    var old = folder.getFilesByName(fname); while (old.hasNext()) old.next().setTrashed(true);
-    return folder.createFile(Utilities.newBlob(text, 'text/csv', fname));   // UTF-8・BOMなし（雛形と同じ）
-  };
-  var f1 = put('FC Management_実績_' + ym + '.csv', csv);
-  var f2 = put('FC Management_国籍別_' + ym + '.csv', csvCty);
-  Logger.log('書き出し：' + f1.getName() + '\n' + f1.getUrl() + '\n→ FC Management の 本部入力 →「CSVを選択」でこのファイルを選ぶ\n国籍別（参考）：' + f2.getUrl());
-  return f1.getUrl();
+  return { rows: rows, ctyRows: ctyRows, notes: notes };
 }
 
 function fcm_フォルダ_(ss) {
