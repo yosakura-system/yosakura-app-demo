@@ -23,7 +23,7 @@
  *   4. ensurePlTrigger()      … 毎朝6:20の自動実行（importMonthlyPl で登録）
  */
 var PL_TAB = '月次PL';
-var PL_CACHE = 'PL_CACHE_V3';   // ★読み方を変えたら末尾の番号を上げる（控えを捨てて全部読み直す）
+var PL_CACHE = 'PL_CACHE_V4';   // ★読み方を変えたら末尾の番号を上げる（控えを捨てて全部読み直す）
 var PL_HEADER = ['店舗', '年月', '現金売上', 'カード売上', '売上計', '純売上(税抜)', '客数', '客単価',
   '売上原価', '原価率(棚卸込み)%', '仕入率%', '人件費', '人件費率%', '管理可能利益', '管理可能利益率%',
   '期首棚卸', '当月仕入', '期末棚卸', '昼のみ売上', '口コミ件数(月間)', 'チップ総額', '鰻尾数', '月総日数', '稼働日数', '総括表の版', 'ファイル', '読んだ日時'];
@@ -135,7 +135,7 @@ function pl_1冊を読む_(store, b) {
   var ss; try { ss = SpreadsheetApp.openById(b.id); } catch (e) { Logger.log('開けない：' + b.name); return null; }
   var ym = b.ym.slice(0, 4) + '-' + b.ym.slice(4, 6);
   var verM = b.name.match(/Ver\.?\s*([\d.]+)/i); var ver = verM ? verM[1] : '';
-  var str = function (v) { return String(v == null ? '' : v).replace(/\s/g, ''); };
+  var str = function (v) { return String(v == null ? '' : v).replace(/\s/g, '').replace(/（/g, '(').replace(/）/g, ')').replace(/\((税込|税抜)\)$/, ''); };   // ★Ver.3.0 は「現金売上(税込)」「純売上(税抜)」と括弧つき（2026-11-03）
   var num = pl_num_;
   // --- 【総括表】タブ＝上6行に《総括表》がある最初のシート ---
   var sv = null;
@@ -161,13 +161,17 @@ function pl_1冊を読む_(store, b) {
   // ★ブロックの並び順で特定（上から：現金売上 → カード売上 → 計 → 純売上 → 売上原価 → 人件費 → 計 → 管理可能利益）
   var pCash = findRow(/^現金売上$/);
   var pCard = findRow(/^カード売上$/, pCash ? pCash.r : 0);
-  var pSum = findRow(/^計$/, pCard ? pCard.r + 1 : 0);
+  var pEm = findRow(/^電子マネー売上$/, pCard ? pCard.r : 0), pKake = findRow(/^掛売売上$/, pCard ? pCard.r : 0);   // Ver.3.0〜
+  if (pEm && pEm.r > pCard.r + 3) pEm = null; if (pKake && pKake.r > pCard.r + 3) pKake = null;
+  var lastIn = [pCard, pEm, pKake].reduce(function (a, b) { return (b && (!a || b.r > a.r)) ? b : a; }, null);
+  var pSum = findRow(/^計$/, lastIn ? lastIn.r + 1 : 0);
   var pNet = findRow(/^純売上/, pSum ? pSum.r : 0);
   var pCogs = findRow(/^売上原価$/, pNet ? pNet.r : 0);
   var pProfit = findRow(/^管理可能利益$/, pCogs ? pCogs.r : 0);
   var pLabor = findRow(/^人件費$/, pCogs ? pCogs.r + 1 : 0, pProfit ? pProfit.r : null);   // ★原価と利益の間にある「人件費」だけ
   var o = {};
   o.cash = at(pCash); o.card = at(pCard); o.sales = at(pSum); o.net = at(pNet);
+  if (o.card != null || pEm || pKake) o.card = (o.card || 0) + (at(pEm) || 0) + (at(pKake) || 0);   // ★カード列＝現金以外の合計（電子マネー・掛売を含む）＝売上計＝現金＋カード が成り立つ
   o.cogs = at(pCogs); o.labor = at(pLabor); o.profit = at(pProfit);
   if (o.sales == null && o.cash != null) o.sales = (o.cash || 0) + (o.card || 0);
   o.guests = right(findRow(/^客数[:：]?$/)); o.unit = right(findRow(/^客単価[:：]?$/));
