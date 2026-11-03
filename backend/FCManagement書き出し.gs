@@ -238,6 +238,7 @@ function fcm_行_(ym) {
       if (net == null && plv.sales[mo]) { net = plv.sales[mo]; w.push('売上は加盟店PL'); }
     }
     if (labor == null || labor === 0) { if (laborSk != null) { labor = laborSk; w.push('加盟店PLの人件費が未入力→総括表'); } else { labor = null; w.push('人件費なし'); } }
+    if (cogs != null && cogs < 0) { w.push('食材原価がマイナス（' + Math.round(cogs) + '）＝総括表の棚卸を確認・出さない'); cogs = null; }   // ★期末棚卸＞期首＋仕入のとき
     if (net == null) w.push('売上なし');
     var hh = hours[app] != null ? Math.round(hours[app] * 10) / 10 : null;
     if (hh == null) w.push('総労働時間なし'); else if (hdays[app] < 20) { w.push('総労働時間は' + hdays[app] + '日分だけ＝出さない'); hh = null; }   // ★月の大半が無い店の合計は人時として意味が無い
