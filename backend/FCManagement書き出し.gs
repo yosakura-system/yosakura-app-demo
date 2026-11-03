@@ -34,7 +34,7 @@
  *   FCM_下見()                 … 前月分の中身をログに出すだけ（書き込みなし）
  *   FCM_CSV書き出し()           … 前月分の CSV を Drive に出す
  *   FCM_CSV書き出し_月指定()    … 中の ym を直して実行（例 '2026-09'）
- *   FCM_CSV書き出し_期間()      … 中の from〜to を直して実行＝複数月を1つのCSVに（過去分の一括取り込み。6項目が全部空の行は出さない）
+ *   FCM_CSV書き出し_期間()      … 中の from〜to を直して実行＝複数月を1つのCSVに（過去分の一括取り込み。売上も客数も無い行は出さない）
  *   ensureFcmTrigger()         … 毎月5日 7時の自動実行を登録（関数名は fcmMonthlyExport）
  */
 var FCM_FOLDER_PROP = 'FCM_FOLDER_ID';
@@ -152,12 +152,12 @@ function fcm_実行_(書き込む, ym) {
   if (!書き込む) { Logger.log('書き込みはしていません（下見）'); return csv; }
   return fcm_保存_(csv, csvCty, ym);
 }
-/* 期間をまとめて1つのCSVに（過去分の一括取り込み用）。6項目が全部空の行は出さない */
+/* 期間をまとめて1つのCSVに（過去分の一括取り込み用）。売上も客数も無い行は出さない */
 function fcm_期間_(書き込む, from, to) {
   var rows = [], cty = [], logs = []; var ym = from;
   while (ym <= to) {
     var r = fcm_行_(ym);
-    r.rows.forEach(function (x) { if (x.slice(3, 9).some(function (v) { return v !== ''; })) rows.push(x); });
+    r.rows.forEach(function (x) { if (x[3] !== '' || x[4] !== '') rows.push(x); });   // ★売上も客数も無い月（営業前・未入力）は出さない＝諸経費だけの行を作らない
     cty = cty.concat(r.ctyRows); logs.push('【' + ym + '】\n' + r.notes.join('\n'));
     ym = fcm_翌月_(ym);
   }
