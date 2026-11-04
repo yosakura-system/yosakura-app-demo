@@ -41,7 +41,7 @@ function aggSs_() {
 
 /* ---------- 表示用の対応表 ---------- */
 var AGG_KIND = {
-  soukatsu: '総括表（アプリ入力）', soukatsu_imp: '総括表（総括表取込）', soukatsu_usen: '総括表（USENレジ取込）', survey: 'サーベイ回答', kizuki: '気づき',
+  soukatsu: '総括表（アプリ入力）', soukatsu_imp: '総括表（総括表取込）', soukatsu_usen: '総括表（レジ取込）', survey: 'サーベイ回答', kizuki: '気づき',
   chukan: '中間報告', subrec: '写真等の提出', ckdone: 'チェックリスト操作', gsnap: 'Google口コミ取得',
   video: '店内動画', kinshu: '金種別入力', handover: '店内伝言板', a: '食べ残し', b: '食べ残し',
   svfb: '巡回フィードバック', route: '来店経路', open: '開局記録（旧）', community: 'みんなの投稿',
@@ -140,7 +140,7 @@ function aggCover_(ss) {
     ['', '', '', ''],
     ['見たいもの', 'タブ', '件数', 'ひとこと'],
     ['全店の日次数値（売上・客数・目標・チップ…）', '総括表_日別', '', '店舗×日付で1行。「経路」列の色＝緑：アプリ入力／生成り：総括表取込／青：USENレジ。「＋USENレジ」＝売上・客数だけレジの値で上書き。「売上・客数の出どころ」列で数字の出どころが分かる'],
-    ['USENレジの締めの数字（取り込んだ店×日）', 'USENレジ_日別', '', 'レジの値そのまま（売上・純売上・客数・支払方法別・値引き）。USENに載る7店だけ'],
+    ['全レジの締めの数字（USEN・Airレジ・UMaT＝取り込んだ店×日）', 'レジ_日別', '', 'レジの値そのまま（売上・純売上・客数・支払方法別・値引き）。USENに載る7店だけ'],
     ['お客様の国別内訳（組数・人数）', '総括表_国別内訳', '', '総括表の「お客様の内訳」。1国1行でピボットしやすい形'],
     ['お客様アンケートの生の声', 'サーベイ', '', '満足度・来店経路・来店国・コメント'],
     ['現場からの気づき・提案', '気づき', '', '店舗スタッフの声を全文そのまま'],
@@ -153,11 +153,11 @@ function aggCover_(ss) {
     ['・各タブの見出し行のフィルターで、どの列でも絞り込み・並べ替えができます', '', '', ''],
     ['・このスプシは毎日上書きされます。加工はコピーを取るか、IMPORTRANGE で別シートへ', '', '', ''],
     ['・元データは世桜アプリ。この表を直しても元データは変わりません', '', '', ''],
-    ['・総括表_日別の「経路」の色＝緑：アプリ入力／生成り：総括表取込／青：USENレジ', '', '', '']
+    ['・総括表_日別の「経路」の色＝緑：アプリ入力／生成り：総括表取込／青：レジ', '', '', '']
   ];
   sh.getRange(1, 1, rows.length, 4).setValues(rows);
   // 件数＝自動計算（開いたときの実数が常に出る）
-  var tabs = ['総括表_日別', 'USENレジ_日別', '総括表_国別内訳', 'サーベイ', '気づき', '中間報告', 'Google口コミ', '提出ログ', '店舗別サマリ'];
+  var tabs = ['総括表_日別', 'レジ_日別', '総括表_国別内訳', 'サーベイ', '気づき', '中間報告', 'Google口コミ', '提出ログ', '店舗別サマリ'];
   for (var i = 0; i < tabs.length; i++) {
     sh.getRange(7 + i, 3).setFormula("=COUNTA('" + tabs[i] + "'!A2:A)&\" 件\"");
   }
@@ -227,12 +227,12 @@ function aggRebuild() {
   var skHead = ['日付', '店舗', '経路', '売上・客数の出どころ', '客単価（自動）'].concat(AGG_SK_COLS.map(function (c) { return c[1]; })).concat(exKeys);
   var skRows = Object.keys(byDay).sort().map(function (k) {
     var x = byDay[k], p = x.p, u = usenDay[k];
-    var route = p.src === 'usen' ? 'USENレジ' : p.src ? '総括表取込' : 'アプリ入力';
+    var route = p.src === 'usen' ? 'レジ' : p.src ? '総括表取込' : 'アプリ入力';   // ★2026-11-05 レジ＝USEN・Airレジ（鰻富士山102・鰻長堀橋103）・UMaT（本店101）が全部同じ道で入る＝名前を「レジ」に
     var numSrc = route;
     if (u && u !== x) {
       p = Object.assign({}, p);
       USEN_F.forEach(function (f) { if (u.p[f] != null && u.p[f] !== '') p[f] = u.p[f]; });
-      numSrc = 'USENレジ'; route += '＋USENレジ';
+      numSrc = 'レジ'; route += '＋レジ';
     }
     var unit = (Number(p.sales) > 0 && Number(p.guests) > 0) ? Math.round(Number(p.sales) / Number(p.guests)) : '';
     var row = [aggDate_(p.date), x.store, route, numSrc, unit];
@@ -245,19 +245,21 @@ function aggRebuild() {
      アプリ入力＝緑／総括表取込＝生成り（濃いめ）／USENレジ＝青。「＋USENレジ」の日は経路＝行のもとの色・出どころ＝青 */
   if (skRows.length) {
     var shSk = ss.getSheetByName('総括表_日別');
-    var colorOf = function (s) { return s.indexOf('USENレジ') === 0 ? AGG_C_USEN : s.indexOf('総括表') === 0 ? AGG_C_DRIVE : AGG_C_APP; };
+    var colorOf = function (s) { return s.indexOf('レジ') === 0 ? AGG_C_USEN : s.indexOf('総括表') === 0 ? AGG_C_DRIVE : AGG_C_APP; };
     var bg = skRows.map(function (r) { return [colorOf(String(r[2])), colorOf(String(r[3]))]; });
     shSk.getRange(2, 3, bg.length, 2).setBackgrounds(bg);
   }
 
-  /* --- ①' USENレジ_日別：レジから取り込んだ行だけ（レジの値そのまま・上書き前） --- */
+  /* --- ①' レジ_日別：レジから取り込んだ行だけ（レジの値そのまま・上書き前）。USEN 7店＋Airレジ（鰻富士山・鰻長堀橋）＋UMaT（本店）＝全レジ（2026-11-05 名前を USENレジ_日別→レジ_日別） --- */
+  var regiName_ = function (code) { var c = String(code || ''); return c === '101' ? 'UMaT' : (c === '102' || c === '103') ? 'Airレジ' : c ? 'USEN' : ''; };
   var usenRows = Object.keys(usenDay).sort().map(function (k) {
     var x = usenDay[k], p = x.p;
-    return [aggDate_(p.date), x.store, p.sales != null ? p.sales : '', p.net != null ? p.net : '', p.guests != null ? p.guests : '',
+    return [aggDate_(p.date), x.store, regiName_(p.usenCode), p.sales != null ? p.sales : '', p.net != null ? p.net : '', p.guests != null ? p.guests : '',
       p.cash != null ? p.cash : '', p.card != null ? p.card : '', p.emoney != null ? p.emoney : '', p.point != null ? p.point : '',
       p.disc != null ? p.disc : '', p.err != null ? p.err : '', p.usenCode || '', aggFmtT_(x.t)];
   });
-  aggWrite_(ss, 'USENレジ_日別', ['日付', '店舗', '売上（税込）', '純売上', '客数', '現金', 'クレジット', '電子マネー', 'ポイント', '値引き', 'レジ誤差', 'USEN店舗コード', '取込日時'], usenRows);
+  var oldUsenTab = ss.getSheetByName('USENレジ_日別'); if (oldUsenTab && !ss.getSheetByName('レジ_日別')) oldUsenTab.setName('レジ_日別');   // 旧名のタブを改名（IMPORTRANGE の参照先が切れないよう消さずに名前だけ）
+  aggWrite_(ss, 'レジ_日別', ['日付', '店舗', 'レジ', '売上（税込）', '純売上', '客数', '現金', 'クレジット', '電子マネー', 'ポイント', '値引き', 'レジ誤差', '店舗コード', '取込日時'], usenRows);
 
   /* --- ② 総括表_国別内訳（cty のある日だけ・1国1行） --- */
   var ctyRows = [];
