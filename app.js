@@ -2339,7 +2339,7 @@
     const rows = hqStRows_();
     const live = rows.filter(r => !r.holiday);
     const nOv = live.filter(r => r.overdue).length, nRem = live.filter(r => !r.overdue && r.remain).length, nOk = live.filter(r => !r.remain).length;
-    return `<main class="screen pb-home pb-hq">
+    return `<main class="screen pb-home pb-hq">${faqFacGate_()}
       <div class="pb-sec"><h2>${L({ ja:'全店 きょう', en:'All stores today', vi:'Tất cả hôm nay' })}</h2><small>${L({ ja:'赤＝締切超過 ・ 押すとその店の画面（確認用）', en:'Red = overdue. Tap to open the store view', vi:'Đỏ = quá hạn. Chạm để xem CH' })}</small></div>
       <div class="ksum"><span class="ksum-i ov"><b>${nOv}</b>${esc(L({ ja:'店 締切超過', en:' overdue', vi:' quá hạn' }))}</span><span class="ksum-i rem"><b>${nRem}</b>${esc(L({ ja:'店 未提出あり', en:' pending', vi:' còn thiếu' }))}</span><span class="ksum-i ok"><b>${nOk}</b>${esc(L({ ja:'店 完了', en:' done', vi:' xong' }))}</span></div>
       ${rows.map(r => `<button type="button" class="pb-hqrow ${r.holiday ? 'hol' : r.overdue ? 'ov' : r.remain ? 'rem' : 'ok'}" data-viewstore="${esc(r.st)}"><span class="kname">${esc(storeShort(r.st))}</span><span class="kbar"><i style="width:${r.holiday ? 0 : r.pct}%"></i></span><span class="kpct">${r.holiday ? L({ ja:'定休', en:'closed', vi:'nghỉ' }) : r.pct + '%'}</span><span class="kst">${r.holiday ? '' : r.overdue ? `${L({ ja:'超過', en:'late', vi:'trễ' })} ${r.overdue}` : r.remain ? `${L({ ja:'残', en:'left', vi:'còn' })} ${r.remain}` : L({ ja:'完了', en:'done', vi:'xong' })}</span></button>`).join('')}
@@ -2373,7 +2373,7 @@
     let open = []; try { open = collectHqItems(STORES.slice()).filter(i => i.state !== 'done').sort((a, b) => (b.t || 0) - (a.t || 0)); } catch (e) { open = []; }
     const cut = (t) => { const x = String(t || '').replace(/\s+/g, ' ').trim(); return x.length > 60 ? x.slice(0, 60) + '…' : x; };
     const inbox = open.slice(0, 5).map(i => `<div class="pb-inboxrow"><span class="ic">${svg('inbox')}</span><div><div class="k">${esc(L(i.label))} ・ ${esc(storeShort(i.store))}</div><div class="t">${esc(cut([i.title, i.detail].filter(Boolean).join('：')))}</div><div class="by">${esc(timeAgo(i.t || 0))}</div></div><button type="button" class="mini" data-open="inbox">${L({ ja:'見る', en:'Open', vi:'Xem' })}</button></div>`).join('');
-    return `<main class="screen pb-home pb-hq">
+    return `<main class="screen pb-home pb-hq">${faqFacGate_()}
       <div class="pb-sec"><h2>${L({ ja:'店舗', en:'Stores', vi:'Cửa hàng' })}</h2><small>${L({ ja:'押すとその店の画面（確認用）・戻るときは上の「本部」', en:'Tap to open the store view; “HQ” above to return', vi:'Chạm để xem CH; “HQ” ở trên để quay lại' })}</small></div>
       <div class="pb-hqstores">${cards}</div>
       <button class="pb-strip" data-open="hqcheck" style="margin-top:10px">${pbImg_('miru_manual', 'pb-th pb-th--s')}<span><b>${L({ ja:'SVチェック（出来栄え基準 37項目）', en:'SV check (35 items)', vi:'Kiểm tra SV (35 mục)' })}</b>${L({ ja:'店を選んで ○×・写真・メモ → 結果をPDFでLINEへ', en:'Pick a store, mark, add photos, share the PDF', vi:'Chọn cửa hàng, chấm, thêm ảnh, chia sẻ PDF' })}</span>${svg('chev')}</button>

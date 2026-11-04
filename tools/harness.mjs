@@ -535,7 +535,7 @@ console.log('== ホーム最上部：FAQ／FAC の窓口 ==');
     location.hash = '#/home';
     const html = registry.app.innerHTML;
     ok(/class="gate2"/.test(html) && /data-open="fac"/.test(html), role + '：案Bのホームにも窓口がある');
-    ok(html.indexOf('class="gate2"') < html.indexOf('pb-cover'), role + '★案Bでも窓口が「きょうの流れ」より上');
+    { const mI = html.indexOf('class="screen pb-home'), gI = html.indexOf('class="gate2"'); ok(mI >= 0 && gI > mI && gI - mI < 200, role + '★案Bでも窓口が画面の先頭（きょうの流れ・本部の一覧より上）'); }
   }
   run(()=> localStorage.removeItem('yosakura_theme'));
   // FAC の画面＝店舗は読む＋気づきへ／本部は載せる
