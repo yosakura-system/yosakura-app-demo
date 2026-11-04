@@ -387,6 +387,12 @@
     { id:'faq', group:'other', icon:'idea', live:true, roles:['staff','manager','owner','hq'],
       name:{ ja:'よくある質問（ルール集）', en:'FAQ & Rules', vi:'Hỏi đáp & Quy định' },
       desc:{ ja:'販促物の依頼・持ち込みなど、迷ったときに確認', en:'Check the rules when in doubt', vi:'Xem quy định khi phân vân' } },
+    /* ★FAC（2026-10-27 社長と決定＝FAQは「決まったルールと答え」、FACは「お客様に喜ばれた接客の工夫の事例集」。分けて管理）
+       2026-11-04 神田さん「ホームの最上部にFAQとFACの窓口を2つ」＋11/4 月例で社長が長田さんに説明した記録の形＝来店理由・状況に応じた工夫・お客様の反応。
+       データは faqset の配列に fac:true で同居（新しい kind を足さない＝バックエンドの許可一覧を触らない）。 */
+    { id:'fac', group:'other', icon:'star', live:true, roles:['staff','manager','owner','hq'],
+      name:{ ja:'FAC（接客の工夫・事例集）', en:'FAC: service ideas', vi:'FAC: ý tưởng phục vụ' },
+      desc:{ ja:'お客様に喜ばれた工夫を、みんなで共有', en:'Share ideas guests loved', vi:'Chia sẻ ý tưởng khách thích' } },
     { id:'inventory', group:'storeops', icon:'box', soon:true, hide:true, roles:['manager','owner','hq'], // 8/4: 棚卸は月末提出物へ統合＝独立は外す
       name:{ ja:'棚卸・在庫入力', en:'Stocktake', vi:'Kiểm kho' },
       desc:{ ja:'品目ごとの在庫をスマホで入力', en:'Enter stock by item on your phone', vi:'Nhập tồn kho theo mặt hàng' } },
@@ -1718,6 +1724,22 @@
   const DASH_TAB_LS = 'yosakura_dash_tab';   // 本部ダッシュボードのタブ（2026-09-22 神田さん「スクロールしないと見えない。タブで項目別に」）
   const dashTabSel_ = () => { try { const v = localStorage.getItem(DASH_TAB_LS) || ''; return ['num', 'loss', 'kz'].includes(v) ? v : 'num'; } catch (e) { return 'num'; } };
   const homeTabSel_ = () => { try { const v = localStorage.getItem(HOME_TAB_LS) || ''; return ['today', 'news', 'menu'].includes(v) ? v : 'today'; } catch (e) { return 'today'; } };
+  /* ★ホーム最上部の2つの窓口（2026-11-04 神田さん「アプリに入ったら、まずトップの最上部にFAQとFACをバンっと窓口2つに分けて。説明は簡易でいいので誰が見ても分かるように」）
+     FAQ＝決まったルールと答え／FAC＝お客様に喜ばれた接客の工夫（10/27 社長と決定）。タブの上に置く＝きょう・お知らせ・メニューのどれを開いていても見える。 */
+  function faqFacGate_() {
+    return `<div class="gate2">
+      <button type="button" class="gate" data-open="faq">
+        <span class="g-k">FAQ</span>
+        <b>${L({ ja:'よくある質問・ルール集', en:'FAQ & Rules', vi:'Hỏi đáp & Quy định' })}</b>
+        <small>${L({ ja:'決まったルールと答え。迷ったらここ', en:'Set rules and answers. Check here when unsure', vi:'Quy định và câu trả lời. Xem khi phân vân' })}</small>
+      </button>
+      <button type="button" class="gate gate--fac" data-open="fac">
+        <span class="g-k">FAC</span>
+        <b>${L({ ja:'接客の工夫・事例集', en:'Service ideas', vi:'Ý tưởng phục vụ' })}</b>
+        <small>${L({ ja:'お客様に喜ばれた工夫を、みんなで共有', en:'Ideas guests loved, shared by all stores', vi:'Ý tưởng khách thích, chia sẻ giữa các cửa hàng' })}</small>
+      </button>
+    </div>`;
+  }
   function homeInner(role) {
     const tiles = (ids) => ids.map(appById).filter(a => a && !appHidden(a) && canOpen(a, role)).map(a => tileHTML(a, role)).join('');
     const primary = tiles(getPins());
@@ -1875,6 +1897,7 @@
       <main class="screen">
         ${isHp() ? hpHero_() : `<div class="brandhead"><img class="brandhead__logo" src="${IMG_LOGO}" alt="日本料理 世桜 -yosakura-"></div>`}
         ${installCardHTML()}
+        ${faqFacGate_()}
         ${homeTabs}
         <section class="hpane" data-hpane="today"${homeTab === 'today' ? '' : ' hidden'}>
           ${handoverCard}
@@ -8289,6 +8312,90 @@
           en:'Please contact HQ.',
           vi:'Vui lòng liên hệ HQ.' } }
   ];
+  /* ★既存マニュアルから起こした FAQ（2026-11-04）。出どころ＝本部ドライブの承認済みマニュアル（番号は本部の目次）。
+     10/30 構築MTG「承認済みの既存マニュアルから事例を抽出してアプリへ」＋11/4 神田さん「社長から、載せられるものが沢山あると」。
+     本文はマニュアルの言葉を短くしたもの＝値・手順を足していない。本部が直す・伏せるのは fx_ と同じ（faqset に同じ id の上書き）。 */
+  const FAQ_MANUAL = [
+    { id:'fm_claim_steps', cat:'guest', src:'マニュアル 03-2 クレーム対応',
+      q:{ ja:'お客様からクレームを受けたら、まず何をすればよいですか？' },
+      a:{ ja:'順番は6つです。①お詫び（まず感情を受け止める）②最後まで聞く（遮らない・反論しない）③事実確認（責任者・本部へ共有）④原因と解決策を考える ⑤解決策の実行（返金・作り直しなど）⑥最後にお礼と再発防止をお伝えする。一人で判断せず責任者・本部へ。推測せず事実で判断し、対応した内容は必ず記録します。' } },
+    { id:'fm_claim_dont', cat:'guest', src:'マニュアル 03-2 クレーム対応',
+      q:{ ja:'クレーム対応で、やってはいけないことは？' },
+      a:{ ja:'言い訳や弁解から始める／お客様の話を遮る・反論する／「決まりなので」と機械的に返す／感情的になる・個人的に受け止める／約束できないことを約束する。店舗の不備が明らかなときは、一言で簡潔に謝ります。説明は短く分かりやすく、最後まで丁寧に締めます。' } },
+    { id:'fm_foreign_steps', cat:'guest', src:'マニュアル 03-11 外国人観光客へのおもてなしとご意見対応',
+      q:{ ja:'外国人のお客様からご意見をいただいたときの流れは？' },
+      a:{ ja:'5つの順です。①お詫びと傾聴（メモを取りながら最後まで聞く）②事実確認と共感 ③解決策を複数ご提案し選んでいただく ④解決後も様子を確認（フォローアップ）⑤本部へ報告（対応内容・経緯・改善点）。英語は短く「I understand your concern」「Let me check for you」。翻訳アプリは遠慮なく使います。' } },
+    { id:'fm_escalate', cat:'guest', src:'マニュアル 03-11 外国人観光客へのおもてなしとご意見対応',
+      q:{ ja:'どのタイミングで責任者に引き継ぎますか？' },
+      a:{ ja:'すぐに＝健康被害・アレルギー反応・食中毒の疑い・大きなけが。5分以内＝料金のトラブル・返金の要求・法的な問題になりそうなとき。10分以内＝自分では解決できない・お客様が責任者との面談を強く求めたとき。15分以内＝言葉が通じない・文化の理解が要る案件。責任者に相談するのは、お客様によりよい対応をするための大切な判断です。' } },
+    { id:'fm_allergy_unknown', cat:'guest', src:'マニュアル 03-11 外国人観光客へのおもてなしとご意見対応',
+      q:{ ja:'アレルギーを聞かれて分からないときは？' },
+      a:{ ja:'「分からない」は禁句で、推測で答えるのは絶対に避けます。調理場に確認するか、責任者に引き継ぎます。主要8品目（卵・乳・小麦・そば・落花生・えび・かに・くるみ）は、使っているかどうかを確認できる体制にしておきます。' } },
+    { id:'fm_chopsticks', cat:'guest', src:'マニュアル 03-11 外国人観光客へのおもてなしとご意見対応',
+      q:{ ja:'お箸が使えないお客様には、どうすればよいですか？' },
+      a:{ ja:'さりげなくフォークとスプーンをご用意します。練習したい方には、コツをお教えします。' } },
+    { id:'fm_wrong_dish', cat:'guest', src:'マニュアル 03-11 外国人観光客へのおもてなしとご意見対応',
+      q:{ ja:'「注文したものと違う」と言われたら？' },
+      a:{ ja:'すぐに正しい料理をお持ちし、間違った料理の代金はいただきません。防ぐには、注文の確認を英語でも行い、写真つきメニューを使います。' } },
+    { id:'fm_photo', cat:'guest', src:'マニュアル 08-1 撮影配慮・忘れ物対応',
+      q:{ ja:'お客様が写真を撮っているとき、どう配慮しますか？' },
+      a:{ ja:'他のお客様が映り込まないか確認し、さりげなくサポートします。撮影中のお客様へ「よろしければ、お撮りしましょうか？」「ほかのお客様が映らない範囲での撮影をお願いしております。ご協力ありがとうございます」。周りのお客様へ「撮影のお客様がいらっしゃいますので、少々お待ちいただけますか？」。' } },
+    { id:'fm_lost', cat:'guest', src:'マニュアル 08-1 撮影配慮・忘れ物対応',
+      q:{ ja:'忘れ物を見つけたら、どうしますか？' },
+      a:{ ja:'無断で開封・使用は絶対にしません。貴重品（財布・スマホ・鍵）は当日中に責任者へ報告し、鍵のかかる場所へ。衣類・傘は所定の場所へ。食品・飲料は保管せず、当日中に確認がなければ廃棄します。忘れ物リストに発見日時・場所・品物の特徴を記録。連絡があったら特徴を確認し、ご来店か着払いの郵送をご案内します（送料は店舗判断）。' } },
+    { id:'fm_review_harass', cat:'trouble', src:'マニュアル 04-4 Google嫌がらせ対応',
+      q:{ ja:'Googleで嫌がらせの口コミが付いたら？' },
+      a:{ ja:'戦いません。①事実確認（当日の状況・スタッフの対応・予約履歴を時系列でメモ）②Googleのガイドライン違反なら「問題を報告」から削除申請（事実だけを簡潔に）③削除されるまでは店の姿勢を示す返信をする（例：「当店の運営状況と事実関係を確認したうえで対応しております」）④悪化したら警察相談、不十分なら弁護士へ。速やかに本部へ報告し、外部には説明しません。' } },
+    { id:'fm_tip', cat:'store', src:'マニュアル 07-4 チップ運用ルール（暫定）',
+      q:{ ja:'チップをいただいたら、どう扱いますか？' },
+      a:{ ja:'いまの配分は店舗50%・スタッフ50%（その日の勤務メンバーで等分・給与に加算）。準備が整えば、スタッフ50%・募金50%になります。売上には計上しません。チップボックスは昼と夜の営業終了で1日2回締め、茶封筒に日付・金額・勤務メンバーの名前を書きます。日報にチップの金額を書き、封筒の写真をアルバムへ（記録がないと給料に反映されません）。毎月、合計金額だけ本部へ。歩合ロイヤリティはかかりません。' } },
+    { id:'fm_phone_basic', cat:'guest', src:'マニュアル 03-9 電話対応',
+      q:{ ja:'電話に出るときの基本は？' },
+      a:{ ja:'3コール以内に出て「お電話ありがとうございます。世桜 ○○（自分の名前）でございます」。3コールを超えたら「大変お待たせいたしました」から。最後はお客様が切るまで待ち、「お電話ありがとうございました。○○が承りました」で締めます。不確かなことは答えず、必ず確認します。' } },
+    { id:'fm_phone_course', cat:'guest', src:'マニュアル 03-9 電話対応',
+      q:{ ja:'電話でコースの予約を頼まれたら？' },
+      a:{ ja:'コースはテーブルチェックからのご予約のみです。「『○○世桜△△店 テーブルチェック』と検索していただくと、すぐにご予約ページが表示されます」とご案内します。アラカルトの予約は、日にち・時間・人数・お名前・電話番号・ご要望を確認します。15分を超える遅刻は無断キャンセル扱いになることをお伝えし、遅れる場合はご連絡をお願いします。' } },
+    { id:'fm_phone_voicemail', cat:'guest', src:'マニュアル 03-9 電話対応',
+      q:{ ja:'忙しくて電話に出られないときは？' },
+      a:{ ja:'5回鳴って出なかったら留守番電話に切り替わる設定にし、折り返す旨のメッセージを用意しておきます。例：「お電話ありがとうございます。○○店です。ただいま店内が大変混み合っており、お電話に出ることができず申し訳ございません。○分以内に折り返しご連絡いたしますので、お名前・お電話番号・ご用件をお知らせください」。' } },
+    { id:'fm_smoking', cat:'store', src:'マニュアル 03-9 電話対応／03-8 事前ケア',
+      q:{ ja:'「店内でタバコは吸えますか？」と聞かれたら？' },
+      a:{ ja:'「大変申し訳ございませんが、当店は店内禁煙とさせていただいております。ご協力のほどよろしくお願いいたします」。喫煙場所の有無や近くの喫煙所をご案内すると、トラブルを防げます。' } },
+    { id:'fm_service_dog', cat:'guest', src:'マニュアル 03-10 合理的配慮',
+      q:{ ja:'補助犬（盲導犬など）を連れたお客様が来られたら？' },
+      a:{ ja:'受け入れは義務です（禁止されているのは厨房だけ。ホールは衛生上問題ありません）。「認定証を確認させていただけますか？」と伺うのは失礼にあたりません。表示がない場合は受け入れの義務はありません。犬が苦手なお客様がいれば席を離し、周りのお客様には補助犬の役割をお伝えします。触る・話しかける・見つめる・食べ物を与えるのはNGです。' } },
+    { id:'fm_disability', cat:'guest', src:'マニュアル 03-10 合理的配慮',
+      q:{ ja:'障害のあるお客様から配慮を求められたら？' },
+      a:{ ja:'2024年4月から「合理的配慮の提供」は義務です。「前例がない」「特別扱いできない」「何かあったら」を理由に断りません。普段の方法を伺い、店でできる対応を提案し、一緒に決めます。車椅子のお客様には席と通路を確認してご案内（「お好きな席へ」はNG）。目の不自由な方には名乗ってから「右に」「12時の位置にご飯」と具体的に。耳の不自由な方には筆談ツールを用意し、口元が見えるように話します。' } },
+    { id:'fm_line_rule', cat:'store', src:'マニュアル 02-3 ハウスルール',
+      q:{ ja:'LINEグループの連絡は、どう扱いますか？' },
+      a:{ ja:'共有された連絡事項は必ず確認し、内容を理解したらリアクション（スタンプ・コメント）で意思表示をします。「見た」ではなく「理解した」のリアクションです。確認できていないと業務上のトラブルの原因になります。' } },
+    { id:'fm_house_sns', cat:'store', src:'マニュアル 02-3 ハウスルール',
+      q:{ ja:'店内の写真をSNSに載せてもよいですか？' },
+      a:{ ja:'無断投稿は禁止です。勤務中・業務に関する情報の口外、契約書・雇用条件の第三者への開示も禁止。破損・トラブルは必ず当日中に、ミスも正直に報告します。仲間の悪口は言いません。' } },
+    { id:'fm_makanai', cat:'store', src:'マニュアル 02-3 ハウスルール',
+      q:{ ja:'賄いを食べるときのルールは？' },
+      a:{ ja:'「賄いありがとうございます！いただきます！」と感謝を声に出し、お客様に見えないところで食べます。客席で食べる場合は制服を着替えてから。食べ終わったら「ご馳走様でした！」、自分の食べたものは洗って元に戻します。' } }
+  ];
+  FAQ_MANUAL.forEach(f => FAQ_FIXED.push(f));
+
+  /* ★既存マニュアルから起こした FAC（接客の工夫・事例集）。記録の形＝状況・工夫・お客様の反応（11/4 月例で社長が説明した形）。
+     出どころは本部のマニュアル番号。03-7 は「実際の店舗スタッフの素敵な対応実例」＝そのまま事例集に向く。 */
+  const FAC_FIXED = [
+    { id:'fc_thanks', title:'お客様の国の「ありがとう」を覚えて、見送りに使う', reason:'海外からのお客様。料理を待つ時間', idea:'「あなたの国では“ありがとう”はどう言いますか？」と聞いて覚え、帰り際にその言葉でお見送りする', react:'とても喜ばれる', src:'マニュアル 03-7 花を咲かせるトークスクリプト' },
+    { id:'fc_goods', title:'持ち物から話題を広げる', reason:'ディズニーグッズ・カメラ・ぬいぐるみなどを持っているお客様', idea:'「ディズニー行ってきました？」「いいカメラですね！どこに行ってきたんですか？」「そのキャラクター知ってます！」。写真を見せてもらえたらしっかり褒める。お子様にも「楽しんでる？」と一言', react:'家族連れは特に反応がよく、場が和む', src:'マニュアル 03-7 花を咲かせるトークスクリプト' },
+    { id:'fc_country', title:'出身国の有名なものや、行く予定を聞く', reason:'海外からのお客様', idea:'「あなたの国では何が有名ですか？」「どんな味ですか？一度食べてみたいです」。行く予定があれば「○○のエリアに行きます。おすすめはありますか？」。英語圏以外の方には文字や文化、日本との違いを聞く', react:'写真を見せてくれたり、挨拶を教えてくれたりする', src:'マニュアル 03-7 花を咲かせるトークスクリプト' },
+    { id:'fc_jpfood', title:'日本食の経験を聞いて、次の一品につなげる', reason:'料理の説明や提供の合間', idea:'「お寿司やラーメンは食べましたか？何が一番好きでしたか？」「和牛やうなぎは食べたことありますか？」。シェアしている方には「和牛と鰻、どちらが好みでした？」「ひつまぶしは食べたことありますか？」', react:'会話が広がり、おすすめを自然に伝えられる', src:'マニュアル 03-7 花を咲かせるトークスクリプト' },
+    { id:'fc_trip', title:'旅の予定を伺って、世桜の他の店をご案内', reason:'観光で来られたお客様', idea:'「これからどこに行く予定ですか？」「日本のどこが印象的でしたか？」。翌日の訪問先・食べたいものを伺い、会話の流れに合わせて世桜の他の店をご案内する', react:'旅の目的を聞かれると喜ばれる', src:'マニュアル 03-7 花を咲かせるトークスクリプト' },
+    { id:'fc_review', title:'レビューのお願いを自然に伝える', reason:'お食事を楽しんでいただけたとき', idea:'「For our restaurant, customer’s opinion is very important.」「もしよかったらレビューをお願いできますか？」', react:'「このお店のためなら」と快く書いてくれることが多い', src:'マニュアル 03-7 花を咲かせるトークスクリプト' },
+    { id:'fc_tattoo', title:'タトゥーOKの温泉を教える', reason:'タトゥーのある海外のお客様', idea:'「この辺りはタトゥーNGが多いですが、○○温泉だけOKなんです」と案内する', react:'外国人のお客様にとても喜ばれる', src:'マニュアル 03-7 花を咲かせるトークスクリプト' },
+    { id:'fc_nihongo', title:'日本語を使ってくれたら「Good!」と褒める', reason:'海外のお客様が「おいしい」「ありがとう」と日本語で言ってくれたとき', idea:'「Good!」と笑顔で褒める', react:'喜ばれる', src:'マニュアル 03-7 花を咲かせるトークスクリプト' },
+    { id:'fc_rain', title:'雨の日の事前ケア', reason:'雨の日（不満が起きやすい）', idea:'入口に滑り止めマットと傘立て、濡れた所を拭くタオル、傘袋、スリッパ。外待ちは屋根のある場所へ案内し、貸し出し用の傘（店名を書く）を用意。会計はカード決済を案内し、レシートが濡れない袋を。帰り際に天気の情報をひとこと', react:'雨の日でも快適に食事していただける', src:'マニュアル 03-8 事前ケア' },
+    { id:'fc_special', title:'誕生日・記念日・プロポーズの演出', reason:'予約時に誕生日や記念日が分かったとき', idea:'デザートプレートにメッセージ、スタッフからのお祝いの一言、写真撮影の申し出。プロポーズは事前に細かく打ち合わせ、タイミングやリングの保管まで一緒に', react:'その体験を長く覚えていてくださり、生涯のファンになっていただける', src:'マニュアル 03-8 事前ケア' },
+    { id:'fc_book', title:'待ち時間に世桜の冊子をお渡しする', reason:'外でお待ちの時間・料理の待ち時間', idea:'「世桜のこだわりが詰まった本です。待ち時間にぜひお読みください」と伝えてお渡しする', react:'世桜をより良い体験だと感じていただける', src:'マニュアル 03-8 事前ケア' },
+    { id:'fc_full', title:'満席のときは代案を出す', reason:'「今から2名で」と電話や来店があったが満席', idea:'「大変申し訳ございません、ただいま満席でございます。○時以降のご案内でしたら可能ですが、いかがでしょうか」', react:'信頼を保ち、次のご来店につながる', src:'マニュアル 03-9 電話対応' },
+    { id:'fc_photo_help', title:'料理写真のサポートと会話のペース', reason:'写真を撮る海外のお客様・会話を楽しむお客様', idea:'きれいに撮れるよう照明やアングルを助言する。会話を重視するお客様には料理の提供タイミングを合わせる', react:'食事の時間そのものを楽しんでいただける', src:'マニュアル 03-11 外国人観光客へのおもてなしとご意見対応' }
+  ];
   const getFaq = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_faq')) || []; } catch { return []; } };
   const saveFaq = (a) => { try { localStorage.setItem('yosakura_demo_faq', JSON.stringify(a)); } catch (e) {} };
 
@@ -8301,7 +8408,7 @@
       if (o && o.deleted) return null;
       return { id:f.id, fixed:true, cat:(o && o.cat) || f.cat, q:(o && o.q) || L(f.q), a:(o && o.a) || L(f.a), src:f.src, edited:!!(o && (o.q || o.a)) };
     }).filter(Boolean);
-    const mine = saved.filter(f => f && !/^fx_/.test(f.id)).map(f => ({ id:f.id, cat:f.cat || 'other', q:f.q || '', a:f.a || '' }));
+    const mine = saved.filter(f => f && !f.fac && !/^fx_/.test(f.id)).map(f => ({ id:f.id, cat:f.cat || 'other', q:f.q || '', a:f.a || '' }));
     return fixed.concat(mine);
   }
   let faqEditId = null; // 編集中の項目（本部のみ）
@@ -8310,6 +8417,51 @@
   let faqDraft = null;   // { kz, q, a }
   const kzInFaq = (key) => { try { return getFaq().some(f => f && f.kz === key); } catch (e) { return false; } };
 
+  /* ---------- FAC（接客の工夫・事例集）----------
+     2026-10-27 社長と決定＝FAQ（ルール集）と分けて管理。FACは「マニュアルを超えた工夫・成功事例」＝正解が一つではないもの。
+     2026-11-04 月例で社長が長田さんに説明した記録の形＝①来店理由 ②当日の状況に応じた工夫 ③お客様の反応。
+     ★投稿者名は出さない（表示するかは未決＝10/27）。店名は本部が書いたときだけ出す。
+     ★データ＝faqset の配列に fac:true で同居（kind を増やさない）。本部が追加・編集・非表示。店舗は読む＋「気づき」で工夫を送る。 */
+  const facList = () => {
+    const saved = getFaq();
+    const ovr = {}; saved.forEach(f => { if (f && f.fac && /^fc_/.test(f.id)) ovr[f.id] = f; });
+    const fixed = FAC_FIXED.map(f => { const o = ovr[f.id]; if (o && o.deleted) return null; return Object.assign({}, f, o || {}, { fac:true, fixed:true, deleted:false }); }).filter(Boolean);
+    const mine = saved.filter(f => f && f.fac && !f.deleted && !/^fc_/.test(f.id)).sort((x, y) => (y.t || 0) - (x.t || 0));
+    return mine.concat(fixed);   // 本部が新しく載せた物が上・マニュアル由来は下
+  };
+  let facEditId = null;
+  APP_VIEWS.fac = () => {
+    const isHQ = getRole() === 'hq';
+    const rows = facList();
+    const fld = (id, lab, val, rowsN) => `<label class="fl">${esc(L(lab))}</label>` + (rowsN ? `<textarea id="${id}" rows="${rowsN}">${esc(val || '')}</textarea>` : `<input id="${id}" type="text" value="${esc(val || '')}">`);
+    const form = (pre, it) => `
+        ${fld(pre + '_title', { ja:'一言で（例：雨の日の傘のご案内）', en:'Title', vi:'Tiêu đề' }, it && it.title)}
+        ${fld(pre + '_reason', { ja:'来店理由・そのときの状況', en:'Reason for visit / situation', vi:'Lý do đến / tình huống' }, it && it.reason, 2)}
+        ${fld(pre + '_idea', { ja:'した工夫', en:'What we did', vi:'Đã làm gì' }, it && it.idea, 3)}
+        ${fld(pre + '_react', { ja:'お客様の反応', en:'How guests reacted', vi:'Phản ứng của khách' }, it && it.react, 2)}
+        ${fld(pre + '_store', { ja:'お店（書かなくてもよい）', en:'Store (optional)', vi:'Cửa hàng (tùy chọn)' }, it && it.store)}`;
+    const card = (it) => (isHQ && facEditId === it.id) ? `
+      <div class="card" style="padding:12px">${form('face', it)}
+        <div class="row" style="margin-top:8px"><button class="btn-primary" data-facsave="${esc(it.id)}">${L({ ja:'保存', en:'Save', vi:'Lưu' })}</button><button class="mini" data-faccancel="1">${L({ ja:'やめる', en:'Cancel', vi:'Hủy' })}</button></div>
+      </div>` : `
+      <div class="card fac-card">
+        <div class="news-h"><span class="news-ic">${svg('star')}</span><b>${esc(it.title || '')}</b>${it.store ? `<span class="news-ago">${esc(storeShort(it.store))}</span>` : ''}</div>
+        ${it.reason ? `<p class="fac-l"><span class="fac-k">${L({ ja:'状況', en:'Situation', vi:'Tình huống' })}</span>${esc(it.reason)}</p>` : ''}
+        ${it.idea ? `<p class="fac-l"><span class="fac-k">${L({ ja:'工夫', en:'What we did', vi:'Đã làm' })}</span>${esc(it.idea)}</p>` : ''}
+        ${it.react ? `<p class="fac-l"><span class="fac-k">${L({ ja:'反応', en:'Reaction', vi:'Phản ứng' })}</span>${esc(it.react)}</p>` : ''}
+        ${it.src ? `<p class="hint" style="display:block;margin:4px 0 0">${L({ ja:'出どころ：', en:'Source: ', vi:'Nguồn: ' })}${esc(it.src)}</p>` : ''}
+        ${isHQ ? `<div class="row" style="margin-top:6px"><button class="mini" data-facedit="${esc(it.id)}">${L({ ja:'直す', en:'Edit', vi:'Sửa' })}</button><button class="mini" data-facdel="${esc(it.id)}">${L({ ja:'消す', en:'Remove', vi:'Xóa' })}</button></div>` : ''}
+      </div>`;
+    return `
+      <div class="card gate-note">
+        <div class="news-h"><span class="news-ic">${svg('star')}</span><b>${L({ ja:'FAC＝お客様に喜ばれた接客の工夫の事例集', en:'FAC = ideas that made guests happy', vi:'FAC = ý tưởng làm khách hài lòng' })}</b></div>
+        <p class="news-body">${L({ ja:'マニュアルは基準、FACはその上の工夫です。正解は一つではないので、自分のお店に合う形で使ってください。決まったルールと答えは「FAQ」にあります。', en:'Manuals are the standard; FAC is the extra idea on top. There is no single right answer, so adapt it to your store. Set rules and answers are in “FAQ”.', vi:'Cẩm nang là chuẩn, FAC là ý tưởng thêm. Không có một đáp án duy nhất, hãy áp dụng cho phù hợp. Quy định và câu trả lời ở “FAQ”.' })}</p>
+        <div class="row" style="margin-top:8px"><button class="mini" data-open="faq">${L({ ja:'FAQ（ルール集）を開く', en:'Open FAQ', vi:'Mở FAQ' })}</button>${isHQ ? '' : `<button class="mini" data-open="kizuki">${L({ ja:'工夫を送る（気づきから）', en:'Send an idea (via Insights)', vi:'Gửi ý tưởng (qua Ghi nhận)' })}</button>`}</div>
+      </div>
+      ${isHQ ? `<div class="card" id="facForm"><h3>${L({ ja:'事例を載せる（本部）', en:'Add a case (HQ)', vi:'Thêm trường hợp (HQ)' })}</h3>${form('fac')}<button class="btn-primary" id="facAdd" style="margin-top:8px">${L({ ja:'載せる', en:'Publish', vi:'Đăng' })}</button></div>` : ''}
+      <div class="sec-h"><span class="bar"></span><h2>${L({ ja:'事例', en:'Cases', vi:'Trường hợp' })}</h2><span class="count">${rows.length}</span></div>
+      ${rows.length ? rows.map(card).join('') : `<p class="hint" style="display:block">${L({ ja:'まだ事例はありません。お客様に喜ばれた工夫があれば「気づき」から送ってください。本部が載せます。', en:'No cases yet. Send ideas guests loved via Insights; HQ will publish them.', vi:'Chưa có. Hãy gửi ý tưởng qua Ghi nhận; HQ sẽ đăng.' })}</p>`}`;
+  };
   APP_VIEWS.faq = () => {
     const role = getRole(), isHQ = role === 'hq';
     const all = faqList();
@@ -12504,6 +12656,31 @@
     }
 
     // よくある質問（ルール集）：本部が項目を追加・削除→全端末同期（faqset＝配列を丸ごと保存し最新版が正）
+    // FAC（事例集）：本部が載せる・直す・消す→faqset と同じ配列に fac:true で保存→全端末同期
+    const facRead = (pre) => ({ title: ((byId(pre + '_title') || {}).value || '').trim(), reason: ((byId(pre + '_reason') || {}).value || '').trim(),
+                                idea: ((byId(pre + '_idea') || {}).value || '').trim(), react: ((byId(pre + '_react') || {}).value || '').trim(), store: ((byId(pre + '_store') || {}).value || '').trim() });
+    const facPush = (list, msg) => { saveFaq(list); const t = Date.now(); lastSync = t; facEditId = null; toast(msg); render(true); postReport({ kind:'faqset', store:'', note: JSON.stringify(list), t }); };
+    const facAdd = document.getElementById('facAdd');
+    if (facAdd) facAdd.onclick = () => {
+      const v = facRead('fac');
+      if (!v.title || !v.idea) { toast(L({ ja:'一言と、した工夫は必ず入れてください', en:'Enter a title and what you did', vi:'Nhập tiêu đề và việc đã làm' })); return; }
+      const list = getFaq(); list.push(Object.assign({ id:'fc' + Date.now(), fac:true, t: Date.now() }, v));
+      facPush(list, L({ ja:'載せました', en:'Published', vi:'Đã đăng' }));
+    };
+    document.querySelectorAll('[data-facedit]').forEach(b => b.onclick = () => { facEditId = b.dataset.facedit; render(true); });
+    document.querySelectorAll('[data-faccancel]').forEach(b => b.onclick = () => { facEditId = null; render(true); });
+    document.querySelectorAll('[data-facsave]').forEach(b => b.onclick = () => {
+      const id = b.dataset.facsave; const v = facRead('face');
+      if (!v.title || !v.idea) { toast(L({ ja:'一言と、した工夫は必ず入れてください', en:'Enter a title and what you did', vi:'Nhập tiêu đề và việc đã làm' })); return; }
+      const list = getFaq(); const i = list.findIndex(f => f && f.id === id);
+      if (i >= 0) list[i] = Object.assign({}, list[i], v, { fac:true, deleted:false }); else list.push(Object.assign({ id, fac:true, t: Date.now() }, v));
+      facPush(list, L({ ja:'保存しました', en:'Saved', vi:'Đã lưu' }));
+    });
+    document.querySelectorAll('[data-facdel]').forEach(b => b.onclick = () => {
+      const id = b.dataset.facdel; const list = getFaq(); const i = list.findIndex(f => f && f.id === id);
+      if (i >= 0) list[i] = Object.assign({}, list[i], { deleted:true }); else list.push({ id, fac:true, deleted:true });   // 固定の事例（fc_ で始まる）は「非表示」の上書きとして持つ
+      facPush(list, L({ ja:'消しました', en:'Removed', vi:'Đã xóa' }));
+    });
     const faqAdd = document.getElementById('faqAdd');
     if (faqAdd) faqAdd.onclick = () => {
       const q = ((byId('faq_q') || {}).value || '').trim();

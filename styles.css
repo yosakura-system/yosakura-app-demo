@@ -1398,3 +1398,17 @@ html[data-theme="pb"] .pb-chips--4 .pb-chip small { display: block; font-size: 1
   .tn-a { flex: 1 1 22%; }
   .tn-amt { padding-bottom: 12px; }
 }
+
+/* ===== ホーム最上部の2つの窓口（FAQ／FAC・2026-11-04） ===== */
+.gate2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 14px; }
+.gate { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; width: 100%; min-height: 108px;
+  padding: 14px 14px 12px; border-radius: 16px; border: 2px solid var(--suou); background: var(--paper); box-shadow: var(--shadow-s); }
+.gate:active { transform: scale(.99); }
+.gate .g-k { display: inline-block; font-size: 20px; font-weight: 800; letter-spacing: .08em; color: #fff; background: var(--suou); border-radius: 8px; padding: 2px 10px; }
+.gate b { font-size: 15px; color: var(--sumi); line-height: 1.35; }
+.gate small { font-size: 12px; color: var(--gray); line-height: 1.5; }
+.gate--fac { border-color: #2a6f4e; }
+.gate--fac .g-k { background: #2a6f4e; }
+@media (max-width: 380px) { .gate2 { grid-template-columns: 1fr; } .gate { min-height: 0; } }
+.fac-card .fac-l { margin: 6px 0 0; font-size: 13px; line-height: 1.7; color: var(--sumi); }
+.fac-card .fac-k { display: inline-block; min-width: 3.2em; margin-right: 6px; font-size: 11px; font-weight: 700; color: var(--suou); background: var(--suou-t); border-radius: 6px; padding: 1px 6px; vertical-align: middle; }

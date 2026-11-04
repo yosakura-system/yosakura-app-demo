@@ -517,6 +517,56 @@ console.log('== よくある質問：大項目 ==');
   ok(/販促物は、いつまでに/.test(st), '会議で決まったルールは、これまでどおり読める');
 }
 
+/* ★2026-11-04 神田さん「ホームの最上部にFAQとFACの窓口を2つ。説明は誰が見ても分かるように」 */
+console.log('== ホーム最上部：FAQ／FAC の窓口 ==');
+{
+  for (const [role, store] of [['staff', S_HIROSHIMA], ['manager', S_HIROSHIMA], ['hq', 'all']]) {
+    run(()=> setLS(role, store, 'ja'));
+    location.hash = '#/home';
+    const html = registry.app.innerHTML;
+    ok(/class="gate2"/.test(html), role + '：ホームに窓口の枠がある');
+    ok(/data-open="faq"[\s\S]*?よくある質問・ルール集/.test(html), role + '：FAQ の窓口（説明つき）がある');
+    ok(/data-open="fac"[\s\S]*?接客の工夫・事例集/.test(html), role + '：FAC の窓口（説明つき）がある');
+    ok(html.indexOf('class="gate2"') < html.indexOf('class="home-tabs"'), role + '★窓口はタブより上＝最上部にある');
+  }
+  // FAC の画面＝店舗は読む＋気づきへ／本部は載せる
+  run(()=> setLS('staff', S_HIROSHIMA, 'ja'));
+  location.hash = '#/app/fac';
+  let v = registry.app.innerHTML;
+  ok(/FAC＝お客様に喜ばれた接客の工夫の事例集/.test(v), '店舗：FACの説明が出る');
+  ok(/data-open="kizuki"/.test(v), '店舗：工夫を送る入口（気づき）がある');
+  ok(!/id="facAdd"/.test(v), '店舗：載せるフォームは出ない');
+  run(()=> setLS('hq', 'all', 'ja'));
+  location.hash = '#/app/fac';
+  v = registry.app.innerHTML;
+  ok(/id="facAdd"/.test(v), '本部：載せるフォームが出る');
+  // 本部が1件載せる→一覧に出る／FAQ の一覧には混ざらない
+  run(()=> { localStorage.setItem('yosakura_demo_faq', JSON.stringify([{ id:'fc1', fac:true, t:1, title:'雨の日の傘', reason:'急な雨', idea:'貸し傘をご案内', react:'とても喜ばれた' }, { id:'fq1', cat:'store', q:'テスト質問', a:'テスト回答' }])); });
+  location.hash = '#/app/fac';
+  v = registry.app.innerHTML;
+  ok(/雨の日の傘/.test(v) && /貸し傘をご案内/.test(v), 'FAC：載せた事例が一覧に出る（状況・工夫・反応）');
+  ok(!/テスト質問/.test(v), 'FAC：FAQ の質問は混ざらない');
+  location.hash = '#/app/faq';
+  v = registry.app.innerHTML;
+  ok(/テスト質問/.test(v) && !/雨の日の傘/.test(v), 'FAQ：FAC の事例は混ざらない');
+  // 既存マニュアルから起こした固定の FAQ／FAC が出る。本部が伏せると消える
+  run(()=> localStorage.removeItem('yosakura_demo_faq'));
+  run(()=> setLS('staff', S_HIROSHIMA, 'ja'));
+  location.hash = '#/app/faq';
+  v = registry.app.innerHTML;
+  ok(/クレームを受けたら、まず何を/.test(v) && /マニュアル 03-2/.test(v), 'FAQ：マニュアル由来の質問が出どころつきで出る');
+  ok(/忘れ物を見つけたら/.test(v) && /チップをいただいたら/.test(v), 'FAQ：忘れ物・チップのルールが読める');
+  location.hash = '#/app/fac';
+  v = registry.app.innerHTML;
+  ok(/「ありがとう」を覚えて/.test(v) && /マニュアル 03-7/.test(v), 'FAC：マニュアル由来の事例が出どころつきで出る');
+  ok(/雨の日の事前ケア/.test(v), 'FAC：雨の日の事前ケアが読める');
+  run(()=> { localStorage.setItem('yosakura_demo_faq', JSON.stringify([{ id:'fc_rain', fac:true, deleted:true }])); });
+  location.hash = '#/app/fac';
+  v = registry.app.innerHTML;
+  ok(!/雨の日の事前ケア/.test(v) && /「ありがとう」を覚えて/.test(v), '★本部が伏せた固定の事例は出ない（ほかは残る）');
+  run(()=> localStorage.removeItem('yosakura_demo_faq'));
+}
+
 console.log('== サーベイ：手順書と「回答の集約シート」を取り違えない ==');
 {
   FETCH_ROWS = { ok:true, reports:[
