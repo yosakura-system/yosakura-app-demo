@@ -529,6 +529,15 @@ console.log('== ホーム最上部：FAQ／FAC の窓口 ==');
     ok(/data-open="fac"[\s\S]*?接客の工夫・事例集/.test(html), role + '：FAC の窓口（説明つき）がある');
     ok(html.indexOf('class="gate2"') < html.indexOf('class="home-tabs"'), role + '★窓口はタブより上＝最上部にある');
   }
+  // 案B（本番の既定＝pb）のホームでも、窓口は「きょうの流れ」より上
+  for (const [role, store] of [['staff', S_HIROSHIMA], ['manager', S_HIROSHIMA], ['hq', 'all']]) {
+    run(()=> { setLS(role, store, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+    location.hash = '#/home';
+    const html = registry.app.innerHTML;
+    ok(/class="gate2"/.test(html) && /data-open="fac"/.test(html), role + '：案Bのホームにも窓口がある');
+    ok(html.indexOf('class="gate2"') < html.indexOf('pb-cover'), role + '★案Bでも窓口が「きょうの流れ」より上');
+  }
+  run(()=> localStorage.removeItem('yosakura_theme'));
   // FAC の画面＝店舗は読む＋気づきへ／本部は載せる
   run(()=> setLS('staff', S_HIROSHIMA, 'ja'));
   location.hash = '#/app/fac';
