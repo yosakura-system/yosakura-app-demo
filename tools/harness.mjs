@@ -535,7 +535,8 @@ console.log('== ホーム最上部：FAQ／FAC の窓口 ==');
     location.hash = '#/home';
     const html = registry.app.innerHTML;
     ok(/class="gate2"/.test(html) && /data-open="fac"/.test(html), role + '：案Bのホームにも窓口がある');
-    { const mI = html.indexOf('class="screen pb-home'), gI = html.indexOf('class="gate2"'); ok(mI >= 0 && gI > mI && gI - mI < 200, role + '★案Bでも窓口が画面の先頭（きょうの流れ・本部の一覧より上）'); }
+    if (role === 'hq') { const mI = html.indexOf('class="screen pb-home'), gI = html.indexOf('class="gate2"'); ok(mI >= 0 && gI > mI && gI - mI < 200, role + '★本部の案Bホームでは窓口が画面の先頭'); }
+    else { const gI = html.indexOf('class="gate2"'), cI = html.indexOf('pb-cover'), rI = html.indexOf('data-open="numdetail'); ok(cI >= 0 && gI > cI && (rI < 0 || gI < rI), role + '★店舗の案Bホームでは窓口が「きょうの流れ」の下・「昨日のレジ締め」の上（11/5 神田さん）'); }
   }
   run(()=> localStorage.removeItem('yosakura_theme'));
   // FAC の画面＝店舗は読む＋気づきへ／本部は載せる

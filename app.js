@@ -2127,7 +2127,7 @@
     const rep = hqReplyData_(role);
     const repCard = rep.rows.length ? `<div class="pb-sec"><h2>${L({ja:'本部からの返答',en:'Replies from HQ',vi:'Phản hồi từ HQ'})}</h2><small>${L({ja:'直近7日',en:'Last 7 days',vi:'7 ngày qua'})}</small></div>
       <div class="pb-card pb-rep">${rep.rows.map(x => `<button class="pb-row" ${rep.PHOTO[x.kind] ? `data-tsub="openphoto" data-tsubphoto="${esc(x.kind)}"` : `data-go="${esc(rep.ROUTE[x.kind])}"`}><span class="pb-rowtx"><span class="pb-nm">${esc(L(rep.LABEL[x.kind]))}</span><span class="pb-sub">${esc(x.a.memo)} ・ ${timeAgo(x.a.ts)}</span></span><span class="pb-rt">${svg('chev')}</span></button>`).join('')}</div>` : '';
-    return `<main class="screen pb-home">${faqFacGate_()}<div class="pb-2col"><div class="pb-col">${cover}${pwStrip}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${pbRegiCard_(store)}${nippouCard}${hoCard}</div><div class="pb-col">
+    return `<main class="screen pb-home"><div class="pb-2col"><div class="pb-col">${cover}${pwStrip}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${faqFacGate_()}${pbRegiCard_(store)}${nippouCard}${hoCard}</div><div class="pb-col">
       <div class="pb-sec"><h2>${L({ja:'今日の流れ',en:'Today’s flow',vi:'Việc hôm nay'})}</h2><small>${L({ja:'時間帯の順',en:'In time order',vi:'Theo giờ'})}</small></div>
       <div class="pb-card pb-flow">${flow || `<div class="muted">${L({ja:'今日の提出物はありません',en:'Nothing today',vi:'Hôm nay không có'})}</div>`}</div>
       ${chips}${wk}</div></div>
