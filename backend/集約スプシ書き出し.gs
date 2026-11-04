@@ -349,7 +349,7 @@ function aggRebuild() {
     if (x.kind === 'nouhindraft') {
       var pd = x.p || {}; if (pd.src !== 'ocr') return;
       var key = (pd.photo || x.t) + (pd.part ? '#' + String(pd.part).split('/')[0] : '');
-      var dk = String(x.item || '').replace(/^'/, '');
+      var dk = aggDate_(x.item);   // item＝対象日（シートが日付セルに変えていることがある＝文字列でも Date でも yyyy-MM-dd に）
       if (!nhDraft[key] || x.t > nhDraft[key].t) nhDraft[key] = { t: x.t, date: dk, store: x.store, v: pd.v || '', a8: Number(pd.a8) || 0, a10: Number(pd.a10) || 0, total: Number(pd.total) || 0, conf: pd.conf || '' };
     } else if (x.kind === 'soukatsu' && x.p && x.p.slips && x.p.slips.length) {
       var d = aggDate_(x.p.date);
