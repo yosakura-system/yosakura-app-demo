@@ -337,6 +337,49 @@ function aggRebuild() {
   aggWrite_(ss, '店舗別サマリ', ['店舗', '種類', '件数', '最終利用日時'], sumRows);
 
   /* --- ⑨ 表紙（世桜データの全体像）＝説明・件数・使い方をブランドの装いでまとめる --- */
+
+  /* --- ⑧ 納品書／仕入_日報（2026-11-05 増田さん「納品書の仕入金額はどこに蓄積されているか」→ 本部データに見える形が無かった）
+     納品書＝写真のOCR下書き（nouhindraft・写真1枚＝1行）に、日報（soukatsu）の slips で店が確定した仕入先・金額を重ねる。
+     仕入_日報＝店が日報で確定した仕入（食材／お酒／お酒以外）。同じ日に2回出ていれば最後の1回。
+     ★写真IDは出さない（2026-10-12 お金の写真は公開リンクにしない）。金額は税込。下書きは90日で消えるが、この2タブは毎朝作り直し＝消える前の分は残らない点は数字台帳と同じ扱いにしない（必要なら台帳へ） --- */
+  var nhDraft = {}, nhConf = {};
+  recs.forEach(function (x) {
+    if (x.kind === 'nouhindraft') {
+      var pd = x.p || {}; if (pd.src !== 'ocr') return;
+      var key = (pd.photo || x.t) + (pd.part ? '#' + String(pd.part).split('/')[0] : '');
+      var dk = String(x.item || '').replace(/^'/, '');
+      if (!nhDraft[key] || x.t > nhDraft[key].t) nhDraft[key] = { t: x.t, date: dk, store: x.store, v: pd.v || '', a8: Number(pd.a8) || 0, a10: Number(pd.a10) || 0, total: Number(pd.total) || 0, conf: pd.conf || '' };
+    } else if (x.kind === 'soukatsu' && x.p && x.p.slips && x.p.slips.length) {
+      var d = aggDate_(x.p.date);
+      x.p.slips.forEach(function (sl) {
+        var ph = String(sl.photo || ''); if (!ph) return;
+        if (!nhConf[ph] || x.t > nhConf[ph].t) nhConf[ph] = { t: x.t, date: d, store: x.store, v: sl.v || '', a8: Number(sl.a8) || 0, a10: Number(sl.a10) || 0 };
+      });
+    }
+  });
+  var nhRows = [];
+  Object.keys(nhDraft).forEach(function (key) {
+    var dr = nhDraft[key], c = nhConf[key.split('#')[0]];
+    var v = c ? c.v : dr.v, a8 = c ? c.a8 : dr.a8, a10 = c ? c.a10 : dr.a10;
+    nhRows.push([dr.date, dr.store, v || '（読めず）', a8, a10, (a8 + a10) || dr.total, c ? '日報で確定' : '下書きのみ（日報に未反映）', dr.conf === 'low' ? '低' : '高']);
+  });
+  Object.keys(nhConf).forEach(function (ph) {
+    if (nhDraft[ph]) return;
+    var c = nhConf[ph]; nhRows.push([c.date, c.store, c.v, c.a8, c.a10, c.a8 + c.a10, '日報で確定（写真の下書きなし）', '']);
+  });
+  nhRows.sort(function (a, b) { return (a[0] + a[1]) < (b[0] + b[1]) ? -1 : 1; });
+  aggWrite_(ss, '納品書', ['日付', '店舗', '仕入先', '8%（税込）', '10%（税込）', '合計', '状態', '読み取りの確かさ'], nhRows);
+
+  var buyBest = {};
+  recs.forEach(function (x) {
+    if (x.kind !== 'soukatsu' || !x.p) return;
+    var p = x.p; if (p.buy_food == null && p.buy_alc == null && p.buy_drink == null && p.buy == null) return;
+    var k = aggDate_(p.date) + '|' + x.store;
+    if (!buyBest[k] || x.t > buyBest[k].t) buyBest[k] = { t: x.t, row: [aggDate_(p.date), x.store, Number(p.buy_food) || 0, Number(p.buy_alc) || 0, Number(p.buy_drink) || 0, Number(p.buy) || 0, p.src === 'usen' ? 'レジから自動' : p.src === 'drive' ? '総括表から' : '店が入力'] };
+  });
+  var buyRows = Object.keys(buyBest).sort().map(function (k) { return buyBest[k].row; });
+  aggWrite_(ss, '仕入_日報', ['日付', '店舗', '食材', 'お酒', 'お酒以外', '仕入合計（日報の欄）', '出どころ'], buyRows);
+
   aggCover_(ss);
 
   /* 初期タブ「シート1」と旧説明タブが残っていれば消す */
