@@ -395,7 +395,12 @@ function skwb_kintai_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記�
    レジの客層の区分（例：欧米）が総括表の国の列に無いときは書かず、止めたに1回だけ出す（増田さんに区分の対応を決めてもらう） */
 /* 日報の国別のキー（app.js SK_COUNTRIES）→ 総括表の国名 */
 var SKWB_CTY_APPKEYS = { jp: '日本', kr: '韓国', cn: '中国', hk: '香港', tw: '台湾', sea: '東南アジア', eu: 'ヨーロッパ', au: 'オーストラリア', us: 'アメリカ', ca: 'カナダ', mx: 'メキシコ', br: 'ブラジル', latam: '中南米', sasia: '南アジア', casia: '中央アジア', me: '中東', af: 'アフリカ' };
-var SKWB_CTY_ALIAS = { '米国': 'アメリカ', 'USA': 'アメリカ', '欧州': 'ヨーロッパ', 'イタリア': 'ヨーロッパ', 'フランス': 'ヨーロッパ', 'イギリス': 'ヨーロッパ', 'ドイツ': 'ヨーロッパ', 'スペイン': 'ヨーロッパ', '豪州': 'オーストラリア', 'ベトナム': '東南アジア', 'タイ': '東南アジア', 'フィリピン': '東南アジア', 'インドネシア': '東南アジア', 'マレーシア': '東南アジア', 'シンガポール': '東南アジア', 'インド': '南アジア' };
+var SKWB_CTY_ALIAS = { '米国': 'アメリカ', 'USA': 'アメリカ', '欧州': 'ヨーロッパ', 'イタリア': 'ヨーロッパ', 'フランス': 'ヨーロッパ', 'イギリス': 'ヨーロッパ', 'ドイツ': 'ヨーロッパ', 'スペイン': 'ヨーロッパ', '豪州': 'オーストラリア', 'ベトナム': '東南アジア', 'タイ': '東南アジア', 'フィリピン': '東南アジア', 'インドネシア': '東南アジア', 'マレーシア': '東南アジア', 'シンガポール': '東南アジア', 'インド': '南アジア',
+  /* ★2026-11-11〜 USENの客層が「国籍①②」の2段に（増田さん 11/5 案内）。新しく出る区分の行き先＝英国・その他ヨーロッパ→ヨーロッパ／東南アジア（タイ以外）→東南アジア。
+     総括表の国の列（Ver.3.0）＝日本・韓国・中国・香港・台湾・東南アジア・ヨーロッパ・オーストラリア・アメリカ・カナダ／ブラジル・中南米・南アジア・中央アジア・中東・アフリカ・その他 */
+  '英国': 'ヨーロッパ', 'その他ヨーロッパ': 'ヨーロッパ', '東南アジア(タイ以外)': '東南アジア', '東南アジアタイ以外': '東南アジア' };
+/* 総括表に列が無く、書かない区分（止めたにも出さない）＝「不明・未確認」は国ではない */
+var SKWB_CTY_SKIP = { '不明・未確認': 1, '不明': 1, '未確認': 1 };
 function skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 書き込む) {
   var norm = function (v) { return String(v == null ? '' : v).normalize('NFKC').replace(/[\s　]/g, ''); };
   var cols = {};   // 国名（正規化）→ { c, rG, rP }
@@ -414,7 +419,8 @@ function skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 
   }
   Object.keys(src).forEach(function (label) {
     var v = src[label] || {}; var g = skwb_num_(v.g) || 0, pn = skwb_num_(v.p) || 0; if (!g && !pn) return;
-    var key = norm(label); var col = cols[key] || cols[SKWB_CTY_ALIAS[key] || ''];
+    var key = norm(label); if (SKWB_CTY_SKIP[key]) return;
+    var col = cols[key] || cols[SKWB_CTY_ALIAS[key] || ''];
     if (!col) { var why = store + ' ' + e.date + '：レジの客層「' + label + '」は総括表の国の列に無い（組' + g + '・人' + pn + '）'; if (結果.止めた.indexOf(why) === -1) 結果.止めた.push(why); return; }
     [['組数', col.rG, g, '組'], ['人数', col.rP, pn, '人']].forEach(function (x) {
       var want = x[2]; if (!want) return;
