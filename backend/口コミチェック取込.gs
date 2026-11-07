@@ -9,8 +9,9 @@
  *
  * ■ 決めごと
  *   ・読むだけ＝チェック表には1文字も書き込まない。正はチェック表のまま（二重管理にしない）
- *   ・同じ行を二度写さない＝チェック日時＋店舗＋種別＋推定投稿日＋問題内容から作った印（key）を level 列に控え、
+ *   ・同じ行を二度写さない＝チェック日時＋店舗＋種別＋推定投稿日＋問題内容＋「同じ内容の何枚目か」から作った印（key）を level 列に控え、
  *     reports にある印は飛ばす（印の控えをスクリプトプロパティに持たない＝9KBの上限に当たらない）
+ *     ★同じ日に同じ文面の行が複数ある（例：盛付写真「うなぎの焦げ」3枚）＝別の写真なので1件にまとめない（11/7 初回の下見で45件あった）
  *   ・問題画像（セル内の画像）は写さない＝画像はチェック表で見る
  *   ・問題内容は 1,000字まで（口コミ本文は長い）・補足は300字まで
  *   ・店舗名はチェック表の表記のまま（アプリの正式名称と同じ。無い店もそのまま入れ、画面では「一覧に無い店」と出る）
@@ -54,7 +55,7 @@ function rvissueRun_(write) {
     for (var j = 0; j < ks.length; j++) if (String(ks[j][0]) === RVISSUE_KIND && ks[j][3]) seen[String(ks[j][3])] = 1;
   }
 
-  var read = 0, added = 0, skipped = 0, sample = [];
+  var read = 0, added = 0, skipped = 0, sample = [], nth = {};
   for (var i = 0; i < vals.length; i++) {
     var r = vals[i];
     var chk = rvissueDate_(r[0]), store = String(r[1] || '').trim(), type = String(r[2] || '').trim();
@@ -63,9 +64,11 @@ function rvissueRun_(write) {
     read++;
     var est = rvissueDate_(r[5]) || chk;        // 推定投稿日（無ければチェック日）
     var ago = (String(r[3] || '').trim() + ' ' + String(r[4] || '').trim()).trim();
-    var key = rvissueKey_(chk + '|' + store + '|' + type + '|' + est + '|' + text.slice(0, 200));
+    var base = chk + '|' + store + '|' + type + '|' + est + '|' + text.slice(0, 200);
+    nth[base] = (nth[base] || 0) + 1;            // 同じ内容の何枚目か（表の並び順＝追記順で安定）
+    var key = rvissueKey_(base + '|' + nth[base]);
     if (seen[key]) { skipped++; continue; }
-    seen[key] = 1;                               // 同じ実行の中の重複も1回だけ
+    seen[key] = 1;
     var note = { src: 'kimura', key: key, chk: chk, type: type, ago: ago,
                  text: text.slice(0, RVISSUE_TEXT_MAX), memo: String(r[8] || '').trim().slice(0, RVISSUE_MEMO_MAX) };
     if (write) {
