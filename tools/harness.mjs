@@ -7959,5 +7959,21 @@ console.log('== 2026-11-07 口コミ・盛付の指摘（rvissue）＝本部の�
   ok(/\.slice\(0, RVISSUE_TEXT_MAX\)/.test(gsImp) && /"'" \+ est/.test(gsImp), '本文は上限あり・日付はアポストロフィ付き（gsnapと同じ）');
 }
 
+
+console.log('== 2026-11-07 rvissue は sync distribute() で端末に残る（振り分け漏れの再発防止） ==');
+{
+  const now = Date.now();
+  FETCH_ROWS = { ok:true, reports:[
+    { id:'rvx1', kind:'rvissue', store:'和牛世桜 広島店', item:'2026-11-05', level:'kx1', note: JSON.stringify({ src:'kimura', key:'kx1', chk:'2026-11-06', type:'悪い口コミ', ago:'1 日前', text:'量が少ない', memo:'' }), photos:[], t: now },
+    { id:'gx1', kind:'gsnap', store:'和牛世桜 広島店', item:'2026-11-06', note: JSON.stringify({ src:'places', total: 210, rating: 4.6, gained: 0 }), photos:[], t: now },
+  ]};
+  try { run(()=> setLS('hq','all','ja')); } catch(e){ FAIL++; console.log('  ✗ load threw: '+e.message); }
+  await new Promise(r=>setTimeout(r, 80));
+  const reps = JSON.parse(localStorage.getItem('yosakura_demo_reports')||'[]');
+  ok(reps.some(r => r.kind === 'rvissue' && r.level === 'kx1'), 'rvissue 行が distribute 後の端末の控えに残る');
+  ok(reps.some(r => r.kind === 'gsnap'), '（対照）gsnap も残る');
+  FETCH_ROWS = { ok:false };
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
