@@ -340,6 +340,7 @@ function getPhotoFolder() {
 /* ★2026-10-12 お金の写真（日計レポート・納品書）は「リンクを知っている全員」にしない＝ログイン済みの自店か本部にだけ返す（photoAction_）。
    他の写真（オープン写真・見本など）は従来どおりリンクで表示する。 */
 function isPrivatePhotoRow_(kind, item) {
+  if (String(kind || '') === 'rvissue') return true;   // ★2026-11-07 口コミ・盛付チェックの写真（お客様の投稿写真の写し）＝本部のログイン経由でだけ返す
   if (String(kind || '') !== 'subrec') return false;
   var mid = String(item || '').split('|')[0];
   if (mid === 'nouhin') return true;
@@ -600,7 +601,7 @@ function purgeOldPhotos() {
   return { enabled: true, trashed: removed, protectedAsSample: protectedCount, ttlDays: ttlDays_() };
 }
 
-/* ★見本写真（kind: phsample）が参照している写真IDの一覧（2026-08-30 追加）。
+/* ★見本写真（kind: phsample）＋口コミ・盛付チェックの写真（kind: rvissue・2026-11-07）が参照している写真IDの一覧（2026-08-30 追加）。
    見本は店舗の「正しい撮り方」として長く使うため、90日を過ぎても削除しない。
    行は PURGE_KEEP_KINDS で守られるが、Driveの写真本体もここで守らないと
    「見本の枠だけ残って画像が表示されない」事故になる。 */
@@ -612,7 +613,8 @@ function samplePhotoIds_() {
     if (last < 2) return keep;
     var values = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
     for (var i = 0; i < values.length; i++) {
-      if (String(values[i][2] || '') !== 'phsample') continue;
+      var pk = String(values[i][2] || '');
+      if (pk !== 'phsample' && pk !== 'rvissue') continue;   // ★2026-11-07 rvissue（口コミ・盛付チェックの写真）も行が残る限り消さない
       var ids = parsePhotos(values[i][7]);
       for (var j = 0; j < ids.length; j++) { if (ids[j]) keep[String(ids[j])] = true; }
     }
