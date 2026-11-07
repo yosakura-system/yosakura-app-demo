@@ -471,6 +471,11 @@
     { id:'dashboard', group:'hq', icon:'gauge', roles:['hq'],
       name:{ ja:'本部ダッシュボード', en:'HQ Dashboard', vi:'Bảng điều khiển' },
       desc:{ ja:'全店の報告を自動集約', en:'Auto-aggregate all reports', vi:'Tổng hợp báo cáo tự động' } },
+    /* ★2026-11-07 神田さんのご指示＝段階1（本部だけ・読むだけ）。本部の隔週チェック表（Google口コミ・盛付写真の問題記録）を
+       毎晩写した rvissue 行を店別に見る。正はチェック表のまま＝ここでは状態を持たない。店舗の端末には届かない */
+    { id:'rvissue', group:'hq', icon:'star', roles:['hq'],
+      name:{ ja:'口コミ・盛付の指摘', en:'Review & plating issues', vi:'Ghi nhận đánh giá & trình bày' },
+      desc:{ ja:'本部の隔週チェック（Google口コミ・盛付写真）を店別に。毎晩自動で写す', en:'HQ biweekly check (reviews / plating) by store, mirrored nightly', vi:'Kiểm tra 2 tuần/lần của HQ theo cửa hàng, tự động mỗi đêm' } },
     /* 8/4: 課題管理は増田さんのGoogle一元管理表が正・二重管理しない＝hide のまま。
        ★2026-09-15 神田さんのご要望＝「本部側のアプリ内でタスク管理を。まず自分で使って体感してから共有する」
        → hide は残し、appHidden() で神田さんのIDにだけ例外的に開く（他の本部の方には出さない） */
@@ -2424,8 +2429,11 @@
     } catch (e) {}
     const gHalf = g && g.total != null ? `<button class="pb-voicehalf" data-open="greview"><div class="l">${L({ja:'Google口コミ',en:'Google reviews',vi:'Đánh giá Google'})}</div><div class="v">${g.rating != null ? Number(g.rating).toFixed(1) : '—'}</div><div class="d">${L({ja:'通算',en:'Total',vi:'Tổng'})} ${Number(g.total).toLocaleString('ja-JP')}${L({ja:'件',en:'',vi:''})}${g.gained != null ? ` ・ ${L({ja:'今月',en:'this month',vi:'tháng này'})} ${g.gained >= 0 ? '+' : ''}${g.gained}` : ''}</div></button>` : '';
     const voiceSeg = multi ? `<div class="pb-numseg pb-voiceseg"><button type="button" class="${vSel === 'all' ? 'on' : ''}" data-voicest="all">${L({ja:'全店',en:'All',vi:'Tất cả'})}</button>${vis.map(x => `<button type="button" class="${x === vSel ? 'on' : ''}" data-voicest="${esc(x)}">${esc(storeShort(x))}</button>`).join('')}</div>` : '';
+    let rvStrip = '';   // ★2026-11-07 本部だけ＝口コミ・盛付の指摘（本部の隔週チェック表の写し）への入口
+    if (getRole() === 'hq') { try { const rvYm = todayYm(); const rvN = rvissuesOf('').filter(x => vStores.includes(x._store) && String(x._d).slice(0, 7) === rvYm).length;
+      rvStrip = `<button class="pb-strip" data-open="rvissue"><span><b>${L({ja:'口コミ・盛付の指摘',en:'Review & plating issues',vi:'Ghi nhận đánh giá & trình bày'})}</b>${rvN}${L({ja:'件（今月）・本部の隔週チェックより',en:' this month, from the HQ biweekly check',vi:' tháng này, từ kiểm tra 2 tuần/lần của HQ'})}</span></button>`; } catch (e) {} }
     const voice = st ? `<div class="pb-sec"><h2>${L({ja:'お客様の声',en:'Guest feedback',vi:'Ý kiến khách'})}${multi && vSel === 'all' ? L({ja:'（全店）',en:' (all)',vi:' (tất cả)'}) : ''}</h2><small>${L({ja:'自動 ・ 毎晩記録',en:'Automatic',vi:'Tự động'})}</small></div>${voiceSeg}
-      <div class="pb-card pb-voice">${gHalf}<button class="pb-voicehalf" data-open="survey?tab=voice"><div class="l">${L({ja:'サーベイ満足度',en:'Survey score',vi:'Điểm khảo sát'})}</div><div class="v">${svAvg || '—'}</div><div class="d">${L({ja:'今月',en:'This month',vi:'Tháng này'})} ${sv.length}${L({ja:'件',en:'',vi:''})}${svLow ? ` ・ ${L({ja:'低評価',en:'low',vi:'thấp'})} ${svLow}${L({ja:'件',en:'',vi:''})}` : ''}</div></button></div>` : '';
+      <div class="pb-card pb-voice">${gHalf}<button class="pb-voicehalf" data-open="survey?tab=voice"><div class="l">${L({ja:'サーベイ満足度',en:'Survey score',vi:'Điểm khảo sát'})}</div><div class="v">${svAvg || '—'}</div><div class="d">${L({ja:'今月',en:'This month',vi:'Tháng này'})} ${sv.length}${L({ja:'件',en:'',vi:''})}${svLow ? ` ・ ${L({ja:'低評価',en:'low',vi:'thấp'})} ${svLow}${L({ja:'件',en:'',vi:''})}` : ''}</div></button></div>${rvStrip}` : '';
     const em = `<button class="pb-strip pb-strip--em" data-open="emergency">${pbImg_('miru_emergency', 'pb-th pb-th--s')}<span><b>${L({ja:'緊急のとき',en:'Emergency',vi:'Khẩn cấp'})}</b>${L({ja:'火事・けが・食中毒の疑い・お客様の重大なお申し出',en:'Fire, injury, food poisoning, serious complaint',vi:'Cháy, thương tích, ngộ độc, khiếu nại'})}</span>${svg('chev')}</button>`;
     const search = `<label class="pb-search">${svg('search')}<input id="pbq" type="search" placeholder="${esc(L({ja:'言葉で探す（例：鰻　アレルギー　棚卸）',en:'Search (e.g. eel, allergy, stock)',vi:'Tìm (vd: lươn, dị ứng)'}))}" autocomplete="off" enterkeyhint="search"></label><div id="pbqres"></div>`;
     return `<main class="screen pb-miru">${search}<div class="pb-tiles">${tiles}</div>${voice}<div class="pb-emwrap">${em}</div>
@@ -7119,6 +7127,111 @@
         </div>`).join('')}
         <p class="hint" style="display:block">${L({ ja:'※ 並び順＝今月の獲得数が多い順。行をタップすると個店カルテ（日別のグラフつき）が開きます。一覧に無い店舗は取得対象に未登録です。', en:'Sorted by monthly gains. Tap a row for the store detail. Missing stores are not registered yet.', vi:'Sắp xếp theo mức tăng trong tháng. Chạm để xem chi tiết.' })}</p>
       </div>`;
+  };
+
+  /* ---------- 口コミ・盛付の指摘（2026-11-07 神田さんのご指示＝段階1・本部だけ・読むだけ）----------
+     本部の隔週チェック表（Google口コミ・盛付写真の問題記録）を backend/口コミチェック取込.gs が毎晩写した rvissue 行を店別に見る。
+     正はチェック表のまま＝ここでは状態（対応済みなど）を持たない（二重管理にしない）。店舗の端末には届かない（認証.gs の本部だけの種類）。
+     同じ画面に毎晩のGoogle口コミ（gsnap）の星とサーベイの平均を並べる＝「指摘が増えた店は星も落ちているか」を1画面で */
+  function rvissuesOf(store) {
+    const byK = {};
+    try {
+      getReports().forEach(r => {
+        if (r.kind !== 'rvissue' || (store && r.store !== store)) return;
+        const p = parseNote(r.note);
+        if (!p || p.src !== 'kimura') return;
+        const k = p.key || (r.store + '|' + r.item + '|' + p.type + '|' + String(p.text || '').slice(0, 40));
+        if (!byK[k] || r.t > byK[k]._t) byK[k] = Object.assign({ _t: r.t, _d: dateKeyOfItem(r.item), _store: r.store }, p);
+      });
+    } catch (e) {}
+    return Object.values(byK).sort((a, b) => a._d < b._d ? 1 : a._d > b._d ? -1 : b._t - a._t);   // 同じ印は新しい行が正・新しい順
+  }
+  const rvIsReview_ = (t) => /口コミ/.test(String(t || ''));
+  const rvTypeLabel_ = (t) => rvIsReview_(t) ? L({ ja:'悪い口コミ', en:'Negative review', vi:'Đánh giá xấu' })
+    : /盛/.test(String(t || '')) ? L({ ja:'盛付写真', en:'Plating photo', vi:'Ảnh trình bày' }) : (esc(String(t || '')) || '—');
+  const rvText_ = (s) => esc(String(s || '')).replace(/\r?\n/g, '<br>');
+  const rvItemRow_ = (x) => {
+    const t = String(x.text || '');
+    const body = t.length > 220
+      ? `${rvText_(t.slice(0, 200))}… <details class="rv-more"><summary>${L({ ja:'続きを見る', en:'Read more', vi:'Xem thêm' })}</summary>${rvText_(t)}</details>`
+      : (rvText_(t) || '—');
+    const sub = [
+      L({ ja:'推定投稿 ', en:'Posted ~', vi:'Đăng ~' }) + esc(mdLabel(x._d)) + (x.ago ? '（' + esc(x.ago) + '）' : ''),
+      x.chk ? L({ ja:'チェック ', en:'Checked ', vi:'Kiểm tra ' }) + esc(mdLabel(x.chk)) : '',
+      x.memo ? esc(x.memo) : ''
+    ].filter(Boolean).join(' ・ ');
+    return `<div class="rep"><span class="amt" style="font-size:12px">${rvTypeLabel_(x.type)}</span><div class="body"><div class="l1">${body}</div><div class="l2">${sub}</div></div></div>`;
+  };
+  const RV_TITLE = { ja:'口コミ・盛付の指摘', en:'Review & plating issues', vi:'Ghi nhận đánh giá & trình bày' };
+  function rvStoreCard_(s, ym, multi) {
+    const arr = rvissuesOf(s);
+    const months = [prevYmN_(ym, 2), prevYmN_(ym, 1), ym];   // 前々月・前月・今月
+    const inM = (m) => arr.filter(x => String(x._d).slice(0, 7) === m);
+    const gs = gsnapsOf(s);
+    const gEnd = (m) => { const a = gs.filter(x => String(x._d).slice(0, 7) === m); return a.length ? a[a.length - 1] : null; };
+    const gLast = gs.length ? gs[gs.length - 1] : null;
+    let sv = []; try { sv = getSurvey().filter(r => r && r.store === s && r.sat >= 1); } catch (e) {}
+    const svM = (m) => { const a = sv.filter(r => ymOfDate(dateKeyFor(s, r.t)) === m); return a.length ? (a.reduce((t, r) => t + r.sat, 0) / a.length) : null; };
+    const cur = inM(ym), curRv = cur.filter(x => rvIsReview_(x.type)).length;
+    const tbl = `<table class="pb-tbl" style="margin-top:10px"><thead><tr><th>${L({ ja:'月', en:'Month', vi:'Tháng' })}</th><th>${L({ ja:'悪い口コミ', en:'Neg. reviews', vi:'ĐG xấu' })}</th><th>${L({ ja:'盛付写真', en:'Plating', vi:'Trình bày' })}</th><th>${L({ ja:'星（月末）', en:'Rating (end)', vi:'Sao (cuối)' })}</th><th>${L({ ja:'サーベイ平均', en:'Survey avg', vi:'TB khảo sát' })}</th></tr></thead><tbody>`
+      + months.map(m => { const a = inM(m), rv = a.filter(x => rvIsReview_(x.type)).length, g = gEnd(m), v = svM(m);
+          return `<tr><td>${esc(ymLabel(m))}</td><td>${rv}</td><td>${a.length - rv}</td><td>${g && g.rating != null ? Number(g.rating).toFixed(1) : '—'}</td><td>${v != null ? v.toFixed(1) : '—'}</td></tr>`; }).join('')
+      + `</tbody></table>`;
+    const list = arr.slice(0, 40).map(rvItemRow_).join('')
+      || `<p class="muted">${L({ ja:'この店の記録はまだありません。', en:'No records for this store yet.', vi:'Chưa có ghi nhận cho cửa hàng này.' })}</p>`;
+    return `<div class="card">
+      <h3>${L(RV_TITLE)} — ${esc(storeShort(s))}</h3>
+      <div class="stat-row">
+        <div class="stat"><div class="n">${cur.length}</div><div class="k">${L({ ja:'今月の指摘', en:'This month', vi:'Tháng này' })}</div></div>
+        <div class="stat"><div class="n">${curRv}／${cur.length - curRv}</div><div class="k">${L({ ja:'口コミ／盛付', en:'Reviews / plating', vi:'ĐG / trình bày' })}</div></div>
+        <div class="stat"><div class="n">${gLast && gLast.rating != null ? '★' + Number(gLast.rating).toFixed(1) : '—'}</div><div class="k">${L({ ja:'星の平均（いま）', en:'Rating now', vi:'Sao hiện tại' })}</div></div>
+      </div>
+      ${tbl}
+      <div class="idlabel" style="margin-top:12px">${L({ ja:'指摘の一覧（新しい順・40件まで）', en:'Issues (newest first, up to 40)', vi:'Danh sách (mới nhất, tối đa 40)' })}</div>
+      ${list}
+      <p class="hint" style="display:block">${L({ ja:'※ 本部の隔週チェックで拾った分だけ（Googleの全件ではありません）。推定投稿日は「○日前」からの推定で1〜6日前後します。画像と元の記録はチェック表で。', en:'Only items picked up in the HQ biweekly check. Posted date is estimated (±1–6 days). Images are in the check sheet.', vi:'Chỉ gồm mục HQ ghi nhận. Ngày đăng là ước tính (±1–6 ngày). Ảnh xem tại bảng kiểm tra.' })}</p>
+      ${multi ? `<button class="btn-primary" data-go="/app/rvissue" style="margin-top:12px">${L({ ja:'全店の一覧へ戻る', en:'Back to all stores', vi:'Về danh sách' })}</button>` : ''}
+    </div>`;
+  }
+  APP_VIEWS.rvissue = () => {
+    const head = NOTE({ ja:'◆ 本部の隔週チェック（Google口コミ・盛付写真）の問題記録を、毎晩1回そのまま写しています（読むだけ・直すのも画像もチェック表で）', en:'◆ Mirrors the HQ biweekly check log (Google reviews / plating photos) nightly. Read-only.', vi:'◆ Sao chép hằng đêm bản ghi kiểm tra của HQ (đánh giá Google / ảnh trình bày). Chỉ đọc.' });
+    if (getRole() !== 'hq') return `${head}<div class="card"><p class="muted">${L({ ja:'この画面は本部のみです。', en:'HQ only.', vi:'Chỉ dành cho HQ.' })}</p></div>`;
+    const ym = todayYm();
+    const all = rvissuesOf('');
+    const vis = visibleStores();
+    const extra = []; all.forEach(x => { if (!STORES.includes(x._store) && !extra.includes(x._store)) extra.push(x._store); });
+    const stores = vis.length === 1 ? vis : STORES.concat(extra);
+    if (!all.length) return `${head}<div class="card"><h3>${L(RV_TITLE)}</h3><p class="muted">${L({ ja:'まだ記録がありません。毎晩23時台に自動で写され、店舗ごとの悪い口コミ・盛付写真の指摘がここに並びます（本部だけが見られます）。', en:'No records yet. Copied nightly; negative reviews and plating-photo issues will be listed here by store (HQ only).', vi:'Chưa có dữ liệu. Sẽ được sao chép hằng đêm và liệt kê theo cửa hàng (chỉ HQ).' })}</p></div>`;
+    let qs = ''; try { qs = currentRoute().params.get('s') || ''; } catch (e) {}
+    const target = (qs && stores.includes(qs)) ? qs : (stores.length === 1 ? stores[0] : '');
+    if (target) return head + rvStoreCard_(target, ym, stores.length > 1);
+    const isYm = (x) => String(x._d).slice(0, 7) === ym;
+    const rows = stores.map((s, i) => {
+      const arr = all.filter(x => x._store === s); const m = arr.filter(isYm); const rv = m.filter(x => rvIsReview_(x.type)).length;
+      const g = gsnapsOf(s); const gl = g.length ? g[g.length - 1] : null;
+      return { s, i, n: arr.length, m: m.length, rv, pl: m.length - rv, last: arr[0] || null, rating: (gl && gl.rating != null) ? Number(gl.rating) : null };
+    });
+    const sorted = rows.slice().sort((a, b) => b.m - a.m || b.n - a.n || a.i - b.i);   // 今月の指摘が多い順→通算→店の並び
+    const tot = all.filter(isYm), totRv = tot.filter(x => rvIsReview_(x.type)).length;
+    const lastChk = all.reduce((t, x) => (x.chk && x.chk > t) ? x.chk : t, '');
+    const unit = L({ ja:'件', en:'', vi:'' });
+    return `${head}<div class="card">
+      <h3>${L(RV_TITLE)}　<span class="muted">${esc(ymLabel(ym))}</span></h3>
+      <div class="stat-row">
+        <div class="stat"><div class="n">${tot.length}</div><div class="k">${L({ ja:'今月の指摘（全店）', en:'This month (all)', vi:'Tháng này (tất cả)' })}</div></div>
+        <div class="stat"><div class="n">${totRv}</div><div class="k">${L({ ja:'悪い口コミ', en:'Negative reviews', vi:'Đánh giá xấu' })}</div></div>
+        <div class="stat"><div class="n">${tot.length - totRv}</div><div class="k">${L({ ja:'盛付写真', en:'Plating photos', vi:'Ảnh trình bày' })}</div></div>
+      </div>
+      ${lastChk ? `<p class="hint" style="display:block">${L({ ja:'最新のチェック日 ', en:'Last check: ', vi:'Kiểm tra gần nhất: ' })}${esc(mdLabel(lastChk))}</p>` : ''}
+      ${sorted.map(r => `<div class="rep tapable" data-go="/app/rvissue?s=${encodeURIComponent(r.s)}" role="button" tabindex="0">
+        <span class="amt">${r.m}${unit}</span>
+        <div class="body">
+          <div class="l1">${esc(storeShort(r.s))}${STORES.includes(r.s) ? '' : L({ ja:'（一覧に無い店）', en:' (not in app)', vi:' (không có trong app)' })} ・ ${L({ ja:'口コミ', en:'reviews', vi:'ĐG' })} ${r.rv} ・ ${L({ ja:'盛付', en:'plating', vi:'trình bày' })} ${r.pl}${r.rating != null ? ' ・ ★' + r.rating.toFixed(1) : ''}</div>
+          <div class="l2">${L({ ja:'通算', en:'Total', vi:'Tổng' })} ${r.n}${unit}${r.last ? ' ・ ' + L({ ja:'直近 ', en:'Latest ', vi:'Gần nhất ' }) + esc(mdLabel(r.last._d)) + ' ' + rvTypeLabel_(r.last.type) : ''}</div>
+        </div>
+      </div>`).join('')}
+      <p class="hint" style="display:block">${L({ ja:'※ 並び順＝今月の指摘が多い順。数字は本部の隔週チェックで拾った件数（Googleの全件ではありません）。推定投稿日は「○日前」からの推定で1〜6日前後します。行をタップすると本文が読めます。', en:'Sorted by this month\'s issues. Counts are what the HQ biweekly check picked up, not all Google reviews. Tap a row to read the text.', vi:'Sắp xếp theo số mục tháng này. Chỉ gồm mục HQ ghi nhận. Chạm vào hàng để đọc nội dung.' })}</p>
+    </div>`;
   };
 
   /* 口コミグラフの棒タップ＝その日の件数をポップアップで（2026-09-08 神田さんのご要望）。

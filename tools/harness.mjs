@@ -6595,7 +6595,7 @@ console.log('== 2026-10-12 セキュリティ＝第三者に流れない仕組�
   ok(/if \(!priv\) file\.setSharing\(DriveApp\.Access\.ANYONE_WITH_LINK/.test(csrc2) && /function isPrivatePhotoRow_/.test(csrc2), '★お金の写真は公開リンクにしない');
   ok(/if \(Array\.isArray\(data\.photos\) && data\.photos\.length\) return \{ ok: false, error: 'NO_PHOTO' \};/.test(asrc2), '★apperr は写真を受けない');
   ok(/LOGIN_LOCKED/.test(asrc2) && /AUTH_LOCK_FAILS/.test(asrc2), '★ログインの総当たりロック');
-  ok(/'hqack', 'gsnap'\]/.test(asrc2) && /if \(store === '\*'\) return \{ ok: false, error: 'STORE_NOT_ALLOWED' \};/.test(asrc2), "★hqack は本部だけ・店舗は '*' に書けない");
+  ok(/'hqack', 'gsnap', 'rvissue'\]/.test(asrc2) && /if \(store === '\*'\) return \{ ok: false, error: 'STORE_NOT_ALLOWED' \};/.test(asrc2), "★hqack は本部だけ・店舗は '*' に書けない");
 }
 
 console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全店（神田さん「USENレジで回収できる項目はアプリ側からも削除。ややこしいので」）==');
@@ -7906,6 +7906,57 @@ console.log('== 2026-10-27 SVチェックの写真＝2台で同じ項目を触�
   const gs = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
   ok(/function svcheck_keepPhotos_/.test(gs) && /data\._keepPhotoIds/.test(gs) && /if \(pt <= inPt\) return null;/.test(gs), 'サーバーも同じ決まり＝pt の古い行は直近の写真のまま足す（夜の整理圧縮で古い行が消えても写真が残る）');
   FETCH_ROWS = { ok:true, reports:[] };
+}
+
+
+console.log('== 2026-11-07 口コミ・盛付の指摘（rvissue）＝本部の隔週チェック表の写し・本部だけ・読むだけ ==');
+{
+  const S1 = '牛カツ世桜 長堀橋店', S2 = '和牛世桜 広島店';
+  const jst = new Date(Date.now() + 9 * 3600e3); const ym = jst.toISOString().slice(0, 7); const dd = ym + '-01';
+  const prev = (() => { const [y, m] = ym.split('-').map(Number); const p = new Date(y, m - 2, 1); return p.getFullYear() + '-' + String(p.getMonth() + 1).padStart(2, '0') + '-15'; })();
+  const nt = (o) => JSON.stringify(Object.assign({ src: 'kimura', chk: dd, ago: '1 日前', memo: '' }, o));
+  const longTxt = '量が少なく、プレミアムの価格に見合わない。'.repeat(12) + '<b>end</b>';
+  const rows = [
+    { id: 'rv1',  kind: 'rvissue', store: S1, item: dd,   level: 'k1', note: nt({ key: 'k1', type: '悪い口コミ', text: '差別を受けたような気がします。空席があるのに2階に案内された' }), photos: [], t: Date.now() },
+    { id: 'rv1b', kind: 'rvissue', store: S1, item: dd,   level: 'k1', note: nt({ key: 'k1', type: '悪い口コミ', text: '差別を受けたような気がします。空席があるのに2階に案内された' }), photos: [], t: Date.now() - 1000 },
+    { id: 'rv2',  kind: 'rvissue', store: S1, item: dd,   level: 'k2', note: nt({ key: 'k2', type: '盛付写真', text: '牛カツの向き', memo: '2枚とも' }), photos: [], t: Date.now() },
+    { id: 'rv3',  kind: 'rvissue', store: S2, item: prev, level: 'k3', note: nt({ key: 'k3', type: '悪い口コミ', text: longTxt }), photos: [], t: Date.now() },
+    { id: 'rv4',  kind: 'rvissue', store: '牛カツ世桜 タオディエン店', item: dd, level: 'k4', note: nt({ key: 'k4', type: '悪い口コミ', text: 'アプリに無い店の行' }), photos: [], t: Date.now() },
+    { id: 'g1',   kind: 'gsnap',   store: S1, item: dd, note: JSON.stringify({ src: 'places', total: 400, rating: 4.3, gained: 1 }), photos: [], t: Date.now() },
+  ];
+  const seed = () => localStorage.setItem('yosakura_demo_reports', JSON.stringify(rows));
+  let app = run(() => { setLS('hq', 'all', 'ja'); seed(); }); location.hash = '#/app/rvissue'; let html = app.innerHTML;
+  ok(/口コミ・盛付の指摘/.test(html), '本部・全店＝画面が出る');
+  ok(/牛カツ 長堀橋店/.test(html) && /広島店/.test(html), '店別の行が出る');
+  ok(/タオディエン店/.test(html) && /一覧に無い店/.test(html), 'アプリに無い店もそのまま出て「一覧に無い店」と分かる');
+  ok(/data-go="\/app\/rvissue\?s=/.test(html), '行をタップすると店の詳細へ');
+  ok(/今月の指摘（全店）/.test(html) && /<div class="n">3<\/div>/.test(html), '今月の指摘（全店）＝3件（同じ印は1件・前月は含めない）');
+  ok(/最新のチェック日/.test(html), '最新のチェック日が出る');
+  const idx1 = html.indexOf('牛カツ 長堀橋店'), idx2 = html.indexOf('広島店');
+  ok(idx1 !== -1 && idx2 !== -1 && idx1 < idx2, '今月の指摘が多い店が上');
+  app = run(() => { setLS('hq', 'all', 'ja'); seed(); }); location.hash = '#/app/rvissue?s=' + encodeURIComponent(S1); html = app.innerHTML;
+  ok(/差別を受けた/.test(html) && /牛カツの向き/.test(html) && /2枚とも/.test(html), '店の詳細＝問題内容と補足が出る');
+  ok((html.match(/差別を受けた/g) || []).length === 1, '同じ印（key）の行は1件に数える');
+  ok(/★4\.3/.test(html), '同じ画面に毎晩のGoogle口コミの星');
+  ok(/サーベイ平均/.test(html) && /星（月末）/.test(html), '月別の表＝悪い口コミ・盛付写真・星・サーベイ');
+  ok(/全店の一覧へ戻る/.test(html), '全店へ戻るボタン');
+  app = run(() => { setLS('hq', 'all', 'ja'); seed(); }); location.hash = '#/app/rvissue?s=' + encodeURIComponent(S2); html = app.innerHTML;
+  ok(/<details class="rv-more">/.test(html) && /続きを見る/.test(html), '長い本文は「続きを見る」で畳む');
+  ok(/&lt;b&gt;end&lt;\/b&gt;/.test(html) && !/<b>end<\/b>/.test(html), '本文はエスケープされる');
+  app = run(() => { setLS('manager', S1, 'ja'); seed(); }); location.hash = '#/app/rvissue'; html = app.innerHTML;
+  ok(!/差別を受けた/.test(html) && !/口コミ・盛付の指摘/.test(html), '店舗責任者＝画面が開かずホームへ（内容も入口も出ない）');
+  app = run(() => { setLS('hq', 'all', 'ja'); }); location.hash = '#/app/rvissue'; html = app.innerHTML;
+  ok(/まだ記録がありません/.test(html), '記録が無いときの案内');
+  ok(/data-open="rvissue"/.test(code) && /rvStrip/.test(code), '本部タブ（見る）の「お客様の声」に入口がある');
+  const gsCode = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
+  const gsAuth = fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8');
+  const gsImp  = fs.readFileSync(new URL('../backend/口コミチェック取込.gs', import.meta.url), 'utf8');
+  ok(/PURGE_KEEP_KINDS\s*=\s*\[[\s\S]*?'rvissue'/.test(gsCode), 'Code.gs＝90日削除から守る');
+  ok(/AUTH_HQ_READ_KINDS = \[[^\]]*'rvissue'/.test(gsAuth) && /AUTH_HQ_WRITE_KINDS = \[[^\]]*'rvissue'/.test(gsAuth), '認証.gs＝店舗の端末には返さない・書けない');
+  ok(/function rvissueFetchDaily/.test(gsImp) && /function rvissueFetchCheck/.test(gsImp), '取込＝毎晩の関数と動作確認の関数');
+  ok(/openById\(sid\)/.test(gsImp) && !/\.setValue\(|\.setValues\(|\.clearContent\(|\.deleteRow\(/.test(gsImp), '取込＝チェック表には書かない（読むだけ）');
+  ok(/RVISSUE_SHEET_ID/.test(gsImp) && !/1ljHSC6HZ/.test(gsImp + gsCode + code), 'チェック表のIDはコードに置かない（スクリプトプロパティ）');
+  ok(/\.slice\(0, RVISSUE_TEXT_MAX\)/.test(gsImp) && /"'" \+ est/.test(gsImp), '本文は上限あり・日付はアポストロフィ付き（gsnapと同じ）');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);

@@ -42,7 +42,7 @@ function aggSs_() {
 /* ---------- 表示用の対応表 ---------- */
 var AGG_KIND = {
   soukatsu: '総括表（アプリ入力）', soukatsu_imp: '総括表（総括表取込）', soukatsu_usen: '総括表（レジ取込）', survey: 'サーベイ回答', kizuki: '気づき',
-  chukan: '中間報告', subrec: '写真等の提出', ckdone: 'チェックリスト操作', gsnap: 'Google口コミ取得',
+  chukan: '中間報告', subrec: '写真等の提出', ckdone: 'チェックリスト操作', gsnap: 'Google口コミ取得', rvissue: '口コミ・盛付チェックの写し',
   video: '店内動画', kinshu: '金種別入力', handover: '店内伝言板', a: '食べ残し', b: '食べ残し',
   svfb: '巡回フィードバック', route: '来店経路', open: '開局記録（旧）', community: 'みんなの投稿',
   news: 'お知らせ', newslike: 'お知らせ・いいね', newsread: 'お知らせ・確認', newscmt: 'お知らせ・コメント',

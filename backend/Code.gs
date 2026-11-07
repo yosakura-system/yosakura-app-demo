@@ -50,6 +50,7 @@ function autoPurgeOn_()    { return getSetting_('ENABLE_AUTO_PURGE', true) === t
    お知らせ本体（news）が恒久保存のため、反応だけ90日で消えると「誰が確認したか」の記録に穴があく。 */
 var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide', 'zaikomaster', 'staffm',   // staffm＝勤怠の名簿（総括表「勤怠表」から・2026-10-15）   // zaikomaster＝在庫の品目・基準在庫（2026-09-18）
                          'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu', 'phsample', 'monthly', 'gsnap',
+                         'rvissue',   // ★2026-11-07 本部の口コミ・盛付チェック表の写し（口コミチェック取込.gs）＝推移を見るので恒久保存
                          'newslike', 'newsread', 'newscmt',
                          /* ★2026-09-15 神田さん判断＝みんなの投稿・いいね・コメントは90日で消さない
                             （「1店舗への指摘が全店舗の教育になる」9/14決定＝古い投稿も教材として残す） */
@@ -274,6 +275,8 @@ function validateBackendConfiguration() {
   /* ★2026-09-07 の貼り替えぶん＝外から ?action=validate で「済んだか」を確認できるようにする */
   ck('90日削除から守るkindにgsnap（Google口コミ記録）がある', PURGE_KEEP_KINDS.indexOf('gsnap') !== -1,
      PURGE_KEEP_KINDS.indexOf('gsnap') !== -1 ? '口コミ推移は恒久保存' : '未貼付：Code.gs を貼り替えてください');
+  ck('90日削除から守るkindにrvissue（口コミ・盛付チェックの写し）がある', PURGE_KEEP_KINDS.indexOf('rvissue') !== -1,
+     PURGE_KEEP_KINDS.indexOf('rvissue') !== -1 ? '指摘の推移は恒久保存' : '未貼付：Code.gs を貼り替えてください');
 
   /* ★2026-09-15 の貼り替えぶん＝みんなの投稿のコメント（v228）が全店に届くか。
      認証.gs を貼り替えて『デプロイを管理→既存の編集→新バージョン』まで済んだかを、外から ?action=validate で確かめられる。

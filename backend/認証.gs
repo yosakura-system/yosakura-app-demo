@@ -46,10 +46,10 @@ var AUTH_ROLES = ['staff', 'manager', 'owner', 'hq'];
 var AUTH_PUBLIC_KINDS = ['community', 'commlike', 'commmod', 'commroll', 'commtry', 'commcmt',
                          'news', 'study', 'linkset', 'faqset', 'submaster', 'subholiday'];
 /* 本部だけが読めるkind（★公益通報は店舗端末に返さない＝通報者を守る） */
-var AUTH_HQ_READ_KINDS = ['whistle', 'appfb', 'hqtask', 'svcheck', 'svstd'];   // svcheck＝巡回チェック（本部の評価＝店舗端末には返さない）   // hqtask＝本部の個人タスク（試行）。さらに本人のuidにしか返さない（auth_row_ok_）
+var AUTH_HQ_READ_KINDS = ['whistle', 'appfb', 'hqtask', 'svcheck', 'svstd', 'rvissue'];   // rvissue＝本部の口コミ・盛付チェックの写し（2026-11-07・店舗端末には返さない）   // svcheck＝巡回チェック（本部の評価＝店舗端末には返さない）   // hqtask＝本部の個人タスク（試行）。さらに本人のuidにしか返さない（auth_row_ok_）
 /* 本部だけが書けるkind（設定・判定・配信もの） */
 var AUTH_HQ_WRITE_KINDS = ['submaster', 'substat', 'subholiday', 'news', 'linkset', 'faqset', 'study', 'commmod', 'commroll', 'hqtask', 'svcheck', 'svstd',
-                           'hqack', 'gsnap'];   // ★2026-10-12 hqack（本部の対応済み・コメント）と gsnap（口コミの控え）は店舗の端末から書けない
+                           'hqack', 'gsnap', 'rvissue'];   // ★2026-10-12 hqack（本部の対応済み・コメント）と gsnap（口コミの控え）は店舗の端末から書けない
 /* 店舗の端末が店舗名なし（store=''）で書いてよいkind＝公益通報（匿名）と、数字の要確認の確認済み（まとめ送り）だけ。'*' は本部のみ（2026-10-12） */
 var AUTH_NOSTORE_OK_KINDS = ['whistle', 'numack'];
 /* ログインの総当たり対策（2026-10-12）＝同じIDで15分に10回失敗したら、15分のあいだ受けない */
