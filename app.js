@@ -13595,6 +13595,9 @@
         // ★2026-10-01 追加＝nouhindraft（納品書写真のOCR下書き＝日報の「今日の納品書」）。KEEP判断＝90日で消えてよい
         case 'staffm': case 'chukan': case 'chukandraft': case 'skdraft': case 'nouhindraft': case 'gsnap': case 'handover':
         case 'newslike': case 'newsread': case 'newscmt': case 'kinshu': case 'commcmt': case 'zaiko': case 'zaikomaster': case 'zaikoorder':
+        // ★2026-11-07 追加＝rvissue（本部の口コミ・盛付チェック表の写し）。KEEP判断＝恒久（Code.gs に追加済み）。本部だけに返る（認証.gs）
+        //   ＝初回配信（v481）でここに無く、本番で「まだ記録がありません」のまま＝取りこぼしの4回目。3点セット（distribute＋KEEP＋テスト）
+        case 'rvissue':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id, who: String(r.level || '') }); break;   // level＝投稿者のお名前（2026-10-23）
         case 'route': route.push({ store, route:r.item, t, id }); break;
