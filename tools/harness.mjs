@@ -7919,7 +7919,7 @@ console.log('== 2026-11-07 口コミ・盛付の指摘（rvissue）＝本部の�
   const rows = [
     { id: 'rv1',  kind: 'rvissue', store: S1, item: dd,   level: 'k1', note: nt({ key: 'k1', type: '悪い口コミ', text: '差別を受けたような気がします。空席があるのに2階に案内された' }), photos: [], t: Date.now() },
     { id: 'rv1b', kind: 'rvissue', store: S1, item: dd,   level: 'k1', note: nt({ key: 'k1', type: '悪い口コミ', text: '差別を受けたような気がします。空席があるのに2階に案内された' }), photos: [], t: Date.now() - 1000 },
-    { id: 'rv2',  kind: 'rvissue', store: S1, item: dd,   level: 'k2', note: nt({ key: 'k2', type: '盛付写真', text: '牛カツの向き', memo: '2枚とも' }), photos: ['p:1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789'], t: Date.now() },
+    { id: 'rv2',  kind: 'rvissue', store: S1, item: dd,   level: 'k2', note: nt({ key: 'k2', type: '盛付写真', text: '牛カツの向き', memo: '2枚とも' }), photos: [], t: Date.now() },
     { id: 'rv3',  kind: 'rvissue', store: S2, item: prev, level: 'k3', note: nt({ key: 'k3', type: '悪い口コミ', text: longTxt }), photos: [], t: Date.now() },
     { id: 'rv4',  kind: 'rvissue', store: '牛カツ世桜 タオディエン店', item: dd, level: 'k4', note: nt({ key: 'k4', type: '悪い口コミ', text: 'アプリに無い店の行' }), photos: [], t: Date.now() },
     { id: 'g1',   kind: 'gsnap',   store: S1, item: dd, note: JSON.stringify({ src: 'places', total: 400, rating: 4.3, gained: 1 }), photos: [], t: Date.now() },
@@ -7935,8 +7935,6 @@ console.log('== 2026-11-07 口コミ・盛付の指摘（rvissue）＝本部の�
   const idx1 = html.indexOf('牛カツ 長堀橋店'), idx2 = html.indexOf('広島店');
   ok(idx1 !== -1 && idx2 !== -1 && idx1 < idx2, '今月の指摘が多い店が上');
   app = run(() => { setLS('hq', 'all', 'ja'); seed(); }); location.hash = '#/app/rvissue?s=' + encodeURIComponent(S1); html = app.innerHTML;
-  ok(/class="rep-photo"[^>]*data-full=/.test(html) && (html.match(/class="rep-photo"/g) || []).length === 1, '写真つきの行だけ写真が出る（タップで拡大の data-full つき）');
-  ok(!/drive\.google\.com\/thumbnail\?id=p/.test(html), 'p: の写真を公開リンクにしていない');
   ok(/差別を受けた/.test(html) && /牛カツの向き/.test(html) && /2枚とも/.test(html), '店の詳細＝問題内容と補足が出る');
   ok((html.match(/差別を受けた/g) || []).length === 1, '同じ印（key）の行は1件に数える');
   ok(/★4\.3/.test(html), '同じ画面に毎晩のGoogle口コミの星');
@@ -7956,14 +7954,11 @@ console.log('== 2026-11-07 口コミ・盛付の指摘（rvissue）＝本部の�
   ok(/PURGE_KEEP_KINDS\s*=\s*\[[\s\S]*?'rvissue'/.test(gsCode), 'Code.gs＝90日削除から守る');
   ok(/AUTH_HQ_READ_KINDS = \[[^\]]*'rvissue'/.test(gsAuth) && /AUTH_HQ_WRITE_KINDS = \[[^\]]*'rvissue'/.test(gsAuth), '認証.gs＝店舗の端末には返さない・書けない');
   ok(/function rvissueFetchDaily/.test(gsImp) && /function rvissueFetchCheck/.test(gsImp), '取込＝毎晩の関数と動作確認の関数');
-  ok(/openById\(sid\)/.test(gsImp) && !/src\.(getRange\([^)]*\)\.)?(setValue|setValues|clearContent|deleteRow|appendRow|insertRow)/.test(gsImp) && (gsImp.match(/\.setValue\(/g) || []).length === 1 && /sh\.getRange\(i \+ 2, 8\)\.setValue\(JSON\.stringify\(\[id\]\)\)/.test(gsImp), '取込＝チェック表には書かない（読むだけ）。書くのは reports の photos 列だけ');
-  /* 11/7 写真＝セル内画像を本部の写真フォルダへ保存し、公開リンクにしない・90日削除から守る */
-  ok(/getContentUrl/.test(gsImp) && /UrlFetchApp\.fetch/.test(gsImp) && /getPhotoFolder\(\)\.createFile/.test(gsImp) && !/setSharing/.test(gsImp), '取込＝セル内画像を写真フォルダへ保存・共有リンクは付けない');
-  ok(/RVISSUE_PHOTO_BUDGET_MS/.test(gsImp) && /RVISSUE_PHOTO_MAX/.test(gsImp) && /function rvissuePhotoBackfill\(\)/.test(gsImp), '取込＝1回の時間と枚数に上限・残りは後から付ける関数');
-  ok(/if \(String\(kind \|\| ''\) === 'rvissue'\) return true;/.test(gsCode), 'Code.gs＝rvissue の写真は p: 付き（ログイン経由・本部だけ）');
-  ok(/pk !== 'phsample' && pk !== 'rvissue'/.test(gsCode), 'Code.gs＝rvissue の写真は90日削除から守る');
+  ok(/openById\(sid\)/.test(gsImp) && !/src\.(getRange\([^)]*\)\.)?(setValue|setValues|clearContent|deleteRow|appendRow|insertRow)/.test(gsImp) && (gsImp.match(/\.setValue\(/g) || []).length === 1 && /sh\.getRange\(i \+ 2, 8\)\.setValue\('\[\]'\)/.test(gsImp), '取込＝チェック表には書かない（読むだけ）。書くのは片づけ関数の reports photos 列だけ');
+  /* 11/8 神田さん判断＝お客様の写真の写しは持たない。写す処理が無いこと・片づけ関数があること */
+  ok(!/UrlFetchApp\.fetch|createFile|getContentUrl/.test(gsImp) && /function rvissuePhotoRemoveAll\(\)/.test(gsImp) && /setTrashed\(true\)/.test(gsImp), '取込＝写真は写さない（11/8）・11/7の写しを消す片づけ関数がある');
   ok(/RVISSUE_SHEET_ID/.test(gsImp) && !/1ljHSC6HZ/.test(gsImp + gsCode + code), 'チェック表のIDはコードに置かない（スクリプトプロパティ）');
-  ok(/\.slice\(0, RVISSUE_TEXT_MAX\)/.test(gsImp) && /"'" \+ x\.est/.test(gsImp), '本文は上限あり・日付はアポストロフィ付き（gsnapと同じ）');
+  ok(/\.slice\(0, RVISSUE_TEXT_MAX\)/.test(gsImp) && /"'" \+ est/.test(gsImp), '本文は上限あり・日付はアポストロフィ付き（gsnapと同じ）');
 }
 
 

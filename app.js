@@ -7144,7 +7144,7 @@
         const p = parseNote(r.note);
         if (!p || p.src !== 'kimura') return;
         const k = p.key || (r.store + '|' + r.item + '|' + p.type + '|' + String(p.text || '').slice(0, 40));
-        if (!byK[k] || r.t > byK[k]._t) byK[k] = Object.assign({ _t: r.t, _d: dateKeyOfItem(r.item), _store: r.store, _ph: Array.isArray(r.photos) ? r.photos.filter(Boolean) : [] }, p);   // _ph＝チェック表のセル内画像の写し（11/7・本部だけ p: で返る）
+        if (!byK[k] || r.t > byK[k]._t) byK[k] = Object.assign({ _t: r.t, _d: dateKeyOfItem(r.item), _store: r.store }, p);
       });
     } catch (e) {}
     return Object.values(byK).sort((a, b) => a._d < b._d ? 1 : a._d > b._d ? -1 : b._t - a._t);   // 同じ印は新しい行が正・新しい順
@@ -7163,9 +7163,7 @@
       x.chk ? L({ ja:'チェック ', en:'Checked ', vi:'Kiểm tra ' }) + esc(mdLabel(x.chk)) : '',
       x.memo ? esc(x.memo) : ''
     ].filter(Boolean).join(' ・ ');
-    /* ★2026-11-07 神田さん「写真は見ることできないのかな？」＝チェック表のセル内画像を毎晩写して、本文の下に出す（タップで拡大・本部のログイン経由） */
-    const phs = (x._ph && x._ph.length) ? `<div class="rep-photos">${x._ph.map(p => `<img class="rep-photo" src="${photoThumb(p)}" alt="" data-full="${photoFull(p)}" loading="lazy" style="width:96px;height:96px">`).join('')}</div>` : '';
-    return `<div class="rep"><span class="amt" style="font-size:12px">${rvTypeLabel_(x.type)}</span><div class="body"><div class="l1">${body}</div><div class="l2">${sub}</div>${phs}</div></div>`;
+    return `<div class="rep"><span class="amt" style="font-size:12px">${rvTypeLabel_(x.type)}</span><div class="body"><div class="l1">${body}</div><div class="l2">${sub}</div></div></div>`;
   };
   const RV_TITLE = { ja:'口コミ・盛付の指摘', en:'Review & plating issues', vi:'Ghi nhận đánh giá & trình bày' };
   function rvStoreCard_(s, ym, multi) {
@@ -7194,12 +7192,12 @@
       ${tbl}
       <div class="idlabel" style="margin-top:12px">${L({ ja:'指摘の一覧（新しい順・40件まで）', en:'Issues (newest first, up to 40)', vi:'Danh sách (mới nhất, tối đa 40)' })}</div>
       ${list}
-      <p class="hint" style="display:block">${L({ ja:'※ 本部の隔週チェックで拾った分だけ（Googleの全件ではありません）。推定投稿日は「○日前」からの推定で1〜6日前後します。写真はタップで拡大。元の記録はチェック表で。', en:'Only items picked up in the HQ biweekly check. Posted date is estimated (±1–6 days). Tap a photo to enlarge.', vi:'Chỉ gồm mục HQ ghi nhận. Ngày đăng là ước tính (±1–6 ngày). Chạm ảnh để phóng to.' })}</p>
+      <p class="hint" style="display:block">${L({ ja:'※ 本部の隔週チェックで拾った分だけ（Googleの全件ではありません）。推定投稿日は「○日前」からの推定で1〜6日前後します。画像と元の記録はチェック表で。', en:'Only items picked up in the HQ biweekly check. Posted date is estimated (±1–6 days). Images are in the check sheet.', vi:'Chỉ gồm mục HQ ghi nhận. Ngày đăng là ước tính (±1–6 ngày). Ảnh xem tại bảng kiểm tra.' })}</p>
       ${multi ? `<button class="btn-primary" data-go="/app/rvissue" style="margin-top:12px">${L({ ja:'全店の一覧へ戻る', en:'Back to all stores', vi:'Về danh sách' })}</button>` : ''}
     </div>`;
   }
   APP_VIEWS.rvissue = () => {
-    const head = NOTE({ ja:'◆ 本部の隔週チェック（Google口コミ・盛付写真）の問題記録を、毎晩1回そのまま写しています（読むだけ・直すのはチェック表で）', en:'◆ Mirrors the HQ biweekly check log (Google reviews / plating photos) nightly. Read-only.', vi:'◆ Sao chép hằng đêm bản ghi kiểm tra của HQ (đánh giá Google / ảnh trình bày). Chỉ đọc.' });
+    const head = NOTE({ ja:'◆ 本部の隔週チェック（Google口コミ・盛付写真）の問題記録を、毎晩1回そのまま写しています（読むだけ・直すのも画像もチェック表で）', en:'◆ Mirrors the HQ biweekly check log (Google reviews / plating photos) nightly. Read-only.', vi:'◆ Sao chép hằng đêm bản ghi kiểm tra của HQ (đánh giá Google / ảnh trình bày). Chỉ đọc.' });
     if (getRole() !== 'hq') return `${head}<div class="card"><p class="muted">${L({ ja:'この画面は本部のみです。', en:'HQ only.', vi:'Chỉ dành cho HQ.' })}</p></div>`;
     const ym = todayYm();
     const all = rvissuesOf('');
