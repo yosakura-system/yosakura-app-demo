@@ -197,7 +197,7 @@ function mimamori_sheetUrl_() { try { return SpreadsheetApp.getActiveSpreadsheet
  *   ① レジの取込＝USEN_STORE_MAP の全店（USEN7店＋本店101＋鰻富士山102＋鰻長堀橋103）に、きのうの締め（src:'usen'・sales あり）が届いたか
  *   ② PCの自動タスク＝神田さんのPCの朝の報告（kind:'apperr' item:'TASK…'・ops_morning_report.py が 5:15 に送る）。無ければ★（PC側が止まっている）
  *   ③ エラーの控え（apperr）24時間の件数と内訳
- *   ④ 総括表への書き戻し＝下見（書かない）で「まだ書けていない」「止めた」を数える
+ *   ④ 総括表への書き戻し＝下見（書かない）で「まだ書けていない」「止めた」を数える　★2026-11-09 別便 mimamoriDaily2（5:50）に分けた（6分の上限対策）
  *   ⑤ 提出が止まった店（おととい提出あり・きのう無し）
  *   ⑥ 見守りの仕組みそのもの＝毎時の見守りの最終実行（3時間以上空いたら★）・前回あったトリガーが消えていないか（一覧をプロパティに覚えて比べる）
  *   ※ 朝の点検が止まったことは、毎時の見守り（mimamoriHourly）が MIMAMORI_DAILY_TS を見て知らせる（互いに見張る＝両方同時に止まらない限り気づける）
@@ -207,13 +207,39 @@ function mimamoriDaily() { return 見守り_朝の点検(); }
 function 見守り_朝の点検トリガー登録() {
   var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'mimamoriDaily'; });
   if (!has) ScriptApp.newTrigger('mimamoriDaily').timeBased().everyDays(1).atHour(5).nearMinute(30).inTimezone('Asia/Tokyo').create();
-  Logger.log(has ? '登録済み（毎日 5:30 mimamoriDaily）' : '登録しました（毎日 5:30 mimamoriDaily）');
-  return { ok: true, registered: true };
+  var has2 = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'mimamoriDaily2'; });   // ★2026-11-09 ④の別便
+  if (!has2) ScriptApp.newTrigger('mimamoriDaily2').timeBased().everyDays(1).atHour(5).nearMinute(50).inTimezone('Asia/Tokyo').create();
+  Logger.log((has ? '登録済み' : '登録しました') + '（毎日 5:30 mimamoriDaily）／' + (has2 ? '登録済み' : '登録しました') + '（毎日 5:50 mimamoriDaily2）');
+  return { ok: true, registered: true, daily2: !has2 };
+}
+function mimamoriDaily2() { return 見守り_朝の点検_書き戻し(); }
+
+/* ★2026-11-09 朝の点検②＝総括表への書き戻しの下見だけ（毎日 5:50）。★があるときだけメール。
+ *   朝の点検（5:30）から分けた＝下見だけで4〜5分かかり、一緒に回すと6分の上限で朝の点検ごと落ちていた。days は 3→2（前日と前々日） */
+function 見守り_朝の点検_書き戻し() {
+  var now = new Date(); var ng = 0; var sec = [];
+  try {
+    if (typeof skwb_実行_ !== 'function') return { ok: false, reason: 'skwb_実行_ が無い' };
+    var r4 = skwb_実行_(false, 2);
+    var rest = Number(r4.書く || 0) + Number(r4.書き直す || 0);
+    var stopped = (r4.止めた || []).slice(0, 8);
+    var bad4 = rest > 0;   // 「止めた」は毎日同じ行が出る（お客様層の国の列など）ので△扱い。★は書けていない行があるときだけ
+    if (bad4) ng++;
+    sec.push((bad4 ? '★' : (stopped.length ? '△' : '○')) + '④ 総括表への書き戻し（直近2日）　まだ書けていない ' + rest + '　ずれ（店の値と違う・上書きしない） ' + Number(r4.ずれ || 0) +
+      (stopped.length ? '\n　止めた：\n' + stopped.map(function (s) { return '　・' + String(s).slice(0, 160); }).join('\n') : '') +
+      (rest > 0 ? '\n　→ 「まだ書けていない」は 4時の書き戻しが走らなかったか、総括表のタブ・ラベルが変わった印' : ''));
+  } catch (e4) { ng++; sec.push('★④ 総括表への書き戻し　下見でエラー：' + String(e4).slice(0, 200)); }
+  var subject = '【世桜アプリ 朝の点検②】' + Utilities.formatDate(now, 'Asia/Tokyo', 'M/d') + (ng ? '　★ ' + ng + ' 件' : '　○ 全部OK');
+  var body = sec.join('\n\n') + '\n\n---\n○＝問題なし　△＝見ておく　★＝対応が要る\n問題（★）が無い朝は送りません\n本部データ: ' + mimamori_sheetUrl_();
+  var to = getSetting_('MIMAMORI_MAIL_TO', '') || Session.getEffectiveUser().getEmail();
+  if (ng && to) MailApp.sendEmail({ to: String(to), subject: subject, body: body, name: '世桜アプリ 見守り' });
+  return { ok: true, ng: ng, sent: !!(ng && to), to: to };
 }
 function 見守り_朝の点検_いますぐ() { return 見守り_朝の点検(); }
 
 function 見守り_朝の点検() {
   var now = new Date(); var nowTs = now.getTime();
+  try { PropertiesService.getScriptProperties().setProperty('MIMAMORI_DAILY_TS', String(nowTs)); } catch (eS) {}   // ★2026-11-09 先に印を書く（途中で落ちても毎時の見守りが空振りしない）
   var ymd = Utilities.formatDate(new Date(nowTs - 24 * 3600 * 1000), 'Asia/Tokyo', 'yyyy-MM-dd');
   var dow = Number(Utilities.formatDate(new Date(nowTs - 24 * 3600 * 1000), 'Asia/Tokyo', 'u'));
   var rows = mimamori_recentRows_(nowTs - 3 * 24 * 3600 * 1000);
@@ -264,19 +290,10 @@ function 見守り_朝の点検() {
       (errs.length > 5 ? '\n　（ほか ' + (errs.length - 5) + ' 件＝毎時の見守りメールに全件）' : ''));
   } else sec.push('○③ エラーの控え（24時間）　0 件');
 
-  /* ④ 総括表への書き戻し（下見＝書かない） */
-  try {
-    if (typeof skwb_実行_ === 'function') {
-      var r4 = skwb_実行_(false, 3);
-      var rest = Number(r4.書く || 0) + Number(r4.書き直す || 0);
-      var stopped = (r4.止めた || []).slice(0, 8);
-      var bad4 = rest > 0;   // ★「止めた」は毎日同じ行が出る（お客様層の国の列など）ので△扱い。★は書けていない行があるときだけ
-      if (bad4) ng++;
-      sec.push((bad4 ? '★' : (stopped.length ? '△' : '○')) + '④ 総括表への書き戻し（直近3日）　まだ書けていない ' + rest + '　ずれ（店の値と違う・上書きしない） ' + Number(r4.ずれ || 0) +
-        (stopped.length ? '\n　止めた：\n' + stopped.map(function (s) { return '　・' + String(s).slice(0, 160); }).join('\n') : '') +
-        (rest > 0 ? '\n　→ 「まだ書けていない」は 4時の書き戻しが走らなかったか、総括表のタブ・ラベルが変わった印' : ''));
-    }
-  } catch (e4) { ng++; sec.push('★④ 総括表への書き戻し　下見でエラー：' + String(e4).slice(0, 200)); }
+  /* ④ 総括表への書き戻し（下見）＝★2026-11-09 別便 mimamoriDaily2（5:50）へ移した。
+   *   下見（skwb_実行_）だけで4〜5分かかり、朝の点検ごと6分の上限で落ちていた（11/4・11/6・11/7・11/9 の4回がタイムアウト＝エラー率 66.67%）。
+   *   落ちると MIMAMORI_DAILY_TS が書かれず、毎時の見守りが「朝の点検が動いていない」と鳴る＝本当の原因が見えなかった */
+  sec.push('△④ 総括表への書き戻し　別便（5:50 の「朝の点検②」）で見ます。★があればその便だけ届きます');
 
   /* ⑥ 見守りの仕組みそのもの（毎時の見守りの最終実行・トリガーの減り） */
   try {
