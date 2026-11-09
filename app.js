@@ -938,7 +938,13 @@
   /* ★USENレジのある店（backend/USEN取込.gs の USEN_STORE_MAP_DEFAULT と同じ7店）。それ以外の店はレジから自動で入らないので、
      売上関連と国別の欄を日報に出して、アプリから総括表へ流す（2026-10-15 神田さん「日本鰻富士山もアプリの日報で入力すれば総括表に入れる必要はない」） */
   const USEN_STORES = ['牛カツ世桜 長堀橋店', '牛カツ世桜 富士山店', '手巻き寿司世桜 難波店', '寿司世桜 心斎橋店', '日本鰻世桜 京都祇園店', '日本鰻世桜 浅草橋店', '和牛世桜 広島店'];
-  const skNoUsen_ = (store) => !USEN_STORES.includes(String(store || ''));
+  /* ★2026-11-09 レジの売上が毎朝自動で入る店＝USENの7店＋本店（UMaT 4:30）＋日本鰻 長堀橋・富士山（Airレジ 4:40）＝国内10店すべて（11/2〜）。
+     どれも本部データに「レジの行」（src:'usen'）として入り、総括表への書き戻しはレジが正。
+     → 売上・客数・現金・カードの欄は10店とも出さない（skNoRegi_）。USENだけが持つ 国別（客層）・フード/ドリンクの欄は、USEN以外の3店に出す（skNoUsen_）。
+     11/9 神田さん＝配布した日報マニュアルに「USENの無い3店は売上も日報に入れる」と残っていた＝アプリも同じ判定のままだった */
+  const REGI_STORES = USEN_STORES.concat(['日本料理世桜本店', '日本鰻世桜 長堀橋店', '日本鰻世桜 富士山店']);
+  const skNoUsen_ = (store) => !USEN_STORES.includes(String(store || ''));   // 国別・フード/ドリンクを日報で入れる店（USENレジ以外）
+  const skNoRegi_ = (store) => !REGI_STORES.includes(String(store || ''));   // 売上まわりを日報で入れる店（レジ取込の無い店＝いまは海外だけ）
   /* ★勤怠（任意）＝総括表の勤怠と同じ形（氏名・出勤・退勤）。合計時間・外時間・金額は総括表の式が出す＝アプリでは持たない。
      氏名の候補は総括表「勤怠表」タブの名簿（総括表取り込み.gs が kind:'staffm' で写す）。
      2026-10-15 神田さん「勤怠は完全任意。総括表に直接入力して使っている方もいたので、アプリでも同じように準備したらアプリだけで完結する」 */
@@ -1983,7 +1989,7 @@
     const src = !hasNum ? '' : isPos ? `POS ${hhmm(rec.t)} ${L({ja:'取込 ・ 入力なし',en:'imported',vi:'đã nhập'})}` : rec.src === 'drive' ? L({ja:'総括表から',en:'From the summary sheet',vi:'Từ bảng tổng hợp'}) : L({ja:'日報から',en:'From the daily report',vi:'Từ báo cáo ngày'});
     const head = `<div class="pb-sec"><h2>${L({ja:'昨日のレジ締め',en:'Yesterday’s close',vi:'Chốt két hôm qua'})}</h2><small>${src || esc(yday.slice(5).replace('-', '/'))}</small></div>`;
     if (!hasNum) {
-      const msg = USEN_STORES.includes(store) ? L({ja:'まだ届いていません。レジの数字は毎朝自動で入ります',en:'Not in yet. Register data arrives every morning.',vi:'Chưa có. Số liệu két tự vào mỗi sáng.'})
+      const msg = REGI_STORES.includes(store) ? L({ja:'まだ届いていません。レジの数字は毎朝自動で入ります',en:'Not in yet. Register data arrives every morning.',vi:'Chưa có. Số liệu két tự vào mỗi sáng.'})
         : L({ja:'まだありません。日報を出すと、ここに出ます',en:'Nothing yet. It shows here after the daily report.',vi:'Chưa có. Hiện ở đây sau báo cáo ngày.'});
       return `${head}<div class="pb-card"><button class="pb-row pb-regi" data-skedit="${esc(store + '||' + yday)}"><span class="pb-rowtx"><span class="pb-sub">${msg}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
     }
@@ -2359,12 +2365,12 @@
     /* 2 全店きょう＝店×（OPEN・CLOSE・在庫・日報・レジ締め）。●＝提出済み・赤＝締切超過・点線＝その店では対象外（写真の店はOPEN/CLOSEの写真で判定） */
     const COLS = [['OPEN', it => /^ck_open/.test(String(it.m.id))], ['CLOSE', it => /^ck_close/.test(String(it.m.id))], [L({ ja:'在庫', en:'Stock', vi:'Kho' }), it => it.m.id === 'zaiko'], [L({ ja:'日報', en:'Report', vi:'B.cáo' }), it => it.m.id === 'nippou' || it.m.linkApp === 'soukatsu']];
     const regiRec = (st) => { const rec = sk.find(r => r && r.store === st && r.date === hqYday_(st)); return rec && (rec.src === 'usen' || rec.pos) ? rec : null; };
-    const regiDot = (st) => !USEN_STORES.includes(st) ? 'na' : (() => { const rec = regiRec(st); return !rec ? '' : (Number(rec.err) ? 'late' : 'ok'); })();
+    const regiDot = (st) => !REGI_STORES.includes(st) ? 'na' : (() => { const rec = regiRec(st); return !rec ? '' : (Number(rec.err) ? 'late' : 'ok'); })();
     const grid = STORES.map(st => { const hol = isHoliday(st, dateKeyFor(st, Date.now())); const items = hol ? [] : todayItemsFor(st).filter(it => it.m.freq === 'daily');
       const dot = (pick) => { if (hol) return 'na'; const it = items.find(pick); if (!it) return 'na'; return it.submitted ? 'ok' : it.overdue ? 'late' : ''; };
       return `<span class="s">${esc(storeShort(st))}</span>${COLS.map(([, pick]) => `<span class="pb-dot ${dot(pick)}"></span>`).join('')}<span class="pb-dot ${hol ? 'na' : regiDot(st)}"></span>`; }).join('');
     /* 3 レジ締め＝昨日の現金の過不足（USENの取込がある店） */
-    const regi = USEN_STORES.filter(st => STORES.includes(st)).map(st => { const rec = regiRec(st); return { st, err: rec ? (Number(rec.err) || 0) : null }; });
+    const regi = REGI_STORES.filter(st => STORES.includes(st)).map(st => { const rec = regiRec(st); return { st, err: rec ? (Number(rec.err) || 0) : null }; });
     const mx = Math.max(1000, ...regi.map(r => Math.abs(r.err || 0)));
     const regiBars = regi.map(r => `<div class="pb-bar"><span>${esc(storeShort(r.st))}</span><i style="width:${r.err == null ? 0 : Math.round(Math.abs(r.err) / mx * 100)}%${r.err ? ';background:#B5533C' : ''}"></i><b>${r.err == null ? '—' : (r.err < 0 ? '−' : '') + yen0(r.err)}</b></div>`).join('');
     /* 4 ロス率・人件費率（今月）＝日報（USEN・総括表・アプリの整えた1行）から。売上は純売上（無ければ税込） */
@@ -3058,13 +3064,19 @@
         ${s.raw ? `<details style="grid-column:1/-1;margin:-2px 0 2px"><summary class="muted" style="font-size:11px;cursor:pointer">${L({ ja:'読み取った文字を見る（数字が違うときの照合用）', en:'Show recognized text', vi:'Xem chữ đã đọc' })}</summary><pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;max-height:160px;overflow:auto;margin:4px 0 0;padding:6px;background:#faf8f4;border-radius:6px">${esc(s.raw)}</pre></details>` : ''}
       </div>`;
   }).join('');
-  /* ★レジの無い店の日報＝売上関連と国別の欄（2026-10-15）。欄の並びは総括表の日別タブと同じ */
-  const skPosGridHtml_ = () => `
-        <div class="idlabel" style="margin-top:6px">${L({ ja:'売上（レジの日計から）', en:'Sales (from the register report)', vi:'Doanh thu (từ báo cáo máy tính tiền)' })}</div>
+  /* ★レジの無い店の日報＝売上関連と国別の欄（2026-10-15）。欄の並びは総括表の日別タブと同じ
+     ★2026-11-09 売上まわり（sk_posgrid）はレジ取込の無い店だけ（skNoRegi_）。フード/ドリンク（sk_fdgrid）と国別（sk_ctygrid）は USEN 以外の店（skNoUsen_）＝本店・日本鰻 長堀橋・富士山にも出す */
+  const skPosGridHtml_ = (store) => `
+        ${skNoRegi_(store) ? `<div class="idlabel" style="margin-top:6px">${L({ ja:'売上（レジの日計から）', en:'Sales (from the register report)', vi:'Doanh thu (từ báo cáo máy tính tiền)' })}</div>
         <div class="sk-grid" id="sk_posgrid">
           ${[['sk_cash', { ja:'現金売上', en:'Cash', vi:'Tiền mặt' }, '40600'], ['sk_card', { ja:'カード売上', en:'Card', vi:'Thẻ' }, '75300'], ['sk_emoney', { ja:'電子マネー売上', en:'E-money', vi:'Tiền điện tử' }, '7800'], ['sk_kake', { ja:'掛売売上', en:'On account', vi:'Bán chịu' }, '0'],
              ['sk_sales', { ja:'売上合計（税込）', en:'Total sales (incl.)', vi:'Tổng DT (gồm thuế)' }, '123700'], ['sk_net', { ja:'純売上（税抜）', en:'Net sales (excl.)', vi:'DT thuần (chưa thuế)' }, '112461'], ['sk_guests', { ja:'客数', en:'Guests', vi:'Số khách' }, '21'], ['sk_disc', { ja:'値引き', en:'Discounts', vi:'Giảm giá' }, '0'],
-             ['sk_err', { ja:'過不足（現金）', en:'Cash over/short', vi:'Thừa/thiếu tiền mặt' }, '0'], ['sk_foodamt', { ja:'フード金額', en:'Food amount', vi:'Tiền món ăn' }, '98000'], ['sk_drinkamt', { ja:'ドリンク金額', en:'Drink amount', vi:'Tiền đồ uống' }, '25700']]
+             ['sk_err', { ja:'過不足（現金）', en:'Cash over/short', vi:'Thừa/thiếu tiền mặt' }, '0']]
+            .map(f => `<label class="fld"><span>${L(f[1])}</span><input type="text" inputmode="numeric" id="${f[0]}" placeholder="${f[2]}"></label>`).join('')}
+        </div>` : ''}
+        <div class="idlabel" style="margin-top:6px">${L({ ja:'フード・ドリンクの金額（レジの分類から）', en:'Food / drink amounts (from the register)', vi:'Tiền món ăn / đồ uống (từ két)' })}</div>
+        <div class="sk-grid" id="sk_fdgrid">
+          ${[['sk_foodamt', { ja:'フード金額', en:'Food amount', vi:'Tiền món ăn' }, '98000'], ['sk_drinkamt', { ja:'ドリンク金額', en:'Drink amount', vi:'Tiền đồ uống' }, '25700']]
             .map(f => `<label class="fld"><span>${L(f[1])}</span><input type="text" inputmode="numeric" id="${f[0]}" placeholder="${f[2]}"></label>`).join('')}
         </div>
         <div class="idlabel" style="margin-top:10px">${L({ ja:'国別のお客様（組数／人数）', en:'Guests by country (groups / people)', vi:'Khách theo quốc gia (nhóm / người)' })}</div>
@@ -3087,7 +3099,7 @@
     const md = String(date).slice(5).replace('-', '/');
     const wd = (() => { const d = new Date(date + 'T12:00:00Z'); return L(WDAY_LABELS[d.getUTCDay()]); })();
     const sum = g('pbn_datesum'); if (sum) sum.innerHTML = `${esc(md)}（${esc(wd)}）${L({ja:'の日報',en:' report',vi:''})}${date === dateKeyFor(store, Date.now() - 864e5) ? ' ・ ' + L({ja:'前日分',en:'yesterday',vi:'hôm qua'}) : ''}<span>${L({ja:'日付を変える',en:'Change date',vi:'Đổi ngày'})}</span>`;
-    if (skNoUsen_(store)) return '';
+    if (skNoRegi_(store)) return '';
     const rec = getSk().find(r => r && r.store === store && r.date === date && (r.src === 'usen' || r.pos));
     if (!rec) return `<div class="pb-nipauto"><div class="pb-nipempty">${L({ja:'レジの数字はまだ届いていません。毎朝自動で入ります（入力は要りません）',en:'Register numbers not in yet. They arrive automatically every morning.',vi:'Số liệu két chưa có. Tự vào mỗi sáng.'})}</div></div>`;
     const d = new Date(Number(rec.t) || 0); const at = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -3109,19 +3121,25 @@
     form.dataset.pbn = '1'; form.classList.add('pb-nip');
     const g = (id) => document.getElementById(id);
     const store = (g('sk_store') && g('sk_store').value) || visibleStores()[0];
-    const noUsen = skNoUsen_(store);
+    const noUsen = skNoUsen_(store), noRegi = skNoRegi_(store);   // ★2026-11-09 noRegi＝売上も日報で入れる店（海外）／noUsen＝国別・フード/ドリンクを日報で入れる店（本店・日本鰻 長堀橋・富士山も）
     const kids = Array.from(form.children);
     const h3 = form.querySelector('h3');
     const submit = g('submitSk'); const after = submit ? submit.nextElementSibling : null;
     const pos = g('sk_posnote');
-    if (pos) pos.textContent = noUsen
+    if (pos) pos.textContent = noRegi
       ? L({ ja:'売上はレジの日計を見て入れてください。あとは今日届いた納品書を撮るだけです。', en:'Enter sales from the register report, then photograph today’s delivery slips.', vi:'Nhập doanh thu từ báo cáo két, rồi chụp phiếu giao hàng hôm nay.' })
+      : noUsen
+      ? L({ ja:'売上・客数・現金・カードはレジから自動で入っています。入れるのは、フード・ドリンクの金額と国別のお客様、今日届いた納品書です。', en:'Sales, guests, cash and card come from the register. Enter food/drink amounts, guests by country and today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ két. Nhập tiền món/đồ uống, khách theo quốc gia và phiếu giao hàng hôm nay.' })
       : L({ ja:'売上・客数・現金・カードはUSENレジから入っています。入れるのは今日届いた納品書と、勤怠（任意）です。', en:'Sales, guests, cash and card come from the USEN register. Only enter today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ két USEN. Chỉ nhập phiếu giao hàng hôm nay.' });
     const dateGrid = g('sk_date') ? g('sk_date').closest('.sk-grid') : null;
     const dbox = document.createElement('details'); dbox.className = 'pb-nipdate'; dbox.innerHTML = '<summary id="pbn_datesum"></summary>';
     const auto = document.createElement('div'); auto.id = 'pbn_auto';
-    const salesLbl = noUsen && g('sk_posgrid') ? g('sk_posgrid').previousElementSibling : null;
-    const salesGrid = noUsen ? g('sk_posgrid') : null;
+    const salesLbl = noRegi && g('sk_posgrid') ? g('sk_posgrid').previousElementSibling : null;
+    const salesGrid = noRegi ? g('sk_posgrid') : null;
+    const fdLbl = noUsen && g('sk_fdgrid') ? g('sk_fdgrid').previousElementSibling : null;    // ★2026-11-09 フード/ドリンクと国別は畳まずに上へ（USEN以外の店の入れる物）
+    const fdGrid = noUsen ? g('sk_fdgrid') : null;
+    const ctyLbl = noUsen && g('sk_ctygrid') ? g('sk_ctygrid').previousElementSibling : null;
+    const ctyGrid = noUsen ? g('sk_ctygrid') : null;
     const slipHead = document.createElement('div'); slipHead.className = 'pb-sec'; slipHead.innerHTML = `<h2>${L({ja:'今日の納品書',en:'Today’s delivery slips',vi:'Phiếu giao hàng hôm nay'})}</h2><small>${L({ja:'撮れば自動で読みます',en:'Photos are read automatically',vi:'Chụp là tự đọc'})}</small>`;
     const nm = (() => { try { return getMasters(store).find(m => m.id === 'nouhin' && appliesToStore(m, store)); } catch (e) { return null; } })();
     /* ★2026-10-20 原さん（心斎橋）「納品書をスキャンして入稿するやり方が分からない」＝撮るボタンが提出物「納品書の写真」のある店（長堀橋）にしか出ていなかった。
@@ -3136,12 +3154,12 @@
     const kt = g('sk_kintai');
     if (kt) { kt.className = 'pb-nipmore'; kt.removeAttribute('style'); }   // 「ほかの項目」と同じ形
     if (kt && kt.querySelector('summary')) kt.querySelector('summary').textContent = L({ ja:'勤怠を入れる（任意・総括表に自動で入ります）', en:'Attendance (optional, goes to the summary sheet)', vi:'Chấm công (tùy chọn, tự vào bảng tổng kết)' });
-    const placed = new Set([h3, pos, g('sk_editnote'), g('sk_datenote'), dateGrid, salesLbl, salesGrid, slip, memo, kt, submit, after].filter(Boolean));
+    const placed = new Set([h3, pos, g('sk_editnote'), g('sk_datenote'), dateGrid, salesLbl, salesGrid, fdLbl, fdGrid, ctyLbl, ctyGrid, slip, memo, kt, submit, after].filter(Boolean));
     kids.forEach(k => { if (!placed.has(k)) more.appendChild(k); });
     if (dateGrid) dbox.appendChild(dateGrid);
     if (h3) h3.textContent = L({ ja:'日報', en:'Daily report', vi:'Báo cáo ngày' });
     if (g('sk_datenote')) g('sk_datenote').style.display = 'none';   // 日付は上の札に出す（二重にしない）
-    const order = [h3, pos, g('sk_editnote'), g('sk_datenote'), dbox, auto, salesLbl, salesGrid, slipHead, shoot, slip, memo, kt, more, submit, after].filter(Boolean);
+    const order = [h3, pos, g('sk_editnote'), g('sk_datenote'), dbox, auto, salesLbl, salesGrid, fdLbl, fdGrid, ctyLbl, ctyGrid, slipHead, shoot, slip, memo, kt, more, submit, after].filter(Boolean);
     order.forEach(el => form.appendChild(el));
     const draw = () => { const a = g('pbn_auto'); if (a) a.innerHTML = pbNipAutoHtml_(); };
     draw();
@@ -5141,15 +5159,17 @@
   const KANTAN_MANUALS = [
     /* ★2026-10-22 神田さん「全店舗にアプリ導入されたので、アプリあるバージョンしかない」＝総括表に入力する版（tanaoroshi_soukatsu.pdf・Drive は 10/19 にゴミ箱）を外し、Ver1.1 の1本に */
     { k:'tanaoroshi_app', st:'all', ver:'Ver1.1', d:'2026-10-22', pdf:'tanaoroshi_kantan.pdf', id:'1z_HqPmdNR-qciv2cHIsNeMPICgWd21xT', t:{ ja:'月末棚卸', en:'Month-end stocktake', vi:'Kiểm kê cuối tháng' }, s:{ ja:'6枚 ・ 未開封だけ数える', en:'6 pages', vi:'6 trang' } },
-    { k:'bouka', st:'all', ver:'Ver1.0', d:'2026-11-03', pdf:'bouka_kantan.pdf', id:'1D_iCweG6jr5iNMd8OeQvIjbFHEvkQeQ9', t:{ ja:'防火・避難', en:'Fire safety & evacuation', vi:'Phòng cháy & sơ tán' }, s:{ ja:'12枚 ・ 記入欄は店で書く', en:'12 pages', vi:'12 trang' } },
+    { k:'bouka', st:'all', ver:'Ver1.1', d:'2026-11-09', pdf:'bouka_kantan.pdf', id:'1D_iCweG6jr5iNMd8OeQvIjbFHEvkQeQ9', t:{ ja:'防火・避難', en:'Fire safety & evacuation', vi:'Phòng cháy & sơ tán' }, s:{ ja:'12枚 ・ 記入欄は店で書く', en:'12 pages', vi:'12 trang' } },
+    /* ★2026-11-09 増田さんが店舗へリリースした3本（報連相90行）＝全店向けに。増田さんの案内「アプリでもマニュアル確認できる」に合わせ、同梱PDF（manual/）で開く */
+    { k:'joho', st:'all', ver:'Ver1.1', d:'2026-11-09', pdf:'joho_kantan.pdf', id:'1iUABWGeXuT8ss_7l7pFXGYHDTqZoHYsh', t:{ ja:'情報管理', en:'Information handling', vi:'Quản lý thông tin' }, s:{ ja:'6枚 ・ お客様の情報・店の情報・端末', en:'6 pages', vi:'6 trang' } },
+    { k:'nippou', st:'all', ver:'Ver1.1', d:'2026-11-09', pdf:'nippou_kantan.pdf', id:'1-xh8jC0X1VktXbnJoZeJVx-FzpoXvtQY', t:{ ja:'日報の出し方と数字の直し方', en:'Daily report how-to', vi:'Cách nộp báo cáo ngày' }, s:{ ja:'5枚 ・ 売上はレジから自動', en:'5 pages', vi:'5 trang' } },
+    { k:'sevendays_besshi', st:'all', ver:'Ver1.1', d:'2026-11-09', pdf:'sevendays_besshi_kantan.pdf', id:'1cCHQXJT8IEb9EwrHsxtPX48yYA3Wk3_Q', t:{ ja:'7DAYS 1日目別紙（勝手口とバックヤード）', en:'7DAYS day-1 annex', vi:'Phụ lục ngày 1' }, s:{ ja:'3枚 ・ 初日に教える2つ', en:'3 pages', vi:'3 trang' } },
     { k:'kasuhara', st:'all', ver:'Ver1.1', d:'2026-09-25', pdf:'kasuhara.pdf', id:'1jEsOKkX8ymAoswDcpSQ9bkvFPOXCjAoH', t:{ ja:'カスタマーハラスメント対応', en:'Customer harassment response', vi:'Ứng phó quấy rối từ khách' }, s:{ ja:'8枚 ・ 10/1から義務', en:'8 pages', vi:'8 trang' } },
     { k:'kasuhara_post_app', st:'all', ver:'', d:'2026-09-25', pdf:'kasuhara_post_app.pdf', id:'1ifORxQ23xTtmJHIn_l44inKfryUsqVsA', t:{ ja:'カスハラ対応 掲示用（アプリ導入店）', en:'Harassment notice (app stores)', vi:'Bảng thông báo (CH có app)' }, s:{ ja:'A4横 ・ 店に貼る', en:'A4 landscape', vi:'A4 ngang' } },
     { k:'kasuhara_post_noapp', st:'all', ver:'', d:'2026-09-25', pdf:'kasuhara_post_noapp.pdf', id:'1qt36An5GXtSYmC5232tmU3rKo7luOENa', t:{ ja:'カスハラ対応 掲示用（アプリ未導入店）', en:'Harassment notice (no-app stores)', vi:'Bảng thông báo (CH chưa có app)' }, s:{ ja:'A4横', en:'A4 landscape', vi:'A4 ngang' } },
     { k:'kasuhara_record', st:'all', ver:'', d:'2026-09-25', pdf:'kasuhara_record.pdf', id:'13thFrUPEwDf_oCAGnmFag832MwjJQ11x', t:{ ja:'カスハラ対応 記録様式', en:'Harassment record form', vi:'Mẫu ghi nhận' }, s:{ ja:'A4縦', en:'A4 portrait', vi:'A4 dọc' } },
-    { k:'nippou', st:'test', ver:'Ver0.3', d:'2026-10-30', id:'1-xh8jC0X1VktXbnJoZeJVx-FzpoXvtQY', t:{ ja:'日報の出し方と数字の直し方', en:'Daily report how-to', vi:'Cách nộp báo cáo ngày' }, s:{ ja:'6枚', en:'6 pages', vi:'6 trang' } },
     { k:'teishutsu', st:'test', ver:'Ver0.3', d:'2026-10-30', id:'1RHbeW5cjfKKlQS9Gsu4XoJ9b_ZIOwOa0', t:{ ja:'提出物のルール', en:'Submission rules', vi:'Quy tắc nộp' }, s:{ ja:'6枚 ・ 毎日の必須3つ', en:'6 pages', vi:'6 trang' } },
     { k:'gaikokujin', st:'test', ver:'Ver0.2', d:'2026-10-17', id:'1WDcLguvTiXAIv0L86fGczQXbQ8qkIbEx', t:{ ja:'外国人スタッフの就労ルール', en:'Foreign staff work rules', vi:'Quy định lao động nước ngoài' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
-    { k:'joho', st:'test', ver:'Ver0.2', d:'2026-10-17', id:'1iUABWGeXuT8ss_7l7pFXGYHDTqZoHYsh', t:{ ja:'情報管理', en:'Information handling', vi:'Quản lý thông tin' }, s:{ ja:'3枚＋名簿', en:'3 pages + roster', vi:'3 trang + danh sách' } },
     { k:'genkin', st:'test', ver:'Ver0.3', d:'2026-10-30', id:'1dSMzDF8q8X31GD_8i5yv9Bnm2LhaydQq', t:{ ja:'現金管理', en:'Cash handling', vi:'Quản lý tiền mặt' }, s:{ ja:'4枚＋記録表', en:'3 pages + log', vi:'3 trang + sổ' } },
     { k:'shiire', st:'test', ver:'Ver0.1', d:'2026-10-30', id:'1_z9dlOqoLPDvpL9_KNQ_GWOvuxjdHCXl', t:{ ja:'仕入情報の扱い', en:'Supplier information', vi:'Thông tin nhà cung cấp' }, s:{ ja:'全体図＋手順3枚＋産地の答え方', en:'4 pages', vi:'4 trang' } },
     { k:'katteguchi', st:'test', ver:'Ver0.1', d:'2026-10-19', id:'1IxfbDyJU-UBBk3orCqylHy9dmjbT5tFS', t:{ ja:'勝手口・立入禁止・撮影されたとき', en:'Back door & filming', vi:'Cửa sau & khi bị quay phim' }, s:{ ja:'全体図＋手順3枚', en:'4 pages', vi:'4 trang' } },
@@ -5165,7 +5185,6 @@
     { k:'hacchu', st:'hq', ver:'Ver0.1', d:'2026-10-11', id:'1_nhec62WNZaXcX27NkEl_Nu2MbM8eHaL', t:{ ja:'発注と在庫', en:'Ordering & stock', vi:'Đặt hàng & tồn kho' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
     { k:'tenpomae', st:'hq', ver:'Ver0.1', d:'2026-10-19', id:'1NqZdw3IprP6XZuW4cRPC9-tb0LEKzs9X', t:{ ja:'店舗前準備', en:'Storefront prep', vi:'Chuẩn bị mặt tiền' }, s:{ ja:'1枚', en:'1 page', vi:'1 trang' } },
     { k:'ck_besshi', st:'hq', ver:'Ver0.1', d:'2026-10-21', id:'1Yyf4K94WEytKIu5HRQjG-tUIYBPRAb6a', t:{ ja:'開店閉店チェック別紙（店の裏と納品の箱）', en:'Open/close check annex', vi:'Phụ lục kiểm tra mở/đóng' }, s:{ ja:'1枚', en:'1 page', vi:'1 trang' } },
-    { k:'sevendays_besshi', st:'hq', ver:'Ver0.1', d:'2026-10-21', id:'1cCHQXJT8IEb9EwrHsxtPX48yYA3Wk3_Q', t:{ ja:'7DAYS 1日目別紙（勝手口とバックヤード）', en:'7DAYS day-1 annex', vi:'Phụ lục ngày 1' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
     { k:'hyouji', st:'hqonly', ver:'Ver0.1', d:'2026-10-04', id:'1BZbVxCqoxPwvA_Dsy9yGO5_V5yGc7qSV', t:{ ja:'表示ルール（総額表示・原産地・景品表示）', en:'Display rules', vi:'Quy tắc hiển thị' }, s:{ ja:'3枚＋チェック表 ・ 本部資料（店舗には出さない）', en:'HQ only', vi:'Chỉ HQ' } }
   ];
   /* 全店配布（st:'all'）はアプリの公開先 manual/ のPDF（ログイン不要・9/29の方針）。Driveの「マニュアル_かんたん版」は個別共有＝店舗の端末では開けない（10/22 権限を確認）。本部向け（test／hq）はDriveのまま */
@@ -6585,10 +6604,13 @@
         ${/* ★提出済みの日を開いているときに出す案内（2026-09-03 ユンさんのご要望＝後から直したい）。
               中身は画面を作ったあとに入れる（その日の日報があるかは日付を変えても変わるため） */''}
         <p class="hint" id="sk_editnote" style="display:none;margin:-2px 0 8px;color:#8a6d3b"></p>
-        <p class="hint" id="sk_posnote" style="display:block;margin:-2px 0 8px;color:#2d6a4f">${skNoUsen_(vis[0]) ? L({
+        <p class="hint" id="sk_posnote" style="display:block;margin:-2px 0 8px;color:#2d6a4f">${skNoRegi_(vis[0]) ? L({
           ja:'※ 口コミは自動で入ります。売上はレジの日計を見て入れてください。',
           en:'Reviews are filled automatically. Enter sales from the register report.',
-          vi:'Đánh giá tự điền. Nhập doanh thu từ báo cáo máy tính tiền.' }) : L({
+          vi:'Đánh giá tự điền. Nhập doanh thu từ báo cáo máy tính tiền.' }) : skNoUsen_(vis[0]) ? L({
+          ja:'※ 売上・口コミは自動で入ります。フード・ドリンクの金額と、国別のお客様を入れてください。',
+          en:'Sales and reviews are filled automatically. Enter food/drink amounts and guests by country.',
+          vi:'Doanh thu và đánh giá tự điền. Nhập tiền món/đồ uống và khách theo quốc gia.' }) : L({
           ja:'※ 売上・国別・口コミは自動で入ります。',
           en:'Sales, guests by country and reviews are filled automatically.',
           vi:'Doanh thu, khách theo quốc gia và đánh giá tự điền.' })}</p>
@@ -6596,15 +6618,15 @@
         <div class="sk-grid">
           <label class="fld"><span>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</span><select id="sk_store">${vis.map(s=>`<option${s === skEditTarget_().store ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
           <label class="fld"><span>${L({ ja:'日付（営業日）', en:'Date (business day)', vi:'Ngày (ngày kinh doanh)' })}</span><input type="date" id="sk_date" value="${skEditTarget_().date || skDefaultDate_(vis[0])}" max="${today}"></label>
-          ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_sales"><input type="hidden" id="sk_guests">'}
+          ${skNoRegi_(vis[0]) ? '' : '<input type="hidden" id="sk_sales"><input type="hidden" id="sk_guests">'}
         </div>
-        ${skNoUsen_(vis[0]) ? skPosGridHtml_() : ''}
+        ${skNoUsen_(vis[0]) ? skPosGridHtml_(vis[0]) : ''}
         <div class="stat-row" style="margin:2px 0 10px;display:none">
           <div class="stat"><div class="n" id="sk_avg">¥0</div><div class="k">${L({ja:'客単価（自動計算）',en:'Per guest (auto)',vi:'BQ/khách (tự động)'})}</div></div>
           <div class="stat"><div class="n" id="sk_rate">—</div><div class="k">${L({ja:'到達度（自動計算）',en:'To goal (auto)',vi:'Đạt mục tiêu (auto)'})}</div></div>
         </div>
         <div class="sk-grid">
-          ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_net"><input type="hidden" id="sk_err">'}
+          ${skNoRegi_(vis[0]) ? '' : '<input type="hidden" id="sk_net"><input type="hidden" id="sk_err">'}
           <label class="fld"><span>${L({ja:'月累計売上（自動計算）',en:'Month-to-date (auto)',vi:'Lũy kế tháng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_mtd" placeholder="2146145" value="${skCum0.mtd || ''}"></label>
           <label class="fld"><span>${L({ja:'売上目標（月）',en:'Monthly goal',vi:'Mục tiêu tháng'})}</span><input type="text" inputmode="numeric" id="sk_goal" placeholder="3000000"></label>
           ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_foodamt"><input type="hidden" id="sk_drinkamt">'}
@@ -6616,7 +6638,7 @@
         <div class="sk-grid">
           <input type="hidden" id="sk_rvt"><input type="hidden" id="sk_rva" value="${skCum0.rva || ''}">
           <label class="fld"><span>${L({ja:'ヒアリング 当日',en:'Hearings today',vi:'Phỏng vấn nay'})}</span><input type="text" inputmode="numeric" id="sk_hear" placeholder="9"></label>
-          ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_disc">'}
+          ${skNoRegi_(vis[0]) ? '' : '<input type="hidden" id="sk_disc">'}
           <label class="fld"><span>${L({ja:'人件費率 %',en:'Labor %',vi:'Nhân sự %'})}</span><input type="text" inputmode="decimal" id="sk_labor" placeholder="23.6"></label>
           <label class="fld"><span>${L({ja:'チップ 当日',en:'Tips today',vi:'Tip nay'})}</span><input type="text" inputmode="numeric" id="sk_tipt" placeholder="21000"></label>
           <label class="fld"><span>${L({ja:'チップ 累計（自動計算）',en:'Tips total (auto)',vi:'Tip tổng (tự động)'})}</span><input type="text" inputmode="numeric" id="sk_tipa" placeholder="84541" value="${skCum0.tipa || ''}"></label>
@@ -6626,7 +6648,7 @@
         </div>
         ${(/* ★2026-10-20 既定の日付（12時前は前日）で読む＝翌朝に撮った納品書が前日の日報に出る。★2026-10-25 このメモがテンプレートの外にあり画面に文字で出ていた（神田さんの実機）＝${}の中へ */ skSlipsLoad_(vis[0], skEditTarget_().date || skDefaultDate_(vis[0]), null), skSlipsHtml_())}
         <div class="sk-grid">
-          ${skNoUsen_(vis[0]) ? '' : '<input type="hidden" id="sk_cash"><input type="hidden" id="sk_card">'}
+          ${skNoRegi_(vis[0]) ? '' : '<input type="hidden" id="sk_cash"><input type="hidden" id="sk_card">'}
           <label class="fld"><span>${L({ja:'昼のみ売上',en:'Lunch-only',vi:'DT buổi trưa'})}</span><input type="text" inputmode="numeric" id="sk_lunch" placeholder="186400" value="${skChukanToday(vis[0]) != null ? skChukanToday(vis[0]) : ''}"></label>
           <label class="fld"><span>${L({ja:'仕入 食材（税込・8%）',en:'Purchases: food (tax incl., 8%)',vi:'Nhập hàng: thực phẩm (gồm thuế 8%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_food" placeholder="7560"></label>
           <label class="fld"><span>${L({ja:'仕入 飲料 お酒（税込・10%）',en:'Purchases: alcohol (tax incl., 10%)',vi:'Nhập hàng: rượu bia (gồm thuế 10%)'})}</span><input type="text" inputmode="numeric" id="sk_buy_alc" placeholder="0"></label>
@@ -13412,7 +13434,7 @@
     /* ★2026-10-18 案B（pb）の日報＝「自動で入った数字を見る」＋「店がやることだけ」（神田さん「元々自動で取得したデータが一覧で上がってくるはず。
        店舗がやることは、納品書と気づきの報告だけ」「チップはUSENで取れない場合は入力必須」「過不足の理由も選べる状態に」）。
        欄・保存・総括表への流れは変えない＝要る欄を上に並べ替え、残りは「そのほかの項目」に畳むだけ。USENの無い店は今の形のまま（神田さん） */
-    if (byId('skForm') && typeof byId('skForm').insertBefore === 'function' && typeof document.createElement === 'function' && isPb() && !skNoUsen_((byId('sk_store') && byId('sk_store').value) || visibleStores()[0])) try {
+    if (byId('skForm') && typeof byId('skForm').insertBefore === 'function' && typeof document.createElement === 'function' && isPb() && !skNoRegi_((byId('sk_store') && byId('sk_store').value) || visibleStores()[0])) try {   // ★2026-11-09 レジ取込のある10店（USEN以外の3店も）
       const form = byId('skForm');
       const lab = (id) => { const e = byId(id); return e ? e.closest('label') : null; };
       const yenS = (v) => (v == null || v === '') ? '—' : '¥' + (Number(v) || 0).toLocaleString('en-US');
@@ -13520,8 +13542,8 @@
         }, {}),
         by: submitterLabel(), t: Date.now()
       };
-      if (skNoUsen_(rec.store)) { rec.emoney = v('sk_emoney'); rec.kake = v('sk_kake'); }   // ★レジの無い店＝売上関連は日報の値がそのまま総括表へ（2026-10-15）
-      else { SK_POS_FIELDS.forEach(k => { delete rec[k]; }); rec.posWait = true; }
+      if (skNoRegi_(rec.store)) { rec.emoney = v('sk_emoney'); rec.kake = v('sk_kake'); }   // ★レジの無い店＝売上関連は日報の値がそのまま総括表へ（2026-10-15）
+      else { SK_POS_FIELDS.forEach(k => { delete rec[k]; }); rec.posWait = true; }   // ★2026-11-09 レジ取込のある10店＝売上まわりは持たない（フード/ドリンク・国別は USEN 以外の3店の入力が残る）
       { const kt = Array.from({ length: SK_KT_ROWS }, (_, i) => ({ n: v(`sk_kt${i}_n`), s: v(`sk_kt${i}_s`), e: v(`sk_kt${i}_e`) })).filter(k => k.n && (k.s || k.e));
         if (kt.length) { rec.kintai = kt; if (!rec.staffct) rec.staffct = String(kt.length); if (!rec.hours) { const hh = skKintaiHours_(kt); if (hh > 0) rec.hours = String(hh); } } }   // ★レジの項目はアプリで持たない（2026-10-15 神田さん「USENで取れる項目はアプリから削除」）＝売上はレジ／総括表から入る
       const 直した = getSk().some(r => r.store === rec.store && r.date === rec.date);   // 同じ日の提出があった＝直し

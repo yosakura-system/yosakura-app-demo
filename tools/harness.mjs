@@ -4283,20 +4283,36 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   location.hash = '#/app/soukatsu?x=slips2';
   h = registry.app.innerHTML;
   ok((h.match(/data-slip="/g) || []).length === 3 && doc.getElementById('sk_buy_food').value === '2880', '提出済みの日を開き直しても内訳と3欄が残る');
-  // ②e レジの無い店＝売上関連と国別を日報で受ける（2026-10-15 神田さん「日本鰻富士山もアプリの日報で入力すれば総括表に入れる必要はない」）
+  // ②e USEN以外の店（本店・日本鰻 長堀橋・富士山）＝フード/ドリンクと国別を日報で受ける。売上まわりはレジ（UMaT・Airレジ）から毎朝自動＝欄を出さない
+  //    （2026-11-09 神田さん＝配布した日報マニュアルとアプリに「USENの無い3店は売上も日報に入れる」が残っていた。11/2 から10店ともレジ取込あり）
   { const S6 = '日本鰻世桜 富士山店';
     run(() => { setLS('staff', S6, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); localStorage.setItem('yosakura_demo_reports', '[]'); });
     location.hash = '#/app/soukatsu?x=nousen';
     const h6 = registry.app.innerHTML;
-    ok(/id="sk_posgrid"/.test(h6) && /<input type="text"[^>]*id="sk_cash"/.test(h6) && /id="sk_emoney"/.test(h6) && /id="sk_kake"/.test(h6) && !/type="hidden" id="sk_sales"/.test(h6), 'レジの無い店の日報＝売上の欄（現金・カード・電子マネー・掛売・売上・純売上・客数・値引き・過不足）が見える');
-    ok(/id="sk_ctygrid"/.test(h6) && /id="sk_cty_kr_g"/.test(h6) && /id="sk_cty_kr_p"/.test(h6), 'レジの無い店の日報＝国別の組数・人数の欄が見える');
-    ok(/売上はレジの日計を見て入れてください/.test(h6) && !/売上・国別・口コミは自動で入ります/.test(h6), '案内＝「口コミは自動・売上はレジの日計から」');
+    ok(!/id="sk_posgrid"/.test(h6) && /type="hidden" id="sk_sales"/.test(h6) && !/<input type="text"[^>]*id="sk_cash"/.test(h6), 'レジ取込のある店（Airレジ）＝日報に売上の欄は出ない（2026-11-09）');
+    ok(/id="sk_fdgrid"/.test(h6) && /<input type="text"[^>]*id="sk_foodamt"/.test(h6) && /id="sk_ctygrid"/.test(h6) && /id="sk_cty_kr_g"/.test(h6) && /id="sk_cty_kr_p"/.test(h6), 'USEN以外の店の日報＝フード/ドリンクの金額と国別の組数・人数の欄が見える');
+    ok(/売上・口コミは自動で入ります。フード・ドリンクの金額と、国別のお客様を入れてください/.test(h6) && !/売上はレジの日計を見て入れてください/.test(h6), '案内＝「売上・口コミは自動。フード/ドリンクと国別を入れて」');
     doc.getElementById('sk_store').value = S6; doc.getElementById('sk_date').value = today4;
-    doc.getElementById('sk_sales').value = '123700'; doc.getElementById('sk_cash').value = '40600'; doc.getElementById('sk_card').value = '75300'; doc.getElementById('sk_emoney').value = '7800'; doc.getElementById('sk_guests').value = '21'; doc.getElementById('sk_net').value = '112461';
+    doc.getElementById('sk_foodamt').value = '98000'; doc.getElementById('sk_drinkamt').value = '25700';
     doc.getElementById('sk_cty_kr_g').value = '2'; doc.getElementById('sk_cty_kr_p').value = '5';
     skTipFill_(doc); doc.getElementById('submitSk').onclick();
     const r6 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
-    ok(r6 && !r6.posWait && r6.sales === 123700 && r6.cash === '40600' && r6.emoney === '7800' && r6.guests === 21 && r6.net === 112461 && r6.cty && r6.cty.kr && r6.cty.kr.g === 2 && r6.cty.kr.p === 5, 'レジの無い店の提出＝売上関連と国別がそのまま残る（posWait を付けない）');
+    ok(r6 && r6.posWait && r6.sales == null && r6.cash == null && r6.foodamt === '98000' && r6.drinkamt === '25700' && r6.cty && r6.cty.kr && r6.cty.kr.g === 2 && r6.cty.kr.p === 5, 'USEN以外の店の提出＝売上まわりは持たず（posWait）、フード/ドリンクと国別は残る');
+  }
+  // ②f レジ取込の無い店（海外）＝売上関連と国別を日報で受ける（2026-10-15 の動きはここに残る）
+  { const Sov = '牛カツ世桜 ファンケビン店';
+    run(() => { setLS('staff', Sov, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); localStorage.setItem('yosakura_demo_reports', '[]'); });
+    location.hash = '#/app/soukatsu?x=noregi';
+    const hov = registry.app.innerHTML;
+    ok(/id="sk_posgrid"/.test(hov) && /<input type="text"[^>]*id="sk_cash"/.test(hov) && /id="sk_emoney"/.test(hov) && /id="sk_kake"/.test(hov) && !/type="hidden" id="sk_sales"/.test(hov), 'レジ取込の無い店の日報＝売上の欄（現金・カード・電子マネー・掛売・売上・純売上・客数・値引き・過不足）が見える');
+    ok(/id="sk_ctygrid"/.test(hov) && /id="sk_cty_kr_g"/.test(hov) && /id="sk_cty_kr_p"/.test(hov), 'レジ取込の無い店の日報＝国別の組数・人数の欄が見える');
+    ok(/売上はレジの日計を見て入れてください/.test(hov) && !/売上・国別・口コミは自動で入ります/.test(hov), '案内＝「口コミは自動・売上はレジの日計から」');
+    doc.getElementById('sk_store').value = Sov; doc.getElementById('sk_date').value = today4;
+    doc.getElementById('sk_sales').value = '123700'; doc.getElementById('sk_cash').value = '40600'; doc.getElementById('sk_card').value = '75300'; doc.getElementById('sk_emoney').value = '7800'; doc.getElementById('sk_guests').value = '21'; doc.getElementById('sk_net').value = '112461';
+    doc.getElementById('sk_cty_kr_g').value = '2'; doc.getElementById('sk_cty_kr_p').value = '5';
+    skTipFill_(doc); doc.getElementById('submitSk').onclick();
+    const rov = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').pop();
+    ok(rov && !rov.posWait && rov.sales === 123700 && rov.cash === '40600' && rov.emoney === '7800' && rov.guests === 21 && rov.net === 112461 && rov.cty && rov.cty.kr && rov.cty.kr.g === 2 && rov.cty.kr.p === 5, 'レジ取込の無い店の提出＝売上関連と国別がそのまま残る（posWait を付けない）');
     run(() => { setLS('staff', '牛カツ世桜 長堀橋店', 'ja'); });
     location.hash = '#/app/soukatsu?x=usen';
     const h7 = registry.app.innerHTML;
@@ -6637,11 +6653,11 @@ console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全�
   run(() => { setLS('staff', S2, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); });
   location.hash = '#/app/soukatsu';
   h = registry.app.innerHTML;
-  ok(/id="sk_posnote"/.test(h) && /id="sk_posgrid"/.test(h) && /<input type="text"[^>]*id="sk_sales"/.test(h), 'レジの無い店＝日報に売上の欄が出る（2026-10-15 神田さん「アプリの日報で入力すれば総括表に入れる必要はない」）');
+  ok(/id="sk_posnote"/.test(h) && !/id="sk_posgrid"/.test(h) && /type="hidden" id="sk_sales"/.test(h) && /id="sk_fdgrid"/.test(h), '本店（UMaTレジの取込あり）＝日報に売上の欄は出ない。フード/ドリンクと国別の欄は出る（2026-11-09）');
   doc.getElementById('sk_store').value = S2; doc.getElementById('sk_date').value = yest; doc.getElementById('sk_memo').value = '雨';
   skTipFill_(doc); doc.getElementById('submitSk').onclick();
   const all2 = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]');
-  ok(all2.length === 1 && !all2[0].posWait && all2[0].memo === '雨', 'レジの無い店も売上が空で提出できる（posWait は付かない）');
+  ok(all2.length === 1 && all2[0].posWait && all2[0].memo === '雨', '本店の日報＝売上は持たず（posWait）、所感だけで出せる');
   const driveRow = { store: S2, date: yest, sales: 300000, net: 272727, guests: 50, cash: 100000, card: 200000, src: 'drive', t: Date.now() + 1 };
   run(() => { setLS('staff', S2, 'ja'); localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify(all2.concat([driveRow]))); });
   location.hash = '#/store?s=' + encodeURIComponent(S2);
@@ -6829,20 +6845,21 @@ console.log('== 2026-10-22 神田さん「棚卸マニュアルとか、すで�
   location.hash = '#/app/manual'; let h = registry.app.innerHTML;
   ok(/1枚マニュアル（かんたん版）/.test(h) && /月末棚卸</.test(h) && /Ver1\.1/.test(h) && !/tanaoroshi_soukatsu/.test(h) && /カスタマーハラスメント対応/.test(h), '店長のマニュアル画面＝先頭に1枚マニュアル（棚卸・カスハラ）');
   ok(/data-openurl="[^"]*yosakura-app-preview\/manual\/tanaoroshi_kantan\.pdf/.test(h) && /manual\/kasuhara\.pdf/.test(h) && !/drive\.google\.com/.test(h), '全店配布＝アプリの公開先 manual/ のPDF（ログイン不要）。店舗の画面にDriveのリンクは無い');
-  ok(!/日報の出し方と数字の直し方/.test(h) && !/HACCP（衛生管理計画と記録）/.test(h) && !/表示ルール（総額表示/.test(h) && !/class="mchip/.test(h), '店舗には全店リリース済みだけ（現場テスト中・本部確認中・本部資料は出ない・札も無し）');
+  ok(!/提出物のルール/.test(h) && !/HACCP（衛生管理計画と記録）/.test(h) && !/表示ルール（総額表示/.test(h) && !/class="mchip/.test(h), '店舗には全店リリース済みだけ（現場テスト中・本部確認中・本部資料は出ない・札も無し）');
   const nStore = (h.match(/class="mrow" data-openurl="[^"]*yosakura-app-preview\/manual\//g) || []).length;
-  ok(nStore === 6, '店舗に出る1枚マニュアル＝6本（棚卸1・防火1・カスハラ4。10/22 総括表に入力する版を外した・11/3 防火 Ver1.0 を棚卸と同じ扱いに）: ' + nStore);
-  ok(/data-openurl="[^"]*yosakura-app-preview\/manual\/bouka_kantan\.pdf/.test(h) && /防火・避難/.test(h), '防火・避難 Ver1.0（11/3）＝棚卸と同じ＝店舗にも manual/ のPDFで出る');
+  ok(nStore === 9, '店舗に出る1枚マニュアル＝9本（棚卸1・防火1・カスハラ4＋11/9 リリースの情報管理・日報・7DAYS別紙）: ' + nStore);
+  ok(/data-openurl="[^"]*yosakura-app-preview\/manual\/bouka_kantan\.pdf/.test(h) && /防火・避難/.test(h), '防火・避難＝棚卸と同じ＝店舗にも manual/ のPDFで出る');
+  ok(/manual\/joho_kantan\.pdf/.test(h) && /manual\/nippou_kantan\.pdf/.test(h) && /manual\/sevendays_besshi_kantan\.pdf/.test(h) && /日報の出し方と数字の直し方/.test(h), '2026-11-09 増田さんがリリースした3本（情報管理・日報・7DAYS別紙）＝店舗にも同梱PDFで出る（増田さん「アプリでもマニュアル確認できる」）');
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/app/manual'; ok(/月末棚卸</.test(registry.app.innerHTML) && !/現場テスト中/.test(registry.app.innerHTML), 'スタッフも同じ（全店だけ）');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_hq_first_mgr_1020', '1'); localStorage.setItem('yosakura_auth', JSON.stringify({ token: 't1', uid: 'takahara', name: 'テスト', role: 'hq', stores: ['*'] })); });
   location.hash = '#/app/manual'; h = registry.app.innerHTML;
   const nHq = (h.match(/class="mrow" data-openurl="[^"]*(drive\.google\.com\/file\/d\/|yosakura-app-preview\/manual\/)/g) || []).length;
   ok(nHq === 27 && /mchip--all">全店</.test(h) && /mchip--test">現場テスト中</.test(h) && /mchip--hq">本部確認中</.test(h) && /mchip--hqonly">本部資料</.test(h), '本部には全部（27本）を状態の札つきで（全店／現場テスト中／本部確認中／本部資料）: ' + nHq);
-  ok(/全店（6）/.test(h) && /現場テスト中（9）/.test(h) && /本部確認中（11）/.test(h) && /本部資料（1）/.test(h), '本部の並び＝状態ごとにまとめて件数つき');
+  ok(/全店（9）/.test(h) && /現場テスト中（7）/.test(h) && /本部確認中（10）/.test(h) && /本部資料（1）/.test(h), '本部の並び＝状態ごとにまとめて件数つき（11/9 全店9・現場テスト中7・本部確認中10）');
   ok(/状態はいる・いらないスプシのK列が正/.test(h), '本部向けの注記＝状態の正はいる・いらないスプシ');
   { const ids = (code.match(/st:'(?:all|test|hq|hqonly)'[^\n]*?id:'(1[A-Za-z0-9_-]{25,})'/g) || []).map(x => x.replace(/^.*id:'/, '').slice(0, -1)); ok(ids.length === 27 && new Set(ids).size === 27, 'ソース＝1枚マニュアルのDrive IDは27本すべて別（重複なし）: ' + ids.length); }
-  { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 9 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の6本＋アレルギー表3本（2026-10-22・11/3 防火）のPDFが manual/ に実在する: ' + pdfs.join(',')); }
+  { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 12 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の9本＋アレルギー表3本（2026-10-22・11/3 防火・11/9 情報管理/日報/7DAYS別紙）のPDFが manual/ に実在する: ' + pdfs.join(',')); }
 }
 
 console.log('== 2026-10-22 本部の見え方＝案Bの本部画面（神田さん「B案の本部画面を基準に」。10/20 の「準備中」は引退）==');
