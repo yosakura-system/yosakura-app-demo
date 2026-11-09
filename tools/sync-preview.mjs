@@ -81,7 +81,14 @@ const stamp = (s, tag) => s.replace(/ {2}const APP_BUILD = '[^']*';/, `  const A
 // 実質変更（改行コード差・版の焼き込みは無視）が無ければ、SWキャッシュの無駄な+1を避けて終了
 const bare = (s) => stamp(s, 'dev');
 const same = bare(rd(path.join(WORK, 'app.js'))) === bare(app) && rd(path.join(WORK, 'styles.css')) === newStyles;
-if (same) { console.log('変更なし（プレビューは最新）'); fs.rmSync(WORK, { recursive: true, force: true }); process.exit(0); }
+// ★2026-11-09 manual/ のPDFだけ差し替えたときも配信する（app.js が同じでも「変更なし」で止まり、直したPDFが本番に出なかった）
+const manualDir = path.join(DEMO, 'manual');
+const manualChanged = fs.existsSync(manualDir) && fs.readdirSync(manualDir).some((f) => {
+  const a = path.join(manualDir, f), b = path.join(WORK, 'manual', f);
+  return !fs.existsSync(b) || !fs.readFileSync(a).equals(fs.readFileSync(b));
+});
+if (same && !manualChanged) { console.log('変更なし（プレビューは最新）'); fs.rmSync(WORK, { recursive: true, force: true }); process.exit(0); }
+if (same && manualChanged) console.log('app.js は同じ・manual/ のPDFが変わったので配信する');
 fs.writeFileSync(path.join(WORK, 'app.js'), stamp(app, `yosakura-hq-v${next}`), 'utf8');
 fs.writeFileSync(path.join(WORK, 'styles.css'), newStyles, 'utf8');
 
