@@ -5311,7 +5311,12 @@
   const OF_LABEL = { '和牛': { ja:'和牛を注文する', en:'Order Wagyu', vi:'Đặt Wagyu' }, 'ポップ': { ja:'POP・販促物を注文する', en:'Order POP & print', vi:'Đặt POP & ấn phẩm' }, 'ハラル': { ja:'ハラル鰻を注文する', en:'Order Halal eel', vi:'Đặt lươn Halal' } };
   const ofLabel_ = (key) => OF_LABEL[key] ? L(OF_LABEL[key]) : (String(key) + L({ ja:'を注文する', en:' order form', vi:' – đặt hàng' }));
   const ofRowFor_ = (store) => { const st = normalizeStore(store); return getOrderForms().find(r => r && normalizeStore(r.store) === st) || null; };
-  const ofFormsOf_ = (row) => (row && Array.isArray(row.forms) ? row.forms : []).filter(f => f && isHttp(f.url));
+  /* ★2026-11-10 増田さん「和牛フォームのボタンは12月末まで非表示で」＝仕入先（銘洋）の11・12月の繁忙期を避けて1月から。
+     その日まで、マスタに和牛の列があってもアプリには出さない。日付が来れば自動で出る（コードを直さない）。種類を足すときはここに1行。 */
+  const OF_HIDE_UNTIL = { '和牛': '2027-01-01' };   // key → この日（含まず）までは出さない
+  const ofTodayStr_ = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const ofHidden_ = (key) => !!(OF_HIDE_UNTIL[key] && ofTodayStr_() < OF_HIDE_UNTIL[key]);
+  const ofFormsOf_ = (row) => (row && Array.isArray(row.forms) ? row.forms : []).filter(f => f && isHttp(f.url) && !ofHidden_(f.key));
   /* 注文できる店＝店舗のIDは自店だけ・本部は全店・オーナーは所有店・複数店の店長はその店（ログイン時の stores） */
   const ofStores_ = () => {
     const role = getRole(), a = getAuth();

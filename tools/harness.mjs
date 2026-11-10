@@ -8005,17 +8005,17 @@ console.log('== 2026-11-10 注文フォーム＝店舗名マスタの写し（or
   let h;
   // 1 店舗のID（店長・牛カツ長堀橋）＝自店のフォームへ直接。マスタの「和牛カツ世桜 長堀橋店」の表記でも同じ店として結びつく
   base('manager', '牛カツ世桜 長堀橋店'); location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
-  ok(/data-openurl="https:\/\/example\.com\/f\/wagyu\?entry\.1=T0601"/.test(h) && /data-openurl="https:\/\/example\.com\/f\/pop\?entry\.1=T0601"/.test(h) && /和牛を注文する/.test(h) && /POP・販促物を注文する/.test(h), '店舗のID＝自店の注文フォーム（和牛・POP）へ直接・マスタの「和牛カツ世桜」表記でも結びつく');
+  ok(/data-openurl="https:\/\/example\.com\/f\/pop\?entry\.1=T0601"/.test(h) && /POP・販促物を注文する/.test(h) && !/f\/wagyu/.test(h) && !/和牛を注文する/.test(h), '店舗のID＝自店の注文フォーム（POP）へ直接・マスタの「和牛カツ世桜」表記でも結びつく。和牛は12月末まで出さない（2026-11-10 増田さん）');
   ok(!/ハラル/.test(h) && !/id="of_store"/.test(h) && !/準備中/.test(h) && /T0601/.test(h) && /牛カツ 長堀橋店/.test(h), '店舗のID＝店を選ぶ欄は出ない・その店に無いハラルは出ない・店名と店舗番号が見える');
   // 2 難波＝ハラル鰻の注文も出る
   base('staff', '手巻き寿司世桜 難波店'); location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
-  ok(/ハラル鰻を注文する/.test(h) && /f\/halal\?entry\.1=T0801/.test(h) && /f\/wagyu\?entry\.1=T0801/.test(h), '難波＝和牛・POP・ハラル鰻の3つ（自店の番号入り）');
+  ok(/ハラル鰻を注文する/.test(h) && /f\/halal\?entry\.1=T0801/.test(h) && /f\/pop\?entry\.1=T0801/.test(h) && !/f\/wagyu/.test(h), '難波＝POP・ハラル鰻の2つ（自店の番号入り・和牛は年内非表示）');
   // 3 マスタに無い店＝本部へ連絡の案内（別の店のフォームは出さない）
   base('manager', '日本鰻世桜 京都祇園店'); location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
   ok(/まだ本部の店舗名マスタに登録されていません/.test(h) && !/example\.com\/f\//.test(h), 'マスタに無い店＝案内だけ・ほかの店のフォームは出さない');
   // 4 本部（個人のID）＝店を選んで「発注」。全店の選択肢と、マスタにある注文の種類ぶんのボタン
   base('hq', 'all', () => localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'tester-hq', name:'テスト本部', role:'hq', stores:['*'] }))); location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
-  ok(/<select id="of_store">/.test(h) && (h.match(/<option value=/g) || []).length === 12 && /data-ofopen="和牛"/.test(h) && /data-ofopen="ポップ"/.test(h) && /data-ofopen="ハラル"/.test(h), '本部＝店を選ぶ欄（12店）＋和牛・POP・ハラルの「発注」ボタン');
+  ok(/<select id="of_store">/.test(h) && (h.match(/<option value=/g) || []).length === 12 && !/data-ofopen="和牛"/.test(h) && /data-ofopen="ポップ"/.test(h) && /data-ofopen="ハラル"/.test(h), '本部＝店を選ぶ欄（12店）＋POP・ハラルの「発注」ボタン（和牛は年内非表示）');
   ok(!/data-openurl="https:\/\/example\.com\/f\//.test(h) && /（発注）/.test(h), '本部＝店を選ぶ前のURL直リンクは出さない（押す時に選んだ店のフォームへ）');
   // 5 複数店の店長＝自分の店だけの選択肢・いま選んでいる店が最初から選ばれる
   base('manager', '牛カツ世桜 長堀橋店', () => localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'tester-m', name:'テスト店長', role:'manager', stores:['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店', '日本料理世桜本店'] }))); location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
@@ -8025,7 +8025,7 @@ console.log('== 2026-11-10 注文フォーム＝店舗名マスタの写し（or
   ok(/店舗ごとの注文先リストを準備中です/.test(h) && !/of_store/.test(h), '写しが無い＝今までの「準備中」のまま（壊さない）');
   // 7 写し＋資料リンクの注文先＝両方出る（注文先は「そのほかの注文先」として下に）
   base('manager', '牛カツ世桜 長堀橋店', () => localStorage.setItem('yosakura_demo_links', JSON.stringify([{ title:'備品の注文（パートナーズ）', url:'https://example.com/order2', desc:'' }]))); location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
-  ok(/そのほかの注文先/.test(h) && /example\.com\/order2/.test(h) && h.indexOf('f/wagyu') < h.indexOf('order2'), '自店のフォームが上・資料リンクの注文先は「そのほかの注文先」で下');
+  ok(/そのほかの注文先/.test(h) && /example\.com\/order2/.test(h) && h.indexOf('f/pop') < h.indexOf('order2'), '自店のフォームが上・資料リンクの注文先は「そのほかの注文先」で下');
   // 8 同期＝kind=orderforms の行が端末の写しに入る（最新版が正）
   const now = Date.now();
   FETCH_ROWS = { ok:true, reports:[
@@ -8042,7 +8042,7 @@ console.log('== 2026-11-10 注文フォーム＝店舗名マスタの写し（or
   ok(/<select id="of_store">/.test(h) && (h.match(/<option value=/g) || []).length === 12, "許可が '*'（全店）＝全店から選べる（捨てない）");
   // 10 許可された店が別名表記で1店＝正式名に寄せて自店のフォームへ直接
   base('manager', '牛カツ世桜 長堀橋店', () => localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'tester-1', name:'テスト', role:'manager', stores:['和牛カツ世桜 長堀橋店'] }))); location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
-  ok(!/id="of_store"/.test(h) && /f\/wagyu\?entry\.1=T0601/.test(h), '許可された店が別名表記の1店＝正式名に寄せて、その店のフォームへ直接');
+  ok(!/id="of_store"/.test(h) && /f\/pop\?entry\.1=T0601/.test(h), '許可された店が別名表記の1店＝正式名に寄せて、その店のフォームへ直接');
   // 11 オーナー（所有2店）＝2店から選ぶ
   base('owner', 'owned', () => localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'tester-o', name:'テスト', role:'owner', stores:['牛カツ世桜 富士山店', '日本鰻世桜 富士山店'] }))); location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
   ok(/<select id="of_store">/.test(h) && (h.match(/<option value=/g) || []).length === 2, 'オーナー＝所有している2店から選ぶ');
@@ -8051,6 +8051,9 @@ console.log('== 2026-11-10 注文フォーム＝店舗名マスタの写し（or
   { const sel = registry.of_store; sel.value = '手巻き寿司世桜 難波店'; if (typeof sel.onchange === 'function') sel.onchange(); }
   location.hash = '#/app/othertop'; location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
   ok(/selected>難波店</.test(h), '店を選び直して画面を描き直しても、選んだ店（難波）が選ばれたまま');
+  // 12b 和牛は 2027-01-01 から自動で出る（FAKE_NOW=2027-01-05… で回すと出る／年内の通常実行では出ない）
+  base('manager', '牛カツ世桜 長堀橋店'); location.hash = '#/app/ordertop'; h = registry.app.innerHTML;
+  { const y = new Date().getFullYear(), m = new Date().getMonth() + 1; const after = (y > 2026); ok(after ? /f\/wagyu\?entry\.1=T0601/.test(h) : !/f\/wagyu/.test(h), '和牛フォーム＝2027-01-01 までは出さない・以後は出る（今日＝' + y + '/' + m + '）'); }
   // 13 遅れて届いた古い同期＝端末の新しい写しを戻さない
   {
     const t2 = Date.now();
