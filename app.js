@@ -2015,26 +2015,28 @@
   /* 1行＝写真・名前・いまの状態・開く。開く先と印（data-tsub / data-tsubmode / data-tsubphoto / data-tdid / data-openurl）は subItemRow と同じ＝反応は変えない */
   /* ★2026-10-20 案Bの見本と同じ呼び名（ホームの行だけ。提出物の正式名と本部の画面はそのまま） */
   const PB_NAMES_ = { ck_open:'OPENチェック', ck_idle:'お手すきチェック', ck_sakura:'桜（トイレ）', ck_close:'CLOSEチェック', zaiko:'在庫の数', kizuki:'気づき', ck_open_photo:'OPENチェック（写真）', ck_close_photo:'CLOSEチェック（写真）', ichishoku:'一食目写真' };
-  const pbFlowRow_ = (it) => {
+  const pbFlowRow_ = (it, lockTx) => {
+    lockTx = (typeof lockTx === 'string') ? lockTx : '';   // ★.map(pbFlowRow_) は2つ目に添字を渡す＝文字列のときだけ「押せない行」（2部制の夜の部・境まで）
     const m = it.m;
     const done = !it.manual && !!it.submitted;
     const late = !!it.overdue;
     const openArg = m.ckMode ? ` data-tsubmode="${m.ckMode}"` : (m.linkApp === 'openphoto' ? ` data-tsubphoto="${esc(m.id)}"` : m.detect === 'zaikowk' ? ' data-tsubq="wk=1"' : '');
-    const dueTxt = m.freq === 'weekly' ? L({ja:'今週中',en:'This week',vi:'Trong tuần'}) : m.freq === 'monthly' ? L({ja:'今月中',en:'This month',vi:'Trong tháng'}) : m.freq === 'quarterly' ? L({ja:'今四半期',en:'This quarter',vi:'Quý này'}) : it.prev
+    const dueTxt0 = m.freq === 'weekly' ? L({ja:'今週中',en:'This week',vi:'Trong tuần'}) : m.freq === 'monthly' ? L({ja:'今月中',en:'This month',vi:'Trong tháng'}) : m.freq === 'quarterly' ? L({ja:'今四半期',en:'This quarter',vi:'Quý này'}) : it.prev
       ? `${L({ja:'前日分',en:'Yesterday',vi:'Hôm qua'})}（${esc(String(it.dk).slice(5))}）・${L({ja:'締切',en:'Due',vi:'Hạn'})} ${esc(m.due || '')}`
       : `${L({ja:'締切',en:'Due',vi:'Hạn'})} ${esc(m.due || '')}`;
-    const sub = done ? L({ ja:'出しました', en:'Done', vi:'Đã nộp' })
+    const dueTxt = (it.shift === 'pm' && String(m.due || '') <= '12:00') ? L({ja:'夜の開店前に',en:'Before dinner opening',vi:'Trước khi mở ca tối'}) : dueTxt0;   // ★2部制の夜の部＝朝の締切は見せない
+    const sub = lockTx ? `<span style="color:var(--gray)">${esc(lockTx)}</span>` : done ? L({ ja:'出しました', en:'Done', vi:'Đã nộp' })
       : it.holiday ? L({ ja:'本日は定休日', en:'Holiday today', vi:'Hôm nay nghỉ' })
       : it.manual ? (m.how ? esc(L(m.how)) : L({ ja:'店で実施', en:'Store-run', vi:'Thực hiện tại quán' }))
       : (late ? `<span class="pb-late">${L({ja:'締切を過ぎています',en:'Overdue',vi:'Quá hạn'})}</span>・` : '') + dueTxt;
-    const act = (m.detect === 'didit' && !it.submitted) ? `<button class="pb-mini" data-tdid="${esc(m.id)}">${L({ja:'実施しました',en:'Done',vi:'Đã làm'})}</button>`
+    const act = lockTx ? '' : (m.detect === 'didit' && !it.submitted) ? `<button class="pb-mini" data-tdid="${esc(m.id)}">${L({ja:'実施しました',en:'Done',vi:'Đã làm'})}</button>`
       : isHttp(m.url) ? `<button class="pb-mini" data-openurl="${esc(openUrlFor(m.url))}">${L({ja:'開く',en:'Open',vi:'Mở'})}</button>` : '';
     const tag = m.oblig === 'required' ? ` <span class="pb-pill">${L({ja:'本部へ',en:'HQ',vi:'HQ'})}</span>` : '';
-    const mins = (!done && !it.manual && !it.holiday) ? pbMins_(m) : 0;   // ★2026-10-20 案Bの見本と同じ＝行の右に「目安○分」
+    const mins = (!done && !it.manual && !it.holiday && !lockTx) ? pbMins_(m) : 0;   // ★2026-10-20 案Bの見本と同じ＝行の右に「目安○分」
     const inner = `${pbImg_(pbPhotoKey_(m))}<span class="pb-rowtx"><span class="pb-nm">${esc(LANG === 'ja' && PB_NAMES_[m.id] ? PB_NAMES_[m.id] : L(m.name))}${tag}</span><span class="pb-sub">${sub}</span></span>`;
     const cls = `pb-row${done ? ' done' : ''}${late ? ' late' : ''}`;
     const minTx = mins ? `<span class="pb-min">${L({ja:'目安',en:'~',vi:'~'})}<b>${mins}${L({ja:'分',en:'min',vi:'ph'})}</b></span>` : '';
-    if (m.linkApp && !act) return `<button class="${cls}" data-tsub="${esc(m.linkApp)}"${openArg}>${inner}<span class="pb-rt">${done ? svg('tick') : (minTx || svg('chev'))}</span></button>`;
+    if (m.linkApp && !act && !lockTx) return `<button class="${cls}" data-tsub="${esc(m.linkApp)}"${openArg}>${inner}<span class="pb-rt">${done ? svg('tick') : (minTx || svg('chev'))}</span></button>`;
     return `<div class="${cls}">${inner}<span class="pb-rt">${act || (done ? svg('tick') : '')}</span></div>`;
   };
   /* ★ホームで気づかせるもの（本部からの返答・サーベイの低い評価）の中身＝旧ホームと案Bのホームで同じものを使う（2026-10-19・案Bのホームで抜けていた） */
@@ -2072,21 +2074,34 @@
   }
   function pbHome_(role) {
     const store = visibleStores()[0];
-    const items = todayItemsFor(store).filter(it => it.m.freq === 'daily');
+    /* ★2026-11-10 2部制の店（SHIFT_STORES_・いまは心斎橋だけの実験）＝きょうやることを「昼の部」「夜の部」の2ブロックに。
+       昼の部＝開店前＋営業中＋気づき／夜の部＝開店前（オープン写真・OPENチェック）＋締め。夜の部は境の時刻まで押せない（昼の記録に混ざらないように） */
+    const shiftCut = shiftCutOf_(store), shiftNow = shiftCut ? shiftNow_(store) : '';
+    const pmLocked = shiftCut ? shiftNow === 'am' : false;
+    const isNippou = (it) => it.m.linkApp === 'soukatsu';
+    const slotOrd_ = (it) => ({ asa:0, mid:1, shime:2 })[pbSlotKey_(kyouSlotOf(it.m))];
+    let amIts = [], pmIts = [];
+    if (shiftCut) {
+      amIts = todayItemsFor(store, 'am').filter(it => it.m.freq === 'daily' && !isNippou(it) && (slotOrd_(it) < 2 || it.m.id === 'kizuki')).sort((a, b) => slotOrd_(a) - slotOrd_(b));
+      pmIts = todayItemsFor(store, 'pm').filter(it => it.m.freq === 'daily' && !isNippou(it) && slotOrd_(it) !== 1).sort((a, b) => slotOrd_(a) - slotOrd_(b));
+    }
+    const allDaily = todayItemsFor(store).filter(it => it.m.freq === 'daily');
+    const items = shiftCut ? amIts.concat(pmLocked ? [] : pmIts) : allDaily;
     const left = items.filter(it => !it.manual && !it.submitted && !it.holiday);
     const over = items.filter(it => it.overdue).length;
     const total = items.filter(it => !it.manual).length;
     const doneN = Math.max(0, total - left.length);
     const pct = total ? Math.round(100 * doneN / total) : 0;
-    const nowKey = pbSlotKey_(kyouSlotNow(store));
+    const nowKey = shiftCut ? (pmLocked ? 'am' : 'pm') : pbSlotKey_(kyouSlotNow(store));
     /* ★日報は時間帯の帯に入れず専用の枠（2026-10-16 神田さん「別枠で」＝夜に出す店と朝に出す店の両方がある） */
-    const isNippou = (it) => it.m.linkApp === 'soukatsu';
     const inSlot = (k) => items.filter(it => !isNippou(it) && pbSlotKey_(kyouSlotOf(it.m)) === k);
-    const bands = PB_SLOTS.map(([k, n]) => {
+    const bands = shiftCut ? '' : PB_SLOTS.map(([k, n]) => {
       const r = inSlot(k).filter(it => !it.manual && !it.submitted && !it.holiday).length;
       return `<button class="pb-band${k === nowKey ? ' on' : ''}" data-jump="pbslot-${k}">${L(n)}<small>${r ? `${L({ja:'残り',en:'left',vi:'còn'})} ${r}` : L({ja:'完了',en:'done',vi:'xong'})}</small></button>`;
     }).join('');
-    const flow = PB_SLOTS.map(([k, n]) => {
+    const SHIFT_LBL_ = { am:{ja:'昼の部',en:'Lunch',vi:'Ca trưa'}, pm:{ja:'夜の部',en:'Dinner',vi:'Ca tối'} };
+    const shiftBlk_ = (k, its) => `<div class="pb-slot" id="pbslot-${k}">${L(SHIFT_LBL_[k])}${k === nowKey ? ` <small>${L({ja:'いま',en:'now',vi:'bây giờ'})}</small>` : ''}</div>${its.map(it => pbFlowRow_(it, (k === 'pm' && pmLocked) ? `${shiftCut}${L({ja:'から出せます',en:' onwards',vi:' trở đi'})}` : '')).join('')}`;
+    const flow = shiftCut ? shiftBlk_('am', amIts) + shiftBlk_('pm', pmIts) : PB_SLOTS.map(([k, n]) => {
       const its = inSlot(k); if (!its.length) return '';
       return `<div class="pb-slot" id="pbslot-${k}">${L(n)}${k === nowKey ? ` <small>${L({ja:'いま',en:'now',vi:'bây giờ'})}</small>` : ''}</div>${its.map(pbFlowRow_).join('')}`;
     }).join('');
@@ -2133,7 +2148,7 @@
       <div class="pb-card">${wkIts.map(pbFlowRow_).join('')}${hygRow}</div>
       ${moIts.length ? `<div class="pb-sec" id="pbmo"><h2>${L({ja:'今月',en:'This month',vi:'Tháng này'})}</h2><small>${L({ja:'月に1回のもの',en:'Once a month',vi:'Mỗi tháng 1 lần'})} ・ ${leftTx(moLeft)}</small></div>
       <div class="pb-card">${moIts.map(pbFlowRow_).join('')}</div>` : ''}`;
-    const nippouCard = pbNippouCard_(store, items.find(isNippou));
+    const nippouCard = pbNippouCard_(store, allDaily.find(isNippou));
     /* ★2026-10-19 旧ホームにあって案Bで抜けていた3つ＝サーベイの低い評価・数字の要確認（店長・オーナー）・本部からの返答（直近7日・3件まで）。中身は旧ホームと同じ関数 */
     const sv = svLowData_(role, false);
     const svStrip = sv ? `<button class="pb-strip" data-open="survey?tab=voice" data-svlow="${sv.rows.length}"><span><b>${L({ja:'サーベイに低い評価',en:'Low survey ratings',vi:'Đánh giá thấp'})}</b>${sv.rows.length} ${L({ja:'件',en:'answer(s)',vi:'câu'})}（${L({ja:'昨日',en:'yesterday',vi:'hôm qua'})} ${sv.nY}・${L({ja:'今日',en:'today',vi:'hôm nay'})} ${sv.nT}）${L({ja:'・お声を読む',en:' · read',vi:' · đọc'})}</span>${svg('chev')}</button>` : '';
@@ -4691,7 +4706,15 @@
   // チェック状態＝店舗×モード×日付（日付が変わると自動で新しい一日になる）
   const getCkDone = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_ckdone')) || {}; } catch { return {}; } };
   const saveCkDone = (o) => { try { localStorage.setItem('yosakura_demo_ckdone', JSON.stringify(o)); } catch (e) {} };
-  const ckDoneKey = (store, mode) => `${store}||${mode}||${todayKey()}`;
+  /* ★2026-11-10 2部制の店（実験＝心斎橋だけ・原さん「昼の部・夜の部に分けてその都度チェックしたい」・神田さんGO）。
+     境の時刻＝昼のみ売上の区切りと同じ（心斎橋 17:00）。境の後は「夜の部」＝チェックリストの記録は 日付#pm の別キー、写真・気づきは境の後の記録だけで判定。
+     店を足すときはここに1行（店名: 'HH:MM'）。本部の提出管理は1日単位のまま（どちらかに出ていれば済み） */
+  const SHIFT_STORES_ = { '寿司世桜 心斎橋店': '17:00' };
+  const shiftCutOf_ = (store) => SHIFT_STORES_[store] || '';
+  const shiftCutTs_ = (store, dk) => { const hm = shiftCutOf_(store); return hm ? Date.parse(String(dk) + 'T' + hm + ':00+09:00') : NaN; };
+  const shiftNow_ = (store) => { const hm = shiftCutOf_(store); if (!hm) return ''; let n = '00:00'; try { n = nowHMFor(store) || '00:00'; } catch (e) {} return n >= hm ? 'pm' : 'am'; };
+  const shiftSfx_ = (store) => shiftNow_(store) === 'pm' ? '#pm' : '';
+  const ckDoneKey = (store, mode) => `${store}||${mode}||${todayKey()}${shiftSfx_(store)}`;
   const ckCanEdit = () => ['manager','owner','hq'].includes(getRole());
   let ckSampleEditOpen = false; // 点検の「お手本」編集欄を開いているか（2026-08-30）
   // 誰がいつ実施したか（全端末共有）。チェックの中身とは別に持つ（IDと混ざらないように）
@@ -9355,8 +9378,10 @@
   }
   const quarterKeyOf = (dstr) => `${dstr.slice(0, 4)}Q${Math.floor((Number(dstr.slice(5, 7)) - 1) / 3) + 1}`;
   // 実データから「提出済みか」を判定（同期済みの実績を突き合わせ）
-  function detectSubmitted(store, m, dk) {
-    const sameDay = (t) => dateKeyFor(store, t) === dk;
+  function detectSubmitted(store, m, dk, shift) {
+    /* ★2026-11-10 2部制＝shift が 'am'／'pm' のときは境の前／後の記録だけで判定（昼の部に出した写真で夜の部を済みにしない） */
+    const inShift_ = (t) => { if (!shift) return true; const c = shiftCutTs_(store, dk); if (!(c > 0)) return true; return shift === 'pm' ? Number(t) >= c : Number(t) < c; };
+    const sameDay = (t) => dateKeyFor(store, t) === dk && inShift_(t);
     const sameMonth = (t) => dateKeyFor(store, t).slice(0, 7) === dk.slice(0, 7);
     const sameWeek = (t) => weekKeyOf(dateKeyFor(store, t)) === weekKeyOf(dk);
     const sameQuarter = (t) => quarterKeyOf(dateKeyFor(store, t)) === quarterKeyOf(dk);
@@ -9382,7 +9407,7 @@
          2026-08-12 神田さんのご指摘で修正。以前は1つでもチェックすれば実施とみなしていたため、
          途中までしか終わっていないのに「今日出すもの」から消えてしまっていた。
          点検は最後まで通してこそ意味があるので、途中は未提出のまま残す。 */
-      if (m.detect === 'ckdone') return ckAllDoneOf(store, m.ckMode || 'open', dk);
+      if (m.detect === 'ckdone') return ckAllDoneOf(store, m.ckMode || 'open', dk + (shift === 'pm' ? '#pm' : ''));   // 夜の部＝別キー
       if (m.detect === 'video')  return getReports().some(r => r.kind === 'video' && r.store === store && inScope(r.t));
       // ★対象日の月で判定する（以前は常に「今月」だったため、先月ぶんの確認ができなかった）
       if (m.detect === 'monthly') return getMonthly().some(r => r.store === store && r.ym === dk.slice(0, 7));
@@ -9393,7 +9418,7 @@
   }
 
   // ある店舗の当日の提出物リスト（今日出すもの）
-  function todayItemsFor(store) {
+  function todayItemsFor(store, shift) {
     const today = dateKeyFor(store, Date.now());
     const yday = dateKeyFor(store, Date.now() - 864e5);
     // ★2026-10-20 毎日の一覧は8つだけ（DAILY_KEEP_）。履歴・写真の切替・本部からの返答の行き先は外さない（バックチェック：外すと納品書の返答がオープン写真を開いた）
@@ -9403,10 +9428,10 @@
       const dk = prev ? yday : today;
       const holiday = isHoliday(store, dk);
       const manual = m.detect === 'none'; // 自動判定できない（手動運用）
-      const submitted = manual ? null : (holiday ? true : detectSubmitted(store, m, dk));
+      const submitted = manual ? null : (holiday ? true : detectSubmitted(store, m, dk, shift));
       const st = getStatus(store, m.id, dk);
-      const overdue = !manual && !submitted && !holiday && nowHMFor(store) > (m.due || '23:59') && m.freq === 'daily';
-      return { m, dk, submitted, manual, holiday, overdue, status: st, prev };
+      const overdue = !manual && !submitted && !holiday && nowHMFor(store) > (m.due || '23:59') && m.freq === 'daily' && shift !== 'pm';   // 夜の部は朝の締切（11:00）で超過にしない
+      return { m, dk, submitted, manual, holiday, overdue, status: st, prev, shift: shift || '' };
     });
   }
 

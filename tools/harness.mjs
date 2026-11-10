@@ -7994,6 +7994,59 @@ console.log('== 2026-11-07 rvissue は sync distribute() で端末に残る（�
   FETCH_ROWS = { ok:false };
 }
 
+console.log('== 2026-11-10 2部制（心斎橋だけの実験・原さん）＝きょうやることを昼の部・夜の部に。夜の部は境（17:00）の後の記録だけで判定 ==');
+{
+  const S = '寿司世桜 心斎橋店';
+  ok(/const SHIFT_STORES_ = \{ '寿司世桜 心斎橋店': '17:00' \}/.test(code), 'ソース＝2部制は心斎橋だけ・境は17:00（昼のみ売上の区切りと同じ）');
+  ok(/const ckDoneKey = \(store, mode\) => `\$\{store\}\|\|\$\{mode\}\|\|\$\{todayKey\(\)\}\$\{shiftSfx_\(store\)\}`/.test(code), 'ソース＝チェックリストの記録は夜の部だけ 日付#pm の別キー（画面も判定も同じ関数）');
+  ok(/ckAllDoneOf\(store, m\.ckMode \|\| 'open', dk \+ \(shift === 'pm' \? '#pm' : ''\)\)/.test(code), 'ソース＝判定も夜の部は #pm のキーを見る');
+  const seed = (extra) => run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); if (extra) extra(); });   // run() は保存を空にする＝毎回入れ直す
+  seed();
+  location.hash = '#/home';
+  let h = registry.app.innerHTML;
+  const cutAt = (x) => ({ am: x.slice(x.indexOf('id="pbslot-am"'), x.indexOf('id="pbslot-pm"')), pm: x.slice(x.indexOf('id="pbslot-pm"'), x.indexOf('pb-chips')) });
+  let p = cutAt(h);
+  ok(/id="pbslot-am"/.test(h) && /id="pbslot-pm"/.test(h) && !/id="pbslot-asa"/.test(h) && /昼の部/.test(h) && /夜の部/.test(h), '心斎橋＝今日の流れが昼の部／夜の部の2ブロック（開店前・営業中・締めの見出しは無い）');
+  ok(/オープン写真/.test(p.am) && /OPENチェック/.test(p.am) && /お手すきチェック/.test(p.am) && /気づき/.test(p.am) && !/在庫の数/.test(p.am) && !/CLOSEチェック/.test(p.am), '昼の部＝オープン写真・OPENチェック・お手すき・桜・気づき（締めは入れない）');
+  ok(/オープン写真/.test(p.pm) && /OPENチェック/.test(p.pm) && /在庫の数/.test(p.pm) && /CLOSEチェック/.test(p.pm) && /気づき/.test(p.pm) && !/お手すきチェック/.test(p.pm), '夜の部＝オープン写真・OPENチェック＋締め（在庫の数・CLOSEチェック・気づき）');
+  ok(p.pm.indexOf('オープン写真') < p.pm.indexOf('在庫の数'), '夜の部の並び＝開店前→締め');
+  // 日付（朝5時までは前の営業日）と境
+  const dk = new Date(Date.now() - 5 * 3600e3).toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
+  const cut = Date.parse(dk + 'T17:00:00+09:00');
+  const hm = new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Tokyo', hour12: false }).slice(0, 5);
+  const rowOf = (x, name) => { const i = x.indexOf(name); return i < 0 ? '' : x.slice(x.lastIndexOf('<button', i) < 0 ? 0 : x.lastIndexOf('<button', i), x.indexOf('</button>', i) + 9); };
+  const divOf = (x, name) => { const i = x.indexOf(name); return i < 0 ? '' : x.slice(x.lastIndexOf('<div class="pb-row', i), x.indexOf('</div>', i) + 6); };
+  // 昼の部にオープン写真（10:00 の記録）
+  seed(() => { localStorage.setItem('yosakura_demo_reports', JSON.stringify([{ kind:'subrec', store:S, item:'openphoto|' + dk, note:'{}', photos:[], t: cut - 7 * 3600e3 }])); });
+  location.hash = '#/home'; h = registry.app.innerHTML; p = cutAt(h);
+  ok(/出しました/.test(rowOf(p.am, 'オープン写真')), '昼の部のオープン写真＝10:00 の記録で「出しました」');
+  if (hm >= '17:00') {
+    ok(!/出しました/.test(rowOf(p.pm, 'オープン写真')) && /夜の開店前に/.test(rowOf(p.pm, 'オープン写真')) && !/締切超過|締切を過ぎています/.test(rowOf(p.pm, 'オープン写真')), '17:00 以降＝夜の部のオープン写真は未提出のまま（昼の記録では済みにしない・朝の締切で超過にもしない）');
+    ok(/夜の部 <small>いま/.test(h), '17:00 以降＝「いま」は夜の部');
+    seed(() => { localStorage.setItem('yosakura_demo_reports', JSON.stringify([{ kind:'subrec', store:S, item:'openphoto|' + dk, note:'{}', photos:[], t: cut - 7 * 3600e3 }, { kind:'subrec', store:S, item:'openphoto|' + dk, note:'{}', photos:[], t: cut + 3600e3 }])); });
+    location.hash = '#/home'; h = registry.app.innerHTML; p = cutAt(h);
+    ok(/出しました/.test(rowOf(p.pm, 'オープン写真')) && /出しました/.test(rowOf(p.am, 'オープン写真')), '18:00 の記録＝夜の部のオープン写真も「出しました」（昼はそのまま）');
+    // チェックリスト＝昼のキーで全部済みでも、夜の部のOPENチェックは未提出
+    location.hash = '#/app/checklist'; const ids = (registry.app.innerHTML.match(/data-ck="([^"]+)"/g) || []).map(x => x.slice(9, -1));
+    ok(ids.length > 0, 'チェック項目のIDが取れる: ' + ids.length);
+    const all = {}; ids.forEach(id => { all[id] = true; });
+    seed(() => { localStorage.setItem('yosakura_demo_ckdone', JSON.stringify({ [`${S}||open||${dk}`]: all })); });
+    location.hash = '#/home'; h = registry.app.innerHTML; p = cutAt(h);
+    ok(/出しました/.test(rowOf(p.am, 'OPENチェック')) && !/出しました/.test(rowOf(p.pm, 'OPENチェック')), '昼のキーで全部済み＝昼の部のOPENチェックだけ「出しました」・夜の部は未提出');
+    seed(() => { localStorage.setItem('yosakura_demo_ckdone', JSON.stringify({ [`${S}||open||${dk}`]: all, [`${S}||open||${dk}#pm`]: all })); });
+    location.hash = '#/home'; h = registry.app.innerHTML; p = cutAt(h);
+    ok(/出しました/.test(rowOf(p.pm, 'OPENチェック')), '#pm のキーで全部済み＝夜の部のOPENチェックも「出しました」');
+  } else {
+    ok(/17:00から出せます/.test(divOf(p.pm, 'オープン写真')) && !/data-tsub=/.test(p.pm), '17:00 より前＝夜の部は押せない（「17:00から出せます」）');
+    ok(/昼の部 <small>いま/.test(h), '17:00 より前＝「いま」は昼の部');
+    ok(!/出しました/.test(p.pm), '17:00 より前＝夜の部に「出しました」は出ない（昼の記録で済みにしない）');
+  }
+  // 他の店は変わらない
+  run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(/id="pbslot-asa"/.test(h) && !/id="pbslot-am"/.test(h) && !/昼の部/.test(h), '2部制でない店＝これまでどおり開店前／営業中／締め');
+}
+
 console.log('== 2026-11-10 注文フォーム＝店舗名マスタの写し（orderforms）から店ごとのフォームへ ==');
 {
   const OF = JSON.stringify({ t: Date.now(), src:'master', rows: [
