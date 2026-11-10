@@ -575,6 +575,29 @@ console.log('== ホーム最上部：FAQ／FAC の窓口 ==');
   v = registry.app.innerHTML;
   ok(!/雨の日の事前ケア/.test(v) && /「ありがとう」を覚えて/.test(v), '★本部が伏せた固定の事例は出ない（ほかは残る）');
   run(()=> localStorage.removeItem('yosakura_demo_faq'));
+  // 2026-11-11 神田さん「FAC も FAQ のように項目別に」＝場面ごとに畳む。店舗には中身のある場面だけ・本部には全部。札（状況）はカードに出る
+  run(()=> localStorage.removeItem('yosakura_demo_faq'));
+  run(()=> setLS('staff', S_HIROSHIMA, 'ja'));
+  location.hash = '#/app/fac';
+  v = registry.app.innerHTML;
+  ok(/data-faqfold="fac_dining"/.test(v) && /data-faqfold="fac_before"/.test(v) && /data-faqfold="fac_farewell"/.test(v), 'FAC：場面の見出し（お食事中・来店前・お見送り）で畳まれる');
+  ok(!/data-faqfold="fac_welcome"/.test(v) && !/data-faqfold="fac_other"/.test(v), 'FAC：店舗には事例の無い場面（出迎え・その他）は出ない');
+  ok(/data-faqfoldbody="fac_before" hidden>[\s\S]*?雨の日の事前ケア/.test(v), 'FAC：雨の日の事前ケアは「来店前・待ち時間」の中');
+  ok(/海外のお客様<\/span>/.test(v) && /雨の日<\/span>/.test(v), 'FAC：札（海外のお客様・雨の日）がカードに出る');
+  run(()=> setLS('hq', 'all', 'ja'));
+  location.hash = '#/app/fac';
+  v = registry.app.innerHTML;
+  ok(/data-faqfold="fac_welcome"/.test(v) && /data-faqfold="fac_other"/.test(v), 'FAC：本部には空の場面も出る（どこに載せるかが分かる）');
+  ok(/id="fac_scene"/.test(v) && /id="fac_tag"/.test(v) && /value="before"/.test(v) && /value="kids"/.test(v), '本部：載せる欄に場面と状況の選択がある');
+  ok(/id="fac_scene"><option value="" selected>場面を選んでください/.test(v), '本部：新しく載せる欄は場面が未選択（選ばないと載せない）');
+  // 本部が場面つきで1件載せる→その場面の中に出る／分類が無い・知らない分類の事例は「その他」に残る
+  run(()=> { localStorage.setItem('yosakura_demo_faq', JSON.stringify([{ id:'fc1', fac:true, t:1, scene:'welcome', tag:'kids', title:'お子さま用の椅子を先にご用意', idea:'入店時に先に出す' }, { id:'fc2', fac:true, t:2, scene:'zzz', title:'分類の無い事例', idea:'何か' }, { id:'fc_rain', fac:true, scene:'special' }])); });
+  location.hash = '#/app/fac';
+  v = registry.app.innerHTML;
+  ok(/data-faqfoldbody="fac_welcome" hidden>[\s\S]*?お子さま用の椅子/.test(v) && /お子さま連れ<\/span>/.test(v), 'FAC：場面つきで載せた事例はその場面の中・札つき');
+  ok(/data-faqfoldbody="fac_other" hidden>[\s\S]*?分類の無い事例/.test(v), '★FAC：知らない分類の事例は「その他」に残る（黙って消えない）');
+  ok(/data-faqfoldbody="fac_special" hidden>[\s\S]*?雨の日の事前ケア/.test(v), 'FAC：固定の事例も本部が場面を直せる（上書きが勝つ）');
+  run(()=> localStorage.removeItem('yosakura_demo_faq'));
 }
 
 console.log('== サーベイ：手順書と「回答の集約シート」を取り違えない ==');

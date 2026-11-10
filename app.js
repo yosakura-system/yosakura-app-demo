@@ -8632,6 +8632,29 @@
     { id:'fc_full', title:'満席のときは代案を出す', reason:'「今から2名で」と電話や来店があったが満席', idea:'「大変申し訳ございません、ただいま満席でございます。○時以降のご案内でしたら可能ですが、いかがでしょうか」', react:'信頼を保ち、次のご来店につながる', src:'マニュアル 03-9 電話対応' },
     { id:'fc_photo_help', title:'料理写真のサポートと会話のペース', reason:'写真を撮る海外のお客様・会話を楽しむお客様', idea:'きれいに撮れるよう照明やアングルを助言する。会話を重視するお客様には料理の提供タイミングを合わせる', react:'食事の時間そのものを楽しんでいただける', src:'マニュアル 03-11 外国人観光客へのおもてなしとご意見対応' }
   ];
+  /* ★2026-11-11 神田さん「FAC も FAQ のように項目別に」＝分類の軸は「場面（タッチポイント）」（10/21 経営・店舗運営改善MTGの「来店時／提供時／退店時」の言葉）。
+     お客様の状況（海外・雨の日・お子さま連れ）は分類にせず札（tag）にする＝いまの事例は海外のお客様が多く、状況で分けると1つに偏るため。
+     分類が消えても事例は「その他」に残る（FAQ と同じ・黙って消さない）。店舗には中身のある場面だけ出す */
+  const FAC_SCENES = [
+    { v:'before',   t:{ ja:'来店前・待ち時間', en:'Before arrival / waiting', vi:'Trước khi đến / chờ' }, s:{ ja:'電話・満席・外や席でお待ちの間', en:'Calls, full house, waiting outside or at the table', vi:'Điện thoại, hết chỗ, chờ bên ngoài hoặc tại bàn' } },
+    { v:'welcome',  t:{ ja:'出迎え・ご案内', en:'Welcome & seating', vi:'Đón & hướng dẫn' }, s:{ ja:'入店の声かけ・席へのご案内・着席まで', en:'Greeting, seating, until guests sit down', vi:'Chào, dẫn vào bàn, đến khi khách ngồi' } },
+    { v:'serve',    t:{ ja:'注文・提供', en:'Order & serving', vi:'Gọi món & phục vụ' }, s:{ ja:'ご注文・料理の説明・お出しするとき', en:'Taking orders, explaining dishes, serving', vi:'Gọi món, giới thiệu món, bưng món' } },
+    { v:'dining',   t:{ ja:'お食事中', en:'During the meal', vi:'Trong bữa ăn' }, s:{ ja:'会話・写真・お困りごと', en:'Conversation, photos, requests', vi:'Trò chuyện, chụp ảnh, yêu cầu' } },
+    { v:'farewell', t:{ ja:'お会計・お見送り', en:'Check & farewell', vi:'Thanh toán & tiễn khách' }, s:{ ja:'お会計・レビューのお願い・お見送り', en:'Check, review request, send-off', vi:'Thanh toán, xin đánh giá, tiễn khách' } },
+    { v:'special',  t:{ ja:'記念日・特別な日', en:'Anniversaries & special days', vi:'Kỷ niệm & ngày đặc biệt' }, s:{ ja:'誕生日・記念日・プロポーズ', en:'Birthdays, anniversaries, proposals', vi:'Sinh nhật, kỷ niệm, cầu hôn' } },
+    { v:'other',    t:{ ja:'その他', en:'Other', vi:'Khác' }, s:{ ja:'上のどれにも当てはまらないもの', en:'Anything that does not fit above', vi:'Những mục không thuộc nhóm trên' } }
+  ];
+  const facSceneOf = (v) => (FAC_SCENES.some(c => c.v === v) ? v : 'other');
+  const FAC_TAGS = [
+    { v:'abroad', t:{ ja:'海外のお客様', en:'Guests from abroad', vi:'Khách nước ngoài' } },
+    { v:'rain',   t:{ ja:'雨の日', en:'Rainy day', vi:'Ngày mưa' } },
+    { v:'kids',   t:{ ja:'お子さま連れ', en:'With children', vi:'Có trẻ em' } }
+  ];
+  const facTagOf = (v) => (FAC_TAGS.some(c => c.v === v) ? v : '');
+  const facTagLabel = (v) => { const c = FAC_TAGS.find(x => x.v === v); return c ? L(c.t) : ''; };
+  /* マニュアル由来の13件の場面と札（神田の仮の振り分け・本部が「直す」で変えられる） */
+  const FAC_SCENE_FIXED_ = { fc_thanks:'farewell', fc_goods:'dining', fc_country:'dining', fc_jpfood:'serve', fc_trip:'dining', fc_review:'farewell', fc_tattoo:'dining', fc_nihongo:'dining', fc_rain:'before', fc_special:'special', fc_book:'before', fc_full:'before', fc_photo_help:'dining' };
+  const FAC_TAG_FIXED_ = { fc_thanks:'abroad', fc_country:'abroad', fc_jpfood:'abroad', fc_trip:'abroad', fc_review:'abroad', fc_tattoo:'abroad', fc_nihongo:'abroad', fc_rain:'rain', fc_photo_help:'abroad' };
   const getFaq = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_faq')) || []; } catch { return []; } };
   const saveFaq = (a) => { try { localStorage.setItem('yosakura_demo_faq', JSON.stringify(a)); } catch (e) {} };
 
@@ -8661,7 +8684,7 @@
   const facList = () => {
     const saved = getFaq();
     const ovr = {}; saved.forEach(f => { if (f && f.fac && /^fc_/.test(f.id)) ovr[f.id] = f; });
-    const fixed = FAC_FIXED.map(f => { const o = ovr[f.id]; if (o && o.deleted) return null; return Object.assign({}, f, o || {}, { fac:true, fixed:true, deleted:false }); }).filter(Boolean);
+    const fixed = FAC_FIXED.map(f => { const o = ovr[f.id]; if (o && o.deleted) return null; return Object.assign({ scene: FAC_SCENE_FIXED_[f.id] || 'other', tag: FAC_TAG_FIXED_[f.id] || '' }, f, o || {}, { fac:true, fixed:true, deleted:false }); }).filter(Boolean);
     const mine = saved.filter(f => f && f.fac && !f.deleted && !/^fc_/.test(f.id)).sort((x, y) => (y.t || 0) - (x.t || 0));
     return mine.concat(fixed);   // 本部が新しく載せた物が上・マニュアル由来は下
   };
@@ -8671,6 +8694,10 @@
     const rows = facList();
     const fld = (id, lab, val, rowsN) => `<label class="fl">${esc(L(lab))}</label>` + (rowsN ? `<textarea id="${id}" rows="${rowsN}">${esc(val || '')}</textarea>` : `<input id="${id}" type="text" value="${esc(val || '')}">`);
     const form = (pre, it) => `
+        <label class="fl">${esc(L({ ja:'場面', en:'Scene', vi:'Tình huống' }))}</label>
+        <select id="${pre}_scene">${it ? '' : `<option value="" selected>${esc(L({ ja:'場面を選んでください', en:'Choose a scene', vi:'Chọn tình huống' }))}</option>`}${FAC_SCENES.map(c => `<option value="${c.v}"${it && facSceneOf(it.scene) === c.v ? ' selected' : ''}>${esc(L(c.t))}</option>`).join('')}</select>
+        <label class="fl">${esc(L({ ja:'お客様の状況（書かなくてもよい）', en:'Guest situation (optional)', vi:'Tình trạng khách (tùy chọn)' }))}</label>
+        <select id="${pre}_tag"><option value="">${esc(L({ ja:'なし', en:'None', vi:'Không' }))}</option>${FAC_TAGS.map(c => `<option value="${c.v}"${facTagOf(it && it.tag) === c.v ? ' selected' : ''}>${esc(L(c.t))}</option>`).join('')}</select>
         ${fld(pre + '_title', { ja:'一言で（例：雨の日の傘のご案内）', en:'Title', vi:'Tiêu đề' }, it && it.title)}
         ${fld(pre + '_reason', { ja:'来店理由・そのときの状況', en:'Reason for visit / situation', vi:'Lý do đến / tình huống' }, it && it.reason, 2)}
         ${fld(pre + '_idea', { ja:'した工夫', en:'What we did', vi:'Đã làm gì' }, it && it.idea, 3)}
@@ -8681,7 +8708,7 @@
         <div class="row" style="margin-top:8px"><button class="btn-primary" data-facsave="${esc(it.id)}">${L({ ja:'保存', en:'Save', vi:'Lưu' })}</button><button class="mini" data-faccancel="1">${L({ ja:'やめる', en:'Cancel', vi:'Hủy' })}</button></div>
       </div>` : `
       <div class="card fac-card">
-        <div class="news-h"><span class="news-ic">${svg('star')}</span><b>${esc(it.title || '')}</b>${it.store ? `<span class="news-ago">${esc(storeShort(it.store))}</span>` : ''}</div>
+        <div class="news-h"><span class="news-ic">${svg('star')}</span><b>${esc(it.title || '')}</b>${it.tag ? `<span class="news-ago">${esc(facTagLabel(it.tag))}</span>` : ''}${it.store ? `<span class="news-ago">${esc(storeShort(it.store))}</span>` : ''}</div>
         ${it.reason ? `<p class="fac-l"><span class="fac-k">${L({ ja:'状況', en:'Situation', vi:'Tình huống' })}</span>${esc(it.reason)}</p>` : ''}
         ${it.idea ? `<p class="fac-l"><span class="fac-k">${L({ ja:'工夫', en:'What we did', vi:'Đã làm' })}</span>${esc(it.idea)}</p>` : ''}
         ${it.react ? `<p class="fac-l"><span class="fac-k">${L({ ja:'反応', en:'Reaction', vi:'Phản ứng' })}</span>${esc(it.react)}</p>` : ''}
@@ -8696,7 +8723,8 @@
       </div>
       ${isHQ ? `<div class="card" id="facForm"><h3>${L({ ja:'事例を載せる（本部）', en:'Add a case (HQ)', vi:'Thêm trường hợp (HQ)' })}</h3>${form('fac')}<button class="btn-primary" id="facAdd" style="margin-top:8px">${L({ ja:'載せる', en:'Publish', vi:'Đăng' })}</button></div>` : ''}
       <div class="sec-h"><span class="bar"></span><h2>${L({ ja:'事例', en:'Cases', vi:'Trường hợp' })}</h2><span class="count">${rows.length}</span></div>
-      ${rows.length ? rows.map(card).join('') : `<p class="hint" style="display:block">${L({ ja:'まだ事例はありません。お客様に喜ばれた工夫があれば「気づき」から送ってください。本部が載せます。', en:'No cases yet. Send ideas guests loved via Insights; HQ will publish them.', vi:'Chưa có. Hãy gửi ý tưởng qua Ghi nhận; HQ sẽ đăng.' })}</p>`}`;
+      ${rows.length ? FAC_SCENES.map(c => { const its = rows.filter(it => facSceneOf(it.scene) === c.v); if (!its.length && !isHQ) return ''; const k = 'fac_' + c.v;
+        return `<div class="card"><div class="mrow" data-faqfold="${k}" style="padding:6px 2px"><div class="mt"><b>${esc(L(c.t))}</b><span>${esc(L(c.s))}</span></div><span class="chev"><small style="color:#8a8">${its.length ? L({ ja:'事例 ', en:'Cases ', vi:'Trường hợp ' }) + its.length : L({ ja:'準備中', en:'coming soon', vi:'đang chuẩn bị' })}</small>　${svg('chev')}</span></div><div data-faqfoldbody="${k}" hidden>${its.map(card).join('')}</div></div>`; }).join('') : `<p class="hint" style="display:block">${L({ ja:'まだ事例はありません。お客様に喜ばれた工夫があれば「気づき」から送ってください。本部が載せます。', en:'No cases yet. Send ideas guests loved via Insights; HQ will publish them.', vi:'Chưa có. Hãy gửi ý tưởng qua Ghi nhận; HQ sẽ đăng.' })}</p>`}`;
   };
   APP_VIEWS.faq = () => {
     const role = getRole(), isHQ = role === 'hq';
@@ -12898,11 +12926,14 @@
     // よくある質問（ルール集）：本部が項目を追加・削除→全端末同期（faqset＝配列を丸ごと保存し最新版が正）
     // FAC（事例集）：本部が載せる・直す・消す→faqset と同じ配列に fac:true で保存→全端末同期
     const facRead = (pre) => ({ title: ((byId(pre + '_title') || {}).value || '').trim(), reason: ((byId(pre + '_reason') || {}).value || '').trim(),
-                                idea: ((byId(pre + '_idea') || {}).value || '').trim(), react: ((byId(pre + '_react') || {}).value || '').trim(), store: ((byId(pre + '_store') || {}).value || '').trim() });
+                                idea: ((byId(pre + '_idea') || {}).value || '').trim(), react: ((byId(pre + '_react') || {}).value || '').trim(), store: ((byId(pre + '_store') || {}).value || '').trim(),
+                                scene: facSceneOf((byId(pre + '_scene') || {}).value), sceneRaw: String((byId(pre + '_scene') || {}).value || ''), tag: facTagOf((byId(pre + '_tag') || {}).value) });
     const facPush = (list, msg) => { saveFaq(list); const t = Date.now(); lastSync = t; facEditId = null; toast(msg); render(true); postReport({ kind:'faqset', store:'', note: JSON.stringify(list), t }); };
     const facAdd = document.getElementById('facAdd');
     if (facAdd) facAdd.onclick = () => {
       const v = facRead('fac');
+      if (!v.sceneRaw) { toast(L({ ja:'場面を選んでください', en:'Choose a scene', vi:'Hãy chọn tình huống' })); return; }
+      delete v.sceneRaw;
       if (!v.title || !v.idea) { toast(L({ ja:'一言と、した工夫は必ず入れてください', en:'Enter a title and what you did', vi:'Nhập tiêu đề và việc đã làm' })); return; }
       const list = getFaq(); list.push(Object.assign({ id:'fc' + Date.now(), fac:true, t: Date.now() }, v));
       facPush(list, L({ ja:'載せました', en:'Published', vi:'Đã đăng' }));
@@ -12910,7 +12941,7 @@
     document.querySelectorAll('[data-facedit]').forEach(b => b.onclick = () => { facEditId = b.dataset.facedit; render(true); });
     document.querySelectorAll('[data-faccancel]').forEach(b => b.onclick = () => { facEditId = null; render(true); });
     document.querySelectorAll('[data-facsave]').forEach(b => b.onclick = () => {
-      const id = b.dataset.facsave; const v = facRead('face');
+      const id = b.dataset.facsave; const v = facRead('face'); delete v.sceneRaw;
       if (!v.title || !v.idea) { toast(L({ ja:'一言と、した工夫は必ず入れてください', en:'Enter a title and what you did', vi:'Nhập tiêu đề và việc đã làm' })); return; }
       const list = getFaq(); const i = list.findIndex(f => f && f.id === id);
       if (i >= 0) list[i] = Object.assign({}, list[i], v, { fac:true, deleted:false }); else list.push(Object.assign({ id, fac:true, t: Date.now() }, v));
