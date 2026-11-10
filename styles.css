@@ -1064,6 +1064,14 @@ html[data-theme="pb"] .pb-chips--home .pb-chipimg { height: 74px; }
 html[data-theme="pb"] .pb-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 16px 2px 7px; }
 html[data-theme="pb"] .pb-sec h2 { font-family: var(--sans); font-size: 12px; letter-spacing: .14em; color: var(--gray); font-weight: 700; margin: 0; }
 html[data-theme="pb"] .pb-sec small { font-size: 11px; color: var(--gray); }
+/* 2026-11-10 見出しを押して開閉（本部からの返答・心斎橋の昼の部／夜の部） */
+html[data-theme="pb"] button.pb-fold { width: 100%; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; text-align: left; }
+html[data-theme="pb"] .pb-fold svg { width: 14px; height: 14px; vertical-align: -2px; margin-left: 4px; transition: transform .15s; }
+html[data-theme="pb"] .pb-fold.open svg { transform: rotate(90deg); }
+html[data-theme="pb"] .pb-slot.pb-fold { justify-content: space-between; padding: 6px 0; }
+html[data-theme="pb"] .pb-foldst { margin-left: auto; letter-spacing: 0; display: inline-flex; align-items: center; }
+html[data-theme="pb"] .pb-foldbody.hid { display: none; }
+html[data-theme="pb"] .pb-new { display: inline-block; font-size: 10px; letter-spacing: .08em; color: #fff; background: var(--suou, #8b2e3a); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 1px; }
 html[data-theme="pb"] .pb-ho { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--line); }
 html[data-theme="pb"] .pb-ho:first-child { border-top: 0; }
 html[data-theme="pb"] .pb-hotx { flex: 1; font-size: 14px; white-space: pre-wrap; line-height: 1.5; }

@@ -2216,7 +2216,7 @@ console.log('== チェックリスト：最後まで終えたときだけ提出�
   //    該当の行と件数・進捗バーだけを直接書き換える方式にした。そもそも再描画しないので位置もずれない。
   ok(!/render\(true\);\s*\n\s*postReport\(\{ kind:'ckdone'/.test(code),
      '画面全体を再描画する古いやり方（render(true)）はもう無い');
-  ok(/row\.classList\.toggle\('done', !!day\[id\]\);[\s\S]{0,900}queueCkPost_\(store, mode, day, t\)/.test(code),
+  ok(/row\.classList\.toggle\('done', !!day\[id\]\);[\s\S]{0,900}queueCkPost_\(store, mode, day, t, key\)/.test(code),
      'チェックのたびに先頭へ戻らない（行だけ書き換えるので、そもそも位置がずれない）');
 
   // ③ 全部終わるまで提出済みにしない
@@ -2233,7 +2233,7 @@ console.log('== チェックリスト：最後まで終えたときだけ提出�
   // 数え方が画面と判定で同じであること（消した独自項目や別の曜日が混ざらない）
   ok(/const ckTotalOf = \(store, mode\) => ckIdsOf\(store, mode\)\.length;/.test(code),
      '件数の数え方が1か所（ckIdsOf）に集約されている');
-  ok(/if \(m\.detect === 'ckdone'\) return ckAllDoneOf\(/.test(code),
+  ok(/if \(m\.detect === 'ckdone'\) \{ const md = m\.ckMode \|\| 'open'; if \(shift\) return ckAllDoneOf\(/.test(code),
      '提出済みの判定は「全部終わったか」を見ている');
 
   // ④ 定期衛生：画面で別の曜日を見ていても、提出済みの判定は「今日の曜日」で行う
@@ -6301,7 +6301,7 @@ location.hash = '#/app/checklist';
 // ==== v280: チェックリスト＝描き直す経路を全部なくす・送信は1.5秒まとめ（2026-09-24 神田さん実機「カクカク・パチパチ」） ====
 {
   const src = code;
-  ok(/queueCkPost_\(store, mode, day, t\);\s*\n\s*\}\);/.test(src), 'タップは送信キューへ入れるだけ（その場で送らない）');
+  ok(/queueCkPost_\(store, mode, day, t, key\);\s*\n\s*\}\);/.test(src), 'タップは送信キューへ入れるだけ（その場で送らない）');
   ok(!/postReport\(\{ kind:'ckdone', store, item:`\$\{mode\}\|\|\$\{todayKey\(\)\}`[^\n]*\n\s*\}\);\n\s*\/\* 店舗ごとのカスタマイズ/.test(src), 'クリック処理から直接の postReport が消えている');
   ok(/_ckTimer = setTimeout\(flushCkPost_, 1500\)/.test(src), '最後のタップから1.5秒で1回だけ送る');
   ok(/visibilitychange[^\n]*flushCkPost_\(\)/.test(src) && /pagehide', flushCkPost_/.test(src) && /hashchange', flushCkPost_/.test(src), '裏に回る・閉じる・画面を離れるときは待たずに送る');
@@ -7998,8 +7998,18 @@ console.log('== 2026-11-10 2部制（心斎橋だけの実験・原さん）＝�
 {
   const S = '寿司世桜 心斎橋店';
   ok(/const SHIFT_STORES_ = \{ '寿司世桜 心斎橋店': '17:00' \}/.test(code), 'ソース＝2部制は心斎橋だけ・境は17:00（昼のみ売上の区切りと同じ）');
-  ok(/const ckDoneKey = \(store, mode\) => `\$\{store\}\|\|\$\{mode\}\|\|\$\{todayKey\(\)\}\$\{shiftSfx_\(store\)\}`/.test(code), 'ソース＝チェックリストの記録は夜の部だけ 日付#pm の別キー（画面も判定も同じ関数）');
-  ok(/ckAllDoneOf\(store, m\.ckMode \|\| 'open', dk \+ \(shift === 'pm' \? '#pm' : ''\)\)/.test(code), 'ソース＝判定も夜の部は #pm のキーを見る');
+  ok(/const ckDoneKey = \(store, mode\) => `\$\{store\}\|\|\$\{mode\}\|\|\$\{todayKey\(\)\}\$\{ckShiftSfx_\(store\)\}`/.test(code), 'ソース＝チェックリストの記録は夜の部だけ 日付#pm の別キー。部はホームの行が渡す（yosakura_ckshift）・無ければ時刻');
+  ok(/const item = key \? String\(key\)\.split\('\|\|'\)\.slice\(1\)\.join\('\|\|'\) : `\$\{mode\}\|\|\$\{todayKey\(\)\}\$\{ckShiftSfx_\(store\)\}`;/.test(code), 'Codex#1＝バックエンドへ送る item は保存したキーから（夜の部は 日付#pm・取込で昼のキーを上書きしない）');
+  ok(/if \(shift\) return ckAllDoneOf\(store, md, dk \+ \(shift === 'pm' \? '#pm' : ''\)\); return ckAllDoneOf\(store, md, dk\) \|\| \(!!shiftCutOf_\(store\) && ckAllDoneOf\(store, md, dk \+ '#pm'\)\);/.test(code), 'Codex#2＝部の指定なし（本部）は昼か夜のどちらかが全部済みなら済み');
+  ok(/const done = getCkDone\(\)\[ckDayKey_\(store, mode\)\] \|\| \{\};   \/\/ 本部・オーナーの一覧/.test(code) && (code.match(/getCkMeta\(\)\[ckDayKey_\(store, m\.v\)\]/g) || []).length === 2, 'Codex#3＝本部・オーナーの実施状況は1日単位（昼と夜の進んでいる方）');
+  ok(/if \(_ckRenderedKey && key !== _ckRenderedKey\) \{ render\(\); return; \}/.test(code), 'Codex#4＝境をまたいで押したら描き直す（昼の表示のまま夜へ保存しない）');
+  ok(/currentRoute\(\)\.params\.get\('shift'\)/.test(code) && /'shift=' \+ t\.dataset\.tsubshift/.test(code) && !/yosakura_ckshift/.test(code), 'Codex#5／2回目＝部は URL の引数で渡す（端末に残さない＝他の入口・翌日に持ち越さない）');
+  ok(/if \(_ckQ && \(_ckQ\.item !== item \|\| _ckQ\.store !== store\)\) flushCkPost_\(\);/.test(code) && /queueCkPost_\(store, mode, day, t, key\);/.test(code), 'Codex 2回目＝送信待ちは保存したキーで・別キーなら先に送る（境をまたいだ昼の分を消さない）');
+  ok(/const ids = ckIdsOf\(store, mode\); const c = \(k\) => \{ const m = d\[k\] \|\| \{\}; return ids\.filter\(id => m\[id\]\)\.length; \};/.test(code), 'Codex 2回目＝本部の「進んでいる方」は有効な項目だけで数える');
+  ok(/if \(currentRoute\(\)\.path === '\/home' && visibleStores\(\)\[0\] === store\) render\(\);/.test(code), 'Codex 2回目＝境のタイマーはホームにいる同じ店のときだけ描き直す（入力中の画面を消さない）');
+  ok(/if \(pmLocked && ms > 0 && ms < 86400e3\) _shiftTimer_ = setTimeout/.test(code), 'Codex#6＝境の時刻にホームを描き直す');
+  ok(/!\(shift === 'pm' && String\(m\.due \|\| ''\) <= '12:00'\)/.test(code), 'Codex#7＝夜の超過免除は朝締切の項目だけ（締めの23:59は残す）');
+  ok(/return ckAllDoneOf\(store, md, dk \+ \(shift === 'pm' \? '#pm' : ''\)\);/.test(code), 'ソース＝判定も夜の部は #pm のキーを見る');
   const seed = (extra) => run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); if (extra) extra(); });   // run() は保存を空にする＝毎回入れ直す
   seed();
   location.hash = '#/home';
@@ -8010,10 +8020,18 @@ console.log('== 2026-11-10 2部制（心斎橋だけの実験・原さん）＝�
   ok(/オープン写真/.test(p.am) && /OPENチェック/.test(p.am) && /お手すきチェック/.test(p.am) && /気づき/.test(p.am) && !/在庫の数/.test(p.am) && !/CLOSEチェック/.test(p.am), '昼の部＝オープン写真・OPENチェック・お手すき・桜・気づき（締めは入れない）');
   ok(/オープン写真/.test(p.pm) && /OPENチェック/.test(p.pm) && /在庫の数/.test(p.pm) && /CLOSEチェック/.test(p.pm) && /気づき/.test(p.pm) && !/お手すきチェック/.test(p.pm), '夜の部＝オープン写真・OPENチェック＋締め（在庫の数・CLOSEチェック・気づき）');
   ok(p.pm.indexOf('オープン写真') < p.pm.indexOf('在庫の数'), '夜の部の並び＝開店前→締め');
+  ok(/data-tsub="checklist" data-tsubmode="open" data-tsubshift="am"/.test(p.am) && (/data-tsubshift="pm"/.test(p.pm) || /から出せます/.test(p.pm)), '行が部を渡す＝昼の部の行は am・夜の部の行は pm（境の前は押せない）');
+  { const amOpen = /class="pb-slot pb-fold open" id="pbslot-am"/.test(h), pmOpen = /class="pb-slot pb-fold open" id="pbslot-pm"/.test(h), nowPm = /夜の部 <small>いま/.test(h);
+    ok(amOpen !== pmOpen && (nowPm ? pmOpen : amOpen), '昼の部・夜の部は見出しを押して開閉＝既定はいまの部だけ開く（神田さん 11/10）: am=' + amOpen + ' pm=' + pmOpen);
+    ok(/data-fold="am"/.test(h) && /data-fold="pm"/.test(h) && (nowPm ? /id="pbslot-am"[\s\S]*?pb-foldbody hid/.test(h) : /id="pbslot-pm"[\s\S]*?pb-foldbody hid/.test(h)), '畳んだ方の行は hid で隠す（行自体は描く＝同期の反映はそのまま）'); }
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_fold_am', '1'); localStorage.setItem('yosakura_fold_pm', '1'); });
+  location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(/class="pb-slot pb-fold open" id="pbslot-am"/.test(h) && /class="pb-slot pb-fold open" id="pbslot-pm"/.test(h), '開いた状態は端末に残る（yosakura_fold_am／pm）');
+  ok(/data-fold\]'\)\.forEach\(b => b\.onclick/.test(code) && /localStorage\.setItem\('yosakura_fold_' \+ k, open \? '0' : '1'\)/.test(code) && /if \(k === 'rep' && !open && b\.dataset\.foldseen\) localStorage\.setItem\('yosakura_rep_seen\|\|' \+ visibleStores\(\)\[0\], String\(b\.dataset\.foldseen\)\)/.test(code), '押すと開閉を保存・返答を開いたら NEW の既読＝店ごと・表示した分の最新時刻まで（Codex 2回目）');
   // 日付（朝5時までは前の営業日）と境
   const dk = new Date(Date.now() - 5 * 3600e3).toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
   const cut = Date.parse(dk + 'T17:00:00+09:00');
-  const hm = new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Tokyo', hour12: false }).slice(0, 5);
+  const hm = (() => { const d = new Date(Date.now() + 9 * 3600e3); let H = d.getUTCHours(); if (H < 5) H += 24; return String(H).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); })();   // 営業日の時計（朝5時までは 24:00〜28:59）＝アプリの nowHMFor と同じ
   const rowOf = (x, name) => { const i = x.indexOf(name); return i < 0 ? '' : x.slice(x.lastIndexOf('<button', i) < 0 ? 0 : x.lastIndexOf('<button', i), x.indexOf('</button>', i) + 9); };
   const divOf = (x, name) => { const i = x.indexOf(name); return i < 0 ? '' : x.slice(x.lastIndexOf('<div class="pb-row', i), x.indexOf('</div>', i) + 6); };
   // 昼の部にオープン写真（10:00 の記録）
@@ -8045,6 +8063,19 @@ console.log('== 2026-11-10 2部制（心斎橋だけの実験・原さん）＝�
   run(() => { setLS('manager', '牛カツ世桜 長堀橋店', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/home'; h = registry.app.innerHTML;
   ok(/id="pbslot-asa"/.test(h) && !/id="pbslot-am"/.test(h) && !/昼の部/.test(h), '2部制でない店＝これまでどおり開店前／営業中／締め');
+}
+
+console.log('== 2026-11-10 本部からの返答＝最初は畳む・新しい返答は NEW（神田さん） ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  const ackRows = [{ kind:'hqack', store:S, item:`openphoto|${Date.now() - 7200e3}|${S}`, note: JSON.stringify({ state:'done', by:'本部', memo:'写真ありがとうございます' }), t: Date.now() - 3600e3, id:'k9' }];
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_reports', JSON.stringify(ackRows)); });
+  location.hash = '#/home'; let h = registry.app.innerHTML;
+  ok(/data-fold="rep"/.test(h) && /本部からの返答 <span class="pb-new">NEW<\/span>/.test(h) && /pb-card pb-rep pb-foldbody hid/.test(h), '返答がある＝見出しに NEW・中身は畳んだまま（押すと開く）');
+  ok(new RegExp('data-fold="rep" data-foldseen="' + ackRows[0].t + '"').test(h), '既読にする時刻＝表示した返答の最新時刻（Date.now ではない）');
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_reports', JSON.stringify(ackRows)); localStorage.setItem('yosakura_fold_rep', '1'); localStorage.setItem('yosakura_rep_seen||' + S, String(Date.now())); });
+  location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(/pb-sec pb-fold open" data-fold="rep"/.test(h) && !/pb-new/.test(h) && /pb-card pb-rep pb-foldbody"/.test(h), '開いて既読にした＝NEW が消えて中身が見える');
 }
 
 console.log('== 2026-11-10 注文フォーム＝店舗名マスタの写し（orderforms）から店ごとのフォームへ ==');

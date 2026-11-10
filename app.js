@@ -2036,7 +2036,7 @@
     const inner = `${pbImg_(pbPhotoKey_(m))}<span class="pb-rowtx"><span class="pb-nm">${esc(LANG === 'ja' && PB_NAMES_[m.id] ? PB_NAMES_[m.id] : L(m.name))}${tag}</span><span class="pb-sub">${sub}</span></span>`;
     const cls = `pb-row${done ? ' done' : ''}${late ? ' late' : ''}`;
     const minTx = mins ? `<span class="pb-min">${L({ja:'目安',en:'~',vi:'~'})}<b>${mins}${L({ja:'分',en:'min',vi:'ph'})}</b></span>` : '';
-    if (m.linkApp && !act && !lockTx) return `<button class="${cls}" data-tsub="${esc(m.linkApp)}"${openArg}>${inner}<span class="pb-rt">${done ? svg('tick') : (minTx || svg('chev'))}</span></button>`;
+    if (m.linkApp && !act && !lockTx) return `<button class="${cls}" data-tsub="${esc(m.linkApp)}"${openArg}${it.shift ? ` data-tsubshift="${esc(it.shift)}"` : ''}>${inner}<span class="pb-rt">${done ? svg('tick') : (minTx || svg('chev'))}</span></button>`;
     return `<div class="${cls}">${inner}<span class="pb-rt">${act || (done ? svg('tick') : '')}</span></div>`;
   };
   /* ★ホームで気づかせるもの（本部からの返答・サーベイの低い評価）の中身＝旧ホームと案Bのホームで同じものを使う（2026-10-19・案Bのホームで抜けていた） */
@@ -2072,12 +2072,16 @@
       .sort((x, y) => (y.a.ts || 0) - (x.a.ts || 0)).slice(0, 3);
     return { ROUTE: HQR_ROUTE, LABEL: HQR_LABEL, PHOTO: HQR_PHOTO, rows };
   }
+  /* ★2026-11-10 神田さん「本部からの返答は最初は畳んで、新しい返答は NEW で」「昼の部・夜の部も押せば開く形に」＝見出しを押して開閉。状態は端末に残す（yosakura_fold_*） */
+  const foldOpen_ = (key, dflt) => { try { const v = localStorage.getItem('yosakura_fold_' + key); if (v === '1') return true; if (v === '0') return false; } catch (e) {} return !!dflt; };
+  const repSeenTs_ = (store) => { try { return Number(localStorage.getItem('yosakura_rep_seen||' + store) || 0) || 0; } catch (e) { return 0; } };   // 店ごと（複数店を見る端末で他店の NEW を消さない）
   function pbHome_(role) {
     const store = visibleStores()[0];
     /* ★2026-11-10 2部制の店（SHIFT_STORES_・いまは心斎橋だけの実験）＝きょうやることを「昼の部」「夜の部」の2ブロックに。
        昼の部＝開店前＋営業中＋気づき／夜の部＝開店前（オープン写真・OPENチェック）＋締め。夜の部は境の時刻まで押せない（昼の記録に混ざらないように） */
     const shiftCut = shiftCutOf_(store), shiftNow = shiftCut ? shiftNow_(store) : '';
     const pmLocked = shiftCut ? shiftNow === 'am' : false;
+    if (shiftCut) { try { clearTimeout(_shiftTimer_); const ms = shiftCutTs_(store, dateKeyFor(store, Date.now())) - Date.now(); if (pmLocked && ms > 0 && ms < 86400e3) _shiftTimer_ = setTimeout(() => { try { if (currentRoute().path === '/home' && visibleStores()[0] === store) render(); } catch (e) {} }, ms + 1000); } catch (e) {} }   // 境を過ぎたら夜の部を押せるように描き直す（ホームを離れていたら何もしない＝入力中の画面を消さない）
     const isNippou = (it) => it.m.linkApp === 'soukatsu';
     const slotOrd_ = (it) => ({ asa:0, mid:1, shime:2 })[pbSlotKey_(kyouSlotOf(it.m))];
     let amIts = [], pmIts = [];
@@ -2100,7 +2104,13 @@
       return `<button class="pb-band${k === nowKey ? ' on' : ''}" data-jump="pbslot-${k}">${L(n)}<small>${r ? `${L({ja:'残り',en:'left',vi:'còn'})} ${r}` : L({ja:'完了',en:'done',vi:'xong'})}</small></button>`;
     }).join('');
     const SHIFT_LBL_ = { am:{ja:'昼の部',en:'Lunch',vi:'Ca trưa'}, pm:{ja:'夜の部',en:'Dinner',vi:'Ca tối'} };
-    const shiftBlk_ = (k, its) => `<div class="pb-slot" id="pbslot-${k}">${L(SHIFT_LBL_[k])}${k === nowKey ? ` <small>${L({ja:'いま',en:'now',vi:'bây giờ'})}</small>` : ''}</div>${its.map(it => pbFlowRow_(it, (k === 'pm' && pmLocked) ? `${shiftCut}${L({ja:'から出せます',en:' onwards',vi:' trở đi'})}` : '')).join('')}`;
+    const shiftBlk_ = (k, its) => {
+      const open = foldOpen_(k, k === nowKey);
+      const rest = its.filter(it => !it.manual && !it.submitted && !it.holiday).length;
+      const st = (k === 'pm' && pmLocked) ? `${shiftCut}${L({ja:'から',en:' onwards',vi:' trở đi'})}` : rest ? `${L({ja:'残り',en:'left',vi:'còn'})} ${rest}` : L({ja:'完了',en:'done',vi:'xong'});
+      return `<button class="pb-slot pb-fold${open ? ' open' : ''}" id="pbslot-${k}" data-fold="${k}">${L(SHIFT_LBL_[k])}${k === nowKey ? ` <small>${L({ja:'いま',en:'now',vi:'bây giờ'})}</small>` : ''}<span class="pb-foldst">${st}${svg('chev')}</span></button>` +
+        `<div class="pb-foldbody${open ? '' : ' hid'}">${its.map(it => pbFlowRow_(it, (k === 'pm' && pmLocked) ? `${shiftCut}${L({ja:'から出せます',en:' onwards',vi:' trở đi'})}` : '')).join('')}</div>`;
+    };
     const flow = shiftCut ? shiftBlk_('am', amIts) + shiftBlk_('pm', pmIts) : PB_SLOTS.map(([k, n]) => {
       const its = inSlot(k); if (!its.length) return '';
       return `<div class="pb-slot" id="pbslot-${k}">${L(n)}${k === nowKey ? ` <small>${L({ja:'いま',en:'now',vi:'bây giờ'})}</small>` : ''}</div>${its.map(pbFlowRow_).join('')}`;
@@ -2155,8 +2165,9 @@
     const numN = ['manager', 'owner'].includes(role) ? numOpen_(visibleStores()).length : 0;
     const numStrip = numN > 0 ? `<button class="pb-strip" data-open="numcheck"><span><b>${L({ja:'数字の要確認',en:'Numbers to check',vi:'Số liệu cần xác nhận'})}</b>${numN} ${L({ja:'件・日報の数字を見直してください',en:'item(s). Please recheck the daily report.',vi:'mục. Kiểm tra lại báo cáo.'})}</span>${svg('chev')}</button>` : '';
     const rep = hqReplyData_(role);
-    const repCard = rep.rows.length ? `<div class="pb-sec"><h2>${L({ja:'本部からの返答',en:'Replies from HQ',vi:'Phản hồi từ HQ'})}</h2><small>${L({ja:'直近7日',en:'Last 7 days',vi:'7 ngày qua'})}</small></div>
-      <div class="pb-card pb-rep">${rep.rows.map(x => `<button class="pb-row" ${rep.PHOTO[x.kind] ? `data-tsub="openphoto" data-tsubphoto="${esc(x.kind)}"` : `data-go="${esc(rep.ROUTE[x.kind])}"`}><span class="pb-rowtx"><span class="pb-nm">${esc(L(rep.LABEL[x.kind]))}</span><span class="pb-sub">${esc(x.a.memo)} ・ ${timeAgo(x.a.ts)}</span></span><span class="pb-rt">${svg('chev')}</span></button>`).join('')}</div>` : '';
+    const repOpen = foldOpen_('rep', false), repNew = rep.rows.some(x => (x.a.ts || 0) > repSeenTs_(store)), repMax = rep.rows.reduce((a, x) => Math.max(a, x.a.ts || 0), 0);
+    const repCard = rep.rows.length ? `<button class="pb-sec pb-fold${repOpen ? ' open' : ''}" data-fold="rep" data-foldseen="${repMax}"><h2>${L({ja:'本部からの返答',en:'Replies from HQ',vi:'Phản hồi từ HQ'})}${repNew ? ' <span class="pb-new">NEW</span>' : ''}</h2><small>${rep.rows.length} ${L({ja:'件・直近7日',en:'in last 7 days',vi:'trong 7 ngày'})}${svg('chev')}</small></button>
+      <div class="pb-card pb-rep pb-foldbody${repOpen ? '' : ' hid'}">${rep.rows.map(x => `<button class="pb-row" ${rep.PHOTO[x.kind] ? `data-tsub="openphoto" data-tsubphoto="${esc(x.kind)}"` : `data-go="${esc(rep.ROUTE[x.kind])}"`}><span class="pb-rowtx"><span class="pb-nm">${esc(L(rep.LABEL[x.kind]))}</span><span class="pb-sub">${esc(x.a.memo)} ・ ${timeAgo(x.a.ts)}</span></span><span class="pb-rt">${svg('chev')}</span></button>`).join('')}</div>` : '';
     return `<main class="screen pb-home"><div class="pb-2col"><div class="pb-col">${cover}${pwStrip}${overStrip}${svStrip}${numStrip}${newsStrip}${repCard}${faqFacGate_()}${pbRegiCard_(store)}${nippouCard}${hoCard}</div><div class="pb-col">
       <div class="pb-sec"><h2>${L({ja:'今日の流れ',en:'Today’s flow',vi:'Việc hôm nay'})}</h2><small>${L({ja:'時間帯の順',en:'In time order',vi:'Theo giờ'})}</small></div>
       <div class="pb-card pb-flow">${flow || `<div class="muted">${L({ja:'今日の提出物はありません',en:'Nothing today',vi:'Hôm nay không có'})}</div>`}</div>
@@ -4714,7 +4725,12 @@
   const shiftCutTs_ = (store, dk) => { const hm = shiftCutOf_(store); return hm ? Date.parse(String(dk) + 'T' + hm + ':00+09:00') : NaN; };
   const shiftNow_ = (store) => { const hm = shiftCutOf_(store); if (!hm) return ''; let n = '00:00'; try { n = nowHMFor(store) || '00:00'; } catch (e) {} return n >= hm ? 'pm' : 'am'; };
   const shiftSfx_ = (store) => shiftNow_(store) === 'pm' ? '#pm' : '';
-  const ckDoneKey = (store, mode) => `${store}||${mode}||${todayKey()}${shiftSfx_(store)}`;
+  let _shiftTimer_ = 0;   // 境の時刻でホームを描き直すタイマー
+  /* チェックリストの部＝ホームの行が URL の引数（?shift=am／pm）で渡したものが正。引数の無い入口（提出物の一覧・見る など）は時刻で判定。端末には残さない（翌日に持ち越さない）。2部制でない店は常に '' */
+  const ckShiftSfx_ = (store) => { if (!shiftCutOf_(store)) return ''; let v = ''; try { v = String(currentRoute().params.get('shift') || ''); } catch (e) {} return v === 'pm' ? '#pm' : v === 'am' ? '' : shiftSfx_(store); };
+  const ckDoneKey = (store, mode) => `${store}||${mode}||${todayKey()}${ckShiftSfx_(store)}`;
+  /* 本部・オーナーの実施状況（1日単位）＝2部制の店は昼と夜のうち進んでいる方を見せる（同数なら、いまの部） */
+  const ckDayKey_ = (store, mode) => { const base = `${store}||${mode}||${todayKey()}`; if (!shiftCutOf_(store)) return base; const d = getCkDone(); const ids = ckIdsOf(store, mode); const c = (k) => { const m = d[k] || {}; return ids.filter(id => m[id]).length; }; const a = c(base), p = c(base + '#pm'); return (p > a || (p === a && shiftNow_(store) === 'pm')) ? base + '#pm' : base; };
   const ckCanEdit = () => ['manager','owner','hq'].includes(getRole());
   let ckSampleEditOpen = false; // 点検の「お手本」編集欄を開いているか（2026-08-30）
   // 誰がいつ実施したか（全端末共有）。チェックの中身とは別に持つ（IDと混ざらないように）
@@ -4738,7 +4754,7 @@
   // その店舗×モードの項目数（本部共通＋店舗独自）
   const ckTotalOf = (store, mode) => ckIdsOf(store, mode).length;
   const ckDoneCountOf = (store, mode) => {
-    const done = getCkDone()[ckDoneKey(store, mode)] || {};
+    const done = getCkDone()[ckDayKey_(store, mode)] || {};   // 本部・オーナーの一覧＝1日単位（2部制は進んでいる方）
     return ckIdsOf(store, mode).filter(id => done[id]).length;
   };
   /* ★外した／消したあとに何件残るか（2026-08-14 神田さんのご判断）。
@@ -4772,7 +4788,7 @@
       const cells = CK_MODES.map(m => {
         const total = ckTotalOf(store, m.v) || 1;
         const n = ckDoneCountOf(store, m.v);
-        const meta = getCkMeta()[ckDoneKey(store, m.v)] || {};
+        const meta = getCkMeta()[ckDayKey_(store, m.v)] || {};
         const pct = Math.round(n / total * 100);
         const col = n === 0 ? '#a23b3b' : (n >= total ? '#2a7' : 'inherit');
         return `<div class="dcell${n ? '' : ' off'}">
@@ -4784,7 +4800,7 @@
       return `<div class="card"><h3 style="font-size:13px">${esc(storeLabel(store))}</h3><div class="dgrid">${cells}</div></div>`;
     };
     /* ★店舗が多いと縦に長い（本部＝12店×カード）→ 1店1行の表（2026-09-18 神田さん）。セル＝実施数/全体（未実施は赤・完了は緑） */
-    const trow = (store) => `<tr><th>${esc(storeShort(store))}</th>${CK_MODES.map(m => { const total = ckTotalOf(store, m.v) || 1; const n = ckDoneCountOf(store, m.v); const cls = n === 0 ? 'r' : (n >= total ? 'g' : 'y'); const meta = getCkMeta()[ckDoneKey(store, m.v)] || {}; return `<td class="${cls}">${n}/${total}${meta.by ? `<small>${esc(meta.by)}</small>` : ''}</td>`; }).join('')}</tr>`;
+    const trow = (store) => `<tr><th>${esc(storeShort(store))}</th>${CK_MODES.map(m => { const total = ckTotalOf(store, m.v) || 1; const n = ckDoneCountOf(store, m.v); const cls = n === 0 ? 'r' : (n >= total ? 'g' : 'y'); const meta = getCkMeta()[ckDayKey_(store, m.v)] || {}; return `<td class="${cls}">${n}/${total}${meta.by ? `<small>${esc(meta.by)}</small>` : ''}</td>`; }).join('')}</tr>`;
     const table = `<div class="card ckov"><table><thead><tr><th>${L({ ja:'店舗', en:'Store', vi:'Cửa hàng' })}</th>${CK_MODES.map(m => `<th>${esc(L(m.t))}</th>`).join('')}</tr></thead><tbody>${vis.map(trow).join('')}</tbody></table>
       <div class="hint">${L({ ja:'赤＝未実施／黄＝途中／緑＝完了。だれが実施したかは店舗を選ぶと見られます（右上の店舗から）。', en:'Red = not started / yellow = partial / green = done.', vi:'Đỏ = chưa / vàng = dở / xanh = xong.' })}</div></div>`;
     if (vis.length > 4) return `
@@ -4806,6 +4822,7 @@
     const custom = ckCustom(store, mode, hygDay);
     const hidden = ckHidden(store, mode, hygDay);   // この店舗で外した共通項目
     const done = getCkDone()[ckDoneKey(store, mode)] || {};
+    try { _ckRenderedKey = ckDoneKey(store, mode); } catch (e) {}   // ★2部制＝境をまたいで押したら描き直す（昼の表示のまま夜へ保存しない）
     const editable = ckCanEdit();
     const canHide = editable && CK_HIDABLE.includes(ckBase(mode)); // 5種類とも、店長・オーナーが外せる
     // 定期衛生は曜日ごとに内容が違うため、チェックのIDにも曜日を入れる（別の曜日と混ざらないように）
@@ -9407,7 +9424,7 @@
          2026-08-12 神田さんのご指摘で修正。以前は1つでもチェックすれば実施とみなしていたため、
          途中までしか終わっていないのに「今日出すもの」から消えてしまっていた。
          点検は最後まで通してこそ意味があるので、途中は未提出のまま残す。 */
-      if (m.detect === 'ckdone') return ckAllDoneOf(store, m.ckMode || 'open', dk + (shift === 'pm' ? '#pm' : ''));   // 夜の部＝別キー
+      if (m.detect === 'ckdone') { const md = m.ckMode || 'open'; if (shift) return ckAllDoneOf(store, md, dk + (shift === 'pm' ? '#pm' : '')); return ckAllDoneOf(store, md, dk) || (!!shiftCutOf_(store) && ckAllDoneOf(store, md, dk + '#pm')); }   // 夜の部＝別キー。部の指定なし（本部）＝どちらかが全部済み
       if (m.detect === 'video')  return getReports().some(r => r.kind === 'video' && r.store === store && inScope(r.t));
       // ★対象日の月で判定する（以前は常に「今月」だったため、先月ぶんの確認ができなかった）
       if (m.detect === 'monthly') return getMonthly().some(r => r.store === store && r.ym === dk.slice(0, 7));
@@ -9430,7 +9447,7 @@
       const manual = m.detect === 'none'; // 自動判定できない（手動運用）
       const submitted = manual ? null : (holiday ? true : detectSubmitted(store, m, dk, shift));
       const st = getStatus(store, m.id, dk);
-      const overdue = !manual && !submitted && !holiday && nowHMFor(store) > (m.due || '23:59') && m.freq === 'daily' && shift !== 'pm';   // 夜の部は朝の締切（11:00）で超過にしない
+      const overdue = !manual && !submitted && !holiday && nowHMFor(store) > (m.due || '23:59') && m.freq === 'daily' && !(shift === 'pm' && String(m.due || '') <= '12:00');   // 夜の部の開店前項目は朝の締切（11:00）で超過にしない（締めの23:59はそのまま）
       return { m, dk, submitted, manual, holiday, overdue, status: st, prev, shift: shift || '' };
     });
   }
@@ -10962,7 +10979,8 @@
       if (t.dataset.tsub) {
         if (t.dataset.tsubmode) localStorage.setItem('yosakura_ckmode', t.dataset.tsubmode);
         if (t.dataset.tsubphoto) localStorage.setItem('yosakura_photo_target', t.dataset.tsubphoto);
-        go(`/app/${t.dataset.tsub}${t.dataset.tsubq ? '?' + t.dataset.tsubq : ''}`); return;
+        const q = [t.dataset.tsubq || '', t.dataset.tsubshift ? 'shift=' + t.dataset.tsubshift : ''].filter(Boolean).join('&');   // ★2部制＝どの部の記録を開くかは行が URL で渡す（他の入口は時刻で）
+        go(`/app/${t.dataset.tsub}${q ? '?' + q : ''}`); return;
       }
       if (t.dataset.tmissing) { const cur = localStorage.getItem('yosakura_sub_missingonly') === '1'; localStorage.setItem('yosakura_sub_missingonly', cur ? '0' : '1'); render(); return; }
       if (t.dataset.tdrill) { openTeishutsuDrill(t.dataset.tdrill); return; }
@@ -12029,6 +12047,7 @@
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab === 'home' ? '/home' : `/home?tab=${b.dataset.tab}`));
     // 案B＝上の3つの帯（開店前／営業中／締め）を押すとその区切りへ飛ぶ（1画面に流れ順で並べたまま）
     // ★2026-10-20 神田さん「締めを押しても、ボタンがずっと開店前のピンク」＝押した時間帯のボタンを選択中の色にする
+    document.querySelectorAll('[data-fold]').forEach(b => b.onclick = () => { const k = b.dataset.fold; const open = b.classList.contains('open'); try { localStorage.setItem('yosakura_fold_' + k, open ? '0' : '1'); if (k === 'rep' && !open && b.dataset.foldseen) localStorage.setItem('yosakura_rep_seen||' + visibleStores()[0], String(b.dataset.foldseen)); } catch (e) {} render(true); });
     document.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => { const el = document.getElementById(b.dataset.jump); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (b.classList && b.classList.contains('pb-band')) { document.querySelectorAll('.pb-band').forEach(x => x.classList.toggle('on', x === b)); } });
     // 総括表のビジュアル：期間/指標の切替・個店カルテ・その日の日報
     document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
@@ -13142,6 +13161,7 @@
       if (e.target.closest('[data-ckdel]') || e.target.closest('[data-ckhide]') || e.target.closest('[data-ckgrp]')) return; // 削除・非表示・分類ボタンは別処理
       if (e.target.closest('[data-ckgo]')) { go(e.target.closest('[data-ckgo]').dataset.ckgo); return; }   // 画面292：項目から別画面へ（チェックは切り替えない）
       const store = visibleStores()[0], mode = getCkMode(), key = ckDoneKey(store, mode), id = row.dataset.ck;
+      if (_ckRenderedKey && key !== _ckRenderedKey) { render(); return; }   // ★境（17:00／朝5時）をまたいだ＝いまの部を出し直してから押してもらう
       const map = getCkDone(); const day = map[key] || {}; day[id] = !day[id]; map[key] = day;
       /* ★2026-09-23 神田さん「履歴が全部消えてる」＝間引きのキーが store||mode||日付 の形なのに、
          キー文字列をそのままソートして末尾40件を残していた。store名・mode名が先頭にあるため
@@ -13172,7 +13192,7 @@
       /* ★2026-09-24 神田さん実機「連続で入れるとカクカク・パチパチ」＝タップごとに送信→直後の同期→画面全体の作り直し、
          という2つ目の経路が残っていた（v278はタップの瞬間の作り直しを止めただけ）。送信は1.5秒まとめて1回にし、
          送ったあとも同期は呼ばない。同期が走っても、この画面は行のクラスと件数だけ差し替える（ckApplyDom_）。 */
-      queueCkPost_(store, mode, day, t);
+      queueCkPost_(store, mode, day, t, key);
     });
     /* 店舗ごとのカスタマイズ（追加・削除・共通項目の非表示）。
        ★保存のキーは ckKey に合わせる＝定期衛生は曜日ごとに別々に持つ（2026-08-13）。
@@ -13901,10 +13921,12 @@
   /* ★チェックリストの送信をまとめる箱（2026-09-24）。タップのたびに送ると古いiPadでは
      送信→返事→同期→作り直しが連なって画面がカクカクする。最後のタップから1.5秒待って1回だけ送る。
      画面を離れる・アプリが裏に回る・閉じるときは待たずに送る（keepalive 付き＝閉じても届く）。 */
-  let _ckQ = null, _ckTimer = 0, _lastCkTap = 0;
-  function queueCkPost_(store, mode, day, t) {
+  let _ckQ = null, _ckTimer = 0, _lastCkTap = 0, _ckRenderedKey = '';   // _ckRenderedKey＝チェック画面を描いたときのキー（17時またぎの検出）
+  function queueCkPost_(store, mode, day, t, key) {
     _lastCkTap = t;
-    _ckQ = { kind:'ckdone', store, item:`${mode}||${todayKey()}`, note: JSON.stringify({ done: day, by: submitterLabel() }), t };
+    const item = key ? String(key).split('||').slice(1).join('||') : `${mode}||${todayKey()}${ckShiftSfx_(store)}`;   // ★保存したキーをそのまま送る（store||mode||日付[#pm] → mode||日付[#pm]）。取込側は store||item がキー
+    if (_ckQ && (_ckQ.item !== item || _ckQ.store !== store)) flushCkPost_();   // ★別のキー（境をまたいだ・部が違う）の送信待ちは先に送る＝上書きで消さない
+    _ckQ = { kind:'ckdone', store, item, note: JSON.stringify({ done: day, by: submitterLabel() }), t };
     clearTimeout(_ckTimer); _ckTimer = setTimeout(flushCkPost_, 1500);
   }
   function flushCkPost_() {
