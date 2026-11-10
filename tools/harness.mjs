@@ -6845,9 +6845,9 @@ console.log('== 2026-10-22 神田さん「棚卸マニュアルとか、すで�
   location.hash = '#/app/manual'; let h = registry.app.innerHTML;
   ok(/1枚マニュアル（かんたん版）/.test(h) && /月末棚卸</.test(h) && /Ver1\.1/.test(h) && !/tanaoroshi_soukatsu/.test(h) && /カスタマーハラスメント対応/.test(h), '店長のマニュアル画面＝先頭に1枚マニュアル（棚卸・カスハラ）');
   ok(/data-openurl="[^"]*yosakura-app-preview\/manual\/tanaoroshi_kantan\.pdf/.test(h) && /manual\/kasuhara\.pdf/.test(h) && !/drive\.google\.com/.test(h), '全店配布＝アプリの公開先 manual/ のPDF（ログイン不要）。店舗の画面にDriveのリンクは無い');
-  ok(!/提出物のルール/.test(h) && !/HACCP（衛生管理計画と記録）/.test(h) && !/表示ルール（総額表示/.test(h) && !/class="mchip/.test(h), '店舗には全店リリース済みだけ（現場テスト中・本部確認中・本部資料は出ない・札も無し）');
+  ok(/提出物のルール/.test(h) && /manual\/teishutsu_kantan\.pdf/.test(h) && !/HACCP（衛生管理計画と記録）/.test(h) && !/表示ルール（総額表示/.test(h) && !/class="mchip/.test(h), '店舗には全店リリース済みだけ（11/10 提出物のルール Ver1.0 も同梱PDFで出る。現場テスト中・本部確認中・本部資料は出ない・札も無し）');
   const nStore = (h.match(/class="mrow" data-openurl="[^"]*yosakura-app-preview\/manual\//g) || []).length;
-  ok(nStore === 9, '店舗に出る1枚マニュアル＝9本（棚卸1・防火1・カスハラ4＋11/9 リリースの情報管理・日報・7DAYS別紙）: ' + nStore);
+  ok(nStore === 10, '店舗に出る1枚マニュアル＝10本（棚卸1・防火1・カスハラ4＋11/9 リリースの情報管理・日報・7DAYS別紙＋11/10 提出物のルール）: ' + nStore);
   ok(/data-openurl="[^"]*yosakura-app-preview\/manual\/bouka_kantan\.pdf/.test(h) && /防火・避難/.test(h), '防火・避難＝棚卸と同じ＝店舗にも manual/ のPDFで出る');
   ok(/manual\/joho_kantan\.pdf/.test(h) && /manual\/nippou_kantan\.pdf/.test(h) && /manual\/sevendays_besshi_kantan\.pdf/.test(h) && /日報の出し方と数字の直し方/.test(h), '2026-11-09 増田さんがリリースした3本（情報管理・日報・7DAYS別紙）＝店舗にも同梱PDFで出る（増田さん「アプリでもマニュアル確認できる」）');
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
@@ -6856,10 +6856,10 @@ console.log('== 2026-10-22 神田さん「棚卸マニュアルとか、すで�
   location.hash = '#/app/manual'; h = registry.app.innerHTML;
   const nHq = (h.match(/class="mrow" data-openurl="[^"]*(drive\.google\.com\/file\/d\/|yosakura-app-preview\/manual\/)/g) || []).length;
   ok(nHq === 27 && /mchip--all">全店</.test(h) && /mchip--test">現場テスト中</.test(h) && /mchip--hq">本部確認中</.test(h) && /mchip--hqonly">本部資料</.test(h), '本部には全部（27本）を状態の札つきで（全店／現場テスト中／本部確認中／本部資料）: ' + nHq);
-  ok(/全店（9）/.test(h) && /現場テスト中（7）/.test(h) && /本部確認中（10）/.test(h) && /本部資料（1）/.test(h), '本部の並び＝状態ごとにまとめて件数つき（11/9 全店9・現場テスト中7・本部確認中10）');
+  ok(/全店（10）/.test(h) && /現場テスト中（6）/.test(h) && /本部確認中（10）/.test(h) && /本部資料（1）/.test(h), '本部の並び＝状態ごとにまとめて件数つき（11/10 全店10・現場テスト中6・本部確認中10）');
   ok(/状態はいる・いらないスプシのK列が正/.test(h), '本部向けの注記＝状態の正はいる・いらないスプシ');
   { const ids = (code.match(/st:'(?:all|test|hq|hqonly)'[^\n]*?id:'(1[A-Za-z0-9_-]{25,})'/g) || []).map(x => x.replace(/^.*id:'/, '').slice(0, -1)); ok(ids.length === 27 && new Set(ids).size === 27, 'ソース＝1枚マニュアルのDrive IDは27本すべて別（重複なし）: ' + ids.length); }
-  { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 12 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の9本＋アレルギー表3本（2026-10-22・11/3 防火・11/9 情報管理/日報/7DAYS別紙）のPDFが manual/ に実在する: ' + pdfs.join(',')); }
+  { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 13 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の10本＋アレルギー表3本（2026-10-22・11/3 防火・11/9 情報管理/日報/7DAYS別紙・11/10 提出物のルール）のPDFが manual/ に実在する: ' + pdfs.join(',')); }
 }
 
 console.log('== 2026-10-22 本部の見え方＝案Bの本部画面（神田さん「B案の本部画面を基準に」。10/20 の「準備中」は引退）==');
