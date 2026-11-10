@@ -5308,7 +5308,7 @@
      ・マスタの列＝店舗番号／店舗名／和牛／ポップ／ハラル…。URLが入っている列が「注文フォーム」。「ー」や空欄はその店に無い。
      ・店舗名はマスタの表記（和牛カツ世桜…）を normalizeStore で正式名へ寄せて結びつける。 */
   const getOrderForms = () => { try { const p = JSON.parse(localStorage.getItem('yosakura_demo_orderforms')); return (p && Array.isArray(p.rows)) ? p.rows : []; } catch (e) { return []; } };
-  const OF_LABEL = { '和牛': { ja:'和牛を注文する', en:'Order Wagyu', vi:'Đặt Wagyu' }, 'ポップ': { ja:'POP・販促物を注文する', en:'Order POP & print', vi:'Đặt POP & ấn phẩm' }, 'ハラル': { ja:'ハラル鰻を注文する', en:'Order Halal eel', vi:'Đặt lươn Halal' } };
+  const OF_LABEL = { '和牛': { ja:'和牛を注文する', en:'Order Wagyu', vi:'Đặt Wagyu' }, 'ポップ': { ja:'梅酒・POP・販促物を注文する', en:'Order plum wine, POP & print', vi:'Đặt rượu mơ, POP & ấn phẩm' }   /* ★2026-11-10 増田さん「梅酒が一番頻度が高いので『梅酒・POP・販促物を注文する』に」 */, 'ハラル': { ja:'ハラル鰻を注文する', en:'Order Halal eel', vi:'Đặt lươn Halal' } };
   const ofLabel_ = (key) => OF_LABEL[key] ? L(OF_LABEL[key]) : (String(key) + L({ ja:'を注文する', en:' order form', vi:' – đặt hàng' }));
   const ofRowFor_ = (store) => { const st = normalizeStore(store); return getOrderForms().find(r => r && normalizeStore(r.store) === st) || null; };
   /* ★2026-11-10 増田さん「和牛フォームのボタンは12月末まで非表示で」＝仕入先（銘洋）の11・12月の繁忙期を避けて1月から。
