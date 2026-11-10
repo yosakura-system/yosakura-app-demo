@@ -297,6 +297,10 @@
     '日本料理世桜 長堀橋店': '日本料理世桜本店',
     '日本料理世桜 長堀橋': '日本料理世桜本店',
     '牛カツ世桜 ハノイ店': '牛カツ世桜 ファンケビン店',
+    /* ★2026-11-10 新田さんの「店舗名マスタ」（注文フォームの一覧）は牛カツ2店を「和牛カツ世桜」と書く。
+       注文フォームを店に結びつけるため、同じ店として寄せる（マスタ側は直さない＝正は向こう）。 */
+    '和牛カツ世桜 富士山店': '牛カツ世桜 富士山店',
+    '和牛カツ世桜 長堀橋店': '牛カツ世桜 長堀橋店',
     '日本鰻世桜 ホーチミン1号店': '日本鰻世桜 ホーチミン店'
   };
   const normalizeStore = (s) => {
@@ -5297,14 +5301,62 @@
     return `${lead ? `<div class="pb-card"><div class="muted">${lead}</div></div>` : ''}<div class="pb-card" style="padding-top:0">${rows}</div>
       <p class="pb-note">${L({ ja:'表に無いこと・分からないことは、推測で答えずに本部へ確認します。', en:'If it is not in the table or unclear, ask HQ instead of guessing.', vi:'Nếu không có trong bảng hoặc không rõ, hỏi HQ, không đoán.' })}</p>`;
   };
+  /* ★2026-11-10 神田さん「新田さんの店舗名マスタにある店舗ごとの注文フォームへ、アプリから飛べるように。
+       店舗のIDはログインした店のフォームへ直接。個人のID（本部・複数店の店長・オーナー）は店舗を選んで『発注』を押すとそのフォームへ」
+     ・正は本部ドライブの「店舗名マスタ」（新田さん作成）。GAS（注文フォーム取込.gs）が毎時読んで kind=orderforms の1行に写す＝アプリは写しを読むだけ。
+       フォームのURLをアプリのコード（公開リポジトリ）に書かない（10/12 セキュリティ原則）。
+     ・マスタの列＝店舗番号／店舗名／和牛／ポップ／ハラル…。URLが入っている列が「注文フォーム」。「ー」や空欄はその店に無い。
+     ・店舗名はマスタの表記（和牛カツ世桜…）を normalizeStore で正式名へ寄せて結びつける。 */
+  const getOrderForms = () => { try { const p = JSON.parse(localStorage.getItem('yosakura_demo_orderforms')); return (p && Array.isArray(p.rows)) ? p.rows : []; } catch (e) { return []; } };
+  const OF_LABEL = { '和牛': { ja:'和牛を注文する', en:'Order Wagyu', vi:'Đặt Wagyu' }, 'ポップ': { ja:'POP・販促物を注文する', en:'Order POP & print', vi:'Đặt POP & ấn phẩm' }, 'ハラル': { ja:'ハラル鰻を注文する', en:'Order Halal eel', vi:'Đặt lươn Halal' } };
+  const ofLabel_ = (key) => OF_LABEL[key] ? L(OF_LABEL[key]) : (String(key) + L({ ja:'を注文する', en:' order form', vi:' – đặt hàng' }));
+  const ofRowFor_ = (store) => { const st = normalizeStore(store); return getOrderForms().find(r => r && normalizeStore(r.store) === st) || null; };
+  const ofFormsOf_ = (row) => (row && Array.isArray(row.forms) ? row.forms : []).filter(f => f && isHttp(f.url));
+  /* 注文できる店＝店舗のIDは自店だけ・本部は全店・オーナーは所有店・複数店の店長はその店（ログイン時の stores） */
+  const ofStores_ = () => {
+    const role = getRole(), a = getAuth();
+    if (role === 'hq') return STORES.slice();
+    const norm = (arr) => { const out = []; (arr || []).forEach(x => { const n = normalizeStore(x); if (STORES.includes(n) && !out.includes(n)) out.push(n); }); return out; };
+    if (role === 'owner') { const os = norm(ownerStores_()); return os.length ? os : visibleStores(); }
+    const raw = (a && Array.isArray(a.stores)) ? a.stores : [];
+    if (raw.includes('*')) return STORES.slice();           // 全店の権限（本部IDを店舗責任者の見え方で使う人）＝全店から選ぶ
+    const own = norm(raw);                                   // 許可された店（1店でも、別名表記でも、ここで正式名にそろう）
+    return own.length ? own : visibleStores();
+  };
+  let ofSel_ = '';   // 個人のIDで選んだ店（画面を離れても覚える・端末には保存しない）
   APP_VIEWS.ordertop = () => {
     const role = getRole();
     /* ★2026-10-23 増田さん「12-18.発注リストは開業時の初期在庫のリスト＝店舗ごとに発注先と品が違う。一旦外して『準備中』に。店舗ごとのリストを後で上げる」
        ＝題に「12-18」か「発注リスト」を含む注文先は出さない（資料リンクの管理に残っていても）。店舗ごとの注文先が登録されたら、この除外は外す */
     const rows = getLinks().filter(l => l && isHttp(l.url) && /発注|注文|パートナーズ|仕入/.test(String(l.title || '')) && !/12-18|発注リスト/.test(String(l.title || '')));
-    const rowsHtml = rows.length ? `<div class="pb-card" style="padding-top:0">${rows.map(l => `<button type="button" class="pb-orow" data-openurl="${esc(openUrlFor(l.url))}"><span class="st">${svg('box')}</span><span><span class="nm">${esc(l.title)}</span>${l.desc ? `<br><span class="sub">${esc(l.desc)}</span>` : ''}</span><span class="rt">${svg('chev')}</span></button>`).join('')}</div>`
-      : `<div class="pb-card"><div class="muted">${L({ ja:'店舗ごとの注文先リストを準備中です。できしだい、ここに出ます。それまでは、これまでどおりの方法でご注文ください。', en:'Store-specific order lists are being prepared and will appear here. Until then, order as you do now.', vi:'Danh sách đặt hàng theo cửa hàng đang được chuẩn bị. Trong lúc chờ, hãy đặt hàng như hiện nay.' })}</div>${role === 'hq' ? `<button type="button" class="mini" data-open="materials" style="margin-top:8px">${L({ ja:'資料リンクの管理を開く', en:'Open Document links', vi:'Mở Quản lý liên kết' })}</button>` : ''}</div>`;
-    return `${rowsHtml}<p class="pb-note">${L({ ja:'在庫の数で足りない物は、「きょうやること」の在庫の画面（発注リスト）に出ます。', en:'Items short in stock appear in the order list under Today.', vi:'Hàng thiếu sẽ hiện trong danh sách đặt ở Hôm nay.' })}</p>`;
+    const linkRows = rows.map(l => `<button type="button" class="pb-orow" data-openurl="${esc(openUrlFor(l.url))}"><span class="st">${svg('box')}</span><span><span class="nm">${esc(l.title)}</span>${l.desc ? `<br><span class="sub">${esc(l.desc)}</span>` : ''}</span><span class="rt">${svg('chev')}</span></button>`).join('');
+    const stores = ofStores_();
+    const haveForms = getOrderForms().length > 0;
+    let formHtml = '';
+    if (haveForms && stores.length === 1) {
+      /* 店舗のID＝自店の注文フォームへ直接 */
+      const st = stores[0], row = ofRowFor_(st), forms = ofFormsOf_(row);
+      formHtml = forms.length
+        ? `<div class="pb-card" style="padding-top:0"><div class="pb-ttl2" style="padding:10px 4px 2px">${esc(storeShort(st))}${row && row.code ? `<span class="sub" style="margin-left:8px">${esc(row.code)}</span>` : ''}</div>${forms.map(f => `<button type="button" class="pb-orow" data-openurl="${esc(f.url)}"><span class="st">${svg('box')}</span><span><span class="nm">${esc(ofLabel_(f.key))}</span><br><span class="sub">${L({ ja:'店名と店舗番号は入った状態で開きます', en:'Opens with your store pre-filled', vi:'Mở với tên cửa hàng đã điền sẵn' })}</span></span><span class="rt">${svg('chev')}</span></button>`).join('')}</div>`
+        : `<div class="pb-card"><div class="muted">${L({ ja:'この店の注文フォームは、まだ本部の店舗名マスタに登録されていません。本部へご連絡ください。', en:'No order form is registered for this store yet. Please contact HQ.', vi:'Cửa hàng này chưa có form đặt hàng. Hãy liên hệ HQ.' })}</div></div>`;
+    } else if (haveForms && stores.length > 1) {
+      /* 個人のID＝店舗を選んで「発注」 */
+      if (!stores.includes(ofSel_)) { const cur = getStoreSel(); ofSel_ = stores.includes(cur) ? cur : stores[0]; }
+      const keys = []; getOrderForms().forEach(r => ofFormsOf_(r).forEach(f => { if (!keys.includes(f.key)) keys.push(f.key); }));
+      const row = ofRowFor_(ofSel_), has = ofFormsOf_(row).map(f => f.key);
+      formHtml = `<div class="pb-card">
+        <label class="fld"><span>${L({ ja:'どの店の注文ですか', en:'Which store?', vi:'Cửa hàng nào?' })}</span><select id="of_store">${stores.map(st => `<option value="${esc(st)}"${st === ofSel_ ? ' selected' : ''}>${esc(storeShort(st))}</option>`).join('')}</select></label>
+        ${keys.map(k => `<button type="button" class="btn-primary" data-ofopen="${esc(k)}" style="margin-top:8px;width:100%${has.includes(k) ? '' : ';opacity:.45'}">${esc(ofLabel_(k))}${L({ ja:'（発注）', en:' (order)', vi:' (đặt)' })}</button>`).join('')}
+        <div class="hint">${L({ ja:'押すと、選んだ店の名前と店舗番号が入った注文フォームが開きます。薄い項目は、その店には無い注文です。', en:'Opens the order form pre-filled with the selected store. Faded items are not available for that store.', vi:'Mở form với cửa hàng đã chọn. Mục mờ là loại không có ở cửa hàng đó.' })}</div>
+      </div>`;
+    }
+    const linkHtml = linkRows
+      ? `${formHtml ? `<div class="pb-ttl2" style="padding:12px 4px 4px">${L({ ja:'そのほかの注文先', en:'Other order links', vi:'Nơi đặt hàng khác' })}</div>` : ''}<div class="pb-card" style="padding-top:0">${linkRows}</div>`
+      : '';
+    const empty = (!formHtml && !linkHtml)
+      ? `<div class="pb-card"><div class="muted">${L({ ja:'店舗ごとの注文先リストを準備中です。できしだい、ここに出ます。それまでは、これまでどおりの方法でご注文ください。', en:'Store-specific order lists are being prepared and will appear here. Until then, order as you do now.', vi:'Danh sách đặt hàng theo cửa hàng đang được chuẩn bị. Trong lúc chờ, hãy đặt hàng như hiện nay.' })}</div>${role === 'hq' ? `<button type="button" class="mini" data-open="materials" style="margin-top:8px">${L({ ja:'資料リンクの管理を開く', en:'Open Document links', vi:'Mở Quản lý liên kết' })}</button>` : ''}</div>`
+      : '';
+    return `${formHtml}${linkHtml}${empty}<p class="pb-note">${L({ ja:'在庫の数で足りない物は、「きょうやること」の在庫の画面（発注リスト）に出ます。', en:'Items short in stock appear in the order list under Today.', vi:'Hàng thiếu sẽ hiện trong danh sách đặt ở Hôm nay.' })}</p>`;
   };
   APP_VIEWS.othertop = () => {
     const chips = [['guide', { ja:'使い方', en:'How to use', vi:'Hướng dẫn' }, { ja:'1分', en:'1 min', vi:'1 phút' }], ['faq', { ja:'ルール集', en:'Rules & FAQ', vi:'Quy tắc' }, { ja:'迷ったら', en:'When unsure', vi:'Khi phân vân' }], ['whistle', { ja:'相談・通報', en:'Consult / report', vi:'Tư vấn / báo cáo' }, { ja:'本部へ直接', en:'Directly to HQ', vi:'Trực tiếp HQ' }], ['study', { ja:'勉強会', en:'Study sessions', vi:'Buổi học' }, { ja:'録画・資料', en:'Recordings', vi:'Ghi hình' }]]
@@ -12897,6 +12949,20 @@
       tasksUndo = null; tkPush(getTasks().filter(x => x && x.id !== b.dataset.tkdel));
     });
 
+    /* ★2026-11-10 注文フォーム＝店を選んで「発注」。選んだ店にその注文が無ければ開かずに知らせる */
+    const ofSelEl = document.getElementById('of_store');
+    if (ofSelEl) ofSelEl.onchange = () => {
+      ofSel_ = normalizeStore(ofSelEl.value);
+      const has = ofFormsOf_(ofRowFor_(ofSel_)).map(f => f.key);
+      document.querySelectorAll('[data-ofopen]').forEach(b => { b.style.opacity = has.includes(b.dataset.ofopen) ? '' : '.45'; });
+    };
+    document.querySelectorAll('[data-ofopen]').forEach(b => b.onclick = () => {
+      const sel = document.getElementById('of_store'); const st = sel ? normalizeStore(sel.value) : '';
+      if (st) ofSel_ = st;
+      const f = ofFormsOf_(ofRowFor_(st)).find(x => x.key === b.dataset.ofopen);
+      if (!f) { toast(L({ ja:'この店には、この注文フォームがありません', en:'This store has no such order form', vi:'Cửa hàng này không có form này' })); return; }
+      openDoc_(f.url, (b.textContent || '').trim());
+    });
     document.querySelectorAll('[data-openurl]').forEach(b => b.onclick = () => {
       const u = b.dataset.openurl;
       if (!isHttp(u)) { toast(L({ ja:'この資料はまだ登録されていません', en:'This document is not registered yet', vi:'Tài liệu này chưa được đăng ký' })); return; }
@@ -13573,6 +13639,7 @@
   function distribute(rows) {
     const numack = {}, numackT = {};   // 数字の要確認の「確認済み」＝キーごとに最新が正（2026-09-24）
     const food=[], subs=[], kz=[], route=[], open=[], sk=[], survey=[], svfb=[], video=[], whistle=[], news=[], comm=[]; const emg={}; const ckitem={}, ckitemT={}; const ckhide={}, ckhideT={}; const phs={}, phsT={}; const ckdone={}, ckmeta={}, ckdoneT={}; const study={}, studyT={}; const monthly={}, monthlyT={}, monthlyD={}, monthlyDV={}, monthlyCV={}; const commmod={}, commmodT={}, commlike={}; const commroll={}, commrollT={}, commtry={}, commtryT={}, commtryOn={}; let linkset=null, linksetT=null, faqset=null, faqsetT=null; let hqtask=null, hqtaskT=null; const svc={}, svcT={}, svcPh={}, svcPT={}; const svstd={}, svstdT={};
+    let orderforms=null, orderformsT=null;   // ★2026-11-10 注文フォーム（店舗名マスタの写し）
     /* ★同じ提出が何行にもなっているとき、1件にまとめて見せる（2026-09-03 実機で発覚）。
        受け取り側は1回のPOSTごとに1行を足す作りのため、返事が届かずに送り直されると
        中身が同じ行が並ぶ（長堀橋店の日計レポートが同じ写真で8行）。
@@ -13668,6 +13735,7 @@
         case 'commtry': { const k=r.item, s=store; if (!s) break; const p2=pj(r.note); const kk=k+'||'+s;
           if (commtryT[kk] == null || t >= commtryT[kk]) { commtryT[kk]=t; commtryOn[kk]=!(p2 && p2.on === false); } } break;
         case 'linkset': { const p=pj(r.note); if (Array.isArray(p) && (linksetT==null || t>=linksetT)) { linkset=p; linksetT=t; } } break; // 資料リンク一覧は最新版が正
+        case 'orderforms': { const p=pj(r.note); if (p && Array.isArray(p.rows) && (orderformsT==null || t>=orderformsT)) { orderforms=p; orderformsT=t; } } break; // ★2026-11-10 注文フォーム（店舗名マスタの写し）は最新版が正
         case 'faqset': { const p=pj(r.note); if (Array.isArray(p) && (faqsetT==null || t>=faqsetT)) { faqset=p; faqsetT=t; } } break; // よくある質問（本部追加分）は最新版が正
         // SVチェック（本部）＝店舗|日付|No ごとに最新が正（2人同時入力の合流）
         case 'svcheck': { const p=pj(r.note) || {}; const k=r.item; if (!k) break; const pt=Number(p.pt)||t; if (svcPT[k]==null || pt>=svcPT[k]) { svcPh[k]=Array.isArray(r.photos)?r.photos:[]; svcPT[k]=pt; } if (svcT[k]==null || t>=svcT[k]) { svc[k]=p; svcT[k]=t; } } break;   // ★写真は pt（写真を最後に変えた時刻）が新しい行の分＝○×・メモの保存で写真が減らない（2026-10-27 長堀橋で3枚→1枚）
@@ -13772,6 +13840,10 @@
     });
     set('yosakura_demo_commroll', commroll); set('yosakura_demo_commtry', commtry);
     if (linkset !== null) set('yosakura_demo_links', linkset); // linksetが無い同期では既存の資料リンクを保持
+    if (orderforms !== null) {   // ★2026-11-10 注文フォーム＝無い同期では端末の控えを保持。端末の控えのほうが新しければ（遅れて届いた古い応答）戻さない
+      let cur = null; try { cur = JSON.parse(localStorage.getItem('yosakura_demo_orderforms')); } catch (e) { cur = null; }
+      if (!(cur && Number(cur.t) > Number(orderformsT))) set('yosakura_demo_orderforms', orderforms);
+    }
     if (faqset !== null) set('yosakura_demo_faq', faqset); // faqsetが無い同期では既存のよくある質問を保持
     if (hqtask !== null) set('yosakura_demo_hqtask', hqtask); // hqtaskが無い同期では端末のタスクを保持（黙って消さない）
     /* ★SVチェック＝キーごとに「新しいほう」を残す（2026-09-16 神田さんの実機報告＝×にした直後の合流で元に戻る。

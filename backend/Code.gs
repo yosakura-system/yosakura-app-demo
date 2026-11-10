@@ -51,6 +51,7 @@ function autoPurgeOn_()    { return getSetting_('ENABLE_AUTO_PURGE', true) === t
 var PURGE_KEEP_KINDS  = ['submaster', 'subholiday', 'appfb', 'ckitem', 'ckhide', 'zaikomaster', 'staffm',   // staffm＝勤怠の名簿（総括表「勤怠表」から・2026-10-15）   // zaikomaster＝在庫の品目・基準在庫（2026-09-18）
                          'emg', 'linkset', 'faqset', 'study', 'news', 'soukatsu', 'phsample', 'monthly', 'gsnap',
                          'rvissue',   // ★2026-11-07 本部の口コミ・盛付チェック表の写し（口コミチェック取込.gs）＝推移を見るので恒久保存
+                         'orderforms', // ★2026-11-10 店舗ごとの注文フォーム（新田さんの店舗名マスタの写し・注文フォーム取込.gs）＝消えると注文の入口が消える
                          'newslike', 'newsread', 'newscmt',
                          /* ★2026-09-15 神田さん判断＝みんなの投稿・いいね・コメントは90日で消さない
                             （「1店舗への指摘が全店舗の教育になる」9/14決定＝古い投稿も教材として残す） */
