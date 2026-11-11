@@ -10784,61 +10784,63 @@
   }
 
   /* ★2026-11-11 構築MTG（社長）＝気づきの月間MVP。神田さん「本部のメンバーが月に1回、気づきの投稿を全部リスト化して、どれが一番良かったかを多数決で決めるグランプリ大会」
-     投票＝kind:'kzvote'（store ''・item＝対象の月・note＝{key, by, name}・本部だけ読める＝認証.gs AUTH_HQ_READ_KINDS）。1人1票＝同じ月は最新の1行が正（同じ投稿をもう一度押すと取り消し）。
+     投票＝kind:'kzvote'（store ''・item＝対象の月・note＝{keys:[印…], by, name}・本部だけ読める＝認証.gs AUTH_HQ_READ_KINDS）。1人3つまで＝同じ月は最新の1行が正（同じ投稿をもう一度押すと取り消し）。
      結果の発表は「お知らせを出す」で（恒久に残る）。kzvote 自体は90日で消えてよい */
   const kzLocalVotes_ = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_kzvote')) || []; } catch (e) { return []; } };
+  /* ★2026-11-11 夕 神田さん「各気づきの横の『MVPに確定』ボタンは不要。前月の気づきを本部メンバーがアプリで見て、各々3つまで投票。それを自動で集約してMVPが確定。締め切りは当月5日」
+     ＝確定の行（final）は作らない。締め切り＝対象月の翌月5日。過ぎたら投票を閉じ、票の多い投稿がMVP（同数は全部）・店名とお名前が開く。旧形式 {key} の1票も読む */
+  const KZGP_MAX_VOTES = 3, KZGP_DEADLINE_DAY = 5;
+  const KZGP_DEADLINE_OVERRIDE = { '2026-10': '2026-11-30' };   // ★初回（10月分）だけ＝仕組みが 11/11 に入り、5日はもう過ぎているため【仮】。神田さんが決めたら直す
+  const kzDeadline_ = (ym) => KZGP_DEADLINE_OVERRIDE[ym] || (prevYmN_(ym, -1) + '-' + String(KZGP_DEADLINE_DAY).padStart(2, '0'));
+  const kzClosed_ = (ym) => todayKey() > kzDeadline_(ym);
   const kzVotesOf = (ym) => {
     const out = {};
     subRows('kzvote').concat(kzLocalVotes_()).forEach(r => {
       if (!r || String(r.item) !== String(ym)) return;
-      const p = pj(r.note) || {}; if (p.final) return;   // 確定の行は票に数えない
+      const p = pj(r.note) || {}; if (p.final) return;   // 旧・確定の行は数えない
       const by = String(p.by || ''); if (!by) return;
-      if (!out[by] || (Number(r.t) || 0) >= out[by].t) out[by] = { key: String(p.key || ''), name: String(p.name || ''), t: Number(r.t) || 0 };
+      const keys = Array.isArray(p.keys) ? p.keys.map(k => String(k || '')).filter(Boolean).slice(0, KZGP_MAX_VOTES) : (p.key ? [String(p.key)] : []);
+      if (!out[by] || (Number(r.t) || 0) >= out[by].t) out[by] = { keys, name: String(p.name || ''), t: Number(r.t) || 0 };
     });
     return out;
   };
-  /* ★2026-11-11 夕 神田さん「店名・お名前は匿名で本部に表示（色眼鏡で見ないため）。最終的に確定したのち、MVPが決まった後に名前をオープン」
-     ＝「見る」切替を廃止。確定＝kzvote の行に final:1（key＝MVPの投稿・key が空＝取り消し）。同じ月は最新の確定が正。確定した月だけ店名・お名前が本部の全員に開く */
-  const kzFinalOf = (ym) => {
-    let fin = null;
-    subRows('kzvote').concat(kzLocalVotes_()).forEach(r => {
-      if (!r || String(r.item) !== String(ym)) return;
-      const p = pj(r.note) || {}; if (!p.final) return;
-      if (!fin || (Number(r.t) || 0) >= fin.t) fin = { key: String(p.key || ''), by: String(p.by || ''), name: String(p.name || ''), t: Number(r.t) || 0 };
-    });
-    return (fin && fin.key) ? fin : null;
-  };
+  const kzTally_ = (votes) => { const tally = {}; Object.keys(votes).forEach(by => (votes[by].keys || []).forEach(k => { (tally[k] = tally[k] || []).push(votes[by].name || by); })); return tally; };
   APP_VIEWS.kzgp = () => {
     if (getRole() !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
     const ymNow = todayKey().slice(0, 7);
     const ymQ = currentRoute().params.get('ym') || '';
     const ym = /^\d{4}-\d{2}$/.test(ymQ) ? ymQ : prevYmN_(ymNow, 1);
     const months = [0, 1, 2, 3].map(i => prevYmN_(ymNow, i));
-    const fin = kzFinalOf(ym); const show = !!fin;   // ★店名・お名前はMVPが確定した月だけ開く（神田さん 11/11 夕）
+    const closed = kzClosed_(ym), show = closed, dl = kzDeadline_(ym);   // ★店名・お名前は締め切りまで伏せる（色眼鏡で見ないため）
     const mlab = (m) => `${Number(String(m).slice(0, 4))}${L({ ja:'年', en:'/', vi:'/' })}${Number(String(m).slice(5, 7))}${L({ ja:'月', en:'', vi:'' })}`;
     const rows = getKz().filter(r => r && r.note && ymOfDate(dateKeyFor(r.store, r.t)) === ym).sort((a, b) => a.t - b.t);
     const kkey = (r) => `${r.store}||${r.t}`;
     const votes = kzVotesOf(ym); const me = String(((getAuth() || {}).uid) || '');
-    const mine = votes[me] ? votes[me].key : '';
-    const tally = {}; Object.keys(votes).forEach(by => { const v = votes[by]; if (!v.key) return; (tally[v.key] = tally[v.key] || []).push(v.name || by); });
+    const mine = votes[me] ? votes[me].keys : [];
+    const tally = kzTally_(votes);
     const ranked = Object.keys(tally).sort((a, b) => tally[b].length - tally[a].length);
     const topN = ranked.length ? tally[ranked[0]].length : 0;
-    const voters = Object.keys(votes).filter(b => votes[b].key).length;
+    const mvps = (closed && topN) ? ranked.filter(k => tally[k].length === topN) : [];   // 自動で確定（同数は全部）
+    const voters = Object.keys(votes).filter(b => votes[b].keys.length).length;
     const seg = `<div class="pb-numseg">${months.map(m => `<button type="button" class="${m === ym ? 'on' : ''}" data-open="kzgp?ym=${m}">${mlab(m)}</button>`).join('')}</div>`;
-    const list = rows.map((r, i) => { const k = kkey(r); const vs = tally[k] || []; const isMvp = !!(fin && fin.key === k); const top = !fin && topN && vs.length === topN;
+    const dlLab = esc(mdLabel(dl));
+    const list = rows.map((r, i) => { const k = kkey(r); const vs = tally[k] || []; const isMvp = mvps.includes(k); const top = !closed && topN && vs.length === topN;
       return `<div class="card kzgp-row${(top || isMvp) ? ' top' : ''}" data-kzrow="${esc(k)}"><div class="kzgp-no">#${i + 1}${isMvp ? ` <span class="kzgp-top">MVP</span>` : top ? ` <span class="kzgp-top">${L({ja:'いま1位',en:'Leading',vi:'Dẫn đầu'})}</span>` : ''}</div>
         <div class="kzgp-note">${esc(r.note)}</div>
         ${r.photos && r.photos.length ? `<div class="photo-thumbs">${r.photos.slice(0, 3).map(p => `<img class="rep-photo" src="${esc(photoThumb(p))}" data-full="${esc(photoFull(p))}" alt="" loading="lazy">`).join('')}</div>` : ''}
-        <div class="l2 muted">${esc(kzCatLabel(r.cat))} ・ ${show ? `${esc(storeShort(r.store))}${r.who ? ' ・ ' + esc(r.who) : ''}` : L({ja:'店名・お名前はMVPが決まるまで伏せています',en:'Store and name hidden until the MVP is decided',vi:'Ẩn cửa hàng và tên cho đến khi chọn MVP'})} ・ ${esc(mdLabel(dateKeyFor(r.store, r.t)))}</div>
-        <div class="kzgp-vote"><button class="mini${mine === k ? ' pri' : ''}" data-kzvote="${esc(k)}" data-kzvoteym="${esc(ym)}">${mine === k ? L({ja:'あなたの1票（押すと取り消し）',en:'Your vote (tap to undo)',vi:'Phiếu của bạn (bấm để bỏ)'}) : L({ja:'この投稿に1票',en:'Vote for this',vi:'Bỏ phiếu'})}</button> <b>${vs.length}</b>${L({ja:'票',en:' vote(s)',vi:' phiếu'})}${fin ? '' : ` <button class="mini kzgp-fin" data-kzfinal="${esc(k)}" data-kzfinalym="${esc(ym)}">${L({ja:'この投稿をMVPに確定',en:'Confirm as MVP',vi:'Chốt MVP'})}</button>`}</div></div>`; }).join('');
+        <div class="l2 muted">${esc(kzCatLabel(r.cat))} ・ ${show ? `${esc(storeShort(r.store))}${r.who ? ' ・ ' + esc(r.who) : ''}` : L({ja:'店名・お名前は締め切りまで伏せています',en:'Store and name hidden until the deadline',vi:'Ẩn cửa hàng và tên đến hạn chót'})} ・ ${esc(mdLabel(dateKeyFor(r.store, r.t)))}</div>
+        <div class="kzgp-vote">${closed ? '' : `<button class="mini${mine.includes(k) ? ' pri' : ''}" data-kzvote="${esc(k)}" data-kzvoteym="${esc(ym)}">${mine.includes(k) ? L({ja:'投票済み（押すと取り消し）',en:'Voted (tap to undo)',vi:'Đã bỏ phiếu (bấm để bỏ)'}) : L({ja:'この投稿に投票',en:'Vote for this',vi:'Bỏ phiếu'})}</button> `}<b>${vs.length}</b>${L({ja:'票',en:' vote(s)',vi:' phiếu'})}</div></div>`; }).join('');
+    const status = closed
+      ? (mvps.length
+          ? `<b>${L({ja:'締め切り済み・MVP 確定',en:'Closed · MVP decided',vi:'Đã đóng · MVP đã chốt'})}</b> <span class="muted">（${L({ja:'締め切り ',en:'deadline ',vi:'hạn chót '})}${dlLab} ・ ${topN}${L({ja:'票',en:' votes',vi:' phiếu'})}${mvps.length > 1 ? ' ・ ' + L({ja:'同数のため',en:'tie: ',vi:'đồng phiếu: '}) + mvps.length + L({ja:'件',en:' posts',vi:' bài'}) : ''}）</span>`
+          : `<b>${L({ja:'締め切り済み',en:'Closed',vi:'Đã đóng'})}</b> <span class="muted">（${L({ja:'締め切り ',en:'deadline ',vi:'hạn chót '})}${dlLab} ・ ${L({ja:'投票が無かったためMVPはありません',en:'no votes, so no MVP',vi:'không có phiếu nên không có MVP'})}）</span>`)
+      : `<b>${L({ja:'投票受付中',en:'Voting open',vi:'Đang bỏ phiếu'})}</b> <span class="muted">${L({ja:'締め切り ',en:'Deadline ',vi:'Hạn chót '})}${dlLab} ・ ${L({ja:'1人',en:'',vi:''})}${KZGP_MAX_VOTES}${L({ja:'つまで（あなたの票：',en:' votes per person (yours: ',vi:' phiếu/người (của bạn: '})}${mine.length}${L({ja:'）',en:')',vi:')'})}</span>`;
     return `
-      ${NOTE({ ja:'◆ その月の気づきを全部並べています。本部のメンバーが1人1票。店名・お名前はMVPが確定するまで伏せます（プレゼントは本部から）', en:'◆ All insights of the month. One vote per HQ member. Store and names stay hidden until the MVP is confirmed.', vi:'◆ Tất cả ghi nhận trong tháng. Mỗi thành viên HQ 1 phiếu. Ẩn tên cho đến khi chốt MVP.' })}
+      ${NOTE({ ja:'◆ 前月の気づきを全部並べています。本部のメンバーが1人3つまで投票。締め切り（当月5日）を過ぎると自動で集計してMVPが決まり、店名・お名前が開きます（プレゼントは本部から）', en:'◆ All insights of the month. Each HQ member votes for up to 3. After the deadline (5th of the next month) the MVP is decided automatically and names are revealed.', vi:'◆ Tất cả ghi nhận của tháng. Mỗi thành viên HQ bỏ tối đa 3 phiếu. Sau hạn chót (ngày 5 tháng sau) MVP tự chốt và tên được mở.' })}
       ${seg}
-      <div class="card"><div class="l1" style="font-weight:600">${esc(mlab(ym))} ・ ${rows.length} ${L({ja:'件',en:'posts',vi:'bài'})} ・ ${L({ja:'投票',en:'votes',vi:'phiếu'})} ${voters}</div>
-        <div class="l2" style="display:block;margin-top:6px">${fin
-          ? `<b>${L({ja:'MVP 確定済み',en:'MVP confirmed',vi:'Đã chốt MVP'})}</b> <span class="muted">（${(() => { const d = new Date(fin.t); return `${d.getMonth() + 1}/${d.getDate()}`; })()} ・ ${esc(fin.name || fin.by)}）</span> <button class="mini" data-kzfinal="" data-kzfinalym="${esc(ym)}">${L({ja:'確定を取り消す',en:'Undo',vi:'Hủy chốt'})}</button>`
-          : `<span class="muted">${L({ja:'店名・お名前は、MVPが決まるまで全員に伏せています（色眼鏡で見ないため）。決まったら、その投稿の「MVPに確定」を押すと開きます。',en:'Store and names are hidden from everyone until the MVP is decided. Tap “Confirm as MVP” on the chosen post to reveal them.',vi:'Ẩn cửa hàng và tên cho đến khi chọn MVP. Bấm “Chốt MVP” ở bài được chọn để mở.'})}</span>`}</div>
-        <p class="hint" style="display:block;margin-top:6px">${L({ ja:'選ぶ軸は「世桜全体を良くする／店の改善／お客様の満足／他店にも広げられる／本部が知るべき問題提起」で、件数の多さでは選びません。確定したら「お知らせを出す」で全店へ（先月のMVP：○○店の○○さん）。', en:'Pick by value to YOSAKURA, not by count. After confirming, announce the winner with a notice to all stores.', vi:'Chọn theo giá trị, không theo số lượng. Sau khi chốt, công bố bằng thông báo.' })}</p></div>
+      <div class="card"><div class="l1" style="font-weight:600">${esc(mlab(ym))} ・ ${rows.length} ${L({ja:'件',en:'posts',vi:'bài'})} ・ ${L({ja:'投票した人',en:'voters',vi:'người bỏ phiếu'})} ${voters}</div>
+        <div class="l2" style="display:block;margin-top:6px">${status}</div>
+        <p class="hint" style="display:block;margin-top:6px">${L({ ja:'選ぶ軸は「世桜全体を良くする／店の改善／お客様の満足／他店にも広げられる／本部が知るべき問題提起」で、件数の多さでは選びません。店名・お名前は締め切りまで全員に伏せています（色眼鏡で見ないため）。確定したら「お知らせを出す」で全店へ（先月のMVP：○○店の○○さん）。', en:'Pick by value to YOSAKURA, not by count. Store and names are hidden from everyone until the deadline. After it, announce the MVP with a notice to all stores.', vi:'Chọn theo giá trị, không theo số lượng. Ẩn tên đến hạn chót. Sau đó công bố bằng thông báo.' })}</p></div>
       ${list || `<div class="card"><p class="muted">${L({ja:'この月の気づきはありません',en:'No insights this month',vi:'Không có ghi nhận trong tháng'})}</p></div>`}`;
   };
   APP_VIEWS.inbox = () => {
@@ -12203,7 +12205,7 @@
   if (!appById('kzgp')) {   // ★2026-11-11 気づきグランプリ（月間MVP）＝本部だけ
     APPS.unshift({ id:'kzgp', group:'hq', icon:'star', live:true, roles:['hq'],
       name:{ ja:'気づきグランプリ（月間MVP）', en:'Insight Grand Prix (monthly MVP)', vi:'Giải ghi nhận tháng' },
-      desc:{ ja:'その月の気づきを全部並べて本部で1人1票。店名・お名前はMVP確定まで伏せる', en:'Vote for the best insight of the month', vi:'Bỏ phiếu ghi nhận hay nhất tháng' } });
+      desc:{ ja:'前月の気づきに本部で1人3つまで投票。当月5日に締め切り、自動でMVP確定', en:'Vote for the best insight of the month', vi:'Bỏ phiếu ghi nhận hay nhất tháng' } });
   }
   if (!appById('inbox')) {
     APPS.unshift({ id:'inbox', group:'hq', icon:'inbox', live:true, roles:['hq'],
@@ -12489,27 +12491,17 @@
     /* ★「使い方ガイド」カードはツアーを直接開かず、ガイドのページへ移動する（2026-08-31 神田さんの実機報告）。
        ツアーだけ開くと、スライド版（くわしいガイド）へたどり着く入口が無くなるため。ツアーはページ内の「順番に見る」から。 */
     document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => go(`/app/${b.dataset.open}`));
-    /* ★2026-11-11 気づきグランプリの1票（本部）＝同じ投稿をもう一度押すと取り消し。端末の控え（yosakura_demo_kzvote）にも残し、同期で本部データの行と合流する */
+    /* ★2026-11-11 夕 気づきグランプリの投票（本部）＝1人3つまで・同じ投稿をもう一度押すと取り消し・締め切り後はボタンが出ない。端末の控え（yosakura_demo_kzvote）にも残し、同期で本部データの行と合流する */
     document.querySelectorAll('[data-kzvote]').forEach(b => b.onclick = () => {
       const key = String(b.dataset.kzvote || ''), ym = String(b.dataset.kzvoteym || ''); const by = String(((getAuth() || {}).uid) || '');
       if (!by) { toast(L({ ja:'ログインし直してください', en:'Please sign in again', vi:'Vui lòng đăng nhập lại' })); return; }
-      const cur = kzVotesOf(ym)[by]; const next = (cur && cur.key === key) ? '' : key;
-      const t = Date.now(); const note = JSON.stringify({ key: next, by, name: getUserName() });
+      if (kzClosed_(ym)) { toast(L({ ja:'この月の投票は締め切りました', en:'Voting for this month is closed', vi:'Đã hết hạn bỏ phiếu' })); render(); return; }
+      const cur = kzVotesOf(ym)[by]; const keys = cur ? cur.keys.slice() : []; const i = keys.indexOf(key); let next;
+      if (i >= 0) { keys.splice(i, 1); next = keys; }
+      else { if (keys.length >= KZGP_MAX_VOTES) { toast(L({ ja:'投票は1人3つまでです。取り消してから選び直してください', en:'Up to 3 votes per person. Undo one first.', vi:'Tối đa 3 phiếu. Hãy bỏ bớt trước.' })); return; } next = keys.concat([key]); }
+      const t = Date.now(); const note = JSON.stringify({ keys: next, by, name: getUserName() });
       try { const arr = kzLocalVotes_(); arr.push({ kind:'kzvote', store:'', item: ym, note, t }); localStorage.setItem('yosakura_demo_kzvote', JSON.stringify(arr.slice(-60))); } catch (e) {}
       postReport({ kind:'kzvote', store:'', item: ym, note, t });
-      render();
-    });
-    /* ★2026-11-11 夕 MVPの確定（本部）＝kzvote の行に final:1。key が空＝取り消し。確定した月は店名・お名前が開く */
-    document.querySelectorAll('[data-kzfinal]').forEach(b => b.onclick = () => {
-      const key = String(b.dataset.kzfinal || ''), ym = String(b.dataset.kzfinalym || ''); const by = String(((getAuth() || {}).uid) || '');
-      if (!by) { toast(L({ ja:'ログインし直してください', en:'Please sign in again', vi:'Vui lòng đăng nhập lại' })); return; }
-      const msg = key ? L({ ja:'この投稿を月間MVPに確定します。確定すると、この月の店名・お名前が本部の全員に開きます。よろしいですか？', en:'Confirm this post as the monthly MVP? Store and names for this month will be revealed to all HQ members.', vi:'Chốt bài này là MVP tháng? Tên cửa hàng và tên người sẽ được mở cho HQ.' })
-                      : L({ ja:'MVPの確定を取り消します（店名・お名前はまた伏せます）。よろしいですか？', en:'Undo the MVP confirmation? Store and names will be hidden again.', vi:'Hủy chốt MVP? Tên sẽ được ẩn lại.' });
-      try { if (typeof confirm === 'function' && confirm(msg) === false) return; } catch (e) {}   // ホーム画面版（standalone）では confirm が undefined を返す＝止めない
-      const t = Date.now(); const note = JSON.stringify({ key, by, name: getUserName(), final: 1 });
-      try { const arr = kzLocalVotes_(); arr.push({ kind:'kzvote', store:'', item: ym, note, t }); localStorage.setItem('yosakura_demo_kzvote', JSON.stringify(arr.slice(-60))); } catch (e) {}
-      postReport({ kind:'kzvote', store:'', item: ym, note, t });
-      toast(key ? L({ ja:'MVPを確定しました。店名・お名前が開きます', en:'MVP confirmed. Names are now shown.', vi:'Đã chốt MVP.' }) : L({ ja:'確定を取り消しました', en:'Confirmation undone', vi:'Đã hủy chốt' }));
       render();
     });
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });

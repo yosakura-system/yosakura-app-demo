@@ -434,8 +434,9 @@ function auth_gate_post_(data) {
   if (kind === 'kzvote') {
     if (u.role !== 'hq') return { ok: false, error: 'HQ_ONLY' };
     try { var kv = (typeof data.note === 'string') ? JSON.parse(data.note) : (data.note || {}); if (!kv || typeof kv !== 'object' || Array.isArray(kv)) kv = {};
-      var kvo = { key: String(kv.key || '').slice(0, 120), by: String(u.uid || ''), name: String(kv.name || '').slice(0, 40) };
-      if (kv.final) kvo.final = 1;   // ★2026-11-11 夕 MVPの確定（key＝MVPの投稿・空＝取り消し）。票（final なし）とは別に数える
+      /* ★2026-11-11 夕 1人3つまで（keys）。旧形式 {key} も1票として受ける。確定の行は作らない（締め切り後にアプリが自動で集計） */
+      var kvKeys = Array.isArray(kv.keys) ? kv.keys : (kv.key ? [kv.key] : []);
+      var kvo = { keys: kvKeys.map(function (k) { return String(k || '').slice(0, 120); }).filter(Boolean).slice(0, 3), by: String(u.uid || ''), name: String(kv.name || '').slice(0, 40) };
       data.note = JSON.stringify(kvo); data.store = ''; data.photos = [];
     } catch (e) { return { ok: false, error: 'BAD_NOTE' }; }
   }
