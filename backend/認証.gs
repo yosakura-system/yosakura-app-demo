@@ -49,7 +49,7 @@ var AUTH_PUBLIC_KINDS = ['community', 'commlike', 'commmod', 'commroll', 'commtr
 var AUTH_HQ_READ_KINDS = ['whistle', 'appfb', 'hqtask', 'svcheck', 'svstd', 'rvissue', 'kzvote'];   // kzvote＝気づきグランプリの1票（2026-11-11・本部の投票を店舗端末には返さない）   // rvissue＝本部の口コミ・盛付チェックの写し（2026-11-07・店舗端末には返さない）   // svcheck＝巡回チェック（本部の評価＝店舗端末には返さない）   // hqtask＝本部の個人タスク（試行）。さらに本人のuidにしか返さない（auth_row_ok_）
 /* 本部だけが書けるkind（設定・判定・配信もの） */
 var AUTH_HQ_WRITE_KINDS = ['submaster', 'substat', 'subholiday', 'news', 'linkset', 'faqset', 'study', 'commmod', 'commroll', 'hqtask', 'svcheck', 'svstd',
-                           'hqack', 'gsnap', 'rvissue'];   // ★2026-10-12 hqack（本部の対応済み・コメント）と gsnap（口コミの控え）は店舗の端末から書けない
+                           'hqack', 'gsnap', 'rvissue', 'kzvote'];   // kzvote＝気づきグランプリの1票は本部だけが書ける（2026-11-11 Codex#1）   // ★2026-10-12 hqack（本部の対応済み・コメント）と gsnap（口コミの控え）は店舗の端末から書けない
 /* 店舗の端末が店舗名なし（store=''）で書いてよいkind＝公益通報（匿名）と、数字の要確認の確認済み（まとめ送り）だけ。'*' は本部のみ（2026-10-12） */
 var AUTH_NOSTORE_OK_KINDS = ['whistle', 'numack'];
 /* ログインの総当たり対策（2026-10-12）＝同じIDで15分に10回失敗したら、15分のあいだ受けない */
@@ -430,6 +430,13 @@ function auth_gate_post_(data) {
   if (u.mustChange) return { ok: false, error: 'PW_CHANGE_REQUIRED' };
   /* ★個人タスクは本人（item=自分のuid）しか書けない。本部でも他人のぶんは書けない */
   if (kind === 'hqtask' && (u.role !== 'hq' || String(data.item || '') !== String(u.uid || ''))) return { ok: false, error: 'HQ_ONLY' };
+  /* ★2026-11-11 気づきグランプリの1票（kzvote）＝投票者は認証済みの uid で固定（自己申告の by は信用しない＝1人1票・Codex#2）。store は空に固定 */
+  if (kind === 'kzvote') {
+    if (u.role !== 'hq') return { ok: false, error: 'HQ_ONLY' };
+    try { var kv = (typeof data.note === 'string') ? JSON.parse(data.note) : (data.note || {}); if (!kv || typeof kv !== 'object' || Array.isArray(kv)) kv = {};
+      data.note = JSON.stringify({ key: String(kv.key || '').slice(0, 120), by: String(u.uid || ''), name: String(kv.name || '').slice(0, 40) }); data.store = ''; data.photos = [];
+    } catch (e) { return { ok: false, error: 'BAD_NOTE' }; }
+  }
   if (u.role !== 'hq') {
     if (AUTH_HQ_WRITE_KINDS.indexOf(kind) !== -1) return { ok: false, error: 'HQ_ONLY' };
     var store = String(data.store || '');

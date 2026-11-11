@@ -1374,7 +1374,8 @@
     });
   }
   function openLightbox(src) {
-    const m = el(`<div class="lightbox"><img src="${src}" alt=""></div>`);
+    /* ★2026-11-11 Codex#3＝URLを文字列でHTMLに差し込まない（data: の写真に属性を仕込めた）。img は DOM で作って src に代入 */
+    const m = el('<div class="lightbox"></div>'); const im = document.createElement('img'); im.alt = ''; im.src = String(src || ''); m.appendChild(im);
     m.onclick = () => m.remove();
     document.body.appendChild(m);
   }
@@ -2370,11 +2371,15 @@
     opt = opt || {};
     const vals = pts.map(p => p.v).filter(v => v != null && !isNaN(v));
     if (!vals.length) return `<div class="muted">${L({ ja:'まだ数字がありません', en:'No data yet', vi:'Chưa có số liệu' })}</div>`;
-    const W = 360, H = 120, n = Math.max(1, pts.length), bw = (W - 8) / n, mx = Math.max(1, ...vals.map(v => Math.abs(v)));
+    const W = 360, H = 120, n = Math.max(1, pts.length), bw = (W - 8) / n;
+    /* ★0を基準線にして、マイナスは下へ（色も変える）・0は棒を出さない（Codex#8） */
+    const mx = Math.max(0, ...vals), mn = Math.min(0, ...vals), rg = (mx - mn) || 1;
+    const top = 8, bot = H - 16; const Y = (v) => bot - (v - mn) / rg * (bot - top); const y0 = Y(0);
     const step = n > 16 ? 5 : n > 8 ? 2 : 1;
-    const bars = pts.map((p, i) => { if (p.v == null || isNaN(p.v)) return ''; const hgt = Math.max(1, Math.abs(p.v) / mx * (H - 30)); return `<rect x="${(4 + i * bw).toFixed(1)}" y="${(H - 16 - hgt).toFixed(1)}" width="${Math.max(1, bw - 1.5).toFixed(1)}" height="${hgt.toFixed(1)}"><title>${esc(p.lb)} ${esc(opt.fmt ? String(opt.fmt(p.v)) : String(p.v))}</title></rect>`; }).join('');
+    const bars = pts.map((p, i) => { if (p.v == null || isNaN(p.v) || p.v === 0) return ''; const y1 = Y(p.v); const hgt = Math.max(1, Math.abs(y0 - y1)); return `<rect x="${(4 + i * bw).toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" width="${Math.max(1, bw - 1.5).toFixed(1)}" height="${hgt.toFixed(1)}"${p.v < 0 ? ' class="neg"' : ''}><title>${esc(p.lb)} ${esc(opt.fmt ? String(opt.fmt(p.v)) : String(p.v))}</title></rect>`; }).join('');
+    const zero = mn < 0 ? `<line class="z" x1="4" x2="${W - 4}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}"/>` : '';
     const labels = pts.map((p, i) => (i % step === 0) ? `<text x="${(4 + i * bw + bw / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle">${esc(p.lb)}</text>` : '').join('');
-    return `<svg class="pb-barchart" viewBox="0 0 ${W} ${H}" aria-hidden="true">${bars}${labels}</svg>`;
+    return `<svg class="pb-barchart" viewBox="0 0 ${W} ${H}" aria-hidden="true">${bars}${zero}${labels}</svg>`;
   };
   const NUMVIEW_T_ = { sales:{ ja:'売上', en:'Sales', vi:'Doanh thu' }, guests:{ ja:'客数・客単価', en:'Guests & per guest', vi:'Khách & đơn giá' }, buy:{ ja:'仕入', en:'Purchases', vi:'Nhập hàng' }, cost:{ ja:'原価率', en:'Cost rate', vi:'Giá vốn' }, tip:{ ja:'チップ', en:'Tips', vi:'Tiền tip' }, greview:{ ja:'Google口コミ', en:'Google reviews', vi:'Đánh giá Google' }, survey:{ ja:'サーベイ', en:'Survey', vi:'Khảo sát' }, cty:{ ja:'国別のお客様', en:'Guests by country', vi:'Khách theo quốc gia' } };
   function pbNumView_(k) {
@@ -2400,6 +2405,7 @@
       if (!r.src && (!byApp[r.date] || (Number(r.t) || 0) >= (Number(byApp[r.date].t) || 0))) byApp[r.date] = r;
     });
     const appVal = (d, key) => { const a = byApp[d]; if (a && hasVal(a[key])) return numOr0(a[key]); const r = byDate[d]; return (r && hasVal(r[key])) ? numOr0(r[key]) : null; };
+    const appOnly = (d, key) => { const a = byApp[d]; return (a && hasVal(a[key])) ? numOr0(a[key]) : null; };   // ★チップは店が打った日報の行だけ（総括表取込の行の tipt は数えない・Codex#5）
     const kpi = (a) => `<div class="pb-card"><div class="pb-kpi">${a.map(x => `<div><div class="l">${x[0]}</div><div class="v">${x[1]}</div><div class="d">${x[2] || ''}</div></div>`).join('')}</div></div>`;
     const tbl = (cols, rows) => rows.length ? `<div class="pb-card pb-tblwrap"><table class="pb-tbl"><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : `<div class="pb-card"><div class="muted">${L({ ja:'この月の数字はまだありません', en:'No data for this month', vi:'Chưa có số liệu tháng này' })}</div></div>`;
     const chart = (pts, fmt) => `<div class="pb-card">${pbBars_(pts, { fmt })}</div>`;
@@ -2412,13 +2418,16 @@
     if (k === 'sales' || k === 'guests') {
       const rows = dl.map(d => byDate[d]).filter(r => r && val(r) > 0);
       const tot = rows.reduce((a, r) => a + val(r), 0), g = rows.reduce((a, r) => a + (Number(r.guests) || 0), 0);
+      const mixed = rows.some(r => !(Number(r.net) > 0));   // ★純売上（税抜）の無い日は売上（税込）で数える＝その月は見出しと注記で分かるように（Codex#6）
+      const exLb = mixed ? L({ ja:'税抜・無い日は税込', en:'excl. tax (incl. where no net)', vi:'chưa thuế (gồm thuế nếu thiếu)' }) : L({ ja:'税抜', en:'excl. tax', vi:'chưa thuế' });
+      const mixNote = mixed ? `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 純売上（税抜）の無い日は売上（税込）で数えています。', en:'Days without net sales use gross (incl. tax).', vi:'Ngày không có doanh thu thuần dùng doanh thu gồm thuế.' })}</p>` : '';
       const pts = dl.map(d => { const r = byDate[d]; return { lb: dlb(d), v: r && val(r) > 0 ? (k === 'sales' ? val(r) : (Number(r.guests) || null)) : null }; });
       body = (k === 'sales'
-        ? kpi([[L({ ja:'月の合計（税抜）', en:'Month total', vi:'Tổng tháng' }), rows.length ? yenShort(tot) : '—', `${rows.length} ${days}`], [L({ ja:'1日平均', en:'Per day', vi:'Mỗi ngày' }), rows.length ? yenShort(Math.round(tot / rows.length)) : '—', g ? `${L({ ja:'客単価', en:'per guest', vi:'đơn giá' })} ${yen(Math.round(tot / g))}` : '']])
-        : kpi([[L({ ja:'月の客数', en:'Guests (month)', vi:'Khách (tháng)' }), g ? n(g) : '—', `${rows.length} ${days}`], [L({ ja:'客単価（税抜）', en:'Per guest', vi:'Đơn giá' }), g ? yen(Math.round(tot / g)) : '—', rows.length && g ? `${L({ ja:'1日平均', en:'per day', vi:'mỗi ngày' })} ${n(Math.round(g / rows.length))}${L({ ja:'人', en:'', vi:'' })}` : '']]))
+        ? kpi([[`${L({ ja:'月の合計', en:'Month total', vi:'Tổng tháng' })}（${exLb}）`, rows.length ? yenShort(tot) : '—', `${rows.length} ${days}`], [L({ ja:'1日平均', en:'Per day', vi:'Mỗi ngày' }), rows.length ? yenShort(Math.round(tot / rows.length)) : '—', g ? `${L({ ja:'客単価', en:'per guest', vi:'đơn giá' })} ${yen(Math.round(tot / g))}` : '']])
+        : kpi([[L({ ja:'月の客数', en:'Guests (month)', vi:'Khách (tháng)' }), g ? n(g) : '—', `${rows.length} ${days}`], [`${L({ ja:'客単価', en:'Per guest', vi:'Đơn giá' })}（${exLb}）`, g ? yen(Math.round(tot / g)) : '—', rows.length && g ? `${L({ ja:'1日平均', en:'per day', vi:'mỗi ngày' })} ${n(Math.round(g / rows.length))}${L({ ja:'人', en:'', vi:'' })}` : '']]))
         + chart(pts, k === 'sales' ? yen : n)
-        + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), L({ ja:'売上（税抜）', en:'Sales', vi:'Doanh thu' }), L({ ja:'客数', en:'Guests', vi:'Khách' }), L({ ja:'客単価', en:'Per guest', vi:'Đơn giá' }), L({ ja:'出どころ', en:'Source', vi:'Nguồn' })],
-            rows.slice().reverse().map(r => { const gg = Number(r.guests) || 0; return [dayLb(r.date), yv(val(r)), gg ? n(gg) : '—', gg ? yv(Math.round(val(r) / gg)) : '—', srcOf(r)]; }));
+        + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), `${L({ ja:'売上', en:'Sales', vi:'Doanh thu' })}（${exLb}）`, L({ ja:'客数', en:'Guests', vi:'Khách' }), L({ ja:'客単価', en:'Per guest', vi:'Đơn giá' }), L({ ja:'出どころ', en:'Source', vi:'Nguồn' })],
+            rows.slice().reverse().map(r => { const gg = Number(r.guests) || 0; return [dayLb(r.date) + (Number(r.net) > 0 ? '' : L({ ja:'（税込）', en:' (incl.)', vi:' (gồm thuế)' })), yv(val(r)), gg ? n(gg) : '—', gg ? yv(Math.round(val(r) / gg)) : '—', srcOf(r)]; })) + mixNote;
     } else if (k === 'buy') {
       const rows = dl.map(d => ({ d, v: appVal(d, 'buy') })).filter(x => x.v != null);
       const tot = rows.reduce((a, x) => a + x.v, 0);
@@ -2433,24 +2442,24 @@
       const done = rows.filter(x => x.c && x.c.complete);
       const avg = done.length ? done.reduce((a, x) => a + x.c.costRate, 0) / done.length : null;
       const prevM = done.find(x => x.m.ym === prevYmN_(ymNow, 1));
-      body = kpi([[L({ ja:'前月の原価率', en:'Last month', vi:'Tháng trước' }), prevM ? prevM.c.costRate.toFixed(1) + '<span class="u">%</span>' : '—', L({ ja:'月初＋仕入−月末棚卸 ÷ 売上', en:'open + purchases − close ÷ sales', vi:'đầu kỳ + nhập − cuối kỳ ÷ doanh thu' })], [L({ ja:'確定した月の平均', en:'Avg of closed months', vi:'TB các tháng đã chốt' }), avg != null ? avg.toFixed(1) + '<span class="u">%</span>' : '—', `${done.length} ${L({ ja:'か月', en:'months', vi:'tháng' })}`]])
+      body = kpi([[L({ ja:'前月の原価率', en:'Last month', vi:'Tháng trước' }), prevM ? prevM.c.costRate.toFixed(1) + '<span class="u">%</span>' : '—', L({ ja:'（月初＋仕入−月末棚卸）÷ 売上', en:'(open + purchases − close) ÷ sales', vi:'(đầu kỳ + nhập − cuối kỳ) ÷ doanh thu' })], [L({ ja:'確定した月の平均', en:'Avg of closed months', vi:'TB các tháng đã chốt' }), avg != null ? avg.toFixed(1) + '<span class="u">%</span>' : '—', `${done.length} ${L({ ja:'か月', en:'months', vi:'tháng' })}`]])
         + chart(rows.slice().reverse().map(x => ({ lb: mlab(x.m.ym), v: x.c && x.c.complete ? Math.round(x.c.costRate * 10) / 10 : null })), (v) => v + '%')
         + tbl([L({ ja:'月', en:'Month', vi:'Tháng' }), L({ ja:'売上', en:'Sales', vi:'Doanh thu' }), L({ ja:'月初', en:'Open', vi:'Đầu kỳ' }), L({ ja:'仕入', en:'Purch.', vi:'Nhập' }), L({ ja:'月末', en:'Close', vi:'Cuối kỳ' }), L({ ja:'原価率', en:'Cost', vi:'Giá vốn' })], rows.map(x => [mlab(x.m.ym), Number(x.m.sales) > 0 ? yv(Number(x.m.sales)) : '—', hasVal(x.m.open) ? yv(numOr0(x.m.open)) : '—', hasVal(x.m.purchase) ? yv(numOr0(x.m.purchase)) : '—', hasVal(x.m.close) ? yv(numOr0(x.m.close)) : '—', x.c && x.c.complete ? x.c.costRate.toFixed(1) + '%' : L({ ja:'未確定', en:'open', vi:'chưa chốt' })]))
         + `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 月初と月末の棚卸がそろった月だけ出ます。', en:'Only months with both opening and closing counts.', vi:'Chỉ tháng có kiểm kê đầu và cuối kỳ.' })}</p>`;
     } else if (k === 'tip') {
-      const rows = dl.map(d => ({ d, v: appVal(d, 'tipt') })).filter(x => x.v != null);
+      const rows = dl.map(d => ({ d, v: appOnly(d, 'tipt') })).filter(x => x.v != null);
       const tot = rows.reduce((a, x) => a + x.v, 0), had = rows.filter(x => x.v > 0).length;
       body = kpi([[L({ ja:'月の合計', en:'Month total', vi:'Tổng tháng' }), rows.length ? yen(tot) : '—', `${had} ${L({ ja:'日あった', en:'days with tips', vi:'ngày có tip' })}（${rows.length} ${L({ ja:'日分の日報', en:'reports', vi:'báo cáo' })}）`], [L({ ja:'あった日の平均', en:'Avg on tip days', vi:'TB ngày có tip' }), had ? yen(Math.round(tot / had)) : '—', '']])
-        + chart(dl.map(d => ({ lb: dlb(d), v: appVal(d, 'tipt') })), yen)
+        + chart(dl.map(d => ({ lb: dlb(d), v: appOnly(d, 'tipt') })), yen)
         + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), L({ ja:'チップ', en:'Tips', vi:'Tip' })], rows.slice().reverse().map(x => [dayLb(x.d), x.v > 0 ? yv(x.v) : L({ ja:'なし', en:'none', vi:'không' })]))
         + `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 日報で入れた「チップ」の合計です。日報の無い日は数えません。', en:'Sum of “Tips” from daily reports. Days without a report are not counted.', vi:'Tổng “tip” từ báo cáo ngày.' })}</p>`;
     } else if (k === 'greview') {
       const gs = gsnapsOf(store); const inM = gs.filter(x => String(x._d).slice(0, 7) === ym && String(x._d) <= today);
       const prev = gs.filter(x => String(x._d) < ym + '-01').slice(-1)[0] || null;
       const rows = inM.map((x, i) => { const base = i ? inM[i - 1] : prev; return { d: x._d, total: Number(x.total) || 0, rating: x.rating, gained: base ? (Number(x.total) || 0) - (Number(base.total) || 0) : null }; });
-      const last = inM[inM.length - 1] || null; const base0 = prev || inM[0] || null;
-      const gained = (last && base0 && last !== base0) ? (Number(last.total) || 0) - (Number(base0.total) || 0) : null;
-      body = kpi([[L({ ja:'評価（この月の最後の控え）', en:'Rating', vi:'Điểm' }), last && last.rating != null ? Number(last.rating).toFixed(1) : '—', last ? `${n(last.total)} ${L({ ja:'件', en:'reviews', vi:'đánh giá' })} ・ ${mdLabel(last._d)}` : L({ ja:'自動取得がまだありません', en:'No snapshots yet', vi:'Chưa có dữ liệu' })], [L({ ja:'この月に増えた件数', en:'Gained this month', vi:'Tăng trong tháng' }), gained != null ? (gained >= 0 ? '+' : '') + n(gained) : '—', '']])
+      const last = inM[inM.length - 1] || null;
+      const gained = (last && prev) ? (Number(last.total) || 0) - (Number(prev.total) || 0) : null;   // ★前月までの控えが無い月は出さない（月の途中からの差は「月に増えた件数」ではない・Codex#7）
+      body = kpi([[L({ ja:'評価（この月の最後の控え）', en:'Rating', vi:'Điểm' }), last && last.rating != null ? Number(last.rating).toFixed(1) : '—', last ? `${n(last.total)} ${L({ ja:'件', en:'reviews', vi:'đánh giá' })} ・ ${mdLabel(last._d)}` : L({ ja:'自動取得がまだありません', en:'No snapshots yet', vi:'Chưa có dữ liệu' })], [L({ ja:'この月に増えた件数', en:'Gained this month', vi:'Tăng trong tháng' }), gained != null ? (gained >= 0 ? '+' : '') + n(gained) : '—', gained == null && last ? L({ ja:'前月末の控えが無いため出せません', en:'No end-of-last-month snapshot', vi:'Không có dữ liệu cuối tháng trước' }) : '']])
         + chart(rows.map(x => ({ lb: dlb(x.d), v: x.gained })), (v) => (v >= 0 ? '+' : '') + v)
         + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), L({ ja:'件数', en:'Total', vi:'Tổng' }), L({ ja:'増えた', en:'Gained', vi:'Tăng' }), L({ ja:'評価', en:'Rating', vi:'Điểm' })], rows.slice().reverse().map(x => [dayLb(x.d), n(x.total), x.gained != null ? (x.gained >= 0 ? '+' : '') + n(x.gained) : '—', x.rating != null ? Number(x.rating).toFixed(1) : '—']))
         + `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 毎晩の自動取得（件数と評価）。口コミの本文は「見る」のお客様の声へ。', en:'Nightly snapshot of count and rating. Read the reviews under “Browse”.', vi:'Tự động mỗi đêm. Đọc nội dung ở mục Xem.' })}</p>`;
@@ -3308,8 +3317,8 @@
     if (pos) pos.textContent = noRegi
       ? L({ ja:'最初にチップ（無い日は「なし」）。売上はレジの日計を見て入れ、今日届いた納品書を撮ってください。', en:'Tips first (tap “None” if none). Enter sales from the register report, then photograph today’s delivery slips.', vi:'Tip trước (bấm “Không có” nếu không). Nhập doanh thu từ báo cáo két, rồi chụp phiếu giao hàng.' })
       : noUsen
-      ? L({ ja:'売上・客数・現金・カードはレジから自動で入っています。入れるのは、チップ（無い日は「なし」）、フード・ドリンクの金額と国別のお客様、今日届いた納品書です。', en:'Sales, guests, cash and card come from the register. Enter tips (tap “None” if none), food/drink amounts, guests by country and today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ két. Nhập tip (bấm “Không có” nếu không), tiền món/đồ uống, khách theo quốc gia và phiếu giao hàng.' })
-      : L({ ja:'売上・客数・現金・カードはUSENレジから入っています。入れるのは、チップ（無い日は「なし」）と今日届いた納品書です。', en:'Sales, guests, cash and card come from the USEN register. Enter tips (tap “None” if none) and today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ két USEN. Nhập tip (bấm “Không có” nếu không) và phiếu giao hàng hôm nay.' });
+      ? L({ ja:'売上・客数・現金・カードはレジから自動で入っています。入れるのは、チップ（無い日は「なし」）、フード・ドリンクの金額と国別のお客様、今日届いた納品書です。', en:'Sales, guests, cash and card come from the register. Enter tips (tap “None” if none), food/drink amounts, guests by country and today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ máy tính tiền. Nhập tip (bấm “Không có” nếu không), tiền món/đồ uống, khách theo quốc gia và phiếu giao hàng.' })
+      : L({ ja:'売上・客数・現金・カードはUSENレジから入っています。入れるのは、チップ（無い日は「なし」）と今日届いた納品書です。', en:'Sales, guests, cash and card come from the USEN register. Enter tips (tap “None” if none) and today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ máy tính tiền USEN. Nhập tip (bấm “Không có” nếu không) và phiếu giao hàng hôm nay.' });
     const dateGrid = g('sk_date') ? g('sk_date').closest('.sk-grid') : null;
     const dbox = document.createElement('details'); dbox.className = 'pb-nipdate'; dbox.innerHTML = '<summary id="pbn_datesum"></summary>';
     const auto = document.createElement('div'); auto.id = 'pbn_auto';
@@ -3323,8 +3332,10 @@
       const sp = tipL.querySelector('span'); if (sp) sp.textContent = L({ ja:'あった日は金額（円）', en:'Amount if any (yen)', vi:'Số tiền nếu có (yên)' });
       const inp = g('sk_tipt'); if (inp) inp.placeholder = '0';
       const sync = () => { try { none.classList.toggle('on', String(inp && inp.value || '').trim() === '0'); } catch (e) {} };
-      none.onclick = () => { if (inp) { inp.value = '0'; try { inp.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {} } sync(); };
+      const fire = () => { if (!inp) return; try { inp.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { try { const ev = document.createEvent('Event'); ev.initEvent('input', true, true); inp.dispatchEvent(ev); } catch (x) {} } };   // 累計（cumUpd）を動かす。Event が無い環境は createEvent で（Codex#12）
+      none.onclick = () => { if (inp) { inp.value = '0'; fire(); } sync(); };
       if (inp) inp.addEventListener('input', sync);
+      ['sk_date', 'sk_store'].forEach(id => { const e = g(id); if (e) e.addEventListener('change', () => { setTimeout(sync, 0); setTimeout(sync, 400); }); });   // ★日付・店舗を変えると skFill_ が値を入れ替える＝印も合わせる（Codex#4）
       row.appendChild(none); row.appendChild(tipL); d.appendChild(row); sync(); return d;
     })() : null;
     const salesLbl = noRegi && g('sk_posgrid') ? g('sk_posgrid').previousElementSibling : null;
@@ -10665,7 +10676,7 @@
     const ymQ = currentRoute().params.get('ym') || '';
     const ym = /^\d{4}-\d{2}$/.test(ymQ) ? ymQ : prevYmN_(ymNow, 1);
     const months = [0, 1, 2, 3].map(i => prevYmN_(ymNow, i));
-    const show = localStorage.getItem('yosakura_kzgp_show') === '1';
+    const show = localStorage.getItem('yosakura_kzgp_show') === ym;   // ★「見る」はその月だけ（別の月を開けば伏せた状態に戻る・Codex#10）
     const mlab = (m) => `${Number(String(m).slice(0, 4))}${L({ ja:'年', en:'/', vi:'/' })}${Number(String(m).slice(5, 7))}${L({ ja:'月', en:'', vi:'' })}`;
     const rows = getKz().filter(r => r && r.note && ymOfDate(dateKeyFor(r.store, r.t)) === ym).sort((a, b) => a.t - b.t);
     const kkey = (r) => `${r.store}||${r.t}`;
@@ -10679,15 +10690,15 @@
     const list = rows.map((r, i) => { const k = kkey(r); const vs = tally[k] || []; const top = topN && vs.length === topN;
       return `<div class="card kzgp-row${top ? ' top' : ''}" data-kzrow="${esc(k)}"><div class="kzgp-no">#${i + 1}${top ? ` <span class="kzgp-top">${L({ja:'いま1位',en:'Leading',vi:'Dẫn đầu'})}</span>` : ''}</div>
         <div class="kzgp-note">${esc(r.note)}</div>
-        ${r.photos && r.photos.length ? `<div class="photo-thumbs">${r.photos.slice(0, 3).map(p => `<img class="rep-photo" src="${photoThumb(p)}" data-full="${photoFull(p)}" alt="" loading="lazy">`).join('')}</div>` : ''}
+        ${r.photos && r.photos.length ? `<div class="photo-thumbs">${r.photos.slice(0, 3).map(p => `<img class="rep-photo" src="${esc(photoThumb(p))}" data-full="${esc(photoFull(p))}" alt="" loading="lazy">`).join('')}</div>` : ''}
         <div class="l2 muted">${esc(kzCatLabel(r.cat))} ・ ${show ? `${esc(storeShort(r.store))}${r.who ? ' ・ ' + esc(r.who) : ''}` : L({ja:'店名・お名前は伏せています',en:'Store and name hidden',vi:'Ẩn cửa hàng và tên'})} ・ ${esc(mdLabel(dateKeyFor(r.store, r.t)))}</div>
         <div class="kzgp-vote"><button class="mini${mine === k ? ' pri' : ''}" data-kzvote="${esc(k)}" data-kzvoteym="${esc(ym)}">${mine === k ? L({ja:'あなたの1票（押すと取り消し）',en:'Your vote (tap to undo)',vi:'Phiếu của bạn (bấm để bỏ)'}) : L({ja:'この投稿に1票',en:'Vote for this',vi:'Bỏ phiếu'})}</button> <b>${vs.length}</b>${L({ja:'票',en:' vote(s)',vi:' phiếu'})}${show && vs.length ? ` <span class="muted">（${esc(vs.join('・'))}）</span>` : ''}</div></div>`; }).join('');
     return `
       ${NOTE({ ja:'◆ その月の気づきを全部並べています。本部のメンバーが1人1票。いちばん多い投稿が月間MVP（プレゼントは本部から）', en:'◆ All insights of the month. One vote per HQ member; the most voted is the monthly MVP.', vi:'◆ Tất cả ghi nhận trong tháng. Mỗi thành viên HQ 1 phiếu.' })}
       ${seg}
       <div class="card"><div class="l1" style="font-weight:600">${esc(mlab(ym))} ・ ${rows.length} ${L({ja:'件',en:'posts',vi:'bài'})} ・ ${L({ja:'投票',en:'votes',vi:'phiếu'})} ${voters}</div>
-        <div class="l2" style="display:block;margin-top:6px"><button class="mini" data-kzgpshow="${show ? '0' : '1'}">${show ? L({ja:'店名・お名前を伏せる',en:'Hide store & names',vi:'Ẩn tên'}) : L({ja:'店名・お名前を見る（決まった後に）',en:'Show store & names (after deciding)',vi:'Hiện tên (sau khi chọn)'})}</button></div>
-        <p class="hint" style="display:block;margin-top:6px">${L({ ja:'選ぶ軸＝世桜全体を良くする／店の改善／お客様の満足／他店にも広げられる／本部が知るべき問題提起。件数の多さでは選びません。決まったら「お知らせを出す」で全店へ（先月のMVP：○○店の○○さん）', en:'Pick by value to YOSAKURA, not by count. Announce the winner with a notice to all stores.', vi:'Chọn theo giá trị, không theo số lượng. Công bố bằng thông báo.' })}</p></div>
+        <div class="l2" style="display:block;margin-top:6px"><button class="mini" data-kzgpshow="${show ? '' : esc(ym)}">${show ? L({ja:'店名・お名前を伏せる',en:'Hide store & names',vi:'Ẩn tên'}) : L({ja:'店名・お名前を見る（決まった後に）',en:'Show store & names (after deciding)',vi:'Hiện tên (sau khi chọn)'})}</button></div>
+        <p class="hint" style="display:block;margin-top:6px">${L({ ja:'選ぶ軸は「世桜全体を良くする／店の改善／お客様の満足／他店にも広げられる／本部が知るべき問題提起」で、件数の多さでは選びません。決まったら「お知らせを出す」で全店へ（先月のMVP：○○店の○○さん）。', en:'Pick by value to YOSAKURA, not by count. Announce the winner with a notice to all stores.', vi:'Chọn theo giá trị, không theo số lượng. Công bố bằng thông báo.' })}</p></div>
       ${list || `<div class="card"><p class="muted">${L({ja:'この月の気づきはありません',en:'No insights this month',vi:'Không có ghi nhận trong tháng'})}</p></div>`}`;
   };
   APP_VIEWS.inbox = () => {
@@ -12348,7 +12359,7 @@
       postReport({ kind:'kzvote', store:'', item: ym, note, t });
       render();
     });
-    document.querySelectorAll('[data-kzgpshow]').forEach(b => b.onclick = () => { try { localStorage.setItem('yosakura_kzgp_show', String(b.dataset.kzgpshow || '0')); } catch (e) {} render(); });
+    document.querySelectorAll('[data-kzgpshow]').forEach(b => b.onclick = () => { try { localStorage.setItem('yosakura_kzgp_show', String(b.dataset.kzgpshow || '')); } catch (e) {} render(); });
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
     document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'この画面は準備中です（順次追加します）', en:'This screen is in preparation', vi:'Màn hình đang chuẩn bị' })));
     // 準備中のボタンにも必ずフィードバックを返す＝無反応ボタンを排除
@@ -14002,10 +14013,10 @@
         // ★2026-11-07 追加＝rvissue（本部の口コミ・盛付チェック表の写し）。KEEP判断＝恒久（Code.gs に追加済み）。本部だけに返る（認証.gs）
         //   ＝初回配信（v481）でここに無く、本番で「まだ記録がありません」のまま＝取りこぼしの4回目。3点セット（distribute＋KEEP＋テスト）
         case 'rvissue':
-        // ★2026-11-11 追加＝kzvote（気づきグランプリの1票・本部だけ読める）。KEEP判断＝90日で消えてよい（結果はお知らせで恒久に残る）。3点セット（distribute＋KEEP判断＋テスト）
-        case 'kzvote':
           subs.push({ kind:r.kind, store, item:r.item, level:r.level, note:r.note, photos:r.photos||[], t, id }); break;
         case 'kizuki': kz.push({ store, cat:r.item, note:r.note, photos:r.photos||[], t, id, who: String(r.level || '') }); break;   // level＝投稿者のお名前（2026-10-23）
+        // ★2026-11-11 追加＝kzvote（気づきグランプリの1票）。本部の端末だけ残す（店舗端末には認証.gs が返さないが、念のため役割でも絞る・Codex#11）。KEEP判断＝90日で消えてよい（結果はお知らせで恒久に残る）。3点セット（distribute＋KEEP判断＋テスト）
+        case 'kzvote': if (getRole() === 'hq') subs.push({ kind:r.kind, store:'', item:r.item, level:'', note:r.note, photos:[], t, id }); break;
         case 'route': route.push({ store, route:r.item, t, id }); break;
         case 'open': { const p=pj(r.note); open.push({ store, date:p.date||'', denom:p.denom||{}, total:Number(p.total)||0, t, id }); } break;
         case 'soukatsu': { const p=pj(r.note); sk.push(Object.assign({ store, t, id }, p)); } break;

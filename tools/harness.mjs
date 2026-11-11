@@ -6634,7 +6634,7 @@ console.log('== 2026-10-12 セキュリティ＝第三者に流れない仕組�
   ok(/if \(!priv\) file\.setSharing\(DriveApp\.Access\.ANYONE_WITH_LINK/.test(csrc2) && /function isPrivatePhotoRow_/.test(csrc2), '★お金の写真は公開リンクにしない');
   ok(/if \(Array\.isArray\(data\.photos\) && data\.photos\.length\) return \{ ok: false, error: 'NO_PHOTO' \};/.test(asrc2), '★apperr は写真を受けない');
   ok(/LOGIN_LOCKED/.test(asrc2) && /AUTH_LOCK_FAILS/.test(asrc2), '★ログインの総当たりロック');
-  ok(/'hqack', 'gsnap', 'rvissue'\]/.test(asrc2) && /if \(store === '\*'\) return \{ ok: false, error: 'STORE_NOT_ALLOWED' \};/.test(asrc2), "★hqack は本部だけ・店舗は '*' に書けない");
+  ok(/'hqack', 'gsnap', 'rvissue', 'kzvote'\]/.test(asrc2) && /if \(store === '\*'\) return \{ ok: false, error: 'STORE_NOT_ALLOWED' \};/.test(asrc2), "★hqack は本部だけ・店舗は '*' に書けない");
 }
 
 console.log('== 2026-10-15 レジの項目はアプリで入力しない＝全店（神田さん「USENレジで回収できる項目はアプリ側からも削除。ややこしいので」）==');
@@ -8207,56 +8207,85 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   ok(/入れるのは、チップ（無い日は「なし」）と今日届いた納品書です。/.test(code) && /最初にチップ（無い日は「なし」）/.test(code), 'ソース＝日報の案内文3種ともチップを先に言う');
   ok(/if \(byId\('sk_tipt'\) && v\('sk_tipt'\) === ''\) \{ toast\(/.test(code), 'ソース＝チップ必須の検査は今までのまま（空なら送れない）');
   // 店の数字＝小窓8つ → numview
+  /* ★日付＝JSTの営業日で2日を選ぶ。同じ月に入る2日（dA＝一昨日・dB＝3日前、月をまたぐなら昨日）＝月初でも落ちない（Codex#9）。開くときは ?ym= で月を固定 */
+  const dkJ = (n) => new Date(Date.now() - 5 * 3600e3 - n * 864e5).toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
+  const dA = dkJ(2), dB = dkJ(3).slice(0, 7) === dA.slice(0, 7) ? dkJ(3) : dkJ(1); const ymT = dA.slice(0, 7);
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
-    const d = new Date(); const ym = d.toISOString().slice(0, 7); const dk = (n) => { const x = new Date(Date.now() - n * 864e5); return x.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }); };
     localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
-      { store:S, date: dk(1), sales: 220000, net: 200000, guests: 40, cash: 50000, card: 170000, src:'usen', t: Date.now() - 3600e3, pcty: { '韓国': { g: 10, p: 25 }, 'その他ヨーロッパ': { g: 5, p: 12 } } },
-      { store:S, date: dk(1), tipt: 3000, buy: 40000, supply: 1200, t: Date.now() - 7200e3 },
-      { store:S, date: dk(2), sales: 110000, net: 100000, guests: 20, src:'usen', t: Date.now() - 90000e3 },
-      { store:S, date: dk(2), tipt: 0, buy: 15000, t: Date.now() - 95000e3 }
+      { store:S, date: dA, sales: 220000, net: 200000, guests: 40, cash: 50000, card: 170000, src:'usen', t: Date.now() - 3600e3, pcty: { '韓国': { g: 10, p: 25 }, 'その他ヨーロッパ': { g: 5, p: 12 } } },
+      { store:S, date: dA, tipt: 3000, buy: 40000, supply: 1200, t: Date.now() - 7200e3 },
+      { store:S, date: dB, sales: 110000, net: 100000, guests: 20, src:'usen', t: Date.now() - 90000e3 },
+      { store:S, date: dB, tipt: 0, buy: 15000, t: Date.now() - 95000e3 },
+      { store:S, date: dB, tipt: 9000, src:'drive', t: Date.now() - 96000e3 }
     ])); });
   location.hash = '#/home?tab=num'; hh = registry.app.innerHTML;
   ok(/pb-chips--num/.test(hh) && ['sales', 'guests', 'buy', 'cost', 'tip', 'greview', 'survey', 'cty'].every(k => new RegExp('data-open="numview\\?k=' + k + '"').test(hh)), '店の数字＝「くわしく」の下に小窓8つ（売上・客数・仕入・原価率・チップ・口コミ・サーベイ・国別）');
   ok(/data-open="numdetail"/.test(hh) && /data-open="pl"/.test(hh), '店の数字＝今までの3つの行（3か月の平均・数値・日報の一覧）は残る');
   for (const k of ['sales', 'guests', 'buy', 'cost', 'tip', 'greview', 'survey', 'cty']) {
-    location.hash = '#/app/numview?k=' + k; const x = registry.app.innerHTML;
+    location.hash = '#/app/numview?k=' + k + '&ym=' + ymT; const x = registry.app.innerHTML;
     ok(x.length > 300 && /pb-kpi/.test(x) && (k === 'cost' || /pb-numseg/.test(x)), 'numview ' + k + '＝KPI と月の切替が出る（原価率は月ごとなので切替なし）');
   }
-  location.hash = '#/app/numview?k=sales'; let x = registry.app.innerHTML;
+  location.hash = '#/app/numview?k=sales&ym=' + ymT; let x = registry.app.innerHTML;
   ok(/pb-barchart/.test(x) && /<rect /.test(x) && /¥30\.0万/.test(x) && /¥200,000/.test(x) && /USEN/.test(x), 'numview 売上＝棒グラフ＋月の合計（税抜 30万）＋日別の表（20万・出どころ USEN）');
-  location.hash = '#/app/numview?k=tip'; x = registry.app.innerHTML;
-  ok(/¥3,000/.test(x) && /1 日あった/.test(x) && /2 日分の日報/.test(x) && />なし</.test(x), 'numview チップ＝月の合計は日報の tipt（USENの行には無い）＝3,000円・あった1日・なしの日も表に');
-  location.hash = '#/app/numview?k=guests'; x = registry.app.innerHTML;
+  location.hash = '#/app/numview?k=tip&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/¥3,000/.test(x) && /1 日あった/.test(x) && /2 日分の日報/.test(x) && />なし</.test(x) && !/9,000/.test(x), 'numview チップ＝月の合計は店が打った日報の tipt だけ（USEN・総括表取込の行の tipt は数えない）＝3,000円・あった1日・なしの日も表に（Codex#5）');
+  location.hash = '#/app/numview?k=guests&ym=' + ymT; x = registry.app.innerHTML;
   ok(/>60</.test(x) && /¥5,000/.test(x), 'numview 客数＝合計60人・客単価5,000円（税抜÷人）');
-  location.hash = '#/app/numview?k=buy'; x = registry.app.innerHTML;
+  location.hash = '#/app/numview?k=buy&ym=' + ymT; x = registry.app.innerHTML;
   ok(/¥5\.5万/.test(x) && /¥40,000/.test(x) && /¥1,200/.test(x), 'numview 仕入＝日報の仕入合計 5.5万・日別 40,000・消耗品 1,200');
-  location.hash = '#/app/numview?k=cty'; x = registry.app.innerHTML;
+  location.hash = '#/app/numview?k=cty&ym=' + ymT; x = registry.app.innerHTML;
   ok(/韓国/.test(x) && /その他ヨーロッパ/.test(x) && x.indexOf('韓国') < x.indexOf('その他ヨーロッパ') && />37</.test(x), 'numview 国別＝USENの客層をそのまま（人数の多い順・合計37人）');
   location.hash = '#/app/numview?k=zzz'; x = registry.app.innerHTML;
   ok(/pb-barchart/.test(x), 'numview 知らない項目は売上に倒す');
+  ok(!/無い日は税込/.test(x), 'numview 売上＝純売上がそろっている月は「税抜」だけ（税込の注記は出ない）');
+  // #6 純売上の無い日が混ざる月＝見出しと注記で分かる
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store:S, date: dA, sales: 110000, guests: 20, src:'usen', t: Date.now() - 3600e3 }])); });
+  location.hash = '#/app/numview?k=sales&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/税抜・無い日は税込/.test(x) && /純売上（税抜）の無い日は売上（税込）で数えています/.test(x) && /（税込）<\/td>/.test(x), 'numview 売上＝純売上の無い日は見出し「税抜・無い日は税込」＋注記＋その日に（税込）の印（Codex#6）');
+  // #7 口コミ＝前月末の控えが無い月は「この月に増えた件数」を出さない。#8 棒グラフはマイナスを下へ・0は棒なし
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'gsnap', store:S, item: dB, note: JSON.stringify({ src:'places', total: 100, rating: 4.5 }), t: Date.parse(dB + 'T23:30:00+09:00'), id:'g1' },
+      { kind:'gsnap', store:S, item: dA, note: JSON.stringify({ src:'places', total: 98, rating: 4.5 }), t: Date.parse(dA + 'T23:30:00+09:00'), id:'g2' }])); });
+  location.hash = '#/app/numview?k=greview&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/前月末の控えが無いため出せません/.test(x) && />—</.test(x), 'numview 口コミ＝前月末の控えが無い月は「—」＋理由（月の途中からの差を月間の増加にしない・Codex#7）');
+  ok(/class="neg"/.test(x) && /<line class="z"/.test(x) && /−2|-2/.test(x), 'numview 口コミ＝減った日は赤い棒が基準線の下に出る（Codex#8）');
+  ok(/const bars = pts\.map\(\(p, i\) => \{ if \(p\.v == null \|\| isNaN\(p\.v\) \|\| p\.v === 0\) return '';/.test(code), 'ソース＝0の日は棒を出さない（Codex#8）');
   ok(/APPS\.unshift\(\{ id:'numview', group:'storeops', icon:'chart', live:true, tabHide:true, roles:\['manager', 'owner', 'hq'\]/.test(code), 'ソース＝numview は店長・オーナー・本部だけ・タブに出さない');
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/app/numview?k=sales';
   ok(!/pb-barchart/.test(registry.app.innerHTML), 'スタッフは numview を開けない');
   // 気づきグランプリ（本部）
-  const lastYm = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); })();
+  /* ★前月＝JSTの年月で計算（toISOString は UTC＝朝9時前に月がずれる・Codex#9）。開くときは ?ym= で固定 */
+  const lastYm = (() => { const j = new Date(Date.now() + 9 * 3600e3); const d = new Date(Date.UTC(j.getUTCFullYear(), j.getUTCMonth() - 1, 1)); return d.toISOString().slice(0, 7); })();
   const tLast = Date.parse(lastYm + '-10T12:00:00+09:00');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb');
     localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] }));
     localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([{ store:S, cat:'good', note:'先月の気づきA', photos:[], t: tLast, who:'A' }, { store:'寿司世桜 心斎橋店', cat:'idea', note:'先月の気づきB', photos:[], t: tLast + 3600e3, who:'B' }, { store:S, cat:'trouble', note:'今月の気づきC', photos:[], t: Date.now() - 3600e3, who:'C' }]));
-    localStorage.setItem('yosakura_demo_reports', JSON.stringify([{ kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: S + '||' + (tLast), by:'masuda', name:'増田' }), t: tLast + 86400e3 * 20, id:'v1' }])); });
-  location.hash = '#/app/kzgp'; x = registry.app.innerHTML;
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: S + '||' + (tLast), by:'masuda', name:'増田' }), t: tLast + 86400e3 * 20, id:'v1' },
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: '寿司世桜 心斎橋店||' + (tLast + 3600e3), by:'tsuneyama', name:'常山' }), t: tLast + 86400e3 * 21, id:'v2' },
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: '', by:'tsuneyama', name:'常山' }), t: tLast + 86400e3 * 22, id:'v3' }]));   // 常山さんは取り消した＝数えない
+    localStorage.setItem('yosakura_demo_kzvote', JSON.stringify([{ kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: S + '||' + (tLast), by:'masuda', name:'増田' }), t: tLast + 86400e3 * 19 }])); });   // 端末の控え（古い同じ票）＝二重に数えない
+  location.hash = '#/app/kzgp?ym=' + lastYm; x = registry.app.innerHTML;
   ok(/先月の気づきA/.test(x) && /先月の気づきB/.test(x) && !/今月の気づきC/.test(x), 'グランプリ＝既定は前月の投稿だけ（今月の分は出ない）');
   ok(/#1/.test(x) && /#2/.test(x) && /店名・お名前は伏せています/.test(x) && !/増田/.test(x), 'グランプリ＝番号つき・店名とお名前は伏せる（既定）・投票者の名前も出ない');
-  ok(/いま1位/.test(x) && x.indexOf('いま1位') < x.indexOf('先月の気づきA') && /<b>1<\/b>票/.test(x), 'グランプリ＝本部データの kzvote（増田さんの1票）を数えて1位の印');
-  ok(/data-kzvote=/.test(x) && /この投稿に1票/.test(x) && /data-kzgpshow="1"/.test(x), 'グランプリ＝1票ボタンと、店名・お名前を見る切替');
-  ok(/case 'kzvote':\n\s+subs\.push\(/.test(code.replace(/\r\n/g, '\n')) || /case 'kzvote':\r?\n\s+subs\.push\(/.test(code), 'ソース＝kzvote は distribute で端末に残る（振り分け漏れの再発防止）');
+  ok(/いま1位/.test(x) && x.indexOf('いま1位') < x.indexOf('先月の気づきA') && (x.match(/<b>1<\/b>票/g) || []).length === 1 && /<b>0<\/b>票/.test(x) && /投票 1</.test(x), 'グランプリ＝同じ人の票は最新だけ・取り消し（空キー）は数えない・端末の控えと二重にしない＝増田さんの1票だけで1位（Codex#18・#12）');
+  ok(/data-kzvote=/.test(x) && /この投稿に1票/.test(x) && new RegExp('data-kzgpshow="' + lastYm + '"').test(x), 'グランプリ＝1票ボタンと、店名・お名前を見る切替（その月だけ）');
+  ok(/case 'kzvote': if \(getRole\(\) === 'hq'\) subs\.push\(/.test(code), 'ソース＝kzvote は distribute で端末に残る（本部の端末だけ・振り分け漏れの再発防止）');
   ok(/postReport\(\{ kind:'kzvote', store:'', item: ym, note, t \}\);/.test(code) && /const next = \(cur && cur\.key === key\) \? '' : key;/.test(code), 'ソース＝1票はバックエンドへ（同じ投稿をもう一度＝取り消し）');
   { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');
     ok(/AUTH_HQ_READ_KINDS = \[[^\]]*'kzvote'/.test(gsrc), '認証.gs＝kzvote は本部だけに返す（店舗端末に投票を配らない）'); }
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/app/kzgp';
   ok(!/data-kzvote=/.test(registry.app.innerHTML), '店長はグランプリを開けない（本部のみ）');
+  ok(/case 'kzvote': if \(getRole\(\) === 'hq'\) subs\.push\(/.test(code), 'ソース＝distribute は本部の端末だけ kzvote を残す（Codex#11）');
+  { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');
+    ok(/AUTH_HQ_WRITE_KINDS = \[[\s\S]*?'kzvote'\]/.test(gsrc) && /if \(kind === 'kzvote'\) \{/.test(gsrc) && /by: String\(u\.uid \|\| ''\)/.test(gsrc), '認証.gs＝kzvote は本部だけ書ける・投票者は認証済み uid で固定（Codex#1・#2）'); }
+  ok(/src="\$\{esc\(photoThumb\(p\)\)\}" data-full="\$\{esc\(photoFull\(p\)\)\}"/.test(code) && /im\.src = String\(src \|\| ''\); m\.appendChild\(im\);/.test(code), 'ソース＝グランプリの写真の属性は esc・拡大表示は DOM で（Codex#3）');
+  ok(/\['sk_date', 'sk_store'\]\.forEach\(id => \{ const e = g\(id\); if \(e\) e\.addEventListener\('change', \(\) => \{ setTimeout\(sync, 0\); setTimeout\(sync, 400\); \}\); \}\);/.test(code) && /document\.createEvent\('Event'\)/.test(code), 'ソース＝日付・店舗を変えたら「なし」の印を合わせる・Event が無い環境の予備（Codex#4・#12）');
+  ok(/localStorage\.getItem\('yosakura_kzgp_show'\) === ym/.test(code), 'ソース＝店名・お名前を見るのはその月だけ（Codex#10）');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/home?tab=hq';
   ok(/data-open="kzgp"/.test(registry.app.innerHTML) && /気づきグランプリ（月間MVP）/.test(registry.app.innerHTML), '本部タブ＝グランプリの入口の帯（口コミ・盛付の帯の下）');
