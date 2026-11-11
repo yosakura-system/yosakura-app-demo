@@ -1422,3 +1422,21 @@ html[data-theme="pb"] .pb-chips--4 .pb-chip small { display: block; font-size: 1
 @media (max-width: 380px) { .gate2 { grid-template-columns: 1fr; } .gate { min-height: 0; } }
 .fac-card .fac-l { margin: 6px 0 0; font-size: 13px; line-height: 1.7; color: var(--sumi); }
 .fac-card .fac-k { display: inline-block; min-width: 3.2em; margin-right: 6px; font-size: 11px; font-weight: 700; color: var(--suou); background: var(--suou-t); border-radius: 6px; padding: 1px 6px; vertical-align: middle; }
+
+/* ★2026-11-11 店の数字の小窓（項目別）・日別の棒グラフ・日報のチップ2択・気づきグランプリ */
+html[data-theme="pb"] .pb-chips--num { grid-template-columns: repeat(4, 1fr); }
+html[data-theme="pb"] .pb-chips--num .pb-chipimg { height: 56px; }
+@media (max-width: 640px) { html[data-theme="pb"] .pb-chips--num { grid-template-columns: 1fr 1fr; } }
+html[data-theme="pb"] .pb-barchart { display: block; width: 100%; height: auto; }
+html[data-theme="pb"] .pb-barchart rect { fill: var(--suou, #8E354A); opacity: .85; }
+html[data-theme="pb"] .pb-barchart text { font-size: 9px; fill: var(--gray); }
+html[data-theme="pb"] .pb-dow--cty .pb-dowrow { grid-template-columns: 7em 1fr auto 3.2em; }
+html[data-theme="pb"] .pb-niptip { margin: 10px 0 4px; }
+html[data-theme="pb"] .pb-niptiprow { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: end; }
+html[data-theme="pb"] .pb-tipnone { font: inherit; font-size: 15px; font-weight: 600; padding: 12px 18px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--paper); color: var(--sumi); cursor: pointer; white-space: nowrap; }
+html[data-theme="pb"] .pb-tipnone.on { background: var(--suou-t); border-color: var(--suou-d); color: var(--suou-d); }
+.kzgp-row.top { border: 1.5px solid #C9A24B; }
+.kzgp-no { font-weight: 700; color: var(--gray); margin-bottom: 4px; }
+.kzgp-top { display: inline-block; font-size: 11px; color: #fff; background: #C9A24B; border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+.kzgp-note { white-space: pre-wrap; font-size: 15px; line-height: 1.6; }
+.kzgp-vote { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

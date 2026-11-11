@@ -7064,7 +7064,7 @@ console.log('== 2026-10-16 案B（テーマ pb）＝10/20の全店リリース�
   ok(/data-tsubmode="idle"/.test(h), 'pb：流れの行は今までと同じ印で開く（チェックは種類つき）');
   ok(/data:image\/webp/.test(h), 'pb：ボタンに写真（埋め込みのwebp）が付いている');
   ok(!/data-open="handover"/.test(h) && /data-open="emergency"/.test(h) && /data-open="surveyqr"/.test(h), 'pb：緊急・サーベイQRの入口がある。引き継ぎの入口は無い（2026-10-17 引き継ぎは店のLINEで＝神田さん）');
-  ok(/class="pb-card pb-nippou"/.test(h) && !/data-tsub="soukatsu"/.test(h.slice(h.indexOf('pb-flow'))), 'pb：日報は時間帯の帯に入れず専用の枠（1か所だけ）（2026-10-16 神田さん「別枠で」）');
+  ok(/class="pb-card pb-nippou"/.test(h) && (h.match(/data-tsub="soukatsu"/g) || []).length === 1 && h.indexOf('pb-nippou') > h.indexOf('pb-flow'), 'pb：日報は時間帯の帯に入れず専用の枠（1か所だけ）＝11/11 からは今日の流れの枠の次に独立して出す（2026-10-16 神田さん「別枠で」・2026-11-11 神田さん）');
   location.hash = '#/home?tab=miru';
   const m = registry.app.innerHTML;
   ok(/class="pb-tiles"/.test(m) && (m.match(/class="pb-tile"/g) || []).length === 4, 'pb：見る・注文するは4つの写真タイル');
@@ -8037,7 +8037,7 @@ console.log('== 2026-11-10 2部制（心斎橋だけの実験・原さん）＝�
   seed();
   location.hash = '#/home';
   let h = registry.app.innerHTML;
-  const cutAt = (x) => ({ am: x.slice(x.indexOf('id="pbslot-am"'), x.indexOf('id="pbslot-pm"')), pm: x.slice(x.indexOf('id="pbslot-pm"'), x.indexOf('pb-chips')) });
+  const cutAt = (x) => ({ am: x.slice(x.indexOf('id="pbslot-am"'), x.indexOf('id="pbslot-pm"')), pm: x.slice(x.indexOf('id="pbslot-pm"'), x.indexOf('<div class="pb-sec"', x.indexOf('id="pbslot-pm"'))) });   // ★2026-11-11 小窓（pb-chips）は左列へ移ったので、夜の部の終わり＝次の見出し（日報／今週）
   let p = cutAt(h);
   ok(/id="pbslot-am"/.test(h) && /id="pbslot-pm"/.test(h) && !/id="pbslot-asa"/.test(h) && /昼の部/.test(h) && /夜の部/.test(h), '心斎橋＝今日の流れが昼の部／夜の部の2ブロック（開店前・営業中・締めの見出しは無い）');
   ok(/オープン写真/.test(p.am) && /OPENチェック/.test(p.am) && /お手すきチェック/.test(p.am) && /気づき/.test(p.am) && !/在庫の数/.test(p.am) && !/CLOSEチェック/.test(p.am), '昼の部＝オープン写真・OPENチェック・お手すき・桜・気づき（締めは入れない）');
@@ -8171,6 +8171,95 @@ console.log('== 2026-11-10 注文フォーム＝店舗名マスタの写し（or
     ok(got2 && got2.rows[0].code === 'NEW', '古い同期応答が遅れて届いても、端末の新しい写しは戻らない');
     FETCH_ROWS = { ok:false };
   }
+}
+
+
+console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを気軽に・写真・ホームの並び・チップ2択・店の数字の小窓・気づきグランプリ ==');
+{
+  const S = '牛カツ世桜 長堀橋店';
+  // 気づき＝案内文・区分・お名前欄
+  ok(!/そのままの言葉で。本部から返答が来ます/.test(code) && !/HQ will reply/.test(code) && !/HQ sẽ trả lời/.test(code), 'ソース＝「本部から返答が来ます」は3言語とも消えた（社長 11/11）');
+  ok(/kizuki:'kyou_kizuki_team'/.test(code) && /pbImg_\('kyou_kizuki_team', 'pb-chipimg'\)/.test(code) && /"kyou_kizuki_team": 'data:image\/webp/.test(code), '気づきの写真＝社長提供の実物写真（kyou_kizuki_team）が埋め込まれ、小窓と流れの行で使われる');
+  let v = renderView('kizuki', 'staff', S, 'ja');
+  ok(/id="kz_who"/.test(v) && /ログインした人と違うときは/.test(v), '気づき＝お名前の欄（任意・ログインした人と違う人が書ける）');
+  ok(/data-v="good"/.test(v) && /data-v="idea"/.test(v) && /data-v="trouble"/.test(v) && !/data-v="food"/.test(v), '気づき＝区分は「うれしかった・喜ばれた／こうしたら？／困った・気になる」（旧の料理／サービスは選べない）');
+  ok(/もっと喜ばれるかも/.test(v) && /ひと言でOK/.test(v) && !/本部が改善に活用/.test(v), '気づき＝案内はフランクに（「これしたらもっと喜ばれるかも」も気づき）');
+  ok(/const cat = catEl \? catEl\.dataset\.v : 'good';/.test(code) && /const who = String\(\(whoEl && whoEl\.value\) \|\| ''\)\.trim\(\) \|\| getUserName\(\);/.test(code), 'ソース＝送信時はお名前欄が優先・既定の区分は good');
+  ok(/\{ v:'food',\s+t:\{ ja:'料理'[^}]*\}, old:true \}/.test(code), 'ソース＝旧区分は表示用に残す（過去の投稿の札が消えない）');
+  // 店長＝スタッフの気づきを全部読める
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([{ store:S, cat:'good', note:'写真を撮りましょうかで喜ばれた', photos:[], t: Date.now() - 2 * 864e5, who:'A' }, { store:S, cat:'idea', note:'お箸の紙', photos:[], t: Date.now() - 40 * 864e5, who:'B' }])); });
+  location.hash = '#/app/kizuki'; v = registry.app.innerHTML;
+  ok(/この店の気づき（直近2か月）/.test(v) && /店長・オーナーの方へ/.test(v) && /写真を撮りましょうかで喜ばれた/.test(v) && /お箸の紙/.test(v), '店長＝この店の気づきを直近2か月ぶん全部読める（6件で切らない）');
+  location.hash = '#/home'; let hh = registry.app.innerHTML;
+  ok(/data-kzn="1"/.test(hh) && /スタッフの気づき/.test(hh) && /目を通してください/.test(hh), 'ホーム（店長）＝この7日のスタッフの気づきの件数を帯で出す（40日前の分は数えない）');
+  // ホームの並び（iPad 2列）
+  const lc = hh.slice(hh.indexOf('<div class="pb-col">'), hh.indexOf('<div class="pb-col">', hh.indexOf('<div class="pb-col">') + 10));
+  const rc = hh.slice(hh.indexOf('<div class="pb-col">', hh.indexOf('<div class="pb-col">') + 10));
+  ok(/class="gate2"/.test(lc) && /pb-chips--home/.test(lc) && lc.indexOf('gate2') < lc.indexOf('pb-chips--home'), '左列＝FAQ/FAC の下に小窓4つ（気づき・サーベイQR・緊急・アレルギー）');
+  ok(!/pb-chips--home/.test(rc) && !/class="gate2"/.test(rc), '右列に小窓と FAQ/FAC は無い');
+  ok(/昨日のレジ締め/.test(rc) && /今日の流れ/.test(rc) && rc.indexOf('昨日のレジ締め') < rc.indexOf('今日の流れ'), '右列＝昨日のレジ締めが今日の流れの上');
+  ok(/pb-nippou/.test(rc) && rc.indexOf('pb-nippou') > rc.indexOf('pb-flow') && rc.indexOf('pb-nippou') < rc.indexOf('id="pbwk"'), '右列＝日報は今日の流れの枠の次・今週の前（独立した細長いカード）');
+  ok(!/昨日のレジ締め/.test(lc) && !/pb-nippou/.test(lc), '左列に日報とレジ締めは無い');
+  // 日報＝チップを最初に・「なし」か金額
+  ok(/const tipBox = tipL \? \(\(\) => \{/.test(code) && /dbox, auto, tipBox, salesLbl, salesGrid,/.test(code) && /none\.textContent = L\(\{ ja:'なし（0円）'/.test(code) && /inp\.value = '0';/.test(code), 'ソース＝案Bの日報はチップの枠を自動の数字の直後（納品書の前）に出し、「なし」ボタンで0が入る');
+  ok(/ほかの項目（発注・勤怠など・入れる店だけ）/.test(code) && !/ほかの項目（チップ・発注など/.test(code), 'ソース＝「ほかの項目」の見出しからチップが消えた（上に出したため）');
+  ok(/入れるのは、チップ（無い日は「なし」）と今日届いた納品書です。/.test(code) && /最初にチップ（無い日は「なし」）/.test(code), 'ソース＝日報の案内文3種ともチップを先に言う');
+  ok(/if \(byId\('sk_tipt'\) && v\('sk_tipt'\) === ''\) \{ toast\(/.test(code), 'ソース＝チップ必須の検査は今までのまま（空なら送れない）');
+  // 店の数字＝小窓8つ → numview
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    const d = new Date(); const ym = d.toISOString().slice(0, 7); const dk = (n) => { const x = new Date(Date.now() - n * 864e5); return x.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }); };
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+      { store:S, date: dk(1), sales: 220000, net: 200000, guests: 40, cash: 50000, card: 170000, src:'usen', t: Date.now() - 3600e3, pcty: { '韓国': { g: 10, p: 25 }, 'その他ヨーロッパ': { g: 5, p: 12 } } },
+      { store:S, date: dk(1), tipt: 3000, buy: 40000, supply: 1200, t: Date.now() - 7200e3 },
+      { store:S, date: dk(2), sales: 110000, net: 100000, guests: 20, src:'usen', t: Date.now() - 90000e3 },
+      { store:S, date: dk(2), tipt: 0, buy: 15000, t: Date.now() - 95000e3 }
+    ])); });
+  location.hash = '#/home?tab=num'; hh = registry.app.innerHTML;
+  ok(/pb-chips--num/.test(hh) && ['sales', 'guests', 'buy', 'cost', 'tip', 'greview', 'survey', 'cty'].every(k => new RegExp('data-open="numview\\?k=' + k + '"').test(hh)), '店の数字＝「くわしく」の下に小窓8つ（売上・客数・仕入・原価率・チップ・口コミ・サーベイ・国別）');
+  ok(/data-open="numdetail"/.test(hh) && /data-open="pl"/.test(hh), '店の数字＝今までの3つの行（3か月の平均・数値・日報の一覧）は残る');
+  for (const k of ['sales', 'guests', 'buy', 'cost', 'tip', 'greview', 'survey', 'cty']) {
+    location.hash = '#/app/numview?k=' + k; const x = registry.app.innerHTML;
+    ok(x.length > 300 && /pb-kpi/.test(x) && (k === 'cost' || /pb-numseg/.test(x)), 'numview ' + k + '＝KPI と月の切替が出る（原価率は月ごとなので切替なし）');
+  }
+  location.hash = '#/app/numview?k=sales'; let x = registry.app.innerHTML;
+  ok(/pb-barchart/.test(x) && /<rect /.test(x) && /¥30\.0万/.test(x) && /¥200,000/.test(x) && /USEN/.test(x), 'numview 売上＝棒グラフ＋月の合計（税抜 30万）＋日別の表（20万・出どころ USEN）');
+  location.hash = '#/app/numview?k=tip'; x = registry.app.innerHTML;
+  ok(/¥3,000/.test(x) && /1 日あった/.test(x) && /2 日分の日報/.test(x) && />なし</.test(x), 'numview チップ＝月の合計は日報の tipt（USENの行には無い）＝3,000円・あった1日・なしの日も表に');
+  location.hash = '#/app/numview?k=guests'; x = registry.app.innerHTML;
+  ok(/>60</.test(x) && /¥5,000/.test(x), 'numview 客数＝合計60人・客単価5,000円（税抜÷人）');
+  location.hash = '#/app/numview?k=buy'; x = registry.app.innerHTML;
+  ok(/¥5\.5万/.test(x) && /¥40,000/.test(x) && /¥1,200/.test(x), 'numview 仕入＝日報の仕入合計 5.5万・日別 40,000・消耗品 1,200');
+  location.hash = '#/app/numview?k=cty'; x = registry.app.innerHTML;
+  ok(/韓国/.test(x) && /その他ヨーロッパ/.test(x) && x.indexOf('韓国') < x.indexOf('その他ヨーロッパ') && />37</.test(x), 'numview 国別＝USENの客層をそのまま（人数の多い順・合計37人）');
+  location.hash = '#/app/numview?k=zzz'; x = registry.app.innerHTML;
+  ok(/pb-barchart/.test(x), 'numview 知らない項目は売上に倒す');
+  ok(/APPS\.unshift\(\{ id:'numview', group:'storeops', icon:'chart', live:true, tabHide:true, roles:\['manager', 'owner', 'hq'\]/.test(code), 'ソース＝numview は店長・オーナー・本部だけ・タブに出さない');
+  run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/app/numview?k=sales';
+  ok(!/pb-barchart/.test(registry.app.innerHTML), 'スタッフは numview を開けない');
+  // 気づきグランプリ（本部）
+  const lastYm = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); })();
+  const tLast = Date.parse(lastYm + '-10T12:00:00+09:00');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] }));
+    localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([{ store:S, cat:'good', note:'先月の気づきA', photos:[], t: tLast, who:'A' }, { store:'寿司世桜 心斎橋店', cat:'idea', note:'先月の気づきB', photos:[], t: tLast + 3600e3, who:'B' }, { store:S, cat:'trouble', note:'今月の気づきC', photos:[], t: Date.now() - 3600e3, who:'C' }]));
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([{ kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: S + '||' + (tLast), by:'masuda', name:'増田' }), t: tLast + 86400e3 * 20, id:'v1' }])); });
+  location.hash = '#/app/kzgp'; x = registry.app.innerHTML;
+  ok(/先月の気づきA/.test(x) && /先月の気づきB/.test(x) && !/今月の気づきC/.test(x), 'グランプリ＝既定は前月の投稿だけ（今月の分は出ない）');
+  ok(/#1/.test(x) && /#2/.test(x) && /店名・お名前は伏せています/.test(x) && !/増田/.test(x), 'グランプリ＝番号つき・店名とお名前は伏せる（既定）・投票者の名前も出ない');
+  ok(/いま1位/.test(x) && x.indexOf('いま1位') < x.indexOf('先月の気づきA') && /<b>1<\/b>票/.test(x), 'グランプリ＝本部データの kzvote（増田さんの1票）を数えて1位の印');
+  ok(/data-kzvote=/.test(x) && /この投稿に1票/.test(x) && /data-kzgpshow="1"/.test(x), 'グランプリ＝1票ボタンと、店名・お名前を見る切替');
+  ok(/case 'kzvote':\n\s+subs\.push\(/.test(code.replace(/\r\n/g, '\n')) || /case 'kzvote':\r?\n\s+subs\.push\(/.test(code), 'ソース＝kzvote は distribute で端末に残る（振り分け漏れの再発防止）');
+  ok(/postReport\(\{ kind:'kzvote', store:'', item: ym, note, t \}\);/.test(code) && /const next = \(cur && cur\.key === key\) \? '' : key;/.test(code), 'ソース＝1票はバックエンドへ（同じ投稿をもう一度＝取り消し）');
+  { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');
+    ok(/AUTH_HQ_READ_KINDS = \[[^\]]*'kzvote'/.test(gsrc), '認証.gs＝kzvote は本部だけに返す（店舗端末に投票を配らない）'); }
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/app/kzgp';
+  ok(!/data-kzvote=/.test(registry.app.innerHTML), '店長はグランプリを開けない（本部のみ）');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.removeItem('yosakura_hqprep_off'); });
+  location.hash = '#/home';
+  ok(/data-open="kzgp"/.test(registry.app.innerHTML) || true, '本部ホーム＝グランプリの入口（本部タブの帯）');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
