@@ -2235,9 +2235,9 @@
     }
     /* ② 今月の売上（日別の線）＝最後に締めた日の月 */
     const ym = ymOfDate(rec ? rec.date : addD(today, -1));
-    let mon = { days: [], tot: {} }; try { if (allMode) { const tot = { sales: 0, buy: 0 }; stores.forEach(s => { const m = skMonthData(s, ym); tot.sales += numOr0(m.tot && m.tot.sales); tot.buy += numOr0(m.tot && m.tot.buy); }); mon = { days: [], tot }; } else mon = skMonthData(store, ym); } catch (e) {}   // ★全店＝売上・仕入を店ごとに足す
+    let mon = { days: [], tot: {} }; const buyByStore = {}; try { if (allMode) { const tot = { sales: 0, buy: 0 }; stores.forEach(s => { const m = skMonthData(s, ym); tot.sales += numOr0(m.tot && m.tot.sales); buyByStore[s] = numOr0(m.tot && m.tot.buy); tot.buy += buyByStore[s]; }); mon = { days: [], tot }; } else { mon = skMonthData(store, ym); buyByStore[store] = numOr0(mon.tot && mon.tot.buy); } } catch (e) {}   // ★全店＝売上・仕入を店ごとに足す
     const monRecs = recs.filter(r => ymOfDate(r.date) === ym);
-    const useNet = monRecs.length > 0 && monRecs.every(r => Number(r.net) > 0);   // ★2026-10-20 バックチェック：税抜と税込を混ぜない
+    const useNet = monRecs.length > 0 && monRecs.every(r => Number(r.net) > 0 && !r.mixed);   // ★2026-10-20 バックチェック：税抜と税込を混ぜない（全店＝1店でも税込の店があれば税込でそろえる・Codex#1）
     const mv = (r) => useNet ? Number(r.net) : (Number(r.sales) > 0 ? Number(r.sales) : null);
     const byD = {}; monRecs.forEach(r => { const v = mv(r); if (v != null) byD[r.date] = v; });
     const dl = daysOfYm(ym);
@@ -2266,7 +2266,7 @@
     /* ★2026-10-21 全店点検＝日別の仕入（総括表の日別の仕入金額）は一部の日しか入っておらず、牛カツ富士山で 5.9%（仕入25万）と出ていた。
        総括表の当月仕入高（仕入台帳・毎時の取込）の方が大きければそれを使い、出どころを添える */
     let buyNow = Number(t.buy) || 0, buyFrom = 'daily';
-    try { const cms = getMonthly().filter(r => stores.includes(r.store) && r.ym === ym); const sumP = cms.reduce((a, r) => a + (Number(r.purchase) || 0), 0); if (cms.length && sumP > buyNow) { buyNow = sumP; buyFrom = cms.some(r => r.purchaseFrom === 'drive') ? 'drive' : 'app'; } } catch (e) {}
+    try { const r2 = numBuyMonth_(stores, ym, buyByStore); buyNow = r2.buy; buyFrom = r2.from; } catch (e) {}   // ★店ごとに「日別の合計と総括表の仕入台帳の大きい方」→足す（Codex#3）
     const buyRate = t.sales && buyNow ? (buyNow / t.sales * 100).toFixed(1) : null;
     let cost = null; try { let cs = 0, ss = 0, nn = 0; stores.forEach(s => { const pm = plMonthsOf(s).find(r => r.ym === pym); if (!pm) return; const pc = plCalc(pm); if (!pc.complete) return; cs += pc.cost; ss += Number(pm.sales) || 0; nn++; }); if (nn && ss) cost = cs / ss * 100; } catch (e) {}   // ★2026-10-21 月初・月末がそろった月だけ／★全店＝原価の合計÷売上の合計（そろった店だけ）
     const kpi2 = head(L({ja:'仕入率 ・ 原価率',en:'Purchase & cost rate',vi:'Tỷ lệ nhập & giá vốn'}), L({ja:'仕入率は毎日 ・ 原価率は前月分',en:'Purchase daily / cost last month',vi:'Nhập hằng ngày / giá vốn tháng trước'}))
@@ -2378,7 +2378,15 @@
     const label = all ? `${L({ ja:'全店', en:'All stores', vi:'Tất cả' })}（${stores.length}${L({ ja:'店', en:'', vi:' CH' })}）` : (store ? storeShort(store) : '');
     return { role, sel, vis, canPick, store: all ? (stores[0] || '') : store, stores, all, label };
   }
-  const NUM_SUM_KEYS_ = ['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'disc', 'err', 'buy', 'supply', 'tipt', 'loss', 'laborcost'];
+  const NUM_SUM_KEYS_ = ['sales', 'guests', 'cash', 'card', 'emoney', 'disc', 'err', 'buy', 'supply', 'tipt', 'loss', 'laborcost'];
+  /* ★合算の売上＝店ごとに「純売上（税抜）・無ければ売上（税込）」を決めてから足す（Codex#1＝税抜の無い店が合計から消えていた）。1店でも税込の店が混ざれば mixed */
+  const numFold_ = (o, r) => {
+    NUM_SUM_KEYS_.forEach(k => { if (hasVal(r[k])) o[k] = (o[k] || 0) + numOr0(r[k]); });
+    const v = Number(r.net) > 0 ? Number(r.net) : (Number(r.sales) || 0);
+    if (v > 0) { o.net = (o.net || 0) + v; if (!(Number(r.net) > 0)) o.mixed = true; }
+    o.t = Math.max(o.t, Number(r.t) || 0); o.n++; if (r.src === 'usen' || r.pos) o.pos = true;
+    if (Array.isArray(r.slips) && r.slips.length) o.slips = (o.slips || []).concat(r.slips.map(x => Object.assign({ _store: r.store }, x)));
+  };
   /* getSk の行を日付ごとに合算（1店なら整えた行そのまま）。pos＝どれか1店でもレジの行 */
   const numAgg_ = (stores, pred) => {
     const rows = getSk().filter(r => r && stores.includes(r.store) && r.date && pred(r));
@@ -2386,9 +2394,7 @@
     const by = {};
     rows.forEach(r => {
       const o = by[r.date] || (by[r.date] = { store: '*', date: r.date, t: 0, n: 0, pos: false, agg: true });
-      NUM_SUM_KEYS_.forEach(k => { if (hasVal(r[k])) o[k] = (o[k] || 0) + numOr0(r[k]); });
-      o.t = Math.max(o.t, Number(r.t) || 0); o.n++; if (r.src === 'usen' || r.pos) o.pos = true;
-      if (Array.isArray(r.slips) && r.slips.length) o.slips = (o.slips || []).concat(r.slips.map(x => Object.assign({ _store: r.store }, x)));
+      numFold_(o, r);
     });
     return Object.values(by);
   };
@@ -2409,6 +2415,16 @@
     return `<svg class="pb-barchart" viewBox="0 0 ${W} ${H}" aria-hidden="true">${bars}${zero}${labels}</svg>`;
   };
   const NUMVIEW_T_ = { sales:{ ja:'売上・客数・客単価', en:'Sales, guests, per guest', vi:'Doanh thu, khách, đơn giá' }, buy:{ ja:'仕入', en:'Purchases', vi:'Nhập hàng' }, cost:{ ja:'原価率', en:'Cost rate', vi:'Giá vốn' }, tip:{ ja:'チップ', en:'Tips', vi:'Tiền tip' }, greview:{ ja:'Google口コミ', en:'Google reviews', vi:'Đánh giá Google' }, survey:{ ja:'サーベイ', en:'Survey', vi:'Khảo sát' }, cty:{ ja:'国別のお客様', en:'Guests by country', vi:'Khách theo quốc gia' } };
+  /* 月の仕入＝店ごとに「日別の合計」と「総括表の仕入台帳（当月仕入高）」の大きい方を採ってから足す（1店のときも同じ）。from＝台帳を使った店があれば 'drive'／'app' */
+  function numBuyMonth_(stores, ym, dailyByStore) {
+    let buy = 0, from = 'daily';
+    const cms = getMonthly().filter(r => stores.includes(r.store) && r.ym === ym);
+    stores.forEach(s => {
+      const daily = numOr0(dailyByStore[s]); const cm = cms.find(r => r.store === s); const led = cm ? (Number(cm.purchase) || 0) : 0;
+      if (cm && led > daily) { buy += led; if (from !== 'drive') from = cm.purchaseFrom === 'drive' ? 'drive' : 'app'; } else buy += daily;
+    });
+    return { buy, from };
+  }
   function pbNumView_(k) {
     const ns = numStores_(); const store = ns.store, stores = ns.stores, allMode = ns.all, storeLb = ns.label;
     if (!store) return '';
@@ -2429,7 +2445,7 @@
     const val = (r) => Number(r.net) > 0 ? Number(r.net) : (Number(r.sales) || 0);
     /* その店・その月の日ごとの行＝整えた最新の1行（売上・客数・国別）と、店が打った日報の行（チップ・仕入・納品書）を分けて持つ（USENの行にはチップが無い）。
        全店＝店ごとに最新の1行を取ってから日付で合算（numAgg_ と同じ考え方） */
-    const byDate = {}, byApp = {};
+    const byDate = {}, byApp = {}, fbv = {}, buyByStore = {};
     { const bdS = {}, baS = {};
       getSk().filter(r => r && stores.includes(r.store) && r.date && ymOfDate(r.date) === ym && r.date <= today).forEach(r => {
         const kk = r.store + '||' + r.date;
@@ -2439,11 +2455,12 @@
       const fold = (src, dst) => Object.keys(src).forEach(kk => { const r = src[kk]; const d = r.date;
         if (stores.length <= 1) { dst[d] = r; return; }
         const o = dst[d] || (dst[d] = { store: '*', date: d, t: 0, n: 0, pos: false, agg: true });
-        NUM_SUM_KEYS_.forEach(f => { if (hasVal(r[f])) o[f] = (o[f] || 0) + numOr0(r[f]); });
-        o.t = Math.max(o.t, Number(r.t) || 0); o.n++; if (r.src === 'usen' || r.pos) o.pos = true;
-        if (Array.isArray(r.slips) && r.slips.length) o.slips = (o.slips || []).concat(r.slips.map(x => Object.assign({ _store: r.store }, x))); });
-      fold(bdS, byDate); fold(baS, byApp); }
-    const appVal = (d, key) => { const a = byApp[d]; if (a && hasVal(a[key])) return numOr0(a[key]); const r = byDate[d]; return (r && hasVal(r[key])) ? numOr0(r[key]) : null; };
+        numFold_(o, r); });
+      fold(bdS, byDate); fold(baS, byApp);
+      /* ★仕入・消耗品＝店ごとに「日報の行→無ければ整えた行（総括表取込など）」で決めてから足す（Codex#2）。店ごとの月の仕入（台帳補完用）も持つ */
+      Object.keys(bdS).concat(Object.keys(baS)).filter((v, i, a) => a.indexOf(v) === i).forEach(kk => { const [s, d] = kk.split('||'); const a = baS[kk], r = bdS[kk];
+        ['buy', 'supply'].forEach(f => { const v = (a && hasVal(a[f])) ? numOr0(a[f]) : (r && hasVal(r[f])) ? numOr0(r[f]) : null; if (v == null) return; (fbv[d] = fbv[d] || {})[f] = (fbv[d][f] || 0) + v; if (f === 'buy') buyByStore[s] = (buyByStore[s] || 0) + v; }); }); }
+    const appVal = (d, key) => (fbv[d] && fbv[d][key] != null) ? fbv[d][key] : null;   // 店ごとに決めた値の合計（1店なら日報の行→整えた行）
     const appOnly = (d, key) => { const a = byApp[d]; return (a && hasVal(a[key])) ? numOr0(a[key]) : null; };   // ★チップは店が打った日報の行だけ（総括表取込の行の tipt は数えない・Codex#5）
     const kpi = (a) => `<div class="pb-card"><div class="pb-kpi">${a.map(x => `<div><div class="l">${x[0]}</div><div class="v">${x[1]}</div><div class="d">${x[2] || ''}</div></div>`).join('')}</div></div>`;
     const tbl = (cols, rows) => rows.length ? `<div class="pb-card pb-tblwrap"><table class="pb-tbl"><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : `<div class="pb-card"><div class="muted">${L({ ja:'この月の数字はまだありません', en:'No data for this month', vi:'Chưa có số liệu tháng này' })}</div></div>`;
@@ -2460,7 +2477,7 @@
       const perOf = (r) => { const gg = Number(r.guests) || 0; return gg ? Math.round(val(r) / gg) : null; };
       const pers = rows.map(perOf).filter(v => v != null);
       const modeSeg = `<div class="pb-numseg pb-numseg--mode">${[['sales', { ja:'売上', en:'Sales', vi:'Doanh thu' }], ['guests', { ja:'客数', en:'Guests', vi:'Khách' }], ['per', { ja:'客単価', en:'Per guest', vi:'Đơn giá' }]].map(([v, lb]) => `<button type="button" class="${v === mode ? 'on' : ''}" data-open="numview?k=sales&m=${v}&ym=${ym}">${L(lb)}</button>`).join('')}</div>`;
-      const mixed = rows.some(r => !(Number(r.net) > 0));   // ★純売上（税抜）の無い日は売上（税込）で数える＝その月は見出しと注記で分かるように（Codex#6）
+      const mixed = rows.some(r => r.mixed || !(Number(r.net) > 0));   // ★純売上（税抜）の無い日（全店＝無い店）は売上（税込）で数える＝その月は見出しと注記で分かるように（Codex#6・#1）
       const exLb = mixed ? L({ ja:'税抜・無い日は税込', en:'excl. tax (incl. where no net)', vi:'chưa thuế (gồm thuế nếu thiếu)' }) : L({ ja:'税抜', en:'excl. tax', vi:'chưa thuế' });
       const mixNote = mixed ? `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 純売上（税抜）の無い日は売上（税込）で数えています。', en:'Days without net sales use gross (incl. tax).', vi:'Ngày không có doanh thu thuần dùng doanh thu gồm thuế.' })}</p>` : '';
       const pts = dl.map(d => { const r = byDate[d]; if (!(r && val(r) > 0)) return { lb: dlb(d), v: null }; return { lb: dlb(d), v: mode === 'sales' ? val(r) : mode === 'guests' ? (Number(r.guests) || null) : perOf(r) }; });
@@ -2471,7 +2488,7 @@
         : kpi([[`${L({ ja:'月の客単価', en:'Per guest (month)', vi:'Đơn giá (tháng)' })}（${exLb}）`, g ? yen(Math.round(tot / g)) : '—', g ? `${L({ ja:'売上', en:'sales', vi:'doanh thu' })} ${yenShort(tot)} ÷ ${n(g)}${L({ ja:'人', en:'', vi:'' })}` : ''], [L({ ja:'日ごとの幅', en:'Daily range', vi:'Biên độ ngày' }), pers.length ? `${yen(Math.min(...pers))}〜${yen(Math.max(...pers))}` : '—', pers.length ? `${pers.length} ${days}` : '']]))
         + chart(pts, mode === 'guests' ? n : yen)
         + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), `${L({ ja:'売上', en:'Sales', vi:'Doanh thu' })}（${exLb}）`, L({ ja:'客数', en:'Guests', vi:'Khách' }), L({ ja:'客単価', en:'Per guest', vi:'Đơn giá' }), L({ ja:'出どころ', en:'Source', vi:'Nguồn' })],
-            rows.slice().reverse().map(r => { const gg = Number(r.guests) || 0; return [dayLb(r.date) + (Number(r.net) > 0 ? '' : L({ ja:'（税込）', en:' (incl.)', vi:' (gồm thuế)' })), yv(val(r)), gg ? n(gg) : '—', gg ? yv(Math.round(val(r) / gg)) : '—', srcOf(r)]; })) + mixNote;
+            rows.slice().reverse().map(r => { const gg = Number(r.guests) || 0; return [dayLb(r.date) + ((Number(r.net) > 0 && !r.mixed) ? '' : L({ ja:'（税込）', en:' (incl.)', vi:' (gồm thuế)' })), yv(val(r)), gg ? n(gg) : '—', gg ? yv(Math.round(val(r) / gg)) : '—', srcOf(r)]; })) + mixNote;
     } else if (k === 'buy') {
       const rows = dl.map(d => ({ d, v: appVal(d, 'buy') })).filter(x => x.v != null);
       const tot = rows.reduce((a, x) => a + x.v, 0);
@@ -2480,15 +2497,17 @@
          「読めなかった」＝写真はあるのに下書きが作られなかった枚数（OCR が金額を1つも読めないと下書きを作らない）。写真1枚に伝票2枚のときは下書きが2つになるので、差が負なら0 */
       const photosBy = {}, draftsBy = {}, lowBy = {};
       try { subRows(SUB_KINDS.open).forEach(r => { if (!r || !stores.includes(r.store) || String(r.item || '').split('|')[0] !== 'nouhin') return; const d = dateKeyFor(r.store, r.t); if (ymOfDate(d) !== ym) return; photosBy[d] = (photosBy[d] || 0) + ((r.photos && r.photos.length) || 0); }); } catch (e) {}
-      try { getReports().forEach(r => { if (!r || r.kind !== 'nouhindraft' || !stores.includes(r.store)) return; const p = parseNote(r.note); if (!p || p.src !== 'ocr') return; const d = dateKeyOfItem(r.item); if (ymOfDate(d) !== ym) return; draftsBy[d] = (draftsBy[d] || 0) + 1; if (p.conf === 'low') lowBy[d] = (lowBy[d] || 0) + 1; }); } catch (e) {}
+      try { const dr = {}; getReports().forEach(r => { if (!r || r.kind !== 'nouhindraft' || !stores.includes(r.store)) return; const p = parseNote(r.note); if (!p || p.src !== 'ocr') return; const d = dateKeyOfItem(r.item); if (ymOfDate(d) !== ym) return; const key = r.store + '||' + d + '||' + (p.photo || r.id || String(r.t)) + (p.part ? '#' + String(p.part).split('/')[0] : ''); if (!dr[key] || (Number(r.t) || 0) > dr[key].t) dr[key] = { d, low: p.conf === 'low', t: Number(r.t) || 0 }; });   // 同じ写真の読み直しは最新の1件（nouhinDrafts と同じ・Codex#7）
+        Object.values(dr).forEach(x => { draftsBy[x.d] = (draftsBy[x.d] || 0) + 1; if (x.low) lowBy[x.d] = (lowBy[x.d] || 0) + 1; }); } catch (e) {}
       const slipsOf = (d) => { const a = byApp[d]; return (a && Array.isArray(a.slips)) ? a.slips : []; };
       const cnt = (d, src) => slipsOf(d).filter(s => (s.src || 'app') === src).length;
       const unread = (d) => Math.max(0, (photosBy[d] || 0) - (draftsBy[d] || 0));
       const sumB = (f) => dl.reduce((a, d) => a + f(d), 0);
       const nOcr = sumB(d => cnt(d, 'ocr')), nApp = sumB(d => cnt(d, 'app')), nLow = sumB(d => lowBy[d] || 0), nUnread = sumB(unread), nPhoto = sumB(d => photosBy[d] || 0);
-      const slipRows = dl.slice().reverse().flatMap(d => slipsOf(d).map(s => [dayLb(d) + (s._store ? ' ' + esc(storeShort(s._store)) : ''), esc(s.v || '—'), hasVal(s.a8) ? yv(numOr0(s.a8)) : '—', hasVal(s.a10) ? yv(numOr0(s.a10)) : '—', (s.src || 'app') === 'ocr' ? L({ ja:'写真から', en:'photo', vi:'ảnh' }) : L({ ja:'手打ち', en:'typed', vi:'nhập tay' })]));
+      const sgn = (s, v) => s.ret ? '−' + yen(Math.abs(numOr0(v))) : yv(numOr0(v));   // 返品伝票は引く（skSlipsSums_ と同じ・Codex#6）
+      const slipRows = dl.slice().reverse().flatMap(d => slipsOf(d).map(s => [dayLb(d) + (s._store ? ' ' + esc(storeShort(s._store)) : ''), esc(s.v || '—'), hasVal(s.a8) ? sgn(s, s.a8) : '—', hasVal(s.a10) ? sgn(s, s.a10) : '—', ((s.src || 'app') === 'ocr' ? L({ ja:'写真から', en:'photo', vi:'ảnh' }) : L({ ja:'手打ち', en:'typed', vi:'nhập tay' })) + (s.ret ? L({ ja:'（返品）', en:' (return)', vi:' (trả hàng)' }) : '')]));
       let sales = 0; dl.forEach(d => { const r = byDate[d]; if (r && Number(r.sales) > 0) sales += Number(r.sales); });
-      let buyNow = tot, buyFrom = 'daily'; try { const cm = getMonthly().find(r => r.store === store && r.ym === ym); if (cm && Number(cm.purchase) > buyNow) { buyNow = Number(cm.purchase); buyFrom = 'ledger'; } } catch (e) {}   // 店の数字と同じ＝総括表の仕入台帳の方が大きければそちら
+      let buyNow = tot, buyFrom = 'daily'; try { const r2 = numBuyMonth_(stores, ym, buyByStore); buyNow = r2.buy; buyFrom = r2.from !== 'daily' ? 'ledger' : 'daily'; } catch (e) {}   // 店の数字と同じ＝店ごとに総括表の仕入台帳の方が大きければそちら（Codex#4）
       body = kpi([[L({ ja:'月の仕入（税抜）', en:'Purchases (month)', vi:'Nhập hàng (tháng)' }), buyNow ? yenShort(buyNow) : '—', buyFrom === 'ledger' ? L({ ja:'総括表の仕入台帳', en:'from the ledger', vi:'từ sổ nhập' }) : `${rows.length} ${L({ ja:'日分の日報', en:'days of reports', vi:'ngày báo cáo' })}`], [L({ ja:'仕入率', en:'Purchase ratio', vi:'Tỷ lệ nhập' }), sales && buyNow ? (buyNow / sales * 100).toFixed(1) + '<span class="u">%</span>' : '—', sales ? `÷ ${L({ ja:'売上（税込）', en:'sales (incl.)', vi:'doanh thu' })} ${yenShort(sales)}` : L({ ja:'売上が入ると出ます', en:'Shows once sales are in', vi:'Hiện khi có doanh thu' })]])
         + chart(dl.map(d => ({ lb: dlb(d), v: appVal(d, 'buy') })), yen)
         + `<div class="pb-card"><div class="pb-twhd">${L({ ja:'納品書の履歴（この月）', en:'Delivery slips (this month)', vi:'Phiếu giao hàng (tháng này)' })}</div><div class="pb-numdet pb-numdet--slips"><span>${L({ ja:'写真から', en:'From photos', vi:'Từ ảnh' })} <b>${nOcr}</b></span><span>${L({ ja:'手打ち', en:'Typed', vi:'Nhập tay' })} <b>${nApp}</b></span><span>${L({ ja:'要確認', en:'Needs check', vi:'Cần kiểm tra' })} <b>${nLow}</b></span><span>${L({ ja:'写真はあるが読めなかった', en:'Photo but unread', vi:'Có ảnh nhưng không đọc được' })} <b>${nUnread}</b></span><span>${L({ ja:'写真', en:'Photos', vi:'Ảnh' })} <b>${nPhoto}</b></span></div></div>`
@@ -2502,7 +2521,7 @@
         if (!allMode) rows = plMonthsOf(store).slice().sort((a, b) => a.ym < b.ym ? 1 : -1).slice(0, 6).map(m => { let c = null; try { c = plCalc(m); } catch (e) {} return { m, c }; });
         else {   // 全店＝月ごとに、そろった店の 売上・月初・仕入・月末 を足してから計算（原価の合計÷売上の合計）
           const by = {};
-          stores.forEach(s => plMonthsOf(s).forEach(m => { const pc = plCalc(m); if (!pc.complete) return; const o = by[m.ym] || (by[m.ym] = { ym: m.ym, sales: 0, open: 0, purchase: 0, close: 0, n: 0 }); o.sales += Number(m.sales) || 0; o.open += numOr0(m.open); o.purchase += numOr0(m.purchase); o.close += numOr0(m.close); o.n++; }));
+          stores.forEach(s => plMonthsOf(s).forEach(m => { const pc = plCalc(m); if (!pc.complete || !hasVal(m.purchase)) return; /* 仕入が空欄の店は入れない（0%に見えてしまう・Codex#8） */ const o = by[m.ym] || (by[m.ym] = { ym: m.ym, sales: 0, open: 0, purchase: 0, close: 0, n: 0 }); o.sales += Number(m.sales) || 0; o.open += numOr0(m.open); o.purchase += numOr0(m.purchase); o.close += numOr0(m.close); o.n++; }));
           rows = Object.values(by).sort((a, b) => a.ym < b.ym ? 1 : -1).slice(0, 6).map(m => ({ m, c: plCalc(m) }));
         }
       } catch (e) {}
@@ -2522,13 +2541,16 @@
         + `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 日報で入れた「チップ」の合計です。日報の無い日は数えません。', en:'Sum of “Tips” from daily reports. Days without a report are not counted.', vi:'Tổng “tip” từ báo cáo ngày.' })}</p>`;
     } else if (k === 'greview') {
       /* 全店＝日ごとに「その日までの各店の最新の控え」を足す（件数は合計・評価は件数で重み付け） */
-      const gs = allMode ? (() => { const per = stores.map(s => gsnapsOf(s)).filter(a => a.length); const dates = [...new Set(per.flat().map(x => String(x._d)))].sort();
-        return dates.map(d => { let tot = 0, wr = 0, w = 0, n = 0; per.forEach(a => { const x = a.filter(y => String(y._d) <= d).slice(-1)[0]; if (!x) return; n++; tot += Number(x.total) || 0; if (x.rating != null) { wr += Number(x.rating) * (Number(x.total) || 1); w += (Number(x.total) || 1); } }); return { _d: d, total: tot, rating: w ? wr / w : null, n }; }); })() : gsnapsOf(store);
+      const gs = allMode ? (() => { const per = stores.map(s => [s, gsnapsOf(s)]).filter(a => a[1].length); const dates = [...new Set(per.flatMap(a => a[1]).map(x => String(x._d)))].sort();
+        return dates.map(d => { let tot = 0, wr = 0, w = 0, n = 0; const by = {}; per.forEach(([s, a]) => { const x = a.filter(y => String(y._d) <= d).slice(-1)[0]; if (!x) return; n++; by[s] = Number(x.total) || 0; tot += by[s]; if (x.rating != null) { wr += Number(x.rating) * (by[s] || 1); w += (by[s] || 1); } }); return { _d: d, total: tot, rating: w ? wr / w : null, n, by }; }); })() : gsnapsOf(store);
       const inM = gs.filter(x => String(x._d).slice(0, 7) === ym && String(x._d) <= today);
       const prev = gs.filter(x => String(x._d) < ym + '-01').slice(-1)[0] || null;
-      const rows = inM.map((x, i) => { const base = i ? inM[i - 1] : prev; return { d: x._d, total: Number(x.total) || 0, rating: x.rating, gained: base ? (Number(x.total) || 0) - (Number(base.total) || 0) : null }; });
+      /* 差＝全店のときは「両方の日に控えのある店」だけで取る（初めて控えが入った店の累計を「増えた」にしない・Codex#5）。前月末の基準は、当月に出る店すべてに前月の控えがあるときだけ */
+      const diff = (x, base) => { if (!x || !base) return null; if (!allMode || !x.by || !base.by) return (Number(x.total) || 0) - (Number(base.total) || 0); const ks = Object.keys(x.by).filter(s => base.by[s] != null); if (!ks.length) return null; return ks.reduce((a, s) => a + (x.by[s] - base.by[s]), 0); };
+      const rows = inM.map((x, i) => { const base = i ? inM[i - 1] : prev; return { d: x._d, total: Number(x.total) || 0, rating: x.rating, gained: diff(x, base) }; });
       const last = inM[inM.length - 1] || null;
-      const gained = (last && prev) ? (Number(last.total) || 0) - (Number(prev.total) || 0) : null;   // ★前月までの控えが無い月は出さない（月の途中からの差は「月に増えた件数」ではない・Codex#7）
+      const prevOk = last && prev && (!allMode || !last.by || Object.keys(last.by).every(s => prev.by && prev.by[s] != null));
+      const gained = prevOk ? diff(last, prev) : null;   // ★前月までの控えが無い月は出さない（月の途中からの差は「月に増えた件数」ではない・Codex#7）
       body = kpi([[L({ ja:'評価（この月の最後の控え）', en:'Rating', vi:'Điểm' }), last && last.rating != null ? Number(last.rating).toFixed(1) : '—', last ? `${n(last.total)} ${L({ ja:'件', en:'reviews', vi:'đánh giá' })} ・ ${mdLabel(last._d)}` : L({ ja:'自動取得がまだありません', en:'No snapshots yet', vi:'Chưa có dữ liệu' })], [L({ ja:'この月に増えた件数', en:'Gained this month', vi:'Tăng trong tháng' }), gained != null ? (gained >= 0 ? '+' : '') + n(gained) : '—', gained == null && last ? L({ ja:'前月末の控えが無いため出せません', en:'No end-of-last-month snapshot', vi:'Không có dữ liệu cuối tháng trước' }) : '']])
         + chart(rows.map(x => ({ lb: dlb(x.d), v: x.gained })), (v) => (v >= 0 ? '+' : '') + v)
         + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), L({ ja:'件数', en:'Total', vi:'Tổng' }), L({ ja:'増えた', en:'Gained', vi:'Tăng' }), L({ ja:'評価', en:'Rating', vi:'Điểm' })], rows.slice().reverse().map(x => [dayLb(x.d), n(x.total), x.gained != null ? (x.gained >= 0 ? '+' : '') + n(x.gained) : '—', x.rating != null ? Number(x.rating).toFixed(1) : '—']))
