@@ -8219,7 +8219,7 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
       { store:S, date: dB, tipt: 9000, src:'drive', t: Date.now() - 96000e3 }
     ])); });
   location.hash = '#/home?tab=num'; hh = registry.app.innerHTML;
-  ok(/pb-chips--num/.test(hh) && ['sales', 'buy', 'cost', 'tip', 'greview', 'survey', 'cty'].every(k => new RegExp('data-open="numview\\?k=' + k + '"').test(hh)) && !/data-open="numview\?k=guests"/.test(hh) && /売上・客数・客単価/.test(hh), '店の数字＝「くわしく」の下に小窓7つ（売上・客数・客単価は1枚＝神田さん 11/11）');
+  ok(/pb-chips--num/.test(hh) && ['sales', 'buy', 'cost', 'tip', 'greview', 'survey', 'cty'].every(k => new RegExp('data-open="numview\\?k=' + k + '"').test(hh)) && !/data-open="numview\?k=guests"/.test(hh) && /pb-chip pb-chip--3l[^>]*>[\s\S]*?<b>売上<br>客数<br>客単価<\/b>/.test(hh), '店の数字＝「くわしく」の下に小窓7つ（売上・客数・客単価は1枚＝「・」なしの3行・小さめ＝神田さん 11/11）');
   ok(/data-open="numdetail"/.test(hh) && /data-open="pl"/.test(hh), '店の数字＝今までの3つの行（3か月の平均・数値・日報の一覧）は残る');
   for (const k of ['sales', 'buy', 'cost', 'tip', 'greview', 'survey', 'cty']) {
     location.hash = '#/app/numview?k=' + k + '&ym=' + ymT; const x = registry.app.innerHTML;
@@ -8235,6 +8235,11 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   ok(/月の客単価/.test(x) && /¥5,000/.test(x) && /日ごとの幅/.test(x) && /¥5,000〜¥5,000/.test(x), 'numview 客単価の切替＝月の客単価5,000円と日ごとの幅');
   location.hash = '#/app/numview?k=sales&m=sales&ym=' + ymT; x = registry.app.innerHTML;
   ok(/月の合計/.test(x) && (x.match(/pb-numseg--mode/g) || []).length === 1, 'numview 売上の切替＝月の合計に戻る（切替は1つ）');
+  { const nowYm = new Date(Date.now() - 5 * 3600e3).toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }).slice(0, 7);
+    if (ymT === nowYm) ok(/このペースなら月末に/.test(x) && /× 残り \d+日 ＋ 累計/.test(x) && /先月と比べると/.test(x) && /先月の数字はありません|見込みは先月の/.test(x), 'numview 売上＝今月は「このペースなら月末に」の見込み（直近7営業日の平均 × 残り日数 ＋ 累計）と先月との比較（神田さん 11/11）');
+    else ok(/この月の合計（確定）/.test(x) && !/このペースなら/.test(x), 'numview 売上＝過去の月は見込みでなく「確定」の合計'); }
+  location.hash = '#/app/numview?k=sales&m=guests&ym=' + ymT; x = registry.app.innerHTML;
+  ok(!/このペースなら/.test(x) && !/この月の合計（確定）/.test(x), 'numview 客数の切替には見込みは出ない（売上だけ）');
   location.hash = '#/app/numview?k=buy&ym=' + ymT; x = registry.app.innerHTML;
   ok(/¥5\.5万/.test(x) && /¥40,000/.test(x) && /¥1,200/.test(x), 'numview 仕入＝日報の仕入合計 5.5万・日別 40,000・消耗品 1,200');
   ok(/納品書の履歴（この月）/.test(x) && /写真から <b>0<\/b>/.test(x) && /写真はあるが読めなかった <b>0<\/b>/.test(x), 'numview 仕入＝納品書の履歴の枠（伝票なしなら0）');

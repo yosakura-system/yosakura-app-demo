@@ -1445,3 +1445,4 @@ html[data-theme="pb"] .pb-tipnone.on { background: var(--suou-t); border-color: 
 html[data-theme="pb"] .pb-numseg--mode { margin: 0 0 8px; }
 html[data-theme="pb"] .pb-numdet--slips { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; font-size: 13px; }
 html[data-theme="pb"] .pb-numdet--slips b { font-size: 16px; }
+html[data-theme="pb"] .pb-chip--3l b { font-size: 11.5px; line-height: 1.25; display: block; }

@@ -2281,16 +2281,16 @@
     /* ⑤ くわしく＝項目ごとの小窓（2026-11-11 構築MTG・神田さん「くわしくの下に 売上・仕入・原価率・チップ・Google口コミ・サーベイ などの小窓→押すと日別の一覧とグラフ」）
        押す先は numview?k=…（pbNumView_）。おすすめで足した2つ＝客数・客単価／国別のお客様（どちらもレジの取込で毎日入る）。今までの3つの行は下に残す */
     const NUM_TILES_ = [
-      ['sales',   'kyou_nippou',     { ja:'売上・客数・客単価', en:'Sales, guests, per guest', vi:'Doanh thu, khách, đơn giá' }, { ja:'日別・中で切替', en:'daily, switch inside', vi:'theo ngày' }],
+      ['sales',   'kyou_nippou',     { ja:'売上<br>客数<br>客単価', en:'Sales<br>Guests<br>Per guest', vi:'Doanh thu<br>Khách<br>Đơn giá' }, { ja:'日別・中で切替', en:'daily, switch inside', vi:'theo ngày' }, '3l'],   // ★「・」なしで3行・小さめ（神田さん 11/11）
       ['buy',     'miru_order',      { ja:'仕入', en:'Purchases', vi:'Nhập hàng' },                    { ja:'日別・仕入率', en:'daily, ratio', vi:'theo ngày' }],
       ['cost',    'num_register',    { ja:'原価率', en:'Cost rate', vi:'Giá vốn' },                     { ja:'月ごと', en:'monthly', vi:'theo tháng' }],
-      ['tip',     'num_register',    { ja:'チップ', en:'Tips', vi:'Tiền tip' },                         { ja:'日別・月の合計', en:'daily, month total', vi:'theo ngày, tổng tháng' }],
-      ['greview', 'hq_notice',       { ja:'Google口コミ', en:'Google reviews', vi:'Đánh giá Google' },   { ja:'件数・評価', en:'count, rating', vi:'số, điểm' }],
+      ['tip',     'num_tip',         { ja:'チップ', en:'Tips', vi:'Tiền tip' },                         { ja:'日別・月の合計', en:'daily, month total', vi:'theo ngày, tổng tháng' }],
+      ['greview', 'hq_notice',       { ja:'Google<br>口コミ', en:'Google<br>reviews', vi:'Đánh giá<br>Google' },   { ja:'件数・評価', en:'count, rating', vi:'số, điểm' }, '3l'],
       ['survey',  'kyou_survey_smile',     { ja:'サーベイ', en:'Survey', vi:'Khảo sát' },                     { ja:'満足度', en:'score', vi:'điểm' }],
-      ['cty',     'kyou_check_idle', { ja:'国別のお客様', en:'Guests by country', vi:'Khách theo quốc gia' }, { ja:'今月の内訳', en:'this month', vi:'tháng này' }]
+      ['cty',     'num_cty',         { ja:'国別のお客様', en:'Guests by country', vi:'Khách theo quốc gia' }, { ja:'今月の内訳', en:'this month', vi:'tháng này' }]
     ];
     const more = head(L({ja:'くわしく',en:'Details',vi:'Chi tiết'}), L({ja:'押すと日別の一覧とグラフ',en:'Tap for the daily list and chart',vi:'Chạm để xem theo ngày'}))
-      + `<div class="pb-chips pb-chips--num">${NUM_TILES_.map(t => `<button class="pb-chip" data-open="numview?k=${t[0]}">${pbImg_(t[1], 'pb-chipimg')}<b>${L(t[2])}</b><small>${L(t[3])}</small></button>`).join('')}</div>`
+      + `<div class="pb-chips pb-chips--num">${NUM_TILES_.map(t => `<button class="pb-chip${t[4] === '3l' ? ' pb-chip--3l' : ''}" data-open="numview?k=${t[0]}">${pbImg_(t[1], 'pb-chipimg')}<b>${L(t[2])}</b><small>${L(t[3])}</small></button>`).join('')}</div>`
       + `<div class="pb-card"><button class="pb-row" data-open="numdetail">${pbImg_('num_detail')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'3か月の平均と今月の日別',en:'3-month avg & daily',vi:'TB 3 tháng & theo ngày'})}</span><span class="pb-sub">${L({ja:'レジ・Google口コミ・サーベイ',en:'Register, Google reviews, survey',vi:'Két, Google, khảo sát'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`   // ★2026-10-21 14:50 神田さん「本番用に実装して」＝本番にも出す
       + `<button class="pb-row" data-open="pl">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'数値・原価率',en:'Numbers & cost rate',vi:'Số liệu & giá vốn'})}</span><span class="pb-sub">${L({ja:'月ごとの売上・仕入・原価率の推移',en:'Monthly trend',vi:'Xu hướng theo tháng'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`
       + `<button class="pb-row" data-tsub="soukatsu">${pbImg_('kyou_nippou')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'日報の一覧',en:'Daily reports',vi:'Báo cáo ngày'})}</span><span class="pb-sub">${L({ja:'日ごとの数字',en:'Numbers by day',vi:'Theo ngày'})}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
@@ -2481,12 +2481,24 @@
       const exLb = mixed ? L({ ja:'税抜・無い日は税込', en:'excl. tax (incl. where no net)', vi:'chưa thuế (gồm thuế nếu thiếu)' }) : L({ ja:'税抜', en:'excl. tax', vi:'chưa thuế' });
       const mixNote = mixed ? `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 純売上（税抜）の無い日は売上（税込）で数えています。', en:'Days without net sales use gross (incl. tax).', vi:'Ngày không có doanh thu thuần dùng doanh thu gồm thuế.' })}</p>` : '';
       const pts = dl.map(d => { const r = byDate[d]; if (!(r && val(r) > 0)) return { lb: dlb(d), v: null }; return { lb: dlb(d), v: mode === 'sales' ? val(r) : mode === 'guests' ? (Number(r.guests) || null) : perOf(r) }; });
+      /* ★2026-11-11 神田さん「このペースでいったら月末にはこの売上になる、という簡単なシミュレーション」＝直近7営業日の平均 × 残りの日数 ＋ 累計（店の数字の着地見込みと同じ）。今月だけ。先月の合計と並べる */
+      let fcCard = '';
+      if (mode === 'sales' && rows.length) {
+        const remain = ym === ymNow ? daysOfYm(ym).filter(d => d > today).length : 0;
+        const last7 = rows.slice(-7); const pace = last7.reduce((a, r) => a + val(r), 0) / last7.length;
+        const fc = Math.round(tot + pace * remain);
+        const pym = prevYmN_(ym, 1); const prevTot = numAgg_(stores, r => ymOfDate(r.date) === pym).reduce((a, r) => a + val(r), 0);
+        const vs = prevTot ? `${L({ ja:'先月', en:'last month', vi:'tháng trước' })} ${yenShort(prevTot)}（${fc >= prevTot ? '+' : '−'}${Math.abs((fc - prevTot) / prevTot * 100).toFixed(0)}%）` : L({ ja:'先月の数字はありません', en:'No data for last month', vi:'Không có tháng trước' });
+        fcCard = ym === ymNow
+          ? kpi([[L({ ja:'このペースなら月末に', en:'Month-end at this pace', vi:'Cuối tháng theo đà này' }), yenShort(fc), `${yenShort(Math.round(pace))}／${L({ ja:'日', en:'day', vi:'ngày' })} × ${L({ ja:'残り', en:'remaining', vi:'còn' })} ${remain}${L({ ja:'日 ＋ 累計', en:' days + MTD', vi:' ngày + lũy kế' })}`], [L({ ja:'先月と比べると', en:'vs last month', vi:'So tháng trước' }), prevTot ? yenShort(prevTot) : '—', prevTot ? `${L({ ja:'見込みは先月の', en:'forecast is', vi:'dự kiến bằng' })} ${Math.round(fc / prevTot * 100)}%` : vs]])
+          : kpi([[L({ ja:'この月の合計（確定）', en:'Month total (final)', vi:'Tổng tháng (chốt)' }), yenShort(tot), `${rows.length} ${days}`], [L({ ja:'前の月', en:'Previous month', vi:'Tháng trước đó' }), prevTot ? yenShort(prevTot) : '—', prevTot ? `${tot >= prevTot ? '+' : '−'}${Math.abs((tot - prevTot) / prevTot * 100).toFixed(0)}%` : '']]);
+      }
       body = modeSeg + (mode === 'sales'
         ? kpi([[`${L({ ja:'月の合計', en:'Month total', vi:'Tổng tháng' })}（${exLb}）`, rows.length ? yenShort(tot) : '—', `${rows.length} ${days}`], [L({ ja:'1日平均', en:'Per day', vi:'Mỗi ngày' }), rows.length ? yenShort(Math.round(tot / rows.length)) : '—', g ? `${L({ ja:'客単価', en:'per guest', vi:'đơn giá' })} ${yen(Math.round(tot / g))}` : '']])
         : mode === 'guests'
         ? kpi([[L({ ja:'月の客数', en:'Guests (month)', vi:'Khách (tháng)' }), g ? n(g) : '—', `${rows.length} ${days}`], [L({ ja:'1日平均の客数', en:'Guests per day', vi:'Khách mỗi ngày' }), rows.length && g ? n(Math.round(g / rows.length)) + `<span class="u">${L({ ja:'人', en:'', vi:'' })}</span>` : '—', g ? `${L({ ja:'客単価', en:'per guest', vi:'đơn giá' })} ${yen(Math.round(tot / g))}` : '']])
         : kpi([[`${L({ ja:'月の客単価', en:'Per guest (month)', vi:'Đơn giá (tháng)' })}（${exLb}）`, g ? yen(Math.round(tot / g)) : '—', g ? `${L({ ja:'売上', en:'sales', vi:'doanh thu' })} ${yenShort(tot)} ÷ ${n(g)}${L({ ja:'人', en:'', vi:'' })}` : ''], [L({ ja:'日ごとの幅', en:'Daily range', vi:'Biên độ ngày' }), pers.length ? `${yen(Math.min(...pers))}〜${yen(Math.max(...pers))}` : '—', pers.length ? `${pers.length} ${days}` : '']]))
-        + chart(pts, mode === 'guests' ? n : yen)
+        + fcCard + chart(pts, mode === 'guests' ? n : yen)
         + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), `${L({ ja:'売上', en:'Sales', vi:'Doanh thu' })}（${exLb}）`, L({ ja:'客数', en:'Guests', vi:'Khách' }), L({ ja:'客単価', en:'Per guest', vi:'Đơn giá' }), L({ ja:'出どころ', en:'Source', vi:'Nguồn' })],
             rows.slice().reverse().map(r => { const gg = Number(r.guests) || 0; return [dayLb(r.date) + ((Number(r.net) > 0 && !r.mixed) ? '' : L({ ja:'（税込）', en:' (incl.)', vi:' (gồm thuế)' })), yv(val(r)), gg ? n(gg) : '—', gg ? yv(Math.round(val(r) / gg)) : '—', srcOf(r)]; })) + mixNote;
     } else if (k === 'buy') {
