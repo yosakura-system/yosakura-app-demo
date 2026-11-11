@@ -8219,9 +8219,9 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
       { store:S, date: dB, tipt: 9000, src:'drive', t: Date.now() - 96000e3 }
     ])); });
   location.hash = '#/home?tab=num'; hh = registry.app.innerHTML;
-  ok(/pb-chips--num/.test(hh) && ['sales', 'guests', 'buy', 'cost', 'tip', 'greview', 'survey', 'cty'].every(k => new RegExp('data-open="numview\\?k=' + k + '"').test(hh)), '店の数字＝「くわしく」の下に小窓8つ（売上・客数・仕入・原価率・チップ・口コミ・サーベイ・国別）');
+  ok(/pb-chips--num/.test(hh) && ['sales', 'buy', 'cost', 'tip', 'greview', 'survey', 'cty'].every(k => new RegExp('data-open="numview\\?k=' + k + '"').test(hh)) && !/data-open="numview\?k=guests"/.test(hh) && /売上・客数・客単価/.test(hh), '店の数字＝「くわしく」の下に小窓7つ（売上・客数・客単価は1枚＝神田さん 11/11）');
   ok(/data-open="numdetail"/.test(hh) && /data-open="pl"/.test(hh), '店の数字＝今までの3つの行（3か月の平均・数値・日報の一覧）は残る');
-  for (const k of ['sales', 'guests', 'buy', 'cost', 'tip', 'greview', 'survey', 'cty']) {
+  for (const k of ['sales', 'buy', 'cost', 'tip', 'greview', 'survey', 'cty']) {
     location.hash = '#/app/numview?k=' + k + '&ym=' + ymT; const x = registry.app.innerHTML;
     ok(x.length > 300 && /pb-kpi/.test(x) && (k === 'cost' || /pb-numseg/.test(x)), 'numview ' + k + '＝KPI と月の切替が出る（原価率は月ごとなので切替なし）');
   }
@@ -8230,9 +8230,14 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   location.hash = '#/app/numview?k=tip&ym=' + ymT; x = registry.app.innerHTML;
   ok(/¥3,000/.test(x) && /1 日あった/.test(x) && /2 日分の日報/.test(x) && />なし</.test(x) && !/9,000/.test(x), 'numview チップ＝月の合計は店が打った日報の tipt だけ（USEN・総括表取込の行の tipt は数えない）＝3,000円・あった1日・なしの日も表に（Codex#5）');
   location.hash = '#/app/numview?k=guests&ym=' + ymT; x = registry.app.innerHTML;
-  ok(/>60</.test(x) && /¥5,000/.test(x), 'numview 客数＝合計60人・客単価5,000円（税抜÷人）');
+  ok(/>60</.test(x) && /¥5,000/.test(x) && /pb-numseg--mode/.test(x) && /data-open="numview\?k=sales&m=guests&ym=/.test(x), 'numview 客数＝旧URL k=guests は売上の中の「客数」に倒れる・合計60人・客単価5,000円・切替ボタンあり');
+  location.hash = '#/app/numview?k=sales&m=per&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/月の客単価/.test(x) && /¥5,000/.test(x) && /日ごとの幅/.test(x) && /¥5,000〜¥5,000/.test(x), 'numview 客単価の切替＝月の客単価5,000円と日ごとの幅');
+  location.hash = '#/app/numview?k=sales&m=sales&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/月の合計/.test(x) && (x.match(/pb-numseg--mode/g) || []).length === 1, 'numview 売上の切替＝月の合計に戻る（切替は1つ）');
   location.hash = '#/app/numview?k=buy&ym=' + ymT; x = registry.app.innerHTML;
   ok(/¥5\.5万/.test(x) && /¥40,000/.test(x) && /¥1,200/.test(x), 'numview 仕入＝日報の仕入合計 5.5万・日別 40,000・消耗品 1,200');
+  ok(/納品書の履歴（この月）/.test(x) && /写真から <b>0<\/b>/.test(x) && /写真はあるが読めなかった <b>0<\/b>/.test(x), 'numview 仕入＝納品書の履歴の枠（伝票なしなら0）');
   location.hash = '#/app/numview?k=cty&ym=' + ymT; x = registry.app.innerHTML;
   ok(/韓国/.test(x) && /その他ヨーロッパ/.test(x) && x.indexOf('韓国') < x.indexOf('その他ヨーロッパ') && />37</.test(x), 'numview 国別＝USENの客層をそのまま（人数の多い順・合計37人）');
   location.hash = '#/app/numview?k=zzz'; x = registry.app.innerHTML;
@@ -8256,6 +8261,35 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/app/numview?k=sales';
   ok(!/pb-barchart/.test(registry.app.innerHTML), 'スタッフは numview を開けない');
+  // ② 納品書の履歴＝写真から／手打ち／要確認／読めなかった
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store:S, date: dA, buy: 3000, posWait: true, t: Date.now() - 7200e3, slips: [{ v:'西原商会', a8:'2160', a10:'', photo:'ph1', src:'ocr', ret:0 }, { v:'その他', a8:'1080', a10:'', photo:'', src:'app', ret:0 }] }]));
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'subrec', store:S, item:'nouhin|x', note:'{}', photos:['ph1', 'ph2', 'ph3'], t: Date.parse(dA + 'T20:00:00+09:00'), id:'s1' },
+      { kind:'nouhindraft', store:S, item: dA, note: JSON.stringify({ src:'ocr', v:'西原商会', a8: 2160, total: 2160, conf:'low', photo:'ph1' }), t: Date.parse(dA + 'T20:01:00+09:00'), id:'d1' }])); });
+  location.hash = '#/app/numview?k=buy&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/写真から <b>1<\/b>/.test(x) && /手打ち <b>1<\/b>/.test(x) && /要確認 <b>1<\/b>/.test(x) && /写真はあるが読めなかった <b>2<\/b>/.test(x) && /写真 <b>3<\/b>/.test(x), 'numview 仕入＝写真から1・手打ち1・要確認1・読めなかった2（写真3枚−下書き1）');
+  ok(/伝票ごと/.test(x) && /西原商会/.test(x) && /¥2,160/.test(x) && />写真から</.test(x) && />手打ち</.test(x), 'numview 仕入＝伝票ごとの表（仕入先・8%・出どころ）');
+  // ③ 本部の「全店」＝合算
+  const S2 = '寿司世桜 心斎橋店';
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.removeItem('yosakura_num_store');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+      { store:S, date: dA, sales: 220000, net: 200000, guests: 40, src:'usen', t: Date.now() - 3600e3 },
+      { store:S, date: dA, tipt: 3000, buy: 40000, posWait: true, t: Date.now() - 7200e3 },
+      { store:S2, date: dA, sales: 110000, net: 100000, guests: 10, src:'usen', t: Date.now() - 3600e3 },
+      { store:S2, date: dA, tipt: 2000, buy: 10000, posWait: true, t: Date.now() - 7200e3 }])); });
+  location.hash = '#/home?tab=num'; x = registry.app.innerHTML;
+  ok(/data-numstore="\*"/.test(x) && /class="on" data-numstore="\*"/.test(x) && /全店（/.test(x), '店の数字（本部・全店）＝切替に「全店」があり既定で選ばれている');
+  location.hash = '#/app/numview?k=tip&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/¥5,000/.test(x) && /全店（/.test(x), 'numview チップ（全店）＝2店の合計 5,000円（神田さん「チップも全体で今いくら」）');
+  location.hash = '#/app/numview?k=sales&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/¥300,000/.test(x) && />50</.test(x) && /2店/.test(x), 'numview 売上（全店）＝日別の合算 30万・客数50・出どころ「2店」');
+  location.hash = '#/app/numview?k=buy&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/¥50,000/.test(x), 'numview 仕入（全店）＝2店の合計 5万');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_num_store', S2);
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store:S, date: dA, sales: 220000, net: 200000, guests: 40, src:'usen', t: Date.now() - 3600e3 }, { store:S2, date: dA, sales: 110000, net: 100000, guests: 10, src:'usen', t: Date.now() - 3600e3 }])); });
+  location.hash = '#/app/numview?k=sales&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/¥100,000/.test(x) && !/¥300,000/.test(x) && /心斎橋/.test(x), 'numview（本部・1店を選択）＝その店だけ');
   // 気づきグランプリ（本部）
   /* ★前月＝JSTの年月で計算（toISOString は UTC＝朝9時前に月がずれる・Codex#9）。開くときは ?ym= で固定 */
   const lastYm = (() => { const j = new Date(Date.now() + 9 * 3600e3); const d = new Date(Date.UTC(j.getUTCFullYear(), j.getUTCMonth() - 1, 1)); return d.toISOString().slice(0, 7); })();

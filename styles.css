@@ -1442,3 +1442,6 @@ html[data-theme="pb"] .pb-tipnone.on { background: var(--suou-t); border-color: 
 .kzgp-top { display: inline-block; font-size: 11px; color: #fff; background: #C9A24B; border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
 .kzgp-note { white-space: pre-wrap; font-size: 15px; line-height: 1.6; }
 .kzgp-vote { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+html[data-theme="pb"] .pb-numseg--mode { margin: 0 0 8px; }
+html[data-theme="pb"] .pb-numdet--slips { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; font-size: 13px; }
+html[data-theme="pb"] .pb-numdet--slips b { font-size: 16px; }

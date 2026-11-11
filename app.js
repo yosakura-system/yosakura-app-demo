@@ -2201,15 +2201,13 @@
   /* ★2026-10-20 神田さん「その他を店舗管理 or 店の数字に変えて案Bの見本の仕様に」＝案Bの見本の「店の数字」。
      数字は見るだけ（入力は日報だけ）。出どころ＝レジ：getSk の整えた1行（USEN＞総括表＞日報）／今月：skMonthData／原価率：月次（棚卸の確定後）／お客様の声：サーベイ */
   function pbNum_(role) {
-    const sel = getStoreSel(); const vis = visibleStores();
-    let pick = ''; try { pick = localStorage.getItem('yosakura_num_store') || ''; } catch (e) {}
-    const store = STORES.includes(sel) ? sel : (vis.includes(pick) ? pick : vis[0]);   // ★2026-10-20 複数店のオーナーは上の切替で店を選ぶ
-    const storeSeg = !STORES.includes(sel) && vis.length > 1 ? `<div class="pb-numseg">${vis.map(x => `<button type="button" class="${x === store ? 'on' : ''}" data-numstore="${esc(x)}">${esc(storeShort(x))}</button>`).join('')}</div>` : '';
+    const ns = numStores_(); const store = ns.store, stores = ns.stores, allMode = ns.all, vis = ns.vis, storeLb = ns.label;   // ★2026-10-20 複数店のオーナーは上の切替で店を選ぶ／★2026-11-11 本部は「全店」＝合算
+    const storeSeg = ns.canPick ? `<div class="pb-numseg">${[['*', L({ ja:'全店', en:'All stores', vi:'Tất cả' })]].concat(vis.map(x => [x, storeShort(x)])).map(([v, lb]) => `<button type="button" class="${(allMode ? v === '*' : v === store) ? 'on' : ''}" data-numstore="${esc(v)}">${esc(lb)}</button>`).join('')}</div>` : '';
     if (!store) return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div></main>`;
     const today = dateKeyFor(store, Date.now());
     const addD = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
     const val = (r) => r ? (Number(r.net) > 0 ? Number(r.net) : (Number(r.sales) > 0 ? Number(r.sales) : null)) : null;
-    const recs = getSk().filter(r => r && r.store === store && r.date < today && val(r) != null).sort((a, b) => a.date < b.date ? 1 : -1);
+    const recs = numAgg_(stores, r => r.date < today).filter(r => val(r) != null).sort((a, b) => a.date < b.date ? 1 : -1);   // ★全店＝日付ごとの合算
     const rec = recs[0] || null;
     const hhmm = (t) => { const d = new Date(Number(t) || 0); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
     const md = (d) => { const [, m, dd] = String(d).split('-'); return `${Number(m)}/${Number(dd)}`; };
@@ -2228,7 +2226,7 @@
       if (rec.emoney) det.push(`${L({ja:'電子マネー',en:'E-money',vi:'Ví điện tử'})} ${yen(rec.emoney)}`);
       if (rec.disc) det.push(`${L({ja:'値引き',en:'Discount',vi:'Giảm giá'})} ${yen(rec.disc)}`);
       if (rec.err != null && rec.err !== '' && Number(rec.err) !== 0) det.push(`${L({ja:'差異',en:'Diff.',vi:'Chênh lệch'})} ${Number(rec.err) < 0 ? '−' : ''}${yen(Math.abs(Number(rec.err)))}`);
-      regi = head(`${dayLb} ・ ${L({ja:'レジ',en:'Register',vi:'Két'})}${isPos ? '（USEN）' : ''}`, isPos ? `POS ${hhmm(rec.t)} ${L({ja:'取込 ・ 押すと日報',en:'imported',vi:'đã nhập'})}` : rec.src === 'drive' ? L({ja:'総括表から',en:'From the summary sheet',vi:'Từ bảng tổng hợp'}) : L({ja:'日報から',en:'From the daily report',vi:'Từ báo cáo ngày'}))
+      regi = head(`${dayLb} ・ ${L({ja:'レジ',en:'Register',vi:'Két'})}${isPos ? (allMode ? L({ja:'（全店の合計）',en:' (all stores)',vi:' (tất cả)'}) : '（USEN）') : ''}`, allMode ? `${rec.n || stores.length}${L({ja:'店分 ・ レジ・総括表・日報の合算',en:' stores, register + sheet + report',vi:' CH, tổng hợp'})}` : isPos ? `POS ${hhmm(rec.t)} ${L({ja:'取込 ・ 押すと日報',en:'imported',vi:'đã nhập'})}` : rec.src === 'drive' ? L({ja:'総括表から',en:'From the summary sheet',vi:'Từ bảng tổng hợp'}) : L({ja:'日報から',en:'From the daily report',vi:'Từ báo cáo ngày'}))
         + `<button class="pb-card pb-numcard" data-tsub="soukatsu"><div class="pb-kpi"><div><div class="l">${L({ja:'売上',en:'Sales',vi:'Doanh thu'})}${Number(rec.net) > 0 ? L({ja:'（税抜）',en:' (excl.)',vi:' (chưa thuế)'}) : L({ja:'（税込）',en:' (incl.)',vi:' (gồm thuế)'})}</div><div class="v">${yen(net)}</div><div class="d">${Number(rec.net) > 0 && rec.sales ? `${L({ja:'税込',en:'incl.',vi:'gồm thuế'})} ${yen(rec.sales)}` : ''}${wk ? `${Number(rec.net) > 0 && rec.sales ? ' ・ ' : ''}${L({ja:'先週の同じ曜日',en:'Same day last week',vi:'Cùng thứ tuần trước'})} ${yen(val(wk))}` : ''}</div></div>`
         + `<div><div class="l">${L({ja:'客数 ・ 客単価',en:'Guests / per guest',vi:'Khách / mỗi khách'})}</div><div class="v">${g || '—'}<span class="u">${L({ja:'人',en:'',vi:''})}</span></div><div class="d">${g ? `${yen(Math.round(net / g))}／${L({ja:'人',en:'guest',vi:'khách'})}` : ''}</div></div></div>`
         + (det.length ? `<div class="pb-numdet">${det.map(x => `<span>${x}</span>`).join('')}</div>` : '') + `</button>`;
@@ -2237,7 +2235,7 @@
     }
     /* ② 今月の売上（日別の線）＝最後に締めた日の月 */
     const ym = ymOfDate(rec ? rec.date : addD(today, -1));
-    let mon = { days: [], tot: {} }; try { mon = skMonthData(store, ym); } catch (e) {}
+    let mon = { days: [], tot: {} }; try { if (allMode) { const tot = { sales: 0, buy: 0 }; stores.forEach(s => { const m = skMonthData(s, ym); tot.sales += numOr0(m.tot && m.tot.sales); tot.buy += numOr0(m.tot && m.tot.buy); }); mon = { days: [], tot }; } else mon = skMonthData(store, ym); } catch (e) {}   // ★全店＝売上・仕入を店ごとに足す
     const monRecs = recs.filter(r => ymOfDate(r.date) === ym);
     const useNet = monRecs.length > 0 && monRecs.every(r => Number(r.net) > 0);   // ★2026-10-20 バックチェック：税抜と税込を混ぜない
     const mv = (r) => useNet ? Number(r.net) : (Number(r.sales) > 0 ? Number(r.sales) : null);
@@ -2268,14 +2266,14 @@
     /* ★2026-10-21 全店点検＝日別の仕入（総括表の日別の仕入金額）は一部の日しか入っておらず、牛カツ富士山で 5.9%（仕入25万）と出ていた。
        総括表の当月仕入高（仕入台帳・毎時の取込）の方が大きければそれを使い、出どころを添える */
     let buyNow = Number(t.buy) || 0, buyFrom = 'daily';
-    try { const cm = getMonthly().find(r => r.store === store && r.ym === ym); if (cm && Number(cm.purchase) > buyNow) { buyNow = Number(cm.purchase); buyFrom = cm.purchaseFrom === 'drive' ? 'drive' : 'app'; } } catch (e) {}
+    try { const cms = getMonthly().filter(r => stores.includes(r.store) && r.ym === ym); const sumP = cms.reduce((a, r) => a + (Number(r.purchase) || 0), 0); if (cms.length && sumP > buyNow) { buyNow = sumP; buyFrom = cms.some(r => r.purchaseFrom === 'drive') ? 'drive' : 'app'; } } catch (e) {}
     const buyRate = t.sales && buyNow ? (buyNow / t.sales * 100).toFixed(1) : null;
-    let cost = null; try { const pm = plMonthsOf(store).find(r => r.ym === pym); if (pm) { const pc = plCalc(pm); if (pc.complete) cost = pc.costRate; } } catch (e) {}   // ★2026-10-21 月初・月末がそろった月だけ
+    let cost = null; try { let cs = 0, ss = 0, nn = 0; stores.forEach(s => { const pm = plMonthsOf(s).find(r => r.ym === pym); if (!pm) return; const pc = plCalc(pm); if (!pc.complete) return; cs += pc.cost; ss += Number(pm.sales) || 0; nn++; }); if (nn && ss) cost = cs / ss * 100; } catch (e) {}   // ★2026-10-21 月初・月末がそろった月だけ／★全店＝原価の合計÷売上の合計（そろった店だけ）
     const kpi2 = head(L({ja:'仕入率 ・ 原価率',en:'Purchase & cost rate',vi:'Tỷ lệ nhập & giá vốn'}), L({ja:'仕入率は毎日 ・ 原価率は前月分',en:'Purchase daily / cost last month',vi:'Nhập hằng ngày / giá vốn tháng trước'}))
       + `<div class="pb-kpi2"><button class="pb-card pb-numcard" data-open="pl"><div class="l">${L({ja:'仕入率（今月1日〜）',en:'Purchase rate (MTD)',vi:'Tỷ lệ nhập (lũy kế)'})}</div><div class="v">${buyRate != null ? buyRate + '<span class="u">%</span>' : '—'}</div><div class="d">${buyRate != null ? `${L({ja:'仕入',en:'Purchases',vi:'Nhập'})} ${short(buyNow)}${buyFrom === 'drive' ? L({ja:'（総括表の仕入台帳）',en:' (ledger)',vi:' (sổ nhập)'}) : ''} ÷ ${L({ja:'売上（税込）',en:'sales (incl.)',vi:'doanh thu (gồm thuế)'})} ${short(t.sales)}` : L({ja:'納品書が入ると出ます',en:'Shows once invoices are in',vi:'Hiện khi có hóa đơn'})}</div></button>`
       + `<button class="pb-card pb-numcard" data-open="pl"><div class="l">${L({ja:'原価率（前月・確定）',en:'Cost rate (last month)',vi:'Giá vốn (tháng trước)'})}</div><div class="v">${cost != null ? cost.toFixed(1) + '<span class="u">%</span>' : '—'}</div><div class="d">${cost != null ? `${Number(pym.slice(5))}${L({ja:'月分 ・ 月初＋仕入−月末棚卸',en:' ・ open + purchases − close',vi:' ・ đầu kỳ + nhập − cuối kỳ'})}` : L({ja:'月初と月末の在庫がそろうと出ます',en:'Shows after month-end count',vi:'Hiện sau kiểm kê cuối tháng'})}</div></button></div>`;
     /* ④ お客様の声（サーベイ・今月） */
-    const svM = getSurvey().filter(r => r && r.store === store && r.sat >= 1 && ymOfDate(dateKeyFor(store, r.t)) === ymOfDate(today));
+    const svM = getSurvey().filter(r => r && stores.includes(r.store) && r.sat >= 1 && ymOfDate(dateKeyFor(r.store, r.t)) === ymOfDate(today));
     const svAvg = svM.length ? (svM.reduce((a, r) => a + r.sat, 0) / svM.length).toFixed(1) : null;
     const svLow = svM.filter(r => r.sat <= 3).length;
     const voice = head(L({ja:'お客様の声',en:'Guest feedback',vi:'Ý kiến khách'}), L({ja:'サーベイ ・ 自動',en:'Survey, automatic',vi:'Khảo sát, tự động'}))
@@ -2283,8 +2281,7 @@
     /* ⑤ くわしく＝項目ごとの小窓（2026-11-11 構築MTG・神田さん「くわしくの下に 売上・仕入・原価率・チップ・Google口コミ・サーベイ などの小窓→押すと日別の一覧とグラフ」）
        押す先は numview?k=…（pbNumView_）。おすすめで足した2つ＝客数・客単価／国別のお客様（どちらもレジの取込で毎日入る）。今までの3つの行は下に残す */
     const NUM_TILES_ = [
-      ['sales',   'kyou_nippou',     { ja:'売上', en:'Sales', vi:'Doanh thu' },                        { ja:'日別・税抜', en:'daily, excl. tax', vi:'theo ngày' }],
-      ['guests',  'kyou_first_dish', { ja:'客数・客単価', en:'Guests & per guest', vi:'Khách & đơn giá' }, { ja:'日別', en:'daily', vi:'theo ngày' }],
+      ['sales',   'kyou_nippou',     { ja:'売上・客数・客単価', en:'Sales, guests, per guest', vi:'Doanh thu, khách, đơn giá' }, { ja:'日別・中で切替', en:'daily, switch inside', vi:'theo ngày' }],
       ['buy',     'miru_order',      { ja:'仕入', en:'Purchases', vi:'Nhập hàng' },                    { ja:'日別・仕入率', en:'daily, ratio', vi:'theo ngày' }],
       ['cost',    'num_register',    { ja:'原価率', en:'Cost rate', vi:'Giá vốn' },                     { ja:'月ごと', en:'monthly', vi:'theo tháng' }],
       ['tip',     'num_register',    { ja:'チップ', en:'Tips', vi:'Tiền tip' },                         { ja:'日別・月の合計', en:'daily, month total', vi:'theo ngày, tổng tháng' }],
@@ -2297,7 +2294,7 @@
       + `<div class="pb-card"><button class="pb-row" data-open="numdetail">${pbImg_('num_detail')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'3か月の平均と今月の日別',en:'3-month avg & daily',vi:'TB 3 tháng & theo ngày'})}</span><span class="pb-sub">${L({ja:'レジ・Google口コミ・サーベイ',en:'Register, Google reviews, survey',vi:'Két, Google, khảo sát'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`   // ★2026-10-21 14:50 神田さん「本番用に実装して」＝本番にも出す
       + `<button class="pb-row" data-open="pl">${pbImg_('num_register')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'数値・原価率',en:'Numbers & cost rate',vi:'Số liệu & giá vốn'})}</span><span class="pb-sub">${L({ja:'月ごとの売上・仕入・原価率の推移',en:'Monthly trend',vi:'Xu hướng theo tháng'})}</span></span><span class="pb-rt">${svg('chev')}</span></button>`
       + `<button class="pb-row" data-tsub="soukatsu">${pbImg_('kyou_nippou')}<span class="pb-rowtx"><span class="pb-nm">${L({ja:'日報の一覧',en:'Daily reports',vi:'Báo cáo ngày'})}</span><span class="pb-sub">${L({ja:'日ごとの数字',en:'Numbers by day',vi:'Theo ngày'})}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
-    return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div><p class="pb-lead">${esc(storeShort(store))} ・ ${L({ja:'数字は見るだけ。入力は「きょうやること」の日報だけです',en:'View only. Enter numbers in the daily report.',vi:'Chỉ xem. Nhập ở báo cáo ngày.'})}</p>${storeSeg}<div class="pb-2col"><div class="pb-col">${regi}${monCard}</div><div class="pb-col">${kpi2}${voice}${more}</div></div>
+    return `<main class="screen pb-num"><div class="pb-ttl">${L({ja:'店の数字',en:'Store numbers',vi:'Số liệu'})}</div><p class="pb-lead">${esc(storeLb)} ・ ${L({ja:'数字は見るだけ。入力は「きょうやること」の日報だけです',en:'View only. Enter numbers in the daily report.',vi:'Chỉ xem. Nhập ở báo cáo ngày.'})}</p>${storeSeg}<div class="pb-2col"><div class="pb-col">${regi}${monCard}</div><div class="pb-col">${kpi2}${voice}${more}</div></div>
       <div class="footer-note">${L({ ja:'世桜アプリ', en:'YOSAKURA app', vi:'Ứng dụng YOSAKURA' })}${buildNote()}</div></main>`;
   }
   /* ★2026-10-21 神田さん「店の数字をもう少し詳細に。前月を含む直近3か月の平均と、当月の詳細。USENレジ・Google口コミ・サーベイだけでいい。本番に入れる前にテストで見せて」
@@ -2366,6 +2363,35 @@
       + head(L({ ja:'サーベイ', en:'Survey', vi:'Khảo sát' }), L({ ja:'回答から自動', en:'From answers', vi:'Từ câu trả lời' })) + svHTML
       + `<p class="hint" style="display:block;margin-top:12px">${L({ ja:'※ 売上は日ごとに純売上（税抜）。純売上の無い日は売上（税込）。数字の無い月・日は「—」です。', en:'Sales are net per day; days without net use gross. Missing data shows “—”.', vi:'Doanh thu theo ngày (chưa thuế).' })}</p>`;
   }
+  /* ★2026-11-11 神田さん「本部IDで本部（全店）を選んだときは本部全体の数字を把握できるように（チップも全体で今いくら）」
+     ＝店の数字（タブ）と numview は「見る店の一覧」で動く。1店＝今までどおり。全店（本部の『全店』・複数店オーナーの『全店』）＝日付ごとに店の行を合算した仮の行で同じ計算をする。
+     選んだ店は端末の yosakura_num_store（'*'＝全店）。本部で店舗切替が「全店」のときの既定＝全店 */
+  function numStores_() {
+    const role = getRole(), sel = getStoreSel(), vis = visibleStores();
+    let pick = ''; try { pick = localStorage.getItem('yosakura_num_store') || ''; } catch (e) {}
+    const canPick = !STORES.includes(sel) && vis.length > 1;
+    let store = '', all = false;
+    if (STORES.includes(sel)) store = sel;
+    else if (canPick) { if (pick === '*' || (!pick && role === 'hq')) all = true; else store = vis.includes(pick) ? pick : vis[0]; }
+    else store = vis[0] || '';
+    const stores = all ? vis.slice() : (store ? [store] : []);
+    const label = all ? `${L({ ja:'全店', en:'All stores', vi:'Tất cả' })}（${stores.length}${L({ ja:'店', en:'', vi:' CH' })}）` : (store ? storeShort(store) : '');
+    return { role, sel, vis, canPick, store: all ? (stores[0] || '') : store, stores, all, label };
+  }
+  const NUM_SUM_KEYS_ = ['sales', 'net', 'guests', 'cash', 'card', 'emoney', 'disc', 'err', 'buy', 'supply', 'tipt', 'loss', 'laborcost'];
+  /* getSk の行を日付ごとに合算（1店なら整えた行そのまま）。pos＝どれか1店でもレジの行 */
+  const numAgg_ = (stores, pred) => {
+    const rows = getSk().filter(r => r && stores.includes(r.store) && r.date && pred(r));
+    if (stores.length <= 1) return rows;
+    const by = {};
+    rows.forEach(r => {
+      const o = by[r.date] || (by[r.date] = { store: '*', date: r.date, t: 0, n: 0, pos: false, agg: true });
+      NUM_SUM_KEYS_.forEach(k => { if (hasVal(r[k])) o[k] = (o[k] || 0) + numOr0(r[k]); });
+      o.t = Math.max(o.t, Number(r.t) || 0); o.n++; if (r.src === 'usen' || r.pos) o.pos = true;
+      if (Array.isArray(r.slips) && r.slips.length) o.slips = (o.slips || []).concat(r.slips.map(x => Object.assign({ _store: r.store }, x)));
+    });
+    return Object.values(by);
+  };
   /* ★2026-11-11 店の数字の小窓（構築MTG・神田さん「日別で一覧で見れたり、グラフなどビジュアルで視覚的にわかりやすい見える化の画面」）
      ＝項目を1つ選んで、今月／先月／先々月の日別の一覧と棒グラフ。数字は見るだけ・出どころは店の数字と同じ（レジの整えた1行＝USEN＞総括表＞日報／日報の打った値／毎晩の口コミ控え／サーベイの回答） */
   const pbBars_ = (pts, opt) => {
@@ -2382,15 +2408,17 @@
     const labels = pts.map((p, i) => (i % step === 0) ? `<text x="${(4 + i * bw + bw / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle">${esc(p.lb)}</text>` : '').join('');
     return `<svg class="pb-barchart" viewBox="0 0 ${W} ${H}" aria-hidden="true">${bars}${zero}${labels}</svg>`;
   };
-  const NUMVIEW_T_ = { sales:{ ja:'売上', en:'Sales', vi:'Doanh thu' }, guests:{ ja:'客数・客単価', en:'Guests & per guest', vi:'Khách & đơn giá' }, buy:{ ja:'仕入', en:'Purchases', vi:'Nhập hàng' }, cost:{ ja:'原価率', en:'Cost rate', vi:'Giá vốn' }, tip:{ ja:'チップ', en:'Tips', vi:'Tiền tip' }, greview:{ ja:'Google口コミ', en:'Google reviews', vi:'Đánh giá Google' }, survey:{ ja:'サーベイ', en:'Survey', vi:'Khảo sát' }, cty:{ ja:'国別のお客様', en:'Guests by country', vi:'Khách theo quốc gia' } };
+  const NUMVIEW_T_ = { sales:{ ja:'売上・客数・客単価', en:'Sales, guests, per guest', vi:'Doanh thu, khách, đơn giá' }, buy:{ ja:'仕入', en:'Purchases', vi:'Nhập hàng' }, cost:{ ja:'原価率', en:'Cost rate', vi:'Giá vốn' }, tip:{ ja:'チップ', en:'Tips', vi:'Tiền tip' }, greview:{ ja:'Google口コミ', en:'Google reviews', vi:'Đánh giá Google' }, survey:{ ja:'サーベイ', en:'Survey', vi:'Khảo sát' }, cty:{ ja:'国別のお客様', en:'Guests by country', vi:'Khách theo quốc gia' } };
   function pbNumView_(k) {
-    const sel = getStoreSel(); const vis = visibleStores();
-    let pick = ''; try { pick = localStorage.getItem('yosakura_num_store') || ''; } catch (e) {}
-    const store = STORES.includes(sel) ? sel : (vis.includes(pick) ? pick : vis[0]);
+    const ns = numStores_(); const store = ns.store, stores = ns.stores, allMode = ns.all, storeLb = ns.label;
     if (!store) return '';
+    const q = currentRoute().params;
+    let mode = 'sales';   // ①売上・客数・客単価は1枚のカード＝中で切替（神田さん 11/11）
+    if (k === 'guests') { k = 'sales'; mode = 'guests'; }
+    if (k === 'sales' && ['sales', 'guests', 'per'].includes(q.get('m') || '')) mode = q.get('m');
     if (!NUMVIEW_T_[k]) k = 'sales';
     const today = dateKeyFor(store, Date.now()); const ymNow = ymOfDate(today);
-    const ymQ = currentRoute().params.get('ym') || '';
+    const ymQ = q.get('ym') || '';
     const ym = /^\d{4}-\d{2}$/.test(ymQ) ? ymQ : ymNow;
     const mlab = (m) => `${Number(String(m).slice(0, 4))}/${Number(String(m).slice(5, 7))}`;
     const n = (v) => v == null ? '—' : Number(v).toLocaleString('en-US');
@@ -2399,47 +2427,85 @@
     const dlb = (d) => String(Number(String(d).slice(8, 10)));
     const wk = (d) => L(WDAYS[wdOf(d)]);
     const val = (r) => Number(r.net) > 0 ? Number(r.net) : (Number(r.sales) || 0);
-    /* その店・その月の日ごとの行＝整えた最新の1行（売上・客数・国別）と、店が打った日報の行（チップ・仕入）を分けて持つ（USENの行にはチップが無い） */
+    /* その店・その月の日ごとの行＝整えた最新の1行（売上・客数・国別）と、店が打った日報の行（チップ・仕入・納品書）を分けて持つ（USENの行にはチップが無い）。
+       全店＝店ごとに最新の1行を取ってから日付で合算（numAgg_ と同じ考え方） */
     const byDate = {}, byApp = {};
-    getSk().filter(r => r && r.store === store && r.date && ymOfDate(r.date) === ym && r.date <= today).forEach(r => {
-      if (!byDate[r.date] || (Number(r.t) || 0) >= (Number(byDate[r.date].t) || 0)) byDate[r.date] = r;
-      if (!r.src && (!byApp[r.date] || (Number(r.t) || 0) >= (Number(byApp[r.date].t) || 0))) byApp[r.date] = r;
-    });
+    { const bdS = {}, baS = {};
+      getSk().filter(r => r && stores.includes(r.store) && r.date && ymOfDate(r.date) === ym && r.date <= today).forEach(r => {
+        const kk = r.store + '||' + r.date;
+        if (!bdS[kk] || (Number(r.t) || 0) >= (Number(bdS[kk].t) || 0)) bdS[kk] = r;
+        if (!r.src && (!baS[kk] || (Number(r.t) || 0) >= (Number(baS[kk].t) || 0))) baS[kk] = r;
+      });
+      const fold = (src, dst) => Object.keys(src).forEach(kk => { const r = src[kk]; const d = r.date;
+        if (stores.length <= 1) { dst[d] = r; return; }
+        const o = dst[d] || (dst[d] = { store: '*', date: d, t: 0, n: 0, pos: false, agg: true });
+        NUM_SUM_KEYS_.forEach(f => { if (hasVal(r[f])) o[f] = (o[f] || 0) + numOr0(r[f]); });
+        o.t = Math.max(o.t, Number(r.t) || 0); o.n++; if (r.src === 'usen' || r.pos) o.pos = true;
+        if (Array.isArray(r.slips) && r.slips.length) o.slips = (o.slips || []).concat(r.slips.map(x => Object.assign({ _store: r.store }, x))); });
+      fold(bdS, byDate); fold(baS, byApp); }
     const appVal = (d, key) => { const a = byApp[d]; if (a && hasVal(a[key])) return numOr0(a[key]); const r = byDate[d]; return (r && hasVal(r[key])) ? numOr0(r[key]) : null; };
     const appOnly = (d, key) => { const a = byApp[d]; return (a && hasVal(a[key])) ? numOr0(a[key]) : null; };   // ★チップは店が打った日報の行だけ（総括表取込の行の tipt は数えない・Codex#5）
     const kpi = (a) => `<div class="pb-card"><div class="pb-kpi">${a.map(x => `<div><div class="l">${x[0]}</div><div class="v">${x[1]}</div><div class="d">${x[2] || ''}</div></div>`).join('')}</div></div>`;
     const tbl = (cols, rows) => rows.length ? `<div class="pb-card pb-tblwrap"><table class="pb-tbl"><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : `<div class="pb-card"><div class="muted">${L({ ja:'この月の数字はまだありません', en:'No data for this month', vi:'Chưa có số liệu tháng này' })}</div></div>`;
     const chart = (pts, fmt) => `<div class="pb-card">${pbBars_(pts, { fmt })}</div>`;
-    const srcOf = (r) => r.src === 'usen' || r.pos ? 'USEN' : r.src === 'drive' ? L({ ja:'総括表', en:'Sheet', vi:'Bảng' }) : L({ ja:'日報', en:'Report', vi:'Báo cáo' });
+    const srcOf = (r) => r.agg ? `${r.n}${L({ ja:'店', en:' stores', vi:' CH' })}` : r.src === 'usen' || r.pos ? 'USEN' : r.src === 'drive' ? L({ ja:'総括表', en:'Sheet', vi:'Bảng' }) : L({ ja:'日報', en:'Report', vi:'Báo cáo' });
     const dayLb = (d) => `${mdLabel(d)}（${wk(d)}）`;
     const months = [0, 1, 2].map(i => prevYmN_(ymNow, i));
-    const seg = `<div class="pb-numseg">${months.map(m => `<button type="button" class="${m === ym ? 'on' : ''}" data-open="numview?k=${esc(k)}&ym=${m}">${mlab(m)}${m === ymNow ? L({ ja:'（今月）', en:' (now)', vi:' (nay)' }) : ''}</button>`).join('')}</div>`;
+    const seg = `<div class="pb-numseg">${months.map(m => `<button type="button" class="${m === ym ? 'on' : ''}" data-open="numview?k=${esc(k)}${k === 'sales' ? '&m=' + mode : ''}&ym=${m}">${mlab(m)}${m === ymNow ? L({ ja:'（今月）', en:' (now)', vi:' (nay)' }) : ''}</button>`).join('')}</div>`;
     const days = L({ ja:'日', en:'days', vi:'ngày' });
     let body = '';
-    if (k === 'sales' || k === 'guests') {
+    if (k === 'sales') {
       const rows = dl.map(d => byDate[d]).filter(r => r && val(r) > 0);
       const tot = rows.reduce((a, r) => a + val(r), 0), g = rows.reduce((a, r) => a + (Number(r.guests) || 0), 0);
+      const perOf = (r) => { const gg = Number(r.guests) || 0; return gg ? Math.round(val(r) / gg) : null; };
+      const pers = rows.map(perOf).filter(v => v != null);
+      const modeSeg = `<div class="pb-numseg pb-numseg--mode">${[['sales', { ja:'売上', en:'Sales', vi:'Doanh thu' }], ['guests', { ja:'客数', en:'Guests', vi:'Khách' }], ['per', { ja:'客単価', en:'Per guest', vi:'Đơn giá' }]].map(([v, lb]) => `<button type="button" class="${v === mode ? 'on' : ''}" data-open="numview?k=sales&m=${v}&ym=${ym}">${L(lb)}</button>`).join('')}</div>`;
       const mixed = rows.some(r => !(Number(r.net) > 0));   // ★純売上（税抜）の無い日は売上（税込）で数える＝その月は見出しと注記で分かるように（Codex#6）
       const exLb = mixed ? L({ ja:'税抜・無い日は税込', en:'excl. tax (incl. where no net)', vi:'chưa thuế (gồm thuế nếu thiếu)' }) : L({ ja:'税抜', en:'excl. tax', vi:'chưa thuế' });
       const mixNote = mixed ? `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 純売上（税抜）の無い日は売上（税込）で数えています。', en:'Days without net sales use gross (incl. tax).', vi:'Ngày không có doanh thu thuần dùng doanh thu gồm thuế.' })}</p>` : '';
-      const pts = dl.map(d => { const r = byDate[d]; return { lb: dlb(d), v: r && val(r) > 0 ? (k === 'sales' ? val(r) : (Number(r.guests) || null)) : null }; });
-      body = (k === 'sales'
+      const pts = dl.map(d => { const r = byDate[d]; if (!(r && val(r) > 0)) return { lb: dlb(d), v: null }; return { lb: dlb(d), v: mode === 'sales' ? val(r) : mode === 'guests' ? (Number(r.guests) || null) : perOf(r) }; });
+      body = modeSeg + (mode === 'sales'
         ? kpi([[`${L({ ja:'月の合計', en:'Month total', vi:'Tổng tháng' })}（${exLb}）`, rows.length ? yenShort(tot) : '—', `${rows.length} ${days}`], [L({ ja:'1日平均', en:'Per day', vi:'Mỗi ngày' }), rows.length ? yenShort(Math.round(tot / rows.length)) : '—', g ? `${L({ ja:'客単価', en:'per guest', vi:'đơn giá' })} ${yen(Math.round(tot / g))}` : '']])
-        : kpi([[L({ ja:'月の客数', en:'Guests (month)', vi:'Khách (tháng)' }), g ? n(g) : '—', `${rows.length} ${days}`], [`${L({ ja:'客単価', en:'Per guest', vi:'Đơn giá' })}（${exLb}）`, g ? yen(Math.round(tot / g)) : '—', rows.length && g ? `${L({ ja:'1日平均', en:'per day', vi:'mỗi ngày' })} ${n(Math.round(g / rows.length))}${L({ ja:'人', en:'', vi:'' })}` : '']]))
-        + chart(pts, k === 'sales' ? yen : n)
+        : mode === 'guests'
+        ? kpi([[L({ ja:'月の客数', en:'Guests (month)', vi:'Khách (tháng)' }), g ? n(g) : '—', `${rows.length} ${days}`], [L({ ja:'1日平均の客数', en:'Guests per day', vi:'Khách mỗi ngày' }), rows.length && g ? n(Math.round(g / rows.length)) + `<span class="u">${L({ ja:'人', en:'', vi:'' })}</span>` : '—', g ? `${L({ ja:'客単価', en:'per guest', vi:'đơn giá' })} ${yen(Math.round(tot / g))}` : '']])
+        : kpi([[`${L({ ja:'月の客単価', en:'Per guest (month)', vi:'Đơn giá (tháng)' })}（${exLb}）`, g ? yen(Math.round(tot / g)) : '—', g ? `${L({ ja:'売上', en:'sales', vi:'doanh thu' })} ${yenShort(tot)} ÷ ${n(g)}${L({ ja:'人', en:'', vi:'' })}` : ''], [L({ ja:'日ごとの幅', en:'Daily range', vi:'Biên độ ngày' }), pers.length ? `${yen(Math.min(...pers))}〜${yen(Math.max(...pers))}` : '—', pers.length ? `${pers.length} ${days}` : '']]))
+        + chart(pts, mode === 'guests' ? n : yen)
         + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), `${L({ ja:'売上', en:'Sales', vi:'Doanh thu' })}（${exLb}）`, L({ ja:'客数', en:'Guests', vi:'Khách' }), L({ ja:'客単価', en:'Per guest', vi:'Đơn giá' }), L({ ja:'出どころ', en:'Source', vi:'Nguồn' })],
             rows.slice().reverse().map(r => { const gg = Number(r.guests) || 0; return [dayLb(r.date) + (Number(r.net) > 0 ? '' : L({ ja:'（税込）', en:' (incl.)', vi:' (gồm thuế)' })), yv(val(r)), gg ? n(gg) : '—', gg ? yv(Math.round(val(r) / gg)) : '—', srcOf(r)]; })) + mixNote;
     } else if (k === 'buy') {
       const rows = dl.map(d => ({ d, v: appVal(d, 'buy') })).filter(x => x.v != null);
       const tot = rows.reduce((a, x) => a + x.v, 0);
+      /* ★納品書の履歴（神田さん 11/11「写真からのデータか、手打ちか、写真からエラーではじかれたか」）＝
+         日報の行の slips（src 'ocr'＝写真から読んだ／'app'＝手で足した）＋ OCR の下書き（nouhindraft・conf 'low'＝要確認）＋ 納品書の写真の提出（枚数）。
+         「読めなかった」＝写真はあるのに下書きが作られなかった枚数（OCR が金額を1つも読めないと下書きを作らない）。写真1枚に伝票2枚のときは下書きが2つになるので、差が負なら0 */
+      const photosBy = {}, draftsBy = {}, lowBy = {};
+      try { subRows(SUB_KINDS.open).forEach(r => { if (!r || !stores.includes(r.store) || String(r.item || '').split('|')[0] !== 'nouhin') return; const d = dateKeyFor(r.store, r.t); if (ymOfDate(d) !== ym) return; photosBy[d] = (photosBy[d] || 0) + ((r.photos && r.photos.length) || 0); }); } catch (e) {}
+      try { getReports().forEach(r => { if (!r || r.kind !== 'nouhindraft' || !stores.includes(r.store)) return; const p = parseNote(r.note); if (!p || p.src !== 'ocr') return; const d = dateKeyOfItem(r.item); if (ymOfDate(d) !== ym) return; draftsBy[d] = (draftsBy[d] || 0) + 1; if (p.conf === 'low') lowBy[d] = (lowBy[d] || 0) + 1; }); } catch (e) {}
+      const slipsOf = (d) => { const a = byApp[d]; return (a && Array.isArray(a.slips)) ? a.slips : []; };
+      const cnt = (d, src) => slipsOf(d).filter(s => (s.src || 'app') === src).length;
+      const unread = (d) => Math.max(0, (photosBy[d] || 0) - (draftsBy[d] || 0));
+      const sumB = (f) => dl.reduce((a, d) => a + f(d), 0);
+      const nOcr = sumB(d => cnt(d, 'ocr')), nApp = sumB(d => cnt(d, 'app')), nLow = sumB(d => lowBy[d] || 0), nUnread = sumB(unread), nPhoto = sumB(d => photosBy[d] || 0);
+      const slipRows = dl.slice().reverse().flatMap(d => slipsOf(d).map(s => [dayLb(d) + (s._store ? ' ' + esc(storeShort(s._store)) : ''), esc(s.v || '—'), hasVal(s.a8) ? yv(numOr0(s.a8)) : '—', hasVal(s.a10) ? yv(numOr0(s.a10)) : '—', (s.src || 'app') === 'ocr' ? L({ ja:'写真から', en:'photo', vi:'ảnh' }) : L({ ja:'手打ち', en:'typed', vi:'nhập tay' })]));
       let sales = 0; dl.forEach(d => { const r = byDate[d]; if (r && Number(r.sales) > 0) sales += Number(r.sales); });
       let buyNow = tot, buyFrom = 'daily'; try { const cm = getMonthly().find(r => r.store === store && r.ym === ym); if (cm && Number(cm.purchase) > buyNow) { buyNow = Number(cm.purchase); buyFrom = 'ledger'; } } catch (e) {}   // 店の数字と同じ＝総括表の仕入台帳の方が大きければそちら
       body = kpi([[L({ ja:'月の仕入（税抜）', en:'Purchases (month)', vi:'Nhập hàng (tháng)' }), buyNow ? yenShort(buyNow) : '—', buyFrom === 'ledger' ? L({ ja:'総括表の仕入台帳', en:'from the ledger', vi:'từ sổ nhập' }) : `${rows.length} ${L({ ja:'日分の日報', en:'days of reports', vi:'ngày báo cáo' })}`], [L({ ja:'仕入率', en:'Purchase ratio', vi:'Tỷ lệ nhập' }), sales && buyNow ? (buyNow / sales * 100).toFixed(1) + '<span class="u">%</span>' : '—', sales ? `÷ ${L({ ja:'売上（税込）', en:'sales (incl.)', vi:'doanh thu' })} ${yenShort(sales)}` : L({ ja:'売上が入ると出ます', en:'Shows once sales are in', vi:'Hiện khi có doanh thu' })]])
         + chart(dl.map(d => ({ lb: dlb(d), v: appVal(d, 'buy') })), yen)
-        + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), L({ ja:'仕入（税抜）', en:'Purchases', vi:'Nhập hàng' }), L({ ja:'消耗品', en:'Supplies', vi:'Vật tư' })], rows.slice().reverse().map(x => { const s = appVal(x.d, 'supply'); return [dayLb(x.d), yv(x.v), s != null ? yv(s) : '—']; }));
+        + `<div class="pb-card"><div class="pb-twhd">${L({ ja:'納品書の履歴（この月）', en:'Delivery slips (this month)', vi:'Phiếu giao hàng (tháng này)' })}</div><div class="pb-numdet pb-numdet--slips"><span>${L({ ja:'写真から', en:'From photos', vi:'Từ ảnh' })} <b>${nOcr}</b></span><span>${L({ ja:'手打ち', en:'Typed', vi:'Nhập tay' })} <b>${nApp}</b></span><span>${L({ ja:'要確認', en:'Needs check', vi:'Cần kiểm tra' })} <b>${nLow}</b></span><span>${L({ ja:'写真はあるが読めなかった', en:'Photo but unread', vi:'Có ảnh nhưng không đọc được' })} <b>${nUnread}</b></span><span>${L({ ja:'写真', en:'Photos', vi:'Ảnh' })} <b>${nPhoto}</b></span></div></div>`
+        + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), L({ ja:'仕入（税抜）', en:'Purchases', vi:'Nhập hàng' }), L({ ja:'写真から', en:'Photo', vi:'Ảnh' }), L({ ja:'手打ち', en:'Typed', vi:'Tay' }), L({ ja:'要確認', en:'Check', vi:'Kiểm' }), L({ ja:'読めなかった', en:'Unread', vi:'Không đọc' }), L({ ja:'消耗品', en:'Supplies', vi:'Vật tư' })],
+            dl.slice().reverse().filter(d => appVal(d, 'buy') != null || photosBy[d] || slipsOf(d).length).map(d => { const s = appVal(d, 'supply'), v = appVal(d, 'buy'); return [dayLb(d), v != null ? yv(v) : '—', cnt(d, 'ocr') || '—', cnt(d, 'app') || '—', lowBy[d] || '—', unread(d) ? `<b style="color:#B5533C">${unread(d)}</b>` : '—', s != null ? yv(s) : '—']; }))
+        + (slipRows.length ? `<div class="pb-card pb-tblwrap"><div class="pb-twhd">${L({ ja:'伝票ごと', en:'Each slip', vi:'Từng phiếu' })}</div><table class="pb-tbl"><thead><tr><th>${L({ ja:'日', en:'Day', vi:'Ngày' })}</th><th>${L({ ja:'仕入先', en:'Vendor', vi:'Nhà cung cấp' })}</th><th>8%</th><th>10%</th><th>${L({ ja:'出どころ', en:'Source', vi:'Nguồn' })}</th></tr></thead><tbody>${slipRows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '')
+        + `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 「写真から」＝納品書の写真を読んで入った伝票、「手打ち」＝日報で手で足した伝票。「要確認」＝読み取りに迷いがあり店が見比べる印。「読めなかった」＝写真はあるのに金額を読めず伝票にならなかった枚数。', en:'“Photo” = slips read from photos; “Typed” = added by hand; “Check” = low-confidence reads; “Unread” = photos that produced no slip.', vi:'“Ảnh” = đọc từ ảnh; “Tay” = nhập tay; “Kiểm” = cần đối chiếu; “Không đọc” = ảnh không ra phiếu.' })}</p>`;
     } else if (k === 'cost') {
-      let pms = []; try { pms = plMonthsOf(store).slice().sort((a, b) => a.ym < b.ym ? 1 : -1).slice(0, 6); } catch (e) {}
-      const rows = pms.map(m => { let c = null; try { c = plCalc(m); } catch (e) {} return { m, c }; });
+      let rows = [];
+      try {
+        if (!allMode) rows = plMonthsOf(store).slice().sort((a, b) => a.ym < b.ym ? 1 : -1).slice(0, 6).map(m => { let c = null; try { c = plCalc(m); } catch (e) {} return { m, c }; });
+        else {   // 全店＝月ごとに、そろった店の 売上・月初・仕入・月末 を足してから計算（原価の合計÷売上の合計）
+          const by = {};
+          stores.forEach(s => plMonthsOf(s).forEach(m => { const pc = plCalc(m); if (!pc.complete) return; const o = by[m.ym] || (by[m.ym] = { ym: m.ym, sales: 0, open: 0, purchase: 0, close: 0, n: 0 }); o.sales += Number(m.sales) || 0; o.open += numOr0(m.open); o.purchase += numOr0(m.purchase); o.close += numOr0(m.close); o.n++; }));
+          rows = Object.values(by).sort((a, b) => a.ym < b.ym ? 1 : -1).slice(0, 6).map(m => ({ m, c: plCalc(m) }));
+        }
+      } catch (e) {}
       const done = rows.filter(x => x.c && x.c.complete);
       const avg = done.length ? done.reduce((a, x) => a + x.c.costRate, 0) / done.length : null;
       const prevM = done.find(x => x.m.ym === prevYmN_(ymNow, 1));
@@ -2455,7 +2521,10 @@
         + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), L({ ja:'チップ', en:'Tips', vi:'Tip' })], rows.slice().reverse().map(x => [dayLb(x.d), x.v > 0 ? yv(x.v) : L({ ja:'なし', en:'none', vi:'không' })]))
         + `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 日報で入れた「チップ」の合計です。日報の無い日は数えません。', en:'Sum of “Tips” from daily reports. Days without a report are not counted.', vi:'Tổng “tip” từ báo cáo ngày.' })}</p>`;
     } else if (k === 'greview') {
-      const gs = gsnapsOf(store); const inM = gs.filter(x => String(x._d).slice(0, 7) === ym && String(x._d) <= today);
+      /* 全店＝日ごとに「その日までの各店の最新の控え」を足す（件数は合計・評価は件数で重み付け） */
+      const gs = allMode ? (() => { const per = stores.map(s => gsnapsOf(s)).filter(a => a.length); const dates = [...new Set(per.flat().map(x => String(x._d)))].sort();
+        return dates.map(d => { let tot = 0, wr = 0, w = 0, n = 0; per.forEach(a => { const x = a.filter(y => String(y._d) <= d).slice(-1)[0]; if (!x) return; n++; tot += Number(x.total) || 0; if (x.rating != null) { wr += Number(x.rating) * (Number(x.total) || 1); w += (Number(x.total) || 1); } }); return { _d: d, total: tot, rating: w ? wr / w : null, n }; }); })() : gsnapsOf(store);
+      const inM = gs.filter(x => String(x._d).slice(0, 7) === ym && String(x._d) <= today);
       const prev = gs.filter(x => String(x._d) < ym + '-01').slice(-1)[0] || null;
       const rows = inM.map((x, i) => { const base = i ? inM[i - 1] : prev; return { d: x._d, total: Number(x.total) || 0, rating: x.rating, gained: base ? (Number(x.total) || 0) - (Number(base.total) || 0) : null }; });
       const last = inM[inM.length - 1] || null;
@@ -2465,8 +2534,8 @@
         + tbl([L({ ja:'日', en:'Day', vi:'Ngày' }), L({ ja:'件数', en:'Total', vi:'Tổng' }), L({ ja:'増えた', en:'Gained', vi:'Tăng' }), L({ ja:'評価', en:'Rating', vi:'Điểm' })], rows.slice().reverse().map(x => [dayLb(x.d), n(x.total), x.gained != null ? (x.gained >= 0 ? '+' : '') + n(x.gained) : '—', x.rating != null ? Number(x.rating).toFixed(1) : '—']))
         + `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ 毎晩の自動取得（件数と評価）。口コミの本文は「見る」のお客様の声へ。', en:'Nightly snapshot of count and rating. Read the reviews under “Browse”.', vi:'Tự động mỗi đêm. Đọc nội dung ở mục Xem.' })}</p>`;
     } else if (k === 'survey') {
-      const sv = getSurvey().filter(r => r && r.store === store && r.sat >= 1);
-      const byD = {}; sv.forEach(r => { const d = dateKeyFor(store, r.t); if (ymOfDate(d) !== ym) return; (byD[d] = byD[d] || []).push(r); });
+      const sv = getSurvey().filter(r => r && stores.includes(r.store) && r.sat >= 1);
+      const byD = {}; sv.forEach(r => { const d = dateKeyFor(r.store, r.t); if (ymOfDate(d) !== ym) return; (byD[d] = byD[d] || []).push(r); });
       const rows = dl.filter(d => byD[d]).map(d => { const a = byD[d]; return { d, n: a.length, avg: a.reduce((s, r) => s + r.sat, 0) / a.length, low: a.filter(r => r.sat <= 3).length }; });
       const all = rows.reduce((s, x) => s + x.n, 0), sum = rows.reduce((s, x) => s + x.avg * x.n, 0);
       body = kpi([[L({ ja:'月の満足度', en:'Score (month)', vi:'Điểm (tháng)' }), all ? (sum / all).toFixed(1) : '—', `${all} ${L({ ja:'件', en:'answers', vi:'câu' })}`], [L({ ja:'低い評価（3以下）', en:'Low (≤3)', vi:'Thấp (≤3)' }), all ? n(rows.reduce((s, x) => s + x.low, 0)) : '—', all ? L({ ja:'お声は「見る」のお客様の声へ', en:'Read answers under “Browse”', vi:'Đọc ở mục Xem' }) : '']])
@@ -2476,10 +2545,12 @@
       const sum = {}; let g = 0, p = 0;
       /* 国別＝USENの伝票明細の集計（pcty）は getSk() の整えた1行には乗らない（日報の行が土台になる日）ので、控えの生データから日ごとの最新のUSEN行を読む（日報画面の「自動で入った数字」と同じ読み方） */
       const pctyBy = {};
-      try { (JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]') || []).forEach(r => { if (!r || r.src !== 'usen' || r.store !== store || !r.date || ymOfDate(r.date) !== ym || !(r.pcty && typeof r.pcty === 'object')) return; if (!pctyBy[r.date] || (Number(r.t) || 0) >= (Number(pctyBy[r.date].t) || 0)) pctyBy[r.date] = r; }); } catch (e) {}
-      dl.forEach(d => { const r = pctyBy[d] || byDate[d]; if (!r) return;
+      try { (JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]') || []).forEach(r => { if (!r || r.src !== 'usen' || !stores.includes(r.store) || !r.date || ymOfDate(r.date) !== ym || !(r.pcty && typeof r.pcty === 'object')) return; const kk = r.store + '||' + r.date; if (!pctyBy[kk] || (Number(r.t) || 0) >= (Number(pctyBy[kk].t) || 0)) pctyBy[kk] = r; }); } catch (e) {}
+      const addCty = (r) => { if (!r) return;
         if (r.pcty && typeof r.pcty === 'object') Object.keys(r.pcty).forEach(nm => { const c = r.pcty[nm] || {}; const s = sum[nm] = sum[nm] || { g:0, p:0 }; s.g += Number(c.g) || 0; s.p += Number(c.p) || 0; });
-        else if (r.cty && typeof r.cty === 'object') SK_COUNTRIES.forEach(cn => { const c = r.cty[cn.k]; if (!c) return; const nm = L(cn.t); const s = sum[nm] = sum[nm] || { g:0, p:0 }; s.g += Number(c.g) || 0; s.p += Number(c.p) || 0; }); });
+        else if (r.cty && typeof r.cty === 'object') SK_COUNTRIES.forEach(cn => { const c = r.cty[cn.k]; if (!c) return; const nm = L(cn.t); const s = sum[nm] = sum[nm] || { g:0, p:0 }; s.g += Number(c.g) || 0; s.p += Number(c.p) || 0; }); };
+      /* 店ごと＝その日のUSENの行（pcty）、無ければ整えた行（手入力の cty）。全店＝店ごとに同じ判定をして足す */
+      dl.forEach(d => stores.forEach(s => { const u = pctyBy[s + '||' + d]; if (u) { addCty(u); return; } const r = stores.length <= 1 ? byDate[d] : getSk().find(x => x && x.store === s && x.date === d); if (r && r.cty) addCty(r); }));
       const rows = Object.keys(sum).map(nm => ({ nm, g: sum[nm].g, p: sum[nm].p })).filter(x => x.g || x.p).sort((a, b) => (b.p || b.g) - (a.p || a.g));
       rows.forEach(x => { g += x.g; p += x.p; });
       const mx = Math.max(1, ...rows.map(x => x.p || x.g));
@@ -2487,7 +2558,7 @@
         + (rows.length ? `<div class="pb-card"><div class="pb-dow pb-dow--cty">${rows.slice(0, 12).map(x => `<div class="pb-dowrow"><span class="pb-dowk">${esc(x.nm)}</span><span class="pb-dowbar"><i style="width:${Math.round((x.p || x.g) / mx * 100)}%"></i></span><b>${n(x.p || x.g)}</b><small>${x.g ? `${n(x.g)}${L({ ja:'組', en:'g', vi:'n' })}` : ''}</small></div>`).join('')}</div></div>` : `<div class="pb-card"><div class="muted">${L({ ja:'この月の国別はまだありません', en:'No data for this month', vi:'Chưa có số liệu' })}</div></div>`)
         + `<p class="hint" style="display:block;margin-top:10px">${L({ ja:'※ USENレジの客層（国籍）から。レジ連携の無い店は日報の国別から。人数（無ければ組数）の多い順。', en:'From the register’s guest categories, or the daily report where there is no register link.', vi:'Từ két hoặc báo cáo ngày.' })}</p>`;
     }
-    _pbHead = { t: L(NUMVIEW_T_[k]), d: `${storeShort(store)} ・ ${mlab(ym)} ・ ${L({ ja:'見るだけ。入力は日報だけです', en:'View only. Enter numbers in the daily report.', vi:'Chỉ xem. Nhập ở báo cáo ngày.' })}` };
+    _pbHead = { t: L(NUMVIEW_T_[k]), d: `${storeLb} ・ ${mlab(ym)} ・ ${L({ ja:'見るだけ。入力は日報だけです', en:'View only. Enter numbers in the daily report.', vi:'Chỉ xem. Nhập ở báo cáo ngày.' })}` };
     return `${k === 'cost' ? '' : seg}${body}<div class="pb-card" style="margin-top:12px"><button class="pb-row" data-open="numdetail">${pbImg_('num_detail')}<span class="pb-rowtx"><span class="pb-nm">${L({ ja:'3か月の平均と今月の日別', en:'3-month avg & daily', vi:'TB 3 tháng & theo ngày' })}</span><span class="pb-sub">${L({ ja:'レジ・Google口コミ・サーベイをまとめて', en:'Register, reviews and survey together', vi:'Tổng hợp' })}</span></span><span class="pb-rt">${svg('chev')}</span></button></div>`;
   }
   const prevYmN_ = (ym, k) => { const [y, m] = String(ym).split('-').map(Number); const d = new Date(y, m - 1 - k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
