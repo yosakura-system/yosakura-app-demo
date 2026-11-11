@@ -12214,7 +12214,7 @@
   if (!appById('kzgp')) {   // ★2026-11-11 気づきグランプリ（月間MVP）＝本部だけ
     APPS.unshift({ id:'kzgp', group:'hq', icon:'star', live:true, roles:['hq'],
       name:{ ja:'気づきグランプリ（月間MVP）', en:'Insight Grand Prix (monthly MVP)', vi:'Giải ghi nhận tháng' },
-      desc:{ ja:'その月の気づきを全部並べて本部で1人1票。いちばん多い投稿が月間MVP', en:'Vote for the best insight of the month', vi:'Bỏ phiếu ghi nhận hay nhất tháng' } });
+      desc:{ ja:'その月の気づきを全部並べて本部で1人1票。店名・お名前はMVP確定まで伏せる', en:'Vote for the best insight of the month', vi:'Bỏ phiếu ghi nhận hay nhất tháng' } });
   }
   if (!appById('inbox')) {
     APPS.unshift({ id:'inbox', group:'hq', icon:'inbox', live:true, roles:['hq'],
