@@ -8257,9 +8257,9 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/app/kzgp';
   ok(!/data-kzvote=/.test(registry.app.innerHTML), '店長はグランプリを開けない（本部のみ）');
-  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.removeItem('yosakura_hqprep_off'); });
-  location.hash = '#/home';
-  ok(/data-open="kzgp"/.test(registry.app.innerHTML) || true, '本部ホーム＝グランプリの入口（本部タブの帯）');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
+  location.hash = '#/home?tab=hq';
+  ok(/data-open="kzgp"/.test(registry.app.innerHTML) && /気づきグランプリ（月間MVP）/.test(registry.app.innerHTML), '本部タブ＝グランプリの入口の帯（口コミ・盛付の帯の下）');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
