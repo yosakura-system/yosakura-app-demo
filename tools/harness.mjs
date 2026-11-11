@@ -8188,6 +8188,7 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   ok(/kizuki:'kyou_kizuki_team'/.test(code) && /pbImg_\('kyou_kizuki_team', 'pb-chipimg'\)/.test(code) && /"kyou_kizuki_team": 'data:image\/webp/.test(code), '気づきの写真＝社長提供の実物写真（kyou_kizuki_team）が埋め込まれ、小窓と流れの行で使われる');
   let v = renderView('kizuki', 'staff', S, 'ja');
   ok(/id="kz_who"/.test(v) && /ログインした人と違うときは/.test(v), '気づき＝お名前の欄（任意・ログインした人と違う人が書ける）');
+  ok(/こうしたらどうかな？/.test(v) && !/こうしたら？/.test(v), '気づき＝「こうしたら？」→「こうしたらどうかな？」（神田さん 11/11 夕）');
   ok(/data-v="good"/.test(v) && /data-v="idea"/.test(v) && /data-v="trouble"/.test(v) && !/data-v="food"/.test(v), '気づき＝区分は「うれしかった・喜ばれた／こうしたら？／困った・気になる」（旧の料理／サービスは選べない）');
   ok(/もっと喜ばれるかも/.test(v) && /ひと言でOK/.test(v) && !/本部が改善に活用/.test(v), '気づき＝案内はフランクに（「これしたらもっと喜ばれるかも」も気づき）');
   ok(/const cat = catEl \? catEl\.dataset\.v : 'good';/.test(code) && /const who = String\(\(whoEl && whoEl\.value\) \|\| ''\)\.trim\(\) \|\| getUserName\(\);/.test(code), 'ソース＝送信時はお名前欄が優先・既定の区分は good');
@@ -8208,9 +8209,14 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   ok(/pb-nippou/.test(rc) && rc.indexOf('pb-nippou') > rc.indexOf('pb-flow') && rc.indexOf('pb-nippou') < rc.indexOf('id="pbwk"'), '右列＝日報は今日の流れの枠の次・今週の前（独立した細長いカード）');
   ok(!/昨日のレジ締め/.test(lc) && !/pb-nippou/.test(lc), '左列に日報とレジ締めは無い');
   // 日報＝チップを最初に・「なし」か金額
-  ok(/const tipBox = tipL \? \(\(\) => \{/.test(code) && /dbox, auto, tipBox, salesLbl, salesGrid,/.test(code) && /none\.textContent = L\(\{ ja:'なし（0円）'/.test(code) && /inp\.value = '0';/.test(code), 'ソース＝案Bの日報はチップの枠を自動の数字の直後（納品書の前）に出し、「なし」ボタンで0が入る');
+  ok(/const tipBox = tipL \? \(\(\) => \{/.test(code) && /dbox, auto, tipBox, errBox, salesLbl, salesGrid,/.test(code) && /none\.textContent = L\(\{ ja:'なし（0円）'/.test(code) && /inp\.value = '0';/.test(code), 'ソース＝案Bの日報はチップの枠を自動の数字の直後（納品書の前）に出し、「なし」ボタンで0が入る');
   ok(/ほかの項目（発注・勤怠など・入れる店だけ）/.test(code) && !/ほかの項目（チップ・発注など/.test(code), 'ソース＝「ほかの項目」の見出しからチップが消えた（上に出したため）');
-  ok(/入れるのは、チップ（無い日は「なし」）と今日届いた納品書です。/.test(code) && /最初にチップ（無い日は「なし」）/.test(code), 'ソース＝日報の案内文3種ともチップを先に言う');
+  ok(/入れるのは、チップ（無い日は「なし」）、レジ誤差があった日の理由、今日届いた納品書です。/.test(code) && /最初にチップ（無い日は「なし」）/.test(code), 'ソース＝日報の案内文3種ともチップを先に言う（11/11 夕＝レジ誤差の理由も）');
+  // 日報＝チップの直後にレジ誤差と理由（神田さん 11/11 夕）
+  ok(/const errBox = errL \? \(\(\) => \{/.test(code) && /d\.id = 'pbn_err';/.test(code) && /レジ誤差（現金の過不足）/.test(code) && /row\.appendChild\(errL\); d\.appendChild\(row\); return d;/.test(code), 'ソース＝案Bの日報はチップの枠の直後に「レジ誤差（現金の過不足）」の枠（理由の欄 sk_errnote を移す＝保存は今までのまま）');
+  ok(/if \(errAmtL\) \{[^\n]*row\.appendChild\(errAmtL\); \}/.test(code), 'ソース＝レジ取込の無い店は金額（sk_err）も同じ枠へ');
+  ok(/function pbNipErrHtml_\(\)/.test(code) && /この日のレジ誤差はまだ届いていません/.test(code) && /この日のレジ誤差：0円（差なし）/.test(code) && /const ev = g\('pbn_errv'\); if \(ev\) ev\.innerHTML = pbNipErrHtml_\(\);/.test(code), 'ソース＝USENの店はその日のレジ誤差を自動の数字から出し、日付を変えると描き直す');
+  ok(/if \(!rec\) return `<span class="muted">\$\{L\(\{ja:'この日のレジ誤差はまだ届いていません/.test(code) && /\$\{v < 0 \? '−' : '\+'\}\$\{yen\(Math\.abs\(v\)\)\}/.test(code), 'ソース＝レジ誤差の1行目＝届いていない／0円／±金額の3通り');
   ok(/if \(byId\('sk_tipt'\) && v\('sk_tipt'\) === ''\) \{ toast\(/.test(code), 'ソース＝チップ必須の検査は今までのまま（空なら送れない）');
   // 店の数字＝小窓8つ → numview
   /* ★日付＝JSTの営業日で2日を選ぶ。同じ月に入る2日（dA＝一昨日・dB＝3日前、月をまたぐなら昨日）＝月初でも落ちない（Codex#9）。開くときは ?ym= で月を固定 */
@@ -8346,9 +8352,30 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
     localStorage.setItem('yosakura_demo_kzvote', JSON.stringify([{ kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: S + '||' + (tLast), by:'masuda', name:'増田' }), t: tLast + 86400e3 * 19 }])); });   // 端末の控え（古い同じ票）＝二重に数えない
   location.hash = '#/app/kzgp?ym=' + lastYm; x = registry.app.innerHTML;
   ok(/先月の気づきA/.test(x) && /先月の気づきB/.test(x) && !/今月の気づきC/.test(x), 'グランプリ＝既定は前月の投稿だけ（今月の分は出ない）');
-  ok(/#1/.test(x) && /#2/.test(x) && /店名・お名前は伏せています/.test(x) && !/増田/.test(x), 'グランプリ＝番号つき・店名とお名前は伏せる（既定）・投票者の名前も出ない');
+  ok(/#1/.test(x) && /#2/.test(x) && /店名・お名前はMVPが決まるまで伏せています/.test(x) && !/増田/.test(x), 'グランプリ＝番号つき・店名とお名前は確定まで伏せる・投票者の名前も出ない');
   ok(/いま1位/.test(x) && x.indexOf('いま1位') < x.indexOf('先月の気づきA') && (x.match(/<b>1<\/b>票/g) || []).length === 1 && /<b>0<\/b>票/.test(x) && /投票 1</.test(x), 'グランプリ＝同じ人の票は最新だけ・取り消し（空キー）は数えない・端末の控えと二重にしない＝増田さんの1票だけで1位（Codex#18・#12）');
-  ok(/data-kzvote=/.test(x) && /この投稿に1票/.test(x) && new RegExp('data-kzgpshow="' + lastYm + '"').test(x), 'グランプリ＝1票ボタンと、店名・お名前を見る切替（その月だけ）');
+  ok(/data-kzvote=/.test(x) && /この投稿に1票/.test(x) && !/data-kzgpshow/.test(x) && /data-kzfinal="寿司世桜 心斎橋店\|\|/.test(x) && /色眼鏡で見ないため/.test(x), 'グランプリ＝1票ボタン・「見る」切替は無い・投稿ごとに「MVPに確定」・伏せる理由を書く（神田さん 11/11 夕）');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] }));
+    localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([{ store:S, cat:'good', note:'先月の気づきA', photos:[], t: tLast, who:'A' }, { store:'寿司世桜 心斎橋店', cat:'idea', note:'先月の気づきB', photos:[], t: tLast + 3600e3, who:'B' }, { store:S, cat:'trouble', note:'今月の気づきC', photos:[], t: Date.now() - 3600e3, who:'C' }]));
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: S + '||' + (tLast), by:'masuda', name:'増田' }), t: tLast + 86400e3 * 20, id:'v1' },
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: '寿司世桜 心斎橋店||' + (tLast + 3600e3), by:'tsuneyama', name:'常山' }), t: tLast + 86400e3 * 21, id:'v2' },
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: '', by:'tsuneyama', name:'常山' }), t: tLast + 86400e3 * 22, id:'v3' },
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: S + '||' + tLast, by:'kanda', name:'神田', final: 1 }), t: tLast + 86400e3 * 25, id:'f1' }])); });
+  location.hash = '#/app/kzgp?ym=' + lastYm + '&fin=1'; x = registry.app.innerHTML;
+  ok(/kzgp-top">MVP</.test(x) && !/いま1位/.test(x) && /・ A ・/.test(x) && /・ B ・/.test(x) && !/MVPが決まるまで伏せています/.test(x) && /確定を取り消す/.test(x) && /data-kzfinal="" data-kzfinalym=/.test(x) && !/この投稿をMVPに確定/.test(x) && /投票 1</.test(x) && x.indexOf('kzgp-top">MVP<') < x.indexOf('先月の気づきA'), 'グランプリ＝確定後＝MVPの印・店名とお名前が開く・取り消しボタン・確定の行は票に数えない');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'kanda', name:'テスト', role:'hq', stores:['*'] }));
+    localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([{ store:S, cat:'good', note:'先月の気づきA', photos:[], t: tLast, who:'A' }, { store:'寿司世桜 心斎橋店', cat:'idea', note:'先月の気づきB', photos:[], t: tLast + 3600e3, who:'B' }, { store:S, cat:'trouble', note:'今月の気づきC', photos:[], t: Date.now() - 3600e3, who:'C' }]));
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: S + '||' + (tLast), by:'masuda', name:'増田' }), t: tLast + 86400e3 * 20, id:'v1' },
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: '寿司世桜 心斎橋店||' + (tLast + 3600e3), by:'tsuneyama', name:'常山' }), t: tLast + 86400e3 * 21, id:'v2' },
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: '', by:'tsuneyama', name:'常山' }), t: tLast + 86400e3 * 22, id:'v3' },
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: S + '||' + tLast, by:'kanda', name:'神田', final: 1 }), t: tLast + 86400e3 * 25, id:'f1' },
+      { kind:'kzvote', store:'', item: lastYm, note: JSON.stringify({ key: '', by:'kanda', name:'神田', final: 1 }), t: tLast + 86400e3 * 26, id:'f2' }])); });
+  location.hash = '#/app/kzgp?ym=' + lastYm + '&fin=2'; x = registry.app.innerHTML;
+  ok(/MVPが決まるまで伏せています/.test(x) && !/kzgp-top">MVP</.test(x) && /この投稿をMVPに確定/.test(x), 'グランプリ＝確定の取り消し（key 空の final）＝また伏せる');
   ok(/case 'kzvote': if \(getRole\(\) === 'hq'\) subs\.push\(/.test(code), 'ソース＝kzvote は distribute で端末に残る（本部の端末だけ・振り分け漏れの再発防止）');
   ok(/postReport\(\{ kind:'kzvote', store:'', item: ym, note, t \}\);/.test(code) && /const next = \(cur && cur\.key === key\) \? '' : key;/.test(code), 'ソース＝1票はバックエンドへ（同じ投稿をもう一度＝取り消し）');
   { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');
@@ -8361,7 +8388,9 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
     ok(/AUTH_HQ_WRITE_KINDS = \[[\s\S]*?'kzvote'\]/.test(gsrc) && /if \(kind === 'kzvote'\) \{/.test(gsrc) && /by: String\(u\.uid \|\| ''\)/.test(gsrc), '認証.gs＝kzvote は本部だけ書ける・投票者は認証済み uid で固定（Codex#1・#2）'); }
   ok(/src="\$\{esc\(photoThumb\(p\)\)\}" data-full="\$\{esc\(photoFull\(p\)\)\}"/.test(code) && /im\.src = String\(src \|\| ''\); m\.appendChild\(im\);/.test(code), 'ソース＝グランプリの写真の属性は esc・拡大表示は DOM で（Codex#3）');
   ok(/\['sk_date', 'sk_store'\]\.forEach\(id => \{ const e = g\(id\); if \(e\) e\.addEventListener\('change', \(\) => \{ setTimeout\(sync, 0\); setTimeout\(sync, 400\); \}\); \}\);/.test(code) && /document\.createEvent\('Event'\)/.test(code), 'ソース＝日付・店舗を変えたら「なし」の印を合わせる・Event が無い環境の予備（Codex#4・#12）');
-  ok(/localStorage\.getItem\('yosakura_kzgp_show'\) === ym/.test(code), 'ソース＝店名・お名前を見るのはその月だけ（Codex#10）');
+  ok(!/yosakura_kzgp_show/.test(code) && /const fin = kzFinalOf\(ym\); const show = !!fin;/.test(code) && /if \(p\.final\) return;   \/\/ 確定の行は票に数えない/.test(code), 'ソース＝「見る」の切替（端末ごと）は廃止・開くのは確定した月だけ・確定の行は票に数えない');
+  { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');
+    ok(/if \(kv\.final\) kvo\.final = 1;/.test(gsrc) && /by: String\(u\.uid \|\| ''\)/.test(gsrc), '認証.gs＝確定の印（final）を落とさない・投票者は uid のまま'); }
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/home?tab=hq';
   ok(/data-open="kzgp"/.test(registry.app.innerHTML) && /気づきグランプリ（月間MVP）/.test(registry.app.innerHTML), '本部タブ＝グランプリの入口の帯（口コミ・盛付の帯の下）');

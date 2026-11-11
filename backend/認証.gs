@@ -434,7 +434,9 @@ function auth_gate_post_(data) {
   if (kind === 'kzvote') {
     if (u.role !== 'hq') return { ok: false, error: 'HQ_ONLY' };
     try { var kv = (typeof data.note === 'string') ? JSON.parse(data.note) : (data.note || {}); if (!kv || typeof kv !== 'object' || Array.isArray(kv)) kv = {};
-      data.note = JSON.stringify({ key: String(kv.key || '').slice(0, 120), by: String(u.uid || ''), name: String(kv.name || '').slice(0, 40) }); data.store = ''; data.photos = [];
+      var kvo = { key: String(kv.key || '').slice(0, 120), by: String(u.uid || ''), name: String(kv.name || '').slice(0, 40) };
+      if (kv.final) kvo.final = 1;   // ★2026-11-11 夕 MVPの確定（key＝MVPの投稿・空＝取り消し）。票（final なし）とは別に数える
+      data.note = JSON.stringify(kvo); data.store = ''; data.photos = [];
     } catch (e) { return { ok: false, error: 'BAD_NOTE' }; }
   }
   if (u.role !== 'hq') {

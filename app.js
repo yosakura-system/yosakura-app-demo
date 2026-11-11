@@ -2147,7 +2147,7 @@
     const al = allergyInfo_(store);   // ★2026-10-22 食物アレルギー＝カード1回で自店の表（神田さん）
     /* ★2026-11-11 構築MTG（社長）＝気づきの写真を「輪になって手を組むスタッフ」の実物写真（社長提供・icons/photo/kyou_kizuki_team.webp）に。小窓4つは FAQ/FAC の下へ（神田さん 11/11） */
     const chips = `<div class="pb-chips pb-chips--home">
-      <button class="pb-chip" data-open="kizuki">${pbImg_('kyou_kizuki_team', 'pb-chipimg')}<b>${L({ja:'気づき',en:'Insight',vi:'Ghi nhận'})}</b><small>${L({ja:'うれしかった・こうしたら？・困った',en:'Happy, idea or trouble',vi:'Vui, ý tưởng, khó'})}</small></button>
+      <button class="pb-chip" data-open="kizuki">${pbImg_('kyou_kizuki_team', 'pb-chipimg')}<b>${L({ja:'気づき',en:'Insight',vi:'Ghi nhận'})}</b><small>${L({ja:'うれしかった・こうしたらどうかな？・困った',en:'Happy, idea or trouble',vi:'Vui, ý tưởng, khó'})}</small></button>
       <button class="pb-chip" data-open="surveyqr">${pbImg_('kyou_survey_smile', 'pb-chipimg')}<b>${L({ja:'サーベイQR',en:'Survey QR',vi:'QR khảo sát'})}</b><small>${L({ja:'お会計のときに',en:'At payment',vi:'Khi thanh toán'})}</small></button>
       <button class="pb-chip" data-open="emergency">${pbImg_('miru_emergency', 'pb-chipimg')}<b>${L({ja:'緊急のとき',en:'Emergency',vi:'Khẩn cấp'})}</b><small>${L({ja:'火事・けが・お申し出',en:'Fire, injury, complaint',vi:'Cháy, thương tích'})}</small></button>
       <button class="pb-chip" ${al.attr}>${pbImg_('miru_allergy', 'pb-chipimg')}<b>${L({ja:'食物アレルギー',en:'Food allergies',vi:'Dị ứng thực phẩm'})}</b><small>${L(al.sub)}</small></button>
@@ -3187,7 +3187,7 @@
      旧区分（料理／サービス／その他・提案）は過去の投稿の表示用に残す（新しい画面では選べない）。本部データの item 列には区分の値がそのまま入る */
   const KZ_CATS = [
     { v:'good',    t:{ ja:'うれしかった・喜ばれた', en:'Happy moment', vi:'Vui / được khen' } },
-    { v:'idea',    t:{ ja:'こうしたら？', en:'Idea', vi:'Ý tưởng' } },
+    { v:'idea',    t:{ ja:'こうしたらどうかな？', en:'Idea', vi:'Ý tưởng' } },   // ★2026-11-11 夕 神田さん「こうしたら？」→「こうしたらどうかな？」
     { v:'trouble', t:{ ja:'困った・気になる', en:'Trouble', vi:'Khó khăn' } },
     { v:'food',    t:{ ja:'料理', en:'Food', vi:'Món ăn' }, old:true },
     { v:'service', t:{ ja:'サービス', en:'Service', vi:'Phục vụ' }, old:true },
@@ -3414,6 +3414,18 @@
     if (rec.err != null && rec.err !== '' && Number(rec.err) !== 0) out.push(row(L({ja:'レジの過不足',en:'Register diff.',vi:'Chênh lệch két'}), 'POS', (Number(rec.err) < 0 ? '−' : '') + yen(Math.abs(Number(rec.err)))));
     return `<div class="pb-nipauto">${out.join('')}</div>`;
   }
+  /* ★2026-11-11 夕 レジ誤差の枠の1行目＝その日のレジ誤差（USENの店は自動の数字から）。レジ取込の無い店は手入力の欄が出るので空 */
+  function pbNipErrHtml_() {
+    const g = (id) => document.getElementById(id);
+    const store = (g('sk_store') && g('sk_store').value) || visibleStores()[0];
+    const date = (g('sk_date') && g('sk_date').value) || todayKey();
+    if (skNoRegi_(store)) return '';
+    const rec = getSk().find(r => r && r.store === store && r.date === date && (r.src === 'usen' || r.pos));
+    if (!rec) return `<span class="muted">${L({ja:'この日のレジ誤差はまだ届いていません（翌朝4時に自動で入ります）',en:'Register difference for this day not in yet (arrives at 4:00 next morning)',vi:'Chênh lệch két của ngày này chưa có (tự vào lúc 4:00 sáng hôm sau)'})}</span>`;
+    const v = Number(rec.err) || 0;
+    if (!v) return `<span class="muted">${L({ja:'この日のレジ誤差：0円（差なし）',en:'Register difference this day: ¥0 (none)',vi:'Chênh lệch két ngày này: 0 (không có)'})}</span>`;
+    return `<b style="color:var(--suou,#8b2e3a)">${L({ja:'この日のレジ誤差：',en:'Register difference this day: ',vi:'Chênh lệch két ngày này: '})}${v < 0 ? '−' : '+'}${yen(Math.abs(v))}</b> <small class="muted">${L({ja:'（レジから自動）',en:'(from the register)',vi:'(từ máy tính tiền)'})}</small>`;
+  }
   function pbNippouLayout_() {
     const form = document.getElementById('skForm'); if (!form || form.dataset.pbn) return;
     form.dataset.pbn = '1'; form.classList.add('pb-nip');
@@ -3427,8 +3439,8 @@
     if (pos) pos.textContent = noRegi
       ? L({ ja:'最初にチップ（無い日は「なし」）。売上はレジの日計を見て入れ、今日届いた納品書を撮ってください。', en:'Tips first (tap “None” if none). Enter sales from the register report, then photograph today’s delivery slips.', vi:'Tip trước (bấm “Không có” nếu không). Nhập doanh thu từ báo cáo két, rồi chụp phiếu giao hàng.' })
       : noUsen
-      ? L({ ja:'売上・客数・現金・カードはレジから自動で入っています。入れるのは、チップ（無い日は「なし」）、フード・ドリンクの金額と国別のお客様、今日届いた納品書です。', en:'Sales, guests, cash and card come from the register. Enter tips (tap “None” if none), food/drink amounts, guests by country and today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ máy tính tiền. Nhập tip (bấm “Không có” nếu không), tiền món/đồ uống, khách theo quốc gia và phiếu giao hàng.' })
-      : L({ ja:'売上・客数・現金・カードはUSENレジから入っています。入れるのは、チップ（無い日は「なし」）と今日届いた納品書です。', en:'Sales, guests, cash and card come from the USEN register. Enter tips (tap “None” if none) and today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ máy tính tiền USEN. Nhập tip (bấm “Không có” nếu không) và phiếu giao hàng hôm nay.' });
+      ? L({ ja:'売上・客数・現金・カードはレジから自動で入っています。入れるのは、チップ（無い日は「なし」）、レジ誤差があった日の理由、フード・ドリンクの金額と国別のお客様、今日届いた納品書です。', en:'Sales, guests, cash and card come from the register. Enter tips (tap “None” if none), food/drink amounts, guests by country and today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ máy tính tiền. Nhập tip (bấm “Không có” nếu không), tiền món/đồ uống, khách theo quốc gia và phiếu giao hàng.' })
+      : L({ ja:'売上・客数・現金・カードはUSENレジから入っています。入れるのは、チップ（無い日は「なし」）、レジ誤差があった日の理由、今日届いた納品書です。', en:'Sales, guests, cash and card come from the USEN register. Enter tips (tap “None” if none) and today’s delivery slips.', vi:'Doanh thu, khách, tiền mặt, thẻ lấy từ máy tính tiền USEN. Nhập tip (bấm “Không có” nếu không) và phiếu giao hàng hôm nay.' });
     const dateGrid = g('sk_date') ? g('sk_date').closest('.sk-grid') : null;
     const dbox = document.createElement('details'); dbox.className = 'pb-nipdate'; dbox.innerHTML = '<summary id="pbn_datesum"></summary>';
     const auto = document.createElement('div'); auto.id = 'pbn_auto';
@@ -3447,6 +3459,19 @@
       if (inp) inp.addEventListener('input', sync);
       ['sk_date', 'sk_store'].forEach(id => { const e = g(id); if (e) e.addEventListener('change', () => { setTimeout(sync, 0); setTimeout(sync, 400); }); });   // ★日付・店舗を変えると skFill_ が値を入れ替える＝印も合わせる（Codex#4）
       row.appendChild(none); row.appendChild(tipL); d.appendChild(row); sync(); return d;
+    })() : null;
+    /* ★2026-11-11 夕 神田さん「現金過不足の理由の箇所も、チップの後に続いてレジ誤差と、理由を入力できるように」
+       ＝チップの直後に「レジ誤差（現金の過不足）」の枠。USENの店＝その日の金額をレジから（自動）＋理由（選ぶ）。レジ取込の無い店＝金額（sk_err）も手で。
+       欄・保存・総括表への流れ（sk_err / sk_errnote・理由の選択肢 sk_errsel）は今までのまま＝置き場所だけ上へ */
+    const errL = g('sk_errnote') ? g('sk_errnote').closest('label') : null;
+    const errAmtL = g('sk_err') ? g('sk_err').closest('label') : null;   // レジ取込の無い店だけ（sk_posgrid の中にある）
+    const errBox = errL ? (() => {
+      const d = document.createElement('div'); d.className = 'pb-niperr'; d.id = 'pbn_err';
+      d.innerHTML = `<div class="pb-sec"><h2>${L({ja:'レジ誤差（現金の過不足）',en:'Register difference (cash over/short)',vi:'Chênh lệch két (tiền mặt)'})}</h2><small>${L({ja:'差があった日は理由を選ぶ ・ 無い日はそのまま',en:'Choose a reason only on days with a difference',vi:'Chỉ chọn lý do khi có chênh lệch'})}</small></div><div class="pb-niperrv" id="pbn_errv"></div>`;
+      const sp = errL.querySelector('span'); if (sp) sp.textContent = L({ ja:'理由', en:'Reason', vi:'Lý do' });
+      const row = document.createElement('div'); row.className = 'pb-niperrrow';
+      if (errAmtL) { const s2 = errAmtL.querySelector('span'); if (s2) s2.textContent = L({ ja:'過不足の金額（円・不足は −）', en:'Amount (yen, − if short)', vi:'Số tiền (yên, − nếu thiếu)' }); row.appendChild(errAmtL); }
+      row.appendChild(errL); d.appendChild(row); return d;
     })() : null;
     const salesLbl = noRegi && g('sk_posgrid') ? g('sk_posgrid').previousElementSibling : null;
     const salesGrid = noRegi ? g('sk_posgrid') : null;
@@ -3473,9 +3498,9 @@
     if (dateGrid) dbox.appendChild(dateGrid);
     if (h3) h3.textContent = L({ ja:'日報', en:'Daily report', vi:'Báo cáo ngày' });
     if (g('sk_datenote')) g('sk_datenote').style.display = 'none';   // 日付は上の札に出す（二重にしない）
-    const order = [h3, pos, g('sk_editnote'), g('sk_datenote'), dbox, auto, tipBox, salesLbl, salesGrid, fdLbl, fdGrid, ctyLbl, ctyGrid, slipHead, shoot, slip, memo, kt, more, submit, after].filter(Boolean);
+    const order = [h3, pos, g('sk_editnote'), g('sk_datenote'), dbox, auto, tipBox, errBox, salesLbl, salesGrid, fdLbl, fdGrid, ctyLbl, ctyGrid, slipHead, shoot, slip, memo, kt, more, submit, after].filter(Boolean);
     order.forEach(el => form.appendChild(el));
-    const draw = () => { const a = g('pbn_auto'); if (a) a.innerHTML = pbNipAutoHtml_(); };
+    const draw = () => { const a = g('pbn_auto'); if (a) a.innerHTML = pbNipAutoHtml_(); const ev = g('pbn_errv'); if (ev) ev.innerHTML = pbNipErrHtml_(); };
     draw();
     ['sk_date', 'sk_store'].forEach(id => { const e = g(id); if (e) e.addEventListener('change', () => setTimeout(draw, 0)); });
   }
@@ -10777,10 +10802,22 @@
     const out = {};
     subRows('kzvote').concat(kzLocalVotes_()).forEach(r => {
       if (!r || String(r.item) !== String(ym)) return;
-      const p = pj(r.note) || {}; const by = String(p.by || ''); if (!by) return;
+      const p = pj(r.note) || {}; if (p.final) return;   // 確定の行は票に数えない
+      const by = String(p.by || ''); if (!by) return;
       if (!out[by] || (Number(r.t) || 0) >= out[by].t) out[by] = { key: String(p.key || ''), name: String(p.name || ''), t: Number(r.t) || 0 };
     });
     return out;
+  };
+  /* ★2026-11-11 夕 神田さん「店名・お名前は匿名で本部に表示（色眼鏡で見ないため）。最終的に確定したのち、MVPが決まった後に名前をオープン」
+     ＝「見る」切替を廃止。確定＝kzvote の行に final:1（key＝MVPの投稿・key が空＝取り消し）。同じ月は最新の確定が正。確定した月だけ店名・お名前が本部の全員に開く */
+  const kzFinalOf = (ym) => {
+    let fin = null;
+    subRows('kzvote').concat(kzLocalVotes_()).forEach(r => {
+      if (!r || String(r.item) !== String(ym)) return;
+      const p = pj(r.note) || {}; if (!p.final) return;
+      if (!fin || (Number(r.t) || 0) >= fin.t) fin = { key: String(p.key || ''), by: String(p.by || ''), name: String(p.name || ''), t: Number(r.t) || 0 };
+    });
+    return (fin && fin.key) ? fin : null;
   };
   APP_VIEWS.kzgp = () => {
     if (getRole() !== 'hq') return `<div class="card"><p>${L({ja:'本部のみ閲覧できます。',en:'HQ only.',vi:'Chỉ HQ.'})}</p></div>`;
@@ -10788,7 +10825,7 @@
     const ymQ = currentRoute().params.get('ym') || '';
     const ym = /^\d{4}-\d{2}$/.test(ymQ) ? ymQ : prevYmN_(ymNow, 1);
     const months = [0, 1, 2, 3].map(i => prevYmN_(ymNow, i));
-    const show = localStorage.getItem('yosakura_kzgp_show') === ym;   // ★「見る」はその月だけ（別の月を開けば伏せた状態に戻る・Codex#10）
+    const fin = kzFinalOf(ym); const show = !!fin;   // ★店名・お名前はMVPが確定した月だけ開く（神田さん 11/11 夕）
     const mlab = (m) => `${Number(String(m).slice(0, 4))}${L({ ja:'年', en:'/', vi:'/' })}${Number(String(m).slice(5, 7))}${L({ ja:'月', en:'', vi:'' })}`;
     const rows = getKz().filter(r => r && r.note && ymOfDate(dateKeyFor(r.store, r.t)) === ym).sort((a, b) => a.t - b.t);
     const kkey = (r) => `${r.store}||${r.t}`;
@@ -10799,18 +10836,20 @@
     const topN = ranked.length ? tally[ranked[0]].length : 0;
     const voters = Object.keys(votes).filter(b => votes[b].key).length;
     const seg = `<div class="pb-numseg">${months.map(m => `<button type="button" class="${m === ym ? 'on' : ''}" data-open="kzgp?ym=${m}">${mlab(m)}</button>`).join('')}</div>`;
-    const list = rows.map((r, i) => { const k = kkey(r); const vs = tally[k] || []; const top = topN && vs.length === topN;
-      return `<div class="card kzgp-row${top ? ' top' : ''}" data-kzrow="${esc(k)}"><div class="kzgp-no">#${i + 1}${top ? ` <span class="kzgp-top">${L({ja:'いま1位',en:'Leading',vi:'Dẫn đầu'})}</span>` : ''}</div>
+    const list = rows.map((r, i) => { const k = kkey(r); const vs = tally[k] || []; const isMvp = !!(fin && fin.key === k); const top = !fin && topN && vs.length === topN;
+      return `<div class="card kzgp-row${(top || isMvp) ? ' top' : ''}" data-kzrow="${esc(k)}"><div class="kzgp-no">#${i + 1}${isMvp ? ` <span class="kzgp-top">MVP</span>` : top ? ` <span class="kzgp-top">${L({ja:'いま1位',en:'Leading',vi:'Dẫn đầu'})}</span>` : ''}</div>
         <div class="kzgp-note">${esc(r.note)}</div>
         ${r.photos && r.photos.length ? `<div class="photo-thumbs">${r.photos.slice(0, 3).map(p => `<img class="rep-photo" src="${esc(photoThumb(p))}" data-full="${esc(photoFull(p))}" alt="" loading="lazy">`).join('')}</div>` : ''}
-        <div class="l2 muted">${esc(kzCatLabel(r.cat))} ・ ${show ? `${esc(storeShort(r.store))}${r.who ? ' ・ ' + esc(r.who) : ''}` : L({ja:'店名・お名前は伏せています',en:'Store and name hidden',vi:'Ẩn cửa hàng và tên'})} ・ ${esc(mdLabel(dateKeyFor(r.store, r.t)))}</div>
-        <div class="kzgp-vote"><button class="mini${mine === k ? ' pri' : ''}" data-kzvote="${esc(k)}" data-kzvoteym="${esc(ym)}">${mine === k ? L({ja:'あなたの1票（押すと取り消し）',en:'Your vote (tap to undo)',vi:'Phiếu của bạn (bấm để bỏ)'}) : L({ja:'この投稿に1票',en:'Vote for this',vi:'Bỏ phiếu'})}</button> <b>${vs.length}</b>${L({ja:'票',en:' vote(s)',vi:' phiếu'})}${show && vs.length ? ` <span class="muted">（${esc(vs.join('・'))}）</span>` : ''}</div></div>`; }).join('');
+        <div class="l2 muted">${esc(kzCatLabel(r.cat))} ・ ${show ? `${esc(storeShort(r.store))}${r.who ? ' ・ ' + esc(r.who) : ''}` : L({ja:'店名・お名前はMVPが決まるまで伏せています',en:'Store and name hidden until the MVP is decided',vi:'Ẩn cửa hàng và tên cho đến khi chọn MVP'})} ・ ${esc(mdLabel(dateKeyFor(r.store, r.t)))}</div>
+        <div class="kzgp-vote"><button class="mini${mine === k ? ' pri' : ''}" data-kzvote="${esc(k)}" data-kzvoteym="${esc(ym)}">${mine === k ? L({ja:'あなたの1票（押すと取り消し）',en:'Your vote (tap to undo)',vi:'Phiếu của bạn (bấm để bỏ)'}) : L({ja:'この投稿に1票',en:'Vote for this',vi:'Bỏ phiếu'})}</button> <b>${vs.length}</b>${L({ja:'票',en:' vote(s)',vi:' phiếu'})}${fin ? '' : ` <button class="mini kzgp-fin" data-kzfinal="${esc(k)}" data-kzfinalym="${esc(ym)}">${L({ja:'この投稿をMVPに確定',en:'Confirm as MVP',vi:'Chốt MVP'})}</button>`}</div></div>`; }).join('');
     return `
-      ${NOTE({ ja:'◆ その月の気づきを全部並べています。本部のメンバーが1人1票。いちばん多い投稿が月間MVP（プレゼントは本部から）', en:'◆ All insights of the month. One vote per HQ member; the most voted is the monthly MVP.', vi:'◆ Tất cả ghi nhận trong tháng. Mỗi thành viên HQ 1 phiếu.' })}
+      ${NOTE({ ja:'◆ その月の気づきを全部並べています。本部のメンバーが1人1票。店名・お名前はMVPが確定するまで伏せます（プレゼントは本部から）', en:'◆ All insights of the month. One vote per HQ member. Store and names stay hidden until the MVP is confirmed.', vi:'◆ Tất cả ghi nhận trong tháng. Mỗi thành viên HQ 1 phiếu. Ẩn tên cho đến khi chốt MVP.' })}
       ${seg}
       <div class="card"><div class="l1" style="font-weight:600">${esc(mlab(ym))} ・ ${rows.length} ${L({ja:'件',en:'posts',vi:'bài'})} ・ ${L({ja:'投票',en:'votes',vi:'phiếu'})} ${voters}</div>
-        <div class="l2" style="display:block;margin-top:6px"><button class="mini" data-kzgpshow="${show ? '' : esc(ym)}">${show ? L({ja:'店名・お名前を伏せる',en:'Hide store & names',vi:'Ẩn tên'}) : L({ja:'店名・お名前を見る（決まった後に）',en:'Show store & names (after deciding)',vi:'Hiện tên (sau khi chọn)'})}</button></div>
-        <p class="hint" style="display:block;margin-top:6px">${L({ ja:'選ぶ軸は「世桜全体を良くする／店の改善／お客様の満足／他店にも広げられる／本部が知るべき問題提起」で、件数の多さでは選びません。決まったら「お知らせを出す」で全店へ（先月のMVP：○○店の○○さん）。', en:'Pick by value to YOSAKURA, not by count. Announce the winner with a notice to all stores.', vi:'Chọn theo giá trị, không theo số lượng. Công bố bằng thông báo.' })}</p></div>
+        <div class="l2" style="display:block;margin-top:6px">${fin
+          ? `<b>${L({ja:'MVP 確定済み',en:'MVP confirmed',vi:'Đã chốt MVP'})}</b> <span class="muted">（${(() => { const d = new Date(fin.t); return `${d.getMonth() + 1}/${d.getDate()}`; })()} ・ ${esc(fin.name || fin.by)}）</span> <button class="mini" data-kzfinal="" data-kzfinalym="${esc(ym)}">${L({ja:'確定を取り消す',en:'Undo',vi:'Hủy chốt'})}</button>`
+          : `<span class="muted">${L({ja:'店名・お名前は、MVPが決まるまで全員に伏せています（色眼鏡で見ないため）。決まったら、その投稿の「MVPに確定」を押すと開きます。',en:'Store and names are hidden from everyone until the MVP is decided. Tap “Confirm as MVP” on the chosen post to reveal them.',vi:'Ẩn cửa hàng và tên cho đến khi chọn MVP. Bấm “Chốt MVP” ở bài được chọn để mở.'})}</span>`}</div>
+        <p class="hint" style="display:block;margin-top:6px">${L({ ja:'選ぶ軸は「世桜全体を良くする／店の改善／お客様の満足／他店にも広げられる／本部が知るべき問題提起」で、件数の多さでは選びません。確定したら「お知らせを出す」で全店へ（先月のMVP：○○店の○○さん）。', en:'Pick by value to YOSAKURA, not by count. After confirming, announce the winner with a notice to all stores.', vi:'Chọn theo giá trị, không theo số lượng. Sau khi chốt, công bố bằng thông báo.' })}</p></div>
       ${list || `<div class="card"><p class="muted">${L({ja:'この月の気づきはありません',en:'No insights this month',vi:'Không có ghi nhận trong tháng'})}</p></div>`}`;
   };
   APP_VIEWS.inbox = () => {
@@ -12471,7 +12510,19 @@
       postReport({ kind:'kzvote', store:'', item: ym, note, t });
       render();
     });
-    document.querySelectorAll('[data-kzgpshow]').forEach(b => b.onclick = () => { try { localStorage.setItem('yosakura_kzgp_show', String(b.dataset.kzgpshow || '')); } catch (e) {} render(); });
+    /* ★2026-11-11 夕 MVPの確定（本部）＝kzvote の行に final:1。key が空＝取り消し。確定した月は店名・お名前が開く */
+    document.querySelectorAll('[data-kzfinal]').forEach(b => b.onclick = () => {
+      const key = String(b.dataset.kzfinal || ''), ym = String(b.dataset.kzfinalym || ''); const by = String(((getAuth() || {}).uid) || '');
+      if (!by) { toast(L({ ja:'ログインし直してください', en:'Please sign in again', vi:'Vui lòng đăng nhập lại' })); return; }
+      const msg = key ? L({ ja:'この投稿を月間MVPに確定します。確定すると、この月の店名・お名前が本部の全員に開きます。よろしいですか？', en:'Confirm this post as the monthly MVP? Store and names for this month will be revealed to all HQ members.', vi:'Chốt bài này là MVP tháng? Tên cửa hàng và tên người sẽ được mở cho HQ.' })
+                      : L({ ja:'MVPの確定を取り消します（店名・お名前はまた伏せます）。よろしいですか？', en:'Undo the MVP confirmation? Store and names will be hidden again.', vi:'Hủy chốt MVP? Tên sẽ được ẩn lại.' });
+      try { if (typeof confirm === 'function' && confirm(msg) === false) return; } catch (e) {}   // ホーム画面版（standalone）では confirm が undefined を返す＝止めない
+      const t = Date.now(); const note = JSON.stringify({ key, by, name: getUserName(), final: 1 });
+      try { const arr = kzLocalVotes_(); arr.push({ kind:'kzvote', store:'', item: ym, note, t }); localStorage.setItem('yosakura_demo_kzvote', JSON.stringify(arr.slice(-60))); } catch (e) {}
+      postReport({ kind:'kzvote', store:'', item: ym, note, t });
+      toast(key ? L({ ja:'MVPを確定しました。店名・お名前が開きます', en:'MVP confirmed. Names are now shown.', vi:'Đã chốt MVP.' }) : L({ ja:'確定を取り消しました', en:'Confirmation undone', vi:'Đã hủy chốt' }));
+      render();
+    });
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
     document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'この画面は準備中です（順次追加します）', en:'This screen is in preparation', vi:'Màn hình đang chuẩn bị' })));
     // 準備中のボタンにも必ずフィードバックを返す＝無反応ボタンを排除
