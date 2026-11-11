@@ -3456,7 +3456,7 @@
     const errAmtL = g('sk_err') ? g('sk_err').closest('label') : null;   // レジ取込の無い店だけ（sk_posgrid の中にある）
     const errBox = errL ? (() => {
       const d = document.createElement('div'); d.className = 'pb-niperr'; d.id = 'pbn_err';
-      d.innerHTML = `<div class="pb-sec"><h2>${L({ja:'レジ誤差（現金の過不足）',en:'Register difference (cash over/short)',vi:'Chênh lệch két (tiền mặt)'})}</h2><small>${L({ja:'金額は上の自動の欄に出ます ・ 差があった日は理由を選ぶ',en:'The amount is in the auto section above · choose a reason only when there is a difference',vi:'Số tiền ở phần tự động phía trên · chỉ chọn lý do khi có chênh lệch'})}</small></div>`;
+      d.innerHTML = `<div class="pb-sec"><h2>${L({ja:'レジ誤差（現金の過不足）',en:'Register difference (cash over/short)',vi:'Chênh lệch két (tiền mặt)'})}</h2><small>${errAmtL ? L({ja:'差があった日は金額と理由を',en:'Enter the amount and reason only when there is a difference',vi:'Chỉ nhập số tiền và lý do khi có chênh lệch'}) : L({ja:'金額は上の自動の欄に出ます ・ 差があった日は理由を選ぶ',en:'The amount is in the auto section above · choose a reason only when there is a difference',vi:'Số tiền ở phần tự động phía trên · chỉ chọn lý do khi có chênh lệch'})}</small></div>`;
       const sp = errL.querySelector('span'); if (sp) sp.textContent = L({ ja:'理由', en:'Reason', vi:'Lý do' });
       const row = document.createElement('div'); row.className = 'pb-niperrrow';
       if (errAmtL) { const s2 = errAmtL.querySelector('span'); if (s2) s2.textContent = L({ ja:'過不足の金額（円・不足は −）', en:'Amount (yen, − if short)', vi:'Số tiền (yên, − nếu thiếu)' }); row.appendChild(errAmtL); }
@@ -3482,7 +3482,7 @@
     const kt = g('sk_kintai');
     if (kt) { kt.className = 'pb-nipmore'; kt.removeAttribute('style'); }   // 「ほかの項目」と同じ形
     if (kt && kt.querySelector('summary')) kt.querySelector('summary').textContent = L({ ja:'勤怠を入れる（任意・総括表に自動で入ります）', en:'Attendance (optional, goes to the summary sheet)', vi:'Chấm công (tùy chọn, tự vào bảng tổng kết)' });
-    const placed = new Set([h3, pos, g('sk_editnote'), g('sk_datenote'), dateGrid, salesLbl, salesGrid, fdLbl, fdGrid, ctyLbl, ctyGrid, slip, memo, kt, submit, after].filter(Boolean));
+    const placed = new Set([h3, pos, g('sk_editnote'), g('sk_datenote'), dateGrid, salesLbl, salesGrid, fdLbl, fdGrid, ctyLbl, ctyGrid, slip, memo, kt, submit, after, errL, errAmtL].filter(Boolean));   // errL/errAmtL＝レジ誤差の枠へ移した（直下の子だった店で「ほかの項目」へ戻らないように・Codex A6）
     kids.forEach(k => { if (!placed.has(k)) more.appendChild(k); });
     if (dateGrid) dbox.appendChild(dateGrid);
     if (h3) h3.textContent = L({ ja:'日報', en:'Daily report', vi:'Báo cáo ngày' });
@@ -7582,7 +7582,7 @@
       x.memo ? esc(x.memo) : ''
     ].filter(Boolean).join(' ・ ');
     /* ★2026-11-07 神田さん「写真は見ることできないのかな？」＝チェック表のセル内画像を毎晩写して、本文の下に出す（タップで拡大・本部のログイン経由） */
-    const phs = (x._ph && x._ph.length) ? `<div class="rep-photos">${x._ph.map(p => `<img class="rep-photo" src="${photoThumb(p)}" alt="" data-full="${photoFull(p)}" loading="lazy" style="width:96px;height:96px">`).join('')}</div>` : '';
+    const phs = (x._ph && x._ph.length) ? `<div class="rep-photos">${x._ph.map(p => `<img class="rep-photo" src="${esc(photoThumb(p))}" alt="" data-full="${esc(photoFull(p))}" loading="lazy" style="width:96px;height:96px">`).join('')}</div>` : '';
     return `<div class="rep"><span class="amt" style="font-size:12px">${rvTypeLabel_(x.type)}</span><div class="body"><div class="l1">${body}</div><div class="l2">${sub}</div>${phs}</div></div>`;
   };
   const RV_TITLE = { ja:'口コミ・盛付の指摘', en:'Review & plating issues', vi:'Ghi nhận đánh giá & trình bày' };
@@ -10792,14 +10792,18 @@
   const KZGP_MAX_VOTES = 3, KZGP_DEADLINE_DAY = 5;
   const KZGP_DEADLINE_OVERRIDE = { '2026-10': '2026-11-30' };   // ★初回（10月分）だけ＝仕組みが 11/11 に入り、5日はもう過ぎているため【仮】。神田さんが決めたら直す
   const kzDeadline_ = (ym) => KZGP_DEADLINE_OVERRIDE[ym] || (prevYmN_(ym, -1) + '-' + String(KZGP_DEADLINE_DAY).padStart(2, '0'));
-  const kzClosed_ = (ym) => todayKey() > kzDeadline_(ym);
+  /* ★Codex（11/11 夕）＝締め切りは JST の暦日（todayKey は営業日＝5時区切り・端末の時刻帯に寄る）。締め切り後に届いた票（旧版の端末・直接POST）は数えない */
+  const kzTodayJst_ = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  const kzDeadlineEnd_ = (ym) => Date.parse(kzDeadline_(ym) + 'T23:59:59+09:00');
+  const kzClosed_ = (ym) => kzTodayJst_() > kzDeadline_(ym);
   const kzVotesOf = (ym) => {
     const out = {};
     subRows('kzvote').concat(kzLocalVotes_()).forEach(r => {
       if (!r || String(r.item) !== String(ym)) return;
+      if ((Number(r.t) || 0) > kzDeadlineEnd_(ym)) return;   // 締め切り後の票は数えない（Codex A5）
       const p = pj(r.note) || {}; if (p.final) return;   // 旧・確定の行は数えない
       const by = String(p.by || ''); if (!by) return;
-      const keys = Array.isArray(p.keys) ? p.keys.map(k => String(k || '')).filter(Boolean).slice(0, KZGP_MAX_VOTES) : (p.key ? [String(p.key)] : []);
+      const keys = Array.from(new Set(Array.isArray(p.keys) ? p.keys.map(k => String(k || '')).filter(Boolean) : (p.key ? [String(p.key)] : []))).slice(0, KZGP_MAX_VOTES);   // 同じ投稿の重複は1票（Codex A3）
       if (!out[by] || (Number(r.t) || 0) >= out[by].t) out[by] = { keys, name: String(p.name || ''), t: Number(r.t) || 0 };
     });
     return out;

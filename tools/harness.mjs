@@ -8361,10 +8361,24 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   ok(/締め切り済み・MVP 確定/.test(x) && (x.match(/kzgp-top">MVP</g) || []).length === 1 && x.indexOf('kzgp-top">MVP<') < x.indexOf('前々月の気づきA') && !/いま1位/.test(x) && /<b>2<\/b>票/.test(x) && /<b>1<\/b>票/.test(x) && /投票した人 2/.test(x) && !/data-kzvote=/.test(x), 'グランプリ＝締め切り後＝票の多い投稿（A＝2票）が自動でMVP・投票ボタンは出ない・同じ人の票は最新だけ・端末の控えと二重にしない');
   ok(/・ A ・/.test(x) && /・ B ・/.test(x) && !/締め切りまで伏せています/.test(x) && !/増田/.test(x), 'グランプリ＝締め切り後は店名とお名前が開く（投票者の名前は出ない）');
   location.hash = '#/app/kzgp?ym=' + ymNowJ; x = registry.app.innerHTML;
-  ok(/今月の気づきC/.test(x) && /投票受付中/.test(x) && new RegExp('締め切り ' + Number(ymNext.slice(5, 7)) + '/5').test(x) && /1人3つまで（あなたの票：1）/.test(x), 'グランプリ＝今月＝投票受付中・締め切りは翌月5日・自分の票の数');
+  ok(/今月の気づきC/.test(x) && /投票受付中/.test(x) && new RegExp('締め切り ' + (ymNowJ === '2026-10' ? '11/30' : Number(ymNext.slice(5, 7)) + '/5')).test(x) && /1人3つまで（あなたの票：1）/.test(x), 'グランプリ＝今月＝投票受付中・締め切りは翌月5日・自分の票の数');
   ok(/店名・お名前は締め切りまで伏せています/.test(x) && !/・ C ・/.test(x) && !/・ D ・/.test(x) && /data-kzvote=/.test(x) && /この投稿に投票/.test(x) && /投票済み（押すと取り消し）/.test(x) && !/MVPに確定/.test(x) && !/data-kzfinal/.test(x) && !/data-kzgpshow/.test(x), 'グランプリ＝締め切り前＝店名とお名前は伏せる・投票ボタンだけ（確定ボタンも「見る」切替も無い）');
   ok(/const KZGP_MAX_VOTES = 3, KZGP_DEADLINE_DAY = 5;/.test(code) && /if \(keys\.length >= KZGP_MAX_VOTES\) \{ toast\(/.test(code) && /keys: next, by, name: getUserName\(\)/.test(code) && /if \(kzClosed_\(ym\)\) \{ toast\(/.test(code) && !/kzFinalOf/.test(code), 'ソース＝4つ目は入らない・締め切り後は押せない・確定の行は作らない');
   ok(/'2026-10': '2026-11-30'/.test(code), 'ソース＝初回（10月分）の締め切りは仮の 11/30（神田さんが決めたら直す）');
+  // Codex（11/11 夕）＝重複票・締め切り後の票・JSTの暦日・写真の esc・理由欄の置き場所・本部だけの写真
+  run(() => { kzSeed(); const arr = JSON.parse(localStorage.getItem('yosakura_demo_reports'));
+    arr.push({ kind:'kzvote', store:'', item: ym2, note: JSON.stringify({ keys: ['寿司世桜 心斎橋店||' + (t2 + 3600e3), '寿司世桜 心斎橋店||' + (t2 + 3600e3), '寿司世桜 心斎橋店||' + (t2 + 3600e3)], by:'tanaka', name:'田中' }), t: t2 + 86400e3 * 23, id:'v5' });   // 同じ投稿を3回＝1票
+    arr.push({ kind:'kzvote', store:'', item: ym2, note: JSON.stringify({ keys: ['寿司世桜 心斎橋店||' + (t2 + 3600e3)], by:'late', name:'遅れ' }), t: Date.now() - 60e3, id:'v6' });   // 締め切り後の票＝数えない
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify(arr)); });
+  location.hash = '#/app/kzgp?ym=' + ym2 + '&c=1'; x = registry.app.innerHTML;
+  ok((x.match(/kzgp-top">MVP</g) || []).length === 2 && (x.match(/<b>2<\/b>票/g) || []).length === 2 && !/<b>[34]<\/b>票/.test(x) && /同数のため2件/.test(x) && /投票した人 3/.test(x), 'グランプリ＝同じ投稿の重複は1票（B＝常山＋田中＝2・重複を数えると4）・締め切り後の票は数えない（数えるとBが3で単独1位）＝A・Bが同数でMVP2件');
+  ok(/const kzTodayJst_ = \(\) => new Date\(Date\.now\(\) \+ 9 \* 3600e3\)\.toISOString\(\)\.slice\(0, 10\);/.test(code) && /const kzClosed_ = \(ym\) => kzTodayJst_\(\) > kzDeadline_\(ym\);/.test(code) && /if \(\(Number\(r\.t\) \|\| 0\) > kzDeadlineEnd_\(ym\)\) return;/.test(code), 'ソース＝締め切りは JST の暦日・締め切り後の票は読まない（Codex A4・A5）');
+  ok(/src="\$\{esc\(photoThumb\(p\)\)\}" alt="" data-full="\$\{esc\(photoFull\(p\)\)\}" loading="lazy" style="width:96px;height:96px"/.test(code), 'ソース＝口コミ・盛付の写真の属性は esc（Codex A2）');
+  ok(/submit, after, errL, errAmtL\]\.filter\(Boolean\)\)/.test(code) && /errAmtL \? L\(\{ja:'差があった日は金額と理由を'/.test(code), 'ソース＝レジ誤差の理由欄は placed に入れて「ほかの項目」へ戻さない・レジ取込の無い店は文言を変える（Codex A6）');
+  { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');
+    ok(/if \(s && !seenK\[s\]\) \{ seenK\[s\] = 1; uniqK\.push\(s\); \}/.test(gsrc) && /return \{ ok: false, error: 'CLOSED' \};/.test(gsrc) && /\{ '2026-10': '2026-11-30' \}/.test(gsrc), '認証.gs＝重複票を除く・締め切り後は CLOSED・初回10月分の特例も同じ（Codex A3・A5）');
+    const csrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/Code.gs', 'utf8');
+    ok(/if \(dkind === 'rvissue'\) return \{ ok: false, error: 'NOT_YOURS' \};/.test(csrc), 'Code.gs＝口コミ・盛付の写真は店舗には返さない（Codex A1）'); }
   ok(/case 'kzvote': if \(getRole\(\) === 'hq'\) subs\.push\(/.test(code), 'ソース＝kzvote は distribute で端末に残る（本部の端末だけ・振り分け漏れの再発防止）');
   ok(/postReport\(\{ kind:'kzvote', store:'', item: ym, note, t \}\);/.test(code) && /next = keys\.concat\(\[key\]\);/.test(code), 'ソース＝1票はバックエンドへ（同じ投稿をもう一度＝取り消し）');
   { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');

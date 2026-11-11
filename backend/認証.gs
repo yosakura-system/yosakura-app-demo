@@ -436,7 +436,13 @@ function auth_gate_post_(data) {
     try { var kv = (typeof data.note === 'string') ? JSON.parse(data.note) : (data.note || {}); if (!kv || typeof kv !== 'object' || Array.isArray(kv)) kv = {};
       /* ★2026-11-11 夕 1人3つまで（keys）。旧形式 {key} も1票として受ける。確定の行は作らない（締め切り後にアプリが自動で集計） */
       var kvKeys = Array.isArray(kv.keys) ? kv.keys : (kv.key ? [kv.key] : []);
-      var kvo = { keys: kvKeys.map(function (k) { return String(k || '').slice(0, 120); }).filter(Boolean).slice(0, 3), by: String(u.uid || ''), name: String(kv.name || '').slice(0, 40) };
+      var seenK = {}, uniqK = [];
+      kvKeys.forEach(function (k) { var s = String(k || '').slice(0, 120); if (s && !seenK[s]) { seenK[s] = 1; uniqK.push(s); } });   // 同じ投稿の重複は1票（Codex A3）
+      /* ★締め切り（対象月の翌月5日・初回 2026-10 だけ 11/30）＝JSTの暦日で、過ぎていれば受けない（Codex A5＝旧版の端末や直接POSTでも結果が変わらない） */
+      var ymv = String(data.item || ''); var mm = /^(\d{4})-(\d{2})$/.exec(ymv); if (!mm) return { ok: false, error: 'BAD_ITEM' };
+      var dl = ({ '2026-10': '2026-11-30' })[ymv] || Utilities.formatDate(new Date(Number(mm[1]), Number(mm[2]), 5), 'Asia/Tokyo', 'yyyy-MM-dd');
+      if (Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd') > dl) return { ok: false, error: 'CLOSED' };
+      var kvo = { keys: uniqK.slice(0, 3), by: String(u.uid || ''), name: String(kv.name || '').slice(0, 40) };
       data.note = JSON.stringify(kvo); data.store = ''; data.photos = [];
     } catch (e) { return { ok: false, error: 'BAD_NOTE' }; }
   }

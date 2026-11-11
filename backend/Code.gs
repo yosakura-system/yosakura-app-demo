@@ -490,7 +490,8 @@ function photoAction_(p, u) {
     while (parents.hasNext()) { if (parents.next().getId() === photoFolderId) inPhoto = true; }
     if (!inPhoto) return { ok: false, error: 'NOT_PHOTO' };
     if (u && u.role !== 'hq') {
-      var ds = ''; try { ds = String(JSON.parse(pf.getDescription() || '{}').store || ''); } catch (e) {}
+      var ds = '', dkind = ''; try { var dj = JSON.parse(pf.getDescription() || '{}'); ds = String(dj.store || ''); dkind = String(dj.kind || ''); } catch (e) {}
+      if (dkind === 'rvissue') return { ok: false, error: 'NOT_YOURS' };   // ★2026-11-11 Codex＝口コミ・盛付チェックの写真は本部だけ（店舗名が合っても返さない）
       if (!ds || u.stores.indexOf(ds) === -1) return { ok: false, error: 'NOT_YOURS' };   // 店舗名の控えが無い古い写真は店舗には返さない
     }
     var pb = pf.getBlob();
