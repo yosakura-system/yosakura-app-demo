@@ -8215,8 +8215,8 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   // 日報＝チップの直後にレジ誤差と理由（神田さん 11/11 夕）
   ok(/const errBox = errL \? \(\(\) => \{/.test(code) && /d\.id = 'pbn_err';/.test(code) && /レジ誤差（現金の過不足）/.test(code) && /row\.appendChild\(errL\); d\.appendChild\(row\); return d;/.test(code), 'ソース＝案Bの日報はチップの枠の直後に「レジ誤差（現金の過不足）」の枠（理由の欄 sk_errnote を移す＝保存は今までのまま）');
   ok(/if \(errAmtL\) \{[^\n]*row\.appendChild\(errAmtL\); \}/.test(code), 'ソース＝レジ取込の無い店は金額（sk_err）も同じ枠へ');
-  ok(/function pbNipErrHtml_\(\)/.test(code) && /この日のレジ誤差はまだ届いていません/.test(code) && /この日のレジ誤差：0円（差なし）/.test(code) && /const ev = g\('pbn_errv'\); if \(ev\) ev\.innerHTML = pbNipErrHtml_\(\);/.test(code), 'ソース＝USENの店はその日のレジ誤差を自動の数字から出し、日付を変えると描き直す');
-  ok(/if \(!rec\) return `<span class="muted">\$\{L\(\{ja:'この日のレジ誤差はまだ届いていません/.test(code) && /\$\{v < 0 \? '−' : '\+'\}\$\{yen\(Math\.abs\(v\)\)\}/.test(code), 'ソース＝レジ誤差の1行目＝届いていない／0円／±金額の3通り');
+  ok(/レジ誤差（現金の過不足）/.test(code) && /const ev = Number\(rec\.err\) \|\| 0; out\.push\(row\(L\(\{ja:'レジ誤差（現金の過不足）'/.test(code) && code.indexOf("out.push(row(L({ja:'レジ誤差（現金の過不足）'") > code.indexOf("out.push(row(L({ja:'カード'") && code.indexOf("out.push(row(L({ja:'レジ誤差（現金の過不足）'") < code.indexOf("out.push(row(L({ja:'電子マネー'") && !/pbNipErrHtml_/.test(code), 'ソース＝自動の欄は 現金→カード→レジ誤差 の並びで常に出す（0円も・「自動」つき）＝神田さん 11/11 夕');
+  ok(/金額は上の自動の欄に出ます ・ 差があった日は理由を選ぶ/.test(code) && !/pbn_errv/.test(code), 'ソース＝下の枠は理由だけ（金額は上の自動の欄）');
   ok(/if \(byId\('sk_tipt'\) && v\('sk_tipt'\) === ''\) \{ toast\(/.test(code), 'ソース＝チップ必須の検査は今までのまま（空なら送れない）');
   // 店の数字＝小窓8つ → numview
   /* ★日付＝JSTの営業日で2日を選ぶ。同じ月に入る2日（dA＝一昨日・dB＝3日前、月をまたぐなら昨日）＝月初でも落ちない（Codex#9）。開くときは ?ym= で月を固定 */

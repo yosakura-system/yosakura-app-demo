@@ -3409,22 +3409,11 @@
     if (rec.guests != null && rec.guests !== '') out.push(row(L({ja:'客数',en:'Guests',vi:'Khách'}), 'POS', esc(String(rec.guests))));
     if (rec.cash != null && rec.cash !== '') out.push(row(L({ja:'現金',en:'Cash',vi:'Tiền mặt'}), 'POS', yen(rec.cash)));
     if (rec.card != null && rec.card !== '') out.push(row(L({ja:'カード',en:'Card',vi:'Thẻ'}), 'POS', yen(rec.card)));
+    /* ★2026-11-11 夕 神田さん「レジ誤差の実績は、現金→カード→レジ誤差の並びで上部に大きく・『自動』と記入」＝0円の日も出す（差が無いことが分かる） */
+    { const ev = Number(rec.err) || 0; out.push(row(L({ja:'レジ誤差（現金の過不足）',en:'Register difference (cash)',vi:'Chênh lệch két (tiền mặt)'}), 'POS', ev ? `<span style="color:var(--suou,#8b2e3a)">${ev < 0 ? '−' : '+'}${yen(Math.abs(ev))}</span>` : yen(0))); }
     if (rec.emoney) out.push(row(L({ja:'電子マネー',en:'E-money',vi:'Ví điện tử'}), 'POS', yen(rec.emoney)));
     if (rec.disc) out.push(row(L({ja:'値引き',en:'Discount',vi:'Giảm giá'}), 'POS', yen(rec.disc)));
-    if (rec.err != null && rec.err !== '' && Number(rec.err) !== 0) out.push(row(L({ja:'レジの過不足',en:'Register diff.',vi:'Chênh lệch két'}), 'POS', (Number(rec.err) < 0 ? '−' : '') + yen(Math.abs(Number(rec.err)))));
     return `<div class="pb-nipauto">${out.join('')}</div>`;
-  }
-  /* ★2026-11-11 夕 レジ誤差の枠の1行目＝その日のレジ誤差（USENの店は自動の数字から）。レジ取込の無い店は手入力の欄が出るので空 */
-  function pbNipErrHtml_() {
-    const g = (id) => document.getElementById(id);
-    const store = (g('sk_store') && g('sk_store').value) || visibleStores()[0];
-    const date = (g('sk_date') && g('sk_date').value) || todayKey();
-    if (skNoRegi_(store)) return '';
-    const rec = getSk().find(r => r && r.store === store && r.date === date && (r.src === 'usen' || r.pos));
-    if (!rec) return `<span class="muted">${L({ja:'この日のレジ誤差はまだ届いていません（翌朝4時に自動で入ります）',en:'Register difference for this day not in yet (arrives at 4:00 next morning)',vi:'Chênh lệch két của ngày này chưa có (tự vào lúc 4:00 sáng hôm sau)'})}</span>`;
-    const v = Number(rec.err) || 0;
-    if (!v) return `<span class="muted">${L({ja:'この日のレジ誤差：0円（差なし）',en:'Register difference this day: ¥0 (none)',vi:'Chênh lệch két ngày này: 0 (không có)'})}</span>`;
-    return `<b style="color:var(--suou,#8b2e3a)">${L({ja:'この日のレジ誤差：',en:'Register difference this day: ',vi:'Chênh lệch két ngày này: '})}${v < 0 ? '−' : '+'}${yen(Math.abs(v))}</b> <small class="muted">${L({ja:'（レジから自動）',en:'(from the register)',vi:'(từ máy tính tiền)'})}</small>`;
   }
   function pbNippouLayout_() {
     const form = document.getElementById('skForm'); if (!form || form.dataset.pbn) return;
@@ -3467,7 +3456,7 @@
     const errAmtL = g('sk_err') ? g('sk_err').closest('label') : null;   // レジ取込の無い店だけ（sk_posgrid の中にある）
     const errBox = errL ? (() => {
       const d = document.createElement('div'); d.className = 'pb-niperr'; d.id = 'pbn_err';
-      d.innerHTML = `<div class="pb-sec"><h2>${L({ja:'レジ誤差（現金の過不足）',en:'Register difference (cash over/short)',vi:'Chênh lệch két (tiền mặt)'})}</h2><small>${L({ja:'差があった日は理由を選ぶ ・ 無い日はそのまま',en:'Choose a reason only on days with a difference',vi:'Chỉ chọn lý do khi có chênh lệch'})}</small></div><div class="pb-niperrv" id="pbn_errv"></div>`;
+      d.innerHTML = `<div class="pb-sec"><h2>${L({ja:'レジ誤差（現金の過不足）',en:'Register difference (cash over/short)',vi:'Chênh lệch két (tiền mặt)'})}</h2><small>${L({ja:'金額は上の自動の欄に出ます ・ 差があった日は理由を選ぶ',en:'The amount is in the auto section above · choose a reason only when there is a difference',vi:'Số tiền ở phần tự động phía trên · chỉ chọn lý do khi có chênh lệch'})}</small></div>`;
       const sp = errL.querySelector('span'); if (sp) sp.textContent = L({ ja:'理由', en:'Reason', vi:'Lý do' });
       const row = document.createElement('div'); row.className = 'pb-niperrrow';
       if (errAmtL) { const s2 = errAmtL.querySelector('span'); if (s2) s2.textContent = L({ ja:'過不足の金額（円・不足は −）', en:'Amount (yen, − if short)', vi:'Số tiền (yên, − nếu thiếu)' }); row.appendChild(errAmtL); }
@@ -3500,7 +3489,7 @@
     if (g('sk_datenote')) g('sk_datenote').style.display = 'none';   // 日付は上の札に出す（二重にしない）
     const order = [h3, pos, g('sk_editnote'), g('sk_datenote'), dbox, auto, tipBox, errBox, salesLbl, salesGrid, fdLbl, fdGrid, ctyLbl, ctyGrid, slipHead, shoot, slip, memo, kt, more, submit, after].filter(Boolean);
     order.forEach(el => form.appendChild(el));
-    const draw = () => { const a = g('pbn_auto'); if (a) a.innerHTML = pbNipAutoHtml_(); const ev = g('pbn_errv'); if (ev) ev.innerHTML = pbNipErrHtml_(); };
+    const draw = () => { const a = g('pbn_auto'); if (a) a.innerHTML = pbNipAutoHtml_(); };
     draw();
     ['sk_date', 'sk_store'].forEach(id => { const e = g(id); if (e) e.addEventListener('change', () => setTimeout(draw, 0)); });
   }
