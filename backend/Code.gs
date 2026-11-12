@@ -481,22 +481,89 @@ function apiRead_(p, u) {
   return { ok: true, reports: out, fromLedger: fromLedger };
 }
 
+/* 写真1枚を「この利用者に返してよいか」まで確かめて返す（ファイル or エラー名）。1枚版・縮小版の両方が通る */
+function photoFileFor_(id, u) {
+  if (!/^[a-zA-Z0-9_-]{10,}$/.test(id)) return { error: 'NOT_PHOTO' };
+  var pf = DriveApp.getFileById(id);
+  var inPhoto = false; var parents = pf.getParents(); var photoFolderId = getPhotoFolder().getId();
+  while (parents.hasNext()) { if (parents.next().getId() === photoFolderId) inPhoto = true; }
+  if (!inPhoto) return { error: 'NOT_PHOTO' };
+  if (u && u.role !== 'hq') {
+    var ds = '', dkind = ''; try { var dj = JSON.parse(pf.getDescription() || '{}'); ds = String(dj.store || ''); dkind = String(dj.kind || ''); } catch (e) {}
+    if (dkind === 'rvissue') return { error: 'NOT_YOURS' };   // ★2026-11-11 Codex＝口コミ・盛付チェックの写真は本部だけ（店舗名が合っても返さない）
+    if (!ds || u.stores.indexOf(ds) === -1) return { error: 'NOT_YOURS' };   // 店舗名の控えが無い古い写真は店舗には返さない
+  }
+  return { file: pf };
+}
+
 function photoAction_(p, u) {
   try {
+    if (p && p.ids) return photoThumbs_(p, u);   // ★2026-11-12 一覧用の縮小版（8枚までまとめて）
     var id = String((p && p.id) || '').replace(/^p:/, '');
-    if (!/^[a-zA-Z0-9_-]{10,}$/.test(id)) return { ok: false, error: 'NOT_PHOTO' };
-    var pf = DriveApp.getFileById(id);
-    var inPhoto = false; var parents = pf.getParents(); var photoFolderId = getPhotoFolder().getId();
-    while (parents.hasNext()) { if (parents.next().getId() === photoFolderId) inPhoto = true; }
-    if (!inPhoto) return { ok: false, error: 'NOT_PHOTO' };
-    if (u && u.role !== 'hq') {
-      var ds = '', dkind = ''; try { var dj = JSON.parse(pf.getDescription() || '{}'); ds = String(dj.store || ''); dkind = String(dj.kind || ''); } catch (e) {}
-      if (dkind === 'rvissue') return { ok: false, error: 'NOT_YOURS' };   // ★2026-11-11 Codex＝口コミ・盛付チェックの写真は本部だけ（店舗名が合っても返さない）
-      if (!ds || u.stores.indexOf(ds) === -1) return { ok: false, error: 'NOT_YOURS' };   // 店舗名の控えが無い古い写真は店舗には返さない
-    }
-    var pb = pf.getBlob();
+    var r = photoFileFor_(id, u);
+    if (r.error) return { ok: false, error: r.error };
+    var pb = r.file.getBlob();
     return { ok: true, mime: pb.getContentType(), data: Utilities.base64Encode(pb.getBytes()) };
   } catch (perr) { return serverError_(perr); }
+}
+
+/* ★2026-11-12 神田さん「写真が出ない・時間がかかる」＝一覧に出すのは縮小版で足りる（元画像は1枚1〜2MB）。
+   ids＝カンマ区切り・8枚まで。返すのは items: { ID: {mime,data} ｜ {big:true}（縮小版が作れない＝端末が1枚版で取り直す）｜ {error} }。
+   返してよいかの判定は1枚版と同じ（photoFileFor_）。縮小版は Drive が持っているサムネイルをこのスクリプトの権限で取る＝公開リンクは作らない */
+var PHOTO_THUMB_MAX = 8;
+function photoThumbs_(p, u) {
+  try {
+    var ids = String((p && p.ids) || '').split(',').map(function (x) { return String(x).replace(/^p:/, '').trim(); })
+      .filter(function (x, i, a) { return x && a.indexOf(x) === i; }).slice(0, PHOTO_THUMB_MAX);
+    var items = {}, okIds = [];
+    ids.forEach(function (id) {
+      try { var r = photoFileFor_(id, u); if (r.error) items[id] = { error: r.error }; else okIds.push(id); }
+      catch (e) { items[id] = { error: 'NOT_PHOTO' }; }
+    });
+    if (okIds.length) {
+      var head = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+      var metas = UrlFetchApp.fetchAll(okIds.map(function (id) {
+        return { url: 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?fields=thumbnailLink&supportsAllDrives=true', headers: head, muteHttpExceptions: true };
+      }));
+      var want = [], reqs = [];
+      metas.forEach(function (m, i) {
+        var link = '';
+        try { if (m.getResponseCode() === 200) link = String(JSON.parse(m.getContentText()).thumbnailLink || ''); } catch (e) {}
+        if (/^https:\/\/[a-z0-9.-]+\.(googleusercontent|google)\.com\//.test(link)) {
+          want.push(okIds[i]);
+          reqs.push({ url: link.replace(/=s\d+$/, '=s480'), headers: head, muteHttpExceptions: true });
+        } else items[okIds[i]] = { big: true };
+      });
+      if (reqs.length) {
+        UrlFetchApp.fetchAll(reqs).forEach(function (res, i) {
+          var id = want[i];
+          try {
+            if (res.getResponseCode() === 200) {
+              var bl = res.getBlob(); var ct = String(bl.getContentType() || '');
+              var bytes = bl.getBytes();
+              if (/^image\//.test(ct) && bytes.length > 200 && bytes.length < 400000) { items[id] = { mime: ct, data: Utilities.base64Encode(bytes) }; return; }
+            }
+          } catch (e) {}
+          items[id] = { big: true };
+        });
+      }
+    }
+    return { ok: true, items: items };
+  } catch (perr) { return serverError_(perr); }
+}
+
+/* 縮小版がこのスクリプトで取れるかを、エディタから1回たしかめる（引数なし・写真フォルダの新しい3枚・中身は出さず大きさだけ） */
+function 写真縮小_点検() {
+  var it = getPhotoFolder().getFiles(); var ids = [];
+  while (it.hasNext() && ids.length < 3) ids.push(it.next().getId());
+  var t0 = Date.now();
+  var r = photoThumbs_({ ids: ids.join(',') }, { role: 'hq', stores: [] });
+  var out = ids.map(function (id) {
+    var x = (r.items || {})[id] || {};
+    return x.data ? ('縮小 ' + x.mime + ' ' + Math.round(x.data.length * 3 / 4 / 1024) + 'KB') : x.big ? '縮小できず（元画像で返す）' : ('エラー ' + (x.error || '?'));
+  });
+  Logger.log('写真縮小_点検 ok=' + r.ok + ' ' + (Date.now() - t0) + 'ms ／ ' + out.join(' ／ '));
+  return out;
 }
 
 /* 直近の行に「同じ提出」があれば、その行のidを返す（無ければ空文字）。

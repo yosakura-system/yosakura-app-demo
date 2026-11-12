@@ -8378,7 +8378,13 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');
     ok(/if \(s && !seenK\[s\]\) \{ seenK\[s\] = 1; uniqK\.push\(s\); \}/.test(gsrc) && /return \{ ok: false, error: 'CLOSED' \};/.test(gsrc) && /\{ '2026-10': '2026-11-30' \}/.test(gsrc), '認証.gs＝重複票を除く・締め切り後は CLOSED・初回10月分の特例も同じ（Codex A3・A5）');
     const csrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/Code.gs', 'utf8');
-    ok(/if \(dkind === 'rvissue'\) return \{ ok: false, error: 'NOT_YOURS' \};/.test(csrc), 'Code.gs＝口コミ・盛付の写真は店舗には返さない（Codex A1）'); }
+    ok(/if \(dkind === 'rvissue'\) return \{ error: 'NOT_YOURS' \};/.test(csrc) && /var r = photoFileFor_\(id, u\);\s*if \(r\.error\) return \{ ok: false, error: r\.error \};/.test(csrc), 'Code.gs＝口コミ・盛付の写真は店舗には返さない（Codex A1・11/12 判定を photoFileFor_ に寄せた）');
+    /* 2026-11-12 神田さん「写真が出ない・時間がかかる」＝一覧は縮小版をまとめて・判定は1枚版と同じ */
+    ok(/function photoThumbs_\(p, u\)/.test(csrc) && /if \(p && p\.ids\) return photoThumbs_\(p, u\);/.test(csrc) && /var r = photoFileFor_\(id, u\); if \(r\.error\) items\[id\] = \{ error: r\.error \}; else okIds\.push\(id\);/.test(csrc) && /\.slice\(0, PHOTO_THUMB_MAX\)/.test(csrc), 'Code.gs＝縮小版も1枚ずつ「返してよいか」を通す・8枚まで');
+    ok(/action: 'photo', size: 'thumb', ids: miss\.map/.test(code) && /_privQ\.splice\(0, 8\)/.test(code) && /_privBusy < 2/.test(code) && /new IntersectionObserver/.test(code), 'アプリ＝写真は縮小版を8枚ずつ・同時2本・見えている分だけ');
+    ok(/const photoFull  = \(p\) => isPrivPhoto\(p\) \? \(photoMem\[p\] \|\| p\)/.test(code) && /if \(isPrivPhoto\(src\)\) \{ const pp = src;[^\n]*privFetchFull_\(pp\)/.test(code), 'アプリ＝元の大きさは拡大したときだけ取る');
+    ok(/indexedDB\.deleteDatabase\('yosakura_thumbs'\)/.test(code) && /Object\.keys\(thumbMem\)\.forEach\(k => delete thumbMem\[k\]\)/.test(code), 'アプリ＝端末に残した縮小版はログアウトで消す');
+    ok(!/<\/button>\r?\n\}\)\(\)\}\r?\n/.test(code), '本部タブに余った「})()}」が出ない（11/12）'); }
   ok(/case 'kzvote': if \(getRole\(\) === 'hq'\) subs\.push\(/.test(code), 'ソース＝kzvote は distribute で端末に残る（本部の端末だけ・振り分け漏れの再発防止）');
   ok(/postReport\(\{ kind:'kzvote', store:'', item: ym, note, t \}\);/.test(code) && /next = keys\.concat\(\[key\]\);/.test(code), 'ソース＝1票はバックエンドへ（同じ投稿をもう一度＝取り消し）');
   { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');

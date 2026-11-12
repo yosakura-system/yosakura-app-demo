@@ -663,7 +663,12 @@
     try { Object.keys(localStorage).filter(k => k.startsWith('yosakura_') && !LOGOUT_KEEP.has(k) && k !== SETUP_KEY).forEach(k => localStorage.removeItem(k)); } catch (e) {}
     _rawKeysMem = '';   // ★2026-10-20 ログアウトで目印の写しも空にする（次のログインで必ず取り込み直す）
     try { Object.keys(photoMem).forEach(k => delete photoMem[k]); } catch (e) {}
+    try { if (_pdb) { _pdb.close(); _pdb = null; } } catch (e) {}   // 開いたままだと削除が待たされる
     try { indexedDB.deleteDatabase('yosakura_photos'); } catch (e) {}
+    /* ★2026-11-12 端末に残した写真の縮小版もログアウトで消す */
+    try { Object.keys(thumbMem).forEach(k => delete thumbMem[k]); } catch (e) {}
+    try { if (_tdb) { _tdb.close(); _tdb = null; } } catch (e) {}
+    try { indexedDB.deleteDatabase('yosakura_thumbs'); } catch (e) {}
     try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) {}
     render();
   }
@@ -1378,7 +1383,10 @@
   }
   function openLightbox(src) {
     /* ★2026-11-11 Codex#3＝URLを文字列でHTMLに差し込まない（data: の写真に属性を仕込めた）。img は DOM で作って src に代入 */
-    const m = el('<div class="lightbox"></div>'); const im = document.createElement('img'); im.alt = ''; im.src = String(src || ''); m.appendChild(im);
+    const m = el('<div class="lightbox"></div>'); const im = document.createElement('img'); im.alt = '';
+    /* ★2026-11-12 ログイン経由の写真（p:）＝まず縮小版を出し、元の大きさは拡大したときだけ取って差し替える */
+    if (isPrivPhoto(src)) { const pp = src; src = photoMem[pp] || thumbMem[pp] || privPh_(pp); if (!photoMem[pp]) privFetchFull_(pp).then(s => { if (s) im.src = s; }); }
+    im.src = String(src || ''); m.appendChild(im);
     m.onclick = () => m.remove();
     document.body.appendChild(m);
   }
@@ -1418,23 +1426,109 @@
   const isPrivPhoto = (p) => typeof p === 'string' && p.slice(0, 2) === 'p:';
   const privPh_ = (p) => "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='4' height='3'><rect width='4' height='3' fill='#eee'/><!--" + String(p).replace(/-/g, '.') + "--></svg>");   // ★2026-10-23 IDに「--」が入るとSVGのコメントが壊れて「？」になる（心斎橋の納品書）＝コメント内の - は . に（IDの文字は英数_-だけ＝重ならない）
   const privLoading_ = {};
+  /* ★2026-11-12 神田さん「写真が出ない・時間がかかる」＝1枚1〜2MBの元画像を全部いっぺんに取っていた（26枚で約30秒）。
+     一覧は縮小版（サーバーが小さくして返す）を、画面に見えている分だけ・8枚ずつまとめて取る。
+     一度取った縮小版は端末（IndexedDB yosakura_thumbs）に残す＝2回目からすぐ出る。ログアウトで消す。元の大きさは拡大したときだけ */
+  const thumbMem = {};     // 'p:ID' → 縮小版の dataURL
+  const privPhMap_ = {};   // 薄い枠のSVG → 'p:ID'
+  const privWant_ = {};    // 取りに行っている最中の 'p:ID'
+  let _privQ = [], _privBusy = 0, _privTimer = 0, _privScanT = 0, _privIO = null, _tdb = null;
+  function thumbDb_() {
+    return new Promise((res) => {
+      if (_tdb) return res(_tdb);
+      try {
+        if (!window.indexedDB) return res(null);
+        const rq = indexedDB.open('yosakura_thumbs', 1);
+        rq.onupgradeneeded = () => { try { rq.result.createObjectStore('t').createIndex('t', 't'); } catch (e) {} };
+        rq.onsuccess = () => { _tdb = rq.result; res(_tdb); };
+        rq.onerror = () => res(null); rq.onblocked = () => res(null);
+      } catch (e) { res(null); }
+    });
+  }
+  async function thumbDbGet_(keys) {
+    const out = {};
+    try {
+      const db = await thumbDb_(); if (!db) return out;
+      await new Promise((res) => { const tx = db.transaction('t', 'readonly'); const os = tx.objectStore('t');
+        keys.forEach(k => { const rq = os.get(k); rq.onsuccess = () => { if (rq.result && rq.result.d) out[k] = rq.result.d; }; });
+        tx.oncomplete = res; tx.onerror = res; tx.onabort = res; });
+    } catch (e) {}
+    return out;
+  }
+  async function thumbDbPut_(map) {
+    try {
+      const db = await thumbDb_(); if (!db) return;
+      await new Promise((res) => { const tx = db.transaction('t', 'readwrite'); const os = tx.objectStore('t'); const now = Date.now();
+        Object.keys(map).forEach(k => { try { os.put({ d: map[k], t: now }, k); } catch (e) {} });
+        /* 400枚を超えたら古い順に300枚まで減らす（端末をいっぱいにしない） */
+        const cq = os.count(); cq.onsuccess = () => { if (cq.result <= 400) return; let n = cq.result - 300; const cur = os.index('t').openKeyCursor(); cur.onsuccess = () => { const c = cur.result; if (c && n-- > 0) { os.delete(c.primaryKey); c.continue(); } }; };
+        tx.oncomplete = res; tx.onerror = res; tx.onabort = res; });
+    } catch (e) {}
+  }
+  function privApply_(p, src) {
+    thumbMem[p] = src; const ph = privPh_(p);
+    try { document.querySelectorAll('img').forEach(im => { if (im.getAttribute('src') === ph) im.src = src; }); } catch (e) {}
+  }
+  function privFetchFull_(p) {   // 元の大きさ＝拡大したとき・縮小版を作れなかった写真だけ
+    if (photoMem[p]) return Promise.resolve(photoMem[p]);
+    if (privLoading_[p]) return privLoading_[p];
+    privLoading_[p] = apiGet_({ action: 'photo', id: p.slice(2) }).then(r => r.json()).then(d => {
+      if (!(d && d.ok && d.data)) return '';
+      photoMem[p] = 'data:' + (d.mime || 'image/jpeg') + ';base64,' + d.data; return photoMem[p];
+    }).catch(() => '').finally(() => { privLoading_[p] = null; });
+    return privLoading_[p];
+  }
+  function privPump_() {
+    _privTimer = 0;
+    while (_privBusy < 2 && _privQ.length) {
+      const batch = _privQ.splice(0, 8); _privBusy++;
+      (async () => {
+        try {
+          const hit = await thumbDbGet_(batch);
+          const miss = batch.filter(p => { if (hit[p]) { privApply_(p, hit[p]); return false; } return true; });
+          if (miss.length) {
+            const d = await apiGet_({ action: 'photo', size: 'thumb', ids: miss.map(p => p.slice(2)).join(',') }).then(r => r.json());
+            if (d && d.ok && d.items) {
+              const got = {};
+              miss.forEach(p => { const it = d.items[p.slice(2)];
+                if (it && it.data) { got[p] = 'data:' + (it.mime || 'image/jpeg') + ';base64,' + it.data; privApply_(p, got[p]); }
+                else if (it && it.big) privFetchFull_(p).then(src => { if (src) privApply_(p, src); }); });
+              if (Object.keys(got).length) thumbDbPut_(got);
+            }
+          }
+        } catch (e) {}
+        finally { batch.forEach(p => { privWant_[p] = false; }); _privBusy--; if (_privQ.length && !_privTimer) _privTimer = setTimeout(privPump_, 0); }
+      })();
+    }
+  }
+  function privEnq_(p) {
+    if (thumbMem[p] || privWant_[p]) return;
+    privWant_[p] = true; _privQ.push(p);
+    if (!_privTimer) _privTimer = setTimeout(privPump_, 60);
+  }
+  function privScan_() {
+    _privScanT = 0;
+    let ims = []; try { ims = Array.from(document.querySelectorAll('img')); } catch (e) {}
+    ims.forEach(im => {
+      const p = privPhMap_[im.getAttribute('src')]; if (!p) return;
+      if (thumbMem[p]) { im.src = thumbMem[p]; return; }
+      if (typeof IntersectionObserver !== 'function') return privEnq_(p);
+      if (im._pv) return; im._pv = 1;
+      if (!_privIO) _privIO = new IntersectionObserver((es) => { es.forEach(e => { if (!e.isIntersecting) return; _privIO.unobserve(e.target); const q = privPhMap_[e.target.getAttribute('src')]; if (q) privEnq_(q); }); }, { rootMargin: '600px 0px' });
+      _privIO.observe(im);
+    });
+  }
   function privPhotoSrc_(p) {
+    if (thumbMem[p]) return thumbMem[p];
     if (photoMem[p]) return photoMem[p];
     const ph = privPh_(p);
-    if (!privLoading_[p] && useBackend()) {
-      privLoading_[p] = true;
-      apiGet_({ action: 'photo', id: p.slice(2) }).then(r => r.json()).then(d => {
-        if (!(d && d.ok && d.data)) return;
-        photoMem[p] = 'data:' + (d.mime || 'image/jpeg') + ';base64,' + d.data;
-        document.querySelectorAll('img').forEach(im => { if (im.getAttribute('src') === ph) im.src = photoMem[p]; if (im.getAttribute('data-full') === ph) im.setAttribute('data-full', photoMem[p]); });
-      }).catch(() => {}).finally(() => { privLoading_[p] = false; });
-    }
+    if (useBackend()) { privPhMap_[ph] = p; if (!_privScanT) { _privScanT = setTimeout(privScan_, 0); setTimeout(privScan_, 500); } }
     return ph;
   }
   const photoSrc_ = (p) => isLocalPhoto(p) ? (photoMem[p] || '') : p;
   const photosForSend_ = (arr) => (arr || []).map(p => isLocalPhoto(p) ? photoMem[p] : p).filter(Boolean);
   const photoThumb = (p) => isPrivPhoto(p) ? privPhotoSrc_(p) : (isDataUrl(p) || isLocalPhoto(p)) ? photoSrc_(p) : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w400';
-  const photoFull  = (p) => isPrivPhoto(p) ? privPhotoSrc_(p) : (isDataUrl(p) || isLocalPhoto(p)) ? photoSrc_(p) : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w1600';
+  const photoFull  = (p) => isPrivPhoto(p) ? (photoMem[p] || p) : (isDataUrl(p) || isLocalPhoto(p)) ? photoSrc_(p) : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p) + '&sz=w1600';
 
   /* ---------- 使い方ガイド（アプリ内チュートリアル）---------- */
   /* 使い方＝役割ごとに分ける。
@@ -2671,9 +2765,8 @@
       <button class="pb-strip" data-open="hqcheck" style="margin-top:10px">${pbImg_('miru_manual', 'pb-th pb-th--s')}<span><b>${L({ ja:'SVチェック（出来栄え基準 37項目）', en:'SV check (35 items)', vi:'Kiểm tra SV (35 mục)' })}</b>${L({ ja:'店を選んで ○×・写真・メモ → 結果をPDFでLINEへ', en:'Pick a store, mark, add photos, share the PDF', vi:'Chọn cửa hàng, chấm, thêm ảnh, chia sẻ PDF' })}</span>${svg('chev')}</button>
       ${(() => { try { const rvYm = todayKey().slice(0, 7); const rvN = rvissuesOf('').filter(x => String(x._d).slice(0, 7) === rvYm).length; const rvAll = rvissuesOf('').length;
         /* ★2026-11-07 神田さん「どのボタンを押したら見れるのか分からん」＝本部タブにも入口（見る→お客様の声の帯と同じ先） */
-        return `<button class="pb-strip" data-open="rvissue" style="margin-top:0">${pbImg_('miru_manual', 'pb-th pb-th--s')}<span><b>${L({ ja:'口コミ・盛付の指摘（本部の隔週チェック）', en:'Review & plating issues (HQ biweekly check)', vi:'Ghi nhận đánh giá & trình bày' })}</b>${rvAll ? `${rvN}${L({ ja:'件（今月）・通算 ', en:' this month, total ', vi:' tháng này, tổng ' })}${rvAll}${L({ ja:'件 ・ 店別に本文まで', en:'. By store with text', vi:'. Theo cửa hàng' })}` : L({ ja:'毎晩23時台に自動で写します（まだ記録なし）', en:'Mirrored nightly (no records yet)', vi:'Tự động mỗi đêm (chưa có)' })}</span></button>`; } catch (e) { return ''; } })()}
-      <button class="pb-strip" data-open="kzgp" style="margin-top:0">${pbImg_('kyou_kizuki_team', 'pb-th pb-th--s')}<span><b>${L({ ja:'気づきグランプリ（月間MVP）', en:'Insight Grand Prix (monthly MVP)', vi:'Giải ghi nhận tháng' })}</b>${L({ ja:'前月の気づきを全部並べて、本部で1人1票', en:'All of last month’s insights; one vote per HQ member', vi:'Mỗi thành viên HQ 1 phiếu' })}</span>${svg('chev')}</button>
-})()}
+        return `<button class="pb-strip" data-open="rvissue" style="margin-top:0">${pbImg_('miru_manual', 'pb-th pb-th--s')}<span><b>${L({ ja:'口コミ・盛付の指摘（本部の隔週チェック）', en:'Review & plating issues (HQ biweekly check)', vi:'Ghi nhận đánh giá & trình bày' })}</b>${rvAll ? `${rvN}${L({ ja:'件（今月）・通算 ', en:' this month, total ', vi:' tháng này, tổng ' })}${rvAll}${L({ ja:'件 ・ 店別に本文まで', en:'. By store with text', vi:'. Theo cửa hàng' })}` : L({ ja:'毎晩23時台に自動で写します（まだ記録なし）', en:'Mirrored nightly (no records yet)', vi:'Tự động mỗi đêm (chưa có)' })}</span>${svg('chev')}</button>`; } catch (e) { return ''; } })()}
+      <button class="pb-strip" data-open="kzgp" style="margin-top:0">${pbImg_('kyou_kizuki_team', 'pb-th pb-th--s')}<span><b>${L({ ja:'気づきグランプリ（月間MVP）', en:'Insight Grand Prix (monthly MVP)', vi:'Giải ghi nhận tháng' })}</b>${L({ ja:'前月の気づきを全部並べて、本部で1人3つまで投票', en:'All of last month’s insights; up to 3 votes per HQ member', vi:'Mỗi thành viên HQ tối đa 3 phiếu' })}</span>${svg('chev')}</button>
       <div class="pb-sec"><h2>${L({ ja:'全店 きょう', en:'All stores today', vi:'Tất cả hôm nay' })}</h2><small>${L({ ja:'●＝提出済み ・ 赤＝締切超過', en:'● done, red = overdue', vi:'● xong, đỏ = trễ' })}</small></div>
       <div class="pb-card"><div class="pb-hqgrid"><span></span>${COLS.map(([h]) => `<span class="h">${esc(h)}</span>`).join('')}<span class="h">${L({ ja:'レジ締め', en:'Register', vi:'Két' })}</span>${grid}</div><div class="pb-hqnote">${L({ ja:'点線＝その店では対象外の項目、またはUSENレジが無い店。レジ締めの赤＝現金の過不足あり。定休日は全部点線', en:'Dashed = not applicable or no USEN register. Red register = cash difference.', vi:'Nét đứt = không áp dụng. Đỏ = lệch tiền mặt.' })}</div></div>
       <div class="pb-sec"><h2>${L({ ja:'レジ締め', en:'Register close', vi:'Chốt két' })}</h2><small>${L({ ja:`USENから毎朝 ・ ${regi.length}店`, en:`From USEN each morning, ${regi.length} stores`, vi:`Từ USEN mỗi sáng, ${regi.length} CH` })}</small></div>
@@ -6345,7 +6438,7 @@
       const no = b.dataset.svstddel; const phs = (svStdOf(no).photos || []).filter(Boolean); phs.splice(Number(b.dataset.svphi), 1);
       svStdPush(no, {}, phs); svApplyDomFor_(no);
     });
-    document.querySelectorAll('img[data-svstdview]').forEach(im => im.onclick = () => { try { window.open(im.dataset.svstdview, '_blank'); } catch (e) {} });
+    document.querySelectorAll('img[data-svstdview]').forEach(im => im.onclick = () => { try { if (isPrivPhoto(im.dataset.svstdview)) openLightbox(im.dataset.svstdview); else window.open(im.dataset.svstdview, '_blank'); } catch (e) {} });
     document.querySelectorAll('.svstd [data-openurl]').forEach(b => b.onclick = () => { try { openDoc_(b.dataset.openurl, (b.textContent || '').trim()); } catch (e) {} });
     document.querySelectorAll('[data-svphdel]').forEach(b => b.onclick = () => {
       const it = SV_ITEMS.find(i => String(i.no) === b.dataset.svphdel); if (!it) return;
