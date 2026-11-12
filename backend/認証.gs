@@ -230,9 +230,46 @@ function 認証_月次リセットの予約を解除() {
   var n = 0; ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === '認証_店舗IDを月次リセット') { ScriptApp.deleteTrigger(t); n++; } });
   Logger.log('解除: ' + n + '件'); return { 結果: '解除', 件数: n };
 }
+/* ===== パスワード無しのID（2026-11-12） =====
+   高原社長のお願い（パスワードを忘れた→IDだけで入りたい）に、神田さんの指示で対応。
+   ・対象＝スクリプトプロパティ AUTH_NOPW_UIDS（カンマ区切り）に書いたIDだけ。既定は空＝誰も対象でない
+   ・対象のIDはパスワードを見ない。ログインのたびに apperr『NOPW_LOGIN』を1行残す（見守りメール・本部データで分かる）
+   ・危険＝IDを知った人は誰でも入れる。本部の見え方のIDなら全店の数字が見える。社長のID以外に広げない
+   ・やめる＝認証_パスワード無しをやめる('takahara') を1回実行（即時・デプロイ不要）。その後は普通のパスワードで入る（忘れていれば 認証_利用者を登録 で再発行） */
+function auth_nopw_uids_() {
+  try { return String(PropertiesService.getScriptProperties().getProperty('AUTH_NOPW_UIDS') || '').split(',').map(function (x) { return x.trim().toLowerCase(); }).filter(String); } catch (e) { return []; }
+}
+function auth_nopw_(uid) { var u = String(uid || '').trim().toLowerCase(); return !!u && auth_nopw_uids_().indexOf(u) >= 0; }
+function auth_logNopw_(uid, dev) {
+  try {
+    if (typeof getSheet !== 'function') return;
+    var note = JSON.stringify({ uid: String(uid), dev: String(dev || '').slice(0, 80), t: Date.now() });
+    getSheet().appendRow([Utilities.getUuid(), Date.now(), 'apperr', '本部', 'NOPW_LOGIN', String(uid), note, '[]']);
+  } catch (e) {}
+}
+function 認証_パスワード無しにする(uid) {
+  var rec = auth_find_(uid); if (!rec) throw new Error('uid が見つかりません: ' + uid);
+  var list = auth_nopw_uids_(); var u = String(uid).trim().toLowerCase();
+  if (list.indexOf(u) < 0) list.push(u);
+  PropertiesService.getScriptProperties().setProperty('AUTH_NOPW_UIDS', list.join(','));
+  Logger.log('パスワード無しのID: ' + list.join(',')); return list;
+}
+function 認証_パスワード無しをやめる(uid) {
+  var u = String(uid).trim().toLowerCase(); var list = auth_nopw_uids_().filter(function (x) { return x !== u; });
+  PropertiesService.getScriptProperties().setProperty('AUTH_NOPW_UIDS', list.join(','));
+  Logger.log('パスワード無しのID: ' + (list.join(',') || '（なし）')); return list;
+}
+/* 11/12 神田さん指示＝高原社長と久保会長の2人をパスワード無しにする（1回だけ実行・デプロイ不要）。
+   kubo がまだ無ければ本部の見え方（hq）で作る。仮パスワードは使わないので乱数でよい */
+function 認証_社長と会長をパスワード無しにする() {
+  if (!auth_find_('kubo')) 認証_利用者を登録('kubo', '久保会長', 'hq', '', Utilities.getUuid().slice(0, 12));
+  認証_パスワード無しにする('takahara');
+  var list = 認証_パスワード無しにする('kubo');
+  Logger.log('完了。パスワード無しのID: ' + list.join(',')); return list;
+}
 function 認証_一覧() {
   var out = auth_rows_().map(function (r) {
-    return { uid: r.uid, 名前: r.name, 役割: r.role, 店舗: r.stores, 初回変更待ち: String(r.must_change) === 'true' };
+    return { uid: r.uid, 名前: r.name, 役割: r.role, 店舗: r.stores, 初回変更待ち: String(r.must_change) === 'true', パスワード無し: auth_nopw_(r.uid) };
   });
   Logger.log(JSON.stringify({ 件数: out.length, 一覧: out }, null, 2)); return out;
 }
@@ -318,7 +355,10 @@ function auth_api_locked_(data) {
     var cache = auth_cache_(); var lk = 'lf:' + String(data.uid || '').trim().toLowerCase();
     var fails = 0; try { fails = Number((cache && cache.get(lk)) || 0); } catch (e) {}
     if (fails >= AUTH_LOCK_FAILS) return { ok: false, error: 'LOGIN_LOCKED', retryMin: Math.ceil(AUTH_LOCK_SEC / 60) };
-    if (!rec || !auth_pw_ok_(rec, data.uid, data.pw)) {
+    /* ★2026-11-12 高原社長「パスワード無しでIDだけで入りたい」＝神田さん指示。対象は AUTH_NOPW_UIDS に書いたIDだけ（既定＝無し）。
+       入るたびに apperr NOPW_LOGIN を1行残す（見守りメール・本部データで誰がいつ入ったか分かる）。やめる＝認証_パスワード無しをやめる(uid) */
+    var nopw = !!rec && auth_nopw_(data.uid);
+    if (!rec || (!nopw && !auth_pw_ok_(rec, data.uid, data.pw))) {
       try { if (cache) cache.put(lk, String(fails + 1), AUTH_LOCK_SEC); } catch (e) {}
       return { ok: false, error: 'LOGIN_FAILED' };   // uidが無いのかパスワード違いかは区別して返さない
     }
@@ -328,6 +368,7 @@ function auth_api_locked_(data) {
     list.push(token); while (list.length > AUTH_TOKEN_MAX) list.shift();
     rec.tokens = JSON.stringify(list); rec.updated = new Date();
     auth_write_(rec);
+    if (nopw) auth_logNopw_(rec.uid, data.dev);
     return { ok: true, auth: { token: token, uid: rec.uid, name: rec.name, role: rec.role,
              stores: String(rec.stores || '').split('／').filter(String), mustChange: String(rec.must_change) === 'true', pwYm: auth_pwYm_(rec), api: 2 } };   // api:2＝読みもPOSTで受ける版（2026-10-12）
   }

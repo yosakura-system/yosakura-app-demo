@@ -12333,9 +12333,12 @@
     const post = (body) => fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(body) }).then(r => r.json());
     if (byId('au_login')) byId('au_login').onclick = () => {
       const uid = (byId('au_id').value || '').trim(), pw = byId('au_pw').value || '';
-      if (!uid || !pw) { showErr(L({ ja:'IDとパスワードを入力してください', en:'Enter ID and password.', vi:'Nhập ID và mật khẩu.' })); return; }
+      if (!uid) { showErr(L({ ja:'IDとパスワードを入力してください', en:'Enter ID and password.', vi:'Nhập ID và mật khẩu.' })); return; }
+      /* ★2026-11-12 パスワードが空でも送る＝「パスワード無しのID」（本部が認証.gs の AUTH_NOPW_UIDS に書いたIDだけ）はサーバが通す。
+         それ以外のIDは今までどおり失敗する＝空で失敗したときは「パスワードを入力してください」と出す */
       byId('au_login').disabled = true;
-      post({ action: 'login', uid: uid, pw: pw }).then(d => {
+      const dev = (navigator.userAgent || '').replace(/^Mozilla\/5\.0 \(/, '').slice(0, 60);
+      post({ action: 'login', uid: uid, pw: pw, dev: dev }).then(d => {
         if (d && d.ok && d.auth) {
           /* ★保存を確かめてから先へ進む（2026-09-14 本店iPad＝保存領域いっぱいで
              ログイン成功なのに保存できず、無言でログイン画面に戻り続けた） */
@@ -12350,7 +12353,8 @@
           applyAuth_(d.auth); render(); return;
         }
         byId('au_login').disabled = false;
-        showErr(L({ ja:'IDまたはパスワードが違います', en:'Wrong ID or password.', vi:'Sai ID hoặc mật khẩu.' }));
+        showErr(!pw ? L({ ja:'パスワードを入力してください', en:'Enter your password.', vi:'Nhập mật khẩu.' })
+                    : L({ ja:'IDまたはパスワードが違います', en:'Wrong ID or password.', vi:'Sai ID hoặc mật khẩu.' }));
       }).catch(() => {
         byId('au_login').disabled = false;
         showErr(L({ ja:'通信できませんでした。電波のあるところでもう一度お試しください', en:'Network error. Please try again.', vi:'Lỗi mạng. Vui lòng thử lại.' }));
