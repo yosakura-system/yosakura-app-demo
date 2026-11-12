@@ -1432,7 +1432,7 @@
   const thumbMem = {};     // 'p:ID' → 縮小版の dataURL
   const privPhMap_ = {};   // 薄い枠のSVG → 'p:ID'
   const privWant_ = {};    // 取りに行っている最中の 'p:ID'
-  let _privQ = [], _privBusy = 0, _privTimer = 0, _privScanT = 0, _privIO = null, _tdb = null;
+  let _privQ = [], _privBusy = 0, _privTimer = 0, _privScanT = 0, _tdb = null;
   function thumbDb_() {
     return new Promise((res) => {
       if (_tdb) return res(_tdb);
@@ -1506,23 +1506,32 @@
     privWant_[p] = true; _privQ.push(p);
     if (!_privTimer) _privTimer = setTimeout(privPump_, 60);
   }
+  /* 見えている分（＋少し先）だけ取りに行く。IntersectionObserver は描画が止まっている画面で呼ばれないことがあった（11/12 配信直後の確認で1枚も出なかった）
+     ＝位置を自分で測る。スクロール・タップ・画面の大きさが変わるたびに測り直す */
   function privScan_() {
     _privScanT = 0;
     let ims = []; try { ims = Array.from(document.querySelectorAll('img')); } catch (e) {}
+    const vh = (typeof window !== 'undefined' && window.innerHeight) || 900;
     ims.forEach(im => {
       const p = privPhMap_[im.getAttribute('src')]; if (!p) return;
       if (thumbMem[p]) { im.src = thumbMem[p]; return; }
-      if (typeof IntersectionObserver !== 'function') return privEnq_(p);
-      if (im._pv) return; im._pv = 1;
-      if (!_privIO) _privIO = new IntersectionObserver((es) => { es.forEach(e => { if (!e.isIntersecting) return; _privIO.unobserve(e.target); const q = privPhMap_[e.target.getAttribute('src')]; if (q) privEnq_(q); }); }, { rootMargin: '600px 0px' });
-      _privIO.observe(im);
+      let r = null; try { r = im.getBoundingClientRect(); } catch (e) {}
+      if (!r) return privEnq_(p);                       // 位置が測れない環境＝そのまま取る
+      if (!r.width && !r.height) return;                // 畳まれている＝開いたときに取る
+      if (r.bottom > -600 && r.top < vh + 900) privEnq_(p);
     });
   }
+  function privScanSoon_() { if (!_privScanT) _privScanT = setTimeout(privScan_, 150); }
+  try {
+    document.addEventListener('scroll', privScanSoon_, true);   // 中身だけスクロールする画面も拾う（capture）
+    document.addEventListener('click', () => setTimeout(privScanSoon_, 200), true);   // 「続きを見る」などで開いた分
+    window.addEventListener('resize', privScanSoon_);
+  } catch (e) {}
   function privPhotoSrc_(p) {
     if (thumbMem[p]) return thumbMem[p];
     if (photoMem[p]) return photoMem[p];
     const ph = privPh_(p);
-    if (useBackend()) { privPhMap_[ph] = p; if (!_privScanT) { _privScanT = setTimeout(privScan_, 0); setTimeout(privScan_, 500); } }
+    if (useBackend()) { privPhMap_[ph] = p; if (!_privScanT) { _privScanT = setTimeout(privScan_, 0); setTimeout(privScan_, 500); setTimeout(privScan_, 1500); } }
     return ph;
   }
   const photoSrc_ = (p) => isLocalPhoto(p) ? (photoMem[p] || '') : p;
