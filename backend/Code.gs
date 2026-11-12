@@ -601,7 +601,7 @@ function doPost(e) {
     if (data && (data.action === 'list' || data.action === 'photo')) {
       var g2 = (typeof auth_gate_get_ === 'function') ? auth_gate_get_({ parameter: { token: data.token } }) : { ok: true, u: null };
       if (!g2.ok) return json({ ok: false, error: 'AUTH_REQUIRED', needLogin: true });
-      return json(apiRead_({ action: data.action === 'list' ? '' : 'photo', id: data.id, store: data.store }, g2.u));
+      return json(apiRead_({ action: data.action === 'list' ? '' : 'photo', id: data.id, ids: data.ids, store: data.store }, g2.u));   // ids＝縮小版をまとめて（2026-11-12）
     }
     /* ★書き込みの門番。ENABLE_AUTH=false のあいだは素通し＝挙動不変 */
     if (typeof auth_gate_post_ === 'function') {
