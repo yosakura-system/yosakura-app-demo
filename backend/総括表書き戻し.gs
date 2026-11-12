@@ -417,11 +417,21 @@ function skwb_cty_(e, vals, fmls, sh, book, day, store, 前回, 結果, 記録, 
     srcName = 'アプリ日報'; src = {};
     Object.keys(e.app.cty).forEach(function (k) { var nm = SKWB_CTY_APPKEYS[k]; if (nm) src[nm] = e.app.cty[k]; });
   }
+  /* ★2026-11-12 同じ列へ行く区分（例：タイ＋東南アジア(タイ以外)→東南アジア）は先に足してから1回で書く。
+     区分ごとに書くと後の区分が前の区分を上書きし「ずれ」になっていた（11/11 心斎橋：4 と 2） */
+  var byCol = {}, order = [];
   Object.keys(src).forEach(function (label) {
     var v = src[label] || {}; var g = skwb_num_(v.g) || 0, pn = skwb_num_(v.p) || 0; if (!g && !pn) return;
     var key = norm(label); if (SKWB_CTY_SKIP[key]) return;
     var col = cols[key] || cols[SKWB_CTY_ALIAS[key] || ''];
     if (!col) { var why = store + ' ' + e.date + '：レジの客層「' + label + '」は総括表の国の列に無い（組' + g + '・人' + pn + '）'; if (結果.止めた.indexOf(why) === -1) 結果.止めた.push(why); return; }
+    var ck = String(col.c);
+    if (!byCol[ck]) { byCol[ck] = { col: col, g: 0, p: 0, labels: [] }; order.push(ck); }
+    byCol[ck].g += g; byCol[ck].p += pn; byCol[ck].labels.push(label);
+  });
+  order.forEach(function (ck) {
+    var agg = byCol[ck], col = agg.col, g = agg.g, pn = agg.p;
+    var label = agg.labels.length > 1 ? agg.labels.join('＋') : agg.labels[0];
     [['組数', col.rG, g, '組'], ['人数', col.rP, pn, '人']].forEach(function (x) {
       var want = x[2]; if (!want) return;
       var rr = x[1], cc = col.c; var a1 = skwb_a1_(rr, cc); var cur = vals[rr][cc]; var k2 = book.name + '|' + day + '|' + a1;
