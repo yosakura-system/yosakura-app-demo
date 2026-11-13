@@ -14663,6 +14663,9 @@
       .then((r) => r.json())
       .then((d) => {
         if (rep && rep.kind === 'ckdone' && !(d && d.needLogin)) return;   // ★チェックの送信後は同期しない（2026-09-24＝同期→作り直しがパチパチの元）
+        /* ★2026-11-13 神田さん「投票ボタンがまだバチバチする」＝押した行だけ書き換えても、送信のあとの同期で全画面を描き直していた。
+           投票（kzvote）とお知らせのいいね（newslike）も、送信後は同期しない（端末の控えに入っているので表示は合う・次の定期の同期で本部データと合流） */
+        if (rep && (rep.kind === 'kzvote' || rep.kind === 'newslike') && !(d && d.needLogin)) return;
         if (d && d.needLogin) {
           // ★提出は保留箱へ残してからログインへ（ログイン後の同期で自動再送される＝提出は失われない）
           const q = getPending_(); q.push(rep);

@@ -8403,6 +8403,7 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
     ok(/FACに載せ済み/.test(x) && (x.match(/data-kzfac=/g) || []).length === 1, 'グランプリ＝載せた投稿は「FACに載せ済み」・残りはボタンのまま');
     run(() => { localStorage.removeItem('yosakura_demo_faq'); }); }
   ok(/if \(!nb \|\| !me\) \{ render\(true\); return; \}/.test(code) && /me\.textContent = String\(next\.length\);/.test(code) && !/postReport\(\{ kind:'kzvote', store:'', item: ym, note, t \}\);\r?\n      render\(\);/.test(code), 'ソース＝投票は押した行だけ書き換える（全画面を描き直さない＝上へ戻らない・ちらつかない・11/13）');
+  ok(/if \(rep && \(rep\.kind === 'kzvote' \|\| rep\.kind === 'newslike'\) && !\(d && d\.needLogin\)\) return;/.test(code), 'ソース＝投票・いいねの送信後は同期しない（同期→全画面の描き直しがちらつきの元だった・11/13）');
   // Codex（11/11 夕）＝重複票・締め切り後の票・JSTの暦日・写真の esc・理由欄の置き場所・本部だけの写真
   run(() => { kzSeed(); const arr = JSON.parse(localStorage.getItem('yosakura_demo_reports'));
     arr.push({ kind:'kzvote', store:'', item: ym2, note: JSON.stringify({ keys: ['寿司世桜 心斎橋店||' + (t2 + 3600e3), '寿司世桜 心斎橋店||' + (t2 + 3600e3), '寿司世桜 心斎橋店||' + (t2 + 3600e3)], by:'tanaka', name:'田中' }), t: t2 + 86400e3 * 23, id:'v5' });   // 同じ投稿を3回＝1票
