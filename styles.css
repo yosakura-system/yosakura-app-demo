@@ -1451,3 +1451,10 @@ html[data-theme="pb"] .pb-niperrv { font-size: 14px; margin: 2px 0 8px; }
 html[data-theme="pb"] .pb-niperrrow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 html[data-theme="pb"] .pb-niperrrow label.fld { margin: 0; }
 .kzgp-fin { margin-left: 6px; }
+/* 本部タブ「提出物の設定」（2026-11-13）＝項目名の右に4つの区分 */
+html[data-theme="pb"] .pb-sobrow { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+html[data-theme="pb"] .pb-sobrow .nm { flex: 1 1 150px; min-width: 0; font-size: 14px; }
+html[data-theme="pb"] .pb-sobrow .nm small { display: block; font-size: 11px; opacity: .7; margin-top: 1px; }
+html[data-theme="pb"] .pb-sobrow .pb-numseg { flex: 0 0 auto; margin: 0; }
+html[data-theme="pb"] .pb-sobrow .pb-numseg button { padding: 5px 10px; font-size: 12.5px; }
+html[data-theme="pb"] .pb-sobchg { color: var(--suou-d); font-weight: 600; }

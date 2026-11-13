@@ -4493,7 +4493,7 @@ console.log('== 提出状況を日次・週次・月次で分けて見える化�
   ok(/月次・必須の提出状況（今月）/.test(openMatrix('monthly')), '月次タブで月次カードが出る');
   ok(/四半期・必須の提出状況/.test(openMatrix('quarterly')), '四半期タブで四半期カードが出る');
   const src6 = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/m\.oblig === 'required' && m\.detect !== 'none' && m\.freq === 'daily'/.test(src6), 'マトリクスの分母は必須の日次のみ（任意を入れない）');
+  ok(/getMasters\(\)\.filter\(m => m\.detect !== 'none' && m\.freq === 'daily'\)/.test(src6) && /appliesToStore\(m, s\) && obligFor\(m, s\) === 'required'/.test(src6), 'マトリクスの分母は必須の日次のみ（任意を入れない）＝11/13〜 必須かどうかは店ごとの区分で見る');
   ok(/（任意・店舗運用の未提出）/.test(src6), '催促文は必須と任意を分ける');
   ok(/r\.ym === dk\.slice\(0, 7\)/.test(src6), '月次の提出判定は対象日の月で行う（先月の確認ができる）');
   run(() => { setLS('hq', 'all', 'ja'); });
@@ -8212,6 +8212,52 @@ console.log('== 2026-11-10 注文フォーム＝店舗名マスタの写し（or
   ok(/const OF_PAUSED_ = \(typeof __OF_UNPAUSE_FOR_TEST !== 'undefined'\) \? false : true;/.test(code) && /const haveForms = !OF_PAUSED_ && getOrderForms\(\)\.length > 0;/.test(code) && /NEWS_RETIRED_ = \[[^\]]*'b845e5a1-851f-465d-a5db-d21118d5b432'\]/.test(code), 'ソース＝注文フォームは止めている・11/12 の窓口のお知らせは下げた');
 }
 
+
+console.log('== 2026-11-13 提出物の設定（本部タブ）＝店ごとの4区分（本部提出／店内実施／推奨／不要）・オープン写真と日報は固定 ==');
+{
+  const S1 = '日本鰻世桜 浅草橋店', S2 = '日本鰻世桜 京都祇園店';
+  const seed = (role, st, ov) => run(() => { setLS(role, st, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    if (role === 'hq') localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'tester-hq', name:'テスト本部', role:'hq', stores:['*'] }));
+    if (ov) localStorage.setItem('yosakura_demo_reports', JSON.stringify([{ kind:'submaster', store:'*', item:'masteroblig', note: JSON.stringify({ storeOblig: ov }), photos:[], t: Date.now() - 1000, id:'so1' }])); });
+  let h;
+  seed('hq', 'all'); location.hash = '#/home?tab=hq&so=1'; h = registry.app.innerHTML;
+  ok(/id="sob_store"/.test(h) && /data-sob="ck_sakura:required"/.test(h) && /data-sob="kizuki:off"/.test(h) && /data-sob="kizuki:rec"/.test(h) && !/data-sob="openphoto:/.test(h) && !/data-sob="nippou:/.test(h) && !/data-sob="firstphoto:/.test(h), '提出物の設定＝本部タブに店の選択と、項目ごとの4つの区分が出る（オープン写真・日報・全店で対象外の項目は出ない）');
+  ok(/class="on" data-sob="ck_sakura:store"/.test(h) && /class="on" data-sob="staffroom:required"/.test(h) && !/class="pb-sobchg">/.test(h) && /class="pb-sobchg" hidden>/.test(h) && !/提出物管理を開く/.test(h) && /提出状況の表を見る/.test(h), '提出物の設定＝いまの区分に色が付く・「提出物管理を開く」は置き換えた');
+  { /* 擬似DOMは data- 属性のボタンを返さない＝この間だけ [data-sob] に1つ返して、bind が付けた onclick を押す */
+    const fb = { dataset: { sob: 'ck_sakura:off' }, onclick: null, parentElement: { querySelectorAll: () => [] } }; const q0 = doc.querySelectorAll; doc.querySelectorAll = (sel) => (sel === '[data-sob]' ? [fb] : []);
+    location.hash = '#/home?tab=hq&so=2'; doc.querySelectorAll = q0;
+    ok(typeof fb.onclick === 'function', '提出物の設定＝区分のボタンが押せる'); if (fb.onclick) fb.onclick();
+    const rd = () => JSON.parse(localStorage.getItem('yosakura_sub_storeoblig_v1') || '{}');
+    const map = rd(); const k = Object.keys(map.ck_sakura || {})[0];
+    const row = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').filter(r => r.kind === 'submaster' && r.item === 'masteroblig').pop();
+    ok(!!k && map.ck_sakura[k] === 'off' && !!row && row.store === '*' && JSON.parse(row.note).so.i === 'ck_sakura' && JSON.parse(row.note).so.s === k && JSON.parse(row.note).so.v === 'off', '提出物の設定＝押すと、変えた1か所だけの行が本部データ（submaster・masteroblig）に残り、端末の控えにも入る');
+    fb.dataset.sob = 'ck_sakura:store'; if (fb.onclick) fb.onclick();
+    ok(!rd().ck_sakura, '提出物の設定＝既定と同じ区分に戻すと、上書きは消える');
+    fb.dataset.sob = 'openphoto:off'; if (fb.onclick) fb.onclick(); fb.dataset.sob = 'nippou:off'; if (fb.onclick) fb.onclick(); fb.dataset.sob = 'firstphoto:store'; if (fb.onclick) fb.onclick();
+    ok(!rd().openphoto && !rd().nippou && !rd().firstphoto, '提出物の設定＝オープン写真・日報・全店で対象外の項目は変えられない'); }
+  /* 店の画面に効く＝不要にした店だけ消える／本部提出にした店だけ「本部へ」が増える */
+  seed('staff', S1); location.hash = '#/home?so=3'; const h0 = registry.app.innerHTML;
+  seed('staff', S1, { ck_sakura: { [S1]: 'off' } }); location.hash = '#/home?so=4'; const h1 = registry.app.innerHTML;
+  seed('staff', S2, { ck_sakura: { [S1]: 'off' } }); location.hash = '#/home?so=5'; const h2 = registry.app.innerHTML;
+  ok(/桜（トイレ）/.test(h0) && !/桜（トイレ）/.test(h1) && /桜（トイレ）/.test(h2), '提出物の設定＝「不要」にした店の「きょうやること」からだけ消える（ほかの店は変わらない）');
+  seed('staff', S1, { ck_sakura: { [S1]: 'required' } }); location.hash = '#/home?so=6'; const h3 = registry.app.innerHTML;
+  ok(/桜（トイレ）/.test(h3) && (h3.match(/本部へ/g) || []).length > (h0.match(/本部へ/g) || []).length, '提出物の設定＝「本部提出」にした店では、その項目に「本部へ」の札が付く');
+  seed('staff', S1, { ck_sakura: { [S1]: 'rec' }, openphoto: { [S1]: 'off' }, nippou: { [S1]: 'off' } }); location.hash = '#/home?so=7'; const h4 = registry.app.innerHTML;
+  ok(/桜（トイレ）/.test(h4) && (h4.match(/本部へ/g) || []).length === (h0.match(/本部へ/g) || []).length, '提出物の設定＝「推奨」は任意のまま出る・オープン写真と日報は上書きの行があっても必須のまま');
+  /* Codex（11/13）＝2人が別々に変えた行はどちらも生きる（全体の行→1か所の行を古い順に重ねる・空は既定に戻す） */
+  const seedRows = (st) => run(() => { setLS('staff', st, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); const t0 = Date.now() - 5000;
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'submaster', store:'*', item:'masteroblig', note: JSON.stringify({ so: { i:'ck_sakura', s:S2, v:'off' } }), photos:[], t: t0 + 2000, id:'d2' },
+      { kind:'submaster', store:'*', item:'masteroblig', note: JSON.stringify({ storeOblig: { ck_sakura: { [S1]: 'off' } } }), photos:[], t: t0, id:'d0' },
+      { kind:'submaster', store:'*', item:'masteroblig', note: JSON.stringify({ so: { i:'ck_sakura', s:S1, v:'' } }), photos:[], t: t0 + 1000, id:'d1' },
+      { kind:'submaster', store:'*', item:'masterurl', note: JSON.stringify({ urls: {}, storeUrls: {} }), photos:[], t: t0 + 3000, id:'u1' }])); });
+  seedRows(S1); location.hash = '#/home?so=9'; const h5 = registry.app.innerHTML; seedRows(S2); location.hash = '#/home?so=10'; const h6 = registry.app.innerHTML;
+  ok(/桜（トイレ）/.test(h5) && !/桜（トイレ）/.test(h6), '提出物の設定＝1か所ずつの行を古い順に重ねる（S1 は既定に戻した・S2 は不要のまま・あとから来たシートの場所の行で消えない）');
+  seed('hq', 'all', { ck_sakura: { [S1]: 'off' } }); location.hash = '#/home?tab=hq&so=8'; h = registry.app.innerHTML;
+  ok(/id="sob_store"/.test(h), '提出物の設定＝上書きがあっても本部タブが出る');
+  ok(/const OBLIG_FIXED_ = \['openphoto', 'nippou'\];/.test(code) && /if \(obligFor\(m, store\) === 'off'\) return false;/.test(code) && /postSub\(SUB_KINDS\.master, '\*', 'masteroblig', \{ so: \{ i: id, s: key, v: val \} \}\);/.test(code) && /if \(_soCache\) return _soCache;/.test(code) && /setTimeout\(\(\) => \{ _soCache = null; \}, 0\)/.test(code) && /rec:\{ja:'推奨'/.test(code), 'ソース＝固定はオープン写真と日報・その店で不要なら出さない・保存は submaster に変えた1か所だけ（kind を増やさない）・覚えるのは同じ描画の間だけ・推奨の呼び名');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_sub_storeoblig_v1'); });
+}
 
 console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを気軽に・写真・ホームの並び・チップ2択・店の数字の小窓・気づきグランプリ ==');
 {

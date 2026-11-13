@@ -2785,7 +2785,7 @@
       <div class="pb-sec"><h2>${L({ ja:'返答待ち', en:'Awaiting reply', vi:'Chờ trả lời' })}</h2><small>${open.length}${L({ ja:'件', en:'', vi:'' })}</small></div>
       <div class="pb-card">${inbox || `<div class="pb-hqnote">${L({ ja:'未対応の報告はありません', en:'Nothing waiting', vi:'Không có mục chờ' })}</div>`}${open.length > 5 ? `<button type="button" class="mini" data-open="inbox" style="margin-top:8px">${L({ ja:'受信箱で全部見る', en:'Open inbox', vi:'Mở hộp thư' })}（${open.length}）</button>` : ''}</div>
       <div class="pb-sec"><h2>${L({ ja:'提出物の設定', en:'Submission settings', vi:'Cài đặt nộp' })}</h2><small>${L({ ja:'本部提出／店内実施／推奨／不要', en:'HQ / in-store / recommended / off', vi:'HQ / tại CH / đề xuất / tắt' })}</small></div>
-      <div class="pb-card"><div class="pb-hqnote" style="margin:0 0 8px">${L({ ja:'どの店に何を出してもらうかは提出物管理で。「本部提出」だけが全店きょうの表と返答待ちに出ます', en:'Set per-store items in Submission management.', vi:'Cài đặt theo cửa hàng ở Quản lý nộp.' })}</div><button type="button" class="mini" data-open="teishutsu">${L({ ja:'提出物管理を開く', en:'Open submission management', vi:'Mở quản lý nộp' })}</button></div>
+      ${pbSobCard_()}
       <button type="button" class="btn-primary pb-big" data-open="news?tab=post" style="margin-top:14px">${L({ ja:'お知らせを出す', en:'Post a notice', vi:'Đăng thông báo' })}</button>
     </main>`;
   }
@@ -5773,6 +5773,24 @@
      ＝注文フォームの枠ごと出さない（店舗のIDの直接ボタンも、個人のIDの店舗選択も）。「そのほかの注文先」と準備中の案内はそのまま。
      再開するとき＝下の true を false にして配信するだけ（マスタの写し orderforms は毎時届いたまま）。テストだけ __OF_UNPAUSE_FOR_TEST で外す */
   const OF_PAUSED_ = (typeof __OF_UNPAUSE_FOR_TEST !== 'undefined') ? false : true;
+  /* ★2026-11-13 本部タブ「提出物の設定」＝店を選んで、項目ごとに4つの区分を押す（B案の見本と同じ形）。押した所だけ色が変わる（描き直さない）。
+     出す項目＝全店で対象外でなく、固定（オープン写真・日報）でなく、その店が対象のもの。変えた所には「変更」の印 */
+  let sobSel_ = '';
+  const SOB_KINDS_ = [['required', { ja:'本部提出', en:'To HQ', vi:'Nộp HQ' }], ['store', { ja:'店内実施', en:'In-store', vi:'Tại CH' }], ['rec', { ja:'推奨', en:'Recommended', vi:'Đề xuất' }], ['off', { ja:'不要', en:'Off', vi:'Tắt' }]];
+  const SOB_FREQ_ = { daily:{ ja:'毎日', en:'Daily', vi:'Hằng ngày' }, weekly:{ ja:'毎週', en:'Weekly', vi:'Hằng tuần' }, monthly:{ ja:'毎月', en:'Monthly', vi:'Hằng tháng' }, quarterly:{ ja:'3か月ごと', en:'Quarterly', vi:'Hằng quý' } };
+  const pbSobCard_ = () => {
+    const stores = STORES.slice(); if (!stores.includes(sobSel_)) { const cur = getStoreSel(); sobSel_ = stores.includes(cur) ? cur : stores[0]; }
+    const st = sobSel_;
+    const items = getMasters().filter(m => m.oblig !== 'off' && !OBLIG_FIXED_.includes(m.id) && targetsStore_(m, st));
+    const rows = items.map(m => { const cur = obligFor(m, st); const changed = cur !== m.oblig;
+      return `<div class="pb-sobrow"><span class="nm">${esc(L(m.name))}<small>${esc(L(SOB_FREQ_[m.freq] || SOB_FREQ_.daily))}<b class="pb-sobchg"${changed ? '' : ' hidden'}> ・ ${L({ ja:'この店だけ変更', en:'changed for this store', vi:'đã đổi cho CH này' })}</b></small></span><span class="pb-numseg">${SOB_KINDS_.map(([v, t]) => `<button type="button" class="${cur === v ? 'on' : ''}" data-sob="${esc(m.id)}:${v}">${L(t)}</button>`).join('')}</span></div>`; }).join('');
+    return `<div class="pb-card">
+        <label class="fld"><span>${L({ ja:'どの店の設定ですか', en:'Which store?', vi:'Cửa hàng nào?' })}</span><select id="sob_store">${stores.map(x => `<option value="${esc(x)}"${x === st ? ' selected' : ''}>${esc(storeShort(x))}</option>`).join('')}</select></label>
+        <div class="pb-hqnote" style="margin:8px 0 2px">${L({ ja:'押すと、その店の「きょうやること」がすぐ変わります。「本部提出」だけが必須の数に入ります。オープン写真と日報は全店必須で、ここでは変えられません。', en:'Changes apply to that store’s Today list at once. Only “To HQ” counts as required. Opening photo and daily report are fixed.', vi:'Thay đổi áp dụng ngay cho cửa hàng đó. Chỉ “Nộp HQ” tính là bắt buộc. Ảnh mở cửa và báo cáo ngày cố định.' })}</div>
+        ${rows || `<div class="muted">${L({ ja:'この店で変えられる項目はありません', en:'Nothing to set for this store', vi:'Không có mục nào' })}</div>`}
+        <button type="button" class="mini" data-open="teishutsu" style="margin-top:10px">${L({ ja:'提出状況の表を見る', en:'Open submission status', vi:'Xem tình trạng nộp' })}</button>
+      </div>`;
+  };
   let ofSel_ = '';   // 個人のIDで選んだ店（画面を離れても覚える・端末には保存しない）
   APP_VIEWS.ordertop = () => {
     /* ★2026-11-13 神田さん「リンク先を開くようになっているけど、準備中にしといて」＝止めている間は、注文先のリンクも管理ボタンも出さず、準備中の案内だけ */
@@ -9728,6 +9746,51 @@
   }
   // 提出物マスタ（本部設定・全端末共有）：一覧＝旧形式の保存かローカルか既定／URL＝本部の設定を重ねる
   // store を渡すと、その店舗のシートの場所（あれば）を優先する
+  /* ★2026-11-13 店ごとの提出物の区分（神田さん「提出物のオン・オフを本部でできるように。B案の仕様で」）
+     ・区分は4つ＝required（本部提出）／store（店内実施）／rec（推奨）／off（不要）。rec は store と同じ扱い（任意＝必須の達成率に入れない）で、呼び名だけ違う
+     ・全店共通の提出物マスタの上に、店ごとの上書きだけを持つ＝{ 項目id: { 店名: 区分 } }。既定と同じに戻したら上書きを消す
+     ・変えられないもの＝オープン写真・日報（全店必須で固定）と、全店で対象外の項目（一食目写真・在庫チェック表の写真など）
+     ・保存＝submaster の行（item 'masteroblig'・note.storeOblig に全体）＝シートの場所（masterurl）と同じ型。最新の行が正。kind を増やさないので同期・90日削除の手当ては要らない
+     ・効かせる場所＝getMasters(store)（その店の区分に置き換えて返す）と appliesToStore（その店で不要なら出さない）。店を渡さずに oblig を読む所は obligFor(m, store) を使う */
+  const OBLIG_FIXED_ = ['openphoto', 'nippou'];
+  const OBLIG_VALUES_ = ['required', 'store', 'rec', 'off'];
+  const STORE_OBLIG_LS = 'yosakura_sub_storeoblig_v1';
+  /* ★Codex（11/13）＝①全体を1行で保存すると、2人が同じ時に別の店を変えたとき片方が消える → 保存は「変えた1か所」だけの行（note.so＝{ i:項目, s:店, v:区分。空＝既定に戻す }）。
+       読むときは古い順に全部重ねる（全体の行 note.storeOblig があれば、そこを土台にする）
+     ②覚えておくのは同じ描画の間だけ（次の処理に入る前に捨てる）＝同期で届いた行をすぐ読む */
+  let _soCache = null;
+  function getStoreOblig() {
+    if (_soCache) return _soCache;
+    let map = null;
+    try {
+      const rows = subRows(SUB_KINDS.master).sort((a, b) => (a.t || 0) - (b.t || 0));
+      for (const r of rows) { const p = parseNote(r.note); if (!p || Array.isArray(p)) continue;
+        if (p.storeOblig && typeof p.storeOblig === 'object') map = JSON.parse(JSON.stringify(p.storeOblig));
+        else if (p.so && p.so.i && p.so.s) { map = map || {}; const o = map[p.so.i] = Object.assign({}, map[p.so.i]);
+          if (OBLIG_VALUES_.includes(p.so.v)) o[p.so.s] = p.so.v; else delete o[p.so.s];
+          if (!Object.keys(o).length) delete map[p.so.i]; } }
+    } catch (e) {}
+    if (!map) map = jget(STORE_OBLIG_LS, {}) || {};
+    _soCache = map; try { setTimeout(() => { _soCache = null; }, 0); } catch (e) {}
+    return map;
+  }
+  function obligFor(m, store) {
+    if (!m) return 'off';
+    if (!store || m.oblig === 'off' || OBLIG_FIXED_.includes(m.id)) return m.oblig;
+    const ov = getStoreOblig()[m.id]; const v = ov ? ov[normalizeStore(store)] : null;
+    return OBLIG_VALUES_.includes(v) ? v : m.oblig;
+  }
+  function saveStoreOblig(id, store, v) {
+    const key = normalizeStore(store);
+    const base = (getMasters().find(m => m.id === id) || {}).oblig;
+    if (!base || base === 'off' || OBLIG_FIXED_.includes(id)) return false;
+    const val = (!OBLIG_VALUES_.includes(v) || v === base) ? '' : v;   // 既定と同じ＝上書きを消す
+    _soCache = null;
+    postSub(SUB_KINDS.master, '*', 'masteroblig', { so: { i: id, s: key, v: val } });
+    _soCache = null; jset(STORE_OBLIG_LS, getStoreOblig());   // 端末の控え（行が1つも無い端末のため）
+    pushAudit('master', 'oblig:' + id + ':' + key + ':' + (val || 'default'));
+    return true;
+  }
   function getMasters(store) {
     let base = null;
     const rows = subRows(SUB_KINDS.master).sort((a, b) => (b.t || 0) - (a.t || 0));
@@ -9748,7 +9811,10 @@
     return base.map(m => {
       const per = (key && sUrls[m.id]) ? sUrls[m.id][key] : null; // 店舗ごとが優先
       const u = (per != null && per !== '') ? per : urls[m.id];
-      return (u != null) ? Object.assign({}, m, { url: u }) : m;
+      const mm = (u != null) ? Object.assign({}, m, { url: u }) : m;
+      if (!key) return mm;
+      const eo = obligFor(mm, key);   // ★2026-11-13 店を渡したときは、その店の区分に置き換えて返す
+      return eo === mm.oblig ? mm : Object.assign({}, mm, { oblig: eo });
     });
   }
   /* 本部が「シートの場所」を保存する（URLだけを共有する。一覧は固定しない）。
@@ -9812,13 +9878,17 @@
   const DAILY_KEEP_ = ['openphoto', 'ichishoku', 'ck_open', 'ck_open_photo', 'ck_idle', 'ck_sakura', 'ck_close', 'ck_close_photo', 'zaiko', 'kizuki', 'nippou'];
   const CK_PHOTO_STORES_ = ['牛カツ世桜 長堀橋店', '手巻き寿司世桜 難波店', '日本鰻世桜 長堀橋店'];   // ★2026-10-20 永井さん＝OPEN・CLOSEは紙のチェック表の写真で出す店（アプリの項目チェックは出さない）。21:22 永井さん「日本鰻長堀橋も同じ形で」
   const dailyKeepOn_ = () => { try { return localStorage.getItem('yosakura_daily_all') !== '1'; } catch (e) { return true; } };   // 検査用＝これまでの全項目で回すときだけ '1'
-  function appliesToStore(m, store) {
-    if (m.oblig === 'off') return false;
+  function targetsStore_(m, store) {   // 対象の店か（業態・店の指定）だけを見る。区分（不要）と在庫の日は見ない＝設定の一覧で使う
     if (m.target === 'except_course' && storeMeta(store).course) return false;
     if (m.target === 'stores' && Array.isArray(m.stores) && !m.stores.includes(store)) return false;
     if (m.target === 'gyotai_in' && Array.isArray(m.gyotai) && !m.gyotai.includes(storeMeta(store).gyotai)) return false; // 指定業態のみ（例：牛カツのみ）
     if (m.target === 'gyotai_ex' && Array.isArray(m.gyotai) && m.gyotai.includes(storeMeta(store).gyotai)) return false;  // 指定業態を除く（例：牛カツ以外）
     if ((m.id === 'ck_open' || m.id === 'ck_close') && CK_PHOTO_STORES_.includes(store)) return false;   // 写真で出す店（ck_open_photo／ck_close_photo）
+    return true;
+  }
+  function appliesToStore(m, store) {
+    if (obligFor(m, store) === 'off') return false;   // ★2026-11-13 その店で「不要」にした項目も出さない
+    if (!targetsStore_(m, store)) return false;
     if (m.detect === 'zaiko' && !zkDueToday(store)) return false;
     if (m.detect === 'zaikowk' && !zkWeekItems_(store).length) return false;   // 器の品目が無い店には出さない   // 在庫数の入力＝今日確認する品目が無い日は出さない（2026-09-19）
     return true;
@@ -9888,7 +9958,7 @@
     });
   }
 
-  const OBLIG_LABEL = { required:{ja:'必須',en:'Required',vi:'Bắt buộc'}, store:{ja:'店舗運用',en:'Store-run',vi:'Cửa hàng'}, off:{ja:'対象外',en:'Off',vi:'Không'} };
+  const OBLIG_LABEL = { required:{ja:'必須',en:'Required',vi:'Bắt buộc'}, store:{ja:'店舗運用',en:'Store-run',vi:'Cửa hàng'}, rec:{ja:'推奨',en:'Recommended',vi:'Đề xuất'}, off:{ja:'対象外',en:'Off',vi:'Không'} };
   /* ★頻度ラベル（2026-09-03 神田さんのご指摘＝どの項目が日次・週次・月次か見分けられない）
      ＝「本日の提出」「提出履歴」で頻度ごとに行を分けるための共通ラベル */
   const FREQ_LABEL = { daily:{ja:'日次',en:'Daily',vi:'Ngày'}, weekly:{ja:'週次',en:'Weekly',vi:'Tuần'}, monthly:{ja:'月次',en:'Monthly',vi:'Tháng'}, quarterly:{ja:'四半期',en:'Quarterly',vi:'Quý'} };
@@ -10277,7 +10347,7 @@
     /* ★数えるのは「必須（required）」だけ（2026-09-02 構築MTG＝増田さんの指摘で方向性合意）。
        任意（店舗運用）を分母に入れると「必須を全部出しているのに100%にならない」が起きる。
        任意の提出はアプリに残り、提出履歴では従来どおり見られる。 */
-    const masters = getMasters().filter(m => m.oblig === 'required' && m.detect !== 'none' && m.freq === 'daily');
+    const masters = getMasters().filter(m => m.detect !== 'none' && m.freq === 'daily');   // ★2026-11-13 必須かどうかは店ごとに見る（下の ms）
     const offsets = []; for (let i = N - 1; i >= 0; i--) offsets.push(i);
     const heads = offsets.map(i => i === 0 ? L({ ja:'今日', en:'Now', vi:'Nay' })
       : mdLabel(new Date(Date.now() - i * 864e5).toLocaleDateString('en-CA')));
@@ -10289,7 +10359,7 @@
       return r ? ((r.src === 'drive' || r.src === 'usen') ? 'import' : 'app') : '';
     };
     const rows = stores.map(s => {
-      const ms = masters.filter(m => appliesToStore(m, s));
+      const ms = masters.filter(m => appliesToStore(m, s) && obligFor(m, s) === 'required');
       const cells = offsets.map(i => {
         const dk = dateKeyFor(s, Date.now() - i * 864e5);
         if (isHoliday(s, dk)) return { h: true };
@@ -10339,7 +10409,7 @@
      手動確認の項目（detect:'none'＝PL・コンプラ等）は自動判定できないため「・」で並べ、率には入れない。
      カッコ内は前の期（先週／先月／前四半期）の実績＝締まった期の結果が分かる。 */
   function subPeriodCard(stores, freq) {
-    const masters = getMasters().filter(m => m.oblig === 'required' && m.freq === freq);
+    const masters = getMasters().filter(m => m.freq === freq);   // ★2026-11-13 必須かどうかは店ごとに見る（下の ms）
     if (!masters.length) return '';
     const T = freq === 'weekly'
       ? { title:{ja:'週次・必須の提出状況（今週）',en:'Weekly required (this week)',vi:'Hàng tuần bắt buộc (tuần này)'}, prev:{ja:'先週',en:'last wk',vi:'tuần trước'} }
@@ -10347,7 +10417,7 @@
       ? { title:{ja:'月次・必須の提出状況（今月）',en:'Monthly required (this month)',vi:'Hàng tháng bắt buộc (tháng này)'}, prev:{ja:'先月',en:'last mo',vi:'tháng trước'} }
       : { title:{ja:'四半期・必須の提出状況（今期）',en:'Quarterly required (this quarter)',vi:'Hàng quý bắt buộc (quý này)'}, prev:{ja:'前期',en:'prev',vi:'kỳ trước'} };
     const rows = stores.map(s => {
-      const ms = masters.filter(m => appliesToStore(m, s));
+      const ms = masters.filter(m => appliesToStore(m, s) && obligFor(m, s) === 'required');
       if (!ms.length) return null;
       const dkNow = dateKeyFor(s, Date.now());
       const dPrev = new Date(dkNow + 'T00:00:00');
@@ -10413,7 +10483,8 @@
     const cells = stores.map(store => {
       const dk = dateKeyFor(store, Date.now());
       const holiday = isHoliday(store, dk);
-      const items = masters.filter(m => appliesToStore(m, store)).map(m => {
+      const items = masters.filter(m => appliesToStore(m, store)).map(m0 => {
+        const eo = obligFor(m0, store); const m = eo === m0.oblig ? m0 : Object.assign({}, m0, { oblig: eo });   // ★2026-11-13 その店の区分で数える
         const manual = m.detect === 'none';
         const submitted = manual ? null : (holiday ? true : detectSubmitted(store, m, dk));
         // ★未提出に数えるのは必須だけ（2026-09-02 構築MTG＝任意は分母に入れない）。任意はチップの表示のみ
@@ -11136,7 +11207,7 @@
       <p class="hint" style="display:block">${L({ ja:'※ 店舗名を押すとその店の内訳（当日）が開きます。上のチップで店舗を選ぶと、日別の提出履歴に切り替わります。', en:'Tap a store for today’s detail. Pick a store chip for its daily history.', vi:'Chạm cửa hàng để xem chi tiết hôm nay. Chọn chip để xem lịch sử theo ngày.' })}</p>`;
     }
     const store = pick.sel;
-    const masters = getMasters().filter(m => appliesToStore(m, store) && m.oblig !== 'off' && m.detect !== 'none');
+    const masters = getMasters(store).filter(m => appliesToStore(m, store) && m.oblig !== 'off' && m.detect !== 'none');
     /* ★期間を選べるように（2026-08-31 神田さんのご指摘＝過去の提出状況が7日で埋もれる） */
     const dsel = [7, 14, 30].includes(Number(localStorage.getItem('yosakura_hist_days'))) ? Number(localStorage.getItem('yosakura_hist_days')) : 7;
     const days = []; for (let i = 0; i < dsel; i++) days.push(dateKeyFor(store, Date.now() - i * 86400000));
@@ -11497,7 +11568,7 @@
       if (t.dataset.treminder) {
         const store = t.dataset.treminder; const dk = dateKeyFor(store, Date.now());
         // ★催促するのは必須だけ（2026-09-02 構築MTG＝任意を催促に混ぜない）。任意は参考として分けて添える
-        const missAll = getMasters().filter(m => appliesToStore(m, store) && m.oblig !== 'off' && m.detect !== 'none' && !detectSubmitted(store, m, dk));
+        const missAll = getMasters(store).filter(m => appliesToStore(m, store) && m.oblig !== 'off' && m.detect !== 'none' && !detectSubmitted(store, m, dk));
         const miss = missAll.filter(m => m.oblig === 'required').map(m => '・' + L(m.name));
         const missOpt = missAll.filter(m => m.oblig !== 'required').map(m => '・' + L(m.name));
         const text = `${storeShort(store)} ${L({ja:'様',en:'',vi:''})}\n${L({ja:'本日分の未提出があります。ご確認をお願いします。',en:'You have missing submissions today. Please check.',vi:'Hôm nay còn mục chưa nộp. Vui lòng kiểm tra.'})}\n${miss.join('\n')}${missOpt.length ? `\n${L({ja:'（任意・店舗運用の未提出）',en:'(Optional, store-run)',vi:'(Tùy chọn)'})}\n${missOpt.join('\n')}` : ''}`;
@@ -12655,6 +12726,16 @@
       go('/app/fac');
     });
     document.querySelectorAll('[data-facclear]').forEach(b => b.onclick = () => { facPrefill = null; render(true); });
+    /* ★2026-11-13 提出物の設定（本部）＝押した区分を保存して、その行のボタンの色だけ変える */
+    document.querySelectorAll('[data-sob]').forEach(b => b.onclick = () => {
+      if (getRole() !== 'hq' || !sobSel_) return;
+      const i = String(b.dataset.sob || '').lastIndexOf(':'); const id = String(b.dataset.sob).slice(0, i), v = String(b.dataset.sob).slice(i + 1);
+      if (!saveStoreOblig(id, sobSel_, v)) { toast(L({ ja:'この項目は変えられません', en:'This item cannot be changed', vi:'Không thể đổi mục này' })); return; }
+      try { Array.from(b.parentElement.querySelectorAll('button')).forEach(x => x.classList.toggle('on', x === b)); } catch (e) { render(true); return; }
+      try { const row = b.closest ? b.closest('.pb-sobrow') : null; const mk = row ? row.querySelector('.pb-sobchg') : null; const bm = getMasters().find(m => m.id === id); if (mk && bm) mk.hidden = (v === bm.oblig); } catch (e) {}   // 「この店だけ変更」の印も合わせる（Codex 5）
+      toast(`${storeShort(sobSel_)}：${L((SOB_KINDS_.find(k => k[0] === v) || SOB_KINDS_[0])[1])}`);
+    });
+    { const sel = document.getElementById('sob_store'); if (sel) sel.onchange = () => { sobSel_ = sel.value; render(true); }; }
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
     document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'この画面は準備中です（順次追加します）', en:'This screen is in preparation', vi:'Màn hình đang chuẩn bị' })));
     // 準備中のボタンにも必ずフィードバックを返す＝無反応ボタンを排除
