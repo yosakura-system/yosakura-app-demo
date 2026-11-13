@@ -8285,6 +8285,7 @@ console.log('== 2026-11-13 提出物の設定（本部タブ）＝店ごとの4�
   seed('hq', 'all', { ck_sakura: { [S1]: 'off' } }); location.hash = '#/home?tab=hq&so=8'; h = registry.app.innerHTML;
   ok(/id="sob_store"/.test(h), '提出物の設定＝上書きがあっても本部タブが出る');
   ok(/const OBLIG_FIXED_ = \['openphoto', 'nippou'\];/.test(code) && /if \(obligFor\(m, store\) === 'off'\) return false;/.test(code) && /postSub\(SUB_KINDS\.master, '\*', 'masteroblig', \{ so: \{ i: id, s: key, v: val \} \}\);/.test(code) && /if \(_soCache\) return _soCache;/.test(code) && /setTimeout\(\(\) => \{ _soCache = null; \}, 0\)/.test(code) && /rec:\{ja:'推奨'/.test(code), 'ソース＝固定はオープン写真と日報・その店で不要なら出さない・保存は submaster に変えた1か所だけ（kind を増やさない）・覚えるのは同じ描画の間だけ・推奨の呼び名');
+  ok(/&& rep\.item === 'masteroblig' && !\(d && d\.needLogin\) && !\(d && d\.ok === false\)\) return syncReports\('quiet'\);/.test(code) && /else if \(force === 'quiet'\) \{[^}]*\}\r?\n\s+else if \(force\) render\(true\);/.test(code), 'ソース＝提出物の設定の保存のあとは、取り込むだけの同期（描き直さない・帯も出さない）。断られたときは従来どおり同期して描き直す（11/14・Codex）');
   run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_sub_storeoblig_v1'); });
 }
 
