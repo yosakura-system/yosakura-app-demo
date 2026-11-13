@@ -8232,7 +8232,8 @@ console.log('== 2026-11-13 提出物の設定（本部タブ）＝店ごとの4�
     const row = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').filter(r => r.kind === 'submaster' && r.item === 'masteroblig').pop();
     ok(!!k && map.ck_sakura[k] === 'off' && !!row && row.store === '*' && JSON.parse(row.note).so.i === 'ck_sakura' && JSON.parse(row.note).so.s === k && JSON.parse(row.note).so.v === 'off', '提出物の設定＝押すと、変えた1か所だけの行が本部データ（submaster・masteroblig）に残り、端末の控えにも入る');
     fb.dataset.sob = 'ck_sakura:store'; if (fb.onclick) fb.onclick();
-    ok(!rd().ck_sakura, '提出物の設定＝既定と同じ区分に戻すと、上書きは消える');
+    { const lastRow = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').filter(r => r.kind === 'submaster' && r.item === 'masteroblig').pop();
+      ok(rd().ck_sakura[k] === 'store' && JSON.parse(lastRow.note).so.v === 'store', '提出物の設定＝既定と同じ区分に戻すときも、選んだ区分そのものを書く（空で書かない＝届いていない全店変更で化けない・Codex）'); }
     fb.dataset.sob = 'openphoto:off'; if (fb.onclick) fb.onclick(); fb.dataset.sob = 'nippou:off'; if (fb.onclick) fb.onclick(); fb.dataset.sob = 'firstphoto:store'; if (fb.onclick) fb.onclick();
     ok(!rd().openphoto && !rd().nippou && !rd().firstphoto, '提出物の設定＝オープン写真・日報・全店で対象外の項目は変えられない'); }
   /* 店の画面に効く＝不要にした店だけ消える／本部提出にした店だけ「本部へ」が増える */
@@ -8253,6 +8254,34 @@ console.log('== 2026-11-13 提出物の設定（本部タブ）＝店ごとの4�
       { kind:'submaster', store:'*', item:'masterurl', note: JSON.stringify({ urls: {}, storeUrls: {} }), photos:[], t: t0 + 3000, id:'u1' }])); });
   seedRows(S1); location.hash = '#/home?so=9'; const h5 = registry.app.innerHTML; seedRows(S2); location.hash = '#/home?so=10'; const h6 = registry.app.innerHTML;
   ok(/桜（トイレ）/.test(h5) && !/桜（トイレ）/.test(h6), '提出物の設定＝1か所ずつの行を古い順に重ねる（S1 は既定に戻した・S2 は不要のまま・あとから来たシートの場所の行で消えない）');
+  /* ★2026-11-13 神田さん「全店をたして」「本部以外も任意・推奨と表記」 */
+  ok(/class="pb-pill opt">任意</.test(h0) && !/class="pb-pill rec">推奨</.test(h1) && /桜（トイレ） <span class="pb-pill rec">推奨</.test(h4) && /桜（トイレ） <span class="pb-pill">本部へ</.test(h3), '店の画面の札＝本部提出は「本部へ」・店内実施は「任意」・推奨は「推奨」');
+  const seedAll = (st, extra) => run(() => { setLS('staff', st, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); const t0 = Date.now() - 5000;
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'submaster', store:'*', item:'masteroblig', note: JSON.stringify({ so: { i:'ck_sakura', s:S1, v:'required' } }), photos:[], t: t0, id:'a0' },
+      { kind:'submaster', store:'*', item:'masteroblig', note: JSON.stringify({ so: { i:'ck_sakura', s:'*', v:'off' } }), photos:[], t: t0 + 1000, id:'a1' }].concat(extra ? [
+      { kind:'submaster', store:'*', item:'masteroblig', note: JSON.stringify({ so: extra }), photos:[], t: t0 + 2000, id:'a2' }] : []))); });
+  seedAll(S1); location.hash = '#/home?so=11'; const a1 = registry.app.innerHTML; seedAll(S2); location.hash = '#/home?so=12'; const a2 = registry.app.innerHTML;
+  ok(!/桜（トイレ）/.test(a1) && !/桜（トイレ）/.test(a2), '提出物の設定＝全店まとめての行（s:*）は、先にあった店ごとの上書きも置き換えて全店に効く');
+  seedAll(S1, { i:'ck_sakura', s:S1, v:'store' }); location.hash = '#/home?so=13'; const a3 = registry.app.innerHTML; seedAll(S2, { i:'ck_sakura', s:S1, v:'store' }); location.hash = '#/home?so=14'; const a4 = registry.app.innerHTML;
+  ok(/桜（トイレ）/.test(a3) && !/桜（トイレ）/.test(a4), '提出物の設定＝全店まとめてのあとで1店だけ変えると、その店だけ変わる（既定と同じ区分でも残る）');
+  seedAll(S1, { i:'ck_sakura', s:'*', v:'' }); location.hash = '#/home?so=15'; const a5 = registry.app.innerHTML;
+  ok(/桜（トイレ） <span class="pb-pill opt">任意</.test(a5), '提出物の設定＝全店まとめてを既定に戻す行（空）で、全店が既定に戻る');
+  { seed('hq', 'all'); location.hash = '#/home?tab=hq&so=16'; h = registry.app.innerHTML;
+    ok(/<select id="sob_store"><option value="\*">全店（まとめて変更）<\/option>/.test(h), '提出物の設定＝店の選択の先頭に「全店（まとめて変更）」');
+    /* 「全店」を選んで押す＝1行（s:*）だけ保存する */
+    const sel = { value: '*', onchange: null }; const g0 = doc.getElementById; doc.getElementById = (id) => (id === 'sob_store' ? sel : g0.call(doc, id));
+    location.hash = '#/home?tab=hq&so=17'; if (sel.onchange) sel.onchange(); const hAll = registry.app.innerHTML;
+    const fb = { dataset: { sob: 'ck_sakura:rec' }, onclick: null, parentElement: { querySelectorAll: () => [] } }; const q0 = doc.querySelectorAll; doc.querySelectorAll = (s2) => (s2 === '[data-sob]' ? [fb] : []);
+    location.hash = '#/home?tab=hq&so=18'; doc.querySelectorAll = q0; doc.getElementById = g0;
+    ok(typeof sel.onchange === 'function' && /<option value="\*" selected>/.test(hAll) && /全店まとめて変わります/.test(hAll) && /class="on" data-sob="ck_sakura:store"/.test(hAll), '提出物の設定＝「全店」を選ぶと、全店でそろっている区分に色が付き、注意書きが変わる');
+    const n0 = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').length; if (fb.onclick) fb.onclick();
+    const rs = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]'); const last = rs.filter(r => r.kind === 'submaster' && r.item === 'masteroblig').pop();
+    ok(rs.length === n0 + 1 && !!last && JSON.parse(last.note).so.s === '*' && JSON.parse(last.note).so.v === 'rec', '提出物の設定＝「全店」で押すと、全店まとめての1行だけが残る');
+    run(() => { setLS('staff', S2, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_reports', JSON.stringify(rs)); }); location.hash = '#/home?so=19';   // setLS は端末を空にする＝行を入れ直す
+    ok(/桜（トイレ） <span class="pb-pill rec">推奨</.test(registry.app.innerHTML), '提出物の設定＝「全店」で押した区分が、ほかの店の画面にも出る');
+    run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'tester-hq', name:'テスト本部', role:'hq', stores:['*'] })); });
+    const sel2 = { value: S1, onchange: null }; doc.getElementById = (id) => (id === 'sob_store' ? sel2 : g0.call(doc, id)); location.hash = '#/home?tab=hq&so=20'; if (sel2.onchange) sel2.onchange(); doc.getElementById = g0; }
   seed('hq', 'all', { ck_sakura: { [S1]: 'off' } }); location.hash = '#/home?tab=hq&so=8'; h = registry.app.innerHTML;
   ok(/id="sob_store"/.test(h), '提出物の設定＝上書きがあっても本部タブが出る');
   ok(/const OBLIG_FIXED_ = \['openphoto', 'nippou'\];/.test(code) && /if \(obligFor\(m, store\) === 'off'\) return false;/.test(code) && /postSub\(SUB_KINDS\.master, '\*', 'masteroblig', \{ so: \{ i: id, s: key, v: val \} \}\);/.test(code) && /if \(_soCache\) return _soCache;/.test(code) && /setTimeout\(\(\) => \{ _soCache = null; \}, 0\)/.test(code) && /rec:\{ja:'推奨'/.test(code), 'ソース＝固定はオープン写真と日報・その店で不要なら出さない・保存は submaster に変えた1か所だけ（kind を増やさない）・覚えるのは同じ描画の間だけ・推奨の呼び名');

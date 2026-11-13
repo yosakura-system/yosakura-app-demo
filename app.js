@@ -2139,7 +2139,10 @@
       : (late ? `<span class="pb-late">${L({ja:'締切を過ぎています',en:'Overdue',vi:'Quá hạn'})}</span>・` : '') + dueTxt;
     const act = lockTx ? '' : (m.detect === 'didit' && !it.submitted) ? `<button class="pb-mini" data-tdid="${esc(m.id)}">${L({ja:'実施しました',en:'Done',vi:'Đã làm'})}</button>`
       : isHttp(m.url) ? `<button class="pb-mini" data-openurl="${esc(openUrlFor(m.url))}">${L({ja:'開く',en:'Open',vi:'Mở'})}</button>` : '';
-    const tag = m.oblig === 'required' ? ` <span class="pb-pill">${L({ja:'本部へ',en:'HQ',vi:'HQ'})}</span>` : '';
+    /* ★2026-11-13 神田さん「本部に提出するものは本部と出る。それ以外も任意・推奨と出した方が分かりやすい」＝店内実施は「任意」、推奨は「推奨」の札 */
+    const tag = m.oblig === 'required' ? ` <span class="pb-pill">${L({ja:'本部へ',en:'HQ',vi:'HQ'})}</span>`
+      : m.oblig === 'rec' ? ` <span class="pb-pill rec">${L({ja:'推奨',en:'Recommended',vi:'Đề xuất'})}</span>`
+      : m.oblig === 'store' ? ` <span class="pb-pill opt">${L({ja:'任意',en:'Optional',vi:'Tùy chọn'})}</span>` : '';
     const mins = (!done && !it.manual && !it.holiday && !lockTx) ? pbMins_(m) : 0;   // ★2026-10-20 案Bの見本と同じ＝行の右に「目安○分」
     const inner = `${pbImg_(pbPhotoKey_(m))}<span class="pb-rowtx"><span class="pb-nm">${esc(LANG === 'ja' && PB_NAMES_[m.id] ? PB_NAMES_[m.id] : L(m.name))}${tag}</span><span class="pb-sub">${sub}</span></span>`;
     const cls = `pb-row${done ? ' done' : ''}${late ? ' late' : ''}`;
@@ -5779,14 +5782,17 @@
   const SOB_KINDS_ = [['required', { ja:'本部提出', en:'To HQ', vi:'Nộp HQ' }], ['store', { ja:'店内実施', en:'In-store', vi:'Tại CH' }], ['rec', { ja:'推奨', en:'Recommended', vi:'Đề xuất' }], ['off', { ja:'不要', en:'Off', vi:'Tắt' }]];
   const SOB_FREQ_ = { daily:{ ja:'毎日', en:'Daily', vi:'Hằng ngày' }, weekly:{ ja:'毎週', en:'Weekly', vi:'Hằng tuần' }, monthly:{ ja:'毎月', en:'Monthly', vi:'Hằng tháng' }, quarterly:{ ja:'3か月ごと', en:'Quarterly', vi:'Hằng quý' } };
   const pbSobCard_ = () => {
-    const stores = STORES.slice(); if (!stores.includes(sobSel_)) { const cur = getStoreSel(); sobSel_ = stores.includes(cur) ? cur : stores[0]; }
-    const st = sobSel_;
-    const items = getMasters().filter(m => m.oblig !== 'off' && !OBLIG_FIXED_.includes(m.id) && targetsStore_(m, st));
-    const rows = items.map(m => { const cur = obligFor(m, st); const changed = cur !== m.oblig;
-      return `<div class="pb-sobrow"><span class="nm">${esc(L(m.name))}<small>${esc(L(SOB_FREQ_[m.freq] || SOB_FREQ_.daily))}<b class="pb-sobchg"${changed ? '' : ' hidden'}> ・ ${L({ ja:'この店だけ変更', en:'changed for this store', vi:'đã đổi cho CH này' })}</b></small></span><span class="pb-numseg">${SOB_KINDS_.map(([v, t]) => `<button type="button" class="${cur === v ? 'on' : ''}" data-sob="${esc(m.id)}:${v}">${L(t)}</button>`).join('')}</span></div>`; }).join('');
+    const stores = STORES.slice(); if (sobSel_ !== '*' && !stores.includes(sobSel_)) { const cur = getStoreSel(); sobSel_ = stores.includes(cur) ? cur : stores[0]; }
+    const st = sobSel_; const all = st === '*';   // ★11/13 神田さん「全店をたして」＝先頭の「全店」を選ぶと、押した項目が全店まとめて変わる
+    const ovm = getStoreOblig();
+    const items = getMasters().filter(m => m.oblig !== 'off' && !OBLIG_FIXED_.includes(m.id) && (all ? stores.some(x => targetsStore_(m, x)) : targetsStore_(m, st)));
+    const rows = items.map(m => { let cur, changed;
+      if (all) { const vs = stores.filter(x => targetsStore_(m, x)).map(x => obligFor(m, x)); cur = vs.every(x => x === vs[0]) ? vs[0] : ''; changed = !cur; }   // 店でそろっていれば色が付く
+      else { cur = obligFor(m, st); const o = ovm[m.id] || {}; const own = o[normalizeStore(st)]; changed = OBLIG_VALUES_.includes(own) && own !== (OBLIG_VALUES_.includes(o['*']) ? o['*'] : m.oblig); }   // 印＝全店の区分（無ければ既定）と違うときだけ
+      return `<div class="pb-sobrow"><span class="nm">${esc(L(m.name))}<small>${esc(L(SOB_FREQ_[m.freq] || SOB_FREQ_.daily))}<b class="pb-sobchg"${changed ? '' : ' hidden'}> ・ ${all ? L({ ja:'店ごとに違います', en:'differs by store', vi:'khác nhau theo CH' }) : L({ ja:'この店だけ変更', en:'changed for this store', vi:'đã đổi cho CH này' })}</b></small></span><span class="pb-numseg">${SOB_KINDS_.map(([v, t]) => `<button type="button" class="${cur === v ? 'on' : ''}" data-sob="${esc(m.id)}:${v}">${L(t)}</button>`).join('')}</span></div>`; }).join('');
     return `<div class="pb-card">
-        <label class="fld"><span>${L({ ja:'どの店の設定ですか', en:'Which store?', vi:'Cửa hàng nào?' })}</span><select id="sob_store">${stores.map(x => `<option value="${esc(x)}"${x === st ? ' selected' : ''}>${esc(storeShort(x))}</option>`).join('')}</select></label>
-        <div class="pb-hqnote" style="margin:8px 0 2px">${L({ ja:'押すと、その店の「きょうやること」がすぐ変わります。「本部提出」だけが必須の数に入ります。オープン写真と日報は全店必須で、ここでは変えられません。', en:'Changes apply to that store’s Today list at once. Only “To HQ” counts as required. Opening photo and daily report are fixed.', vi:'Thay đổi áp dụng ngay cho cửa hàng đó. Chỉ “Nộp HQ” tính là bắt buộc. Ảnh mở cửa và báo cáo ngày cố định.' })}</div>
+        <label class="fld"><span>${L({ ja:'どの店の設定ですか', en:'Which store?', vi:'Cửa hàng nào?' })}</span><select id="sob_store"><option value="*"${all ? ' selected' : ''}>${L({ ja:'全店（まとめて変更）', en:'All stores (change together)', vi:'Tất cả CH (đổi cùng lúc)' })}</option>${stores.map(x => `<option value="${esc(x)}"${x === st ? ' selected' : ''}>${esc(storeShort(x))}</option>`).join('')}</select></label>
+        <div class="pb-hqnote" style="margin:8px 0 2px">${all ? L({ ja:'「全店」では、押した項目が全店まとめて変わります。店ごとに変えていた分も上書きします。', en:'With “All stores”, the item changes for every store at once, replacing per-store changes.', vi:'Với “Tất cả CH”, mục đó đổi cho mọi cửa hàng, ghi đè thay đổi riêng.' }) : L({ ja:'押すと、その店の「きょうやること」がすぐ変わり、札（本部へ／任意／推奨）が付きます。「本部提出」だけが必須の数に入ります。オープン写真と日報は全店必須で、ここでは変えられません。', en:'Changes apply to that store’s Today list at once, with a tag (HQ / Optional / Recommended). Only “To HQ” counts as required. Opening photo and daily report are fixed.', vi:'Thay đổi áp dụng ngay cho cửa hàng đó, kèm nhãn (HQ / Tùy chọn / Đề xuất). Chỉ “Nộp HQ” tính là bắt buộc. Ảnh mở cửa và báo cáo ngày cố định.' })}</div>
         ${rows || `<div class="muted">${L({ ja:'この店で変えられる項目はありません', en:'Nothing to set for this store', vi:'Không có mục nào' })}</div>`}
         <button type="button" class="mini" data-open="teishutsu" style="margin-top:10px">${L({ ja:'提出状況の表を見る', en:'Open submission status', vi:'Xem tình trạng nộp' })}</button>
       </div>`;
@@ -9766,6 +9772,7 @@
       const rows = subRows(SUB_KINDS.master).sort((a, b) => (a.t || 0) - (b.t || 0));
       for (const r of rows) { const p = parseNote(r.note); if (!p || Array.isArray(p)) continue;
         if (p.storeOblig && typeof p.storeOblig === 'object') map = JSON.parse(JSON.stringify(p.storeOblig));
+        else if (p.so && p.so.i && p.so.s === '*') { map = map || {}; if (OBLIG_VALUES_.includes(p.so.v)) map[p.so.i] = { '*': p.so.v }; else delete map[p.so.i]; }   // ★11/13 全店まとめて＝店ごとの上書きを置き換える（空＝既定に戻す）
         else if (p.so && p.so.i && p.so.s) { map = map || {}; const o = map[p.so.i] = Object.assign({}, map[p.so.i]);
           if (OBLIG_VALUES_.includes(p.so.v)) o[p.so.s] = p.so.v; else delete o[p.so.s];
           if (!Object.keys(o).length) delete map[p.so.i]; } }
@@ -9777,14 +9784,19 @@
   function obligFor(m, store) {
     if (!m) return 'off';
     if (!store || m.oblig === 'off' || OBLIG_FIXED_.includes(m.id)) return m.oblig;
-    const ov = getStoreOblig()[m.id]; const v = ov ? ov[normalizeStore(store)] : null;
+    const ov = getStoreOblig()[m.id]; const own = ov ? ov[normalizeStore(store)] : null;
+    const v = OBLIG_VALUES_.includes(own) ? own : (ov ? ov['*'] : null);   // その店の上書き → 全店まとめての上書き → 既定
     return OBLIG_VALUES_.includes(v) ? v : m.oblig;
   }
   function saveStoreOblig(id, store, v) {
-    const key = normalizeStore(store);
+    const all = store === '*';   // ★11/13 全店まとめて＝1行（s:'*'）で保存
+    const key = all ? '*' : normalizeStore(store);
     const base = (getMasters().find(m => m.id === id) || {}).oblig;
     if (!base || base === 'off' || OBLIG_FIXED_.includes(id)) return false;
-    const val = (!OBLIG_VALUES_.includes(v) || v === base) ? '' : v;   // 既定と同じ＝上書きを消す
+    if (!OBLIG_VALUES_.includes(v)) return false;
+    /* ★Codex（11/13・2回目）＝店ごとの行は、土台と同じ区分でも「選んだ区分そのもの」を書く。空（上書きを消す）で書くと、ほかの人の全店変更がまだ届いていない端末で押した区分が、同期後に別の区分へ化ける。
+       全店の行だけ、既定と同じなら空（＝全部の上書きを消して既定に戻す） */
+    const val = (all && v === base) ? '' : v;
     _soCache = null;
     postSub(SUB_KINDS.master, '*', 'masteroblig', { so: { i: id, s: key, v: val } });
     _soCache = null; jset(STORE_OBLIG_LS, getStoreOblig());   // 端末の控え（行が1つも無い端末のため）
@@ -12730,10 +12742,13 @@
     document.querySelectorAll('[data-sob]').forEach(b => b.onclick = () => {
       if (getRole() !== 'hq' || !sobSel_) return;
       const i = String(b.dataset.sob || '').lastIndexOf(':'); const id = String(b.dataset.sob).slice(0, i), v = String(b.dataset.sob).slice(i + 1);
+      const all = sobSel_ === '*'; const lab = L((SOB_KINDS_.find(k => k[0] === v) || SOB_KINDS_[0])[1]);
+      if (all) { const bm0 = getMasters().find(m => m.id === id);   // 全店が一度に変わる＝1回だけ確かめる
+        if (typeof confirm === 'function' && !confirm(L({ ja:`全店の「${bm0 ? L(bm0.name) : id}」を「${lab}」に変えます。店ごとに変えていた分も上書きします。よろしいですか？`, en:`Change “${bm0 ? L(bm0.name) : id}” to “${lab}” for all stores? Per-store changes will be replaced.`, vi:`Đổi “${bm0 ? L(bm0.name) : id}” thành “${lab}” cho tất cả cửa hàng? Thay đổi riêng sẽ bị ghi đè.` }))) return; }
       if (!saveStoreOblig(id, sobSel_, v)) { toast(L({ ja:'この項目は変えられません', en:'This item cannot be changed', vi:'Không thể đổi mục này' })); return; }
       try { Array.from(b.parentElement.querySelectorAll('button')).forEach(x => x.classList.toggle('on', x === b)); } catch (e) { render(true); return; }
-      try { const row = b.closest ? b.closest('.pb-sobrow') : null; const mk = row ? row.querySelector('.pb-sobchg') : null; const bm = getMasters().find(m => m.id === id); if (mk && bm) mk.hidden = (v === bm.oblig); } catch (e) {}   // 「この店だけ変更」の印も合わせる（Codex 5）
-      toast(`${storeShort(sobSel_)}：${L((SOB_KINDS_.find(k => k[0] === v) || SOB_KINDS_[0])[1])}`);
+      try { const row = b.closest ? b.closest('.pb-sobrow') : null; const mk = row ? row.querySelector('.pb-sobchg') : null; const bm = getMasters().find(m => m.id === id); if (mk && bm) { const o = getStoreOblig()[id] || {}; mk.hidden = all ? true : (v === (OBLIG_VALUES_.includes(o['*']) ? o['*'] : bm.oblig)); } } catch (e) {}   // 「この店だけ変更」の印も合わせる（Codex 5）
+      toast(`${all ? L({ ja:'全店', en:'All stores', vi:'Tất cả CH' }) : storeShort(sobSel_)}：${lab}`);
     });
     { const sel = document.getElementById('sob_store'); if (sel) sel.onchange = () => { sobSel_ = sel.value; render(true); }; }
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
