@@ -4960,6 +4960,15 @@ console.log('== お知らせにコメント・いいね・確認（2026-09-08 �
   h = registry.app.innerHTML;
   ok(/確認済み（1）/.test(h) && /長堀橋/.test(h) && /秋定/.test(h), '本部には確認済み一覧（店舗・名前つき）が出る');
   ok(/👍 いいね（\d+）：/.test(h), '★2026-10-20 本部には、いいねを押した店・名前の一覧も出る');
+  /* 2026-11-13 神田さん「いいねをもう一度押すと取消できるように」＝off の行で同じ店×名前のいいねを1つ引く */
+  run(() => { seedNews('hq', 'all'); const arr = JSON.parse(localStorage.getItem('yosakura_demo_reports')); const nk = arr[0].item;
+    arr.push({ kind:'newslike', store:S, item: nk, note: JSON.stringify({ by:'ユン', off: 1 }), photos:[], t: Date.now() });
+    arr.push({ kind:'newslike', store:S, item: nk, note: JSON.stringify({ by:'いない人', off: 1 }), photos:[], t: Date.now() + 1 });   // 相手の無い取り消し＝何も引かない
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify(arr)); localStorage.setItem('yosakura_news_liked', JSON.stringify({ [nk]: 1 })); });
+  location.hash = '#/app/news?x=likeoff'; h = registry.app.innerHTML;
+  ok(/class="nwlike-n">1</.test(h) && /👍 いいね（1）：本部・本部/.test(h) && !/長堀橋・ユン ／/.test(h), 'いいねの取り消し＝同じ店×名前の1つだけ引く（2→1・一覧からも消える・相手の無い取り消しは引かない）');
+  ok(/class="mini pri" data-nwlike=/.test(h) && /もう一度押すと取り消し/.test(h) && !/data-nwlike="[^"]*" disabled/.test(h), 'いいね＝押した端末ではボタンが押せるまま（もう一度押すと取り消し）');
+  ok(/const wasLiked = !!lsMap_\(NEWS_LIKED_LS\)\[key\];/.test(code) && /wasLiked \? \{ by: getUserName\(\) \|\| '', off: 1 \}/.test(code) && /if \(wasLiked\) lsMapDel_\(NEWS_LIKED_LS, key\); else lsMapAdd_\(NEWS_LIKED_LS, key\);/.test(code) && !/この端末では1回だけ/.test(code), 'ソース＝もう一度押すと off の行を送り、端末の印を外す（行は消さない）');
   // ③ 配線＝3操作とも行内の書き換え（全画面を作り直さない）
   const srcNW = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/dataset\.nwlike/.test(srcNW) && /dataset\.nwread/.test(srcNW) && /dataset\.nwcmt\)/.test(srcNW) && /dataset\.nwcmtsend/.test(srcNW), 'いいね・確認・コメントが配線されている');
@@ -8361,10 +8370,28 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   ok(/締め切り済み・MVP 確定/.test(x) && (x.match(/kzgp-top">MVP</g) || []).length === 1 && x.indexOf('kzgp-top">MVP<') < x.indexOf('前々月の気づきA') && !/いま1位/.test(x) && /<b>2<\/b>票/.test(x) && /<b>1<\/b>票/.test(x) && /投票した人 2/.test(x) && !/data-kzvote=/.test(x), 'グランプリ＝締め切り後＝票の多い投稿（A＝2票）が自動でMVP・投票ボタンは出ない・同じ人の票は最新だけ・端末の控えと二重にしない');
   ok(/・ A ・/.test(x) && /・ B ・/.test(x) && !/締め切りまで伏せています/.test(x) && !/増田/.test(x), 'グランプリ＝締め切り後は店名とお名前が開く（投票者の名前は出ない）');
   location.hash = '#/app/kzgp?ym=' + ymNowJ; x = registry.app.innerHTML;
-  ok(/今月の気づきC/.test(x) && /投票受付中/.test(x) && new RegExp('締め切り ' + (ymNowJ === '2026-10' ? '11/30' : Number(ymNext.slice(5, 7)) + '/5')).test(x) && /1人3つまで（あなたの票：1）/.test(x), 'グランプリ＝今月＝投票受付中・締め切りは翌月5日・自分の票の数');
+  ok(/今月の気づきC/.test(x) && /投票受付中/.test(x) && new RegExp('締め切り ' + (ymNowJ === '2026-10' ? '11/30' : Number(ymNext.slice(5, 7)) + '/5')).test(x) && /いくつでも投票できます（あなたの票：1）/.test(x), 'グランプリ＝今月＝投票受付中・締め切りは翌月5日・自分の票の数（11/13 数の上限なし）');
   ok(/店名・お名前は締め切りまで伏せています/.test(x) && !/・ C ・/.test(x) && !/・ D ・/.test(x) && /data-kzvote=/.test(x) && /この投稿に投票/.test(x) && /投票済み（押すと取り消し）/.test(x) && !/MVPに確定/.test(x) && !/data-kzfinal/.test(x) && !/data-kzgpshow/.test(x), 'グランプリ＝締め切り前＝店名とお名前は伏せる・投票ボタンだけ（確定ボタンも「見る」切替も無い）');
-  ok(/const KZGP_MAX_VOTES = 3, KZGP_DEADLINE_DAY = 5;/.test(code) && /if \(keys\.length >= KZGP_MAX_VOTES\) \{ toast\(/.test(code) && /keys: next, by, name: getUserName\(\)/.test(code) && /if \(kzClosed_\(ym\)\) \{ toast\(/.test(code) && !/kzFinalOf/.test(code), 'ソース＝4つ目は入らない・締め切り後は押せない・確定の行は作らない');
+  ok(/const KZGP_MAX_VOTES = 300, KZGP_DEADLINE_DAY = 5;/.test(code) && !/1人3つまでです/.test(code) && !/本部で1人3つまで投票/.test(code) && !/本部のメンバーが1人3つまで投票/.test(code) && /if \(keys\.length >= KZGP_MAX_VOTES\) \{ toast\(/.test(code) && /keys: next, by, name: getUserName\(\)/.test(code) && /if \(kzClosed_\(ym\)\) \{ toast\(/.test(code) && !/kzFinalOf/.test(code), 'ソース＝数の上限なし（300 は歯止め・画面の文言に「1人3つまで」が残っていない）・締め切り後は押せない・確定の行は作らない');
   ok(/'2026-10': '2026-11-30'/.test(code), 'ソース＝初回（10月分）の締め切りは仮の 11/30（神田さんが決めたら直す）');
+  /* 2026-11-13 構築MTG＋神田さん＝数の上限なし・審査基準・「FACに流す」 */
+  ok(/他店舗にも共有したほうがよい気づき・事例か/.test(x) && /これは他店舗にも共有すべき！/.test(x) && (x.match(/data-kzfac=/g) || []).length === 2 && /FACに流す/.test(x) && !/FACに載せ済み/.test(x), 'グランプリ＝審査の基準が出る・投稿ごとに「FACに流す」');
+  run(() => { kzSeed(); const arr = JSON.parse(localStorage.getItem('yosakura_demo_reports')); const ks = [S + '||' + tN, '寿司世桜 心斎橋店||' + (tN + 1000), 'x||1', 'x||2', 'x||3'];
+    arr.push({ kind:'kzvote', store:'', item: ymNowJ, note: JSON.stringify({ keys: ks, by:'kanda', name:'神田' }), t: tN + 120e3, id:'v9' }); localStorage.setItem('yosakura_demo_reports', JSON.stringify(arr)); });
+  location.hash = '#/app/kzgp?ym=' + ymNowJ + '&n=5'; x = registry.app.innerHTML;
+  ok(/いくつでも投票できます（あなたの票：5）/.test(x) && (x.match(/投票済み（押すと取り消し）/g) || []).length === 2, 'グランプリ＝4つ以上でも票が切られない（5票・画面の2件とも投票済み）');
+  { /* 擬似DOMは data- 属性のボタンを返さない＝この間だけ [data-kzfac] に1つ返して、bind が付けた onclick を押す */
+    const fb = { dataset: { kzfac: S + '||' + tN }, onclick: null }; const qsa0 = doc.querySelectorAll; doc.querySelectorAll = (sel) => (sel === '[data-kzfac]' ? [fb] : []);
+    location.hash = '#/app/kzgp?ym=' + ymNowJ + '&n=55'; doc.querySelectorAll = qsa0;
+    ok(typeof fb.onclick === 'function', 'グランプリ＝「FACに流す」が押せる'); if (fb.onclick) fb.onclick(); x = registry.app.innerHTML;
+    ok(/app\/fac/.test(location.hash) && />今月の気づきC<\/textarea>/.test(x) && /data-facclear=/.test(x) && /気づきの本文を「した工夫」に入れました/.test(x) && !/id="fac_store" type="text" value="[^"]/.test(x), 'FACに流す＝FAC の「事例を載せる」に本文が入る・締め切り前は店名を入れない（審査中の匿名のまま）');
+    const g = (id) => doc.getElementById(id); if (g('fac_scene')) g('fac_scene').value = 'dining'; if (g('fac_title')) g('fac_title').value = '流した事例'; if (g('fac_idea')) g('fac_idea').value = '今月の気づきC';
+    if (g('facAdd')) g('facAdd').onclick(); x = registry.app.innerHTML;
+    const fq = JSON.parse(localStorage.getItem('yosakura_demo_faq') || '[]'); const it = fq.filter(f => f && f.fac && f.title === '流した事例')[0] || {};
+    ok(it.kz === S + '||' + tN && it.idea === '今月の気づきC' && !/data-facclear=/.test(x), 'FACに流す＝載せると元の気づきの印（kz）が付き、下書きは消える');
+    location.hash = '#/app/kzgp?ym=' + ymNowJ + '&n=6'; x = registry.app.innerHTML;
+    ok(/FACに載せ済み/.test(x) && (x.match(/data-kzfac=/g) || []).length === 1, 'グランプリ＝載せた投稿は「FACに載せ済み」・残りはボタンのまま');
+    run(() => { localStorage.removeItem('yosakura_demo_faq'); }); }
   // Codex（11/11 夕）＝重複票・締め切り後の票・JSTの暦日・写真の esc・理由欄の置き場所・本部だけの写真
   run(() => { kzSeed(); const arr = JSON.parse(localStorage.getItem('yosakura_demo_reports'));
     arr.push({ kind:'kzvote', store:'', item: ym2, note: JSON.stringify({ keys: ['寿司世桜 心斎橋店||' + (t2 + 3600e3), '寿司世桜 心斎橋店||' + (t2 + 3600e3), '寿司世桜 心斎橋店||' + (t2 + 3600e3)], by:'tanaka', name:'田中' }), t: t2 + 86400e3 * 23, id:'v5' });   // 同じ投稿を3回＝1票
@@ -8399,7 +8426,7 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   ok(/\['sk_date', 'sk_store'\]\.forEach\(id => \{ const e = g\(id\); if \(e\) e\.addEventListener\('change', \(\) => \{ setTimeout\(sync, 0\); setTimeout\(sync, 400\); \}\); \}\);/.test(code) && /document\.createEvent\('Event'\)/.test(code), 'ソース＝日付・店舗を変えたら「なし」の印を合わせる・Event が無い環境の予備（Codex#4・#12）');
   ok(!/yosakura_kzgp_show/.test(code) && /const closed = kzClosed_\(ym\), show = closed, dl = kzDeadline_\(ym\);/.test(code), 'ソース＝「見る」の切替（端末ごと）は廃止・開くのは締め切りを過ぎた月だけ');
   { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');
-    ok(/var kvKeys = Array\.isArray\(kv\.keys\) \? kv\.keys : \(kv\.key \? \[kv\.key\] : \[\]\);/.test(gsrc) && /\.slice\(0, 3\), by: String\(u\.uid \|\| ''\)/.test(gsrc) && !/kvo\.final/.test(gsrc), '認証.gs＝票は keys（3つまで）・旧形式 key も受ける・投票者は uid のまま・確定の印は無い'); }
+    ok(/var kvKeys = Array\.isArray\(kv\.keys\) \? kv\.keys : \(kv\.key \? \[kv\.key\] : \[\]\);/.test(gsrc) && /\.slice\(0, 300\), by: String\(u\.uid \|\| ''\)/.test(gsrc) && !/kvo\.final/.test(gsrc), '認証.gs＝票は keys（数の上限なし・300 は歯止め）・旧形式 key も受ける・投票者は uid のまま・確定の印は無い'); }
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/home?tab=hq';
   ok(/data-open="kzgp"/.test(registry.app.innerHTML) && /気づきグランプリ（月間MVP）/.test(registry.app.innerHTML), '本部タブ＝グランプリの入口の帯（口コミ・盛付の帯の下）');

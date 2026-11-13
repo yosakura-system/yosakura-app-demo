@@ -2775,7 +2775,7 @@
       ${(() => { try { const rvYm = todayKey().slice(0, 7); const rvN = rvissuesOf('').filter(x => String(x._d).slice(0, 7) === rvYm).length; const rvAll = rvissuesOf('').length;
         /* ★2026-11-07 神田さん「どのボタンを押したら見れるのか分からん」＝本部タブにも入口（見る→お客様の声の帯と同じ先） */
         return `<button class="pb-strip" data-open="rvissue" style="margin-top:0">${pbImg_('miru_manual', 'pb-th pb-th--s')}<span><b>${L({ ja:'口コミ・盛付の指摘（本部の隔週チェック）', en:'Review & plating issues (HQ biweekly check)', vi:'Ghi nhận đánh giá & trình bày' })}</b>${rvAll ? `${rvN}${L({ ja:'件（今月）・通算 ', en:' this month, total ', vi:' tháng này, tổng ' })}${rvAll}${L({ ja:'件 ・ 店別に本文まで', en:'. By store with text', vi:'. Theo cửa hàng' })}` : L({ ja:'毎晩23時台に自動で写します（まだ記録なし）', en:'Mirrored nightly (no records yet)', vi:'Tự động mỗi đêm (chưa có)' })}</span>${svg('chev')}</button>`; } catch (e) { return ''; } })()}
-      <button class="pb-strip" data-open="kzgp" style="margin-top:0">${pbImg_('kyou_kizuki_team', 'pb-th pb-th--s')}<span><b>${L({ ja:'気づきグランプリ（月間MVP）', en:'Insight Grand Prix (monthly MVP)', vi:'Giải ghi nhận tháng' })}</b>${L({ ja:'前月の気づきを全部並べて、本部で1人3つまで投票', en:'All of last month’s insights; up to 3 votes per HQ member', vi:'Mỗi thành viên HQ tối đa 3 phiếu' })}</span>${svg('chev')}</button>
+      <button class="pb-strip" data-open="kzgp" style="margin-top:0">${pbImg_('kyou_kizuki_team', 'pb-th pb-th--s')}<span><b>${L({ ja:'気づきグランプリ（月間MVP）', en:'Insight Grand Prix (monthly MVP)', vi:'Giải ghi nhận tháng' })}</b>${L({ ja:'前月の気づきから、他店舗にも共有したい投稿すべてに投票', en:'Vote for every insight worth sharing with other stores', vi:'Bỏ phiếu cho mọi ghi nhận đáng chia sẻ' })}</span>${svg('chev')}</button>
       <div class="pb-sec"><h2>${L({ ja:'全店 きょう', en:'All stores today', vi:'Tất cả hôm nay' })}</h2><small>${L({ ja:'●＝提出済み ・ 赤＝締切超過', en:'● done, red = overdue', vi:'● xong, đỏ = trễ' })}</small></div>
       <div class="pb-card"><div class="pb-hqgrid"><span></span>${COLS.map(([h]) => `<span class="h">${esc(h)}</span>`).join('')}<span class="h">${L({ ja:'レジ締め', en:'Register', vi:'Két' })}</span>${grid}</div><div class="pb-hqnote">${L({ ja:'点線＝その店では対象外の項目、またはUSENレジが無い店。レジ締めの赤＝現金の過不足あり。定休日は全部点線', en:'Dashed = not applicable or no USEN register. Red register = cash difference.', vi:'Nét đứt = không áp dụng. Đỏ = lệch tiền mặt.' })}</div></div>
       <div class="pb-sec"><h2>${L({ ja:'レジ締め', en:'Register close', vi:'Chốt két' })}</h2><small>${L({ ja:`USENから毎朝 ・ ${regi.length}店`, en:`From USEN each morning, ${regi.length} stores`, vi:`Từ USEN mỗi sáng, ${regi.length} CH` })}</small></div>
@@ -9090,21 +9090,21 @@
     const mine = saved.filter(f => f && f.fac && !f.deleted && !/^fc_/.test(f.id)).sort((x, y) => (y.t || 0) - (x.t || 0));
     return mine.concat(fixed);   // 本部が新しく載せた物が上・マニュアル由来は下
   };
-  let facEditId = null;
+  let facEditId = null, facPrefill = null;   // facPrefill＝気づきグランプリの「FACに流す」で入れた下書き（2026-11-13）
   APP_VIEWS.fac = () => {
     const isHQ = getRole() === 'hq';
     const rows = facList();
     const fld = (id, lab, val, rowsN) => `<label class="fl">${esc(L(lab))}</label>` + (rowsN ? `<textarea id="${id}" rows="${rowsN}">${esc(val || '')}</textarea>` : `<input id="${id}" type="text" value="${esc(val || '')}">`);
-    const form = (pre, it) => `
+    const form = (pre, it, v = it || (pre === 'fac' ? facPrefill : null)) => `
         <label class="fl">${esc(L({ ja:'場面', en:'Scene', vi:'Tình huống' }))}</label>
         <select id="${pre}_scene">${it ? '' : `<option value="" selected>${esc(L({ ja:'場面を選んでください', en:'Choose a scene', vi:'Chọn tình huống' }))}</option>`}${FAC_SCENES.map(c => `<option value="${c.v}"${it && facSceneOf(it.scene) === c.v ? ' selected' : ''}>${esc(L(c.t))}</option>`).join('')}</select>
         <label class="fl">${esc(L({ ja:'お客様の状況（書かなくてもよい）', en:'Guest situation (optional)', vi:'Tình trạng khách (tùy chọn)' }))}</label>
         <select id="${pre}_tag"><option value="">${esc(L({ ja:'なし', en:'None', vi:'Không' }))}</option>${FAC_TAGS.map(c => `<option value="${c.v}"${facTagOf(it && it.tag) === c.v ? ' selected' : ''}>${esc(L(c.t))}</option>`).join('')}</select>
-        ${fld(pre + '_title', { ja:'一言で（例：雨の日の傘のご案内）', en:'Title', vi:'Tiêu đề' }, it && it.title)}
-        ${fld(pre + '_reason', { ja:'来店理由・そのときの状況', en:'Reason for visit / situation', vi:'Lý do đến / tình huống' }, it && it.reason, 2)}
-        ${fld(pre + '_idea', { ja:'した工夫', en:'What we did', vi:'Đã làm gì' }, it && it.idea, 3)}
-        ${fld(pre + '_react', { ja:'お客様の反応', en:'How guests reacted', vi:'Phản ứng của khách' }, it && it.react, 2)}
-        ${fld(pre + '_store', { ja:'お店（書かなくてもよい）', en:'Store (optional)', vi:'Cửa hàng (tùy chọn)' }, it && it.store)}`;
+        ${fld(pre + '_title', { ja:'一言で（例：雨の日の傘のご案内）', en:'Title', vi:'Tiêu đề' }, v && v.title)}
+        ${fld(pre + '_reason', { ja:'来店理由・そのときの状況', en:'Reason for visit / situation', vi:'Lý do đến / tình huống' }, v && v.reason, 2)}
+        ${fld(pre + '_idea', { ja:'した工夫', en:'What we did', vi:'Đã làm gì' }, v && v.idea, 3)}
+        ${fld(pre + '_react', { ja:'お客様の反応', en:'How guests reacted', vi:'Phản ứng của khách' }, v && v.react, 2)}
+        ${fld(pre + '_store', { ja:'お店（書かなくてもよい）', en:'Store (optional)', vi:'Cửa hàng (tùy chọn)' }, v && v.store)}`;
     const card = (it) => (isHQ && facEditId === it.id) ? `
       <div class="card" style="padding:12px">${form('face', it)}
         <div class="row" style="margin-top:8px"><button class="btn-primary" data-facsave="${esc(it.id)}">${L({ ja:'保存', en:'Save', vi:'Lưu' })}</button><button class="mini" data-faccancel="1">${L({ ja:'やめる', en:'Cancel', vi:'Hủy' })}</button></div>
@@ -9123,7 +9123,7 @@
         <p class="news-body">${L({ ja:'マニュアルは基準、FACはその上の工夫です。正解は一つではないので、自分のお店に合う形で使ってください。決まったルールと答えは「FAQ」にあります。', en:'Manuals are the standard; FAC is the extra idea on top. There is no single right answer, so adapt it to your store. Set rules and answers are in “FAQ”.', vi:'Cẩm nang là chuẩn, FAC là ý tưởng thêm. Không có một đáp án duy nhất, hãy áp dụng cho phù hợp. Quy định và câu trả lời ở “FAQ”.' })}</p>
         <div class="row" style="margin-top:8px"><button class="mini" data-open="faq">${L({ ja:'FAQ（ルール集）を開く', en:'Open FAQ', vi:'Mở FAQ' })}</button>${isHQ ? '' : `<button class="mini" data-open="kizuki">${L({ ja:'工夫を送る（気づきから）', en:'Send an idea (via Insights)', vi:'Gửi ý tưởng (qua Ghi nhận)' })}</button>`}</div>
       </div>
-      ${isHQ ? `<div class="card" id="facForm"><h3>${L({ ja:'事例を載せる（本部）', en:'Add a case (HQ)', vi:'Thêm trường hợp (HQ)' })}</h3>${form('fac')}<button class="btn-primary" id="facAdd" style="margin-top:8px">${L({ ja:'載せる', en:'Publish', vi:'Đăng' })}</button></div>` : ''}
+      ${isHQ ? `<div class="card" id="facForm"><h3>${L({ ja:'事例を載せる（本部）', en:'Add a case (HQ)', vi:'Thêm trường hợp (HQ)' })}</h3>${facPrefill ? `<p class="hint" style="display:block">${L({ ja:'気づきの本文を「した工夫」に入れました。場面と一言を足し、文を整えてから載せてください。お店は「○○店のTさん」（店名とイニシャル）の形で。', en:'The insight text is in “What we did”. Add a scene and a title, tidy the text, then publish. Write the store as “Store, initial”.', vi:'Nội dung ghi nhận đã được đưa vào “Đã làm gì”. Thêm tình huống và tiêu đề rồi đăng.' })} <button class="mini" data-facclear="1">${L({ ja:'入れた内容を消す', en:'Clear', vi:'Xóa' })}</button></p>` : ''}${form('fac')}<button class="btn-primary" id="facAdd" style="margin-top:8px">${L({ ja:'載せる', en:'Publish', vi:'Đăng' })}</button></div>` : ''}
       <div class="sec-h"><span class="bar"></span><h2>${L({ ja:'事例', en:'Cases', vi:'Trường hợp' })}</h2><span class="count">${rows.length}</span></div>
       ${rows.length ? FAC_SCENES.map(c => { const its = rows.filter(it => facSceneOf(it.scene) === c.v); if (!its.length && !isHQ) return ''; const k = 'fac_' + c.v;
         return `<div class="card"><div class="mrow" data-faqfold="${k}" style="padding:6px 2px"><div class="mt"><b>${esc(L(c.t))}</b><span>${esc(L(c.s))}</span></div><span class="chev"><small style="color:#8a8">${its.length ? L({ ja:'事例 ', en:'Cases ', vi:'Trường hợp ' }) + its.length : L({ ja:'準備中', en:'coming soon', vi:'đang chuẩn bị' })}</small>　${svg('chev')}</span></div><div data-faqfoldbody="${k}" hidden>${its.map(card).join('')}</div></div>`; }).join('') : `<p class="hint" style="display:block">${L({ ja:'まだ事例はありません。お客様に喜ばれた工夫があれば「気づき」から送ってください。本部が載せます。', en:'No cases yet. Send ideas guests loved via Insights; HQ will publish them.', vi:'Chưa có. Hãy gửi ý tưởng qua Ghi nhận; HQ sẽ đăng.' })}</p>`}`;
@@ -10891,7 +10891,9 @@
   const kzLocalVotes_ = () => { try { return JSON.parse(localStorage.getItem('yosakura_demo_kzvote')) || []; } catch (e) { return []; } };
   /* ★2026-11-11 夕 神田さん「各気づきの横の『MVPに確定』ボタンは不要。前月の気づきを本部メンバーがアプリで見て、各々3つまで投票。それを自動で集約してMVPが確定。締め切りは当月5日」
      ＝確定の行（final）は作らない。締め切り＝対象月の翌月5日。過ぎたら投票を閉じ、票の多い投稿がMVP（同数は全部）・店名とお名前が開く。旧形式 {key} の1票も読む */
-  const KZGP_MAX_VOTES = 3, KZGP_DEADLINE_DAY = 5;
+  /* ★2026-11-13 構築MTG＋神田さん「本部メンバーは上限なく、『これは他店舗にも共有すべき！』というものはすべて投票できるように」＝数の上限をやめた。
+     300 は壊れた行への歯止めで、画面には出さない。審査の基準＝「世桜グループの他店舗にも共有したほうがよい気づき・事例か」（社長） */
+  const KZGP_MAX_VOTES = 300, KZGP_DEADLINE_DAY = 5;
   const KZGP_DEADLINE_OVERRIDE = { '2026-10': '2026-11-30' };   // ★初回（10月分）だけ＝仕組みが 11/11 に入り、5日はもう過ぎているため【仮】。神田さんが決めたら直す
   const kzDeadline_ = (ym) => KZGP_DEADLINE_OVERRIDE[ym] || (prevYmN_(ym, -1) + '-' + String(KZGP_DEADLINE_DAY).padStart(2, '0'));
   /* ★Codex（11/11 夕）＝締め切りは JST の暦日（todayKey は営業日＝5時区切り・端末の時刻帯に寄る）。締め切り後に届いた票（旧版の端末・直接POST）は数えない */
@@ -10930,23 +10932,25 @@
     const voters = Object.keys(votes).filter(b => votes[b].keys.length).length;
     const seg = `<div class="pb-numseg">${months.map(m => `<button type="button" class="${m === ym ? 'on' : ''}" data-open="kzgp?ym=${m}">${mlab(m)}</button>`).join('')}</div>`;
     const dlLab = esc(mdLabel(dl));
+    /* ★2026-11-13 神田さん「気づきの部分で『これはFACに流す』というボタンを別で」＝押すと FAC の「事例を載せる」に本文が入る（場面と一言を足して載せる＝最後は人の目）。載せた投稿には印（faqset の kz） */
+    const facKz = new Set(getFaq().filter(f => f && f.fac && !f.deleted && f.kz).map(f => String(f.kz)));
     const list = rows.map((r, i) => { const k = kkey(r); const vs = tally[k] || []; const isMvp = mvps.includes(k); const top = !closed && topN && vs.length === topN;
       return `<div class="card kzgp-row${(top || isMvp) ? ' top' : ''}" data-kzrow="${esc(k)}"><div class="kzgp-no">#${i + 1}${isMvp ? ` <span class="kzgp-top">MVP</span>` : top ? ` <span class="kzgp-top">${L({ja:'いま1位',en:'Leading',vi:'Dẫn đầu'})}</span>` : ''}</div>
         <div class="kzgp-note">${esc(r.note)}</div>
         ${r.photos && r.photos.length ? `<div class="photo-thumbs">${r.photos.slice(0, 3).map(p => `<img class="rep-photo" src="${esc(photoThumb(p))}" data-full="${esc(photoFull(p))}" alt="" loading="lazy">`).join('')}</div>` : ''}
         <div class="l2 muted">${esc(kzCatLabel(r.cat))} ・ ${show ? `${esc(storeShort(r.store))}${r.who ? ' ・ ' + esc(r.who) : ''}` : L({ja:'店名・お名前は締め切りまで伏せています',en:'Store and name hidden until the deadline',vi:'Ẩn cửa hàng và tên đến hạn chót'})} ・ ${esc(mdLabel(dateKeyFor(r.store, r.t)))}</div>
-        <div class="kzgp-vote">${closed ? '' : `<button class="mini${mine.includes(k) ? ' pri' : ''}" data-kzvote="${esc(k)}" data-kzvoteym="${esc(ym)}">${mine.includes(k) ? L({ja:'投票済み（押すと取り消し）',en:'Voted (tap to undo)',vi:'Đã bỏ phiếu (bấm để bỏ)'}) : L({ja:'この投稿に投票',en:'Vote for this',vi:'Bỏ phiếu'})}</button> `}<b>${vs.length}</b>${L({ja:'票',en:' vote(s)',vi:' phiếu'})}</div></div>`; }).join('');
+        <div class="kzgp-vote">${closed ? '' : `<button class="mini${mine.includes(k) ? ' pri' : ''}" data-kzvote="${esc(k)}" data-kzvoteym="${esc(ym)}">${mine.includes(k) ? L({ja:'投票済み（押すと取り消し）',en:'Voted (tap to undo)',vi:'Đã bỏ phiếu (bấm để bỏ)'}) : L({ja:'この投稿に投票',en:'Vote for this',vi:'Bỏ phiếu'})}</button> `}<b>${vs.length}</b>${L({ja:'票',en:' vote(s)',vi:' phiếu'})} ${facKz.has(k) ? `<span class="kzgp-top">${L({ja:'FACに載せ済み',en:'In FAC',vi:'Đã vào FAC'})}</span>` : `<button class="mini" data-kzfac="${esc(k)}">${L({ja:'FACに流す',en:'Send to FAC',vi:'Đưa vào FAC'})}</button>`}</div></div>`; }).join('');
     const status = closed
       ? (mvps.length
           ? `<b>${L({ja:'締め切り済み・MVP 確定',en:'Closed · MVP decided',vi:'Đã đóng · MVP đã chốt'})}</b> <span class="muted">（${L({ja:'締め切り ',en:'deadline ',vi:'hạn chót '})}${dlLab} ・ ${topN}${L({ja:'票',en:' votes',vi:' phiếu'})}${mvps.length > 1 ? ' ・ ' + L({ja:'同数のため',en:'tie: ',vi:'đồng phiếu: '}) + mvps.length + L({ja:'件',en:' posts',vi:' bài'}) : ''}）</span>`
           : `<b>${L({ja:'締め切り済み',en:'Closed',vi:'Đã đóng'})}</b> <span class="muted">（${L({ja:'締め切り ',en:'deadline ',vi:'hạn chót '})}${dlLab} ・ ${L({ja:'投票が無かったためMVPはありません',en:'no votes, so no MVP',vi:'không có phiếu nên không có MVP'})}）</span>`)
-      : `<b>${L({ja:'投票受付中',en:'Voting open',vi:'Đang bỏ phiếu'})}</b> <span class="muted">${L({ja:'締め切り ',en:'Deadline ',vi:'Hạn chót '})}${dlLab} ・ ${L({ja:'1人',en:'',vi:''})}${KZGP_MAX_VOTES}${L({ja:'つまで（あなたの票：',en:' votes per person (yours: ',vi:' phiếu/người (của bạn: '})}${mine.length}${L({ja:'）',en:')',vi:')'})}</span>`;
+      : `<b>${L({ja:'投票受付中',en:'Voting open',vi:'Đang bỏ phiếu'})}</b> <span class="muted">${L({ja:'締め切り ',en:'Deadline ',vi:'Hạn chót '})}${dlLab} ・ ${L({ja:'いくつでも投票できます（あなたの票：',en:'no limit on votes (yours: ',vi:'không giới hạn phiếu (của bạn: '})}${mine.length}${L({ja:'）',en:')',vi:')'})}</span>`;
     return `
-      ${NOTE({ ja:'◆ 前月の気づきを全部並べています。本部のメンバーが1人3つまで投票。締め切り（当月5日）を過ぎると自動で集計してMVPが決まり、店名・お名前が開きます（プレゼントは本部から）', en:'◆ All insights of the month. Each HQ member votes for up to 3. After the deadline (5th of the next month) the MVP is decided automatically and names are revealed.', vi:'◆ Tất cả ghi nhận của tháng. Mỗi thành viên HQ bỏ tối đa 3 phiếu. Sau hạn chót (ngày 5 tháng sau) MVP tự chốt và tên được mở.' })}
+      ${NOTE({ ja:'◆ 前月の気づきを全部並べています。本部のメンバーが「これは他店舗にも共有すべき！」と思う投稿すべてに投票できます（数の上限はありません）。締め切り（当月5日）を過ぎると自動で集計してMVPが決まり、店名・お名前が開きます（プレゼントは本部から）', en:'◆ All insights of the month. Each HQ member votes for every post worth sharing with other stores (no limit). After the deadline (5th of the next month) the MVP is decided automatically and names are revealed.', vi:'◆ Tất cả ghi nhận của tháng. Mỗi thành viên HQ bỏ phiếu cho mọi bài đáng chia sẻ với cửa hàng khác (không giới hạn). Sau hạn chót (ngày 5 tháng sau) MVP tự chốt và tên được mở.' })}
       ${seg}
       <div class="card"><div class="l1" style="font-weight:600">${esc(mlab(ym))} ・ ${rows.length} ${L({ja:'件',en:'posts',vi:'bài'})} ・ ${L({ja:'投票した人',en:'voters',vi:'người bỏ phiếu'})} ${voters}</div>
         <div class="l2" style="display:block;margin-top:6px">${status}</div>
-        <p class="hint" style="display:block;margin-top:6px">${L({ ja:'選ぶ軸は「世桜全体を良くする／店の改善／お客様の満足／他店にも広げられる／本部が知るべき問題提起」で、件数の多さでは選びません。店名・お名前は締め切りまで全員に伏せています（色眼鏡で見ないため）。確定したら「お知らせを出す」で全店へ（先月のMVP：○○店の○○さん）。', en:'Pick by value to YOSAKURA, not by count. Store and names are hidden from everyone until the deadline. After it, announce the MVP with a notice to all stores.', vi:'Chọn theo giá trị, không theo số lượng. Ẩn tên đến hạn chót. Sau đó công bố bằng thông báo.' })}</p></div>
+        <p class="hint" style="display:block;margin-top:6px">${L({ ja:'選ぶ基準は1つ＝「世桜グループの他店舗にも共有したほうがよい気づき・事例か」。その店で良かった、だけでなく、他店に広げると世桜全体が良くなる投稿に投票します。共有したい投稿は「FACに流す」で事例集（FAC）にも載せられます。店名・お名前は締め切りまで全員に伏せています（色眼鏡で見ないため）。確定したら「お知らせを出す」で全店へ（先月のMVP：○○店のTさん＝店名とイニシャル）。', en:'One criterion: is it worth sharing with other YOSAKURA stores? Use “Send to FAC” to add it to the case book. Store and names are hidden from everyone until the deadline. After it, announce the MVP with a notice to all stores.', vi:'Một tiêu chí: có đáng chia sẻ với các cửa hàng khác không? Dùng “Đưa vào FAC” để thêm vào tập ví dụ. Ẩn tên đến hạn chót. Sau đó công bố bằng thông báo.' })}</p></div>
       ${list || `<div class="card"><p class="muted">${L({ja:'この月の気づきはありません',en:'No insights this month',vi:'Không có ghi nhận trong tháng'})}</p></div>`}`;
   };
   APP_VIEWS.inbox = () => {
@@ -11317,13 +11321,15 @@
       // お知らせへの反応（いいね・確認・コメント）＝押した行の中だけ書き換え（2026-09-08 神田さんのご要望）
       if (t.dataset.nwlike) {
         const key = t.dataset.nwlike;
-        if (lsMap_(NEWS_LIKED_LS)[key]) return;   // この端末では1回だけ
-        lsMapAdd_(NEWS_LIKED_LS, key);
-        const rep = { kind:'newslike', store: getRole() === 'hq' ? '*' : (visibleStores()[0] || '*'), item: key, note: JSON.stringify({ by: getUserName() || '' }), photos: [], t: Date.now() };
+        /* ★2026-11-13 神田さん「いいねをもう一度押すと取消できるように」（店舗側の見え方で押してしまい、取り消せなかった）。
+           取り消し＝同じ kind の行に off の印（行は消さない＝黙って消えるを作らない）。数えるときに、同じ店×名前のいいねを1つ引く（newsFb） */
+        const wasLiked = !!lsMap_(NEWS_LIKED_LS)[key];
+        if (wasLiked) lsMapDel_(NEWS_LIKED_LS, key); else lsMapAdd_(NEWS_LIKED_LS, key);
+        const rep = { kind:'newslike', store: getRole() === 'hq' ? '*' : (visibleStores()[0] || '*'), item: key, note: JSON.stringify(wasLiked ? { by: getUserName() || '', off: 1 } : { by: getUserName() || '' }), photos: [], t: Date.now() };
         try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (err) {}
         lastSync = rep.t;
-        const nEl = t.querySelector('.nwlike-n'); if (nEl) nEl.textContent = String((Number(nEl.textContent) || 0) + 1);
-        t.disabled = true;
+        const nEl = t.querySelector('.nwlike-n'); if (nEl) nEl.textContent = String(Math.max(0, (Number(nEl.textContent) || 0) + (wasLiked ? -1 : 1)));
+        try { t.classList.toggle('pri', !wasLiked); t.title = wasLiked ? '' : L({ ja:'もう一度押すと取り消し', en:'Tap again to undo', vi:'Bấm lại để bỏ' }); } catch (err) {}
         postReport(rep);
         return;
       }
@@ -11889,16 +11895,20 @@
   const NEWS_READ_LS = 'yosakura_news_readed';
   const lsMap_ = (k) => { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } };
   const lsMapAdd_ = (k, id) => { try { const m = lsMap_(k); m[id] = 1; localStorage.setItem(k, JSON.stringify(m)); } catch (e) {} };
+  const lsMapDel_ = (k, id) => { try { const m = lsMap_(k); delete m[id]; localStorage.setItem(k, JSON.stringify(m)); } catch (e) {} };
   function newsFb(key) {
-    let likeN = 0; const likes = []; const reads = []; const cmts = [];
+    let likeN = 0; const likes = []; const offs = []; const reads = []; const cmts = [];
     try {
       getReports().forEach(r => {
         if (String(r.item || '') !== key) return;
-        if (r.kind === 'newslike') { likeN++; const p = parseNote(r.note); likes.push({ store: r.store || '', by: (p && p.by) || '', t: r.t }); }   // ★2026-10-20 誰が押したか（本部だけに出す）
+        if (r.kind === 'newslike') { const p = parseNote(r.note); (p && p.off ? offs : likes).push({ store: r.store || '', by: (p && p.by) || '', t: r.t }); }   // ★2026-10-20 誰が押したか（本部だけに出す）
         else if (r.kind === 'newsread') { const p = parseNote(r.note); reads.push({ store: r.store || '', by: (p && p.by) || '', t: r.t }); }
         else if (r.kind === 'newscmt') { const p = parseNote(r.note); if (p && p.body) cmts.push({ store: r.store || '', by: (p && p.by) || '', body: p.body, t: r.t }); }
       });
     } catch (e) {}
+    /* ★2026-11-13 取り消し（off）＝同じ店×名前のいいねを1つ引く。見え方を切り替えてから取り消したとき用に、無ければ同じ名前のいいねを1つ引く。どちらも無ければ何もしない */
+    offs.forEach(o => { let i = likes.findIndex(x => x.store === o.store && x.by === o.by); if (i < 0 && o.by) i = likes.findIndex(x => x.by === o.by); if (i >= 0) likes.splice(i, 1); });
+    likeN = likes.length;
     cmts.sort((a, b) => a.t - b.t);
     // 確認済みは「店舗×名前」で1件に（同じ人が別端末で押しても増やさない）
     const seen = {}; const uniqReads = reads.filter(x => { const k2 = x.store + '|' + x.by; if (seen[k2]) return false; seen[k2] = 1; return true; });
@@ -11921,7 +11931,7 @@
         ${n.video ? `<a class="news-video" href="${esc(n.video)}" target="_blank" rel="noopener">▶ ${L({ ja:'動画を見る', en:'Watch video', vi:'Xem video' })}</a>` : ''}
         <div class="l2">${esc(newsTargetLabel(n.target))} ・ ${timeAgo(n.t)}</div>
         <div class="l2" style="display:block;margin-top:6px">
-          <button class="mini" data-nwlike="${esc(key)}"${liked ? ' disabled' : ''}>👍 ${L({ ja:'いいね', en:'Like', vi:'Thích' })} <span class="nwlike-n">${fb.likeN}</span></button>
+          <button class="mini${liked ? ' pri' : ''}" data-nwlike="${esc(key)}"${liked ? ` title="${L({ ja:'もう一度押すと取り消し', en:'Tap again to undo', vi:'Bấm lại để bỏ' })}"` : ''}>👍 ${L({ ja:'いいね', en:'Like', vi:'Thích' })} <span class="nwlike-n">${fb.likeN}</span></button>
           ${readed ? `<span class="muted" style="margin-left:8px">✓ ${L({ ja:'確認済み', en:'Confirmed', vi:'Đã xem' })}</span>` : `<button class="mini" data-nwread="${esc(key)}" style="margin-left:8px">${L({ ja:'確認しました', en:'Confirm', vi:'Đã xem' })}</button>`}
           <button class="mini" data-nwcmt="${esc(key)}" style="margin-left:8px">💬 ${L({ ja:'コメント', en:'Comment', vi:'Bình luận' })}${fb.cmts.length ? ` ${fb.cmts.length}` : ''}</button>
         </div>
@@ -12311,7 +12321,7 @@
   if (!appById('kzgp')) {   // ★2026-11-11 気づきグランプリ（月間MVP）＝本部だけ
     APPS.unshift({ id:'kzgp', group:'hq', icon:'star', live:true, roles:['hq'],
       name:{ ja:'気づきグランプリ（月間MVP）', en:'Insight Grand Prix (monthly MVP)', vi:'Giải ghi nhận tháng' },
-      desc:{ ja:'前月の気づきに本部で1人3つまで投票。当月5日に締め切り、自動でMVP確定', en:'Vote for the best insight of the month', vi:'Bỏ phiếu ghi nhận hay nhất tháng' } });
+      desc:{ ja:'前月の気づきのうち、他店舗にも共有したい投稿すべてに本部で投票。当月5日に締め切り、自動でMVP確定', en:'Vote for the best insight of the month', vi:'Bỏ phiếu ghi nhận hay nhất tháng' } });
   }
   if (!appById('inbox')) {
     APPS.unshift({ id:'inbox', group:'hq', icon:'inbox', live:true, roles:['hq'],
@@ -12608,12 +12618,20 @@
       if (kzClosed_(ym)) { toast(L({ ja:'この月の投票は締め切りました', en:'Voting for this month is closed', vi:'Đã hết hạn bỏ phiếu' })); render(); return; }
       const cur = kzVotesOf(ym)[by]; const keys = cur ? cur.keys.slice() : []; const i = keys.indexOf(key); let next;
       if (i >= 0) { keys.splice(i, 1); next = keys; }
-      else { if (keys.length >= KZGP_MAX_VOTES) { toast(L({ ja:'投票は1人3つまでです。取り消してから選び直してください', en:'Up to 3 votes per person. Undo one first.', vi:'Tối đa 3 phiếu. Hãy bỏ bớt trước.' })); return; } next = keys.concat([key]); }
+      else { if (keys.length >= KZGP_MAX_VOTES) { toast(L({ ja:'これ以上は投票できません', en:'No more votes can be added', vi:'Không thể bỏ thêm phiếu' })); return; } next = keys.concat([key]); }
       const t = Date.now(); const note = JSON.stringify({ keys: next, by, name: getUserName() });
       try { const arr = kzLocalVotes_(); arr.push({ kind:'kzvote', store:'', item: ym, note, t }); localStorage.setItem('yosakura_demo_kzvote', JSON.stringify(arr.slice(-60))); } catch (e) {}
       postReport({ kind:'kzvote', store:'', item: ym, note, t });
       render();
     });
+    /* ★2026-11-13 「FACに流す」＝気づきの本文を FAC の下書きに入れて開く。店名は締め切り後（名前が開いた月）だけ入れる＝審査中の匿名を崩さない。お名前は入れない（端末の登録名のことがある＝本部が手で「Tさん」と書く） */
+    document.querySelectorAll('[data-kzfac]').forEach(b => b.onclick = () => {
+      const key = String(b.dataset.kzfac || ''); const r = getKz().find(x => x && `${x.store}||${x.t}` === key); if (!r) return;
+      const open = kzClosed_(ymOfDate(dateKeyFor(r.store, r.t)));
+      facPrefill = { idea: String(r.note || ''), store: open ? storeShort(r.store) : '', kz: key };
+      go('/app/fac');
+    });
+    document.querySelectorAll('[data-facclear]').forEach(b => b.onclick = () => { facPrefill = null; render(true); });
     document.querySelectorAll('[data-locked]').forEach(b => b.onclick = () => { const a = appById(b.dataset.locked); toast(`${L(a.name)}`); });
     document.querySelectorAll('[data-mock]').forEach(b => b.onclick = () => toast(L({ ja:'この画面は準備中です（順次追加します）', en:'This screen is in preparation', vi:'Màn hình đang chuẩn bị' })));
     // 準備中のボタンにも必ずフィードバックを返す＝無反応ボタンを排除
@@ -13430,7 +13448,8 @@
       if (!v.sceneRaw) { toast(L({ ja:'場面を選んでください', en:'Choose a scene', vi:'Hãy chọn tình huống' })); return; }
       delete v.sceneRaw;
       if (!v.title || !v.idea) { toast(L({ ja:'一言と、した工夫は必ず入れてください', en:'Enter a title and what you did', vi:'Nhập tiêu đề và việc đã làm' })); return; }
-      const list = getFaq(); list.push(Object.assign({ id:'fc' + Date.now(), fac:true, t: Date.now() }, v));
+      const list = getFaq(); list.push(Object.assign({ id:'fc' + Date.now(), fac:true, t: Date.now() }, v, (facPrefill && facPrefill.kz) ? { kz: String(facPrefill.kz) } : {}));
+      facPrefill = null;
       facPush(list, L({ ja:'載せました', en:'Published', vi:'Đã đăng' }));
     };
     document.querySelectorAll('[data-facedit]').forEach(b => b.onclick = () => { facEditId = b.dataset.facedit; render(true); });

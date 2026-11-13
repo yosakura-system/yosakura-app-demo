@@ -483,7 +483,8 @@ function auth_gate_post_(data) {
       var ymv = String(data.item || ''); var mm = /^(\d{4})-(\d{2})$/.exec(ymv); if (!mm) return { ok: false, error: 'BAD_ITEM' };
       var dl = ({ '2026-10': '2026-11-30' })[ymv] || Utilities.formatDate(new Date(Number(mm[1]), Number(mm[2]), 5), 'Asia/Tokyo', 'yyyy-MM-dd');
       if (Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd') > dl) return { ok: false, error: 'CLOSED' };
-      var kvo = { keys: uniqK.slice(0, 3), by: String(u.uid || ''), name: String(kv.name || '').slice(0, 40) };
+      /* ★2026-11-13 数の上限をやめた（神田さん「共有すべきものはすべて投票できるように」）。300 は壊れた行への歯止め */
+      var kvo = { keys: uniqK.slice(0, 300), by: String(u.uid || ''), name: String(kv.name || '').slice(0, 40) };
       data.note = JSON.stringify(kvo); data.store = ''; data.photos = [];
     } catch (e) { return { ok: false, error: 'BAD_NOTE' }; }
   }
