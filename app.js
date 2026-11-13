@@ -10944,7 +10944,7 @@
       ? (mvps.length
           ? `<b>${L({ja:'締め切り済み・MVP 確定',en:'Closed · MVP decided',vi:'Đã đóng · MVP đã chốt'})}</b> <span class="muted">（${L({ja:'締め切り ',en:'deadline ',vi:'hạn chót '})}${dlLab} ・ ${topN}${L({ja:'票',en:' votes',vi:' phiếu'})}${mvps.length > 1 ? ' ・ ' + L({ja:'同数のため',en:'tie: ',vi:'đồng phiếu: '}) + mvps.length + L({ja:'件',en:' posts',vi:' bài'}) : ''}）</span>`
           : `<b>${L({ja:'締め切り済み',en:'Closed',vi:'Đã đóng'})}</b> <span class="muted">（${L({ja:'締め切り ',en:'deadline ',vi:'hạn chót '})}${dlLab} ・ ${L({ja:'投票が無かったためMVPはありません',en:'no votes, so no MVP',vi:'không có phiếu nên không có MVP'})}）</span>`)
-      : `<b>${L({ja:'投票受付中',en:'Voting open',vi:'Đang bỏ phiếu'})}</b> <span class="muted">${L({ja:'締め切り ',en:'Deadline ',vi:'Hạn chót '})}${dlLab} ・ ${L({ja:'いくつでも投票できます（あなたの票：',en:'no limit on votes (yours: ',vi:'không giới hạn phiếu (của bạn: '})}${mine.length}${L({ja:'）',en:')',vi:')'})}</span>`;
+      : `<b>${L({ja:'投票受付中',en:'Voting open',vi:'Đang bỏ phiếu'})}</b> <span class="muted">${L({ja:'締め切り ',en:'Deadline ',vi:'Hạn chót '})}${dlLab} ・ ${L({ja:'いくつでも投票できます（あなたの票：',en:'no limit on votes (yours: ',vi:'không giới hạn phiếu (của bạn: '})}<span id="kzgpMine">${mine.length}</span>${L({ja:'）',en:')',vi:')'})}</span>`;
     return `
       ${NOTE({ ja:'◆ 前月の気づきを全部並べています。本部のメンバーが「これは他店舗にも共有すべき！」と思う投稿すべてに投票できます（数の上限はありません）。締め切り（当月5日）を過ぎると自動で集計してMVPが決まり、店名・お名前が開きます（プレゼントは本部から）', en:'◆ All insights of the month. Each HQ member votes for every post worth sharing with other stores (no limit). After the deadline (5th of the next month) the MVP is decided automatically and names are revealed.', vi:'◆ Tất cả ghi nhận của tháng. Mỗi thành viên HQ bỏ phiếu cho mọi bài đáng chia sẻ với cửa hàng khác (không giới hạn). Sau hạn chót (ngày 5 tháng sau) MVP tự chốt và tên được mở.' })}
       ${seg}
@@ -12622,7 +12622,16 @@
       const t = Date.now(); const note = JSON.stringify({ keys: next, by, name: getUserName() });
       try { const arr = kzLocalVotes_(); arr.push({ kind:'kzvote', store:'', item: ym, note, t }); localStorage.setItem('yosakura_demo_kzvote', JSON.stringify(arr.slice(-60))); } catch (e) {}
       postReport({ kind:'kzvote', store:'', item: ym, note, t });
-      render();
+      /* ★2026-11-13 神田さん「投票ボタンを押すと毎回画面が上へ行く・パチパチする」＝全画面を描き直さず、押した行だけ書き換える（お知らせの「いいね」と同じ型）。
+         「いま1位」の印と「投票した人」の数は、次に画面を開いたときに合う。行が見つからないときだけ描き直す */
+      try {
+        const voted = i < 0; const nb = b.parentElement ? b.parentElement.querySelector('b') : null; const me = document.getElementById('kzgpMine');
+        if (!nb || !me) { render(true); return; }
+        b.classList.toggle('pri', voted);
+        b.textContent = voted ? L({ja:'投票済み（押すと取り消し）',en:'Voted (tap to undo)',vi:'Đã bỏ phiếu (bấm để bỏ)'}) : L({ja:'この投稿に投票',en:'Vote for this',vi:'Bỏ phiếu'});
+        nb.textContent = String(Math.max(0, (Number(nb.textContent) || 0) + (voted ? 1 : -1)));
+        me.textContent = String(next.length);
+      } catch (e) { render(true); }
     });
     /* ★2026-11-13 「FACに流す」＝気づきの本文を FAC の下書きに入れて開く。店名は締め切り後（名前が開いた月）だけ入れる＝審査中の匿名を崩さない。お名前は入れない（端末の登録名のことがある＝本部が手で「Tさん」と書く） */
     document.querySelectorAll('[data-kzfac]').forEach(b => b.onclick = () => {
