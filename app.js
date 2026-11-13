@@ -11329,9 +11329,12 @@
         const key = t.dataset.nwlike;
         /* ★2026-11-13 神田さん「いいねをもう一度押すと取消できるように」（店舗側の見え方で押してしまい、取り消せなかった）。
            取り消し＝同じ kind の行に off の印（行は消さない＝黙って消えるを作らない）。数えるときに、同じ店×名前のいいねを1つ引く（newsFb） */
-        const wasLiked = !!lsMap_(NEWS_LIKED_LS)[key];
-        if (wasLiked) lsMapDel_(NEWS_LIKED_LS, key); else lsMapAdd_(NEWS_LIKED_LS, key);
-        const rep = { kind:'newslike', store: getRole() === 'hq' ? '*' : (visibleStores()[0] || '*'), item: key, note: JSON.stringify(wasLiked ? { by: getUserName() || '', off: 1 } : { by: getUserName() || '' }), photos: [], t: Date.now() };
+        const prevLike = lsMap_(NEWS_LIKED_LS)[key]; const wasLiked = !!prevLike;
+        const likeStore = getRole() === 'hq' ? '*' : (visibleStores()[0] || '*'), likeBy = getUserName() || '';
+        /* ★Codex（11/13）＝取り消しは「押したときの店と名前」で送る（端末を別の人が使う・お名前を変えた、でも元のいいねに当たる）。v508〜v513 で押した分（印が 1）は今の店と名前で */
+        const who = (wasLiked && prevLike && typeof prevLike === 'object') ? { store: String(prevLike.s || likeStore), by: String(prevLike.b || '') } : { store: likeStore, by: likeBy };
+        if (wasLiked) lsMapDel_(NEWS_LIKED_LS, key); else lsMapSet_(NEWS_LIKED_LS, key, { s: likeStore, b: likeBy });
+        const rep = { kind:'newslike', store: who.store, item: key, note: JSON.stringify(wasLiked ? { by: who.by, off: 1 } : { by: who.by }), photos: [], t: Date.now() };
         try { const reps = getReports(); reps.push(rep); saveReports(reps); } catch (err) {}
         lastSync = rep.t;
         const nEl = t.querySelector('.nwlike-n'); if (nEl) nEl.textContent = String(Math.max(0, (Number(nEl.textContent) || 0) + (wasLiked ? -1 : 1)));
@@ -11901,6 +11904,7 @@
   const NEWS_READ_LS = 'yosakura_news_readed';
   const lsMap_ = (k) => { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } };
   const lsMapAdd_ = (k, id) => { try { const m = lsMap_(k); m[id] = 1; localStorage.setItem(k, JSON.stringify(m)); } catch (e) {} };
+  const lsMapSet_ = (k, id, v) => { try { const m = lsMap_(k); m[id] = v; localStorage.setItem(k, JSON.stringify(m)); } catch (e) {} };
   const lsMapDel_ = (k, id) => { try { const m = lsMap_(k); delete m[id]; localStorage.setItem(k, JSON.stringify(m)); } catch (e) {} };
   function newsFb(key) {
     let likeN = 0; const likes = []; const offs = []; const reads = []; const cmts = [];
@@ -11912,8 +11916,11 @@
         else if (r.kind === 'newscmt') { const p = parseNote(r.note); if (p && p.body) cmts.push({ store: r.store || '', by: (p && p.by) || '', body: p.body, t: r.t }); }
       });
     } catch (e) {}
-    /* ★2026-11-13 取り消し（off）＝同じ店×名前のいいねを1つ引く。見え方を切り替えてから取り消したとき用に、無ければ同じ名前のいいねを1つ引く。どちらも無ければ何もしない */
-    offs.forEach(o => { let i = likes.findIndex(x => x.store === o.store && x.by === o.by); if (i < 0 && o.by) i = likes.findIndex(x => x.by === o.by); if (i >= 0) likes.splice(i, 1); });
+    /* ★2026-11-13 取り消し（off）＝同じ店×名前で、取り消しより前に押されたいいねのうち一番新しい1つを引く。無ければ何もしない。
+       Codex（11/13）＝名前だけでは引かない（別の店の同じ名前の人の分が消える）・取り消しより後のいいねは引かない（押し直した分が消える） */
+    offs.sort((a, b) => (Number(a.t) || 0) - (Number(b.t) || 0)).forEach(o => { let best = -1;
+      likes.forEach((x, i) => { if (x.store === o.store && x.by === o.by && (Number(x.t) || 0) <= (Number(o.t) || 0) && (best < 0 || (Number(x.t) || 0) > (Number(likes[best].t) || 0))) best = i; });
+      if (best >= 0) likes.splice(best, 1); });
     likeN = likes.length;
     cmts.sort((a, b) => a.t - b.t);
     // 確認済みは「店舗×名前」で1件に（同じ人が別端末で押しても増やさない）
@@ -12626,13 +12633,14 @@
       if (i >= 0) { keys.splice(i, 1); next = keys; }
       else { if (keys.length >= KZGP_MAX_VOTES) { toast(L({ ja:'これ以上は投票できません', en:'No more votes can be added', vi:'Không thể bỏ thêm phiếu' })); return; } next = keys.concat([key]); }
       const t = Date.now(); const note = JSON.stringify({ keys: next, by, name: getUserName() });
-      try { const arr = kzLocalVotes_(); arr.push({ kind:'kzvote', store:'', item: ym, note, t }); localStorage.setItem('yosakura_demo_kzvote', JSON.stringify(arr.slice(-60))); } catch (e) {}
+      let kept = false; try { const arr = kzLocalVotes_(); arr.push({ kind:'kzvote', store:'', item: ym, note, t }); localStorage.setItem('yosakura_demo_kzvote', JSON.stringify(arr.slice(-60))); kept = true; } catch (e) {}
       postReport({ kind:'kzvote', store:'', item: ym, note, t });
       /* ★2026-11-13 神田さん「投票ボタンを押すと毎回画面が上へ行く・パチパチする」＝全画面を描き直さず、押した行だけ書き換える（お知らせの「いいね」と同じ型）。
          「いま1位」の印と「投票した人」の数は、次に画面を開いたときに合う。行が見つからないときだけ描き直す */
       try {
         const voted = i < 0; const nb = b.parentElement ? b.parentElement.querySelector('b') : null; const me = document.getElementById('kzgpMine');
         if (!nb || !me) { render(true); return; }
+        if (!kept) { toast(L({ ja:'この端末に票の控えを残せませんでした。画面を開き直して、票を確かめてください', en:'Could not keep the vote on this device. Reopen the page to check.', vi:'Không lưu được phiếu trên máy. Hãy mở lại trang để kiểm tra.' })); render(true); return; }   // ★Codex（11/13）＝控えが無いのに数だけ増えるのを防ぐ
         b.classList.toggle('pri', voted);
         b.textContent = voted ? L({ja:'投票済み（押すと取り消し）',en:'Voted (tap to undo)',vi:'Đã bỏ phiếu (bấm để bỏ)'}) : L({ja:'この投稿に投票',en:'Vote for this',vi:'Bỏ phiếu'});
         nb.textContent = String(Math.max(0, (Number(nb.textContent) || 0) + (voted ? 1 : -1)));
@@ -14667,7 +14675,7 @@
         if (rep && rep.kind === 'ckdone' && !(d && d.needLogin)) return;   // ★チェックの送信後は同期しない（2026-09-24＝同期→作り直しがパチパチの元）
         /* ★2026-11-13 神田さん「投票ボタンがまだバチバチする」＝押した行だけ書き換えても、送信のあとの同期で全画面を描き直していた。
            投票（kzvote）とお知らせのいいね（newslike）も、送信後は同期しない（端末の控えに入っているので表示は合う・次の定期の同期で本部データと合流） */
-        if (rep && (rep.kind === 'kzvote' || rep.kind === 'newslike') && !(d && d.needLogin)) return;
+        if (rep && (rep.kind === 'kzvote' || rep.kind === 'newslike') && !(d && d.needLogin) && !(d && d.ok === false)) return;   // ★Codex（11/13）＝サーバーが断ったとき（締め切り後など）は下の同期へ進み、表示を本部データに合わせ直す
         if (d && d.needLogin) {
           // ★提出は保留箱へ残してからログインへ（ログイン後の同期で自動再送される＝提出は失われない）
           const q = getPending_(); q.push(rep);

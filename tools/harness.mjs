@@ -4968,8 +4968,19 @@ console.log('== お知らせにコメント・いいね・確認（2026-09-08 �
     localStorage.setItem('yosakura_demo_reports', JSON.stringify(arr)); localStorage.setItem('yosakura_news_liked', JSON.stringify({ [nk]: 1 })); });
   location.hash = '#/app/news?x=likeoff'; h = registry.app.innerHTML;
   ok(/class="nwlike-n">1</.test(h) && /👍 いいね（1）：本部・本部/.test(h) && !/長堀橋・ユン ／/.test(h), 'いいねの取り消し＝同じ店×名前の1つだけ引く（2→1・一覧からも消える・相手の無い取り消しは引かない）');
+  /* Codex（11/13）＝別の店の同じ名前は引かない・取り消しより後に押し直したいいねは引かない */
+  run(() => { seedNews('hq', 'all'); const arr = JSON.parse(localStorage.getItem('yosakura_demo_reports')); const nk = arr[0].item; const now = Date.now();
+    arr.push({ kind:'newslike', store:'寿司世桜 心斎橋店', item: nk, note: JSON.stringify({ by:'ユン', off: 1 }), photos:[], t: now });          // 別の店の「ユン」の取り消し＝長堀橋のユンは引かない
+    arr.push({ kind:'newslike', store:'*', item: nk, note: JSON.stringify({ by:'本部', off: 1 }), photos:[], t: nt + 1 });                            // 本部のいいね（nt+2）より前の取り消し＝引かない
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify(arr)); });
+  location.hash = '#/app/news?x=likeoff2'; h = registry.app.innerHTML;
+  ok(/class="nwlike-n">2</.test(h) && /👍 いいね（2）：/.test(h), 'いいねの取り消し＝別の店の同じ名前・取り消しより後に押したいいねは引かない（2のまま）');
+  run(() => { seedNews('hq', 'all'); const arr = JSON.parse(localStorage.getItem('yosakura_demo_reports')); const nk = arr[0].item;
+    arr.push({ kind:'newslike', store:S, item: nk, note: JSON.stringify({ by:'ユン', off: 1 }), photos:[], t: Date.now() });
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify(arr)); localStorage.setItem('yosakura_news_liked', JSON.stringify({ [nk]: { s:'*', b:'本部' } })); });
+  location.hash = '#/app/news?x=likeoff3'; h = registry.app.innerHTML;
   ok(/class="mini pri" data-nwlike=/.test(h) && /もう一度押すと取り消し/.test(h) && !/data-nwlike="[^"]*" disabled/.test(h), 'いいね＝押した端末ではボタンが押せるまま（もう一度押すと取り消し）');
-  ok(/const wasLiked = !!lsMap_\(NEWS_LIKED_LS\)\[key\];/.test(code) && /wasLiked \? \{ by: getUserName\(\) \|\| '', off: 1 \}/.test(code) && /if \(wasLiked\) lsMapDel_\(NEWS_LIKED_LS, key\); else lsMapAdd_\(NEWS_LIKED_LS, key\);/.test(code) && !/この端末では1回だけ/.test(code), 'ソース＝もう一度押すと off の行を送り、端末の印を外す（行は消さない）');
+  ok(/const prevLike = lsMap_\(NEWS_LIKED_LS\)\[key\]; const wasLiked = !!prevLike;/.test(code) && /wasLiked \? \{ by: who\.by, off: 1 \} : \{ by: who\.by \}/.test(code) && /if \(wasLiked\) lsMapDel_\(NEWS_LIKED_LS, key\); else lsMapSet_\(NEWS_LIKED_LS, key, \{ s: likeStore, b: likeBy \}\);/.test(code) && !/この端末では1回だけ/.test(code), 'ソース＝もう一度押すと off の行を送り、端末の印を外す（行は消さない）');
   // ③ 配線＝3操作とも行内の書き換え（全画面を作り直さない）
   const srcNW = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/dataset\.nwlike/.test(srcNW) && /dataset\.nwread/.test(srcNW) && /dataset\.nwcmt\)/.test(srcNW) && /dataset\.nwcmtsend/.test(srcNW), 'いいね・確認・コメントが配線されている');
@@ -8406,7 +8417,7 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
     ok(/FACに載せ済み/.test(x) && (x.match(/data-kzfac=/g) || []).length === 1, 'グランプリ＝載せた投稿は「FACに載せ済み」・残りはボタンのまま');
     run(() => { localStorage.removeItem('yosakura_demo_faq'); }); }
   ok(/if \(!nb \|\| !me\) \{ render\(true\); return; \}/.test(code) && /me\.textContent = String\(next\.length\);/.test(code) && !/postReport\(\{ kind:'kzvote', store:'', item: ym, note, t \}\);\r?\n      render\(\);/.test(code), 'ソース＝投票は押した行だけ書き換える（全画面を描き直さない＝上へ戻らない・ちらつかない・11/13）');
-  ok(/if \(rep && \(rep\.kind === 'kzvote' \|\| rep\.kind === 'newslike'\) && !\(d && d\.needLogin\)\) return;/.test(code), 'ソース＝投票・いいねの送信後は同期しない（同期→全画面の描き直しがちらつきの元だった・11/13）');
+  ok(/if \(rep && \(rep\.kind === 'kzvote' \|\| rep\.kind === 'newslike'\) && !\(d && d\.needLogin\) && !\(d && d\.ok === false\)\) return;/.test(code) && /let kept = false; try \{ const arr = kzLocalVotes_\(\);/.test(code) && /if \(!kept\) \{ toast\(/.test(code), 'ソース＝投票・いいねの送信後は同期しない（同期→全画面の描き直しがちらつきの元だった・11/13）');
   // Codex（11/11 夕）＝重複票・締め切り後の票・JSTの暦日・写真の esc・理由欄の置き場所・本部だけの写真
   run(() => { kzSeed(); const arr = JSON.parse(localStorage.getItem('yosakura_demo_reports'));
     arr.push({ kind:'kzvote', store:'', item: ym2, note: JSON.stringify({ keys: ['寿司世桜 心斎橋店||' + (t2 + 3600e3), '寿司世桜 心斎橋店||' + (t2 + 3600e3), '寿司世桜 心斎橋店||' + (t2 + 3600e3)], by:'tanaka', name:'田中' }), t: t2 + 86400e3 * 23, id:'v5' });   // 同じ投稿を3回＝1票
