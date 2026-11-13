@@ -3787,7 +3787,7 @@ console.log('== 開発者ビュー（2026-09-01 神田さんのご要望＝店�
   location.hash = '#/home';
   ok(/rc-role">店舗iPad</.test(registry.app.innerHTML) && !/本部メニュー/.test(registry.app.innerHTML), '★2026-10-20 本部IDは全員（社長も）店舗表示に切り替えられる');
   ok(/else if \(_distFail\) \{[^}]*\}\s*else showSyncBand_\(\);/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 保存がいっぱいで取り込めなかったときは「新しい情報が届きました」を出さない（本部iPhoneで毎回出ていた）');
-  ok(/const NEWS_RETIRED_ = \['4261b070-b0ff-478b-8988-2662f594e5ee', 'e41a75a2-81c8-40eb-ba69-c89791b14fe9'\];/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')) && /case 'news': \{ if \(NEWS_RETIRED_\.includes\(String\(id\)\)\) break;/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 引き継ぎ伝言板の9/8のお知らせは出さない（引き継ぎは店のLINE）');
+  ok(/const NEWS_RETIRED_ = \['4261b070-b0ff-478b-8988-2662f594e5ee', 'e41a75a2-81c8-40eb-ba69-c89791b14fe9'[^\]]*\];/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')) && /case 'news': \{ if \(NEWS_RETIRED_\.includes\(String\(id\)\)\) break;/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 引き継ぎ伝言板の9/8のお知らせは出さない（引き継ぎは店のLINE）');
   ok(/const getNews = \(\) => \{ try \{ return \(JSON\.parse\(localStorage\.getItem\('yosakura_demo_news'\)\) \|\| \[\]\)\.filter\(n => !\(n && NEWS_RETIRED_\.includes\(String\(n\.id\)\)\)\)/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 すでに保存済みの端末でも、引き継ぎ伝言板のお知らせは読むときに外す');
   ok(/function postReport\(rep\) \{[\s\S]{0,300}?if \(inDevView\(\)\) \{ toast\(/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 本部IDで店舗責任者・スタッフの見え方のときは送らない（店舗の提出として記録されない）');
   ok(/const pwChangeBanner_ = \(\) => pwChangeDue_\(\)\s/.test(fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')), '★2026-10-20 【見本】のパスワード変更の帯は出さない（押すと本部ID自身の変更が開くため）');
@@ -8118,6 +8118,7 @@ console.log('== 2026-11-10 本部からの返答＝最初は畳む・新しい�
 
 console.log('== 2026-11-10 注文フォーム＝店舗名マスタの写し（orderforms）から店ごとのフォームへ ==');
 {
+  sandbox.__OF_UNPAUSE_FOR_TEST = true;   // ★2026-11-13 本番は注文フォームを止めている（OF_PAUSED_）。この節は「再開したときの動き」を固定する＝テストの間だけ外す
   const OF = JSON.stringify({ t: Date.now(), src:'master', rows: [
     { code:'T0601', store:'和牛カツ世桜 長堀橋店', forms:[{ key:'和牛', url:'https://example.com/f/wagyu?entry.1=T0601' }, { key:'ポップ', url:'https://example.com/f/pop?entry.1=T0601' }] },
     { code:'T0801', store:'手巻き寿司世桜 難波店', forms:[{ key:'和牛', url:'https://example.com/f/wagyu?entry.1=T0801' }, { key:'ポップ', url:'https://example.com/f/pop?entry.1=T0801' }, { key:'ハラル', url:'https://example.com/f/halal?entry.1=T0801' }] },
@@ -8186,6 +8187,15 @@ console.log('== 2026-11-10 注文フォーム＝店舗名マスタの写し（or
     ok(got2 && got2.rows[0].code === 'NEW', '古い同期応答が遅れて届いても、端末の新しい写しは戻らない');
     FETCH_ROWS = { ok:false };
   }
+  /* 2026-11-13 神田さん「備品発注フォームはまだ流してほしくない・見る・注文する画面から見られないように・お知らせも消す」＝本番の状態（止めている） */
+  delete sandbox.__OF_UNPAUSE_FOR_TEST;
+  base('manager', '牛カツ世桜 長堀橋店'); location.hash = '#/app/ordertop?p=1'; h = registry.app.innerHTML;
+  ok(!/example\.com\/f\//.test(h) && !/POP・販促物を注文する/.test(h) && !/data-ofopen=/.test(h) && /店舗ごとの注文先リストを準備中です/.test(h), '注文フォーム＝止めている間は店舗のIDに出ない（準備中の案内だけ）');
+  base('hq', 'all', () => localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'tester-hq', name:'テスト本部', role:'hq', stores:['*'] }))); location.hash = '#/app/ordertop?p=2'; h = registry.app.innerHTML;
+  ok(!/example\.com\/f\//.test(h) && !/data-ofopen=/.test(h) && !/id="of_store"/.test(h), '注文フォーム＝止めている間は本部にも店舗選択と発注ボタンが出ない');
+  base('manager', '牛カツ世桜 長堀橋店', () => localStorage.setItem('yosakura_demo_links', JSON.stringify([{ title:'備品の注文（テスト）', url:'https://example.com/order', desc:'' }]))); location.hash = '#/app/ordertop?p=3'; h = registry.app.innerHTML;
+  ok(/備品の注文（テスト）/.test(h) && !/example\.com\/f\//.test(h), '注文フォーム＝止めていても「そのほかの注文先」は出る');
+  ok(/const OF_PAUSED_ = \(typeof __OF_UNPAUSE_FOR_TEST !== 'undefined'\) \? false : true;/.test(code) && /const haveForms = !OF_PAUSED_ && getOrderForms\(\)\.length > 0;/.test(code) && /NEWS_RETIRED_ = \[[^\]]*'b845e5a1-851f-465d-a5db-d21118d5b432'\]/.test(code), 'ソース＝注文フォームは止めている・11/12 の窓口のお知らせは下げた');
 }
 
 

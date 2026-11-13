@@ -5769,6 +5769,10 @@
     const own = norm(raw);                                   // 許可された店（1店でも、別名表記でも、ここで正式名にそろう）
     return own.length ? own : visibleStores();
   };
+  /* ★2026-11-13 神田さん「備品発注フォームはまだ流してほしくない（増田さん＝梅酒・POPのフォームに要確認事項）。見る・注文する画面から見られないように」
+     ＝注文フォームの枠ごと出さない（店舗のIDの直接ボタンも、個人のIDの店舗選択も）。「そのほかの注文先」と準備中の案内はそのまま。
+     再開するとき＝下の true を false にして配信するだけ（マスタの写し orderforms は毎時届いたまま）。テストだけ __OF_UNPAUSE_FOR_TEST で外す */
+  const OF_PAUSED_ = (typeof __OF_UNPAUSE_FOR_TEST !== 'undefined') ? false : true;
   let ofSel_ = '';   // 個人のIDで選んだ店（画面を離れても覚える・端末には保存しない）
   APP_VIEWS.ordertop = () => {
     const role = getRole();
@@ -5777,7 +5781,7 @@
     const rows = getLinks().filter(l => l && isHttp(l.url) && /発注|注文|パートナーズ|仕入/.test(String(l.title || '')) && !/12-18|発注リスト/.test(String(l.title || '')));
     const linkRows = rows.map(l => `<button type="button" class="pb-orow" data-openurl="${esc(openUrlFor(l.url))}"><span class="st">${svg('box')}</span><span><span class="nm">${esc(l.title)}</span>${l.desc ? `<br><span class="sub">${esc(l.desc)}</span>` : ''}</span><span class="rt">${svg('chev')}</span></button>`).join('');
     const stores = ofStores_();
-    const haveForms = getOrderForms().length > 0;
+    const haveForms = !OF_PAUSED_ && getOrderForms().length > 0;
     let formHtml = '';
     if (haveForms && stores.length === 1) {
       /* 店舗のID＝自店の注文フォームへ直接 */
@@ -11872,7 +11876,7 @@
      配信先は全店 or 特定店舗。重要フラグあり。全端末同期。
   =================================================================== */
   /* ★2026-10-20 神田さん「引き継ぎは実装しない話だったので不要」＝9/8 のお知らせ「【新機能】店舗用の『引き継ぎ伝言板』運用開始について」を出さない（10/17 決定＝引き継ぎは店のLINE）。本部データの行は消さない */
-  const NEWS_RETIRED_ = ['4261b070-b0ff-478b-8988-2662f594e5ee', 'e41a75a2-81c8-40eb-ba69-c89791b14fe9'];   // ★2026-10-20 9/11 長堀橋の「サーベイ先行スタート（口コミまで1本）」も外す＝10/5 常山さん決定で口コミのご案内は富士山の2店だけ（長堀橋では出ない）・「報告」タブも新デザインに無い
+  const NEWS_RETIRED_ = ['4261b070-b0ff-478b-8988-2662f594e5ee', 'e41a75a2-81c8-40eb-ba69-c89791b14fe9', 'b845e5a1-851f-465d-a5db-d21118d5b432'];   // ★2026-11-13 3つ目＝11/12 の「備品・販促物の注文フォームの窓口ができました」を下げた（神田さん・増田さん＝まだ流さない）。再開のときは出し直す   // ★2026-10-20 9/11 長堀橋の「サーベイ先行スタート（口コミまで1本）」も外す＝10/5 常山さん決定で口コミのご案内は富士山の2店だけ（長堀橋では出ない）・「報告」タブも新デザインに無い
   const getNews = () => { try { return (JSON.parse(localStorage.getItem('yosakura_demo_news')) || []).filter(n => !(n && NEWS_RETIRED_.includes(String(n.id)))); } catch { return []; } };   // ★2026-10-20 すでに保存済みの端末でも出さない
   const saveNews = (a) => { try { localStorage.setItem('yosakura_demo_news', JSON.stringify(a)); } catch (e) {} };
   function newsVisible(list) { // 非本部は「全店向け＋自店向け」だけ、本部は全件
