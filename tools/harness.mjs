@@ -89,6 +89,7 @@ const sandbox = {
   parseInt, parseFloat, isNaN, encodeURIComponent, decodeURIComponent, RegExp, Promise, Set, Map, Blob: function(){},
 };
 sandbox.globalThis = sandbox; sandbox.self = sandbox;
+sandbox.__OF_UNPAUSE_FOR_TEST = true;   // ★2026-11-13 本番は注文の窓口を止めている（OF_PAUSED_）。テストは「再開したときの動き」を固定し、止めた状態は注文フォームの節の最後で見る
 
 function run(setup){
   store.clear(); registry.app = makeEl('div'); Object.keys(registry).forEach(k=>{ if(k!=='app') delete registry[k]; });
@@ -8190,11 +8191,13 @@ console.log('== 2026-11-10 注文フォーム＝店舗名マスタの写し（or
   /* 2026-11-13 神田さん「備品発注フォームはまだ流してほしくない・見る・注文する画面から見られないように・お知らせも消す」＝本番の状態（止めている） */
   delete sandbox.__OF_UNPAUSE_FOR_TEST;
   base('manager', '牛カツ世桜 長堀橋店'); location.hash = '#/app/ordertop?p=1'; h = registry.app.innerHTML;
-  ok(!/example\.com\/f\//.test(h) && !/POP・販促物を注文する/.test(h) && !/data-ofopen=/.test(h) && /店舗ごとの注文先リストを準備中です/.test(h), '注文フォーム＝止めている間は店舗のIDに出ない（準備中の案内だけ）');
+  ok(!/example\.com\/f\//.test(h) && !/POP・販促物を注文する/.test(h) && !/data-ofopen=/.test(h) && /注文の窓口は準備中です/.test(h), '注文フォーム＝止めている間は店舗のIDに出ない（準備中の案内だけ）');
   base('hq', 'all', () => localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t1', uid:'tester-hq', name:'テスト本部', role:'hq', stores:['*'] }))); location.hash = '#/app/ordertop?p=2'; h = registry.app.innerHTML;
   ok(!/example\.com\/f\//.test(h) && !/data-ofopen=/.test(h) && !/id="of_store"/.test(h), '注文フォーム＝止めている間は本部にも店舗選択と発注ボタンが出ない');
   base('manager', '牛カツ世桜 長堀橋店', () => localStorage.setItem('yosakura_demo_links', JSON.stringify([{ title:'備品の注文（テスト）', url:'https://example.com/order', desc:'' }]))); location.hash = '#/app/ordertop?p=3'; h = registry.app.innerHTML;
-  ok(/備品の注文（テスト）/.test(h) && !/example\.com\/f\//.test(h), '注文フォーム＝止めていても「そのほかの注文先」は出る');
+  ok(!/備品の注文（テスト）/.test(h) && !/example\.com/.test(h) && !/data-open="materials"/.test(h) && /注文の窓口は準備中です/.test(h), '注文の画面＝止めている間は注文先のリンクも出さず、準備中の案内だけ（神田さん 11/13）');
+  location.hash = '#/home?tab=miru&p=4'; ok(/<small>準備中<\/small>/.test(registry.app.innerHTML) || !/備品・食材の注文先へ/.test(registry.app.innerHTML), 'ホームの「発注」のタイル＝止めている間は「注文先へ」と出さない');
+  sandbox.__OF_UNPAUSE_FOR_TEST = true;
   ok(/const OF_PAUSED_ = \(typeof __OF_UNPAUSE_FOR_TEST !== 'undefined'\) \? false : true;/.test(code) && /const haveForms = !OF_PAUSED_ && getOrderForms\(\)\.length > 0;/.test(code) && /NEWS_RETIRED_ = \[[^\]]*'b845e5a1-851f-465d-a5db-d21118d5b432'\]/.test(code), 'ソース＝注文フォームは止めている・11/12 の窓口のお知らせは下げた');
 }
 

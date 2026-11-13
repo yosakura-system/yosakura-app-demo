@@ -2794,7 +2794,7 @@
     const tiles = [
       tile('miru_recipe', 'recipes', { ja:'レシピ', en:'Recipes', vi:'Công thức' }, { ja:'作り方・合格の形', en:'How to make', vi:'Cách làm' }),   // ★2026-10-22 案Bの型の4画面へ
       tile('miru_manual', 'manualtop', { ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' }, { ja:'手順・衛生・アレルギー・緊急', en:'Procedures & hygiene', vi:'Quy trình & vệ sinh' }),
-      tile('miru_order', 'ordertop', { ja:'発注', en:'Order', vi:'Đặt hàng' }, { ja:'備品・食材の注文先へ', en:'To order forms', vi:'Đến form đặt hàng' }),
+      tile('miru_order', 'ordertop', { ja:'発注', en:'Order', vi:'Đặt hàng' }, OF_PAUSED_ ? { ja:'準備中', en:'Coming soon', vi:'Đang chuẩn bị' } : { ja:'備品・食材の注文先へ', en:'To order forms', vi:'Đến form đặt hàng' }),
       tile('miru_howto', 'othertop', { ja:'その他', en:'More', vi:'Khác' }, { ja:'使い方・ルール集・相談・勉強会', en:'How-to, FAQ, consult', vi:'Hướng dẫn, quy tắc' }),
     ].join('');
     /* ★2026-10-24 神田さん「全店の合計」と「店を選んで見る」を両方＝本部・複数店のオーナーは、全店（合計）と1店ずつを切り替える。
@@ -5775,6 +5775,8 @@
   const OF_PAUSED_ = (typeof __OF_UNPAUSE_FOR_TEST !== 'undefined') ? false : true;
   let ofSel_ = '';   // 個人のIDで選んだ店（画面を離れても覚える・端末には保存しない）
   APP_VIEWS.ordertop = () => {
+    /* ★2026-11-13 神田さん「リンク先を開くようになっているけど、準備中にしといて」＝止めている間は、注文先のリンクも管理ボタンも出さず、準備中の案内だけ */
+    if (OF_PAUSED_) return `<div class="pb-card"><div class="muted">${L({ ja:'注文の窓口は準備中です。できしだい、ここに出ます。それまでは、これまでどおりの方法でご注文ください。', en:'The order page is being prepared and will appear here. Until then, order as you do now.', vi:'Trang đặt hàng đang được chuẩn bị. Trong lúc chờ, hãy đặt hàng như hiện nay.' })}</div></div>`;
     const role = getRole();
     /* ★2026-10-23 増田さん「12-18.発注リストは開業時の初期在庫のリスト＝店舗ごとに発注先と品が違う。一旦外して『準備中』に。店舗ごとのリストを後で上げる」
        ＝題に「12-18」か「発注リスト」を含む注文先は出さない（資料リンクの管理に残っていても）。店舗ごとの注文先が登録されたら、この除外は外す */
@@ -12376,7 +12378,7 @@
     /* ★2026-10-22 見る・注文するの先の4画面（案Bの型） */
     APPS.push({ id:'recipes', group:'learn', icon:'food', live:true, tabHide:true, roles:['staff','manager','owner','hq'], name:{ ja:'レシピ', en:'Recipes', vi:'Công thức' }, desc:{ ja:'1枚の形。合格した人が、同じ形に作るためのもの。監修が終わった品から出します。', en:'One-page cards for certified staff. Published after review.', vi:'Thẻ 1 trang cho người đã đạt. Ra mắt sau khi duyệt.' } });
     APPS.push({ id:'manualtop', group:'learn', icon:'book', live:true, tabHide:true, roles:['staff','manager','owner','hq'], name:{ ja:'マニュアル', en:'Manuals', vi:'Cẩm nang' }, desc:{ ja:'よく使うものを上に。全部の資料は下の目次から（いまの本部の目次のまま）。', en:'Frequently used first; all documents below in HQ’s index.', vi:'Mục hay dùng ở trên; toàn bộ ở mục lục HQ bên dưới.' } });
-    APPS.push({ id:'ordertop', group:'learn', icon:'box', live:true, tabHide:true, roles:['staff','manager','owner','hq'], name:{ ja:'備品・食材を注文する', en:'Order supplies', vi:'Đặt vật tư & nguyên liệu' }, desc:{ ja:'注文先を押すと、その注文画面が開きます。注文先が変わったら本部がここを直すので、URLを探す必要はありません。', en:'Tap a supplier to open its order page. HQ keeps this list current.', vi:'Chạm để mở trang đặt hàng. HQ cập nhật danh sách.' } });
+    APPS.push({ id:'ordertop', group:'learn', icon:'box', live:true, tabHide:true, roles:['staff','manager','owner','hq'], name:{ ja:'備品・食材を注文する', en:'Order supplies', vi:'Đặt vật tư & nguyên liệu' }, desc: OF_PAUSED_ ? { ja:'準備中です。', en:'Coming soon.', vi:'Đang chuẩn bị.' } : { ja:'注文先を押すと、その注文画面が開きます。注文先が変わったら本部がここを直すので、URLを探す必要はありません。', en:'Tap a supplier to open its order page. HQ keeps this list current.', vi:'Chạm để mở trang đặt hàng. HQ cập nhật danh sách.' } });
     APPS.push({ id:'othertop', group:'learn', icon:'dots', live:true, tabHide:true, roles:['staff','manager','owner','hq'], name:{ ja:'その他', en:'More', vi:'Khác' }, desc:{ ja:'', en:'', vi:'' } });
     APPS.push({ id:'allergy', group:'learn', icon:'book', live:true, tabHide:true, roles:['staff','manager','owner','hq'], name:{ ja:'食物アレルギー', en:'Food allergies', vi:'Dị ứng thực phẩm' }, desc:{ ja:'本部の正式な表（業態ごと1枚）。', en:'Official HQ tables, one per business type.', vi:'Bảng chính thức của HQ, mỗi loại hình 1 trang.' } });   // ★2026-10-22
     APPS.push({ id:'emergency', group:'genba', icon:'phone', live:true, tabHide:true, roles:['staff','manager','owner','hq'],
