@@ -32,6 +32,7 @@ var NOUHIN_VENDORS_DEFAULT = [
   { name: '魚伸',         keys: ['魚伸'],                                                      k8: 'food',  k10: 'food', total: 'excl' },
   { name: '名畑',         keys: ['名畑', '4120001068302', '06-6372-0951', '6372-0951', '0120-40-3150'],                                                      k8: 'drink', k10: 'alc',  total: 'incl' },   // 社名は「名烟」「畑」に化ける（2026-10-15）
   { name: 'リカーマウンテン', keys: ['リカーマウンテン', 'リカマン'],                               k8: 'drink', k10: 'alc',  total: 'incl' },
+  { name: '大和屋',       keys: ['大和屋'],                                                    k8: 'drink', k10: 'alc',  total: 'incl' },   // ★2026-11-15 広島の酒屋（大和屋酒舗）。読み方は nouhin_yamatoya_
   { name: '日本食研',     keys: ['日本食研'],                                                  k8: 'food',  k10: 'food', total: 'excl' },
   { name: 'オーディエー', keys: ['オーディエー', 'ODA', '8-1200-0103-7617', '81200010376', '06-6251-1061', '6251-1061'], k8: 'food', k10: 'food', total: 'incl' },
   { name: 'イオン',       keys: ['イオン', 'AEON', 'EON FOOD', '14140001005666', '06-6252-4147', '6252-4147'], k8: 'food', k10: 'alc', total: 'incl' },
@@ -107,6 +108,7 @@ function nouhin_parse_(text) {
      「13.730」「11..630」「5. 835」＝桁区切りがピリオドやスペースに化ける → 「13,730」に
      「13, 730」＝カンマの後に空白 → 「13,730」に */
   src = src.replace(/(\d)\.{1,2}\s?(\d{3})(?!\d)/g, '$1,$2').replace(/(\d),\s+(\d{3})(?!\d)/g, '$1,$2');
+  src = src.replace(/(\d),\s?-\s?(\d{3})(?!\d)/g, '$1,$2');   // ★2026-11-15 「-3,-050-」＝罫線が桁区切りの後ろに混ざる（広島の西原商会＝合計3,050を読めず明細の1,350を合計にしていた）
   var lines = src.split(/\r?\n/).map(function (s) { return s.replace(/\s+$/, '').replace(/^\s+/, ''); }).filter(String);
   var flat = lines.join(' ');
   var flatKey = flat.replace(/[\s　]/g, '');   // 鍵の照合用（空白を除く＝「06-6656 3170」も「6656-3170」も当たる）
@@ -121,7 +123,9 @@ function nouhin_parse_(text) {
       if (k && (flat.indexOf(ks[j]) !== -1 || flatKey.indexOf(k) !== -1)) { vendor = vendors[i]; break; }
     }
   }
+  if (!vendor && /大和屋/.test(flatKey)) vendor = { name: '大和屋', k8: 'drink', k10: 'alc', total: 'incl' };
   if (vendor) out.v = vendor.name;
+  if (vendor && vendor.name === '大和屋') { var ym = nouhin_yamatoya_(lines); if (ym) { ym.v = vendor.name; if (/返品|赤伝/.test(flatKey)) ym.ret = true; return ym; } }
 
   var num = function (s) { var n = Number(String(s).replace(/[^\d]/g, '')); return (isNaN(n) || n <= 0 || n >= NOUHIN_MAX_YEN) ? null : n; };
   /* 行の中の金額候補＝¥付きを優先（¥はOCRで W・V・$・# に化けるので同じ扱い）、無ければ桁区切りか3桁以上の数字 */
@@ -260,6 +264,9 @@ function nouhin_parse_(text) {
 
   var inclusive = /(内税|内消費税|税込)/.test(flat) && !/税抜|外税/.test(flat);
   var conf = 'high';
+  /* ★2026-11-15 谷口さん（広島）＝フレッシュ青果の簡易版は「合計 ¥795（税抜）」で、消費税の行が無い。
+     本文に「税抜」があり、税込・消費税・税額の文字がどこにも無ければ、印字の合計は税抜＝税を足す */
+  var exclNoTax0 = /([（(]税抜[)）]|税抜合計|合計[（(]?税抜)/.test(flatKey) && !/(消費税|消費稅|消费税|消费稅|税額|稅額|内税|内稅|税込|稅込)/.test(flat);   // 「（税抜）」の形だけ・税の字は旧字体も見る（Codex#3）
   if (gotRate) {
     /* 税額の行は誤読しやすい（「76」が「476」）＝税率×対象額から大きく外れていたら計算値に置き換える */
     [8, 10].forEach(function (r) {
@@ -272,7 +279,8 @@ function nouhin_parse_(text) {
     var mode;
     var printed = out.totalPrinted ? out.total : null;
     var calcIncl = 0; [8, 10].forEach(function (r) { if (base[r] != null) calcIncl += base[r] + Math.floor(base[r] * r / 100); });
-    if (printed != null && Math.abs(sumBase - printed) <= 2) mode = 'incl';
+    var exclNoTax = exclNoTax0 && !sumTax;   // 小計の和＝印字の合計でも、合計が税抜なら税を足す
+    if (printed != null && Math.abs(sumBase - printed) <= 2) mode = exclNoTax ? 'excl' : 'incl';
     else if (printed != null && sumTax && Math.abs(sumBase + sumTax - printed) <= 2) mode = 'excl';
     else if (printed != null && Math.abs(calcIncl - printed) <= 3) mode = 'excl';
     else if (printed != null) {
@@ -296,13 +304,13 @@ function nouhin_parse_(text) {
       out[r === 8 ? 'a8' : 'a10'] = g;
     });
     out.total = (out.a8 || 0) + (out.a10 || 0);
-    if (printed != null && Math.abs(out.total - printed) > 3) conf = 'low';   // 最後にもう一度、印字の合計と照らす
+    if (printed != null && Math.abs(out.total - printed) > 3 && !(exclNoTax && mode === 'excl' && Math.abs(sumBase - printed) <= 2)) conf = 'low';   // 最後にもう一度、印字の合計と照らす（税抜の合計に税を足した伝票は除く）
   } else {
     /* 合計だけ＝仕入先が分かっていれば、その仕入先の既定（税抜→税込に直す／税込のまま）で 8% か 10% に入れる */
     if (vendor) {
       var rate = (vendor.k8 === 'food' || vendor.k8 === 'drink') ? 8 : 10;
-      if (/^(名畑|リカーマウンテン)$/.test(vendor.name)) rate = 10;       // 酒屋＝金額の大半はお酒
-      var g2 = (vendor.total === 'excl' && !out.totalPrinted) ? out.total + Math.floor(out.total * rate / 100) : out.total;   // 印字の合計＝そのまま（西原「合 4,900」に8%を足していた・2026-10-15）
+      if (/^(名畑|リカーマウンテン|大和屋)$/.test(vendor.name)) rate = 10;       // 酒屋＝金額の大半はお酒
+      var g2 = ((vendor.total === 'excl' && !out.totalPrinted) || exclNoTax0) ? out.total + Math.floor(out.total * rate / 100) : out.total;   // 印字の合計＝そのまま（西原「合 4,900」に8%を足していた・2026-10-15）
       out[rate === 8 ? 'a8' : 'a10'] = g2; out.total = g2;
       conf = out.totalGuess ? 'low' : 'high';
     } else conf = 'low';
@@ -312,6 +320,42 @@ function nouhin_parse_(text) {
   out.conf = conf;
   /* ★返品伝票＝本文に「返品」「赤伝」があれば印を付ける（仕入から引く・アプリで最初からチェック済みになる。2026-10-15 神田さん） */
   if (/返品|赤伝/.test(flatKey)) out.ret = true;
+  return out;
+}
+
+/* ★2026-11-15 大和屋酒舗（広島）の納品書＝「小計 6,061」（税込の合計）のあとに
+   「10%対象／5,510 10%消費税／551／8%対象／0 8%消費税／0／合計／容器計」と、見出しと数字が1行ずつずれて並ぶ。
+   「合計」の次に来る数字は消費税や容器の計のことがあり、ふつうの読み方では 8% と 10% を取り違える（6,061円を 551／5,510 と読んだ）。
+   読み方＝「10%対象」「8%対象」のすぐ後ろの数字（0 も値）を税抜の対象額とし、税を足して税込に。小計（税込）と合えば確定、合わなければ要確認。
+   対象額が読めないときは小計をお酒（10%）へ入れて要確認。小計も対象額も読めなければ null（ふつうの読み方へ） */
+function nouhin_yamatoya_(lines) {
+  var numOf = function (s) { var m = String(s).match(/\d{1,3}(?:,\d{3})+|\d+/); if (!m) return null; var n = Number(m[0].replace(/,/g, '')); return (isNaN(n) || n >= NOUHIN_MAX_YEN) ? null : n; };
+  var after = function (re) {
+    for (var i = 0; i < lines.length; i++) {
+      var m = re.exec(lines[i]); if (!m) continue;
+      var v = numOf(lines[i].slice(m.index + m[0].length).replace(/(8|10)\s*[%％]/g, ' ')); if (v != null) return v;
+      for (var k = i + 1; k < Math.min(lines.length, i + 3); k++) {
+        if (/(8|10)\s*[%％]\s*(対象|对象)/.test(lines[k]) || /(番号|No\.|NO\.|TEL|FAX|登録|年|月)/.test(lines[k])) break;   // 次の見出し・番号・日付の数字は拾わない（Codex#1）
+        var t = lines[k].replace(/(8|10)\s*[%％]/g, ' '); var v2 = numOf(t); if (v2 != null) return v2;
+        if (/[一-龥ぁ-んァ-ン]/.test(t) && !/(消費|消费|稅|税)/.test(t)) break;
+      }
+      return null;
+    }
+    return null;
+  };
+  var b10 = after(/10\s*[%％]\s*(対象|对象)/), b8 = after(/(^|[^\d])8\s*[%％]\s*(対象|对象)/), sub = after(/(小計|小计)/);
+  if (b10 == null && b8 == null && sub == null) return null;
+  var out = {};
+  if (b10 != null || b8 != null) {
+    var g10 = b10 ? b10 + Math.floor(b10 * 10 / 100) : 0, g8 = b8 ? b8 + Math.floor(b8 * 8 / 100) : 0;
+    if (!g10 && !g8) { if (!sub) return null; out.a10 = sub; out.total = sub; out.conf = 'low'; return out; }
+    if (g8 + g10 >= NOUHIN_MAX_YEN) return null;   // 税を足したあとも上限を見る（Codex#4）
+    if (g8) out.a8 = g8; if (g10) out.a10 = g10; out.total = g8 + g10;
+    out.conf = (sub != null && Math.abs(out.total - sub) <= 3) ? 'high' : 'low';
+    return out;
+  }
+  if (!sub) return null;
+  out.a10 = sub; out.total = sub; out.conf = 'low';
   return out;
 }
 
