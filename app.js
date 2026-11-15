@@ -3426,6 +3426,7 @@
       total: p.total != null ? Number(p.total) : 0, conf: p.conf || 'low', photo: p.photo || '', src: 'ocr', raw: p.raw ? String(p.raw) : '', ret: !!p.ret }));
   };
   let skSlips_ = [];
+  let skSlipsCand_ = [];   // ★2026-11-15 提出済みの日報に、まだ入っていない納品書（その日付の写真）＝店が「足す」を押したものだけ入れる
   /* ★2026-10-20 原さん（心斎橋）「翌朝に前日分をまとめて撮るスタイルが理想」＝日報の日付が前日のとき、その後（翌朝）に撮った納品書も前日分として出す。
      同じ写真を2つの日報に数えないよう、ほかの日付の日報で既に使った写真は除く（その日の日報を出したあとで開く当日の日報にも出ない） */
   const nouhinUsedPhotos_ = (store, exceptDk) => {
@@ -3434,7 +3435,17 @@
     return used;
   };
   const skSlipsLoad_ = (store, dk, rec) => {
-    if (rec && Array.isArray(rec.slips) && rec.slips.length) { skSlips_ = rec.slips.map(s => Object.assign({}, s)); return; }
+    skSlipsCand_ = [];
+    if (rec && Array.isArray(rec.slips) && rec.slips.length) {
+      skSlips_ = rec.slips.map(s => Object.assign({}, s));
+      /* ★2026-11-15 谷口さん（広島）「請求書を撮ったのに日報に反映されない」＝提出済みの日は提出の内訳しか出していなかった。
+         その日付の写真で、まだこの日報に入っていないものは「足す」の候補として下に並べる。勝手には足さない＝
+         店が手で入れた仕入の金額を書き換えない・×で消した伝票を黙って戻さない（Codex 2回目 #2〜#6）。ほかの日の日報で使った写真は出さない */
+      const havePh = new Set(skSlips_.map(s => s.photo).filter(Boolean)), usedO = nouhinUsedPhotos_(store, dk);
+      skSlipsCand_ = nouhinDrafts(store, dk).filter(p => p.photo && !havePh.has(p.photo) && !usedO.has(p.photo));
+      skSlipsCand_.forEach(s => { if (s.a8 === '' && s.a10 === '' && s.total) { if (NOUHIN_ALC_VENDORS.some(x => String(s.v).includes(x))) s.a10 = String(s.total); else s.a8 = String(s.total); } });
+      return;
+    }
     let drafts = nouhinDrafts(store, dk);
     const today = dateKeyFor(store, Date.now()), prev = dateKeyFor(store, Date.now() - 86400e3);
     if (dk === prev) drafts = drafts.concat(nouhinDrafts(store, today).map(p => Object.assign({}, p, { late: 1 })));   // 前日の日報＝翌朝に撮った分も
@@ -3489,7 +3500,7 @@
   const skSlipsHtml_ = () => `
         <div class="card" id="sk_slipbox" style="margin:0 0 10px">
           <div class="idlabel" style="margin-top:0">${L({ ja:'この日の納品書', en:'Delivery slips for this day', vi:'Phiếu giao hàng của ngày này' })} <span class="muted" style="font-weight:400">${L({ ja:'（写真から自動・確認して直せます）', en:'(auto from photos · editable)', vi:'(tự động từ ảnh · có thể sửa)' })}</span></div>
-          <div id="sk_slips">${skSlipsRowsHtml_()}</div>
+          <div id="sk_slips">${skSlipsRowsHtml_() + skSlipsCandHtml_()}</div>
           <button type="button" class="btn-sm" id="sk_slipadd">${L({ ja:'＋ 納品書を足す', en:'+ Add slip', vi:'+ Thêm phiếu' })}</button>
           <p class="hint" id="sk_slipnote" style="display:block;margin:6px 0 0;color:#c0392b;font-weight:600">${L({ ja:'写真から読んだ金額です。送信の前に、伝票の合計と同じか必ず確認してください。', en:'Amounts read from photos. Always check them against the slip total before sending.', vi:'Số tiền đọc từ ảnh. Luôn đối chiếu với tổng trên phiếu trước khi gửi.' })}</p>
         </div>`;
@@ -3598,7 +3609,12 @@
     draw();
     ['sk_date', 'sk_store'].forEach(id => { const e = g(id); if (e) e.addEventListener('change', () => setTimeout(draw, 0)); });
   }
-  const skSlipsRender_ = () => { const el = document.getElementById('sk_slips'); if (el) el.innerHTML = skSlipsRowsHtml_(); };
+  const skSlipsCandHtml_ = () => !skSlipsCand_.length ? '' : `<div id="sk_slipcand" style="margin:8px 0;padding:8px 10px;background:#fff4d6;border-radius:8px">
+        <div style="font-weight:600;font-size:13px">${L({ ja:`この日の写真で、まだ日報に入っていない納品書が${skSlipsCand_.length}枚あります。`, en:`${skSlipsCand_.length} photographed slip(s) are not in this report yet.`, vi:`Có ${skSlipsCand_.length} phiếu đã chụp chưa có trong báo cáo.` })}</div>
+        ${skSlipsCand_.map((c, i) => `<div style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px"><span style="flex:1;min-width:0">${esc(c.v || L({ ja:'仕入先を読めず', en:'vendor unread', vi:'chưa đọc được' }))}　${esc(String((Number(c.a8) || 0) + (Number(c.a10) || 0) || c.total || 0))}${L({ ja:'円', en:' yen', vi:' yên' })}${c.ret ? L({ ja:'（返品）', en:' (return)', vi:' (trả)' }) : ''}</span><button type="button" class="btn-sm" data-scand="${i}">${L({ ja:'足す', en:'Add', vi:'Thêm' })}</button></div>`).join('')}
+        <div class="muted" style="font-size:11px;margin-top:6px">${L({ ja:'足したら金額を確かめて、日報を出し直してください。', en:'After adding, check the amounts and resubmit.', vi:'Sau khi thêm, kiểm tra số tiền và gửi lại.' })}</div>
+      </div>`;
+  const skSlipsRender_ = () => { const el = document.getElementById('sk_slips'); if (el) el.innerHTML = skSlipsRowsHtml_() + skSlipsCandHtml_(); };
   const skSlipsApply_ = () => {
     if (!skSlips_.length) return false;
     const o = skSlipsSums_();
@@ -10621,6 +10637,19 @@
     if (v === 'nouhin') return v;
     return photoSubIds().includes(v) ? v : 'openphoto';
   };
+  /* ★2026-11-15 谷口さん（広島）「数日分たまっている請求書は、日付を変えて、その日の日報から写真で追加する形で合っていますか」＝
+     過去の日の日報から「納品書を撮る」を押したら、その日報の日付の分として出す（今までは撮った日の分になり、過去の日報に出なかった）。
+     納品書だけ・今日より前・62日前まで。ほかの写真と、ほかの入口から開いたときは今までどおり撮った日 */
+  const nouhinDateParam_ = (store) => {
+    try {
+      if (getPhotoTarget() !== 'nouhin') return '';
+      const d = String(currentRoute().params.get('d') || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return '';
+      const dd = new Date(d + 'T12:00:00'); if (isNaN(dd.getTime()) || dd.toISOString().slice(0, 10) !== d) return '';   // 実在する日だけ
+      const t = dateKeyFor(store, Date.now()), lim = dateKeyFor(store, Date.now() - 62 * 86400e3);
+      return (d < t && d >= lim) ? d : '';
+    } catch (e) { return ''; }
+  };
   // 何をどう撮るか（画面に出す案内）。項目が増えたらここに足す
   const PHOTO_HINTS = {
     openphoto: { ja:'開店時の店内・外観を1枚。', en:'One photo of the store at opening.', vi:'Một ảnh cửa hàng khi mở cửa.' },
@@ -10718,6 +10747,7 @@
       const noSmp = `<figure class="pb-fig"><div class="pb-figempty">${svg('camera')}<span>${L({ ja:'見本はまだありません', en:'No sample yet', vi:'Chưa có mẫu' })}</span></div><figcaption>${L({ ja:'見本', en:'Sample', vi:'Mẫu' })}<span class="pb-pill2 warn">${L({ ja:'未登録', en:'Not set', vi:'Chưa có' })}</span></figcaption></figure>`;
       return `
         ${done ? `<div class="pb-done">${svg('tick')}${esc(period)}</div>` : ''}
+        ${nouhinDateParam_(store) ? `<p class="hint" id="nouhin_datenote" style="display:block;background:#fff4d6;border-radius:8px;padding:8px 10px;font-weight:600">${esc(mdLabel(nouhinDateParam_(store)))}（${esc(L(WDAYS[wdOf(nouhinDateParam_(store))]))}）${L({ ja:'の日報の分として出します。', en:' — goes to that day’s report.', vi:' — tính vào báo cáo ngày đó.' })}</p>` : ''}
         ${target === 'nouhin' ? `<p class="hint" id="nouhin_rednote" style="display:block;color:#c0392b;font-weight:600">${L({ ja:'伝票は1枚ずつ、合計の金額まで写してください。', en:'One slip per photo, with the total.', vi:'Mỗi ảnh một phiếu, có tổng tiền.' })}</p>` : ''}
         <div class="pb-card pb-twin2">
           <div class="pb-twcol"><div class="pb-twhd">${L({ ja:'見本', en:'Sample', vi:'Mẫu' })}</div>${sPhotos.length ? sPhotos.map(smp).join('') : noSmp}${sMemo ? `<div class="pb-smpmemo">${esc(sMemo)}</div>` : ''}</div>
@@ -10737,6 +10767,7 @@
       <div class="card">
         <h3>${esc(title)} — ${esc(storeShort(store))}</h3>
         ${done ? `<p class="hint" style="display:block;color:#2a7">${period}</p>` : `<p class="hint" style="display:block">${esc(hint)}</p>`}
+        ${nouhinDateParam_(store) ? `<p class="hint" id="nouhin_datenote" style="display:block;background:#fff4d6;border-radius:8px;padding:8px 10px;font-weight:600">${esc(mdLabel(nouhinDateParam_(store)))}（${esc(L(WDAYS[wdOf(nouhinDateParam_(store))]))}）${L({ ja:'の日報の分として出します。', en:' — goes to that day’s report.', vi:' — tính vào báo cáo ngày đó.' })}</p>` : ''}
         ${target === 'nouhin' ? `<p class="hint" id="nouhin_rednote" style="display:block;color:#c0392b;font-weight:600">${L({ ja:'伝票は1枚ずつ、合計の金額まで写してください。', en:'One slip per photo, with the total visible.', vi:'Mỗi ảnh một phiếu, chụp rõ tổng tiền.' })}</p>` : ''}
         ${photoSubIds().length > 1 ? `<div class="seg" data-seg="phtarget" style="margin:2px 0 12px">${
           photoSubIds().map(id => { const mm = getMasters().find(x => x.id === id) || {}; return `<button type="button" data-phtarget="${esc(id)}" class="${id===target?'on':''}">${esc(L(mm.name || id))}</button>`; }).join('')}</div>` : ''}
@@ -11548,13 +11579,16 @@
         const thumbsEl = document.getElementById('photoThumbs');
         const photos = thumbsEl ? Array.from(thumbsEl.querySelectorAll('.pt')).map(w => w.dataset.thumb).filter(Boolean).slice(0, 6) : [];
         if (!photos.length) { toast(L({ja:'写真を撮影・選択してください（提出漏れ防止）',en:'Please add a photo before submitting',vi:'Vui lòng thêm ảnh trước khi gửi'})); return; }
-        const dk = dateKeyFor(store, Date.now());
+        const nd = nouhinDateParam_(store);   // ★2026-11-15 過去の日の日報から来た納品書＝その日付の分
+        { let rawD = ''; try { rawD = String(currentRoute().params.get('d') || ''); } catch (e) {} if (rawD && getPhotoTarget() === 'nouhin' && !nd) { toast(L({ ja:'日付を確かめられませんでした。日報からもう一度「納品書を撮る」を押してください。', en:'Could not confirm the date. Open the photo screen again from the daily report.', vi:'Không xác nhận được ngày. Hãy mở lại từ báo cáo ngày.' })); return; } }   // 今日の分へ黙って振り替えない（Codex 2回目 #1）
+        const dk = nd || dateKeyFor(store, Date.now());
         // どの提出物として出すか（オープン写真／月次の衛生写真／メニューブック）
         const target = getPhotoTarget();
         const tm = getMasters().find(x => x.id === target);
         postSub(SUB_KINDS.open, store, `${target}|${dk}`, { by: submitterLabel(), role: getRole() }, photos);
         pushAudit('open_submit', store);
         toast(`${L(tm && tm.name || {ja:'オープン写真',en:'Opening photo',vi:'Ảnh mở cửa'})}${L({ja:'を提出しました。ありがとうございます！',en:' submitted. Thank you!',vi:' đã gửi. Cảm ơn!'})}`);
+        if (nd) { try { localStorage.setItem('yosakura_sk_edit', store + '||' + nd); localStorage.setItem('yosakura_soukatsu_tab', 'input'); } catch (e) {} go('/app/soukatsu?tab=input'); return; }   // その日の日報へ戻る
         go('/app/kyou');
         return;
       }
@@ -11572,7 +11606,15 @@
       if (t.dataset.tsub) {
         if (t.dataset.tsubmode) localStorage.setItem('yosakura_ckmode', t.dataset.tsubmode);
         if (t.dataset.tsubphoto) localStorage.setItem('yosakura_photo_target', t.dataset.tsubphoto);
-        const q = [t.dataset.tsubq || '', t.dataset.tsubshift ? 'shift=' + t.dataset.tsubshift : ''].filter(Boolean).join('&');   // ★2部制＝どの部の記録を開くかは行が URL で渡す（他の入口は時刻で）
+        let nq = '';   // ★2026-11-15 過去の日の日報から「納品書を撮る」＝その日付を写真の画面へ渡す
+        if (t.dataset.tsubphoto === 'nouhin') {
+          const de = document.getElementById('sk_date'), se = document.getElementById('sk_store'), dv = de ? String(de.value || '') : '', st = (se && se.value) || visibleStores()[0];
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dv) && dv < dateKeyFor(st, Date.now())) {
+            if (dv < dateKeyFor(st, Date.now() - 62 * 86400e3)) { toast(L({ ja:'2か月より前の日付は、写真から入れられません。「＋ 納品書を足す」で金額を入れてください。', en:'Dates older than 2 months: add slips by hand.', vi:'Ngày cũ hơn 2 tháng: hãy nhập tay.' })); return; }
+            nq = 'd=' + dv;
+          }
+        }
+        const q = [t.dataset.tsubq || '', t.dataset.tsubshift ? 'shift=' + t.dataset.tsubshift : '', nq].filter(Boolean).join('&');   // ★2部制＝どの部の記録を開くかは行が URL で渡す（他の入口は時刻で）
         go(`/app/${t.dataset.tsub}${q ? '?' + q : ''}`); return;
       }
       if (t.dataset.tmissing) { const cur = localStorage.getItem('yosakura_sub_missingonly') === '1'; localStorage.setItem('yosakura_sub_missingonly', cur ? '0' : '1'); render(); return; }
@@ -13808,7 +13850,7 @@
       if (t) toast(t);
     });
     // 写真の提出物の切り替え（オープン写真／月次の衛生写真／メニューブック）
-    document.querySelectorAll('[data-phtarget]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_photo_target', b.dataset.phtarget); render(); });
+    document.querySelectorAll('[data-phtarget]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_photo_target', b.dataset.phtarget); let hasD = false; try { hasD = !!currentRoute().params.get('d'); } catch (e) {} if (hasD) go('/app/openphoto'); else render(); });   // ★2026-11-15 過去の日付の指定（d=）は、種類を切り替えたら外す
     // 定期衛生：曜日の切替（手が空いていれば他の曜日を先に実施してもよい運用）
     document.querySelectorAll('[data-hygday]').forEach(b => b.onclick = () => { localStorage.setItem('yosakura_hygday', `${todayKey()}|${b.dataset.hygday}`); localStorage.removeItem('yosakura_hygall'); render(true); });
     /* 画面295：週次業務の曜日別業務＝曜日を選ぶ／その曜日の点検を開く（点検画面と同じ鍵に入れるので、開いた先も同じ曜日になる） */
@@ -14206,6 +14248,7 @@
         slipBox.addEventListener('click', (e) => {
           const b = e.target.closest('button'); if (!b) return;
           if (b.id === 'sk_slipadd') { skSlips_.push({ v: '', a8: '', a10: '', src: 'app' }); skSlipsRender_(); const last = slipBox.querySelector(`[data-sv="${skSlips_.length - 1}"]`); if (last) last.focus(); }
+          else if (b.dataset.scand != null) { const c = skSlipsCand_.splice(Number(b.dataset.scand), 1)[0]; if (c) { skSlips_.push(Object.assign({}, c, { late: 1 })); slipsRefresh(true); } }   // ★2026-11-15 提出のあとで撮った納品書を、店が選んで足す
           else if (b.dataset.sdel != null) { skSlips_.splice(Number(b.dataset.sdel), 1); slipsRefresh(true); if (!skSlips_.length) { ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'].forEach(id => { const el = byId(id); if (el) el.value = ''; }); cumUpd(); } }
         });
       }

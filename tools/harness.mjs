@@ -4307,6 +4307,12 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
   location.hash = '#/app/soukatsu?x=slips2';
   h = registry.app.innerHTML;
   ok((h.match(/data-slip="/g) || []).length === 3 && doc.getElementById('sk_buy_food').value === '2880', '提出済みの日を開き直しても内訳と3欄が残る');
+  // ★2026-11-15 提出のあとで撮った納品書＝候補として並ぶ（勝手に足さない＝内訳3枚・3欄はそのまま）
+  { const a = JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]'); a.push({ kind:'nouhindraft', store:S, item: today4, note: JSON.stringify({ src:'ocr', v:'銘洋', a8:2160, total:2160, conf:'high', photo:'PHOTO_D1234567' }), photos:[], t: Date.now() + 1000, id:'n9' }); localStorage.setItem('yosakura_demo_reports', JSON.stringify(a)); localStorage.setItem('yosakura_sk_edit', S + '||' + today4); }
+  location.hash = '#/app/soukatsu?x=slips3';
+  h = registry.app.innerHTML; h = String((doc.getElementById('sk_slips') || {}).innerHTML || '');   // 入れ直し（skFill_）のあとの中身
+  ok(/id="sk_slipcand"/.test(h) && (h.match(/data-scand="/g) || []).length === 1 && /銘洋/.test(h) && /まだ日報に入っていない納品書が1枚/.test(h), '提出済みの日＝あとから撮った納品書は「足す」の候補に1枚並ぶ（入っている3枚の写真は候補に出ない）');
+  ok((h.match(/data-slip="/g) || []).length === 3 && doc.getElementById('sk_buy_food').value === '2880', '候補は押すまで足さない＝内訳3枚と仕入3欄は提出のまま');
   // ②e USEN以外の店（本店・日本鰻 長堀橋・富士山）＝フード/ドリンクと国別を日報で受ける。売上まわりはレジ（UMaT・Airレジ）から毎朝自動＝欄を出さない
   //    （2026-11-09 神田さん＝配布した日報マニュアルとアプリに「USENの無い3店は売上も日報に入れる」が残っていた。11/2 から10店ともレジ取込あり）
   { const S6 = '日本鰻世桜 富士山店';
@@ -8532,6 +8538,22 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   location.hash = '#/home?tab=hq';
   ok(/data-open="kzgp"/.test(registry.app.innerHTML) && /気づきグランプリ（月間MVP）/.test(registry.app.innerHTML), '本部タブ＝グランプリの入口の帯（口コミ・盛付の帯の下）');
+}
+
+console.log('== 2026-11-15 過去の日の日報から撮った納品書＝その日報の日付の分として出す（谷口さん・広島） ==');
+{
+  ok(/const nouhinDateParam_ = \(store\) => \{/.test(code) && /if \(getPhotoTarget\(\) !== 'nouhin'\) return '';/.test(code), '日付を渡すのは納品書だけ（ほかの写真は撮った日のまま）');
+  ok(/return \(d < t && d >= lim\) \? d : '';/.test(code) && /Date\.now\(\) - 62 \* 86400e3/.test(code), '今日より前・62日前までだけ通す（未来と古すぎる日付は撮った日に戻す）');
+  ok(/const nd = nouhinDateParam_\(store\);/.test(code) && /const dk = nd \|\| dateKeyFor\(store, Date\.now\(\)\);/.test(code), '提出の日付＝渡された日付があればそれ・無ければ撮った日');
+  ok(/dv < dateKeyFor\(st, Date\.now\(\)\)\) \{/.test(code) && /nq = 'd=' \+ dv;/.test(code) && /2か月より前の日付は、写真から入れられません/.test(code), '日報の「納品書を撮る」＝店の営業日で今日より前のときだけ d= を付ける・2か月より前は止めて手入力へ（Codex#5・#6）');
+  ok(/id=\"nouhin_datenote\"/.test(code) && (code.match(/id=\"nouhin_datenote\"/g) || []).length === 2, '写真の画面に「○/○ の日報の分として出します」を出す（2つの見た目の両方）');
+  ok(/if \(nd\) \{ try \{ localStorage\.setItem\('yosakura_sk_edit', store \+ '\|\|' \+ nd\);/.test(code), '出したあとは、その日の日報へ戻る');
+  ok(/skSlipsCand_ = nouhinDrafts\(store, dk\)\.filter\(p => p\.photo && !havePh\.has\(p\.photo\) && !usedO\.has\(p\.photo\)\);/.test(code), '提出済みの日＝まだ入っていない写真は「足す」の候補に並べる（勝手に足さない・ほかの日で使った写真は出さない）');
+  ok(/else if \(b\.dataset\.scand != null\) \{ const c = skSlipsCand_\.splice\(Number\(b\.dataset\.scand\), 1\)\[0\]; if \(c\) \{ skSlips_\.push/.test(code) && /id=\"sk_slipcand\"/.test(code), '候補の「足す」を押したものだけ伝票に入る（手で足すのと同じ道）');
+  ok(!/src: 'seen'/.test(code) && /slips: skSlips_\.length \? skSlips_\.map\(s => \(\{ v: s\.v \|\| '', a8: s\.a8 \|\| '', a10: s\.a10 \|\| '', photo: s\.photo \|\| '', src: s\.src \|\| 'app', ret: s\.ret \? 1 : 0 \}\)\) : undefined,/.test(code), '提出データの形（slips）は今までと同じ＝総括表・集約の読み方を変えない');
+  ok(/if \(rawD && getPhotoTarget\(\) === 'nouhin' && !nd\) \{ toast/.test(code), '日付を確かめられないときは出さない（今日の分へ黙って振り替えない・Codex 2回目 #1）');
+  ok(/dd\.toISOString\(\)\.slice\(0, 10\) !== d\) return '';/.test(code), '実在しない日付（10/99 など）は通さない（Codex#5）');
+  ok(/if \(hasD\) go\('\/app\/openphoto'\); else render\(\);/.test(code), '写真の種類を切り替えたら過去の日付の指定を外す（Codex#9）');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
