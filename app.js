@@ -12104,6 +12104,10 @@
         （kind:'pv'・item=営業日・note={d:端末の印, c:{画面:回数}}）。入力は増やさない・画面は描き直さない・送れなければ次の機会にもう一度。本部IDの端末は数えない
      ・pv の行は90日で消えてよい（PURGE_KEEP に入れない）。店の端末は pv を読まない（振り分けで捨てる）。同じ日の送り直しは 店×日×端末 で大きい方を採る */
   const PV_LS = 'yosakura_pv_v1', PV_DEV_LS = 'yosakura_pv_dev', USAGE_LS = 'yosakura_usage_v1';
+  /* ★2026-11-16 神田さん「この新アプリがリリースされてからの状態をみれたらOK。前のアプリでの内容は不要」
+     ＝①数えるのは新アプリの全店リリース（2026-10-20 0:00 JST）より後だけ ②「使われていない」に並べるのは、いまの新アプリで店から開ける窓口だけ（前のアプリの食べ残し・来店経路・巡回フィードバック・引き継ぎ・みんなの投稿などは並べない） */
+  const USAGE_SINCE_ = Date.UTC(2026, 9, 19, 15, 0, 0);
+  const usageCut_ = () => Math.max(Date.now() - 30 * 864e5, USAGE_SINCE_);
   const pvIdOf_ = (hash) => { const h = String(hash || '').replace(/^#/, '') || '/home'; const i = h.indexOf('?'); const pth = i < 0 ? h : h.slice(0, i), q = i < 0 ? '' : h.slice(i + 1);
     if (pth.indexOf('/app/') === 0) return pth.slice(5);
     if (pth === '/home') { const m = /(?:^|&)tab=([a-z]+)/.exec(q); return 'home' + (m && m[1] !== 'home' ? ':' + m[1] : ''); }
@@ -12188,7 +12192,7 @@
   const usageOn_ = () => { try { return getRole() === 'hq' || devViewAllowed(); } catch (e) { return false; } };
   const usageStale_ = () => { try { if (!usageOn_()) return false; const m = /"t":(\d+)/.exec(localStorage.getItem(USAGE_LS) || ''); return !m || Date.now() - Number(m[1]) > 6 * 3600e3; } catch (e) { return false; } };
   function usageRecalc_(rows) {
-    const F = {}, P = {}, seen = Object.create(null), cut = Date.now() - 30 * 864e5;
+    const F = {}, P = {}, seen = Object.create(null), cut = usageCut_();
     (rows || []).forEach(r => { if (!r) return; const k = [r.kind, r.store, r.item, Number(r.t) || 0, String(r.note || '')].join('|'); if (seen[k]) return; seen[k] = 1;   // 送り直しで並んだ同じ行は1件（振り分けと同じ）
       usageAdd_(F, P, r, normalizeStore(r.store || ''), Number(r.t) || 0, cut); });
     usageSave_(F, P);
@@ -12213,7 +12217,10 @@
     if (tab === 'p') { const body = rows(P, usagePLabel_, 'n');
       return `${seg}<div class="card"><h3>画面を開いた回数 <span class="muted" style="font-weight:400">この30日</span></h3><p class="hint" style="display:block;margin:-2px 0 8px">店の端末がこの版になった日から記録します。本部IDで開いた分は数えません。</p>${body || '<div class="muted">まだ記録がありません（各店の端末から、開いた次の日以降に届きます）</div>'}</div>`; }
     if (tab === 'z') {
-      const known = Object.keys(USAGE_F_).concat(CK_MODES.map(c => 'ck:' + c.v), getMasters().filter(m => (m.detect === 'subrec' || m.detect === 'didit') && m.oblig !== 'off').map(m => 'sub:' + m.id));
+      /* 提出・入力＝どこか1店でも「きょうやること・今週・今月」に出ている提出物（店ごとの区分で不要のもの・毎日の一覧から外したものは入れない）＋新アプリにある反応の窓口 */
+      const mShown = (m) => STORES.some(st => { try { return appliesToStore(m, st) && obligFor(m, st) !== 'off' && !(m.freq === 'daily' && !DAILY_KEEP_.includes(m.id) && dailyKeepOn_()); } catch (e) { return false; } });
+      const mKey = (m) => { const d = m.detect; return (d === 'subrec' || d === 'didit') ? 'sub:' + m.id : d === 'sk' ? 'nippou' : d === 'kizuki' ? 'kizuki' : d === 'ckdone' ? 'ck:' + ((/^[a-z]+/.exec(ckBase(m.ckMode || 'open')) || [''])[0]) : d === 'zaiko' ? 'zaiko' : d === 'zaikowk' ? 'zaikowk' : d === 'chukan' ? 'chukan' : d === 'kinshu' ? 'kinshu' : d === 'video' ? 'video' : (d === 'monthly' || d === 'tana') ? 'monthly' : ''; };
+      const known = getMasters().filter(mShown).map(mKey).filter(k => k && k !== 'ck:').concat(['kzlike', 'kzcmt', 'newsread', 'newslike', 'newscmt', 'survey', 'zaikoorder']);
       const fUsed = (k) => Object.keys(F).some(fk => (fk === k || (k.indexOf('ck:') === 0 && fk.indexOf(k) === 0)) && STORES.some(st => F[fk][st]));
       /* ★2026-11-16 本番で確認＝同じ名前の提出物が2つある（卓上POPの交換）と、使われている方と同じ名前が「記録が無い」にも並んだ → 名前で突き合わせ、同じ名前は1行に */
       const usedLb = new Set(Object.keys(F).filter(fk => STORES.some(st => F[fk][st])).map(usageFLabel_)); const seenLb = new Set();
@@ -12222,15 +12229,17 @@
       const RS = STORES.filter(st => PM[st]); const hasP = RS.length > 0;
       const PV_ALIAS_ = { allergy: ['doc:allergy'], manual: ['doc:manual'], manualtop: ['doc:manual'], gyotaiman: ['doc:manual'] };
       const pUsed = (id) => [id].concat(PV_ALIAS_[id] || []).some(k => P[k] && RS.some(st => P[k][st]));
-      const zp = hasP ? APPS.filter(a => a && Array.isArray(a.roles) && a.roles.some(x => x !== 'hq') && APP_VIEWS[a.id] && !pUsed(a.id)) : [];
+      /* 画面＝新アプリのホーム・見る・注文する・店の数字から店が開ける画面だけ */
+      const PV_CATALOG_ = ['kizuki', 'surveyqr', 'emergency', 'allergy', 'faq', 'fac', 'news', 'openphoto', 'checklist', 'zaiko', 'soukatsu', 'shukan', 'recipes', 'manualtop', 'manual', 'gyotaiman', 'ordertop', 'materials', 'othertop', 'guide', 'study', 'whistle', 'numdetail'];
+      const zp = hasP ? PV_CATALOG_.map(id => appById(id)).filter(a => a && APP_VIEWS[a.id] && !pUsed(a.id)) : [];
       const md = (dk) => `${Number(String(dk).slice(5, 7))}/${Number(String(dk).slice(8, 10))}`;
       const li = (t, den) => `<div class="pb-urow pb-urow--z"><span class="nm">${esc(t)}</span><span class="st low">0${den ? '／' + den : ''}店</span></div>`;
-      return `${seg}<div class="card"><h3>この30日、どの店からも記録が無いもの</h3><p class="hint" style="display:block;margin:-2px 0 8px">止めている窓口・対象の店が無いものも並びます。閉じるかどうかは、店の事情を聞いてから決めます。</p>
+      return `${seg}<div class="card"><h3>この30日、どの店からも記録が無いもの</h3><p class="hint" style="display:block;margin:-2px 0 8px">いまのアプリで店に出ている提出物と窓口だけを並べています。閉じるかどうかは、店の事情を聞いてから決めます。</p>
         <div class="pb-hqnote" style="margin:6px 0 2px">提出・入力（${zf.length}）</div>${zf.map(k => li(usageFLabel_(k))).join('') || '<div class="muted">ありません</div>'}
         <div class="pb-hqnote" style="margin:12px 0 2px">開かれていない画面（${hasP ? zp.length : '—'}）</div>
         ${hasP ? `<p class="hint" style="display:block;margin:0 0 8px">画面の記録が届いている店：${RS.length}／${STORES.length}店（${RS.map(st => `${esc(storeShort(st))} ${md(PM[st][0])}〜`).join('・')}）。届いていない店と、きょう開いた分は入っていません。</p>${zp.map(a => li(L(a.name), RS.length)).join('') || '<div class="muted">ありません</div>'}` : '<div class="muted">画面を開いた回数が届いてから出ます</div>'}</div>`; }
     const body = rows(F, usageFLabel_, 'd');
-    return `${seg}<div class="card"><h3>提出・入力 <span class="muted" style="font-weight:400">この30日 ・ 集計 ${esc(when)}</span></h3><p class="hint" style="display:block;margin:-2px 0 8px">使っている店の数と、のべ日数です。行を押すと店ごとの内訳が出ます。レジ・総括表からの自動取込と、本部が書いた分は数えていません。</p>${body || '<div class="muted">この30日の記録がありません</div>'}</div>`;
+    return `${seg}<div class="card"><h3>提出・入力 <span class="muted" style="font-weight:400">この30日 ・ 集計 ${esc(when)}</span></h3><p class="hint" style="display:block;margin:-2px 0 8px">使っている店の数と、のべ日数です。行を押すと店ごとの内訳が出ます。レジ・総括表からの自動取込と、本部が書いた分は数えていません。10/20 の全店リリースより前は数えていません。</p>${body || '<div class="muted">この30日の記録がありません</div>'}</div>`;
   };
   /* ---------- 気づきへの いいね・コメント（2026-11-16 原さん 難波店＝スタッフの声「グループLINEのように、投稿のあとにやり取りしたい」・神田さん「自店だけで」）----------
      ・kind は増やさない＝お知らせの反応と同じ newslike／newscmt。item＝'kz|時刻|店舗名'（お知らせのキーは数字だけなので混ざらない）
@@ -14648,7 +14657,7 @@
     }
     /* ★2026-11-16 アプリの利用状況＝本部の端末だけ、この30日の行を数える（1回の振り分けで1度・控えは小さな表1つ） */
     const uOn_ = usageOn_();
-    const uF_ = {}, uP_ = {}, uCut_ = Date.now() - 30 * 864e5;
+    const uF_ = {}, uP_ = {}, uCut_ = usageCut_();
     (rows || []).forEach(r => {
       // 店舗名は正式名称へ寄せる（過去のデータが旧い表記でも、同じ店舗として扱う）
       const t = Number(r.t) || 0, id = r.id, store = normalizeStore(r.store || '');
