@@ -4986,11 +4986,11 @@ console.log('== お知らせにコメント・いいね・確認（2026-09-08 �
     localStorage.setItem('yosakura_demo_reports', JSON.stringify(arr)); localStorage.setItem('yosakura_news_liked', JSON.stringify({ [nk]: { s:'*', b:'本部' } })); });
   location.hash = '#/app/news?x=likeoff3'; h = registry.app.innerHTML;
   ok(/class="mini pri" data-nwlike=/.test(h) && /もう一度押すと取り消し/.test(h) && !/data-nwlike="[^"]*" disabled/.test(h), 'いいね＝押した端末ではボタンが押せるまま（もう一度押すと取り消し）');
-  ok(/const prevLike = lsMap_\(NEWS_LIKED_LS\)\[key\]; const wasLiked = !!prevLike;/.test(code) && /wasLiked \? \{ by: who\.by, off: 1 \} : \{ by: who\.by \}/.test(code) && /if \(wasLiked\) lsMapDel_\(NEWS_LIKED_LS, key\); else lsMapSet_\(NEWS_LIKED_LS, key, \{ s: likeStore, b: likeBy \}\);/.test(code) && !/この端末では1回だけ/.test(code), 'ソース＝もう一度押すと off の行を送り、端末の印を外す（行は消さない）');
+  ok(/const prevLike = lsMap_\(NEWS_LIKED_LS\)\[likedId\]; const wasLiked = !!prevLike;/.test(code) && /wasLiked \? \{ by: who\.by, off: 1 \} : \{ by: who\.by \}/.test(code) && /if \(wasLiked\) lsMapDel_\(NEWS_LIKED_LS, likedId\); else lsMapSet_\(NEWS_LIKED_LS, likedId, \{ s: likeStore, b: likeBy \}\);/.test(code) && /const fbLikedId_ = \(key\) => fbIsKz_\(key\) \? key \+ '#' \+ \(fbAsHq_\(\) \? 'hq:' : ''\) \+ \(getUserName\(\) \|\| ''\) : key;/.test(code) && !/この端末では1回だけ/.test(code), 'ソース＝もう一度押すと off の行を送り、端末の印を外す（行は消さない）');
   // ③ 配線＝3操作とも行内の書き換え（全画面を作り直さない）
   const srcNW = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   ok(/dataset\.nwlike/.test(srcNW) && /dataset\.nwread/.test(srcNW) && /dataset\.nwcmt\)/.test(srcNW) && /dataset\.nwcmtsend/.test(srcNW), 'いいね・確認・コメントが配線されている');
-  ok(/dataset\.nwcmtsend\)[\s\S]{0,1200}insertAdjacentHTML/.test(srcNW), 'コメント送信は行内に追記する（renderしない）');
+  ok(/dataset\.nwcmtsend\)[\s\S]{0,2600}insertAdjacentHTML/.test(srcNW), 'コメント送信は行内に追記する（renderしない）');
   // ④ 同期とKEEP（kind追加の3点セット）
   ok(/case 'newslike': case 'newsread': case 'newscmt':/.test(srcNW), '同期の振り分けに3種が入っている（＝ローカルから消えない）');
   const gsK = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
@@ -6935,9 +6935,9 @@ console.log('== 2026-10-22 本部の見え方＝案Bの本部画面（神田さ�
   location.hash = '#/home?tab=hq'; h = registry.app.innerHTML;
   const nCards = (h.match(/class="pb-hqst"/g) || []).length;
   ok(/<h2>店舗<\/h2>/.test(h) && nCards === nRows && (h.match(/class="pb-hqst__img"/g) || []).length === nCards, '本部タブ＝店舗カード（写真つき・全店 ' + nCards + '枚）');
-  ok(/<span class="h">OPEN<\/span>/.test(h) && /<span class="h">CLOSE<\/span>/.test(h) && /<span class="h">在庫<\/span>/.test(h) && /<span class="h">日報<\/span>/.test(h) && /<span class="h">レジ締め<\/span>/.test(h) && (h.match(/class="pb-dot/g) || []).length === nCards * 5, '全店きょうの表＝店×5項目（OPEN・CLOSE・在庫・日報・レジ締め）');
+  ok(/<span class="h">OPEN<\/span>/.test(h) && /<span class="h">CLOSE<\/span>/.test(h) && /<span class="h">在庫<\/span>/.test(h) && /<span class="h">日報<\/span>/.test(h) && /<span class="h">オープン<br>写真<\/span>/.test(h) && /<span class="h">気づき<\/span>/.test(h) && /<span class="h">レジ<br>締め<\/span>/.test(h) && (h.match(/class="pb-dot /g) || []).length === nCards * 7, '全店きょうの表＝店×7項目（オープン写真・OPEN・CLOSE・在庫・日報・気づき・レジ締め）★2026-11-16 オープン写真と気づきを足した');
   ok(/<h2>レジ締め<\/h2>/.test(h) && /<h2>ロス率 ・ 人件費率 ・ 今月<\/h2>/.test(h) && /<h2>返答待ち<\/h2>/.test(h) && /<h2>提出物の設定<\/h2>/.test(h) && /data-open="news\?tab=post"/.test(h), '本部タブ＝レジ締め・ロス率/人件費率・返答待ち・提出物の設定・お知らせを出す');
-  ok(/data-open="inbox"|未対応の報告はありません/.test(h) && /data-open="teishutsu"/.test(h) && (h.match(/data-viewstore="/g) || []).length === nCards, '押す先＝受信箱・提出物管理。店舗カードは店の画面（確認用）');
+  ok(/data-open="inbox"|未対応の報告はありません/.test(h) && !/data-open="teishutsu"/.test(h) && (h.match(/data-viewstore="/g) || []).length === nCards, '押す先＝受信箱。店舗カードは店の画面（確認用）。★2026-11-16 提出状況の表への入口は外した（神田さん）');
   { const row = (h.match(/<div class="pb-bar"><span>[^<]*長堀橋店<\/span><i[^>]*><\/i><b>[^<]*<\/b>/) || [''])[0]; ok(/−¥1,000/.test(row) && /#B5533C/.test(row), 'レジ締め＝長堀橋の昨日の過不足 −¥1,000（赤）: ' + row.slice(-40)); }
   ok(/ロス率（ロス÷売上）/.test(h) && /<span>[^<]*長堀橋店<\/span><i[^>]*><\/i><b>2\.0％<\/b>/.test(h) && /<span>[^<]*長堀橋店<\/span><i[^>]*><\/i><b>30\.0％<\/b>/.test(h), 'ロス率 2.0％（2,000÷100,000）・人件費率 30.0％（30,000÷100,000）が今月の日報から出る');
   ok(!/日報の入力時間/.test(h), '案Bの「日報の入力時間」は記録が無いので出さない');
@@ -7849,7 +7849,7 @@ console.log('== 2026-10-25 神田さん「器じゃないものがカテゴリ�
   ok(/>器（週に1回）</.test(z) && />店内収納棚（常温）（週1回）</.test(z), '心斎橋の週1回＝器と棚の品は別の見出し');
   ok(gi('海鮮丼皿') > 0 && gi('海鮮丼皿') < gi('店内収納棚（常温）（週1回）') && gi('店内収納棚（常温）（週1回）') < gi('チョコペン'), '器が先・チョコペンは棚の見出しの下');
   const src = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  ok(/function openDoc_\(u, title\) \{\s*if \(isStandalone\(\) && inAppScope_\(u\)/.test(src) && !/window\.open\(u, '_blank', 'noopener'\);\r?\n    \}\);/.test(src), '資料を開く入口＝ホーム画面版でアプリ内のPDFは戻るつきの表示（openDoc_）');
+  ok(/function openDoc_\(u, title\) \{\s*(?:try \{ pvCount_\([^\n]*\n\s*)?if \(isStandalone\(\) && inAppScope_\(u\)/.test(src) && !/window\.open\(u, '_blank', 'noopener'\);\r?\n    \}\);/.test(src), '資料を開く入口＝ホーム画面版でアプリ内のPDFは戻るつきの表示（openDoc_）');
   ok(/data-pdfvclose/.test(src) && /'戻る'/.test(src), 'PDFの表示に「戻る」がある');
   run(() => { localStorage.removeItem('yosakura_theme'); });
 }
@@ -8228,7 +8228,7 @@ console.log('== 2026-11-13 提出物の設定（本部タブ）＝店ごとの4�
   let h;
   seed('hq', 'all'); location.hash = '#/home?tab=hq&so=1'; h = registry.app.innerHTML;
   ok(/id="sob_store"/.test(h) && /data-sob="ck_sakura:required"/.test(h) && /data-sob="kizuki:off"/.test(h) && /data-sob="kizuki:rec"/.test(h) && !/data-sob="openphoto:/.test(h) && !/data-sob="nippou:/.test(h) && !/data-sob="firstphoto:/.test(h), '提出物の設定＝本部タブに店の選択と、項目ごとの4つの区分が出る（オープン写真・日報・全店で対象外の項目は出ない）');
-  ok(/class="on" data-sob="ck_sakura:store"/.test(h) && /class="on" data-sob="staffroom:required"/.test(h) && !/class="pb-sobchg">/.test(h) && /class="pb-sobchg" hidden>/.test(h) && !/提出物管理を開く/.test(h) && /提出状況の表を見る/.test(h), '提出物の設定＝いまの区分に色が付く・「提出物管理を開く」は置き換えた');
+  ok(/class="on" data-sob="ck_sakura:store"/.test(h) && /class="on" data-sob="staffroom:required"/.test(h) && !/class="pb-sobchg">/.test(h) && /class="pb-sobchg" hidden>/.test(h) && !/提出物管理を開く/.test(h) && !/提出状況の表を見る/.test(h), '提出物の設定＝いまの区分に色が付く・「提出物管理を開く」「提出状況の表を見る」は無い（11/16 神田さん）');
   { /* 擬似DOMは data- 属性のボタンを返さない＝この間だけ [data-sob] に1つ返して、bind が付けた onclick を押す */
     const fb = { dataset: { sob: 'ck_sakura:off' }, onclick: null, parentElement: { querySelectorAll: () => [] } }; const q0 = doc.querySelectorAll; doc.querySelectorAll = (sel) => (sel === '[data-sob]' ? [fb] : []);
     location.hash = '#/home?tab=hq&so=2'; doc.querySelectorAll = q0;
@@ -8554,6 +8554,158 @@ console.log('== 2026-11-15 過去の日の日報から撮った納品書＝そ�
   ok(/if \(rawD && getPhotoTarget\(\) === 'nouhin' && !nd\) \{ toast/.test(code), '日付を確かめられないときは出さない（今日の分へ黙って振り替えない・Codex 2回目 #1）');
   ok(/dd\.toISOString\(\)\.slice\(0, 10\) !== d\) return '';/.test(code), '実在しない日付（10/99 など）は通さない（Codex#5）');
   ok(/if \(hasD\) go\('\/app\/openphoto'\); else render\(\);/.test(code), '写真の種類を切り替えたら過去の日付の指定を外す（Codex#9）');
+}
+
+console.log('== 2026-11-16 気づきに いいね・コメント／「みんなの気づき」を出勤時に（原さん 難波店・神田さん「自店だけで」） ==');
+{
+  const S = '手巻き寿司世桜 難波店', S2 = '牛カツ世桜 長堀橋店';
+  const t1 = Date.now() - 2 * 864e5, t2 = Date.now() - 40 * 864e5, k1 = 'kz|' + t1 + '|' + S;
+  const seedKz = (role, store, extra) => run(() => {
+    setLS(role, store, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.removeItem('yosakura_news_liked');
+    localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([
+      { store:S, cat:'good', note:'お子さまに折り紙を渡したら喜ばれた', photos:[], t: t1, who:'A' },
+      { store:S, cat:'idea', note:'英語の一言カードがほしい', photos:[], t: t2, who:'B' },
+      { store:S2, cat:'good', note:'長堀橋の気づき', photos:[], t: t1 + 5, who:'C' }]));
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([
+      { kind:'newslike', store:S, item:k1, note: JSON.stringify({ by:'ユン' }), photos:[], t: t1 + 10 },
+      { kind:'newslike', store:S, item:k1, note: JSON.stringify({ by:'田中' }), photos:[], t: t1 + 11 },
+      { kind:'newslike', store:S, item:k1, note: JSON.stringify({ by:'田中', off:1 }), photos:[], t: t1 + 12 },
+      { kind:'newslike', store:S, item:k1, note: JSON.stringify({ by:'神田', hq:1 }), photos:[], t: t1 + 13 },
+      { kind:'newscmt', store:S, item:k1, note: JSON.stringify({ by:'原', body:'あしたの朝礼で共有します' }), photos:[], t: t1 + 20 },
+      { kind:'newscmt', store:S, item:k1, note: JSON.stringify({ by:'神田', body:'全店にも紹介したいです', hq:1 }), photos:[], t: t1 + 21 }]));
+    if (extra) extra();   // run() は端末の控えを空にしてから起動する＝足す分はこの中で
+  });
+  const unameKey = (code.match(/uname:\s*'([^']+)'/) || [])[1] || 'yosakura_demo_uname';
+  // ① スタッフ＝「みんなの気づき」は直近2か月を全部・自店の分だけ
+  seedKz('staff', S); location.hash = '#/app/kizuki?tab=list'; let v = registry.app.innerHTML;
+  ok(/この店の気づき（直近2か月）/.test(v) && /折り紙/.test(v) && /英語の一言カード/.test(v) && !/長堀橋の気づき/.test(v) && !/id="submitKz"/.test(v), 'みんなの気づき（スタッフ）＝自店の直近2か月を全部・ほかの店の分は出ない・送るフォームは出ない');
+  ok(/data-kztab="send"/.test(v) && /data-kztab="list" class="on"/.test(v) && /仕事の前に目を通してください。いいね・コメントは、この店と本部にだけ見えます。/.test(v), '切り替え（送る／みんなの気づき）と案内2文');
+  ok(v.indexOf('data-nwlike="' + k1 + '"') >= 0 && /class="nwlike-n">2</.test(v) && /ユン、神田（本部）/.test(v) && !/田中/.test(v), 'いいね＝件数と押した人の名前（取り消した人は出ない・本部は「（本部）」）');
+  ok(/あしたの朝礼で共有します/.test(v) && /全店にも紹介したいです[\s\S]{0,120}神田 ・ 本部/.test(v) && v.indexOf('data-nwcmtsend="' + k1 + '"') >= 0 && /この店と本部に見えます/.test(v), 'コメント＝店の人と本部の分が並ぶ（本部が書いた分は「本部」）・入力欄がある');
+  // ② 送る側はこれまでどおり（フォーム＋最近の分）
+  location.hash = '#/app/kizuki'; v = registry.app.innerHTML;
+  ok(/id="submitKz"/.test(v) && /data-kztab="send" class="on"/.test(v) && /最近の気づき/.test(v) && /data-nwlike=/.test(v), '送る＝フォームと最近の気づき（いいね・コメントつき）');
+  // ④ 押した印は 気づき×お名前 ごと（店の iPad を何人かで使う）
+
+  seedKz('staff', S, () => { localStorage.setItem(unameKey, 'ユン'); localStorage.setItem('yosakura_news_liked', JSON.stringify({ [k1 + '#ユン']: { s: S, b: 'ユン' } })); });
+  location.hash = '#/app/kizuki?tab=list&x=1'; v = registry.app.innerHTML;
+  ok(/class="mini pri" data-nwlike="kz\|/.test(v), '押した人の名前のときは「押した」印');
+  seedKz('staff', S, () => { localStorage.setItem(unameKey, '秋定'); localStorage.setItem('yosakura_news_liked', JSON.stringify({ [k1 + '#ユン']: { s: S, b: 'ユン' } })); });
+  location.hash = '#/app/kizuki?tab=list&x=2'; v = registry.app.innerHTML;
+  ok(!/class="mini pri" data-nwlike="kz\|/.test(v) && /class="mini" data-nwlike="kz\|/.test(v), 'お名前が変われば、次の人も押せる');
+  // ③ ホームの帯＝スタッフの見え方にも・押すと「みんなの気づき」へ
+  seedKz('staff', S);
+  location.hash = '#/home'; let hh = registry.app.innerHTML;
+  ok(/data-open="kizuki\?tab=list" data-kzn="1"/.test(hh) && /みんなの気づき/.test(hh) && /仕事の前に目を通してください/.test(hh), 'ホーム（スタッフ）＝この7日の気づきの帯→「みんなの気づき」へ');
+  seedKz('manager', S); location.hash = '#/home'; hh = registry.app.innerHTML;
+  ok(/data-open="kizuki\?tab=list" data-kzn="1"/.test(hh) && /スタッフの気づき/.test(hh) && /店長・オーナーの方は目を通してください/.test(hh), 'ホーム（店長）＝文言はこれまでどおり・行き先は「みんなの気づき」');
+  // ⑤ ソース＝保存の形（kind を増やさない・store はその気づきの店・本部は hq の印・描画中は読み直さない）
+  ok(/const fbStore_ = \(key\) => \{ const m = \/\^kz\\\|\[\^\|\]\*\\\|\(\.\+\)\$\/\.exec/.test(code) && /const likeStore = fbStore_\(key\), likeBy = getUserName\(\) \|\| '';/.test(code) && /kind:'newscmt', store: fbStore_\(key\), item: key/.test(code), 'ソース＝気づきへの反応の store はその気づきの店（自店と本部にだけ届く・\'*\' にしない）');
+  ok(/if \(fbHq\) likeNote\.hq = 1;/.test(code) && /cmtHq \? \{ body: text, by, hq: 1 \} : \{ body: text, by \}/.test(code) && /x\.store === o\.store && x\.by === o\.by && x\.hq === o\.hq/.test(code), 'ソース＝本部が押した・書いた分は note の hq で見分ける（取り消しも同じ区分の中で引く）');
+  ok(/if \(!_kzFbMemo\) \{/.test(code) && /Promise\.resolve\(\)\.then\(kzFbReset_\)/.test(code), 'ソース＝一覧の描画で保存データを読むのは1回だけ（行ごとに読み直さない）');
+  ok(/_kzFbMemo = g; _kzLikedMemo = lsMap_\(NEWS_LIKED_LS\);/.test(code) && /const liked = !!\(_kzLikedMemo \|\| lsMap_\(NEWS_LIKED_LS\)\)\[fbLikedId_\(key\)\];/.test(code) && /if \(by && fbIsKz_\(key\)\) \{ try \{ kzFbReset_\(\); const lm = lsMap_\(NEWS_LIKED_LS\); document\.querySelectorAll\('\[data-nwlike\]'\)/.test(code), 'ソース＝「押した」印の控えも描画で1回だけ読む・コメントでお名前が変わったら表示中の印をその人の分に合わせる（Codex 11/16）');
+  { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');
+    ok(/var AUTH_PUBLIC_KINDS = \[[^\]]*\]/.test(gsrc) && !/AUTH_PUBLIC_KINDS = \[[^\]]*'newscmt'/.test(gsrc) && !/AUTH_PUBLIC_KINDS = \[[^\]]*'newslike'/.test(gsrc) && /return u\.stores\.indexOf\(String\(store\)\) !== -1;/.test(gsrc), '認証.gs＝newslike／newscmt は全店公開の一覧に無い＝store がその店の行は自店と本部にだけ返る'); }
+  // ⑥ お知らせの反応はこれまでどおり（キーは数字・本部は '*'）
+  { const nt = Date.now() - 3600e3;
+    run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_demo_news', JSON.stringify([{ title:'テスト', body:'本文', level:'normal', target:'all', video:'', photos:[], t: nt }]));
+      localStorage.setItem('yosakura_demo_reports', JSON.stringify([{ kind:'newslike', store:'*', item:String(nt), note: JSON.stringify({ by:'本部' }), photos:[], t: nt + 1 }, { kind:'newscmt', store:'*', item:String(nt), note: JSON.stringify({ by:'神田', body:'本部の返信です' }), photos:[], t: nt + 2 }])); });
+    location.hash = '#/app/news?x=k'; const h = registry.app.innerHTML;
+    ok(/class="nwlike-n">1</.test(h) && /本部の返信です[\s\S]{0,120}・ 本部/.test(h), 'お知らせのいいね・コメントは変わらない'); }
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_news_liked'); localStorage.setItem('yosakura_demo_kizuki', '[]'); localStorage.setItem('yosakura_demo_reports', '[]'); });
+}
+
+console.log('== 2026-11-16 本部タブ＝全店きょうに区分の1字（本・任・推）／アプリの利用状況（神田さん） ==');
+{
+  const S = '手巻き寿司世桜 難波店';
+  const dk = (i) => { const d = new Date(Date.now() + 9 * 3600e3 - i * 864e5); return d.toISOString().slice(0, 10); };
+  const at = (i) => new Date(dk(i) + 'T03:00:00Z').getTime();   // その日の JST 12:00
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+      { store:S, date: dk(1), sales: 100000, t: at(1) }, { store:S, date: dk(2), sales: 100000, t: at(2) },
+      { store:S, date: dk(3), sales: 100000, src:'usen', t: at(3) }]));   // 3日前はレジの自動取込だけ＝数えない
+    localStorage.setItem('yosakura_demo_kizuki', JSON.stringify([{ store:S, cat:'good', note:'a', photos:[], t: at(1) }, { store:S, cat:'good', note:'b', photos:[], t: at(2) }, { store:S, cat:'good', note:'古い', photos:[], t: at(20) }]));
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([{ kind:'subrec', store:S, item:'openphoto|' + dk(1), note:'', photos:[], t: at(1) }])); });
+  location.hash = '#/home?tab=hq'; const h = registry.app.innerHTML;
+  ok(/class="pb-dot pb-dot--k[^"]*">本<\/span>/.test(h) && /class="pb-dot pb-dot--k[^"]*">(任|推)<\/span>/.test(h) && /本＝本部提出 ・ 任＝任意（店内実施） ・ 推＝推奨/.test(h), '全店きょう＝丸の中に区分の1字と、その説明');
+  ok(/アプリの利用状況/.test(h) && /きのうまでの7日 ・ 出した日数／営業日/.test(h) && h.indexOf('アプリの利用状況') < h.indexOf('id="sob_store"') && h.indexOf('アプリの利用状況') > h.indexOf('返答待ち'), 'アプリの利用状況＝返答待ちの下・提出物の設定の前');
+  const seg = h.slice(h.indexOf('pb-hqgrid--use'), h.indexOf('id="sob_store"'));
+  const row = seg.slice(seg.indexOf('>難波'), seg.indexOf('>難波') + 400);
+  ok(/class="pb-ucell[^"]*">2\/\d<\/span><span class="pb-ucell[^"]*">1\/\d<\/span><span class="pb-ucell">2件<\/span>/.test(row) && !/class="pb-use[ "]/.test(seg), '利用状況（難波）＝日報はアプリで出した2日だけ（レジ取込だけの日は数えない）・オープン写真1日・気づきは7日の2件（20日前は数えない）');
+  ok((seg.match(/class="s"/g) || []).length === (h.match(/class="pb-hqst"/g) || []).length, '利用状況＝全店が1行ずつ並ぶ');
+  ok(/const npSet = new Set\(\); sk\.forEach\(r => \{ if \(r && r\.store && r\.date && r\.src !== 'drive' && r\.src !== 'usen'\)/.test(code) && /if \(!isHoliday\(st, dk\)\) days\.push\(dk\);/.test(code), 'ソース＝日報は取込（総括表・USEN）の行を数えない・定休日は営業日から除く');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 2026-11-16 アプリの利用状況（機能ごと・この30日）＝提出・入力／画面を開いた回数／使われていない（神田さん） ==');
+{
+  const S1 = '手巻き寿司世桜 難波店', S2 = '和牛世桜 広島店';
+  const seedU = (tab, u) => { run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); if (u) localStorage.setItem('yosakura_usage_v1', JSON.stringify(u)); }); location.hash = '#/app/usage' + (tab ? '?tab=' + tab : ''); return registry.app.innerHTML; };
+  const U = { t: Date.now(), f: { nippou: { [S1]: [20, 18], [S2]: [9, 9] }, kizuki: { [S1]: [31, 22] }, 'sub:openphoto': { [S1]: [25, 25], [S2]: [12, 12] }, 'ck:open': { [S2]: [40, 10] } },
+              p: { recipes: { [S1]: [14, 6] }, 'home:miru': { [S1]: [30, 12], [S2]: [8, 5] }, 'doc:allergy': { [S2]: [3, 2] } }, pm: { [S1]: ['2026-11-17', '2026-11-20'], [S2]: ['2026-11-18', '2026-11-20'] } };
+  let v = seedU('', U);
+  ok(/data-usetab="f" class="on"/.test(v) && /日報（アプリで提出）[\s\S]{0,80}2／\d+店[\s\S]{0,60}27日/.test(v) && /オープン写真[\s\S]{0,80}2／\d+店[\s\S]{0,60}37日/.test(v) && /オープンチェック[\s\S]{0,80}1／\d+店/.test(v), '提出・入力＝機能ごとに 使っている店の数・のべ日数（提出物は名前で・チェックは種類で）');
+  ok(v.indexOf('オープン写真') < v.indexOf('気づき</span>') && /class="st low">1／/.test(v) && /難波店? 22日（31件）/.test(v), '並び＝店の数の多い順・2店以下は色を変える・行の中に店ごとの内訳');
+  ok(/レジ・総括表からの自動取込と、本部が書いた分は数えていません。/.test(v), '数え方の説明（自動取込と本部の分は数えない）');
+  v = seedU('p', U);
+  ok(/data-usetab="p" class="on"/.test(v) && /見る・注文する[\s\S]{0,80}2／\d+店[\s\S]{0,60}38回/.test(v) && /レシピ[\s\S]{0,80}1／\d+店[\s\S]{0,60}14回/.test(v) && /食物アレルギーの表/.test(v) && /本部IDで開いた分は数えません。/.test(v), '画面を開いた回数＝画面の名前・店の数・回数');
+  v = seedU('z', U);
+  ok(/この30日、どの店からも記録が無いもの/.test(v) && /金種別入力/.test(v) && /中間報告/.test(v) && !/class="nm">気づき<\/span>/.test(v) && !/class="nm">日報（アプリで提出）/.test(v) && /開かれていない画面（\d+）/.test(v) && !/class="nm">レシピ<\/span>/.test(v) && !/class="nm">食物アレルギー[^<]*<\/span><span class="st low">0／2店/.test(v) && /画面の記録が届いている店：2／\d+店（難波店? 11\/17〜・広島店? 11\/18〜）。届いていない店と、きょう開いた分は入っていません。/.test(v) && /<span class="st low">0／2店<\/span>/.test(v) && !/みんなの投稿へのいいね/.test(v), '使われていない＝記録が0の機能と、記録が届いている店の中でどこも開いていない画面（表を直接開いたアレルギーは「開いた」・届いている店の数を分母に）');
+  v = seedU('z', { t: Date.now(), f: Object.assign({ 'ck:sakura': { [S1]: [3, 3] } }, U.f), p: {}, pm: {} });
+  ok(!/class="nm">桜（トイレ）チェック<\/span>/.test(v) && /class="nm">クローズチェック<\/span>/.test(v), '使われていない＝使われたチェックは並ばない');
+  ok(/画面を開いた回数が届いてから出ます/.test(v) && /開かれていない画面（—）/.test(v), '画面の記録がまだ無い間は「開かれていない画面」を並べない（全部0に見せない）');
+  v = seedU('', null);
+  ok(/まだ集計がありません/.test(v), '集計が無い端末＝案内だけ');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); }); location.hash = '#/home?tab=hq';
+  ok(/data-open="usage"/.test(registry.app.innerHTML) && /機能ごとの利用状況を見る（この30日）/.test(registry.app.innerHTML), '本部タブ＝利用状況の表の下に入口');
+  // ソース＝数え方と送り方
+  ok(/const pvOk_ = \(\) => \{ try \{ const a = getAuth\(\); return useBackend\(\) && !!a && a\.role !== 'hq' && !!authToken\(\) && getRole\(\) !== 'hq'; \}/.test(code) && /if \(key === curKey \|\| _pvSending\[key\]\) return;/.test(code) && /if \(!\(dk < dateKeyFor\(store, Date\.now\(\)\)\)\) return;/.test(code) && /const pvNav_ = \(\) => \{ try \{ if \(!pvOk_\(\)\) \{ _pvLast = ''; return; \}/.test(code) && /function render\(keepScroll\) \{\s*try \{ pvNav_\(\); \} catch \(e\) \{\}/.test(code) && /case 'subrec': \{ if \(nt\(\)\.role === 'hq'\) return;/.test(code) && /kind: 'pv', store, item: dk, note: JSON\.stringify\(\{ d: dev, c: m\[key\] \}\)/.test(code) && /if \(d && d\.ok !== false && !d\.needLogin\) lsMapDel_\(PV_LS, key\);/.test(code), 'ソース＝画面を開いた回数は店のIDの端末だけ・きょうの分は送らない（1日1行）・届いたときだけ端末の控えを消す');
+  ok(/case 'soukatsu': \{ const n = nt\(\); if \(n\.src === 'usen' \|\| n\.src === 'drive'\) return; f = 'nippou'; \} break;/.test(code) && /if \(n\.hq \|\| n\.off\) return;/.test(code) && /o\[k\] = Math\.max\(o\[k\] \|\| 0, n\);/.test(code) && !/case 'commlike': \{ if \(nt\(\)\.off\)/.test(code) && /ckBase\(String\(r\.item \|\| ''\)\.split\('\|\|'\)\[0\]\)/.test(code) && /dev = localStorage\.getItem\(PV_DEV_LS\) === nd \? nd : '';/.test(code) && /'yosakura_pv_v1', 'yosakura_pv_dev'\]\);/.test(code) && /else if \(usageStale_\(\)\) \{ try \{ usageRecalc_\(d\.reports\); \}/.test(code) && /if \(uOn_\) usageAdd_\(uF_, uP_, r, store, t, uCut_\);/.test(code) && /if \(uOn_\) usageSave_\(uF_, uP_\);/.test(code), 'ソース＝取込・本部の分・取り消しは数えない／送り直しは 店×日×端末 で大きい方／数えるのは本部の端末の振り分けで1回');
+  ok(!/'pv'/.test(fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/Code.gs', 'utf8').match(/var PURGE_KEEP_KINDS[\s\S]*?\];/)[0]), 'Code.gs＝pv は恒久保存の一覧に入れない（90日で消えてよい）');
+  run(() => { setLS('hq', 'all', 'ja'); localStorage.removeItem('yosakura_usage_v1'); });
+}
+
+console.log('== 2026-11-16 利用状況＝同期の振り分けで数える（通し）＝取込・本部・古い分は数えない／画面の回数は 店×日×端末 で大きい方 ==');
+{
+  const S1 = '手巻き寿司世桜 難波店', S2 = '和牛世桜 広島店';
+  const now = Date.now(), D = 864e5;
+  const dkOf = (ts) => new Date(ts + 9 * 3600e3 - 5 * 3600e3).toISOString().slice(0, 10);
+  const pvDay = dkOf(now - D), pvOld = dkOf(now - 45 * D);
+  FETCH_ROWS = { ok:true, reports:[
+    { kind:'soukatsu', store:S1, item:'', note: JSON.stringify({ date: dkOf(now - D), sales: 1 }), t: now - D, id:'u1' },
+    { kind:'soukatsu', store:S1, item:'', note: JSON.stringify({ date: dkOf(now - 2 * D), sales: 1, src:'usen' }), t: now - 2 * D, id:'u2' },   // レジの取込＝数えない
+    { kind:'soukatsu', store:S1, item:'', note: JSON.stringify({ date: dkOf(now - 40 * D), sales: 1 }), t: now - 40 * D, id:'u3' },             // 30日より前＝数えない
+    { kind:'kizuki', store:S1, item:'good', note:'a', t: now - D, id:'u4' }, { kind:'kizuki', store:S1, item:'good', note:'b', t: now - D + 1000, id:'u5' },
+    { kind:'subrec', store:S2, item:'openphoto|' + dkOf(now - D), note:'', t: now - D, id:'u6' },
+    { kind:'subrec', store:S2, item:'openphoto|' + dkOf(now - 2 * D), note: JSON.stringify({ role:'hq' }), t: now - 2 * D, id:'u6b' },   // 本部が代わりに出した分＝数えない
+    { kind:'ckdone', store:S2, item:'open||' + dkOf(now - D), note: JSON.stringify({ done:{}, by:'x' }), t: now - D, id:'u7' },
+    { kind:'ckdone', store:S2, item:'sakura@2F||' + dkOf(now - D), note: JSON.stringify({ done:{}, by:'x' }), t: now - D, id:'u7b' },   // 2階の分＝桜チェックに数える
+    { kind:'commlike', store:S2, item:'1|' + S2, note:'', t: now - D, id:'u7c' },                                                        // みんなの投稿へのいいね＝押した店が分からないので数えない
+    { kind:'newscmt', store:S1, item:'kz|1|' + S1, note: JSON.stringify({ by:'原', body:'x' }), t: now - D, id:'u8' },
+    { kind:'newscmt', store:S1, item:'kz|1|' + S1, note: JSON.stringify({ by:'神田', body:'y', hq:1 }), t: now - D, id:'u9' },                    // 本部が書いた分＝数えない
+    { kind:'newslike', store:'*', item:'123', note: JSON.stringify({ by:'本部' }), t: now - D, id:'u10' },                                       // 本部（全店あて）＝数えない
+    { kind:'pv', store:S1, item: pvDay, note: JSON.stringify({ d:'devA', c:{ recipes: 3, 'home:miru': 5 } }), t: now - 1000, id:'u11' },
+    { kind:'pv', store:S1, item: pvDay, note: JSON.stringify({ d:'devA', c:{ recipes: 3, 'home:miru': 5 } }), t: now - 500, id:'u12' },          // 同じ端末の送り直し＝足さない
+    { kind:'pv', store:S1, item: pvDay, note: JSON.stringify({ d:'devB', c:{ recipes: 2 } }), t: now - 400, id:'u13' },                           // 別の端末＝足す
+    { kind:'pv', store:S2, item: pvOld, note: JSON.stringify({ d:'devC', c:{ recipes: 9 } }), t: now - 300, id:'u14' },                           // 30日より前の日＝数えない
+  ]};
+  try { run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); }); } catch (e) { FAIL++; console.log('  ✗ load threw: ' + e.message); }
+}
+await new Promise(r => setTimeout(r, 80));
+{
+  const S1 = '手巻き寿司世桜 難波店', S2 = '和牛世桜 広島店';
+  let u = null; try { u = JSON.parse(localStorage.getItem('yosakura_usage_v1') || 'null'); } catch (e) {}
+  const f = (u && u.f) || {}, p = (u && u.p) || {};
+  ok(!!u && JSON.stringify(f.nippou) === JSON.stringify({ [S1]: [1, 1] }), '日報＝店がアプリで出した1件だけ（レジの取込・30日より前は数えない）');
+  ok(JSON.stringify(f.kizuki) === JSON.stringify({ [S1]: [2, 1] }) && JSON.stringify(f['sub:openphoto']) === JSON.stringify({ [S2]: [1, 1] }) && JSON.stringify(f['ck:open']) === JSON.stringify({ [S2]: [1, 1] }), '気づき＝2件・1日／オープン写真・オープンチェックは種類ごと');
+  ok(JSON.stringify(f.kzcmt) === JSON.stringify({ [S1]: [1, 1] }) && !f.newslike, '気づきへのコメント＝店の人の1件だけ（本部の分・本部の全店あては数えない）');
+  ok(JSON.stringify(p.recipes) === JSON.stringify({ [S1]: [5, 1] }) && JSON.stringify(p['home:miru']) === JSON.stringify({ [S1]: [5, 1] }), '画面を開いた回数＝同じ端末の送り直しは足さない・別の端末は足す・30日より前の日は数えない');
+  ok(!JSON.parse(localStorage.getItem('yosakura_demo_reports') || '[]').some(r => r.kind === 'pv'), 'pv の行そのものは端末の控えに残さない（小さな表だけ）');
+  ok(JSON.stringify(f['ck:sakura']) === JSON.stringify({ [S2]: [1, 1] }) && !f['ck:sakura@2F'] && !f.commlike, '2階の桜チェックは桜チェックに・みんなの投稿へのいいねは数えない（Codex）');
+  ok(!!(u && u.pm) && Array.isArray(u.pm[S1]) && u.pm[S1][0] === u.pm[S1][1] && !u.pm[S2], '画面の記録が届いている店と日（難波だけ・広島の古い分は入らない）');
+  FETCH_ROWS = { ok:false };
+  run(() => { setLS('hq', 'all', 'ja'); });
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
