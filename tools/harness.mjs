@@ -8654,6 +8654,7 @@ console.log('== 2026-11-16 アプリの利用状況（機能ごと・この30日
   ok(/この30日、どの店からも記録が無いもの/.test(v) && /金種別入力/.test(v) && /中間報告/.test(v) && !/class="nm">気づき<\/span>/.test(v) && !/class="nm">日報（アプリで提出）/.test(v) && /開かれていない画面（\d+）/.test(v) && !/class="nm">レシピ<\/span>/.test(v) && !/class="nm">食物アレルギー[^<]*<\/span><span class="st low">0／2店/.test(v) && /画面の記録が届いている店：2／\d+店（難波店? 11\/17〜・広島店? 11\/18〜）。届いていない店と、きょう開いた分は入っていません。/.test(v) && /<span class="st low">0／2店<\/span>/.test(v) && !/みんなの投稿へのいいね/.test(v), '使われていない＝記録が0の機能と、記録が届いている店の中でどこも開いていない画面（表を直接開いたアレルギーは「開いた」・届いている店の数を分母に）');
   v = seedU('z', { t: Date.now(), f: Object.assign({ 'ck:sakura': { [S1]: [3, 3] } }, U.f), p: {}, pm: {} });
   ok(!/class="nm">桜（トイレ）チェック<\/span>/.test(v) && /class="nm">クローズチェック<\/span>/.test(v), '使われていない＝使われたチェックは並ばない');
+  ok(/const usedLb = new Set\(Object\.keys\(F\)\.filter\(fk => STORES\.some\(st => F\[fk\]\[st\]\)\)\.map\(usageFLabel_\)\); const seenLb = new Set\(\);/.test(code) && (() => { const names = (v.match(/class="nm">[^<]*<\/span>/g) || []); return names.length === new Set(names).size; })(), '使われていない＝同じ名前は1行・使われている機能と同じ名前は並べない（本番で卓上POPの交換が両方に出た）');
   ok(/画面を開いた回数が届いてから出ます/.test(v) && /開かれていない画面（—）/.test(v), '画面の記録がまだ無い間は「開かれていない画面」を並べない（全部0に見せない）');
   v = seedU('', null);
   ok(/まだ集計がありません/.test(v), '集計が無い端末＝案内だけ');

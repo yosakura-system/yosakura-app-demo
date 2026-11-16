@@ -12215,7 +12215,9 @@
     if (tab === 'z') {
       const known = Object.keys(USAGE_F_).concat(CK_MODES.map(c => 'ck:' + c.v), getMasters().filter(m => (m.detect === 'subrec' || m.detect === 'didit') && m.oblig !== 'off').map(m => 'sub:' + m.id));
       const fUsed = (k) => Object.keys(F).some(fk => (fk === k || (k.indexOf('ck:') === 0 && fk.indexOf(k) === 0)) && STORES.some(st => F[fk][st]));
-      const zf = known.filter((k, i) => known.indexOf(k) === i && !fUsed(k));
+      /* ★2026-11-16 本番で確認＝同じ名前の提出物が2つある（卓上POPの交換）と、使われている方と同じ名前が「記録が無い」にも並んだ → 名前で突き合わせ、同じ名前は1行に */
+      const usedLb = new Set(Object.keys(F).filter(fk => STORES.some(st => F[fk][st])).map(usageFLabel_)); const seenLb = new Set();
+      const zf = known.filter((k, i) => { if (known.indexOf(k) !== i || fUsed(k)) return false; const lb = usageFLabel_(k); if (usedLb.has(lb) || seenLb.has(lb)) return false; seenLb.add(lb); return true; });
       /* ★Codex（11/16）＝画面は「記録が届いている店」の中でだけ 0 と言う（旧い版の店・きょう開いた分は届いていない＝使っていないとは言えない）。資料を直接開いた分（doc:）も、その画面を開いたものとして数える */
       const RS = STORES.filter(st => PM[st]); const hasP = RS.length > 0;
       const PV_ALIAS_ = { allergy: ['doc:allergy'], manual: ['doc:manual'], manualtop: ['doc:manual'], gyotaiman: ['doc:manual'] };
