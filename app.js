@@ -3460,6 +3460,56 @@
       v: p.v || '', a8: p.a8 != null ? String(p.a8) : '', a10: p.a10 != null ? String(p.a10) : '',
       total: p.total != null ? Number(p.total) : 0, conf: p.conf || 'low', photo: p.photo || '', src: 'ocr', raw: p.raw ? String(p.raw) : '', ret: !!p.ret }));
   };
+  /* ---------- ロスを1件ずつ（2026-11-16 神田さん「物・量は自由記入・理由は選べる形・＋で足せるように」）----------
+     ★本部の承認がまだ＝店には出さない（LOSS_ROWS_ALL_ = false）。本部IDで店の見え方にしたときだけ見本として出る（その見え方では提出は送られない）。
+       承認が出たら true にして配信するだけ。
+     ・1件＝物（自由）・量（自由）・理由（選ぶ。その他は書く）・金額（任意）。「＋ ロスを足す」で増やす。無い日は何も足さずに出せる
+     ・保存＝今までの2つの欄（loss＝金額の合計／lossnote＝「物／量／理由」を1行ずつ）へ写す＝本部タブのロス率・受信箱・集約はそのまま。あわせて内訳 losses を持つ（理由別・物別にあとで数えられる）
+     ・前の形（金額と内容だけ）で出した日を開いたら、1件の行にして見せる（消さない） */
+  const LOSS_ROWS_ALL_ = false;
+  const lossRowsOn_ = () => { try { return LOSS_ROWS_ALL_ || devViewAllowed(); } catch (e) { return false; } };
+  const LOSS_REASONS_ = [
+    ['prep',    { ja:'仕込みすぎ', en:'Over-prepped', vi:'Sơ chế quá nhiều' }],
+    ['order',   { ja:'発注しすぎ', en:'Over-ordered', vi:'Đặt hàng quá nhiều' }],
+    ['expire',  { ja:'期限切れ', en:'Expired', vi:'Hết hạn' }],
+    ['mistake', { ja:'作り間違い・オーダーの間違い', en:'Cooking / order mistake', vi:'Làm sai / nhầm order' }],
+    ['drop',    { ja:'落とした・こぼした', en:'Dropped / spilled', vi:'Làm rơi / đổ' }],
+    ['arrive',  { ja:'届いた時点で傷んでいた', en:'Damaged on delivery', vi:'Hỏng khi nhận hàng' }],
+    ['guest',   { ja:'お客様の都合（キャンセル・取り替え）', en:'Guest reason (cancel / replace)', vi:'Lý do của khách (hủy / đổi)' }],
+    ['trial',   { ja:'試作・試食', en:'Trial / tasting', vi:'Làm thử / nếm thử' }],
+    ['other',   { ja:'その他（書く）', en:'Other (write)', vi:'Khác (ghi)' }]
+  ];
+  let skLoss_ = [];
+  /* ★Codex（11/16）＝①文字は切り詰めない（前の形の長い内容を行にして、少し直しただけで欠けるのを防ぐ）
+     ②金額は「読めたときだけ」数字にする＝全角・「円」・カンマは読む／小数は四捨五入／読めない字は空（別の金額に化けさせない）。読めた値は欄の表示にも戻す */
+  const skLossAmt_ = (v) => { const z = String(v == null ? '' : v).replace(/[０-９．]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[,，、\s円¥￥]/g, '');
+    if (/^\d+$/.test(z)) return String(Number(z)); if (/^\d+\.\d+$/.test(z)) return String(Math.round(Number(z))); return ''; };
+  const skLossClean_ = (x) => ({ item: String((x && x.item) || ''), qty: String((x && x.qty) || ''), reason: LOSS_REASONS_.some(r => r[0] === (x && x.reason)) ? x.reason : '', rtext: String((x && x.rtext) || ''), amt: skLossAmt_(x && x.amt) });
+  const skLossFilled_ = () => skLoss_.filter(r => r.item || r.qty || r.reason || r.rtext || r.amt);
+  const skLossLoad_ = (rec) => {
+    if (rec && Array.isArray(rec.losses) && rec.losses.length) skLoss_ = rec.losses.map(skLossClean_);
+    else if (rec && (String(rec.lossnote || '').trim() || Number(rec.loss) > 0)) skLoss_ = [skLossClean_({ item: String(rec.lossnote || '').replace(/\s+/g, ' ').trim(), amt: rec.loss })];   // 前の形で出した日＝1件にして見せる
+    else skLoss_ = [];
+  };
+  const skLossReasonJa_ = (r) => r.reason === 'other' ? (r.rtext || 'その他') : ((LOSS_REASONS_.find(x => x[0] === r.reason) || [0, { ja:'' }])[1].ja);   // 本部が読む文は日本語で
+  const skLossRowsHtml_ = () => skLoss_.map((r, i) => `<div class="pb-lossrow">
+      <input type="text" data-lf="item" data-li="${i}" value="${esc(r.item)}" placeholder="${esc(L({ ja:'物（例：キャベツ）', en:'Item (e.g. cabbage)', vi:'Món (vd: bắp cải)' }))}">
+      <input type="text" data-lf="qty" data-li="${i}" value="${esc(r.qty)}" placeholder="${esc(L({ ja:'量（例：外葉300g）', en:'Amount (e.g. 300g)', vi:'Lượng (vd: 300g)' }))}">
+      <select data-lf="reason" data-li="${i}"><option value="">${esc(L({ ja:'理由を選ぶ', en:'Choose a reason', vi:'Chọn lý do' }))}</option>${LOSS_REASONS_.map(([v, t]) => `<option value="${v}"${r.reason === v ? ' selected' : ''}>${esc(L(t))}</option>`).join('')}</select>
+      <input type="text" data-lf="rtext" data-li="${i}" value="${esc(r.rtext)}" placeholder="${esc(L({ ja:'理由を書く', en:'Write the reason', vi:'Ghi lý do' }))}"${r.reason === 'other' ? '' : ' hidden'}>
+      <input type="text" inputmode="numeric" data-lf="amt" data-li="${i}" value="${esc(r.amt)}" placeholder="${esc(L({ ja:'金額（円・分かれば）', en:'Amount in yen (if known)', vi:'Số tiền (nếu biết)' }))}">
+      <button type="button" class="pb-mini" data-ldel="${i}">${L({ ja:'消す', en:'Remove', vi:'Xóa' })}</button>
+    </div>`).join('');
+  const skLossRender_ = () => { const el = document.getElementById('pbn_lossrows'); if (el) el.innerHTML = skLossRowsHtml_(); };
+  /* 行の中身を、今までの2つの欄（金額の合計・内容）へ写す。行を触ったときだけ呼ぶ（開いただけでは呼ばない＝読み戻した値を変えない）。
+     最後の1件を消したら、2つの欄も空にする（消したロスが提出に残らないように） */
+  const skLossSync_ = () => {
+    const amtEl = document.getElementById('sk_loss'), noteEl = document.getElementById('sk_lossnote');
+    const rows = skLossFilled_();
+    const sum = rows.reduce((a, r) => a + (Number(r.amt) || 0), 0);
+    if (amtEl) amtEl.value = sum ? String(sum) : '';
+    if (noteEl) noteEl.value = rows.map(r => [r.item, r.qty, skLossReasonJa_(r)].filter(Boolean).join('／')).join('\n');
+  };
   let skSlips_ = [];
   let skSlipsCand_ = [];   // ★2026-11-15 提出済みの日報に、まだ入っていない納品書（その日付の写真）＝店が「足す」を押したものだけ入れる
   /* ★2026-10-20 原さん（心斎橋）「翌朝に前日分をまとめて撮るスタイルが理想」＝日報の日付が前日のとき、その後（翌朝）に撮った納品書も前日分として出す。
@@ -3624,7 +3674,26 @@
       const row = document.createElement('div'); row.className = 'pb-niperrrow';
       if (lossAmtL) { const s1 = lossAmtL.querySelector('span'); if (s1) s1.textContent = L({ ja:'だいたいの金額（円）', en:'Approx. amount (yen)', vi:'Số tiền ước tính (yên)' }); row.appendChild(lossAmtL); }
       if (lossNoteL) { const s2 = lossNoteL.querySelector('span'); if (s2) s2.textContent = L({ ja:'物・量・理由', en:'Item, amount, reason', vi:'Món, lượng, lý do' }); row.appendChild(lossNoteL); }
-      d.appendChild(row); return d;
+      d.appendChild(row);
+      if (lossRowsOn_()) {   // ★1件ずつ足す形（本部の承認まで、本部IDの店の見え方だけ）。今までの2つの欄は隠して、行から写す
+        row.style.display = 'none';   // hidden 属性は .pb-niperrrow の display:grid に負ける＝style で隠す
+        const sm = d.querySelector('.pb-sec small'); if (sm) sm.textContent = L({ ja:'あった日だけ。「＋ ロスを足す」で1件ずつ', en:'Only on days with loss. Add one at a time.', vi:'Chỉ ngày có hao hụt. Thêm từng mục.' });
+        const list = document.createElement('div'); list.id = 'pbn_lossrows'; d.appendChild(list);
+        const add = document.createElement('button'); add.type = 'button'; add.className = 'pb-nipshoot'; add.id = 'pbn_lossadd'; add.textContent = L({ ja:'＋ ロスを足す', en:'+ Add a loss', vi:'+ Thêm hao hụt' }); d.appendChild(add);
+        d.addEventListener('input', (e) => { const t = e.target, ds = t.dataset || {}; if (ds.lf == null || !skLoss_[Number(ds.li)]) return;
+          if (ds.lf === 'amt') { const a = skLossAmt_(t.value); skLoss_[Number(ds.li)].amt = a; t.style.borderColor = (String(t.value).trim() && !a) ? '#B5533C' : ''; }   // 読めない金額は赤い枠（合計には入れない）
+          else skLoss_[Number(ds.li)][ds.lf] = String(t.value);
+          skLossSync_(); });
+        d.addEventListener('change', (e) => { const t = e.target, ds = t.dataset || {}; if (!skLoss_[Number(ds.li)]) return;
+          if (ds.lf === 'amt') { const a = skLossAmt_(t.value); if (a) { t.value = a; t.style.borderColor = ''; } return; }   // 読めた金額は、その数字に書き直して見せる（200円→200・２００→200・200.5→201）
+          if (ds.lf !== 'reason') return;
+          skLoss_[Number(ds.li)].reason = t.value; const rt = t.parentElement && t.parentElement.querySelector('[data-lf="rtext"]'); if (rt) rt.hidden = t.value !== 'other'; skLossSync_(); });
+        d.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return;
+          if (b.id === 'pbn_lossadd') { skLoss_.push(skLossClean_({})); skLossRender_(); const last = list.querySelector(`[data-lf="item"][data-li="${skLoss_.length - 1}"]`); if (last) last.focus(); }
+          else if (b.dataset.ldel != null) { skLoss_.splice(Number(b.dataset.ldel), 1); skLossRender_(); skLossSync_(); } });
+        setTimeout(skLossRender_, 0);
+      }
+      return d;
     })() : null;
     const salesLbl = noRegi && g('sk_posgrid') ? g('sk_posgrid').previousElementSibling : null;
     const salesGrid = noRegi ? g('sk_posgrid') : null;
@@ -14424,6 +14493,7 @@
         /* ★今日の納品書＝その日の下書き（提出済みならその内訳）を入れ直し、仕入3欄を自動で埋める（2026-10-01） */
         skSlipsLoad_(store, date, (rec && rec.src !== 'drive' && rec.src !== 'usen') ? rec : null);
         skSlipsRender_();
+        skLossLoad_((rec && rec.src !== 'drive' && rec.src !== 'usen') ? rec : null); skLossRender_();   // ★2026-11-16 ロスの内訳（店・日付を変えたときも入れ直す）
         if (skSlipsApply_()) cumUpd();
         /* まだ提出の無い日は、写真から読み取った下書きや累計の自動入力を消さない
            （日付を選び直したときだけ、前の日の内容が残らないように空にする） */
@@ -14601,6 +14671,7 @@
         // 日報一本化（2026-08-26 決定）で足した項目＝元の数字だけ。率は計算で出す
         staffct: v('sk_staffct'), hours: v('sk_hours'), laborcost: v('sk_laborcost'),
         loss: v('sk_loss'), memo: v('sk_memo'),
+        losses: (lossRowsOn_() && skLossFilled_().length) ? skLossFilled_().map(skLossClean_) : undefined,   // ★2026-11-16 ロスの内訳（1件ずつ）。金額の合計と内容の文は、上の loss・下の lossnote に今までどおり入る
         // 日報の項目（2026-09-05 秋定さんのご要望＝日報は総括表へ一本化・長堀橋トライアル）
         lstaff: v('sk_lstaff'), lhours: v('sk_lhours'), nstaff: v('sk_nstaff'), nhours: v('sk_nhours'),
         sand: v('sk_sand'), lossnote: v('sk_lossnote'), bad: v('sk_bad'), action: v('sk_action'),

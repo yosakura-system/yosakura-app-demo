@@ -1470,6 +1470,12 @@ html[data-theme="pb"] .pb-niperr { margin: 10px 0 4px; }
 html[data-theme="pb"] .pb-niperrv { font-size: 14px; margin: 2px 0 8px; }
 html[data-theme="pb"] .pb-niperrrow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 html[data-theme="pb"] .pb-niperrrow label.fld { margin: 0; }
+/* 2026-11-16 日報のロス＝1件ずつの行（物・量・理由・金額） */
+html[data-theme="pb"] .pb-lossrow { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px; margin: 8px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+html[data-theme="pb"] .pb-lossrow input, html[data-theme="pb"] .pb-lossrow select { width: 100%; min-width: 0; font: inherit; font-size: 15px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; box-sizing: border-box; }
+html[data-theme="pb"] .pb-lossrow select, html[data-theme="pb"] .pb-lossrow [data-lf="rtext"] { grid-column: 1 / -1; }
+html[data-theme="pb"] .pb-lossrow .pb-mini { justify-self: end; align-self: center; }
+html[data-theme="pb"] #pbn_lossadd { margin-top: 4px; }
 .kzgp-fin { margin-left: 6px; }
 /* 本部タブ「提出物の設定」（2026-11-13）＝項目名の右に4つの区分 */
 html[data-theme="pb"] .pb-sobrow { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 10px; padding: 9px 0; border-top: 1px solid var(--line); }

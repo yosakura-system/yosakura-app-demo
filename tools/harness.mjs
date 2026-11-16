@@ -8724,5 +8724,16 @@ console.log('== 2026-11-16 日報＝ロスの欄を折りたたみの外へ（�
     ok(/\{ k:'lossnote', t:\{ ja:'ロスの内容'/.test(code) && /SK_FIELDS\.map\(f => f\.k\)\.concat\(\['cancelt', 'order', 'note'\]\)\.forEach\(k => set\('sk_' \+ k, rec\[k\]\)\);/.test(code), 'ソース＝出した日報を開き直すと、ロスの内容も読み戻す（出し直しで消えない）'); }
 }
 
+console.log('== 2026-11-16 ロスを1件ずつ（物・量・理由を選ぶ・金額は任意・＋で足す）＝本部の承認まで店には出さない（神田さん） ==');
+{
+  ok(/const LOSS_ROWS_ALL_ = false;/.test(code) && /const lossRowsOn_ = \(\) => \{ try \{ return LOSS_ROWS_ALL_ \|\| devViewAllowed\(\); \}/.test(code), 'ソース＝店には出していない（本部IDの店の見え方だけ・承認が出たら true にする1か所）');
+  ok(['仕込みすぎ','発注しすぎ','期限切れ','作り間違い・オーダーの間違い','落とした・こぼした','届いた時点で傷んでいた','お客様の都合（キャンセル・取り替え）','試作・試食'].every(x => code.indexOf("{ ja:'" + x + "'") !== -1) && (code.slice(code.indexOf('const LOSS_REASONS_ = ['), code.indexOf('let skLoss_ = [];')).match(/\{ ja:'/g) || []).length === 9 && /ja:'その他（書く）'/.test(code) && /data-lf="rtext"[^\n]*\$\{r\.reason === 'other' \? '' : ' hidden'\}/.test(code), 'ソース＝理由は9つから選ぶ・その他のときだけ書く欄が出る');
+  ok(/if \(amtEl\) amtEl\.value = sum \? String\(sum\) : '';/.test(code) && /\[r\.item, r\.qty, skLossReasonJa_\(r\)\]\.filter\(Boolean\)\.join\('／'\)\)\.join\('\\n'\)/.test(code), 'ソース＝行の中身は、今までの2つの欄（金額の合計・「物／量／理由」を1行ずつ）へ写す＝本部への流れを変えない');
+  ok(/losses: \(lossRowsOn_\(\) && skLossFilled_\(\)\.length\) \? skLossFilled_\(\)\.map\(skLossClean_\) : undefined,/.test(code), 'ソース＝内訳（losses）は出しているときだけ保存する（店の日報の形は今までと同じ）');
+  ok(!/item: String\(\(x && x\.item\) \|\| ''\)\.slice/.test(code) && /if \(\/\^\\d\+\$\/\.test\(z\)\) return String\(Number\(z\)\); if \(\/\^\\d\+\\\.\\d\+\$\/\.test\(z\)\) return String\(Math\.round\(Number\(z\)\)\); return '';/.test(code) && /t\.style\.borderColor = \(String\(t\.value\)\.trim\(\) && !a\) \? '#B5533C' : '';/.test(code) && /if \(a\) \{ t\.value = a; t\.style\.borderColor = ''; \} return;/.test(code), 'ソース＝文字は切り詰めない・金額は読めたときだけ数字に（全角・円・カンマは読む／小数は四捨五入／読めない字は空で赤い枠）・読めた値は欄にも戻す（Codex 11/16）');
+  ok(/else if \(rec && \(String\(rec\.lossnote \|\| ''\)\.trim\(\) \|\| Number\(rec\.loss\) > 0\)\) skLoss_ = \[skLossClean_\(/.test(code) && /skLossLoad_\(\(rec && rec\.src !== 'drive' && rec\.src !== 'usen'\) \? rec : null\); skLossRender_\(\);/.test(code), 'ソース＝前の形で出した日は1件の行にして見せる（消さない）・店や日付を変えたら入れ直す');
+  ok(/if \(lossRowsOn_\(\)\) \{[^\n]*\r?\n\s+row\.style\.display = 'none';/.test(code) && /add\.id = 'pbn_lossadd'/.test(code) && /skLoss_\.push\(skLossClean_\(\{\}\)\); skLossRender_\(\);/.test(code) && /skLoss_\.splice\(Number\(b\.dataset\.ldel\), 1\); skLossRender_\(\); skLossSync_\(\);/.test(code), 'ソース＝「＋ ロスを足す」で行が増え、「消す」で減る（今までの2つの欄は隠して行から写す）');
+}
+
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
