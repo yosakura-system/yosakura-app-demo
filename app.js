@@ -3613,6 +3613,19 @@
       if (errAmtL) { const s2 = errAmtL.querySelector('span'); if (s2) s2.textContent = L({ ja:'過不足の金額（円・不足は −）', en:'Amount (yen, − if short)', vi:'Số tiền (yên, − nếu thiếu)' }); row.appendChild(errAmtL); }
       row.appendChild(errL); d.appendChild(row); return d;
     })() : null;
+    /* ★2026-11-16 神田さん「全店舗進めてください」＝ロスの欄を「ほかの項目」の折りたたみの外へ（納品書の次）。
+       欄はあったが、畳んだ中にあり見出しにも「ロス」と出ていなかった＝どの店も入れていない（広島 10月・11月 0件）。
+       欄・保存・本部への流れ（sk_loss / sk_lossnote）は今までのまま＝置き場所だけ上へ。無い日は空のままで出せる（必須にしない） */
+    const lossAmtL = g('sk_loss') ? g('sk_loss').closest('label') : null;
+    const lossNoteL = g('sk_lossnote') ? g('sk_lossnote').closest('label') : null;
+    const lossBox = (lossAmtL || lossNoteL) ? (() => {
+      const d = document.createElement('div'); d.className = 'pb-niperr'; d.id = 'pbn_loss';
+      d.innerHTML = `<div class="pb-sec"><h2>${L({ja:'ロス（捨てた物）',en:'Loss (discarded items)',vi:'Hao hụt (đồ bỏ đi)'})}</h2><small>${L({ja:'あった日だけ。無い日は空のままで出せます',en:'Only on days with loss. Leave blank otherwise.',vi:'Chỉ ngày có hao hụt. Không có thì để trống.'})}</small></div>`;
+      const row = document.createElement('div'); row.className = 'pb-niperrrow';
+      if (lossAmtL) { const s1 = lossAmtL.querySelector('span'); if (s1) s1.textContent = L({ ja:'だいたいの金額（円）', en:'Approx. amount (yen)', vi:'Số tiền ước tính (yên)' }); row.appendChild(lossAmtL); }
+      if (lossNoteL) { const s2 = lossNoteL.querySelector('span'); if (s2) s2.textContent = L({ ja:'物・量・理由', en:'Item, amount, reason', vi:'Món, lượng, lý do' }); row.appendChild(lossNoteL); }
+      d.appendChild(row); return d;
+    })() : null;
     const salesLbl = noRegi && g('sk_posgrid') ? g('sk_posgrid').previousElementSibling : null;
     const salesGrid = noRegi ? g('sk_posgrid') : null;
     const fdLbl = noUsen && g('sk_fdgrid') ? g('sk_fdgrid').previousElementSibling : null;    // ★2026-11-09 フード/ドリンクと国別は畳まずに上へ（USEN以外の店の入れる物）
@@ -3633,12 +3646,12 @@
     const kt = g('sk_kintai');
     if (kt) { kt.className = 'pb-nipmore'; kt.removeAttribute('style'); }   // 「ほかの項目」と同じ形
     if (kt && kt.querySelector('summary')) kt.querySelector('summary').textContent = L({ ja:'勤怠を入れる（任意・総括表に自動で入ります）', en:'Attendance (optional, goes to the summary sheet)', vi:'Chấm công (tùy chọn, tự vào bảng tổng kết)' });
-    const placed = new Set([h3, pos, g('sk_editnote'), g('sk_datenote'), dateGrid, salesLbl, salesGrid, fdLbl, fdGrid, ctyLbl, ctyGrid, slip, memo, kt, submit, after, errL, errAmtL].filter(Boolean));   // errL/errAmtL＝レジ誤差の枠へ移した（直下の子だった店で「ほかの項目」へ戻らないように・Codex A6）
+    const placed = new Set([h3, pos, g('sk_editnote'), g('sk_datenote'), dateGrid, salesLbl, salesGrid, fdLbl, fdGrid, ctyLbl, ctyGrid, slip, memo, kt, submit, after, errL, errAmtL, lossAmtL, lossNoteL].filter(Boolean));   // errL/errAmtL＝レジ誤差の枠へ移した（直下の子だった店で「ほかの項目」へ戻らないように・Codex A6）
     kids.forEach(k => { if (!placed.has(k)) more.appendChild(k); });
     if (dateGrid) dbox.appendChild(dateGrid);
     if (h3) h3.textContent = L({ ja:'日報', en:'Daily report', vi:'Báo cáo ngày' });
     if (g('sk_datenote')) g('sk_datenote').style.display = 'none';   // 日付は上の札に出す（二重にしない）
-    const order = [h3, pos, g('sk_editnote'), g('sk_datenote'), dbox, auto, tipBox, errBox, salesLbl, salesGrid, fdLbl, fdGrid, ctyLbl, ctyGrid, slipHead, shoot, slip, memo, kt, more, submit, after].filter(Boolean);
+    const order = [h3, pos, g('sk_editnote'), g('sk_datenote'), dbox, auto, tipBox, errBox, salesLbl, salesGrid, fdLbl, fdGrid, ctyLbl, ctyGrid, slipHead, shoot, slip, lossBox, memo, kt, more, submit, after].filter(Boolean);
     order.forEach(el => form.appendChild(el));
     const draw = () => { const a = g('pbn_auto'); if (a) a.innerHTML = pbNipAutoHtml_(); };
     draw();
@@ -7265,6 +7278,8 @@
           <div class="stat"><div class="n" id="sk_prodh">—</div><div class="k">${L({ja:'人時生産性（自動計算）',en:'Sales per hour (auto)',vi:'DT/giờ (tự động)'})}</div></div>
           <div class="stat"><div class="n" id="sk_laborauto">—</div><div class="k">${L({ja:'人件費率（自動計算）',en:'Labor % (auto)',vi:'% nhân sự (tự động)'})}</div></div>
         </div>
+        ${/* ★2026-11-16 ロスの内容＝これまで長堀橋店の欄にだけあった → 全店に（神田さん「全店舗進めてください」）。欄の id・保存（lossnote）・開き直したときの読み戻し（SK_FIELDS）は同じ。案Bの日報では pbNippouLayout_ が「ロス（捨てた物）」の枠へ移す */''}
+        <label class="fld"><span>${L({ ja:'ロスの内容（対象・量・原因）', en:'Loss details (item, amount, cause)', vi:'Chi tiết hao hụt (mục, lượng, lý do)' })}</span><textarea id="sk_lossnote" placeholder="${esc(L({ja:'例）⑤キャベツ／外葉300g／仕込みが多かった（1行に1件）',en:'e.g. cabbage / 300g / over-prepped (one per line)',vi:'vd: bắp cải / 300g / sơ chế dư (mỗi dòng 1 mục)'}))}"></textarea></label>
         <label class="fld"><span>${L({ ja:'所感（今日の感想）', en:'Notes on the day', vi:'Cảm nhận hôm nay' })}</span><textarea id="sk_memo" placeholder="${L({ja:'客足・ランチ／ディナー・運営面など',en:'traffic, lunch/dinner, operations …',vi:'khách, trưa/tối, vận hành …'})}"></textarea></label>
 
         ${vis[0] !== '牛カツ世桜 長堀橋店' ? '' : `
@@ -7288,7 +7303,6 @@
         <div class="sk-grid">
           <label class="fld"><span>${L({ja:'牛カツサンド販売個数',en:'Gyukatsu sandwiches sold',vi:'Số bánh mì đã bán'})}</span><input type="text" inputmode="numeric" id="sk_sand" placeholder="0"></label>
         </div>
-        <label class="fld"><span>${L({ ja:'ロスの内容（対象・量・原因）', en:'Loss details (item, amount, cause)', vi:'Chi tiết hao hụt (mục, lượng, lý do)' })}</span><textarea id="sk_lossnote" placeholder="${esc(L({ja:'例）⑤キャベツ／外葉300g／仕込みが多かった（1行に1件）',en:'e.g. cabbage / 300g / over-prepped (one per line)',vi:'vd: bắp cải / 300g / sơ chế dư (mỗi dòng 1 mục)'}))}"></textarea></label>
         <label class="fld"><span>${L({ ja:'今日うまくいかなかったこと・課題', en:'Issues today', vi:'Vấn đề hôm nay' })}</span><textarea id="sk_bad"></textarea></label>
         <label class="fld"><span>${L({ ja:'明日からの改善・アクション', en:'Improvements from tomorrow', vi:'Cải thiện từ ngày mai' })}</span><textarea id="sk_action"></textarea></label>
         <label class="fld"><span>${L({ ja:'引き継ぎ（朝・昼 → 夜）', en:'Handover (day → night)', vi:'Bàn giao (ngày → tối)' })}</span><textarea id="sk_hikin"></textarea></label>

@@ -7051,7 +7051,7 @@ console.log('== 2026-10-20 永井さん：OPEN・CLOSEは紙のチェック表�
     const h = registry.app.innerHTML;
     ok(/data-tsubmode="open"/.test(h) && /data-tsubmode="close"/.test(h) && !/ck_open_photo|ck_close_photo|ichishoku/.test(h), 'ほかの店はこれまでどおり（アプリの項目チェック）'); }
   ok(/base\.slice\(0, i \+ 1\)\.concat\(\[d\]/.test(code), '本部が保存した提出物の一覧にも、決めた位置（after）に足す');
-  ok(/slip, memo, kt, more, submit/.test(code) && /勤怠を入れる（任意・総括表に自動で入ります）/.test(code), '日報：勤怠は「ほかの項目」の奥でなく一言の下に出す（案Bの並び替えは描画後＝コードで確かめる）');
+  ok(/slip, lossBox, memo, kt, more, submit/.test(code) && /勤怠を入れる（任意・総括表に自動で入ります）/.test(code), '日報：勤怠は「ほかの項目」の奥でなく一言の下に出す（案Bの並び替えは描画後＝コードで確かめる）');
 }
 
 console.log('== 2026-10-20 今週・今月をホームに1件ずつ（押すと直接開く） ==');
@@ -8509,7 +8509,7 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   ok((x.match(/kzgp-top">MVP</g) || []).length === 2 && (x.match(/<b>2<\/b>票/g) || []).length === 2 && !/<b>[34]<\/b>票/.test(x) && /同数のため2件/.test(x) && /投票した人 3/.test(x), 'グランプリ＝同じ投稿の重複は1票（B＝常山＋田中＝2・重複を数えると4）・締め切り後の票は数えない（数えるとBが3で単独1位）＝A・Bが同数でMVP2件');
   ok(/const kzTodayJst_ = \(\) => new Date\(Date\.now\(\) \+ 9 \* 3600e3\)\.toISOString\(\)\.slice\(0, 10\);/.test(code) && /const kzClosed_ = \(ym\) => kzTodayJst_\(\) > kzDeadline_\(ym\);/.test(code) && /if \(\(Number\(r\.t\) \|\| 0\) > kzDeadlineEnd_\(ym\)\) return;/.test(code), 'ソース＝締め切りは JST の暦日・締め切り後の票は読まない（Codex A4・A5）');
   ok(/src="\$\{esc\(photoThumb\(p\)\)\}" alt="" data-full="\$\{esc\(photoFull\(p\)\)\}" loading="lazy" style="width:96px;height:96px"/.test(code), 'ソース＝口コミ・盛付の写真の属性は esc（Codex A2）');
-  ok(/submit, after, errL, errAmtL\]\.filter\(Boolean\)\)/.test(code) && /errAmtL \? L\(\{ja:'差があった日は金額と理由を'/.test(code), 'ソース＝レジ誤差の理由欄は placed に入れて「ほかの項目」へ戻さない・レジ取込の無い店は文言を変える（Codex A6）');
+  ok(/submit, after, errL, errAmtL, lossAmtL, lossNoteL\]\.filter\(Boolean\)\)/.test(code) && /errAmtL \? L\(\{ja:'差があった日は金額と理由を'/.test(code), 'ソース＝レジ誤差の理由欄は placed に入れて「ほかの項目」へ戻さない・レジ取込の無い店は文言を変える（Codex A6）');
   { const gsrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/認証.gs', 'utf8');
     ok(/if \(s && !seenK\[s\]\) \{ seenK\[s\] = 1; uniqK\.push\(s\); \}/.test(gsrc) && /return \{ ok: false, error: 'CLOSED' \};/.test(gsrc) && /\{ '2026-10': '2026-11-30' \}/.test(gsrc), '認証.gs＝重複票を除く・締め切り後は CLOSED・初回10月分の特例も同じ（Codex A3・A5）');
     const csrc = fs.readFileSync('C:/Users/Watar/OneDrive/ドキュメント/Claude Code/世桜/09_世桜アプリ_デモ/backend/Code.gs', 'utf8');
@@ -8709,6 +8709,19 @@ await new Promise(r => setTimeout(r, 80));
   ok(!!(u && u.pm) && Array.isArray(u.pm[S1]) && u.pm[S1][0] === u.pm[S1][1] && !u.pm[S2], '画面の記録が届いている店と日（難波だけ・広島の古い分は入らない）');
   FETCH_ROWS = { ok:false };
   run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+console.log('== 2026-11-16 日報＝ロスの欄を折りたたみの外へ（納品書の次・全店）（神田さん） ==');
+{
+  ok(/const lossBox = \(lossAmtL \|\| lossNoteL\) \? \(\(\) => \{/.test(code) && /d\.id = 'pbn_loss';/.test(code) && /ja:'ロス（捨てた物）'/.test(code) && /ja:'あった日だけ。無い日は空のままで出せます'/.test(code), 'ソース＝案Bの日報に「ロス（捨てた物）」の枠（あった日だけ・必須にしない）');
+  ok(/slipHead, shoot, slip, lossBox, memo, kt, more, submit, after\]\.filter\(Boolean\);/.test(code) && /errL, errAmtL, lossAmtL, lossNoteL\]\.filter\(Boolean\)\);/.test(code), 'ソース＝ロスの枠は納品書の次・一言の前。「ほかの項目」へ戻らない');
+  ok(/loss: v\('sk_loss'\), memo: v\('sk_memo'\),/.test(code) && /lossnote: v\('sk_lossnote'\)/.test(code) && (code.match(/id="sk_loss"/g) || []).length === 1 && (code.match(/id="sk_lossnote"/g) || []).length === 1, 'ソース＝欄と保存の形（sk_loss・sk_lossnote）は今までのまま＝総括表・本部への流れを変えない');
+  ok(/ほかの項目（発注・勤怠など・入れる店だけ）/.test(code), '「ほかの項目」の見出しはそのまま（ロスは元から見出しに無かった）');
+  { const S = '手巻き寿司世桜 難波店'; const v = renderView('soukatsu', 'manager', S, 'ja');
+    ok(/id="sk_lossnote"/.test(v) && /id="sk_loss"/.test(v) && v.indexOf('id="sk_lossnote"') < v.indexOf('id="sk_memo"'), 'ロスの内容の欄は長堀橋以外の店にも出る（これまでは長堀橋の欄の中だけ）・一言の前');
+    const v2 = renderView('soukatsu', 'manager', '牛カツ世桜 長堀橋店', 'ja');
+    ok((v2.match(/id="sk_lossnote"/g) || []).length === 1 && /id="sk_bad"/.test(v2), '長堀橋＝ロスの内容は1つだけ（二重に出ない）・ほかの長堀橋の項目はそのまま');
+    ok(/\{ k:'lossnote', t:\{ ja:'ロスの内容'/.test(code) && /SK_FIELDS\.map\(f => f\.k\)\.concat\(\['cancelt', 'order', 'note'\]\)\.forEach\(k => set\('sk_' \+ k, rec\[k\]\)\);/.test(code), 'ソース＝出した日報を開き直すと、ロスの内容も読み戻す（出し直しで消えない）'); }
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
