@@ -3467,7 +3467,11 @@
      ・保存＝今までの2つの欄（loss＝金額の合計／lossnote＝「物／量／理由」を1行ずつ）へ写す＝本部タブのロス率・受信箱・集約はそのまま。あわせて内訳 losses を持つ（理由別・物別にあとで数えられる）
      ・前の形（金額と内容だけ）で出した日を開いたら、1件の行にして見せる（消さない） */
   const LOSS_ROWS_ALL_ = false;
-  const lossRowsOn_ = () => { try { return LOSS_ROWS_ALL_ || devViewAllowed(); } catch (e) { return false; } };
+  /* ★2026-11-17 マニュアル関連MTG（高原さん）＝日報のロス報告は「導入を一旦保留」（店がアプリに慣れてから再検討）→ 神田さん「戻す」。
+     LOSS_BOX_ON_ = false の間は、v522 までと同じ＝ロスの金額は「ほかの項目」の折りたたみの中・ロスの内容の欄は長堀橋店だけ・1件ずつの形も出さない。
+     再開するときは true にして配信（枠・行の形・全店のロスの内容がそろって戻る）。保存の形（loss・lossnote）は変えていない */
+  const LOSS_BOX_ON_ = false;
+  const lossRowsOn_ = () => { try { return LOSS_BOX_ON_ && (LOSS_ROWS_ALL_ || devViewAllowed()); } catch (e) { return false; } };
   const LOSS_REASONS_ = [
     ['prep',    { ja:'仕込みすぎ', en:'Over-prepped', vi:'Sơ chế quá nhiều' }],
     ['order',   { ja:'発注しすぎ', en:'Over-ordered', vi:'Đặt hàng quá nhiều' }],
@@ -3666,8 +3670,8 @@
     /* ★2026-11-16 神田さん「全店舗進めてください」＝ロスの欄を「ほかの項目」の折りたたみの外へ（納品書の次）。
        欄はあったが、畳んだ中にあり見出しにも「ロス」と出ていなかった＝どの店も入れていない（広島 10月・11月 0件）。
        欄・保存・本部への流れ（sk_loss / sk_lossnote）は今までのまま＝置き場所だけ上へ。無い日は空のままで出せる（必須にしない） */
-    const lossAmtL = g('sk_loss') ? g('sk_loss').closest('label') : null;
-    const lossNoteL = g('sk_lossnote') ? g('sk_lossnote').closest('label') : null;
+    const lossAmtL = LOSS_BOX_ON_ && g('sk_loss') ? g('sk_loss').closest('label') : null;   // ★11/17 保留中は null＝枠を作らず「ほかの項目」へ（元の位置）
+    const lossNoteL = LOSS_BOX_ON_ && g('sk_lossnote') ? g('sk_lossnote').closest('label') : null;
     const lossBox = (lossAmtL || lossNoteL) ? (() => {
       const d = document.createElement('div'); d.className = 'pb-niperr'; d.id = 'pbn_loss';
       d.innerHTML = `<div class="pb-sec"><h2>${L({ja:'ロス（捨てた物）',en:'Loss (discarded items)',vi:'Hao hụt (đồ bỏ đi)'})}</h2><small>${L({ja:'あった日だけ。無い日は空のままで出せます',en:'Only on days with loss. Leave blank otherwise.',vi:'Chỉ ngày có hao hụt. Không có thì để trống.'})}</small></div>`;
@@ -7348,7 +7352,7 @@
           <div class="stat"><div class="n" id="sk_laborauto">—</div><div class="k">${L({ja:'人件費率（自動計算）',en:'Labor % (auto)',vi:'% nhân sự (tự động)'})}</div></div>
         </div>
         ${/* ★2026-11-16 ロスの内容＝これまで長堀橋店の欄にだけあった → 全店に（神田さん「全店舗進めてください」）。欄の id・保存（lossnote）・開き直したときの読み戻し（SK_FIELDS）は同じ。案Bの日報では pbNippouLayout_ が「ロス（捨てた物）」の枠へ移す */''}
-        <label class="fld"><span>${L({ ja:'ロスの内容（対象・量・原因）', en:'Loss details (item, amount, cause)', vi:'Chi tiết hao hụt (mục, lượng, lý do)' })}</span><textarea id="sk_lossnote" placeholder="${esc(L({ja:'例）⑤キャベツ／外葉300g／仕込みが多かった（1行に1件）',en:'e.g. cabbage / 300g / over-prepped (one per line)',vi:'vd: bắp cải / 300g / sơ chế dư (mỗi dòng 1 mục)'}))}"></textarea></label>
+        ${(LOSS_BOX_ON_ || vis[0] === '牛カツ世桜 長堀橋店') ? `<label class="fld"><span>${L({ ja:'ロスの内容（対象・量・原因）', en:'Loss details (item, amount, cause)', vi:'Chi tiết hao hụt (mục, lượng, lý do)' })}</span><textarea id="sk_lossnote" placeholder="${esc(L({ja:'例）⑤キャベツ／外葉300g／仕込みが多かった（1行に1件）',en:'e.g. cabbage / 300g / over-prepped (one per line)',vi:'vd: bắp cải / 300g / sơ chế dư (mỗi dòng 1 mục)'}))}"></textarea></label>` : ''}
         <label class="fld"><span>${L({ ja:'所感（今日の感想）', en:'Notes on the day', vi:'Cảm nhận hôm nay' })}</span><textarea id="sk_memo" placeholder="${L({ja:'客足・ランチ／ディナー・運営面など',en:'traffic, lunch/dinner, operations …',vi:'khách, trưa/tối, vận hành …'})}"></textarea></label>
 
         ${vis[0] !== '牛カツ世桜 長堀橋店' ? '' : `

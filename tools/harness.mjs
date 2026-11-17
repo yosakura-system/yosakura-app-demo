@@ -8718,7 +8718,7 @@ console.log('== 2026-11-16 日報＝ロスの欄を折りたたみの外へ（�
   ok(/loss: v\('sk_loss'\), memo: v\('sk_memo'\),/.test(code) && /lossnote: v\('sk_lossnote'\)/.test(code) && (code.match(/id="sk_loss"/g) || []).length === 1 && (code.match(/id="sk_lossnote"/g) || []).length === 1, 'ソース＝欄と保存の形（sk_loss・sk_lossnote）は今までのまま＝総括表・本部への流れを変えない');
   ok(/ほかの項目（発注・勤怠など・入れる店だけ）/.test(code), '「ほかの項目」の見出しはそのまま（ロスは元から見出しに無かった）');
   { const S = '手巻き寿司世桜 難波店'; const v = renderView('soukatsu', 'manager', S, 'ja');
-    ok(/id="sk_lossnote"/.test(v) && /id="sk_loss"/.test(v) && v.indexOf('id="sk_lossnote"') < v.indexOf('id="sk_memo"'), 'ロスの内容の欄は長堀橋以外の店にも出る（これまでは長堀橋の欄の中だけ）・一言の前');
+    ok(!/id="sk_lossnote"/.test(v) && /id="sk_loss"/.test(v), '★11/17 保留＝ロスの内容の欄は長堀橋以外の店には出ない（v522 までと同じ）・金額の欄はある');
     const v2 = renderView('soukatsu', 'manager', '牛カツ世桜 長堀橋店', 'ja');
     ok((v2.match(/id="sk_lossnote"/g) || []).length === 1 && /id="sk_bad"/.test(v2), '長堀橋＝ロスの内容は1つだけ（二重に出ない）・ほかの長堀橋の項目はそのまま');
     ok(/\{ k:'lossnote', t:\{ ja:'ロスの内容'/.test(code) && /SK_FIELDS\.map\(f => f\.k\)\.concat\(\['cancelt', 'order', 'note'\]\)\.forEach\(k => set\('sk_' \+ k, rec\[k\]\)\);/.test(code), 'ソース＝出した日報を開き直すと、ロスの内容も読み戻す（出し直しで消えない）'); }
@@ -8726,13 +8726,21 @@ console.log('== 2026-11-16 日報＝ロスの欄を折りたたみの外へ（�
 
 console.log('== 2026-11-16 ロスを1件ずつ（物・量・理由を選ぶ・金額は任意・＋で足す）＝本部の承認まで店には出さない（神田さん） ==');
 {
-  ok(/const LOSS_ROWS_ALL_ = false;/.test(code) && /const lossRowsOn_ = \(\) => \{ try \{ return LOSS_ROWS_ALL_ \|\| devViewAllowed\(\); \}/.test(code), 'ソース＝店には出していない（本部IDの店の見え方だけ・承認が出たら true にする1か所）');
+  ok(/const LOSS_ROWS_ALL_ = false;/.test(code) && /const lossRowsOn_ = \(\) => \{ try \{ return LOSS_BOX_ON_ && \(LOSS_ROWS_ALL_ \|\| devViewAllowed\(\)\); \}/.test(code), 'ソース＝店には出していない（本部IDの店の見え方だけ・承認が出たら true にする1か所）');
   ok(['仕込みすぎ','発注しすぎ','期限切れ','作り間違い・オーダーの間違い','落とした・こぼした','届いた時点で傷んでいた','お客様の都合（キャンセル・取り替え）','試作・試食'].every(x => code.indexOf("{ ja:'" + x + "'") !== -1) && (code.slice(code.indexOf('const LOSS_REASONS_ = ['), code.indexOf('let skLoss_ = [];')).match(/\{ ja:'/g) || []).length === 9 && /ja:'その他（書く）'/.test(code) && /data-lf="rtext"[^\n]*\$\{r\.reason === 'other' \? '' : ' hidden'\}/.test(code), 'ソース＝理由は9つから選ぶ・その他のときだけ書く欄が出る');
   ok(/if \(amtEl\) amtEl\.value = sum \? String\(sum\) : '';/.test(code) && /\[r\.item, r\.qty, skLossReasonJa_\(r\)\]\.filter\(Boolean\)\.join\('／'\)\)\.join\('\\n'\)/.test(code), 'ソース＝行の中身は、今までの2つの欄（金額の合計・「物／量／理由」を1行ずつ）へ写す＝本部への流れを変えない');
   ok(/losses: \(lossRowsOn_\(\) && skLossFilled_\(\)\.length\) \? skLossFilled_\(\)\.map\(skLossClean_\) : undefined,/.test(code), 'ソース＝内訳（losses）は出しているときだけ保存する（店の日報の形は今までと同じ）');
   ok(!/item: String\(\(x && x\.item\) \|\| ''\)\.slice/.test(code) && /if \(\/\^\\d\+\$\/\.test\(z\)\) return String\(Number\(z\)\); if \(\/\^\\d\+\\\.\\d\+\$\/\.test\(z\)\) return String\(Math\.round\(Number\(z\)\)\); return '';/.test(code) && /t\.style\.borderColor = \(String\(t\.value\)\.trim\(\) && !a\) \? '#B5533C' : '';/.test(code) && /if \(a\) \{ t\.value = a; t\.style\.borderColor = ''; \} return;/.test(code), 'ソース＝文字は切り詰めない・金額は読めたときだけ数字に（全角・円・カンマは読む／小数は四捨五入／読めない字は空で赤い枠）・読めた値は欄にも戻す（Codex 11/16）');
   ok(/else if \(rec && \(String\(rec\.lossnote \|\| ''\)\.trim\(\) \|\| Number\(rec\.loss\) > 0\)\) skLoss_ = \[skLossClean_\(/.test(code) && /skLossLoad_\(\(rec && rec\.src !== 'drive' && rec\.src !== 'usen'\) \? rec : null\); skLossRender_\(\);/.test(code), 'ソース＝前の形で出した日は1件の行にして見せる（消さない）・店や日付を変えたら入れ直す');
   ok(/if \(lossRowsOn_\(\)\) \{[^\n]*\r?\n\s+row\.style\.display = 'none';/.test(code) && /add\.id = 'pbn_lossadd'/.test(code) && /skLoss_\.push\(skLossClean_\(\{\}\)\); skLossRender_\(\);/.test(code) && /skLoss_\.splice\(Number\(b\.dataset\.ldel\), 1\); skLossRender_\(\); skLossSync_\(\);/.test(code), 'ソース＝「＋ ロスを足す」で行が増え、「消す」で減る（今までの2つの欄は隠して行から写す）');
+}
+
+console.log('== 2026-11-17 日報のロス報告は「導入を一旦保留」（マニュアル関連MTG・高原さん）＝ロスの枠を外して元の位置へ ==');
+{
+  ok(/const LOSS_BOX_ON_ = false;/.test(code) && /const lossRowsOn_ = \(\) => \{ try \{ return LOSS_BOX_ON_ && \(LOSS_ROWS_ALL_ \|\| devViewAllowed\(\)\); \}/.test(code), 'ソース＝ロスの枠は止めている（LOSS_BOX_ON_ = false）・1件ずつの形も本部の見本ごと出さない');
+  ok(/const lossAmtL = LOSS_BOX_ON_ && g\('sk_loss'\)/.test(code) && /const lossNoteL = LOSS_BOX_ON_ && g\('sk_lossnote'\)/.test(code), 'ソース＝止めている間は枠を作らず、2つの欄は「ほかの項目」の折りたたみへ（元の位置）');
+  ok(/\$\{\(LOSS_BOX_ON_ \|\| vis\[0\] === '牛カツ世桜 長堀橋店'\) \? `<label class="fld"><span>\$\{L\(\{ ja:'ロスの内容（対象・量・原因）'/.test(code), 'ソース＝ロスの内容の欄は、止めている間は長堀橋店だけ（v522 までと同じ）');
+  ok(/loss: v\('sk_loss'\), memo: v\('sk_memo'\),/.test(code) && /lossnote: v\('sk_lossnote'\)/.test(code), '保存の形は変えない（loss・lossnote）＝入っていた値は消えない');
 }
 
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
