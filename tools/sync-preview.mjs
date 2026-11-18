@@ -121,9 +121,12 @@ if (fs.existsSync(PDIR)) {
   fs.cpSync(PDIR, path.join(WORK, 'planb'), { recursive: true });   // planb/tenpo/（店舗版）も含めて丸ごと（2026-09-30）
 }
 
+// 4-e) 起動画面のロゴ（2026-11-19 新ロゴ）＝本番の index.html は icons/logo-full.png をファイルで読む。ここで送らないと起動画面だけ旧ロゴが残る
+{ const lg = path.join(DEMO, 'icons', 'logo-full.png'); if (fs.existsSync(lg) && fs.statSync(lg).size) { fs.mkdirSync(path.join(WORK, 'icons'), { recursive: true }); fs.copyFileSync(lg, path.join(WORK, 'icons', 'logo-full.png')); } }
+
 // 5) commit & push
 const msg = process.argv.slice(2).join(' ') || 'デモから同期（プレビュー反映）';
-sh('git add app.js styles.css sw.js guide manual planb', WORK);   // manual/＝マニュアルPDF（画面311）
+sh('git add app.js styles.css sw.js guide manual planb icons/logo-full.png', WORK);   // manual/＝マニュアルPDF（画面311）
 sh(`git -c user.name="yosakura-system" -c user.email="yosakura.system@gmail.com" commit -m "${msg}\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"`, WORK);
 sh('git push origin HEAD', WORK);
 console.log(`OK: プレビューへ同期・push 完了（SWキャッシュ → yosakura-hq-v${next}）`);

@@ -4304,6 +4304,7 @@ console.log('== 日報：フード・ドリンクは金額＋構成比、原価�
      '提出データに納品書ごとの内訳（仕入先・8%・10%・写真ID）が残り、3欄は自動値');
   ok(lastS && lastS.buy === '4167', '税抜合計も自動（2667+1000+500）');
   // 提出済みの日を開き直す＝内訳は提出した中身から（下書きではなく）
+  localStorage.setItem('yosakura_sk_edit', S + '||' + today4);   // ★2026-11-19 12時前は既定が前日になる（skDefaultDate_）＝朝に回すと落ちていた。提出した日を指定して開く
   location.hash = '#/app/soukatsu?x=slips2';
   h = registry.app.innerHTML;
   ok((h.match(/data-slip="/g) || []).length === 3 && doc.getElementById('sk_buy_food').value === '2880', '提出済みの日を開き直しても内訳と3欄が残る');
@@ -7661,28 +7662,32 @@ console.log('== 2026-10-23 神田さん「きょうの流れ・レシピ・発�
   const seed = (role, st) => run(() => { setLS(role, st, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
   const ph = (h, cls) => { const m = h.match(new RegExp('<img class="' + cls + '"[^>]*data-ph="([a-z0-9_]+)"')); return m ? m[1] : ''; };
   seed('manager', '牛カツ世桜 長堀橋店'); location.hash = '#/home'; let h = registry.app.innerHTML;
-  ok(ph(h, 'pb-coverimg') === 'rc_gyukatsu_set', '牛カツの店＝きょうの流れの写真が牛カツ定食（実際 ' + ph(h, 'pb-coverimg') + '）');
+  ok(ph(h, 'pb-coverimg') === 'st_gk_naga', '牛カツ長堀橋＝きょうの流れは店の写真（11/19 HPロケーションと同じ）（実際 ' + ph(h, 'pb-coverimg') + '）');
   location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
   ok(h.indexOf('data-ph="rc_sand"') >= 0 && h.indexOf('data-ph="rc_kobe_katsu"') >= 0 && h.indexOf('data-ph="miru_manual"') >= 0, '牛カツの店＝レシピ＝牛カツサンド・発注＝神戸牛カツ・マニュアルは共通のまま');
   seed('staff', '日本鰻世桜 浅草橋店'); location.hash = '#/home'; h = registry.app.innerHTML;
-  ok(ph(h, 'pb-coverimg') === 'rc_unagi_jo', '鰻の店＝きょうの流れは鰻の箱');
+  ok(ph(h, 'pb-coverimg') === 'st_asakusa', '鰻浅草橋＝きょうの流れは店の写真（11/19 HPロケーションと同じ）（実際 ' + ph(h, 'pb-coverimg') + '）');
   location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
   ok(h.indexOf('data-ph="rc_unagi_nami"') >= 0 && h.indexOf('data-ph="rc_yaki"') >= 0, '鰻の店＝レシピ＝鰻丼・発注＝焼いた鰻');
   seed('manager', '和牛世桜 広島店'); location.hash = '#/home'; h = registry.app.innerHTML;
-  ok(ph(h, 'pb-coverimg') === 'rc_wagyu_hitsu' || ph(h, 'pb-coverimg') === 'rc_unagi_jo', '和牛の店（店長の既定の店が鰻になる環境では鰻）＝業態の写真（実際 ' + ph(h, 'pb-coverimg') + '）');
+  ok(ph(h, 'pb-coverimg') === 'st_hiroshima' || ph(h, 'pb-coverimg') === 'rc_unagi_jo', '広島店＝きょうの流れは店の写真（11/18 社長・HPロケーションと同じ。店長の既定の店が鰻になる環境では鰻）（実際 ' + ph(h, 'pb-coverimg') + '）');
   // ★2026-10-23 寿司・手巻き・日本料理も実物写真（本部ドライブ 0.写真 から切り出した gy_*）
   seed('manager', '手巻き寿司世桜 難波店'); location.hash = '#/home'; h = registry.app.innerHTML;
-  ok(ph(h, 'pb-coverimg') === 'gy_temaki_top', '手巻きの店＝きょうの流れは鰻おにぎり（実際 ' + ph(h, 'pb-coverimg') + '）');
+  ok(ph(h, 'pb-coverimg') === 'st_temaki', '手巻き難波＝きょうの流れは店の写真（11/19 HPロケーションと同じ）（実際 ' + ph(h, 'pb-coverimg') + '）');
   location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
   ok(h.indexOf('data-ph="gy_temaki_recipe"') >= 0 && h.indexOf('data-ph="gy_temaki_order"') >= 0, '手巻きの店＝レシピ＝和牛おにぎり・発注＝握りの板');
   seed('manager', '寿司世桜 心斎橋店'); location.hash = '#/home'; h = registry.app.innerHTML;
-  ok(ph(h, 'pb-coverimg') === 'gy_sushi_top', '寿司の店＝きょうの流れは握りの板（実際 ' + ph(h, 'pb-coverimg') + '）');
+  ok(ph(h, 'pb-coverimg') === 'st_sushi', '寿司心斎橋＝きょうの流れは店の写真（11/19 HPロケーションと同じ）（実際 ' + ph(h, 'pb-coverimg') + '）');
   location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
   ok(h.indexOf('data-ph="gy_sushi_recipe"') >= 0 && h.indexOf('data-ph="gy_sushi_order"') >= 0, '寿司の店＝レシピ＝押し寿司を作る手・発注＝握り');
   seed('manager', '日本料理世桜本店'); location.hash = '#/home'; h = registry.app.innerHTML;
-  ok(ph(h, 'pb-coverimg') === 'gy_washoku_top', '日本料理の店＝きょうの流れはコースの卓（実際 ' + ph(h, 'pb-coverimg') + '）');
+  ok(ph(h, 'pb-coverimg') === 'st_honten', '本店＝きょうの流れは店の写真（11/18 社長・HPロケーションと同じ）（実際 ' + ph(h, 'pb-coverimg') + '）');
   location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;
   ok(h.indexOf('data-ph="gy_washoku_recipe"') >= 0 && h.indexOf('data-ph="gy_washoku_order"') >= 0, '日本料理の店＝レシピ・発注もコースの写真');
+  seed('manager', '牛カツ世桜 富士山店'); location.hash = '#/home'; h = registry.app.innerHTML;
+  ok(ph(h, 'pb-coverimg') === 'st_gk_fuji', '牛カツ富士山＝表紙は店の写真（実際 ' + ph(h, 'pb-coverimg') + '）');
+  ['st_honten','st_sushi','st_gk_naga','st_un_naga','st_temaki','st_gk_fuji','st_un_fuji','st_gion','st_asakusa','st_hiroshima','st_hanoi','st_hcm'].forEach(k =>
+    ok(new RegExp('"' + k + '": ' + "'data:image/webp;base64,").test(code), 'ソース＝店の写真 ' + k + ' が埋め込み済み'));
   ['gy_sushi_top','gy_sushi_recipe','gy_sushi_order','gy_temaki_top','gy_temaki_recipe','gy_temaki_order','gy_washoku_top','gy_washoku_recipe','gy_washoku_order'].forEach(k =>
     ok(new RegExp('"' + k + '": ' + "'data:image/webp;base64,").test(code), 'ソース＝' + k + ' が埋め込み済み'));
   run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); }); location.hash = '#/home?tab=miru'; h = registry.app.innerHTML;

@@ -679,7 +679,7 @@ html[data-theme="hp"] {
 html[data-theme="hp"][lang="vi"] { --sans: -apple-system, "Noto Sans", "Segoe UI", "Hiragino Sans", sans-serif; --serif: -apple-system, "Noto Sans", "Segoe UI", sans-serif; }
 html[data-theme="hp"] body { background: #EDECEA; letter-spacing: .02em; }
 html[data-theme="hp"] .splash { background: #FFFFFF; gap: 18px; }
-html[data-theme="hp"] .splash__logo { width: 40%; max-width: 170px; }
+html[data-theme="hp"] .splash__logo { width: 56%; max-width: 230px; }
 html[data-theme="hp"] .splash__tag { display: flex; flex-direction: column; align-items: center; gap: 12px; animation: logoIn 1.4s .4s ease both; }
 html[data-theme="hp"] .splash__en { font-family: var(--en); font-size: 12px; letter-spacing: .3em; color: #333333; }
 html[data-theme="hp"] .splash__rule { width: 28px; height: 1px; background: #cacaca; }
