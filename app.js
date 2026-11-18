@@ -5754,7 +5754,8 @@
     { k:'kasuhara_record', st:'all', ver:'', d:'2026-09-25', pdf:'kasuhara_record.pdf', id:'13thFrUPEwDf_oCAGnmFag832MwjJQ11x', t:{ ja:'カスハラ対応 記録様式', en:'Harassment record form', vi:'Mẫu ghi nhận' }, s:{ ja:'A4縦', en:'A4 portrait', vi:'A4 dọc' } },
     /* ★2026-11-10 提出物のルール Ver1.0＝社長OK（77行）・増田さんOK（91行）→ 全店向け・同梱PDFで開く（配布は増田さん） */
     { k:'teishutsu', st:'all', ver:'Ver1.0', d:'2026-11-10', pdf:'teishutsu_kantan.pdf', id:'1RHbeW5cjfKKlQS9Gsu4XoJ9b_ZIOwOa0', t:{ ja:'提出物のルール', en:'Submission rules', vi:'Quy tắc nộp' }, s:{ ja:'6枚 ・ 毎日の必須3つ・週1の必須3つ', en:'6 pages', vi:'6 trang' } },
-    { k:'gaikokujin', st:'test', ver:'Ver0.2', d:'2026-10-17', id:'1WDcLguvTiXAIv0L86fGczQXbQ8qkIbEx', t:{ ja:'外国人スタッフの就労ルール', en:'Foreign staff work rules', vi:'Quy định lao động nước ngoài' }, s:{ ja:'3枚', en:'3 pages', vi:'3 trang' } },
+    /* ★2026-11-18 外国人就労ルール Ver1.0＝社長OK（11/13）・増田さん 11/18「いつでも流せる・アプリOKなら流す」→ 全店向け・同梱PDF */
+    { k:'gaikokujin', st:'all', ver:'Ver1.0', d:'2026-11-13', pdf:'gaikokujin_kantan.pdf', id:'1WDcLguvTiXAIv0L86fGczQXbQ8qkIbEx', t:{ ja:'外国人スタッフの就労ルール', en:'Foreign staff work rules', vi:'Quy định lao động nước ngoài' }, s:{ ja:'6枚 ・ 在留カード・働ける時間', en:'6 pages', vi:'6 trang' } },
     { k:'genkin', st:'test', ver:'Ver0.3', d:'2026-10-30', id:'1dSMzDF8q8X31GD_8i5yv9Bnm2LhaydQq', t:{ ja:'現金管理', en:'Cash handling', vi:'Quản lý tiền mặt' }, s:{ ja:'4枚＋記録表', en:'3 pages + log', vi:'3 trang + sổ' } },
     { k:'shiire', st:'test', ver:'Ver0.1', d:'2026-10-30', id:'1_z9dlOqoLPDvpL9_KNQ_GWOvuxjdHCXl', t:{ ja:'仕入情報の扱い', en:'Supplier information', vi:'Thông tin nhà cung cấp' }, s:{ ja:'全体図＋手順3枚＋産地の答え方', en:'4 pages', vi:'4 trang' } },
     { k:'katteguchi', st:'test', ver:'Ver0.1', d:'2026-10-19', id:'1IxfbDyJU-UBBk3orCqylHy9dmjbT5tFS', t:{ ja:'勝手口・立入禁止・撮影されたとき', en:'Back door & filming', vi:'Cửa sau & khi bị quay phim' }, s:{ ja:'全体図＋手順3枚', en:'4 pages', vi:'4 trang' } },
