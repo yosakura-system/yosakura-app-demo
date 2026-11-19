@@ -760,8 +760,11 @@
   function onNeedLogin_(why) {
     if (_needLoginBusy) return; _needLoginBusy = true;
     const tok = authToken();
-    const drop = () => { authLog_('AUTHDROP', why); _needLoginBusy = false; markAuthRequired(true); setAuth(null); try { localStorage.setItem('yosakura_auth_dropped', '1'); } catch (e) {} render(); };
-    if (!tok || !useBackend()) { drop(); return; }
+    /* ★2026-11-19 見守りに「本店 AUTHDROP」が続いた＝5件とも未ログインの端末が開いただけ（検索ロボット3・LINE内ブラウザ2）。
+       トークンを持っていない端末は「外れた」のではなく「まだ入っていない」＝控えも「外れました」の案内も出さない（ログイン画面へ進むのは同じ）。
+       店名が本店だったのは、未ログインだと visibleStores()[0] が一覧の先頭になるため */
+    const drop = (never) => { if (!never) authLog_('AUTHDROP', why); _needLoginBusy = false; markAuthRequired(true); setAuth(null); if (!never) { try { localStorage.setItem('yosakura_auth_dropped', '1'); } catch (e) {} } render(); };
+    if (!tok || !useBackend()) { drop(!tok); return; }
     fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: 'authping', token: tok }) }).then(r => r.json()).then(d => {
       if (d && d.ok && d.auth && d.auth.uid) { _needLoginBusy = false; authLog_('AUTHKEEP', why); try { const a = getAuth(); if (a && d.auth.api && a.api !== d.auth.api) { a.api = d.auth.api; setAuth(a); } } catch (e) {} return; }   // まだ有効＝落とさない（api の版も覚える・2026-10-12）
       drop();

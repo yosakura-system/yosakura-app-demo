@@ -3113,7 +3113,7 @@ console.log('== ログイン：役割と店舗を、サーバーの返答で固�
     ok(/action: 'authping'/.test(body), '★ログアウトの前に authping でサーバーに有効か聞く（増田さんの行き来対策）');
     ok(/d\.auth && d\.auth\.uid\) \{ _needLoginBusy = false; authLog_\('AUTHKEEP'/.test(body), '★有効なら落とさず続ける＋AUTHKEEP を残す');
     ok(/catch\(\(\) => \{ _needLoginBusy = false; authLog_\('AUTHKEEP'/.test(body), '★聞けなかったときも落とさない');
-    ok(/const drop = \(\) => \{ authLog_\('AUTHDROP', why\)/.test(body), '★落とすときは AUTHDROP を本部データへ（どの通信が合図かも）'); }
+    ok(/const drop = \(never\) => \{ if \(!never\) authLog_\('AUTHDROP', why\)/.test(body) && /authping[\s\S]*?\n?\s*drop\(\);/.test(body), '★落とすときは AUTHDROP を本部データへ（どの通信が合図かも）＝トークンがあって無効と返ったときは必ず控える（2026-11-19 未ログインの端末だけ控えない）'); }
   ok(/function authLog_\(code, why\)/.test(code) && /kind:'apperr', store: e\.store, item: code/.test(code), 'authLog_ は apperr として本部データへ送る');
   // ★2026-10-09 増田さん＝店舗運営チェック「前回の続き」ボタン（端末の保存が消えても本部データの記録から戻れる）
   ok(/function svResume_\(\)/.test(code) && /14 \* 24 \* 3600 \* 1000/.test(code), '★svResume_＝直近14日の入力済み店舗×日付を探す');
@@ -5417,6 +5417,10 @@ console.log('== ログインが外れたときは理由を出す（2026-09-03 �
   ok(/yosakura_auth_dropped/.test(src9) && /この端末のログインが外れました/.test(src9),
      'ログイン画面に「なぜ外れたか」と「入力内容は残っている」を出す');
   ok(/removeItem\('yosakura_auth_dropped'\)/.test(src9), 'ログインし直したら案内は消える');
+  /* ★2026-11-19 未ログインの端末（検索ロボット・LINE内ブラウザ）が開いただけで「本店 AUTHDROP」が見守りに出ていた */
+  ok(/const drop = \(never\) => \{ if \(!never\) authLog_\('AUTHDROP', why\);/.test(src9) && /if \(!tok \|\| !useBackend\(\)\) \{ drop\(!tok\); return; \}/.test(src9),
+     'トークンを持っていない端末は AUTHDROP を控えない・「外れました」の案内も出さない');
+  ok(/<meta name="robots" content="noindex,nofollow">/.test(fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8')), '検索エンジンに載せない指定（noindex）がある');
   const auth = fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8');
   ok(/var AUTH_TOKEN_MAX = 20;/.test(auth), '同時に使える端末の上限を20へ（店舗IDをスタッフのスマホで共有）（要GAS貼り替え）');
   ok(/function 認証_共有パスワードを設定\(uid, pw\)/.test(auth) && /rec.must_change = 'false'/.test(auth), '共有IDのパスワード設定＝初回変更なし・全端末ログアウト（要GAS貼り替え）');
