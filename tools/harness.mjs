@@ -8389,6 +8389,33 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
     localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store:S, date: dA, sales: 110000, guests: 20, src:'usen', t: Date.now() - 3600e3 }])); });
   location.hash = '#/app/numview?k=sales&ym=' + ymT; x = registry.app.innerHTML;
   ok(/税抜・無い日は税込/.test(x) && /純売上（税抜）の無い日は売上（税込）で数えています/.test(x) && /（税込）<\/td>/.test(x), 'numview 売上＝純売上の無い日は見出し「税抜・無い日は税込」＋注記＋その日に（税込）の印（Codex#6）');
+  // 2026-11-20 売上の中に「レジ誤差」の切替（神田さん）／仕入に「仕入先ごと（この月の合計）」（谷口さん・広島）
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+      { store:S, date: dA, sales: 220000, net: 200000, guests: 40, err: -500, src:'usen', t: Date.now() - 3600e3 },
+      { store:S, date: dA, errnote: '釣り銭の渡し間違い', buy: 13000, slips: [{ v:'A商店', a8: 10000, src:'ocr' }, { v:'B酒店', a10: 5000 }, { v:'A商店', a8: 2000, ret: true }], t: Date.now() - 7200e3 },
+      { store:S, date: dB, sales: 110000, net: 100000, guests: 20, err: 0, src:'usen', t: Date.now() - 90000e3 },
+      { store:S, date: dB, buy: 3000, slips: [{ v:'A商店', a8: 3000 }, { v:'', a10: 700 }], t: Date.now() - 95000e3 }
+    ])); });
+  location.hash = '#/app/numview?k=sales&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/data-open="numview\?k=sales&m=err&ym=/.test(x) && />レジ誤差<\/button>/.test(x), 'numview 売上＝切替に4つ目「レジ誤差」');
+  location.hash = '#/app/numview?k=sales&m=err&ym=' + ymT; x = registry.app.innerHTML;
+  ok(/月の合計（現金の過不足）/.test(x) && /−¥500/.test(x) && /誤差のあった日/.test(x) && />1<span class="u">日/.test(x) && /理由が未入力 0 日/.test(x), 'numview レジ誤差＝月の合計 −500・誤差のあった日 1日・理由の未入力 0');
+  ok(/釣り銭の渡し間違い/.test(x) && /<td>¥0<\/td>/.test(x) && !/pb-barchart/.test(x) && /class="on"[^>]*data-open="numview\?k=sales&m=err&ym=/.test(x), 'numview レジ誤差＝理由は日報の行から・0円の日も表に・グラフなし・切替は「レジ誤差」が選ばれている');
+  ok(/data-open="numview\?k=sales&m=err&ym=\d{4}-\d{2}"[^>]*>\d{4}\/\d+/.test(x), 'numview レジ誤差＝月を切りかえても「レジ誤差」のまま');
+  location.hash = '#/app/numview?k=buy&ym=' + ymT; x = registry.app.innerHTML;
+  { const i0 = x.indexOf('仕入先ごと（この月の合計）'), i1 = x.indexOf('伝票ごと'); const v = i0 >= 0 ? x.slice(i0, i1 > i0 ? i1 : undefined) : '';
+    ok(i0 >= 0 && i1 > i0 && /<td>A商店<\/td><td><b>¥11,000<\/b><\/td><td>¥11,000<\/td><td>—<\/td><td>3<\/td>/.test(v), 'numview 仕入＝仕入先ごとの月合計（A商店＝10,000−返品2,000＋3,000＝11,000・伝票3）が「伝票ごと」の上に');
+    ok(/<td>B酒店<\/td><td><b>¥5,000<\/b><\/td><td>—<\/td><td>¥5,000<\/td><td>1<\/td>/.test(v) && v.indexOf('A商店') < v.indexOf('B酒店') && v.indexOf('B酒店') < v.indexOf('（仕入先なし）'), 'numview 仕入＝仕入先は合計の大きい順・名前の無い伝票は「（仕入先なし）」');
+    ok(/伝票の合計<\/b><\/td><td><b>¥16,700<\/b>/.test(v) && /伝票の無い日の仕入は入りません/.test(v), 'numview 仕入＝伝票の合計 16,700 と注記'); }
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
+      { store:S, date: dA, sales: 110000, net: 100000, guests: 20, src:'usen', t: Date.now() - 3600e3 },   // 売上の無い日の行は skClean が落とすので、レジの行を添える
+      { store:S, date: dA, buy: 1000, slips: [{ v:'__proto__', a8: 100.6 }, { v:'__proto__', a8: 100.6 }, { v:'toString', a10: -1000 }, { v:'toString', a10: 3000 }], t: Date.now() - 7200e3 }])); });
+  location.hash = '#/home?tab=num';   // 直前と同じURLだと描き直されないので、いちど別の画面へ
+  location.hash = '#/app/numview?k=buy&ym=' + ymT; x = registry.app.innerHTML;
+  { const i0 = x.indexOf('仕入先ごと（この月の合計）'), i1 = x.indexOf('伝票ごと'); const v = i0 >= 0 ? x.slice(i0, i1 > i0 ? i1 : undefined) : '';
+    ok(/<td>__proto__<\/td><td><b>¥202<\/b>/.test(v) && /<td>toString<\/td><td><b>¥2,000<\/b>/.test(v) && /伝票の合計<\/b><\/td><td><b>¥2,202<\/b>/.test(v) && ({}).nm === undefined, 'numview 仕入＝1枚ずつ丸めて足す（100.6×2＝202）・返品でないマイナスは引く（3,000−1,000）・仕入先の名前が toString / __proto__ でも落ちない（Codex 11/20）'); }
   // #7 口コミ＝前月末の控えが無い月は「この月に増えた件数」を出さない。#8 棒グラフはマイナスを下へ・0は棒なし
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
     const [dE, dL] = [dA, dB].sort();   // 日付順＝早い日 100 件→遅い日 98 件（Codex#9＝dB が dA より後の日がある）
