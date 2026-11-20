@@ -568,6 +568,10 @@
   const getAuth = () => { if (TAIKEN) return null; try { return JSON.parse(localStorage.getItem(LS_AUTH)) || null; } catch (e) { return null; } };
   const setAuth = (a) => { try { if (a) localStorage.setItem(LS_AUTH, JSON.stringify(a)); else localStorage.removeItem(LS_AUTH); } catch (e) {} };
   const authToken = () => { const a = getAuth(); return a && a.token ? a.token : ''; };
+  /* ★2026-11-20 見るだけのID（門番の AUTH_READONLY_UIDS）＝提出・保存を送らない。門番も READ_ONLY で断る（アプリの印が無くても記録には入らない） */
+  const isReadOnly_ = () => { const a = getAuth(); return !!(a && a.readonly); };
+  const markReadOnly_ = () => { try { const a = getAuth(); if (a && !a.readonly) { a.readonly = true; setAuth(a); } } catch (e) {} };   // 門番が READ_ONLY で断った＝この端末にも印を付ける
+  const readOnlyMsg_ = () => L({ ja:'このIDは見るだけです。提出・保存は本部や店舗には届きません', en:'This ID is view-only. Nothing is sent to HQ or the store.', vi:'ID này chỉ để xem. Không có gì được gửi đi.' });
   /* ★2026-10-12 配信先が「読みもPOSTで受ける版（api:2）」なら、トークンをURLに載せない。古い配信先には従来どおりGET */
   const apiVer = () => { const a = getAuth(); return a && Number(a.api) >= 2 ? 2 : 1; };
   const apiGet_ = (params) => {
@@ -680,6 +684,7 @@
   const pwChangeDue_ = () => { const a = getAuth(); if (!a || !/^ipad-/.test(String(a.uid || ''))) return false; const ym = new Date().toISOString().slice(0, 7); return !a.pwYm || String(a.pwYm) < ym; };
   /* ★開発者ビュー（本部の確認用）で店舗iPadの表示にしているときは、見本として同じ帯を出す（2026-10-02 神田さん「こちらから店舗iPadの画面を見られないか」）。
      押すと端末設定が開き、同じ「パスワードを変更」の欄が見える（変えるのは自分のIDのパスワード） */
+  const readOnlyBanner_ = () => isReadOnly_() ? `<div class="devview-bar" data-robar="1">${L({ ja:'見るだけのIDです。提出・保存はできません', en:'View-only ID. Submitting and saving are disabled.', vi:'ID chỉ để xem. Không thể gửi hay lưu.' })}</div>` : '';   // ★2026-11-20
   const pwChangeBanner_ = () => pwChangeDue_()   // ★2026-10-20 本部全員が見え方を切り替えるので【見本】の帯は出さない（押すと本部ID自身の変更が開くため）
     ? `<button type="button" class="devview-bar pwchange-bar" data-pwchange="1">${pwChangeDue_() ? '' : L({ ja:'【見本】', en:'[Sample] ', vi:'[Mẫu] ' })}${L({
         ja:'今月のパスワードが未変更です。責任者の方はここを押して変更',
@@ -766,7 +771,7 @@
     const drop = (never) => { if (!never) authLog_('AUTHDROP', why); _needLoginBusy = false; markAuthRequired(true); setAuth(null); if (!never) { try { localStorage.setItem('yosakura_auth_dropped', '1'); } catch (e) {} } render(); };
     if (!tok || !useBackend()) { drop(!tok); return; }
     fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: 'authping', token: tok }) }).then(r => r.json()).then(d => {
-      if (d && d.ok && d.auth && d.auth.uid) { _needLoginBusy = false; authLog_('AUTHKEEP', why); try { const a = getAuth(); if (a && d.auth.api && a.api !== d.auth.api) { a.api = d.auth.api; setAuth(a); } } catch (e) {} return; }   // まだ有効＝落とさない（api の版も覚える・2026-10-12）
+      if (d && d.ok && d.auth && d.auth.uid) { _needLoginBusy = false; authLog_('AUTHKEEP', why); try { const a = getAuth(); if (a && ((d.auth.api && a.api !== d.auth.api) || !!a.readonly !== !!d.auth.readonly)) { if (d.auth.api) a.api = d.auth.api; a.readonly = !!d.auth.readonly; setAuth(a); } } catch (e) {} return; }   // まだ有効＝落とさない（api の版も覚える・2026-10-12）
       drop();
     }).catch(() => { _needLoginBusy = false; authLog_('AUTHKEEP', String(why || '') + ' ping-failed'); });   // 聞けなかった＝落とさない（次の通信でもう一度判定される）
   }
@@ -9598,6 +9603,7 @@
       pws.disabled = true; say(L({ ja:'変更しています…', en:'Changing…', vi:'Đang đổi…' }), true);
       fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: 'chpw', token: authToken(), oldPw: o, newPw: n1, kickOthers: true }) }).then(r => r.json()).then(d => {
         pws.disabled = false;
+        if (d && d.error === 'READ_ONLY') { markReadOnly_(); return say(L({ ja:'このIDは見るだけのため、パスワードは変えられません', en:'This ID is view-only; the password cannot be changed.', vi:'ID chỉ để xem; không đổi được mật khẩu.' }), false); }
         if (!d || !d.ok) { return say(d && d.error === 'OLDPW_WRONG' ? L({ ja:'いまのパスワードが違います', en:'Current password is wrong.', vi:'Mật khẩu hiện tại sai.' }) : L({ ja:'変更できませんでした。通信を確かめてもう一度', en:'Could not change. Check the connection and retry.', vi:'Không đổi được. Kiểm tra mạng và thử lại.' }), false); }
         const a = getAuth(); if (a) { a.pwYm = d.pwYm || new Date().toISOString().slice(0, 7); a.mustChange = false; setAuth(a); }
         say(L({ ja:'変更しました。ほかの端末はログアウトされました。新しいパスワードを在籍スタッフに伝えてください', en:'Changed. Other devices were signed out. Share the new password with current staff.', vi:'Đã đổi. Các thiết bị khác đã đăng xuất. Hãy báo mật khẩu mới cho nhân viên.' }), true);
@@ -12277,9 +12283,10 @@
       /* ★Codex（11/16）＝端末の印を保存できたときだけ送る（保存できないまま送ると、送り直しのたびに別の端末として足される） */
       let dev = ''; try { dev = localStorage.getItem(PV_DEV_LS) || ''; if (!dev) { const nd = Math.random().toString(36).slice(2, 10); localStorage.setItem(PV_DEV_LS, nd); dev = localStorage.getItem(PV_DEV_LS) === nd ? nd : ''; } } catch (e) { dev = ''; }
       if (!dev) return;
+      if (isReadOnly_()) return;   // ★2026-11-20 見るだけのIDは、画面を開いた回数も送らない（門番が断る・利用状況にも数えない）
       _pvSending[key] = 1;
       fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ token: authToken(), kind: 'pv', store, item: dk, note: JSON.stringify({ d: dev, c: m[key] }), photos: [], t: Date.now() }) })
-        .then(r => r.json()).then(d => { delete _pvSending[key]; if (d && d.ok !== false && !d.needLogin) lsMapDel_(PV_LS, key); })
+        .then(r => r.json()).then(d => { delete _pvSending[key]; if (d && d.error === 'READ_ONLY') { markReadOnly_(); lsMapDel_(PV_LS, key); return; }   /* ★2026-11-20 見るだけのID＝数えない・送り直さない */ if (d && d.ok !== false && !d.needLogin) lsMapDel_(PV_LS, key); })
         .catch(() => { delete _pvSending[key]; });
     });
   }
@@ -13048,7 +13055,7 @@
       else if (path === '/home') html = viewHome(params.get('tab') || 'home');
       else html = viewHome('home');
     } finally { _rendering = false; }
-    $app.innerHTML = devViewBanner() + pwChangeBanner_() + html;
+    $app.innerHTML = devViewBanner() + readOnlyBanner_() + (isReadOnly_() ? '' : pwChangeBanner_()) + html;   // ★2026-11-20 見るだけのIDには「パスワードを変更」の帯を出さない（変えられない）
     /* ★2026-10-20 神田さん「未入力の欄の薄い仮の数字が濃くて実績と見分けがつかない」＝数字だけの例（123700・¥40,600 など）は出さない。言葉の案内は残し、色はさらに薄く（styles.css） */
     try { $app.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el => { const ph = el.getAttribute('placeholder') || ''; if (ph && /^[\s¥￥\d,.，．:：\-－%％()（）/／~〜]+$/.test(ph)) el.setAttribute('placeholder', ''); }); } catch (e) {}   // 開発者ビュー中は戻るバナーを全画面の先頭に出す
     setScrollY_(y);
@@ -13731,6 +13738,7 @@
     const zkSt = document.getElementById('zk_store'); if (zkSt) zkSt.onchange = () => { try { localStorage.setItem(ZK_LS_STORE, zkSt.value); } catch (e) {} render(true); };
     const subZk = document.getElementById('submitZk');
     if (subZk) subZk.onclick = () => {
+      if (isReadOnly_()) { toast(readOnlyMsg_()); return; }   // ★2026-11-20 見るだけのID＝控えにも入れない
       if (inDevView()) { toast(L({ ja:'確認用の表示では提出できません。店長IDか店舗IDでログインし直してください', en:'Preview view cannot submit. Sign in with the store ID.', vi:'Chế độ xem thử không gửi được. Hãy đăng nhập bằng ID cửa hàng.' })); return; }   // ★2026-10-22 同上
       const store = zkStore(); const q = {}; let n = 0; const bad = [];
       document.querySelectorAll('input[data-zkname]').forEach(el => {
@@ -13793,6 +13801,7 @@
       /* ★2026-10-22 永井さん「基準在庫を設定しても消える（2、3回）」＝本部ID（nagai）の「店舗責任者」の見え方で保存していた。
          この見え方では postReport が送らない作り（10/20）なのに「保存しました」と出し、下書きも消し、次の同期で端末からも消えていた。
          保存の前に止めて、下書きはそのまま残す（本部データに行は1件も無い＝復元不能だった） */
+      if (isReadOnly_()) { toast(readOnlyMsg_()); return; }   // ★2026-11-20 見るだけのID
       if (inDevView()) { toast(L({ ja:'確認用の表示では保存できません。店長IDでログインし直してください（打った内容は端末に残ります）', en:'Preview view cannot save. Sign in with the store manager ID (your edits stay on this device).', vi:'Chế độ xem thử không lưu được. Hãy đăng nhập bằng ID quản lý (nội dung vẫn còn trên máy).' })); return; }
       const store = zkStore(); const items = [];
       for (let i = 0; i < 400; i++) {
@@ -15166,6 +15175,7 @@
   async function flushPendingOnce_() {
     const q = getPending_();
     if (!q.length) return;
+    if (isReadOnly_()) return;   // ★2026-11-20 見るだけのID＝保留分は送らず、そのまま残す（別のIDで入り直したときに送られる・Codex）
     const 残り = [];
     let 済み = 0;
     for (let i = 0; i < q.length; i++) {
@@ -15176,6 +15186,7 @@
         const res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(Object.assign({ token: authToken() }, q[i])) });
         const d = await res.json();
         if (d && d.needLogin) { for (let j = i; j < q.length; j++) 残り.push(q[j]); break; }  // ログイン後に続きを送る
+        if (d && d.error === 'READ_ONLY') { markReadOnly_(); for (let j = i; j < q.length; j++) 残り.push(q[j]); break; }   // ★2026-11-20 見るだけのID＝断られた分は消さない・「送信しました」とも出さない（Codex）
       }
       catch (e) { 残り.push(q[i]); }
     }
@@ -15192,9 +15203,15 @@
     if (!useBackend()) return Promise.resolve();
     // ★2026-10-20 本部IDで店舗責任者・スタッフの見え方にしているときは送らない（本店などの提出として記録されるのを防ぐ）
     if (inDevView()) { toast(L({ ja:'確認用の表示です。この操作は本部・店舗には届きません', en:'Preview view: this action is not sent to HQ or the store.', vi:'Chế độ xem thử: thao tác này không được gửi đi.' })); return Promise.resolve(); }
+    /* ★2026-11-20 見るだけのID＝送らない（保留箱にも入れない）。呼び出し側が先に端末の控えへ入れているので、
+       目印（rawkeys）を消して同期し、控えを本部データで作り直す＝「出した」表示を残さない（Codex）。案内は同期のあとにもう一度出す（呼び出し側の「提出しました」に上書きされるため） */
+    const roResync_ = () => { try { localStorage.removeItem('yosakura_demo_rawkeys'); } catch (e) {} toast(readOnlyMsg_()); return Promise.resolve(syncReports(true)).catch(() => {}).then(() => { toast(readOnlyMsg_()); }); };
+    if (isReadOnly_()) return roResync_();
     return fetch(getApiUrl(), { method: 'POST', body: JSON.stringify(Object.assign({ token: authToken() }, rep)), keepalive: !!(rep && rep.kind === 'ckdone') })
       .then((r) => r.json())
       .then((d) => {
+        /* ★2026-11-20 門番が READ_ONLY で断った＝この端末の印がまだ無かった（ログインのあとで見るだけにされた）。印を付けて案内し、本部データに合わせ直す。保留箱には入れない */
+        if (d && d.error === 'READ_ONLY') { markReadOnly_(); return roResync_(); }
         if (rep && rep.kind === 'ckdone' && !(d && d.needLogin)) return;   // ★チェックの送信後は同期しない（2026-09-24＝同期→作り直しがパチパチの元）
         /* ★2026-11-13 神田さん「投票ボタンがまだバチバチする」＝押した行だけ書き換えても、送信のあとの同期で全画面を描き直していた。
            投票（kzvote）とお知らせのいいね（newslike）も、送信後は同期しない（端末の控えに入っているので表示は合う・次の定期の同期で本部データと合流） */

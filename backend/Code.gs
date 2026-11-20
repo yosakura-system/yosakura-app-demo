@@ -444,7 +444,8 @@ function apiRead_(p, u) {
     if (action === 'storage') return { ok: true, storage: storageReport() };          // 使用量・増加ペース
     if (action === 'validate') return { ok: true, validate: validateBackendConfiguration() };   // 構成の点検（変更しません）
     if (action === 'triggers') return { ok: true, triggers: listTriggers() };
-    if (action === 'setupTrigger') return { ok: true, setup: ensureDailyPurgeTrigger() };   // 毎日の自動削除を有効化（重複は作らない）
+    if (action === 'setupTrigger') { if (u && u.readonly) return { ok: false, error: 'READ_ONLY' };   // ★2026-11-20 見るだけのID（本部の役割で渡した場合）にトリガーを作らせない（Codex）
+      return { ok: true, setup: ensureDailyPurgeTrigger() }; }   // 毎日の自動削除を有効化（重複は作らない）
     return { ok: false, error: 'UNKNOWN_ACTION' };
   }
   var sh = getSheet();

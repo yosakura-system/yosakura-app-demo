@@ -267,9 +267,32 @@ function 認証_社長と会長をパスワード無しにする() {
   var list = 認証_パスワード無しにする('kubo');
   Logger.log('完了。パスワード無しのID: ' + list.join(',')); return list;
 }
+/* ===== 見るだけのID（2026-11-20） =====
+   増田さん「ユーテクのメンバー用にIDを1つ」→ 神田さん「提出操作できないように鍵をかけて」。
+   ・対象＝スクリプトプロパティ AUTH_READONLY_UIDS（カンマ区切り）に書いたIDだけ。既定は空＝誰も対象でない
+   ・対象のIDは、読むことはできるが、提出・保存（doPost の書き込み）とパスワードの変更をすべて断る（READ_ONLY）。
+     見える範囲は役割と店舗のまま（本部の役割なら全店が見える）＝見せる範囲は役割で決める
+   ・設定＝認証_見るだけにする('uid')／解除＝認証_見るだけをやめる('uid')（即時・デプロイ不要）。
+     アプリの表示（「見るだけ」の案内）は次のログインから。門番はすぐに断る */
+function auth_readonly_uids_() {
+  try { return String(PropertiesService.getScriptProperties().getProperty('AUTH_READONLY_UIDS') || '').split(',').map(function (x) { return x.trim().toLowerCase(); }).filter(String); } catch (e) { return []; }
+}
+function auth_readonly_(uid) { var u = String(uid || '').trim().toLowerCase(); return !!u && auth_readonly_uids_().indexOf(u) >= 0; }
+function 認証_見るだけにする(uid) {
+  var rec = auth_find_(uid); if (!rec) throw new Error('uid が見つかりません: ' + uid);
+  var list = auth_readonly_uids_(); var u = String(uid).trim().toLowerCase();
+  if (list.indexOf(u) < 0) list.push(u);
+  PropertiesService.getScriptProperties().setProperty('AUTH_READONLY_UIDS', list.join(','));
+  Logger.log('見るだけのID: ' + list.join(',')); return list;
+}
+function 認証_見るだけをやめる(uid) {
+  var u = String(uid).trim().toLowerCase(); var list = auth_readonly_uids_().filter(function (x) { return x !== u; });
+  PropertiesService.getScriptProperties().setProperty('AUTH_READONLY_UIDS', list.join(','));
+  Logger.log('見るだけのID: ' + (list.join(',') || '（なし）')); return list;
+}
 function 認証_一覧() {
   var out = auth_rows_().map(function (r) {
-    return { uid: r.uid, 名前: r.name, 役割: r.role, 店舗: r.stores, 初回変更待ち: String(r.must_change) === 'true', パスワード無し: auth_nopw_(r.uid) };
+    return { uid: r.uid, 名前: r.name, 役割: r.role, 店舗: r.stores, 初回変更待ち: String(r.must_change) === 'true', パスワード無し: auth_nopw_(r.uid), 見るだけ: auth_readonly_(r.uid) };
   });
   Logger.log(JSON.stringify({ 件数: out.length, 一覧: out }, null, 2)); return out;
 }
@@ -335,7 +358,7 @@ function auth_verify_(token) {
   if (!hit) return null;
   return { uid: hit.uid, name: hit.name, role: hit.role,
            stores: String(hit.stores || '').split('／').map(function (s) { return s.trim(); }).filter(String),
-           mustChange: String(hit.must_change) === 'true', pwYm: auth_pwYm_(hit) };
+           mustChange: String(hit.must_change) === 'true' && !auth_readonly_(hit.uid), pwYm: auth_pwYm_(hit), readonly: auth_readonly_(hit.uid) };   // ★見るだけのIDは初回の変更を求めない（変えられないため・Codex 11/20）
 }
 
 /* ===== API（doPost から呼ばれる。該当しなければ null を返して通常の提出処理へ） ===== */
@@ -370,11 +393,12 @@ function auth_api_locked_(data) {
     auth_write_(rec);
     if (nopw) auth_logNopw_(rec.uid, data.dev);
     return { ok: true, auth: { token: token, uid: rec.uid, name: rec.name, role: rec.role,
-             stores: String(rec.stores || '').split('／').filter(String), mustChange: String(rec.must_change) === 'true', pwYm: auth_pwYm_(rec), api: 2 } };   // api:2＝読みもPOSTで受ける版（2026-10-12）
+             stores: String(rec.stores || '').split('／').filter(String), mustChange: String(rec.must_change) === 'true' && !auth_readonly_(rec.uid), pwYm: auth_pwYm_(rec), readonly: auth_readonly_(rec.uid), api: 2 } };   // api:2＝読みもPOSTで受ける版（2026-10-12）
   }
   if (data.action === 'chpw') {
     var u = auth_verify_(data.token);
     if (!u) return { ok: false, error: 'AUTH_REQUIRED', needLogin: true };
+    if (u.readonly) return { ok: false, error: 'READ_ONLY' };   // ★2026-11-20 見るだけのID＝パスワードも変えられない（共有IDを1人が変えると、ほかの人が入れなくなる）
     var rec2 = auth_find_(u.uid);
     if (!auth_pw_ok_(rec2, u.uid, data.oldPw)) return { ok: false, error: 'OLDPW_WRONG' };
     if (!data.newPw || String(data.newPw).length < 6) return { ok: false, error: 'NEWPW_TOO_SHORT' };  // 自分で決める方は6文字以上
@@ -389,7 +413,7 @@ function auth_api_locked_(data) {
   if (data.action === 'authping') {
     var u2 = auth_verify_(data.token);
     return { ok: true, auth: u2 ? { uid: u2.uid, name: u2.name, role: u2.role, stores: u2.stores,
-             mustChange: u2.mustChange, pwYm: u2.pwYm, enabled: authOn_(), api: 2 } : { enabled: authOn_(), api: 2 } };
+             mustChange: u2.mustChange, pwYm: u2.pwYm, readonly: !!u2.readonly, enabled: authOn_(), api: 2 } : { enabled: authOn_(), api: 2 } };
   }
   return null;
 }
@@ -467,6 +491,8 @@ function auth_gate_post_(data) {
   }
   var u = auth_verify_retry_(data && data.token, 'post:' + kind);
   if (!u) return { ok: false, error: 'AUTH_REQUIRED' };
+  /* ★2026-11-20 見るだけのID＝どの種類の提出・保存も受けない（画面エラーの控え apperr だけは上で受けている＝写真なし・1500字まで） */
+  if (u.readonly) return { ok: false, error: 'READ_ONLY' };
   /* ★2026-10-12 仮パスワードのまま（初回変更がまだ）では提出できない。先にパスワードを変える（アプリは変更画面を出す） */
   if (u.mustChange) return { ok: false, error: 'PW_CHANGE_REQUIRED' };
   /* ★個人タスクは本人（item=自分のuid）しか書けない。本部でも他人のぶんは書けない */

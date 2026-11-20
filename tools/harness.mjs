@@ -8779,5 +8779,72 @@ console.log('== 2026-11-17 日報のロス報告は「導入を一旦保留」�
   ok(/loss: v\('sk_loss'\), memo: v\('sk_memo'\),/.test(code) && /lossnote: v\('sk_lossnote'\)/.test(code), '保存の形は変えない（loss・lossnote）＝入っていた値は消えない');
 }
 
+console.log('== 2026-11-20 見るだけのID（ユーテク用・増田さん／神田さん「提出操作できないように鍵をかけて」）＝門番が READ_ONLY で断る・アプリは送らない ==');
+{
+  const vm = await import('vm');
+  let RO = '', USERS = [], WROTE = 0;
+  const ctx = { console, JSON, Date, Math, String, Number, Array, Object,
+    getSetting_: (k, d) => (k === 'ENABLE_AUTH' ? true : d), CacheService: { getScriptCache: () => null },
+    Utilities: { getUuid: () => 'tok-new', sleep() {}, base64Encode: (x) => String(x), computeDigest: (a, s) => 'H:' + s, computeHmacSha256Signature: (s) => 'H:' + s, DigestAlgorithm: { SHA_256: 1 }, Charset: { UTF_8: 1 }, formatDate: () => '2026-11' },
+    Logger: { log() {} }, SpreadsheetApp: { flush() {} }, LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => (k === 'AUTH_READONLY_UIDS' ? RO : null), setProperty: (k, v) => { if (k === 'AUTH_READONLY_UIDS') RO = v; } }) } };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(new URL('../backend/認証.gs', import.meta.url), 'utf8'), ctx);
+  ctx.auth_rows_ = () => USERS; ctx.auth_write_ = () => { WROTE++; }; ctx.auth_logMiss_ = () => {};
+  const S1 = '牛カツ世桜 長堀橋店';
+  USERS = [
+    { uid:'utech', name:'ユーテク', role:'hq', stores:'', hash:'H:utech|pw123456', must_change:'false', tokens:'["t-ut"]', _row: 2 },
+    { uid:'Utech2', name:'ユーテク店', role:'manager', stores:S1, hash:'H:Utech2|pw123456', must_change:'false', tokens:'["t-u2"]', _row: 3 },
+    { uid:'kanda', name:'神田', role:'hq', stores:'', hash:'H:kanda|pw123456', must_change:'false', tokens:'["t-k"]', _row: 4 } ];
+  const post = (tok, kind, store) => ctx.auth_gate_post_({ token: tok, kind, store: store || S1, item: 'x', note: '{}', photos: [] });
+  ok(post('t-ut', 'nippou').ok === true && post('t-u2', 'nippou').ok === true, '見るだけの設定が無いあいだは、今までどおり提出できる（既定は空＝誰も対象でない）');
+  ctx.認証_見るだけにする('utech'); ctx.認証_見るだけにする('Utech2');
+  ok(RO === 'utech,utech2' && ctx.auth_readonly_('UTECH') && !ctx.auth_readonly_('kanda') && !ctx.auth_readonly_(''), '認証_見るだけにする＝スクリプトプロパティ AUTH_READONLY_UIDS に小文字で入る（判定は大文字小文字を区別しない・空は対象外。設定のときの uid は登録どおりに書く）');
+  ok(['nippou', 'ckdone', 'kizuki', 'news', 'submaster', 'svcheck', 'whistle', 'pv', 'hqack'].every(k => { const r = post('t-ut', k, k === 'whistle' ? '' : S1); return r.ok === false && r.error === 'READ_ONLY'; }), '見るだけのID（本部の役割）＝どの種類の提出・保存も READ_ONLY で断る（お知らせ・提出物の設定・相談も）');
+  ok(post('t-u2', 'nippou').error === 'READ_ONLY' && post('t-k', 'nippou').ok === true, '見るだけのID（店長の役割）も断る・ほかのIDの提出は今までどおり通る');
+  ok(post('t-ut', 'apperr').ok === true, '画面エラーの控え（apperr）だけは今までどおり受ける＝もともとログインなしでも受ける種類なので、見るだけのIDで断っても意味が無い（Codex #1 は不採用・写真なし・1500字まで）');
+  ok(ctx.auth_gate_get_({ parameter: { token: 't-ut' } }).ok === true && ctx.auth_row_ok_(ctx.auth_verify_('t-ut'), 'nippou', S1, '') === true, '読むことはできる（見える範囲は役割のまま）');
+  WROTE = 0; const cp = ctx.auth_api_({ action: 'chpw', token: 't-ut', oldPw: 'pw123456', newPw: 'newpw999', kickOthers: true });
+  ok(cp.ok === false && cp.error === 'READ_ONLY' && WROTE === 0 && USERS[0].hash === 'H:utech|pw123456', '見るだけのIDはパスワードを変えられない（シートにも書かない）');
+  const lg = ctx.auth_api_({ action: 'login', uid: 'utech', pw: 'pw123456' }); const lk = ctx.auth_api_({ action: 'login', uid: 'kanda', pw: 'pw123456' });
+  ok(lg.ok && lg.auth.readonly === true && lk.ok && lk.auth.readonly === false, 'ログインの返事に readonly（見るだけ＝true・ほかは false）');
+  const pg = ctx.auth_api_({ action: 'authping', token: 't-ut' });
+  ok(pg.ok && pg.auth.readonly === true, 'authping の返事にも readonly');
+  ok(ctx.認証_一覧().find(r => r.uid === 'utech').見るだけ === true && ctx.認証_一覧().find(r => r.uid === 'kanda').見るだけ === false, '認証_一覧に「見るだけ」の列');
+  ctx.認証_見るだけをやめる('UTECH');
+  ok(RO === 'utech2' && post('t-ut', 'nippou').ok === true && post('t-u2', 'nippou').error === 'READ_ONLY', '認証_見るだけをやめる＝そのIDだけ戻る（即時）');
+  let threw = false; try { ctx.認証_見るだけにする('nobody'); } catch (e) { threw = true; } ok(threw && RO === 'utech2', '登録の無いIDは見るだけにできない（打ち間違いで空振りしない）');
+  // Codex 11/20 #3＝見るだけのIDは、仮パスワードのままでも初回の変更を求めない（変えられないので変更画面から出られなくなる）
+  USERS.push({ uid:'utech3', name:'ユーテク3', role:'staff', stores:S1, hash:'H:utech3|pw123456', must_change:'true', tokens:'["t-u3"]', _row: 5 });
+  ok(ctx.auth_verify_('t-u3').mustChange === true && post('t-u3', 'nippou').error === 'PW_CHANGE_REQUIRED', '（前提）仮パスワードのままのIDは、今までどおり変更を求められる');
+  ctx.認証_見るだけにする('utech3');
+  ok(ctx.auth_verify_('t-u3').mustChange === false && ctx.auth_api_({ action: 'login', uid: 'utech3', pw: 'pw123456' }).auth.mustChange === false && post('t-u3', 'nippou').error === 'READ_ONLY', '見るだけのIDは、仮パスワードのままでも変更画面に閉じ込めない（mustChange は false・提出は READ_ONLY）');
+  // Codex 11/20 #2＝保守用の action（doGet / action つきの読み）でトリガーを作らせない
+  { const cgs = fs.readFileSync(new URL('../backend/Code.gs', import.meta.url), 'utf8');
+    const fn = cgs.slice(cgs.indexOf('function apiRead_(p, u) {'), cgs.indexOf("return { ok: false, error: 'UNKNOWN_ACTION' };") + 60) + '\n  return { ok: true, list: true };\n}';
+    let made = 0; const c2 = { String, ensureDailyPurgeTrigger: () => { made++; return 'made'; }, listTriggers: () => [], photoAction_: () => ({}), listPurgeTargets: () => [], storageReport: () => ({}), validateBackendConfiguration: () => ({}) };
+    vm.createContext(c2); vm.runInContext(fn, c2);
+    const r1 = c2.apiRead_({ action: 'setupTrigger' }, { uid:'utech', role:'hq', readonly: true });
+    const r2 = c2.apiRead_({ action: 'triggers' }, { uid:'utech', role:'hq', readonly: true });
+    const r3 = c2.apiRead_({ action: 'setupTrigger' }, { uid:'kanda', role:'hq', readonly: false });
+    ok(r1.ok === false && r1.error === 'READ_ONLY' && r2.ok === true && r3.ok === true && made === 1, '見るだけのID（本部の役割）は setupTrigger でトリガーを作れない・読むだけの保守 action は今までどおり・ほかの本部IDは作れる'); }
+  // アプリ側（画面）＝見るだけのIDのあいだ、どの画面にも帯が出る
+  run(() => { setLS('staff', S1, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t-ut', uid:'utech', name:'ユーテク', role:'staff', stores:[S1], readonly: true })); });
+  location.hash = '#/home'; const hro = registry.app.innerHTML;
+  ok(/data-robar="1">見るだけのIDです。提出・保存はできません</.test(hro), 'アプリ＝見るだけのIDのあいだ、画面の上に「見るだけのIDです。提出・保存はできません」の帯');
+  run(() => { setLS('staff', S1, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_auth', JSON.stringify({ token:'t-u2', uid:'ipad-x', name:'店', role:'staff', stores:[S1] })); });
+  location.hash = '#/home';
+  ok(!/data-robar/.test(registry.app.innerHTML), 'アプリ＝ふつうのIDには帯は出ない');
+  // アプリ側（ソース）
+  const pr = code.slice(code.indexOf('function postReport'), code.indexOf('function postReport') + 3600);
+  ok(/const roResync_ = \(\) => \{ try \{ localStorage\.removeItem\('yosakura_demo_rawkeys'\); \} catch \(e\) \{\} toast\(readOnlyMsg_\(\)\); return Promise\.resolve\(syncReports\(true\)\)/.test(pr) && /if \(isReadOnly_\(\)\) return roResync_\(\);/.test(pr) && pr.indexOf('if (isReadOnly_()) return roResync_();') < pr.indexOf('return fetch(getApiUrl()'), 'アプリ＝見るだけのIDは postReport で送らない（保留箱にも入れない）。端末の控えは本部データで作り直す＝「出した」表示を残さない（Codex #5）');
+  ok(/if \(d && d\.error === 'READ_ONLY'\) \{ markReadOnly_\(\); return roResync_\(\); \}/.test(pr) && pr.indexOf("d.error === 'READ_ONLY'") < pr.indexOf('d.needLogin'), 'アプリ＝門番が READ_ONLY で断ったら、端末に印を付けて案内し、本部データに合わせ直す（ログイン画面へは戻さない・保留しない）');
+  const fl = code.slice(code.indexOf('async function flushPendingOnce_'), code.indexOf('async function flushPendingOnce_') + 1600);
+  ok(/if \(!q\.length\) return;\n?\r?\n?\s*if \(isReadOnly_\(\)\) return;/.test(fl) && /if \(d && d\.error === 'READ_ONLY'\) \{ markReadOnly_\(\); for \(let j = i; j < q\.length; j\+\+\) 残り\.push\(q\[j\]\); break; \}/.test(fl), 'アプリ＝保留箱は見るだけのIDでは送らない。門番が断った分は消さずに残す（「送信しました」と出さない・Codex #4）');
+  ok(/if \(isReadOnly_\(\)\) \{ toast\(readOnlyMsg_\(\)\); return; \}[^\n]*\n\s*if \(inDevView\(\)\) \{ toast\(L\(\{ ja:'確認用の表示では提出できません/.test(code) && /if \(isReadOnly_\(\)\) \{ toast\(readOnlyMsg_\(\)\); return; \}[^\n]*\n\s*if \(inDevView\(\)\) \{ toast\(L\(\{ ja:'確認用の表示では保存できません/.test(code), 'アプリ＝日報の提出・途中保存は、控えに入れる前に止める');
+  ok(/if \(isReadOnly_\(\)\) return;[^\n]*\n\s*_pvSending\[key\] = 1;/.test(code) && /if \(d && d\.error === 'READ_ONLY'\) \{ markReadOnly_\(\); lsMapDel_\(PV_LS, key\); return; \}/.test(code), 'アプリ＝見るだけのIDは、画面を開いた回数（pv）を送らない。門番が断った分は捨てて送り直さない（Codex #6）');
+  ok(/!!a\.readonly !== !!d\.auth\.readonly/.test(code) && /a\.readonly = !!d\.auth\.readonly; setAuth\(a\);/.test(code), 'アプリ＝authping の返事で readonly の印を合わせ直す');
+  ok(/d\.error === 'READ_ONLY'\) \{ markReadOnly_\(\); return say\(L\(\{ ja:'このIDは見るだけのため、パスワードは変えられません'/.test(code), 'アプリ＝パスワード変更の画面で、見るだけのIDには理由を出す（印も付ける）');
+}
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
