@@ -11,7 +11,8 @@
      本部の端末は全店ぶんの控えで約3,100K字（reports 1,448／soukatsu 587／rawkeys 479／ckdone 399）。iPhone の上限は約2,500K字。
      10/16・10/20 に古い月を持たない形へ間引いたが、店と記録が増えて3回目の満杯＝自動の片づけ（LSRESET）も、取り直すと同じ量が戻るので効かなかった。
      → 大きい控え4つだけ、端末に書くときに圧縮し、読むときに戻す。入口（getItem / setItem）で行うので、読み書きしている側のコードと画面の中身は変わらない。
-     ・書く前に「戻して同じ文字になるか」を確かめ、書いたあとに「端末が同じ文字を返すか」を確かめる。どちらかが合わなければ圧縮せずに置く（黙って壊さない）
+     ・書く前に「戻して1文字も違わないか」を確かめる。合わなければ圧縮せずに置く（黙って壊さない）
+     ・置いたあとに端末の中で文字が変わった場合は、検算（簡単な合計）で多くは気づけるが、必ず気づける保証ではない（Codex 11/24 #7）
      ・戻せない控えは「無い」として返す＝次の同期で本部データから作り直される（提出そのものは本部にある）
      ・小さい控え（2万字未満）と、ここに挙げていないキー（ログイン・保留中の提出・下書き）は今までどおり
      ・止めたいとき＝端末で yosakura_lsz_off を '1' にすると、以後は圧縮せずに書く（圧縮済みの控えは読める） */
@@ -51,7 +52,7 @@
     const q = z.indexOf(':'); const hd = q > 0 && q <= 16 ? /^([0-9a-z]{1,7})[.]([0-9a-z]{1,7})$/.exec(z.slice(0, q)) : null;
     if (!hd) throw new Error('lsz');
     const n = parseInt(hd[1], 36), want = parseInt(hd[2], 36);
-    if (!(n >= 0) || n > 5e7) throw new Error('lsz');
+    if (!(n >= 0) || n > 2e7 || n > (z.length - q) * 36611) throw new Error('lsz');   // 見出しの長さが本体から作れる長さを超えていたら、配列を確保する前にやめる（Codex 11/24 #3）
     const buf = new Uint16Array(n); const zn = z.length;
     let o = 0, i = q + 1;
     while (i < zn) {
@@ -88,7 +89,7 @@
     } catch (e) { return; }
     if (!host || typeof host.getItem !== 'function' || typeof host.setItem !== 'function') return;
     if (host.__lsz) { const r0 = host.__lszRaw; if (typeof r0 === 'function') lszRawGet_ = (k) => r0.call(localStorage, k); return; }   // 入口はもう入っている（同じページで2回読まれたとき）＝重ねない
-    const g0 = host.getItem, s0 = host.setItem, r0 = host.removeItem;
+    const g0 = host.getItem, s0 = host.setItem;
     const mine = (t) => { try { return t === localStorage; } catch (e) { return false; } };
     const memo = Object.create(null);   // キー → 直近に戻した結果（同じ控えを何度も戻さない）
     const isZ = (v) => typeof v === 'string' && v.charCodeAt(0) === 1 && v.slice(0, 3) === LSZ_MARK;
@@ -106,10 +107,13 @@
         let z = null;
         if (!off) { try { const body = lszPack_(v); if (body.length < v.length * 0.9 && lszUnpack_(body) === v) z = LSZ_MARK + body; } catch (e) { z = null; } }
         if (z) {
-          s0.call(this, k, z);   // 入らなければここで例外＝呼び出し側の「容量いっぱい」の扱いにそのまま入る
+          s0.call(this, k, z);   // 入らなければここで例外＝呼び出し側の「容量いっぱい」の扱いにそのまま入る（端末の前の値は残る）
+          /* 書いたものが同じ文字で返るときだけ、戻した結果を覚える。違っていても、消したり書き直したりしない
+             ＝同じアプリを別のタブで開いていると、そのあいだに別のタブが新しい値を書いていることがある（Codex 11/24 #1）。
+             端末が文字を変えてしまった場合は、次に読むときに戻せず「無い」になる＝次の同期で本部データから作り直される */
           let back = null; try { back = g0.call(this, k); } catch (e) {}
-          if (back === z) { memo[k] = { raw: z, text: v }; return; }
-          try { if (typeof r0 === 'function') r0.call(this, k); } catch (e) {}   // 端末が違う文字を返した＝その控えは残さず、下で圧縮なしを書く（書けなければ例外＝呼び出し側へ）
+          if (back === z) memo[k] = { raw: z, text: v };
+          return;
         }
       }
       return s0.call(this, k, v);

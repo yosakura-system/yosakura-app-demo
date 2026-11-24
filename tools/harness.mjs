@@ -8874,7 +8874,10 @@ console.log('== 2026-11-24 端末の控えを圧縮して置く（神田さん�
     ok(threw, '端末に入らないときは、今までどおり例外が呼び出し側へ届く（「容量いっぱい」の扱いが働く）'); }
   { const set0 = store.set.bind(store); let n = 0; store.set = (k, v) => { n++; return set0(k, n === 1 && k === K ? String(v).slice(0, 50) : v); };   // 1回目だけ、端末が文字を変えてしまう
     localStorage.setItem(K, J); store.set = set0;
-    ok(store.get(K) === J && localStorage.getItem(K) === J, '書いたあと読み戻して違っていたら、圧縮せずに置き直す（黙って壊さない）'); }
+    ok(store.get(K).length === 50 && localStorage.getItem(K) === null, '置いた文字を端末が変えてしまったとき＝消したり書き直したりせず、次に読むと「無い」になる（別のタブが同時に書いた値を壊さない・Codex 11/24 #1）'); }
+  { const set0 = store.set.bind(store); let n = 0; store.set = (k, v) => { n++; return set0(k, n === 1 && k === K ? '[{"other":"tab"}]' : v); };   // 書いた直後に、別のタブが新しい値を書いた
+    localStorage.setItem(K, J); store.set = set0;
+    ok(n === 1 && store.get(K) === '[{"other":"tab"}]' && localStorage.getItem(K) === '[{"other":"tab"}]', '書いた直後に別のタブが書いた値は、そのまま残る（消さない・上書きしない）'); }
   localStorage.setItem(K, J); localStorage.setItem(K, '[]'); ok(localStorage.getItem(K) === '[]', '書きかえたあとは新しい中身が返る（前に戻した結果を使い回さない）');
   localStorage.setItem(K, J); localStorage.removeItem(K); ok(localStorage.getItem(K) === null, '消したあとは「無い」');
   ok(code.includes("a.push([k, (lszRawGet_(k) || '').length]);"), '容量の内訳（LSFULL・LSRESET の控え）は、端末に置いてある大きさ（圧縮後）で数える');
