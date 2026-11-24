@@ -7,6 +7,117 @@
 (() => {
   'use strict';
 
+  /* ====== 端末の控えを圧縮して置く（2026-11-24 神田さんの iPhone「保存領域がいっぱい」）======
+     本部の端末は全店ぶんの控えで約3,100K字（reports 1,448／soukatsu 587／rawkeys 479／ckdone 399）。iPhone の上限は約2,500K字。
+     10/16・10/20 に古い月を持たない形へ間引いたが、店と記録が増えて3回目の満杯＝自動の片づけ（LSRESET）も、取り直すと同じ量が戻るので効かなかった。
+     → 大きい控え4つだけ、端末に書くときに圧縮し、読むときに戻す。入口（getItem / setItem）で行うので、読み書きしている側のコードと画面の中身は変わらない。
+     ・書く前に「戻して同じ文字になるか」を確かめ、書いたあとに「端末が同じ文字を返すか」を確かめる。どちらかが合わなければ圧縮せずに置く（黙って壊さない）
+     ・戻せない控えは「無い」として返す＝次の同期で本部データから作り直される（提出そのものは本部にある）
+     ・小さい控え（2万字未満）と、ここに挙げていないキー（ログイン・保留中の提出・下書き）は今までどおり
+     ・止めたいとき＝端末で yosakura_lsz_off を '1' にすると、以後は圧縮せずに書く（圧縮済みの控えは読める） */
+  const LSZ_MARK = '\u0001z1';
+  const LSZ_KEYS = { yosakura_demo_reports: 1, yosakura_demo_soukatsu: 1, yosakura_demo_rawkeys: 1, yosakura_demo_ckdone: 1 };
+  const LSZ_MIN = 20000;
+  /* 形式＝ 印 ＋ 元の長さ(36進) ＋ ':' ＋ 本体。本体は「そのままの文字の並び」と「少し前と同じ並びの写し」の列。
+     見出しの1文字：0x0100〜0x40FF＝続く 1〜16384 文字はそのまま／0x4100〜0xCFFF＝写し（長さ 4〜36611）＋距離を2文字（上位・下位の各8ビットに 0x100 を足す） */
+  function lszPack_(s) {
+    const n = s.length;
+    const out = new Uint16Array(n + (n >> 14) + 16);
+    let o = 0, i = 0, lit = 0;
+    const tab = new Int32Array(65536).fill(-1);
+    const flush = (end) => { let p = lit; while (p < end) { const m = Math.min(end - p, 0x4000); out[o++] = 0x0100 + m - 1; for (let k = 0; k < m; k++) out[o++] = s.charCodeAt(p + k); p += m; } };
+    const last = n - 4;
+    while (i <= last) {
+      const c0 = s.charCodeAt(i), c1 = s.charCodeAt(i + 1), c2 = s.charCodeAt(i + 2), c3 = s.charCodeAt(i + 3);
+      let h = Math.imul(c0 | (c1 << 16), -1640531535) ^ Math.imul(c2 | (c3 << 16), -2048144777);
+      h = (h ^ (h >>> 15)) & 65535;
+      const cand = tab[h]; tab[h] = i;
+      if (cand >= 0 && i - cand <= 0xFFFF && s.charCodeAt(cand) === c0 && s.charCodeAt(cand + 1) === c1 && s.charCodeAt(cand + 2) === c2 && s.charCodeAt(cand + 3) === c3) {
+        let len = 4; const max = Math.min(n - i, 0x8EFF + 4);
+        while (len < max && s.charCodeAt(cand + len) === s.charCodeAt(i + len)) len++;
+        flush(i);
+        const d = i - cand;
+        out[o++] = 0x4100 + (len - 4); out[o++] = 0x0100 + (d >> 8); out[o++] = 0x0100 + (d & 255);
+        i += len; lit = i;
+      } else i++;
+    }
+    flush(n);
+    let hs = 0; for (let k = 0; k < n; k++) hs = (Math.imul(hs, 31) + s.charCodeAt(k)) | 0;
+    let z = n.toString(36) + '.' + (hs >>> 0).toString(36) + ':';   // 元の長さ・検算（戻したあとに同じ値になるかを見る＝1文字化けても別の文字として返さない）
+    for (let a = 0; a < o; a += 8192) z += String.fromCharCode.apply(null, out.subarray(a, Math.min(o, a + 8192)));
+    return z;
+  }
+  function lszUnpack_(z) {
+    const q = z.indexOf(':'); const hd = q > 0 && q <= 16 ? /^([0-9a-z]{1,7})[.]([0-9a-z]{1,7})$/.exec(z.slice(0, q)) : null;
+    if (!hd) throw new Error('lsz');
+    const n = parseInt(hd[1], 36), want = parseInt(hd[2], 36);
+    if (!(n >= 0) || n > 5e7) throw new Error('lsz');
+    const buf = new Uint16Array(n); const zn = z.length;
+    let o = 0, i = q + 1;
+    while (i < zn) {
+      const c = z.charCodeAt(i++);
+      if (c >= 0x4100 && c <= 0xCFFF) {
+        const len = c - 0x4100 + 4; const dh = z.charCodeAt(i), dl = z.charCodeAt(i + 1); i += 2;
+        if (!(dh >= 0x100 && dh <= 0x1FF && dl >= 0x100 && dl <= 0x1FF) || i > zn) throw new Error('lsz');
+        const d = ((dh - 0x100) << 8) | (dl - 0x100);
+        if (!(d > 0 && d <= o) || o + len > n) throw new Error('lsz');
+        let p = o - d; for (let k = 0; k < len; k++) buf[o++] = buf[p++];
+      } else if (c >= 0x0100 && c <= 0x40FF) {
+        const m = c - 0x0100 + 1; if (i + m > zn || o + m > n) throw new Error('lsz');
+        for (let k = 0; k < m; k++) buf[o++] = z.charCodeAt(i++);
+      } else throw new Error('lsz');
+    }
+    if (o !== n) throw new Error('lsz');
+    let hs = 0; for (let k = 0; k < n; k++) hs = (Math.imul(hs, 31) + buf[k]) | 0;
+    if ((hs >>> 0) !== want) throw new Error('lsz');
+    let s = ''; for (let a = 0; a < n; a += 8192) s += String.fromCharCode.apply(null, buf.subarray(a, Math.min(n, a + 8192)));
+    return s;
+  }
+  let lszRawGet_ = (k) => localStorage.getItem(k);   // 端末に置いてあるそのままの文字（容量の内訳を数えるとき用）
+  (function lszInstall_() {
+    let proto = null;
+    try { if (typeof Storage !== 'undefined' && localStorage instanceof Storage) proto = Storage.prototype; } catch (e) {}
+    let host = proto;
+    try {
+      if (!host) {
+        /* 本物の Storage に関数を代入すると「getItem」という名前のキーとして保存されてしまう＝そのときは何もしない（圧縮なしで今までどおり動く）。
+           ここを通ってよいのは、検査用の擬似 localStorage（ただのオブジェクト）だけ */
+        if (Object.prototype.toString.call(localStorage) === '[object Storage]') return;
+        host = localStorage;
+      }
+    } catch (e) { return; }
+    if (!host || typeof host.getItem !== 'function' || typeof host.setItem !== 'function') return;
+    if (host.__lsz) { const r0 = host.__lszRaw; if (typeof r0 === 'function') lszRawGet_ = (k) => r0.call(localStorage, k); return; }   // 入口はもう入っている（同じページで2回読まれたとき）＝重ねない
+    const g0 = host.getItem, s0 = host.setItem, r0 = host.removeItem;
+    const mine = (t) => { try { return t === localStorage; } catch (e) { return false; } };
+    const memo = Object.create(null);   // キー → 直近に戻した結果（同じ控えを何度も戻さない）
+    const isZ = (v) => typeof v === 'string' && v.charCodeAt(0) === 1 && v.slice(0, 3) === LSZ_MARK;
+    lszRawGet_ = (k) => g0.call(localStorage, k);
+    const getZ = function (k) {
+      const v = g0.call(this, k);
+      if (LSZ_KEYS[k] !== 1 || !isZ(v) || !mine(this)) return v;   // 戻すのは、挙げた4つのキー・この端末の localStorage のものだけ（ほかのキー・sessionStorage には触らない）
+      const c = memo[k]; if (c && c.raw === v) return c.text;
+      try { const t = lszUnpack_(v.slice(3)); memo[k] = { raw: v, text: t }; return t; } catch (e) { return null; }
+    };
+    const setZ = function (k, v) {
+      delete memo[k];
+      if (LSZ_KEYS[k] === 1 && typeof v === 'string' && v.length >= LSZ_MIN && mine(this)) {
+        let off = false; try { off = g0.call(this, 'yosakura_lsz_off') === '1'; } catch (e) {}
+        let z = null;
+        if (!off) { try { const body = lszPack_(v); if (body.length < v.length * 0.9 && lszUnpack_(body) === v) z = LSZ_MARK + body; } catch (e) { z = null; } }
+        if (z) {
+          s0.call(this, k, z);   // 入らなければここで例外＝呼び出し側の「容量いっぱい」の扱いにそのまま入る
+          let back = null; try { back = g0.call(this, k); } catch (e) {}
+          if (back === z) { memo[k] = { raw: z, text: v }; return; }
+          try { if (typeof r0 === 'function') r0.call(this, k); } catch (e) {}   // 端末が違う文字を返した＝その控えは残さず、下で圧縮なしを書く（書けなければ例外＝呼び出し側へ）
+        }
+      }
+      return s0.call(this, k, v);
+    };
+    try { host.getItem = getZ; host.setItem = setZ; } catch (e) { try { host.getItem = g0; host.setItem = s0; } catch (e2) {} lszRawGet_ = (k) => localStorage.getItem(k); return; }   // 差し替えられない端末＝元に戻して、圧縮なしで動く
+    try { Object.defineProperty(host, '__lsz', { value: 1, enumerable: false }); Object.defineProperty(host, '__lszRaw', { value: g0, enumerable: false }); } catch (e) {}
+  })();
+
   /* ====== 共有バックエンド設定 ======
      GAS WebアプリのURL（/exec）をここに貼ると、全端末でデータが同期される。
      空のままなら従来通りこの端末内(localStorage)だけに保存。 */
@@ -605,7 +716,7 @@
   /* 端末の保存領域の内訳（大きいキー順）＝容量いっぱいの報告に添える */
   function lsUsage_() {
     const a = [];
-    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); a.push([k, (localStorage.getItem(k) || '').length]); } } catch (e) {}
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); a.push([k, (lszRawGet_(k) || '').length]);   /* 置いてあるそのままの大きさ（圧縮後）で数える */ } } catch (e) {}
     a.sort((x, y) => y[1] - x[1]);
     return { total: a.reduce((n, x) => n + x[1], 0), top: a.slice(0, 8).map(x => x[0] + ':' + Math.round(x[1] / 1024) + 'KB').join(' ') };
   }

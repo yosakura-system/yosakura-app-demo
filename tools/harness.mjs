@@ -8846,5 +8846,41 @@ console.log('== 2026-11-20 見るだけのID（ユーテク用・増田さん／
   ok(/!!a\.readonly !== !!d\.auth\.readonly/.test(code) && /a\.readonly = !!d\.auth\.readonly; setAuth\(a\);/.test(code), 'アプリ＝authping の返事で readonly の印を合わせ直す');
   ok(/d\.error === 'READ_ONLY'\) \{ markReadOnly_\(\); return say\(L\(\{ ja:'このIDは見るだけのため、パスワードは変えられません'/.test(code), 'アプリ＝パスワード変更の画面で、見るだけのIDには理由を出す（印も付ける）');
 }
+console.log('== 2026-11-24 端末の控えを圧縮して置く（神田さんの iPhone「保存領域がいっぱい」＝本部の端末の控えが上限を超えた・3回目） ==');
+{
+  run(() => {});
+  const MARK = '\u0001z1'; const K = 'yosakura_demo_reports';
+  const big = []; for (let i = 0; i < 500; i++) big.push({ kind: ['subrec', 'hqack', 'gsnap'][i % 3], store: '牛カツ世桜 長堀橋店', item: 'openphoto|2026-11-' + String(1 + i % 28).padStart(2, '0'), level: '', note: JSON.stringify({ by: '店iPad', role: 'staff', memo: '😀確認' + i }), photos: [], t: 1795000000000 + i, id: 'id-' + i });
+  const J = JSON.stringify(big);
+  localStorage.setItem(K, J);
+  const raw = store.get(K);
+  ok(J.length > 20000 && raw.slice(0, 3) === MARK && raw.length < J.length * 0.5, '大きい控え（提出の一覧）は、端末には圧縮して置かれる（半分より小さい）');
+  ok(localStorage.getItem(K) === J && JSON.parse(localStorage.getItem(K)).length === 500, '読むと、書いたものと1文字も違わずに戻る（絵文字・日本語を含む）');
+  ['yosakura_demo_soukatsu', 'yosakura_demo_rawkeys', 'yosakura_demo_ckdone'].forEach(k => { localStorage.setItem(k, J); ok(store.get(k).slice(0, 3) === MARK && localStorage.getItem(k) === J, '圧縮して置く控え＝' + k); });
+  localStorage.setItem(K, '[{"a":1}]'); ok(store.get(K) === '[{"a":1}]', '小さい控え（2万字未満）は圧縮しない');
+  localStorage.setItem('yosakura_pending_posts', J); localStorage.setItem('yosakura_auth', J);
+  ok(store.get('yosakura_pending_posts') === J && store.get('yosakura_auth') === J, '保留中の提出・ログインなど、挙げていないキーは今までどおりそのまま置く');
+  store.delete('yosakura_pending_posts'); store.delete('yosakura_auth');
+  store.set(K, J); ok(localStorage.getItem(K) === J, '前の版が置いた圧縮なしの控えも、そのまま読める');
+  localStorage.setItem(K, J); const z = store.get(K);
+  store.set(K, z.slice(0, z.length - 7)); ok(localStorage.getItem(K) === null, '戻せない控えは「無い」として返す（別の文字にして返さない＝次の同期で作り直される）');
+  store.set(K, MARK + 'zz'); ok(localStorage.getItem(K) === null, '印だけで中身が壊れている控えも「無い」');
+  localStorage.setItem('yosakura_lsz_off', '1'); localStorage.setItem(K, J);
+  ok(store.get(K) === J, '止める印（yosakura_lsz_off）があるあいだは圧縮せずに置く');
+  store.set(K, z); ok(localStorage.getItem(K) === J, '止めているあいだも、圧縮済みの控えは読める');
+  localStorage.removeItem('yosakura_lsz_off');
+  { const set0 = store.set.bind(store); let threw = false; store.set = () => { throw new Error('QuotaExceededError'); };
+    try { localStorage.setItem(K, J); } catch (e) { threw = true; } store.set = set0;
+    ok(threw, '端末に入らないときは、今までどおり例外が呼び出し側へ届く（「容量いっぱい」の扱いが働く）'); }
+  { const set0 = store.set.bind(store); let n = 0; store.set = (k, v) => { n++; return set0(k, n === 1 && k === K ? String(v).slice(0, 50) : v); };   // 1回目だけ、端末が文字を変えてしまう
+    localStorage.setItem(K, J); store.set = set0;
+    ok(store.get(K) === J && localStorage.getItem(K) === J, '書いたあと読み戻して違っていたら、圧縮せずに置き直す（黙って壊さない）'); }
+  localStorage.setItem(K, J); localStorage.setItem(K, '[]'); ok(localStorage.getItem(K) === '[]', '書きかえたあとは新しい中身が返る（前に戻した結果を使い回さない）');
+  localStorage.setItem(K, J); localStorage.removeItem(K); ok(localStorage.getItem(K) === null, '消したあとは「無い」');
+  ok(code.includes("a.push([k, (lszRawGet_(k) || '').length]);"), '容量の内訳（LSFULL・LSRESET の控え）は、端末に置いてある大きさ（圧縮後）で数える');
+  ok(code.indexOf('(function lszInstall_()') > 0 && code.indexOf('(function lszInstall_()') < code.indexOf('const getApiUrl'), '入口は、アプリが控えを読み書きするより前に入る');
+  store.set('yosakura_demo_kizuki', z); ok(localStorage.getItem('yosakura_demo_kizuki') === z, '挙げた4つ以外のキーは、たまたま同じ印で始まっていても戻さない（そのまま返す）'); store.delete('yosakura_demo_kizuki');
+  ['yosakura_demo_soukatsu', 'yosakura_demo_rawkeys', 'yosakura_demo_ckdone', K].forEach(k => store.delete(k));
+}
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
