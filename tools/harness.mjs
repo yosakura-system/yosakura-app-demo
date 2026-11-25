@@ -4798,6 +4798,26 @@ console.log('== 受信箱の操作＝押した行だけ書き換え（2026-09-08
   ok(/dataset\.ackmemo\) \{[\s\S]{0,400}closest\('\.ackst'\)/.test(src), 'メモを付けて完了＝行内でメモ欄を開く');
   ok(/dataset\.ackmemosave\) \{[\s\S]{0,400}closest\('\.ackst'\)/.test(src), 'この内容で完了＝行内で対応済み表示に');
   ok(/dataset\.ackfull\) \{[\s\S]{0,600}closest\('\.ackdetail'\)/.test(src), '全文を見る＝表示の切替だけ（作り直さない）');
+  // ★2026-11-25 対応済みの取り消し（神田さん「押してしまったあと、メモを付けて完了にし直したい」）
+  ok(/dataset\.ackundo\) \{[\s\S]{0,300}setAck\(key, '', ''\)[\s\S]{0,200}inboxStBtns\(key\)/.test(src), '取り消す＝未対応へ戻し、行内に2つのボタンを出し直す');
+  {
+    const S = '牛カツ世桜 長堀橋店', T = Date.now() - 5000, K = `openphoto|${T}|${S}`;
+    const base = [{ kind:'subrec', store:S, item:'openphoto|2026-11-25', note: JSON.stringify({ by:'店長' }), photos:['PH1'], t: T }];
+    const put = (extra) => run(() => { setLS('hq', 'all', 'ja'); localStorage.setItem('yosakura_inbox_showdone', '1'); localStorage.setItem('yosakura_demo_reports', JSON.stringify(base.concat(extra))); });
+    put([]); location.hash = '#/app/inbox'; location.hash = '#/app/home'; location.hash = '#/app/inbox';
+    const key0 = (registry.app.innerHTML.match(/data-ackdone="([^"]+)"/) || [])[1] || '';
+    ok(!!key0, '（準備）未対応の行のキーが取れる');
+    put([{ kind:'hqack', store:S, item:key0.replace(/&amp;/g,'&'), note: JSON.stringify({ state:'done', by:'本部', memo:'' }), t: T + 1000 }]);
+    location.hash = '#/app/home'; location.hash = '#/app/inbox';
+    let h2 = registry.app.innerHTML;
+    ok(/data-ackundo=/.test(h2) && !/data-ackdone=/.test(h2), '対応済みの行に「取り消す」が出る');
+    put([{ kind:'hqack', store:S, item:key0.replace(/&amp;/g,'&'), note: JSON.stringify({ state:'done', by:'本部', memo:'' }), t: T + 1000 },
+         { kind:'hqack', store:S, item:key0.replace(/&amp;/g,'&'), note: JSON.stringify({ state:'', by:'本部', memo:'' }), t: T + 2000 }]);
+    location.hash = '#/app/home'; location.hash = '#/app/inbox';
+    h2 = registry.app.innerHTML;
+    ok(/data-ackdone=/.test(h2) && /data-ackmemo=/.test(h2) && !/data-ackundo=/.test(h2), '取り消したあとは未対応に戻り、「メモを付けて完了」をもう一度選べる');
+    run(() => { localStorage.removeItem('yosakura_inbox_showdone'); });
+  }
   // ② 同期は受信箱を描き直さず、「表示を更新」の帯をそっと出す
   ok(/app\\\/inbox|\/app\/inbox/.test(src.match(/else if \(String\(location\.hash[\s\S]{0,300}/)[0]) && /inboxFresh/.test(src),
      '同期中の受信箱は描き直さない（帯を出して、押したときだけ更新）');

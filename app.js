@@ -11185,7 +11185,9 @@
              <textarea id="ack_memo_input" rows="2" style="width:100%;box-sizing:border-box" placeholder="${esc(L({ja:'対応した内容（任意）', en:'What you did (optional)', vi:'Nội dung xử lý (tùy chọn)'}))}"></textarea>
              <div style="margin-top:6px"><button class="mini" data-ackmemosave="${esc(key)}">${L({ja:'この内容で完了',en:'Done with this note',vi:'Hoàn tất với ghi chú'})}</button>
              <button class="mini" data-ackmemocancel="${esc(key)}" style="margin-left:8px">${L({ja:'やめる',en:'Cancel',vi:'Hủy'})}</button></div>`;
-  const inboxDoneHTML = (by, memo) => `<span style="color:#2a7">${L({ja:'対応済み',en:'Done',vi:'Đã xử lý'})}${by?` ・${esc(by)}`:''}${memo?` ・${esc(memo)}`:''}</span>`;
+  /* ★2026-11-25 神田さん「対応済みを押してしまったあと、メモを付けて完了にし直したい。取り消せるように」＝対応済みの横に「取り消す」。
+     取り消し＝同じ報告に state の無い行を足す（行は消さない）。getAckMap は新しい行が正＝未対応へ戻り、店舗側の「本部確認済み」も消える */
+  const inboxDoneHTML = (by, memo, key) => `<span style="color:#2a7">${L({ja:'対応済み',en:'Done',vi:'Đã xử lý'})}${by?` ・${esc(by)}`:''}${memo?` ・${esc(memo)}`:''}</span>${key?` <button class="mini" data-ackundo="${esc(key)}" style="margin-left:8px">${L({ja:'取り消す',en:'Undo',vi:'Hoàn tác'})}</button>`:''}`;
   function ackKey(kind, t, store) { return `${kind}|${t}|${store || ''}`; }
   function getAckMap() {
     const map = {};
@@ -11405,7 +11407,7 @@
       const st = i.kind === 'commpend'
         ? `<div class="l2"><button class="mini" data-commpub="${esc(i.ckey)}">${L({ja:'公開する',en:'Publish',vi:'Duyệt'})}</button> <button class="mini" data-commhide="${esc(i.ckey)}">${L({ja:'公開しない',en:'Do not publish',vi:'Không duyệt'})}</button></div>`
         : i.state === 'done'
-        ? `<div class="l2 ackst" style="display:block;margin-top:6px">${inboxDoneHTML(i.by, i.memo)}</div>`
+        ? `<div class="l2 ackst" style="display:block;margin-top:6px">${inboxDoneHTML(i.by, i.memo, i.key)}</div>`
         : `<div class="l2 ackst" style="display:block;margin-top:6px">${inboxMemoKey === i.key ? inboxMemoForm(i.key) : inboxStBtns(i.key)}</div>`;
       return `<div class="rep" style="align-items:flex-start">${ph}<div class="body">
         <div class="l1">${esc(L(i.label))}${i.title?` ・${esc(i.title)}`:''}</div>
@@ -11588,7 +11590,7 @@
       // フィードバックの種類切替（このビュー内のセグメント）
       const fbSeg = e.target.closest('[data-seg="fbcat"] [data-v]');
       if (fbSeg) { document.querySelectorAll('[data-seg="fbcat"] button').forEach(x => x.classList.remove('on')); fbSeg.classList.add('on'); return; }
-      const t = e.target.closest('[data-viewstore],[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-voicest],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-kzfaq],[data-ktadd],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackfull],[data-hodone],[data-kztab],[data-usetab],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
+      const t = e.target.closest('[data-viewstore],[data-kyou],[data-htab],[data-dtab],[data-refetch],[data-syncrefresh],[data-mtgsel],[data-zktab],[data-zkorder],[data-numack],[data-numall],[data-voicest],[data-svhist],[data-svopen],[data-svaxis],[data-svdel],[data-svdelgo],[data-svdelno],[data-svsharego],[data-svshareopen],[data-svrefresh],[data-tsub],[data-tdid],[data-tmissing],[data-treminder],[data-tdrill],[data-tjudge],[data-thq],[data-timp],[data-topensubmit],[data-apitest],[data-apireset],[data-fbsend],[data-ackdone],[data-kzfaq],[data-ktadd],[data-ackmemo],[data-ackmemosave],[data-ackmemocancel],[data-ackundo],[data-ackfull],[data-hodone],[data-kztab],[data-usetab],[data-nwlike],[data-nwread],[data-nwcmt],[data-nwcmtsend],[data-inboxrefresh],[data-inboxdone],[data-inboxkind],[data-inboxallstores],[data-histdays],[data-ttab],[data-mtxfreq],[data-sktab],[data-nwtab],[data-svtab],[data-skedit],[data-pltab],[data-gdtab],[data-devexit],[data-viewas],[data-numstore]');
       if (!t) return;
       // 開発者ビューの戻るバナー（2026-09-01）＝本部の表示へ戻す
       if (t.dataset.numstore) { try { localStorage.setItem('yosakura_num_store', t.dataset.numstore); } catch (e2) {} render(); return; }
@@ -11701,9 +11703,18 @@
       if (t.dataset.ackdone) {
         setAck(t.dataset.ackdone, 'done', '');
         const st = t.closest('.ackst');
-        if (st) st.innerHTML = inboxDoneHTML(L(ROLES[getRole()].label), '');
+        if (st) st.innerHTML = inboxDoneHTML(L(ROLES[getRole()].label), '', t.dataset.ackdone);
         else render(true);
         toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'}));
+        return;
+      }
+      if (t.dataset.ackundo) {   // 対応済みの取り消し＝未対応へ戻し、「対応済みにする／メモを付けて完了」をもう一度出す
+        const key = t.dataset.ackundo;
+        setAck(key, '', '');
+        const st = t.closest('.ackst');
+        if (st) st.innerHTML = inboxStBtns(key);
+        else render(true);
+        toast(L({ja:'未対応に戻しました',en:'Moved back to unhandled',vi:'Đã chuyển về chưa xử lý'}));
         return;
       }
       if (t.dataset.ackmemo) {
@@ -11813,7 +11824,7 @@
         const memo = ((inp && inp.value) || '').trim();
         setAck(t.dataset.ackmemosave, 'done', memo);
         inboxMemoKey = '';
-        if (st) st.innerHTML = inboxDoneHTML(L(ROLES[getRole()].label), memo);
+        if (st) st.innerHTML = inboxDoneHTML(L(ROLES[getRole()].label), memo, t.dataset.ackmemosave);
         else render(true);
         toast(L({ja:'対応済みにしました',en:'Marked done',vi:'Đã đánh dấu xử lý'}));
         return;
