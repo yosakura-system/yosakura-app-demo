@@ -6922,7 +6922,7 @@ console.log('== 2026-10-22 神田さん「棚卸マニュアルとか、すで�
   ok(/data-openurl="[^"]*yosakura-app-preview\/manual\/tanaoroshi_kantan\.pdf/.test(h) && /manual\/kasuhara\.pdf/.test(h) && !/drive\.google\.com/.test(h), '全店配布＝アプリの公開先 manual/ のPDF（ログイン不要）。店舗の画面にDriveのリンクは無い');
   ok(/提出物のルール/.test(h) && /manual\/teishutsu_kantan\.pdf/.test(h) && !/HACCP（衛生管理計画と記録）/.test(h) && !/表示ルール（総額表示/.test(h) && !/class="mchip/.test(h), '店舗には全店リリース済みだけ（11/10 提出物のルール Ver1.0 も同梱PDFで出る。現場テスト中・本部確認中・本部資料は出ない・札も無し）');
   const nStore = (h.match(/class="mrow" data-openurl="[^"]*yosakura-app-preview\/manual\//g) || []).length;
-  ok(nStore === 11 && /manual\/gaikokujin_kantan\.pdf/.test(h), '店舗に出る1枚マニュアル＝11本（11/18 外国人就労ルール Ver1.0 を足した・棚卸1・防火1・カスハラ4＋11/9 リリースの情報管理・日報・7DAYS別紙＋11/10 提出物のルール）: ' + nStore);
+  ok(nStore === 15 && /manual\/gaikokujin_kantan\.pdf/.test(h), '店舗に出る1枚マニュアル＝15本（11/23 管理系4本 Ver1.0 を足した・11/18 外国人就労ルール Ver1.0 を足した・棚卸1・防火1・カスハラ4＋11/9 リリースの情報管理・日報・7DAYS別紙＋11/10 提出物のルール）: ' + nStore);
   ok(/data-openurl="[^"]*yosakura-app-preview\/manual\/bouka_kantan\.pdf/.test(h) && /防火・避難/.test(h), '防火・避難＝棚卸と同じ＝店舗にも manual/ のPDFで出る');
   ok(/manual\/joho_kantan\.pdf/.test(h) && /manual\/nippou_kantan\.pdf/.test(h) && /manual\/sevendays_besshi_kantan\.pdf/.test(h) && /日報の出し方と数字の直し方/.test(h), '2026-11-09 増田さんがリリースした3本（情報管理・日報・7DAYS別紙）＝店舗にも同梱PDFで出る（増田さん「アプリでもマニュアル確認できる」）');
   run(() => { setLS('staff', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); });
@@ -6931,10 +6931,10 @@ console.log('== 2026-10-22 神田さん「棚卸マニュアルとか、すで�
   location.hash = '#/app/manual'; h = registry.app.innerHTML;
   const nHq = (h.match(/class="mrow" data-openurl="[^"]*(drive\.google\.com\/file\/d\/|yosakura-app-preview\/manual\/)/g) || []).length;
   ok(nHq === 27 && /mchip--all">全店</.test(h) && /mchip--test">現場テスト中</.test(h) && /mchip--hq">本部確認中</.test(h) && /mchip--hqonly">本部資料</.test(h), '本部には全部（27本）を状態の札つきで（全店／現場テスト中／本部確認中／本部資料）: ' + nHq);
-  ok(/全店（11）/.test(h) && /現場テスト中（5）/.test(h) && /本部確認中（10）/.test(h) && /本部資料（1）/.test(h), '本部の並び＝状態ごとにまとめて件数つき（11/18 全店11・現場テスト中5・本部確認中10）');
+  ok(/全店（17）/.test(h) && /現場テスト中（1）/.test(h) && /本部確認中（8）/.test(h) && /本部資料（1）/.test(h), '本部の並び＝状態ごとにまとめて件数つき（11/23 全店17・現場テスト中1・本部確認中8）');
   ok(/状態はいる・いらないスプシのK列が正/.test(h), '本部向けの注記＝状態の正はいる・いらないスプシ');
   { const ids = (code.match(/st:'(?:all|test|hq|hqonly)'[^\n]*?id:'(1[A-Za-z0-9_-]{25,})'/g) || []).map(x => x.replace(/^.*id:'/, '').slice(0, -1)); ok(ids.length === 27 && new Set(ids).size === 27, 'ソース＝1枚マニュアルのDrive IDは27本すべて別（重複なし）: ' + ids.length); }
-  { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 14 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の11本＋アレルギー表3本（11/18 外国人就労ルール・2026-10-22・11/3 防火・11/9 情報管理/日報/7DAYS別紙・11/10 提出物のルール）のPDFが manual/ に実在する: ' + pdfs.join(',')); }
+  { const pdfs = (code.match(/pdf:'([a-z_]+\.pdf)'/g) || []).map(x => x.slice(5, -1)); const fsx = fs; ok(pdfs.length === 20 && pdfs.every(f => fsx.existsSync(new URL('../manual/' + f, import.meta.url))), '全店配布の17本＋アレルギー表3本（11/18 外国人就労ルール・2026-10-22・11/3 防火・11/9 情報管理/日報/7DAYS別紙・11/10 提出物のルール）のPDFが manual/ に実在する: ' + pdfs.join(',')); }
 }
 
 console.log('== 2026-10-22 本部の見え方＝案Bの本部画面（神田さん「B案の本部画面を基準に」。10/20 の「準備中」は引退）==');
@@ -8865,6 +8865,42 @@ console.log('== 2026-11-20 見るだけのID（ユーテク用・増田さん／
   ok(/if \(isReadOnly_\(\)\) return;[^\n]*\n\s*_pvSending\[key\] = 1;/.test(code) && /if \(d && d\.error === 'READ_ONLY'\) \{ markReadOnly_\(\); lsMapDel_\(PV_LS, key\); return; \}/.test(code), 'アプリ＝見るだけのIDは、画面を開いた回数（pv）を送らない。門番が断った分は捨てて送り直さない（Codex #6）');
   ok(/!!a\.readonly !== !!d\.auth\.readonly/.test(code) && /a\.readonly = !!d\.auth\.readonly; setAuth\(a\);/.test(code), 'アプリ＝authping の返事で readonly の印を合わせ直す');
   ok(/d\.error === 'READ_ONLY'\) \{ markReadOnly_\(\); return say\(L\(\{ ja:'このIDは見るだけのため、パスワードは変えられません'/.test(code), 'アプリ＝パスワード変更の画面で、見るだけのIDには理由を出す（印も付ける）');
+}
+
+/* ★2026-11-23 別紙（店の裏と納品の箱）の□を OPEN/CLOSE チェックに足した。足した行は k つきのID＝これまでのIDはずれない */
+{
+  const F = '牛カツ世桜 富士山店';
+  const ckv = (store, mode) => { run(() => { setLS('manager', store, 'ja'); localStorage.setItem('yosakura_ckmode', mode); localStorage.setItem('yosakura_demo_ckhide', '{}'); }); location.hash = '#/app/checklist'; return registry.app.innerHTML; };
+  const op = ckv(F, 'open'), cl = ckv(F, 'close');
+  ok(/data-ck="open-c-0-ura"/.test(op) && /data-ck="open-c-0-katte"/.test(op) && /data-ck="open-c-1-nohin"/.test(op), '別紙＝オープンに 店の裏・勝手口・納品物 の3行が出る');
+  ok(/data-ck="close-c-0-ura"/.test(cl) && /data-ck="close-c-0-sejo"/.test(cl) && /data-ck="close-c-1-ura"/.test(cl) && /data-ck="close-c-1-sejo"/.test(cl), '別紙＝クローズのホール・キッチンに 一周・施錠 が出る');
+  ok(cl.indexOf('data-ck="close-c-0-sejo"') < cl.indexOf('>電源OFF') && op.indexOf('>外観準備') < op.indexOf('data-ck="open-c-0-ura"') && op.indexOf('data-ck="open-c-0-katte"') < op.indexOf('>ドリンク場の準備'), '別紙＝足した行の位置（外観準備の次・電源OFFの直前）');
+  ok(/data-ck="open-c-0-3"(?:(?!data-ck=)[\s\S])*?ドリンク場の準備/.test(op) && /data-ck="open-c-1-4"(?:(?!data-ck=)[\s\S])*?解凍/.test(op) && /data-ck="close-c-0-13"(?:(?!data-ck=)[\s\S])*?電源OFF/.test(cl) && /data-ck="close-c-0-7"(?:(?!data-ck=)[\s\S])*?トイレ清掃/.test(cl), '別紙＝これまでの行のIDは変わらない（ドリンク場＝3・解凍＝4・電源OFF＝13・トイレ清掃＝7）');
+  ok(/ラベルを内側にして畳んで出す/.test(cl) && /空の段ボールはすべて/.test(cl), '別紙＝ゴミ出しの文言（ラベルを内側に・空の段ボールはすべて）');
+  const tm = ckv('手巻き寿司世桜 難波店', 'close');
+  ok(/data-ck="close-c-4-ura"/.test(tm) && /data-ck="close-c-4-sejo"/.test(tm) && /data-ck="close-c-4-0"(?:(?!data-ck=)[\s\S])*?電気・ガスの元栓/.test(tm), '別紙＝手巻きのクローズにも入り、既存のIDはそのまま');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+/* ★2026-11-23 管理系4本＋鰻2本 Ver1.0＝全店向け・同梱PDF。鰻2本は日本鰻世桜の店だけ */
+{
+  const mv = (store) => { run(() => { setLS('manager', store, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); }); location.hash = '#/app/manual'; return registry.app.innerHTML; };
+  const g = mv('牛カツ世桜 長堀橋店'), u = mv('日本鰻世桜 富士山店');
+  ok(['genkin', 'katteguchi', 'tenpomae', 'ck_besshi'].every(k => g.includes('manual/' + k + '_kantan.pdf') && u.includes('manual/' + k + '_kantan.pdf')), 'Ver1.0＝管理系4本はどの店にも同梱PDFで出る');
+  ok(!/unagi_(jo|shikomi)_kantan/.test(g) && /manual\/unagi_jo_kantan\.pdf/.test(u) && /manual\/unagi_shikomi_kantan\.pdf/.test(u), 'Ver1.0＝鰻2本は日本鰻世桜の店だけに出る（牛カツの店には出ない）');
+  { run(() => { setLS('owner', 'owned', 'ja'); localStorage.setItem('yosakura_theme', 'pb'); }); location.hash = '#/app/manual'; const o = registry.app.innerHTML;
+    ok(o.includes('manual/unagi_jo_kantan.pdf') && o.includes('manual/unagi_shikomi_kantan.pdf') && code.includes('visibleStores().map(storeGyotai)') && code.includes('gySet.includes(m.gy)'), 'Ver1.0＝複数店のオーナー様（所有店舗）にも鰻2本が出る・先頭の店だけで決めない（見えている店のどれかがその業態なら出す）'); }
+  ok(['genkin', 'katteguchi', 'tenpomae', 'ck_besshi', 'unagi_jo', 'unagi_shikomi'].every(k => fs.existsSync(new URL('../manual/' + k + '_kantan.pdf', import.meta.url)) && ('' + k + '_kantan.pdf')), 'Ver1.0＝6本のPDFが manual/ にある');
+  run(() => { setLS('hq', 'all', 'ja'); });
+}
+
+/* ★2026-11-23 本店の食器・グラス・備品の数（秋定さんの報告）を棚卸の画面の下に見るだけで出す */
+{
+  const tv = (store) => { run(() => { setLS('manager', store, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); }); location.hash = '#/app/pl?tab=tana'; return registry.app.innerHTML; };
+  const a = tv('日本料理世桜本店'), b = tv('牛カツ世桜 長堀橋店');
+  ok(/id="tableware"/.test(a) && /寿司皿/.test(a) && /うち欠け6枚/.test(a) && /手巻きネタ皿/.test(a) && /うち欠け11枚/.test(a) && /茶せん/.test(a) && /11\/23 時点/.test(a), '食器の数＝本店の棚卸の画面に表が出る（欠けの枚数つき）');
+  ok(!/id="tableware"/.test(b), '食器の数＝ほかの店には出ない');
+  run(() => { setLS('hq', 'all', 'ja'); });
 }
 console.log('== 2026-11-24 端末の控えを圧縮して置く（神田さんの iPhone「保存領域がいっぱい」＝本部の端末の控えが上限を超えた・3回目） ==');
 {
