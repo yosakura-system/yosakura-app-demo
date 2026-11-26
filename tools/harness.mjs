@@ -8427,13 +8427,18 @@ console.log('== 2026-11-11 構築MTG（社長）＋神田さん＝気づきを�
   { const i0 = x.indexOf('仕入先ごと（この月の合計）'), i1 = x.indexOf('伝票ごと'); const v = i0 >= 0 ? x.slice(i0, i1 > i0 ? i1 : undefined) : '';
     ok(i0 >= 0 && i1 > i0 && /<td>A商店<\/td><td><b>¥11,000<\/b><\/td><td>¥11,000<\/td><td>—<\/td><td>3<\/td>/.test(v), 'numview 仕入＝仕入先ごとの月合計（A商店＝10,000−返品2,000＋3,000＝11,000・伝票3）が「伝票ごと」の上に');
     ok(/<td>B酒店<\/td><td><b>¥5,000<\/b><\/td><td>—<\/td><td>¥5,000<\/td><td>1<\/td>/.test(v) && v.indexOf('A商店') < v.indexOf('B酒店') && v.indexOf('B酒店') < v.indexOf('（仕入先なし）'), 'numview 仕入＝仕入先は合計の大きい順・名前の無い伝票は「（仕入先なし）」');
-    ok(/伝票の合計<\/b><\/td><td><b>¥16,700<\/b>/.test(v) && /伝票の無い日の仕入は入りません/.test(v), 'numview 仕入＝伝票の合計 16,700 と注記'); }
+    ok(/伝票の合計<\/b><\/td><td><b>¥16,700<\/b>/.test(v) && /伝票の無い日の仕入は入りません/.test(v), 'numview 仕入＝伝票の合計 16,700 と注記');
+    ok(x.indexOf('pb_buydup') < 0, 'numview 仕入＝同じ仕入先・同じ金額の伝票が無い月は、二重入力の注意を出さない（A商店 10,000／返品2,000／3,000 は別もの）'); }
   run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb');
     localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([
       { store:S, date: dA, sales: 110000, net: 100000, guests: 20, src:'usen', t: Date.now() - 3600e3 },   // 売上の無い日の行は skClean が落とすので、レジの行を添える
       { store:S, date: dA, buy: 1000, slips: [{ v:'__proto__', a8: 100.6 }, { v:'__proto__', a8: 100.6 }, { v:'toString', a10: -1000 }, { v:'toString', a10: 3000 }], t: Date.now() - 7200e3 }])); });
   location.hash = '#/home?tab=num';   // 直前と同じURLだと描き直されないので、いちど別の画面へ
   location.hash = '#/app/numview?k=buy&ym=' + ymT; x = registry.app.innerHTML;
+  // 2026-11-26 広島店「二重入力になっていないか確かめたい」＝同じ仕入先・同じ金額の伝票を並べて知らせる
+  { const i0 = x.indexOf('id="pb_buydup"'), i1 = x.indexOf('仕入先ごと（この月の合計）'); const v = i0 >= 0 ? x.slice(i0, i1 > i0 ? i1 : undefined) : '';
+    ok(i0 >= 0 && i1 > i0 && /二重入力でないか確かめてください/.test(v) && /<td>__proto__<\/td><td>¥100[.]6<\/td><td>—<\/td><td><b>2<\/b><\/td>/.test(v) && /（2枚）/.test(v), 'numview 仕入＝同じ日に同じ仕入先・同じ金額が2枚 → 注意の枠が「仕入先ごと」の上に出る（枚数2・その日に（2枚））');
+    ok(!/toString/.test(v) && /そのままで大丈夫です/.test(v), 'numview 仕入＝金額の違う伝票（toString −1,000／3,000）は並べない・注記あり'); }
   { const i0 = x.indexOf('仕入先ごと（この月の合計）'), i1 = x.indexOf('伝票ごと'); const v = i0 >= 0 ? x.slice(i0, i1 > i0 ? i1 : undefined) : '';
     ok(/<td>__proto__<\/td><td><b>¥202<\/b>/.test(v) && /<td>toString<\/td><td><b>¥2,000<\/b>/.test(v) && /伝票の合計<\/b><\/td><td><b>¥2,202<\/b>/.test(v) && ({}).nm === undefined, 'numview 仕入＝1枚ずつ丸めて足す（100.6×2＝202）・返品でないマイナスは引く（3,000−1,000）・仕入先の名前が toString / __proto__ でも落ちない（Codex 11/20）'); }
   // #7 口コミ＝前月末の控えが無い月は「この月に増えた件数」を出さない。#8 棒グラフはマイナスを下へ・0は棒なし
