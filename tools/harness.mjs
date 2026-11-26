@@ -8941,5 +8941,11 @@ console.log('== 2026-11-24 端末の控えを圧縮して置く（神田さん�
   store.set('yosakura_demo_kizuki', z); ok(localStorage.getItem('yosakura_demo_kizuki') === z, '挙げた4つ以外のキーは、たまたま同じ印で始まっていても戻さない（そのまま返す）'); store.delete('yosakura_demo_kizuki');
   ['yosakura_demo_soukatsu', 'yosakura_demo_rawkeys', 'yosakura_demo_ckdone', K].forEach(k => store.delete(k));
 }
+{ // 2026-11-26 谷口さん（広島）＝和牛世桜の仕入先一覧（消す5つ・足す3つ）。ほかの業態の一覧は変えない
+  const pick = (k) => { const i = code.indexOf("'" + k + "': ["); return i < 0 ? '' : code.slice(i, code.indexOf(']', i)); };
+  const w = pick('和牛'), jp = pick('日本料理');
+  ok(!!w && ['名畑', 'リカーマウンテン', '日本食研', 'オーディエー', 'イオン'].every(v => w.indexOf("'" + v + "'") < 0) && ['オノウエ水産（いくら）', 'Amazon', 'アスクル', '西原商会', '大和屋', '本部', 'その他'].every(v => w.indexOf("'" + v + "'") >= 0), '仕入先一覧＝和牛世桜（広島店）は 名畑・リカーマウンテン・日本食研・オーディエー・イオン が無く、オノウエ水産（いくら）・Amazon・アスクル がある');
+  ok(jp.indexOf("'名畑'") >= 0 && jp.indexOf("'イオン'") >= 0 && code.indexOf('const nouhinVendorsFor_ = (store) => NOUHIN_VENDORS_BY_FORMAT[zkFormatOf_(store)] || NOUHIN_VENDORS;') >= 0, '仕入先一覧＝日本料理（本店）の一覧は変えていない・店の業態で一覧を選ぶ');
+}
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
