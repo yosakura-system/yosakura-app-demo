@@ -8952,5 +8952,35 @@ console.log('== 2026-11-24 端末の控えを圧縮して置く（神田さん�
   ok(!!w && ['名畑', 'リカーマウンテン', '日本食研', 'オーディエー', 'イオン'].every(v => w.indexOf("'" + v + "'") < 0) && ['オノウエ水産（いくら）', 'Amazon', 'アスクル', '西原商会', '大和屋', '本部', 'その他'].every(v => w.indexOf("'" + v + "'") >= 0), '仕入先一覧＝和牛世桜（広島店）は 名畑・リカーマウンテン・日本食研・オーディエー・イオン が無く、オノウエ水産（いくら）・Amazon・アスクル がある');
   ok(jp.indexOf("'名畑'") >= 0 && jp.indexOf("'イオン'") >= 0 && code.indexOf('const nouhinVendorsFor_ = (store) => NOUHIN_VENDORS_BY_FORMAT[zkFormatOf_(store)] || NOUHIN_VENDORS;') >= 0, '仕入先一覧＝日本料理（本店）の一覧は変えていない・店の業態で一覧を選ぶ');
 }
+console.log('== 2026-11-27 消耗品は「この日の納品書」の中で入れる（仕入に入れない・消耗品金額へ自動） ==');
+{
+  const S = '和牛世桜 広島店'; const now = Date.now(); const dk = new Date(now - 5 * 3600e3).toLocaleDateString('en-CA');
+  const dr = (v, a8, ph, t) => ({ kind:'nouhindraft', store:S, item: dk, note: JSON.stringify({ src:'ocr', v, a8, total:a8, conf:'high', photo: ph }), photos:[], t, id: ph });
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_soukatsu', '[]'); localStorage.setItem('yosakura_sk_edit', S + '||' + dk);
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([dr('西原商会', 3294, 'PHOTO_SUP_A1', now - 3000), dr('アスクル', 8268, 'PHOTO_SUP_B2', now - 2000)])); });
+  location.hash = '#/app/soukatsu?x=sup1';
+  let hh = registry.app.innerHTML;
+  const box = () => String((doc.getElementById('sk_slips') || {}).innerHTML || ''), sbox = () => String((doc.getElementById('sk_sups') || {}).innerHTML || '');
+  ok(/id="sk_sups"/.test(hh) && /id="sk_supadd"/.test(hh) && /洗剤・ペーパーなど。仕入には入りません/.test(hh), '納品書のカードの中に「消耗品」の並びと「＋ 消耗品を足す」がある');
+  ok((box().match(/data-slip="/g) || []).length === 1 && /西原商会/.test(box()) && (sbox().match(/data-sup="/g) || []).length === 1 && /アスクル/.test(sbox()) && /8268/.test(sbox()), '写真から読んだアスクルの伝票は、消耗品の並びに入る（伝票の並びには西原商会だけ）');
+  ok(doc.getElementById('sk_buy_food').value === '3294' && doc.getElementById('sk_supply').value === '8268', '仕入 食材＝3294（アスクルは入らない）・消耗品金額＝8268 が自動で入る');
+  doc.getElementById('sk_store').value = S; doc.getElementById('sk_date').value = dk; if (doc.getElementById('sk_sales')) doc.getElementById('sk_sales').value = '100000';
+  skTipFill_(doc); doc.getElementById('submitSk').onclick();
+  const r = JSON.parse(localStorage.getItem('yosakura_demo_soukatsu') || '[]').filter(x => x.store === S && x.date === dk && !x.src).pop();
+  ok(r && Array.isArray(r.slips) && r.slips.length === 1 && r.slips[0].v === '西原商会' && Array.isArray(r.sups) && r.sups.length === 1 && r.sups[0].v === 'アスクル' && r.sups[0].a === '8268' && r.sups[0].photo === 'PHOTO_SUP_B2' && r.supply === '8268' && r.buy_food === '3294',
+     '提出データ＝slips は仕入だけ（形は今までどおり）・sups に消耗品の内訳・supply にその合計');
+  localStorage.setItem('yosakura_sk_edit', S + '||' + dk);
+  location.hash = '#/app/soukatsu?x=sup2';
+  hh = registry.app.innerHTML;
+  ok((sbox().match(/data-sup="/g) || []).length === 1 && /8268/.test(sbox()) && (box().match(/data-slip="/g) || []).length === 1 && !/id="sk_slipcand"/.test(box()) && doc.getElementById('sk_supply').value === '8268', '提出済みの日を開き直す＝消耗品の並びが残り、同じ写真が「足す」の候補に出ない');
+  // 消耗品の並びが無い日＝手で入れた消耗品金額を消さない
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_demo_reports', '[]'); localStorage.setItem('yosakura_sk_edit', S + '||' + dk);
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store:S, date: dk, sales: 1000, tipt: '0', supply: '1200', buy_food: '500', slips: [{ v:'西原商会', a8:'500', a10:'', photo:'', src:'app', ret:0 }], t: now - 1000 }])); });
+  location.hash = '#/app/soukatsu?x=sup3';
+  hh = registry.app.innerHTML;
+  ok(doc.getElementById('sk_supply').value === '1200' && (sbox().match(/data-sup="/g) || []).length === 0, '前の形（消耗品金額だけ）で出した日＝金額 1200 はそのまま残る');
+  ok(/else if \(d\.sv != null && skSupIsVendor_\(e\.target\.value\)\) \{ const mv = skSlips_\.splice\(Number\(d\.sv\), 1\)\[0\];/.test(code) && /const NOUHIN_SUPPLY_VENDORS = \['アスクル'\];/.test(code), '仕入先でアスクルを選んだ伝票は、消耗品の並びへ移す');
+  ok(/if \(skSups_\.length\) \{ el\.value = sum \? String\(sum\) : ''; skSupAuto_ = true; \} else if \(skSupAuto_\) \{ el\.value = ''; skSupAuto_ = false; \}/.test(code), '消耗品金額の欄＝並びがあるときだけ合計で入れる・自分で入れた分だけ空に戻す');
+}
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

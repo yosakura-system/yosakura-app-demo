@@ -3696,22 +3696,44 @@
     if (noteEl) noteEl.value = rows.map(r => [r.item, r.qty, skLossReasonJa_(r)].filter(Boolean).join('／')).join('\n');
   };
   let skSlips_ = [];
+  /* ★2026-11-27 神田さん「消耗品を入れる項目が分かりにくい。何クリックもせな辿り着かない」＝買った物は「この日の納品書」の1か所に入れる。
+     消耗品（洗剤・ペーパーなど）は伝票（slips）とは別の並び（sups）に持つ＝仕入・原価に入らず、合計が「消耗品金額」（supply）に自動で入る。
+     slips の形は変えない（総括表の書き戻し・集約は今までどおり）。仕入先でアスクルを選んだ伝票・写真から読んだアスクルの伝票は、自動で消耗品の並びへ移す。
+     出どころ＝広島店の総括表で、アスクルが仕入台帳（原価）に入り「◎消耗品費」が0円のままだった（11/27 調べ） */
+  let skSups_ = [];
+  let skSupAuto_ = false;   // 消耗品金額の欄を、この並びの合計で入れたか（並びが空になったら欄も空に戻すため）
+  const NOUHIN_SUPPLY_VENDORS = ['アスクル'];
+  const NOUHIN_SUPPLY_SHOPS = ['アスクル', 'Amazon', '100円ショップ', 'ローソン', 'その他'];
+  const skSupIsVendor_ = (v) => { const n = String(v || ''); return !!n && NOUHIN_SUPPLY_VENDORS.some(x => n.includes(x)); };
+  const skSupFromSlip_ = (x) => ({ v: x.v || '', a: String(skSlipNum_(x.a8) + skSlipNum_(x.a10) || skSlipNum_(x.total) || ''), photo: x.photo || '', src: x.src || 'app' });
+  const skSupFilled_ = () => skSups_.filter(x => skSlipNum_(x.a));
+  const skSupSum_ = () => skSups_.reduce((t, x) => t + skSlipNum_(x.a), 0);
+  const skSupApply_ = () => { const el = document.getElementById('sk_supply'); if (!el) return; const sum = skSupSum_();
+    if (skSups_.length) { el.value = sum ? String(sum) : ''; skSupAuto_ = true; } else if (skSupAuto_) { el.value = ''; skSupAuto_ = false; } };
+  const skSupsRowsHtml_ = () => skSups_.map((x, i) => { const opts = NOUHIN_SUPPLY_SHOPS.slice(); if (x.v && !opts.includes(x.v)) opts.unshift(x.v);
+    return `<div class="sk-sup" data-sup="${i}" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:6px;align-items:center;margin:4px 0">
+        <select data-pv="${i}" style="width:100%;font-size:14px;padding:6px"><option value="">${L({ ja:'買った所', en:'Shop', vi:'Nơi mua' })}</option>${opts.map(v => `<option${x.v === v ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select>
+        <input type="text" inputmode="numeric" data-pa="${i}" placeholder="${L({ ja:'金額（税込）', en:'Amount (incl.)', vi:'Số tiền (gồm thuế)' })}" value="${esc(x.a || '')}" style="min-width:0">
+        <button type="button" class="btn-sm" data-pdel="${i}" aria-label="delete">×</button>
+      </div>`; }).join('');
+  const skSupsRender_ = () => { const el = document.getElementById('sk_sups'); if (el) el.innerHTML = skSupsRowsHtml_(); };
   let skSlipsCand_ = [];   // ★2026-11-15 提出済みの日報に、まだ入っていない納品書（その日付の写真）＝店が「足す」を押したものだけ入れる
   /* ★2026-10-20 原さん（心斎橋）「翌朝に前日分をまとめて撮るスタイルが理想」＝日報の日付が前日のとき、その後（翌朝）に撮った納品書も前日分として出す。
      同じ写真を2つの日報に数えないよう、ほかの日付の日報で既に使った写真は除く（その日の日報を出したあとで開く当日の日報にも出ない） */
   const nouhinUsedPhotos_ = (store, exceptDk) => {
     const used = new Set();
-    try { getSk().forEach(r => { if (r.store !== store || r.date === exceptDk || !Array.isArray(r.slips)) return; r.slips.forEach(x => { if (x && x.photo) used.add(x.photo); }); }); } catch (e) {}
+    try { getSk().forEach(r => { if (r.store !== store || r.date === exceptDk || !Array.isArray(r.slips)) return; r.slips.forEach(x => { if (x && x.photo) used.add(x.photo); }); }); getSk().forEach(r => { if (r.store !== store || r.date === exceptDk || !Array.isArray(r.sups)) return; r.sups.forEach(x => { if (x && x.photo) used.add(x.photo); }); }); } catch (e) {}
     return used;
   };
   const skSlipsLoad_ = (store, dk, rec) => {
     skSlipsCand_ = [];
+    skSups_ = (rec && Array.isArray(rec.sups)) ? rec.sups.map(x => Object.assign({}, x)) : []; skSupAuto_ = false;
     if (rec && Array.isArray(rec.slips) && rec.slips.length) {
       skSlips_ = rec.slips.map(s => Object.assign({}, s));
       /* ★2026-11-15 谷口さん（広島）「請求書を撮ったのに日報に反映されない」＝提出済みの日は提出の内訳しか出していなかった。
          その日付の写真で、まだこの日報に入っていないものは「足す」の候補として下に並べる。勝手には足さない＝
          店が手で入れた仕入の金額を書き換えない・×で消した伝票を黙って戻さない（Codex 2回目 #2〜#6）。ほかの日の日報で使った写真は出さない */
-      const havePh = new Set(skSlips_.map(s => s.photo).filter(Boolean)), usedO = nouhinUsedPhotos_(store, dk);
+      const havePh = new Set(skSlips_.concat(skSups_).map(s => s.photo).filter(Boolean)), usedO = nouhinUsedPhotos_(store, dk);
       skSlipsCand_ = nouhinDrafts(store, dk).filter(p => p.photo && !havePh.has(p.photo) && !usedO.has(p.photo));
       skSlipsCand_.forEach(s => { if (s.a8 === '' && s.a10 === '' && s.total) { if (NOUHIN_ALC_VENDORS.some(x => String(s.v).includes(x))) s.a10 = String(s.total); else s.a8 = String(s.total); } });
       return;
@@ -3721,6 +3743,8 @@
     if (dk === prev) drafts = drafts.concat(nouhinDrafts(store, today).map(p => Object.assign({}, p, { late: 1 })));   // 前日の日報＝翌朝に撮った分も
     const used = nouhinUsedPhotos_(store, dk);
     skSlips_ = drafts.filter(p => !(p.photo && used.has(p.photo)));
+    if (rec) { const haveS = new Set(skSups_.map(x => x.photo).filter(Boolean)); skSlips_ = skSlips_.filter(p => !(p.photo && haveS.has(p.photo))); }   // 提出済みで消耗品だけの日＝同じ写真を伝票に並べ直さない
+    else { const mv = skSlips_.filter(p => skSupIsVendor_(p.v)); if (mv.length) { skSlips_ = skSlips_.filter(p => !skSupIsVendor_(p.v)); skSups_ = skSups_.concat(mv.map(skSupFromSlip_)); } }   // 写真から読んだアスクルの伝票＝消耗品の並びへ
     // 税率の行が読めなかった伝票＝合計を仕入先の既定の税率へ（酒屋は10%・それ以外は8%）。要確認の印は残る
     skSlips_.forEach(s => { if (s.a8 === '' && s.a10 === '' && s.total) { if (NOUHIN_ALC_VENDORS.some(x => String(s.v).includes(x))) s.a10 = String(s.total); else s.a8 = String(s.total); } });
   };
@@ -3777,6 +3801,9 @@
           <div class="idlabel" style="margin-top:0">${L({ ja:'この日の納品書', en:'Delivery slips for this day', vi:'Phiếu giao hàng của ngày này' })} <span class="muted" style="font-weight:400">${L({ ja:'（写真から自動・確認して直せます）', en:'(auto from photos · editable)', vi:'(tự động từ ảnh · có thể sửa)' })}</span></div>
           <div id="sk_slips">${skSlipsRowsHtml_() + skSlipsCandHtml_()}</div>
           <button type="button" class="btn-sm" id="sk_slipadd">${L({ ja:'＋ 納品書を足す', en:'+ Add slip', vi:'+ Thêm phiếu' })}</button>
+          <div class="sk-suphd" style="margin:14px 0 2px;padding-top:10px;border-top:1px solid #e7e1d8;font-size:13px;font-weight:600">${L({ ja:'消耗品', en:'Supplies', vi:'Vật tư tiêu hao' })} <span class="muted" style="font-weight:400">${L({ ja:'（洗剤・ペーパーなど。仕入には入りません）', en:'(detergent, paper etc. · not counted as purchases)', vi:'(chất tẩy, giấy… · không tính vào nhập hàng)' })}</span></div>
+          <div id="sk_sups">${skSupsRowsHtml_()}</div>
+          <button type="button" class="btn-sm" id="sk_supadd">${L({ ja:'＋ 消耗品を足す', en:'+ Add supplies', vi:'+ Thêm vật tư' })}</button>
           <p class="hint" id="sk_slipnote" style="display:block;margin:6px 0 0;color:#c0392b;font-weight:600">${L({ ja:'写真から読んだ金額です。送信の前に、伝票の合計と同じか必ず確認してください。', en:'Amounts read from photos. Always check them against the slip total before sending.', vi:'Số tiền đọc từ ảnh. Luôn đối chiếu với tổng trên phiếu trước khi gửi.' })}</p>
         </div>`;
   /* ★2026-10-20 神田さん「B案のデモの画面の方が使いやすい」＝案Bの店舗側だけ、日報を見本の並びにする。
@@ -14736,9 +14763,10 @@
         const rec = getSk().filter(r => r.store === store && r.date === date).sort((a, b) => (b.t || 0) - (a.t || 0))[0];
         /* ★今日の納品書＝その日の下書き（提出済みならその内訳）を入れ直し、仕入3欄を自動で埋める（2026-10-01） */
         skSlipsLoad_(store, date, (rec && rec.src !== 'drive' && rec.src !== 'usen') ? rec : null);
-        skSlipsRender_();
+        skSlipsRender_(); skSupsRender_();
         skLossLoad_((rec && rec.src !== 'drive' && rec.src !== 'usen') ? rec : null); skLossRender_();   // ★2026-11-16 ロスの内訳（店・日付を変えたときも入れ直す）
         if (skSlipsApply_()) cumUpd();
+        skSupApply_();
         /* まだ提出の無い日は、写真から読み取った下書きや累計の自動入力を消さない
            （日付を選び直したときだけ、前の日の内容が残らないように空にする） */
         if (!rec) {
@@ -14748,6 +14776,7 @@
           SK_COUNTRIES.concat(SK_VISITKIND).forEach(cn => {
             ['g', 'p'].forEach(x => { const el = byId('sk_cty_' + cn.k + '_' + x); if (el) el.value = ''; });
           });
+          skSupAuto_ = false; skSupApply_();   // 欄を空にしたあと、消耗品の並びの合計を入れ直す
           cumUpd();   // 選び直した日の累計を入れ直す
           return;
         }
@@ -14771,6 +14800,7 @@
           /* ★2026-10-20 神田さん「売上合計や客数はどこから？」＝USENの無い店は総括表（毎時の取込）から。総括表にある現金・カード・純売上・電子マネーも同じく下書きに入れ、出どころを1行で出す */
           if (rec.src === 'drive') ['net', 'cash', 'card', 'emoney'].forEach(k => { if (rec[k] != null && rec[k] !== '') set('sk_' + k, rec[k]); });
           if (note) note.style.display = 'none';   // ★取込の注記は出さない（上の「自動で入ります」の1行で足りる・2026-10-15）
+          skSupApply_();
           cumUpd();   // 累計＝自動入力を入れ直す（取込の売上も足し上がる）
           return;
         }
@@ -14793,23 +14823,28 @@
       ['sk_date', 'sk_store'].forEach(id => { const el = byId(id); if (el) el.addEventListener('change', () => skFill_(true)); });
       if (isPb() && getRole() !== 'hq') setTimeout(() => { try { pbNippouLayout_(); } catch (e) {} }, 0);   // ★2026-10-20 案Bの店舗側＝見本の並び
       /* ★今日の納品書の操作（2026-10-01）＝仕入先を選ぶ・金額を直す・足す・消す → 仕入3欄と累計を入れ直す */
-      const slipsRefresh = (rerender) => { if (rerender) skSlipsRender_(); skSlipsApply_(); cumUpd(); };
+      const slipsRefresh = (rerender) => { if (rerender) skSlipsRender_(); skSlipsApply_(); skSupApply_(); cumUpd(); };
       const slipBox = byId('sk_slipbox');
       if (slipBox) {
         slipBox.addEventListener('input', (e) => {
           const d = e.target.dataset || {};
-          if (d.s8 != null) { skSlips_[Number(d.s8)].a8 = e.target.value.trim(); slipsRefresh(false); }
+          if (d.pa != null) { skSups_[Number(d.pa)].a = e.target.value.trim(); skSupApply_(); }
+          else if (d.s8 != null) { skSlips_[Number(d.s8)].a8 = e.target.value.trim(); slipsRefresh(false); }
           else if (d.s10 != null) { skSlips_[Number(d.s10)].a10 = e.target.value.trim(); slipsRefresh(false); }
         });
         slipBox.addEventListener('change', (e) => {
           const d = e.target.dataset || {};
-          if (d.sv != null) { skSlips_[Number(d.sv)].v = e.target.value; slipsRefresh(true); }
+          if (d.pv != null) { skSups_[Number(d.pv)].v = e.target.value; }
+          else if (d.sv != null && skSupIsVendor_(e.target.value)) { const mv = skSlips_.splice(Number(d.sv), 1)[0]; if (mv) { mv.v = e.target.value; skSups_.push(skSupFromSlip_(mv)); } skSupsRender_(); slipsRefresh(true); if (!skSlips_.length) { ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'].forEach(id => { const el = byId(id); if (el) el.value = ''; }); cumUpd(); } toast(L({ ja:'消耗品に入れました（仕入には入りません）', en:'Moved to supplies (not a purchase)', vi:'Đã chuyển sang vật tư' })); }   // ★2026-11-27 アスクル＝消耗品の並びへ
+          else if (d.sv != null) { skSlips_[Number(d.sv)].v = e.target.value; slipsRefresh(true); }
           else if (d.sret != null) { skSlips_[Number(d.sret)].ret = !!e.target.checked; slipsRefresh(true); }   // ★返品の切り替え（2026-10-15）
           else if (d.s8 != null || d.s10 != null) { const ds = skSlipDupSet_(skSlips_), want = skSlips_.filter(x => ds.has(skSlipKey_(x))).length; if (want !== slipBox.querySelectorAll('[data-sdup]').length) skSlipsRender_(); }   // ★2026-11-26 金額を打ち終えたとき、「同じ仕入先・同じ金額」の印が変わるときだけ描き直す（毎回描き直すと、次の欄へ移るときにカーソルが外れる）
         });
         slipBox.addEventListener('click', (e) => {
           const b = e.target.closest('button'); if (!b) return;
-          if (b.id === 'sk_slipadd') { skSlips_.push({ v: '', a8: '', a10: '', src: 'app' }); skSlipsRender_(); const last = slipBox.querySelector(`[data-sv="${skSlips_.length - 1}"]`); if (last) last.focus(); }
+          if (b.id === 'sk_supadd') { skSups_.push({ v: '', a: '', src: 'app' }); skSupsRender_(); skSupApply_(); const lastP = slipBox.querySelector(`[data-pv="${skSups_.length - 1}"]`); if (lastP) lastP.focus(); }
+          else if (b.dataset.pdel != null) { skSups_.splice(Number(b.dataset.pdel), 1); skSupsRender_(); skSupApply_(); }
+          else if (b.id === 'sk_slipadd') { skSlips_.push({ v: '', a8: '', a10: '', src: 'app' }); skSlipsRender_(); const last = slipBox.querySelector(`[data-sv="${skSlips_.length - 1}"]`); if (last) last.focus(); }
           else if (b.dataset.scand != null) { const c = skSlipsCand_.splice(Number(b.dataset.scand), 1)[0]; if (c) { skSlips_.push(Object.assign({}, c, { late: 1 })); slipsRefresh(true); } }   // ★2026-11-15 提出のあとで撮った納品書を、店が選んで足す
           else if (b.dataset.sdel != null) { skSlips_.splice(Number(b.dataset.sdel), 1); slipsRefresh(true); if (!skSlips_.length) { ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'].forEach(id => { const el = byId(id); if (el) el.value = ''; }); cumUpd(); } }
         });
@@ -14912,6 +14947,8 @@
         buy_food: v('sk_buy_food'), buy_alc: v('sk_buy_alc'), buy_drink: v('sk_buy_drink'),
         // 納品書ごとの内訳（2026-10-01）＝仕入先・8%税込・10%税込・写真ID。空なら持たない
         slips: skSlips_.length ? skSlips_.map(s => ({ v: s.v || '', a8: s.a8 || '', a10: s.a10 || '', photo: s.photo || '', src: s.src || 'app', ret: s.ret ? 1 : 0 })) : undefined,
+        // ★2026-11-27 消耗品の内訳（買った所・税込の金額・写真ID）。合計は下の supply に入る。空なら持たない
+        sups: skSupFilled_().length ? skSupFilled_().map(x => ({ v: x.v || '', a: String(skSlipNum_(x.a)), photo: x.photo || '', src: x.src || 'app' })) : undefined,
         supply: v('sk_supply'), unagi: v('sk_unagi'), errnote: v('sk_errnote'),
         // 日報一本化（2026-08-26 決定）で足した項目＝元の数字だけ。率は計算で出す
         staffct: v('sk_staffct'), hours: v('sk_hours'), laborcost: v('sk_laborcost'),
