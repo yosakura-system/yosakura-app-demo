@@ -37,6 +37,7 @@ var NOUHIN_VENDORS_DEFAULT = [
   { name: 'オーディエー', keys: ['オーディエー', 'ODA', '8-1200-0103-7617', '81200010376', '06-6251-1061', '6251-1061'], k8: 'food', k10: 'food', total: 'incl' },
   { name: 'イオン',       keys: ['イオン', 'AEON', 'EON FOOD', '14140001005666', '06-6252-4147', '6252-4147'], k8: 'food', k10: 'alc', total: 'incl' },
   { name: 'ローソン',     keys: ['ローソン', 'LAWSON', '7810930211230', '06-6241-1963', '6241-1963'], k8: 'food', k10: 'alc', total: 'incl' },
+  { name: 'アスクル',     keys: ['アスクル', 'ASKUL'],                                         k8: 'food',  k10: 'food', total: 'incl' },   // ★2026-11-27 消耗品。アプリ側で「消耗品」の並びへ自動で移す（仕入に入れない）
   { name: '本部',         keys: ['Utec', 'ユーテック', 'utechnologies', '本部請求'],                 k8: 'food',  k10: 'alc',  total: 'excl' }   // 和牛・鰻＝8%／梅酒＝10%   // ★「世桜」は宛名（牛カツ世桜 様）に当たるので鍵にしない（2026-10-15 名畑を本部と取り違え）
 ];
 function nouhin_vendors_() {
