@@ -3705,11 +3705,13 @@
   const NOUHIN_SUPPLY_VENDORS = ['アスクル'];
   const NOUHIN_SUPPLY_SHOPS = ['アスクル', 'Amazon', '100円ショップ', 'ローソン', 'その他'];
   const skSupIsVendor_ = (v) => { const n = String(v || ''); return !!n && NOUHIN_SUPPLY_VENDORS.some(x => n.includes(x)); };
-  const skSupFromSlip_ = (x) => ({ v: x.v || '', a: String(skSlipNum_(x.a8) + skSlipNum_(x.a10) || skSlipNum_(x.total) || ''), photo: x.photo || '', src: x.src || 'app' });
+  const skSupFromSlip_ = (x) => { const n = Math.abs(skSlipNum_(x.a8) + skSlipNum_(x.a10) || skSlipNum_(x.total) || 0); return { v: x.v || '', a: n ? String(x.ret ? -n : n) : '', photo: x.photo || '', src: x.src || 'app' }; };   // 返品の伝票＝マイナスの金額（Codex#4）
   const skSupFilled_ = () => skSups_.filter(x => skSlipNum_(x.a));
   const skSupSum_ = () => skSups_.reduce((t, x) => t + skSlipNum_(x.a), 0);
   const skSupApply_ = () => { const el = document.getElementById('sk_supply'); if (!el) return; const sum = skSupSum_();
-    if (skSups_.length) { el.value = sum ? String(sum) : ''; skSupAuto_ = true; } else if (skSupAuto_) { el.value = ''; skSupAuto_ = false; } };
+    if (skSupFilled_().length) { el.value = sum ? String(sum) : ''; skSupAuto_ = true; } else if (skSupAuto_) { el.value = ''; skSupAuto_ = false; } };   // 金額の入った行があるときだけ合計で入れる（空の行を足しただけでは、手で入れた金額を消さない・Codex#5）
+  /* 並びが空で、消耗品金額を手で入れてある日に行を足す＝その金額を1行目として引き継ぐ（足した行の金額で上書きして消さない） */
+  const skSupCarry_ = () => { const el = document.getElementById('sk_supply'); const n = el ? skSlipNum_(el.value) : 0; if (!skSups_.length && !skSupAuto_ && n) skSups_.push({ v: '', a: String(n), src: 'app' }); };
   const skSupsRowsHtml_ = () => skSups_.map((x, i) => { const opts = NOUHIN_SUPPLY_SHOPS.slice(); if (x.v && !opts.includes(x.v)) opts.unshift(x.v);
     return `<div class="sk-sup" data-sup="${i}" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:6px;align-items:center;margin:4px 0">
         <select data-pv="${i}" style="width:100%;font-size:14px;padding:6px"><option value="">${L({ ja:'買った所', en:'Shop', vi:'Nơi mua' })}</option>${opts.map(v => `<option${x.v === v ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select>
@@ -3728,8 +3730,8 @@
   const skSlipsLoad_ = (store, dk, rec) => {
     skSlipsCand_ = [];
     skSups_ = (rec && Array.isArray(rec.sups)) ? rec.sups.map(x => Object.assign({}, x)) : []; skSupAuto_ = false;
-    if (rec && Array.isArray(rec.slips) && rec.slips.length) {
-      skSlips_ = rec.slips.map(s => Object.assign({}, s));
+    if (rec && ((Array.isArray(rec.slips) && rec.slips.length) || skSups_.length)) {   // 消耗品だけを出した日も、提出の内訳として扱う（Codex#3）
+      skSlips_ = (Array.isArray(rec.slips) ? rec.slips : []).map(s => Object.assign({}, s));
       /* ★2026-11-15 谷口さん（広島）「請求書を撮ったのに日報に反映されない」＝提出済みの日は提出の内訳しか出していなかった。
          その日付の写真で、まだこの日報に入っていないものは「足す」の候補として下に並べる。勝手には足さない＝
          店が手で入れた仕入の金額を書き換えない・×で消した伝票を黙って戻さない（Codex 2回目 #2〜#6）。ほかの日の日報で使った写真は出さない */
@@ -3743,8 +3745,7 @@
     if (dk === prev) drafts = drafts.concat(nouhinDrafts(store, today).map(p => Object.assign({}, p, { late: 1 })));   // 前日の日報＝翌朝に撮った分も
     const used = nouhinUsedPhotos_(store, dk);
     skSlips_ = drafts.filter(p => !(p.photo && used.has(p.photo)));
-    if (rec) { const haveS = new Set(skSups_.map(x => x.photo).filter(Boolean)); skSlips_ = skSlips_.filter(p => !(p.photo && haveS.has(p.photo))); }   // 提出済みで消耗品だけの日＝同じ写真を伝票に並べ直さない
-    else { const mv = skSlips_.filter(p => skSupIsVendor_(p.v)); if (mv.length) { skSlips_ = skSlips_.filter(p => !skSupIsVendor_(p.v)); skSups_ = skSups_.concat(mv.map(skSupFromSlip_)); } }   // 写真から読んだアスクルの伝票＝消耗品の並びへ
+    { const mv = skSlips_.filter(p => skSupIsVendor_(p.v)); if (mv.length) { skSlips_ = skSlips_.filter(p => !skSupIsVendor_(p.v)); skSups_ = skSups_.concat(mv.map(skSupFromSlip_)); } }   // 写真から読んだアスクルの伝票＝消耗品の並びへ（まだ内訳を出していない日だけここへ来る）
     // 税率の行が読めなかった伝票＝合計を仕入先の既定の税率へ（酒屋は10%・それ以外は8%）。要確認の印は残る
     skSlips_.forEach(s => { if (s.a8 === '' && s.a10 === '' && s.total) { if (NOUHIN_ALC_VENDORS.some(x => String(s.v).includes(x))) s.a10 = String(s.total); else s.a8 = String(s.total); } });
   };
@@ -14811,6 +14812,7 @@
           const c = (rec.cty && typeof rec.cty === 'object') ? rec.cty[cn.k] : null;
           set('sk_cty_' + cn.k + '_g', c ? c.g : ''); set('sk_cty_' + cn.k + '_p', c ? c.p : '');
         });
+        skSupApply_();   // 保存してあった金額を戻したあと、消耗品の内訳があればその合計にそろえる（Codex#6）
         if (note) {
           note.textContent = L({
             ja:'※ 提出済みです。直して出し直せます。',
@@ -14835,18 +14837,18 @@
         slipBox.addEventListener('change', (e) => {
           const d = e.target.dataset || {};
           if (d.pv != null) { skSups_[Number(d.pv)].v = e.target.value; }
-          else if (d.sv != null && skSupIsVendor_(e.target.value)) { const mv = skSlips_.splice(Number(d.sv), 1)[0]; if (mv) { mv.v = e.target.value; skSups_.push(skSupFromSlip_(mv)); } skSupsRender_(); slipsRefresh(true); if (!skSlips_.length) { ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'].forEach(id => { const el = byId(id); if (el) el.value = ''; }); cumUpd(); } toast(L({ ja:'消耗品に入れました（仕入には入りません）', en:'Moved to supplies (not a purchase)', vi:'Đã chuyển sang vật tư' })); }   // ★2026-11-27 アスクル＝消耗品の並びへ
+          else if (d.sv != null && skSupIsVendor_(e.target.value)) { const mv = skSlips_.splice(Number(d.sv), 1)[0]; if (mv) { mv.v = e.target.value; skSupCarry_(); skSups_.push(skSupFromSlip_(mv)); } skSupsRender_(); slipsRefresh(true); if (!skSlips_.length) { ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink', 'sk_buy'].forEach(id => { const el = byId(id); if (el) el.value = ''; }); cumUpd(); } toast(L({ ja:'消耗品に入れました（仕入には入りません）', en:'Moved to supplies (not a purchase)', vi:'Đã chuyển sang vật tư' })); }   // ★2026-11-27 アスクル＝消耗品の並びへ
           else if (d.sv != null) { skSlips_[Number(d.sv)].v = e.target.value; slipsRefresh(true); }
           else if (d.sret != null) { skSlips_[Number(d.sret)].ret = !!e.target.checked; slipsRefresh(true); }   // ★返品の切り替え（2026-10-15）
-          else if (d.s8 != null || d.s10 != null) { const ds = skSlipDupSet_(skSlips_), want = skSlips_.filter(x => ds.has(skSlipKey_(x))).length; if (want !== slipBox.querySelectorAll('[data-sdup]').length) skSlipsRender_(); }   // ★2026-11-26 金額を打ち終えたとき、「同じ仕入先・同じ金額」の印が変わるときだけ描き直す（毎回描き直すと、次の欄へ移るときにカーソルが外れる）
+          else if (d.s8 != null || d.s10 != null) { const ds = skSlipDupSet_(skSlips_); const want = skSlips_.map(x => ds.has(skSlipKey_(x)) ? '1' : '0').join(''); const now = Array.from(slipBox.querySelectorAll('[data-slip]')).map(r => r.querySelector('[data-sdup]') ? '1' : '0').join(''); if (want !== now) skSlipsRender_(); }   // ★2026-11-26 金額を打ち終えたとき、「同じ仕入先・同じ金額」の印が変わるときだけ描き直す（毎回描き直すと、次の欄へ移るときにカーソルが外れる）
         });
         slipBox.addEventListener('click', (e) => {
           const b = e.target.closest('button'); if (!b) return;
-          if (b.id === 'sk_supadd') { skSups_.push({ v: '', a: '', src: 'app' }); skSupsRender_(); skSupApply_(); const lastP = slipBox.querySelector(`[data-pv="${skSups_.length - 1}"]`); if (lastP) lastP.focus(); }
+          if (b.id === 'sk_supadd') { skSupCarry_(); skSups_.push({ v: '', a: '', src: 'app' }); skSupsRender_(); skSupApply_(); const lastP = slipBox.querySelector(`[data-pv="${skSups_.length - 1}"]`); if (lastP) lastP.focus(); }
           else if (b.dataset.pdel != null) { skSups_.splice(Number(b.dataset.pdel), 1); skSupsRender_(); skSupApply_(); }
           else if (b.id === 'sk_slipadd') { skSlips_.push({ v: '', a8: '', a10: '', src: 'app' }); skSlipsRender_(); const last = slipBox.querySelector(`[data-sv="${skSlips_.length - 1}"]`); if (last) last.focus(); }
-          else if (b.dataset.scand != null) { const c = skSlipsCand_.splice(Number(b.dataset.scand), 1)[0]; if (c) { skSlips_.push(Object.assign({}, c, { late: 1 })); slipsRefresh(true); } }   // ★2026-11-15 提出のあとで撮った納品書を、店が選んで足す
-          else if (b.dataset.sdel != null) { skSlips_.splice(Number(b.dataset.sdel), 1); slipsRefresh(true); if (!skSlips_.length) { ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink'].forEach(id => { const el = byId(id); if (el) el.value = ''; }); cumUpd(); } }
+          else if (b.dataset.scand != null) { const c = skSlipsCand_.splice(Number(b.dataset.scand), 1)[0]; if (c) { if (skSupIsVendor_(c.v)) { skSupCarry_(); skSups_.push(skSupFromSlip_(c)); skSupsRender_(); } else skSlips_.push(Object.assign({}, c, { late: 1 })); slipsRefresh(true); } }   // ★2026-11-15 提出のあとで撮った納品書を、店が選んで足す
+          else if (b.dataset.sdel != null) { skSlips_.splice(Number(b.dataset.sdel), 1); slipsRefresh(true); if (!skSlips_.length) { ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink', 'sk_buy'].forEach(id => { const el = byId(id); if (el) el.value = ''; }); cumUpd(); } }   // 最後の1枚を消したら税抜合計も空に（Codex#1）
         });
       }
       // 開いた時点＝すでに提出のある日なら、その内容を入れて「直せる」状態にする（無い日はそのまま）
@@ -14933,6 +14935,7 @@
         const n_ = (id) => Number(v(id)) || 0;
         byId('sk_buy').value = String(taxNet(n_('sk_buy_food'), 8) + taxNet(n_('sk_buy_alc'), 10) + taxNet(n_('sk_buy_drink'), 8));
       }
+      skSupApply_();   // ★2026-11-27 消耗品の内訳があれば、提出の直前に合計を入れ直す（欄を直に書き換えても、内訳の合計と違う値で保存しない・Codex#6）
       const rec = {
         store: v('sk_store'), date: v('sk_date'), sales: Number(v('sk_sales'))||0, guests: Number(v('sk_guests'))||0,
         net: Number(v('sk_net'))||0, err: v('sk_err'), mtd: Number(v('sk_mtd'))||0, goal: Number(v('sk_goal'))||0,

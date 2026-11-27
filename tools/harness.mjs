@@ -8610,7 +8610,7 @@ console.log('== 2026-11-15 過去の日の日報から撮った納品書＝そ�
   ok(/id=\"nouhin_datenote\"/.test(code) && (code.match(/id=\"nouhin_datenote\"/g) || []).length === 2, '写真の画面に「○/○ の日報の分として出します」を出す（2つの見た目の両方）');
   ok(/if \(nd\) \{ try \{ localStorage\.setItem\('yosakura_sk_edit', store \+ '\|\|' \+ nd\);/.test(code), '出したあとは、その日の日報へ戻る');
   ok(/skSlipsCand_ = nouhinDrafts\(store, dk\)\.filter\(p => p\.photo && !havePh\.has\(p\.photo\) && !usedO\.has\(p\.photo\)\);/.test(code), '提出済みの日＝まだ入っていない写真は「足す」の候補に並べる（勝手に足さない・ほかの日で使った写真は出さない）');
-  ok(/else if \(b\.dataset\.scand != null\) \{ const c = skSlipsCand_\.splice\(Number\(b\.dataset\.scand\), 1\)\[0\]; if \(c\) \{ skSlips_\.push/.test(code) && /id=\"sk_slipcand\"/.test(code), '候補の「足す」を押したものだけ伝票に入る（手で足すのと同じ道）');
+  ok(/else if \(b\.dataset\.scand != null\) \{ const c = skSlipsCand_\.splice\(Number\(b\.dataset\.scand\), 1\)\[0\]; if \(c\) \{ if \(skSupIsVendor_\(c\.v\)\) \{[^}]*\} else skSlips_\.push/.test(code) && /id=\"sk_slipcand\"/.test(code), '候補の「足す」を押したものだけ伝票に入る（手で足すのと同じ道）');
   ok(!/src: 'seen'/.test(code) && /slips: skSlips_\.length \? skSlips_\.map\(s => \(\{ v: s\.v \|\| '', a8: s\.a8 \|\| '', a10: s\.a10 \|\| '', photo: s\.photo \|\| '', src: s\.src \|\| 'app', ret: s\.ret \? 1 : 0 \}\)\) : undefined,/.test(code), '提出データの形（slips）は今までと同じ＝総括表・集約の読み方を変えない');
   ok(/if \(rawD && getPhotoTarget\(\) === 'nouhin' && !nd\) \{ toast/.test(code), '日付を確かめられないときは出さない（今日の分へ黙って振り替えない・Codex 2回目 #1）');
   ok(/dd\.toISOString\(\)\.slice\(0, 10\) !== d\) return '';/.test(code), '実在しない日付（10/99 など）は通さない（Codex#5）');
@@ -8980,7 +8980,21 @@ console.log('== 2026-11-27 消耗品は「この日の納品書」の中で入�
   hh = registry.app.innerHTML;
   ok(doc.getElementById('sk_supply').value === '1200' && (sbox().match(/data-sup="/g) || []).length === 0, '前の形（消耗品金額だけ）で出した日＝金額 1200 はそのまま残る');
   ok(/else if \(d\.sv != null && skSupIsVendor_\(e\.target\.value\)\) \{ const mv = skSlips_\.splice\(Number\(d\.sv\), 1\)\[0\];/.test(code) && /const NOUHIN_SUPPLY_VENDORS = \['アスクル'\];/.test(code), '仕入先でアスクルを選んだ伝票は、消耗品の並びへ移す');
-  ok(/if \(skSups_\.length\) \{ el\.value = sum \? String\(sum\) : ''; skSupAuto_ = true; \} else if \(skSupAuto_\) \{ el\.value = ''; skSupAuto_ = false; \}/.test(code), '消耗品金額の欄＝並びがあるときだけ合計で入れる・自分で入れた分だけ空に戻す');
+  ok(/if \(skSupFilled_\(\)\.length\) \{ el\.value = sum \? String\(sum\) : ''; skSupAuto_ = true; \} else if \(skSupAuto_\) \{ el\.value = ''; skSupAuto_ = false; \}/.test(code), '消耗品金額の欄＝金額の入った行があるときだけ合計で入れる・自分で入れた分だけ空に戻す');
+  // ── Codex レビュー（11/27）の直し ──
+  ok(/if \(c\) \{ if \(skSupIsVendor_\(c\.v\)\) \{ skSupCarry_\(\); skSups_\.push\(skSupFromSlip_\(c\)\); skSupsRender_\(\); \} else skSlips_\.push\(Object\.assign\(\{\}, c, \{ late: 1 \}\)\); slipsRefresh\(true\); \}/.test(code), '「足す」の候補がアスクル＝消耗品の並びへ（仕入に入れない・Codex#2）');
+  ok((code.match(/\['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink', 'sk_buy'\]\.forEach\(id => \{ const el = byId\(id\); if \(el\) el\.value = ''; \}\); cumUpd\(\);/g) || []).length === 2, '最後の伝票を消した・消耗品へ移したとき＝税抜合計（sk_buy）も空にする（Codex#1）');
+  ok(/return \{ v: x\.v \|\| '', a: n \? String\(x\.ret \? -n : n\) : ''/.test(code), '返品の伝票を消耗品へ移す＝マイナスの金額（Codex#4）');
+  ok(/if \(!skSups_\.length && !skSupAuto_ && n\) skSups_\.push\(\{ v: '', a: String\(n\), src: 'app' \}\);/.test(code) && /if \(b\.id === 'sk_supadd'\) \{ skSupCarry_\(\);/.test(code), '手で入れてあった消耗品金額は、行を足すときに1行目として引き継ぐ（Codex#5）');
+  ok(/skSupApply_\(\);   \/\/ ★2026-11-27 消耗品の内訳があれば、提出の直前に合計を入れ直す/.test(code), '提出の直前に、内訳の合計を消耗品金額へ入れ直す（Codex#6）');
+  ok(/const want = skSlips_\.map\(x => ds\.has\(skSlipKey_\(x\)\) \? '1' : '0'\)\.join\(''\);/.test(code), '二重入力の印＝行ごとの状態が変わったら描き直す（数だけで比べない・Codex#7）');
+  // 消耗品だけを出した日を開き直す＝内訳として扱い、同じ日の別の写真は「足す」の候補へ（仕入に並べ直さない・Codex#3）
+  run(() => { setLS('manager', S, 'ja'); localStorage.setItem('yosakura_theme', 'pb'); localStorage.setItem('yosakura_sk_edit', S + '||' + dk);
+    localStorage.setItem('yosakura_demo_reports', JSON.stringify([dr('西原商会', 3294, 'PHOTO_SUP_A1', now - 3000), dr('アスクル', 8268, 'PHOTO_SUP_B2', now - 2000)]));
+    localStorage.setItem('yosakura_demo_soukatsu', JSON.stringify([{ store:S, date: dk, sales: 1000, tipt: '0', supply: '8268', sups: [{ v:'アスクル', a:'8268', photo:'PHOTO_SUP_B2', src:'ocr' }], t: now - 1000 }])); });
+  location.hash = '#/app/soukatsu?x=sup4';
+  hh = registry.app.innerHTML;
+  ok((box().match(/data-slip="/g) || []).length === 0 && (box().match(/data-scand="/g) || []).length === 1 && (sbox().match(/data-sup="/g) || []).length === 1 && doc.getElementById('sk_supply').value === '8268' && !doc.getElementById('sk_buy_food').value, '消耗品だけを出した日＝西原商会の写真は候補に1枚（仕入に勝手に入らない）・消耗品 8268 はそのまま');
 }
 console.log(`\nRESULT: ${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);
