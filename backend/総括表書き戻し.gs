@@ -469,6 +469,23 @@ var SKWB_SLIP_ROWS = [
   { v: 'リカーマウンテン', re: /リカー|リカマン/ },
   { v: '日本食研',     re: /日本食研/ }
 ];
+/* ★2026-11-27 広島店（神田さん「進めて」）＝店が総括表の仕入台帳へ手で打ち直さなくて済むように、名前の合わない仕入先も書く。
+   調べた結果（11月）＝書けていたのは西原商会とフレッシュ青果だけ。大和屋（お酒）・オノウエ水産（いくら）・「その他」は行が見つからず、店が仕入台帳に直接打っていた。
+   広げる中身（対象の店・開始日以降の日付だけ。ほかの店・それより前の日付は今までどおり）：
+   ①酒屋（大和屋・大洋商事）＝名畑と同じく 10%→お酒の行・8%→お酒以外の行。店の名前の行が無ければ「●●（酒10％）」「●●（酒以外8％）」の行
+   ②行の名前が仕入先の名前の一部（行「オノウエ」←「オノウエ水産（いくら）」）なら、その行
+   ③それでも行の無い仕入先（その他・ローソンなど）＝まとめて1つの「(予備)」の行へ（行の名前は式なので書き換えない）
+   開始日を切る理由＝それより前の日は店が仕入台帳の別の列に手で打っている。遡って(予備)へ書くと二重に数えてしまう。
+   設定（Script Properties）＝SKWB_WIDE_STORES（JSONの配列）・SKWB_WIDE_SINCE（YYYY-MM-DD） */
+var SKWB_WIDE_STORES_DEFAULT = ['和牛世桜 広島店'];
+var SKWB_WIDE_SINCE_DEFAULT = '2026-11-28';
+var SKWB_WIDE_ALC_RE = /大和屋|大洋商事/;
+var SKWB_WIDE_REST = 'その他（まとめ）';
+function skwb_slips_wide_(store, date) {
+  var st = SKWB_WIDE_STORES_DEFAULT;
+  try { var raw = getSetting_('SKWB_WIDE_STORES', ''); if (raw) { var a = JSON.parse(String(raw)); if (Array.isArray(a)) st = a; } } catch (err) {}
+  return st.indexOf(store) !== -1 && String(date) >= String(getSetting_('SKWB_WIDE_SINCE', SKWB_WIDE_SINCE_DEFAULT));
+}
 function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果, 記録, 書き込む) {
   var norm = function (v) { return String(v == null ? '' : v).normalize('NFKC').replace(/[\s　]/g, ''); };
   /* ブロックを探す＝「仕入れ内訳」の見出しの行のあと、「フード」（左）と「ドリンク」（右）の見出しの行 */
@@ -492,6 +509,7 @@ function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果,
   }
   var food = blocks.filter(function (b) { return b.kind === 'フード'; })[0], drink = blocks.filter(function (b) { return b.kind === 'ドリンク'; })[0];
   if (!food) { 結果.止めた.push(store + ' ' + book.name + '：仕入れ内訳の「フード」の欄が見つからない'); return; }
+  var wide = skwb_slips_wide_(store, e.date);
   /* 仕入先ごとに合計（名畑だけ 8%／10% を分ける） */
   var sum = {}; var order = [];
   var add = function (k, v) { if (!v) return; if (sum[k] == null) { sum[k] = 0; order.push(k); } sum[k] += v; };
@@ -501,26 +519,50 @@ function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果,
     if (!v || (!a8 && !a10)) return;
     if (/^本部/.test(v)) { var why = store + ' ' + e.date + '：本部請求は仕入れ内訳に行が無いので書かない（' + (a8 + a10) + '円）'; if (結果.止めた.indexOf(why) === -1) 結果.止めた.push(why); return; }
     if (/名畑/.test(v)) { add('名畑|10', a10); add('名畑|8', a8); return; }
+    if (wide && SKWB_WIDE_ALC_RE.test(v)) { add(v + '|10', a10); add(v + '|8', a8); return; }   // ★2026-11-27 広島＝大和屋など
     add(v, a8 + a10);
   });
+  /* 名前の合う行（フード）＝今までの決まり＋（wide のとき）行の名前が仕入先の名前の一部 */
+  var namedRow = function (k, used0) {
+    var m = SKWB_SLIP_ROWS.filter(function (x) { return x.v === k; })[0];
+    var reK = m ? m.re : new RegExp(k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    var hit = -1;
+    food.rows.forEach(function (r4) { if (hit >= 0 || (used0 && used0[r4])) return; if (reK.test(norm(vals[r4][food.col]))) hit = r4; });
+    if (hit < 0 && wide) {
+      var nk = norm(k);
+      food.rows.forEach(function (r4) { if (hit >= 0 || (used0 && used0[r4])) return; var lab = norm(vals[r4][food.col]).replace(/\(.*?\)/g, ''); if (lab.length >= 2 && !/予備|現金|送料|合計/.test(lab) && nk.indexOf(lab) !== -1) hit = r4; });
+    }
+    return hit;
+  };
+  if (wide) {   // 行の無い仕入先を1つにまとめる（(予備)の行は1つしか無い店がある）
+    var order2 = [], rest = 0;
+    order.forEach(function (k) { if (/\|(10|8)$/.test(k) || namedRow(k, null) >= 0) { order2.push(k); return; } rest += sum[k]; });
+    if (rest) { sum[SKWB_WIDE_REST] = rest; order2.push(SKWB_WIDE_REST); }
+    order = order2;
+  }
   var used = {};
   order.forEach(function (k) {
     var want = Math.round(sum[k]); if (!want) return;
     var rr = -1, cc = -1, labelFix = null, blk = food;
-    if (/^名畑\|/.test(k)) {
+    var alcM = /^(.+)\|(10|8)$/.exec(k);
+    if (alcM) {
       if (!drink) { 結果.止めた.push(store + ' ' + book.name + '：仕入れ内訳の「ドリンク」の欄が見つからない'); return; }
       blk = drink; var ten = /\|10$/.test(k);
-      drink.rows.forEach(function (r4) { if (rr >= 0) return; var lab = norm(vals[r4][drink.col]); if (/名畑/.test(lab) && (ten ? /酒10/.test(lab) : /(酒以外|8)/.test(lab))) rr = r4; });
+      var alcName = norm(alcM[1]);
+      drink.rows.forEach(function (r4) { if (rr >= 0 || used['d' + r4]) return; var lab = norm(vals[r4][drink.col]); if (lab.indexOf(alcName) !== -1 && (ten ? /酒10/.test(lab) : /(酒以外|8)/.test(lab))) rr = r4; });
+      if (rr < 0 && wide) drink.rows.forEach(function (r4) { if (rr >= 0 || used['d' + r4]) return; var lab = norm(vals[r4][drink.col]); if (/^●●/.test(lab) && (ten ? /酒10/.test(lab) : /(酒以外|8)/.test(lab))) rr = r4; });   // 店の名前の行が無い＝「●●（酒10％）」の行
     } else {
-      var m = SKWB_SLIP_ROWS.filter(function (x) { return x.v === k; })[0];
-      var reK = m ? m.re : new RegExp(k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-      food.rows.forEach(function (r4) { if (rr >= 0 || used[r4]) return; if (reK.test(norm(vals[r4][food.col]))) rr = r4; });
-      if (rr < 0) {   // 名前の合う行が無い＝空いている(予備)の行
+      if (k !== SKWB_WIDE_REST) rr = namedRow(k, used);
+      if (rr < 0 && wide) {   // ★2026-11-27 広島＝(予備)の行へ金額だけ（行の名前は式なので書き換えない）。空いている行か、前回こちらが書いた値のままの行
+        food.rows.forEach(function (r4) { if (rr >= 0 || used[r4]) return; var lab = norm(vals[r4][food.col]); if (!/^\(予備\)$/.test(lab)) return;
+          var cur4 = vals[r4][food.amt], key4 = book.name + '|' + day + '|' + skwb_a1_(r4, food.amt);
+          if (cur4 === '' || cur4 == null || skwb_num_(cur4) === want || (前回[key4] != null && skwb_num_(前回[key4]) === skwb_num_(cur4))) rr = r4; });
+      } else if (rr < 0) {   // 名前の合う行が無い＝空いている(予備)の行
         food.rows.forEach(function (r4) { if (rr >= 0 || used[r4]) return; var lab = norm(vals[r4][food.col]); if (/^\(予備\)$/.test(lab) && (vals[r4][food.amt] === '' || vals[r4][food.amt] == null) && !fmls[r4][food.col]) { rr = r4; labelFix = k; } });
       }
     }
     if (rr < 0) { var why2 = store + ' ' + e.date + '：仕入れ内訳に「' + k.replace('|', ' ') + '」の行も空いている(予備)の行も無い（' + want + '円）'; if (結果.止めた.indexOf(why2) === -1) 結果.止めた.push(why2); return; }
-    used[rr] = 1; cc = blk.amt;
+    used[(blk === drink ? 'd' : '') + rr] = 1; cc = blk.amt;   // フードとドリンクは同じ行番号に並ぶので、印を分ける
     var a1 = skwb_a1_(rr, cc); var cur = vals[rr][cc]; var key = book.name + '|' + day + '|' + a1;
     var itemName = '仕入 ' + k.replace('|10', '（酒10%）').replace('|8', '（酒以外8%）');
     var row = { 店舗: store, 日付: e.date, 項目: itemName, セル: day + '!' + a1, いま: cur === '' ? '（空欄）' : cur, 書く値: want, 出どころ: 'アプリ日報（納品書）' };
