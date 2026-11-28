@@ -269,7 +269,7 @@ function nouhin_parse_(text) {
   var conf = 'high';
   /* ★2026-11-15 谷口さん（広島）＝フレッシュ青果の簡易版は「合計 ¥795（税抜）」で、消費税の行が無い。
      本文に「税抜」があり、税込・消費税・税額の文字がどこにも無ければ、印字の合計は税抜＝税を足す */
-  var exclNoTax0 = /([（(]税抜[)）]|税抜合計|合計[（(]?税抜)/.test(flatKey) && !/(消費税|消費稅|消费税|消费稅|税額|稅額|内税|内稅|税込|稅込)/.test(flat);   // 「（税抜）」の形だけ・税の字は旧字体も見る（Codex#3）
+  var exclNoTax0 = /([（(]税抜[)）]|税抜合計|税抜金額合計|合計[（(]?税抜)/.test(flatKey) && !/(消費税|消費稅|消费税|消费稅|税額|稅額|内税|内稅|税込|稅込)/.test(flat);   // 「（税抜）」の形だけ・税の字は旧字体も見る（Codex#3）
   if (gotRate) {
     /* 税額の行は誤読しやすい（「76」が「476」）＝税率×対象額から大きく外れていたら計算値に置き換える */
     [8, 10].forEach(function (r) {
@@ -312,7 +312,7 @@ function nouhin_parse_(text) {
     /* 合計だけ＝仕入先が分かっていれば、その仕入先の既定（税抜→税込に直す／税込のまま）で 8% か 10% に入れる */
     if (vendor) {
       var rate = (vendor.k8 === 'food' || vendor.k8 === 'drink') ? 8 : 10;
-      if (/^(名畑|リカーマウンテン|大和屋)$/.test(vendor.name)) rate = 10;       // 酒屋＝金額の大半はお酒
+      if (/^(名畑|リカーマウンテン|大和屋|カクヤス)$/.test(vendor.name)) rate = 10;       // 酒屋＝金額の大半はお酒
       var g2 = ((vendor.total === 'excl' && !out.totalPrinted) || exclNoTax0) ? out.total + Math.floor(out.total * rate / 100) : out.total;   // 印字の合計＝そのまま（西原「合 4,900」に8%を足していた・2026-10-15）
       out[rate === 8 ? 'a8' : 'a10'] = g2; out.total = g2;
       conf = out.totalGuess ? 'low' : 'high';
