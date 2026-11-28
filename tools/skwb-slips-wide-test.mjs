@@ -44,4 +44,17 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
 // ⑤ ●●の行に店が別の数字を入れている＝ずれ（上書きしない）
 { const { got } = run('2026-11-28', S, (vals) => { vals[39 + 1][17] = 5000; });
   ok(/^ずれ:3333@R41/.test(got['仕入 大和屋（酒10%）'] || ''), 'お酒の行に店の数字があれば「ずれ」で残す（' + got['仕入 大和屋（酒10%）'] + '）'); }
+// ⑥ 浅草橋（2026-11-28）＝11月の日別タブの実物の並び。カクヤス・フレッシュエージェントは行が無い＝まとめて(予備)へ・11月の頭から
+{ const A = '日本鰻世桜 浅草橋店';
+  const go = (date) => { const { ctx, vals, fmls, notes } = mk();
+    ['西原(フード)', 'ヤスイ', 'ナオト水産', 'Utec 鰻', 'オノウエ', 'Aﾌﾟﾗｲｽ', 'メイヨウ', '魚伸', 'Amazon', '玉出', 'ガッツ橋本', '(予備)', '(予備)', '(予備)', '(予備)', '送料10%', '現金'].forEach((l, i) => { vals[40 + i][1] = l; });
+    ['名畑（酒10％）', '名畑（酒以外8％）', 'ZEST（世桜梅酒10％）', '現金（酒10％）', '現金（酒以外8％）', '(予備)10％'].forEach((l, i) => { vals[40 + i][11] = l; });
+    const 結果 = { 書く: 0, 書き直す: 0, 同じ: 0, ずれ: 0, 止めた: [], 一覧: [] };
+    const sl = [{ v: '西原商会', a8: '1000' }, { v: 'フレッシュエージェント', a8: '500' }, { v: 'オノウエ', a8: '3024' }, { v: 'カクヤス', a8: '145', a10: '4950' }];
+    ctx.skwb_slips_({ store: A, date, app: { slips: sl } }, vals, fmls, notes, null, { name: 'book' }, Number(date.slice(8)), A, {}, 結果, [], false);
+    return { got: Object.fromEntries(結果.一覧.map(r => [r.項目, r.結果.split('（')[0] + ':' + r.書く値 + '@' + r.セル.split('!')[1]])), 止めた: 結果.止めた }; };
+  const a = go('2026-11-05');
+  ok(a.got['仕入 西原商会'] === '書く:1000@G41' && a.got['仕入 オノウエ'] === '書く:3024@G45' && a.got['仕入 その他（まとめ）'] === '書く:5595@G52' && Object.keys(a.got).length === 3 && a.止めた.length === 0, '浅草橋 11/5＝西原・オノウエは名前の行、カクヤス＋フレッシュエージェントは(予備)へまとめる・落とさない（' + JSON.stringify(a.got) + ' / ' + a.止めた.join('／') + '）');
+  const b = go('2026-10-31');
+  ok(Object.keys(b.got).length === 2 && !b.got['仕入 その他（まとめ）'], '浅草橋 10/31（開始日より前）＝今までどおり（' + Object.keys(b.got).join('・') + '）'); }
 console.log(`RESULT: ${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

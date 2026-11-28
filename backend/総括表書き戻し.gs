@@ -479,9 +479,14 @@ var SKWB_SLIP_ROWS = [
    設定（Script Properties）＝SKWB_WIDE_STORES（JSONの配列）・SKWB_WIDE_SINCE（YYYY-MM-DD） */
 var SKWB_WIDE_STORES_DEFAULT = ['和牛世桜 広島店'];
 var SKWB_WIDE_SINCE_DEFAULT = '2026-11-28';
-var SKWB_WIDE_ALC_RE = /大和屋|大洋商事/;
+/* ★2026-11-28 浅草橋（神田さん「対応してください」）＝仕入先が カクヤス・フレッシュエージェント など、総括表の内訳に行の無い所ばかり。日別タブの行の名前は式（仕入台帳の見出し）なので、
+   今までの決まりでは「止めた」になり、総括表にも PL にも届かない。11月は店が仕入を1件も入れていない（総括表が全部0）＝月の頭から広げても二重に数えない。
+   店ごとの開始日＝ここに書いた店は、SKWB_WIDE_STORES の設定に関係なく広げる */
+var SKWB_WIDE_SINCE_BY_STORE = { '日本鰻世桜 浅草橋店': '2026-11-01' };
+var SKWB_WIDE_ALC_RE = /大和屋|大洋商事|カクヤス/;
 var SKWB_WIDE_REST = 'その他（まとめ）';
 function skwb_slips_wide_(store, date) {
+  if (SKWB_WIDE_SINCE_BY_STORE[store]) return String(date) >= SKWB_WIDE_SINCE_BY_STORE[store];
   var st = SKWB_WIDE_STORES_DEFAULT;
   try { var raw = getSetting_('SKWB_WIDE_STORES', ''); if (raw) { var a = JSON.parse(String(raw)); if (Array.isArray(a)) st = a; } } catch (err) {}
   return st.indexOf(store) !== -1 && String(date) >= String(getSetting_('SKWB_WIDE_SINCE', SKWB_WIDE_SINCE_DEFAULT));
@@ -534,9 +539,19 @@ function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果,
     }
     return hit;
   };
+  /* お酒の行（ドリンク）＝仕入先の名前の入った「（酒10％）」「（酒以外8％）」の行。無ければ（wide のとき）「●●（酒10％）」の行 */
+  var alcRow = function (k, used0) {
+    if (!drink) return -1;
+    var am = /^(.+)\|(10|8)$/.exec(k), ten = am[2] === '10', alcName = norm(am[1]), rr0 = -1;
+    drink.rows.forEach(function (r4) { if (rr0 >= 0 || (used0 && used0['d' + r4])) return; var lab = norm(vals[r4][drink.col]); if (lab.indexOf(alcName) !== -1 && (ten ? /酒10/.test(lab) : /(酒以外|8)/.test(lab))) rr0 = r4; });
+    if (rr0 < 0 && wide) drink.rows.forEach(function (r4) { if (rr0 >= 0 || (used0 && used0['d' + r4])) return; var lab = norm(vals[r4][drink.col]); if (/^●●/.test(lab) && (ten ? /酒10/.test(lab) : /(酒以外|8)/.test(lab))) rr0 = r4; });   // 店の名前の行が無い＝「●●（酒10％）」の行
+    return rr0;
+  };
   if (wide) {   // 行の無い仕入先を1つにまとめる（(予備)の行は1つしか無い店がある）
     var order2 = [], rest = 0;
-    order.forEach(function (k) { if (/\|(10|8)$/.test(k) || namedRow(k, null) >= 0) { order2.push(k); return; } rest += sum[k]; });
+    order.forEach(function (k) {
+      if (/\|(10|8)$/.test(k)) { if (/^名畑\|/.test(k) || alcRow(k, null) >= 0) { order2.push(k); return; } rest += sum[k]; return; }   // ★2026-11-28 お酒の行が無い酒屋（浅草橋のカクヤス）＝落とさず「その他（まとめ）」へ（合計は総括表・PL に届く。フードとドリンクの内訳は、行ができるまで分かれない）
+      if (namedRow(k, null) >= 0) { order2.push(k); return; } rest += sum[k]; });
     if (rest) { sum[SKWB_WIDE_REST] = rest; order2.push(SKWB_WIDE_REST); }
     order = order2;
   }
@@ -548,9 +563,7 @@ function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果,
     if (alcM) {
       if (!drink) { 結果.止めた.push(store + ' ' + book.name + '：仕入れ内訳の「ドリンク」の欄が見つからない'); return; }
       blk = drink; var ten = /\|10$/.test(k);
-      var alcName = norm(alcM[1]);
-      drink.rows.forEach(function (r4) { if (rr >= 0 || used['d' + r4]) return; var lab = norm(vals[r4][drink.col]); if (lab.indexOf(alcName) !== -1 && (ten ? /酒10/.test(lab) : /(酒以外|8)/.test(lab))) rr = r4; });
-      if (rr < 0 && wide) drink.rows.forEach(function (r4) { if (rr >= 0 || used['d' + r4]) return; var lab = norm(vals[r4][drink.col]); if (/^●●/.test(lab) && (ten ? /酒10/.test(lab) : /(酒以外|8)/.test(lab))) rr = r4; });   // 店の名前の行が無い＝「●●（酒10％）」の行
+      rr = alcRow(k, used);
     } else {
       if (k !== SKWB_WIDE_REST) rr = namedRow(k, used);
       if (rr < 0 && wide) {   // ★2026-11-27 広島＝(予備)の行へ金額だけ（行の名前は式なので書き換えない）。空いている行か、前回こちらが書いた値のままの行

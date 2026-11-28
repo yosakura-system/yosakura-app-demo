@@ -7262,7 +7262,7 @@ console.log('== 2026-10-20 原さん（心斎橋）＝納品書の仕入先を�
   ok(/'寿司': \['西原商会', '名畑', '中央メディカル', 'ヤスイ', 'ナオト水産', 'おのうえ'/.test(code), '寿司世桜の仕入先＝12-18 発注リストの業者');
   ok(/const opts = nouhinVendorsFor_\(visibleStores\(\)\[0\] \|\| ''\)\.slice\(\)/.test(code), 'プルダウンは店の業態の一覧を使う');
   ok(/'日本料理': \['西原商会', 'フレッシュ青果', '銘洋', '魚伸', 'ヤスイ水産', 'ナオト水産', '名畑'/.test(code), '本店（日本料理）の仕入先＝従来の一覧＋ヤスイ水産・ナオト水産（ユンさん 11/11）');
-  ok(/NOUHIN_ALC_VENDORS = \['名畑', 'リカーマウンテン', '大洋商事', '大和屋'\]/.test(code) && /'リカーマウンテン', '大和屋', /.test(code), '大洋商事（梅酒）・大和屋（広島の酒屋・11/15 谷口さん）は酒屋扱い・大和屋は仕入先の一覧にもある');
+  ok(/NOUHIN_ALC_VENDORS = \['名畑', 'リカーマウンテン', '大洋商事', '大和屋', 'カクヤス'\]/.test(code) && /'リカーマウンテン', '大和屋', /.test(code), '大洋商事（梅酒）・大和屋（広島の酒屋・11/15 谷口さん）は酒屋扱い・大和屋は仕入先の一覧にもある');
 }
 
 console.log('== 2026-10-20 原さん（心斎橋）＝「納品書を撮る」の先が納品書の写真の画面になる（オープン写真に戻らない） ==');
@@ -8950,7 +8950,7 @@ console.log('== 2026-11-24 端末の控えを圧縮して置く（神田さん�
   const pick = (k) => { const i = code.indexOf("'" + k + "': ["); return i < 0 ? '' : code.slice(i, code.indexOf(']', i)); };
   const w = pick('和牛'), jp = pick('日本料理');
   ok(!!w && ['名畑', 'リカーマウンテン', '日本食研', 'オーディエー', 'イオン'].every(v => w.indexOf("'" + v + "'") < 0) && ['オノウエ水産（いくら）', 'Amazon', 'アスクル', '西原商会', '大和屋', '本部', 'その他'].every(v => w.indexOf("'" + v + "'") >= 0), '仕入先一覧＝和牛世桜（広島店）は 名畑・リカーマウンテン・日本食研・オーディエー・イオン が無く、オノウエ水産（いくら）・Amazon・アスクル がある');
-  ok(jp.indexOf("'名畑'") >= 0 && jp.indexOf("'イオン'") >= 0 && code.indexOf('const nouhinVendorsFor_ = (store) => NOUHIN_VENDORS_BY_FORMAT[zkFormatOf_(store)] || NOUHIN_VENDORS;') >= 0, '仕入先一覧＝日本料理（本店）の一覧は変えていない・店の業態で一覧を選ぶ');
+  ok(jp.indexOf("'名畑'") >= 0 && jp.indexOf("'イオン'") >= 0 && code.indexOf('const nouhinVendorsFor_ = (store) => NOUHIN_VENDORS_BY_STORE[store] || NOUHIN_VENDORS_BY_FORMAT[zkFormatOf_(store)] || NOUHIN_VENDORS;') >= 0 && /NOUHIN_VENDORS_BY_STORE = \{ '日本鰻世桜 浅草橋店': \['西原商会', 'フレッシュエージェント', 'オノウエ', 'カクヤス', '本部', 'その他'\] \}/.test(code), '仕入先一覧＝日本料理（本店）の一覧は変えていない・店の業態で一覧を選ぶ');
 }
 console.log('== 2026-11-27 消耗品は「この日の納品書」の中で入れる（仕入に入れない・消耗品金額へ自動） ==');
 {
