@@ -485,6 +485,13 @@ var SKWB_WIDE_SINCE_DEFAULT = '2026-11-28';
 var SKWB_WIDE_SINCE_BY_STORE = { '日本鰻世桜 浅草橋店': '2026-11-01' };
 var SKWB_WIDE_ALC_RE = /大和屋|大洋商事|カクヤス/;
 var SKWB_WIDE_REST = 'その他（まとめ）';
+/* ★2026-11-28 本部から仕入れる分（増田さん 11:57「基本的に店舗で入力する形を想定。納品書をもとに金額を価格表から入れてもらう」）。
+   今までは全店「本部請求は行が無いので書かない」＝店が入れても総括表・PL に届かなかった。ここに書いた店だけ、総括表の行へ書く（開始日は SKWB_WIDE_SINCE_BY_STORE）。
+   仕入先の名前（アプリの選択肢）→ 行：鰻・タレ→「Utec 鰻」／和牛→「メイヨウ」（銘洋→世桜→店舗）／梅酒の10%→ドリンクの「ZEST（世桜梅酒10％）」。
+   名前が「本部」だけ（写真から読んだまま）の伝票は品目が分からない＝落とさず「その他（まとめ）」へ。ほかの店は今までどおり書かない（店や本部が手で入れている分と二重にしないため） */
+var SKWB_HQ_STORES = ['日本鰻世桜 浅草橋店'];
+var SKWB_HQ_REST_KEY = '本部（品目不明）';
+function skwb_hq_key_(v) { if (/和牛/.test(v)) return '銘洋'; if (/鰻|うなぎ|タレ|たれ/.test(v)) return 'Utec'; if (/梅酒/.test(v)) return 'ZEST'; return ''; }
 function skwb_slips_wide_(store, date) {
   if (SKWB_WIDE_SINCE_BY_STORE[store]) return String(date) >= SKWB_WIDE_SINCE_BY_STORE[store];
   var st = SKWB_WIDE_STORES_DEFAULT;
@@ -522,6 +529,13 @@ function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果,
     var v = String(x.v || '').trim(); var sg = (x.ret === true || x.ret === 1 || x.ret === '1') ? -1 : 1;   // ★返品伝票＝引く（2026-10-15）
     var a8 = (skwb_num_(x.a8) || 0) * sg, a10 = (skwb_num_(x.a10) || 0) * sg;
     if (!v || (!a8 && !a10)) return;
+    if (/^本部/.test(v) && wide && SKWB_HQ_STORES.indexOf(store) !== -1) {   // ★2026-11-28 浅草橋＝本部の分も書く
+      var hk = skwb_hq_key_(v);
+      if (hk === 'ZEST') { add('ZEST|10', a10); add(SKWB_HQ_REST_KEY, a8); }
+      else if (hk) add(hk, a8 + a10);
+      else add(SKWB_HQ_REST_KEY, a8 + a10);
+      return;
+    }
     if (/^本部/.test(v)) { var why = store + ' ' + e.date + '：本部請求は仕入れ内訳に行が無いので書かない（' + (a8 + a10) + '円）'; if (結果.止めた.indexOf(why) === -1) 結果.止めた.push(why); return; }
     if (/名畑/.test(v)) { add('名畑|10', a10); add('名畑|8', a8); return; }
     if (wide && SKWB_WIDE_ALC_RE.test(v)) { add(v + '|10', a10); add(v + '|8', a8); return; }   // ★2026-11-27 広島＝大和屋など
@@ -555,7 +569,7 @@ function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果,
     if (rest) { sum[SKWB_WIDE_REST] = rest; order2.push(SKWB_WIDE_REST); }
     order = order2;
   }
-  var used = {};
+  var used = {}; var touched = {};   // touched＝今回の集計で行き先になったセル（下の「前の金額を0に戻す」で使う）
   order.forEach(function (k) {
     var want = Math.round(sum[k]); if (!want) return;
     var rr = -1, cc = -1, labelFix = null, blk = food;
@@ -576,7 +590,7 @@ function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果,
     }
     if (rr < 0) { var why2 = store + ' ' + e.date + '：仕入れ内訳に「' + k.replace('|', ' ') + '」の行も空いている(予備)の行も無い（' + want + '円）'; if (結果.止めた.indexOf(why2) === -1) 結果.止めた.push(why2); return; }
     used[(blk === drink ? 'd' : '') + rr] = 1; cc = blk.amt;   // フードとドリンクは同じ行番号に並ぶので、印を分ける
-    var a1 = skwb_a1_(rr, cc); var cur = vals[rr][cc]; var key = book.name + '|' + day + '|' + a1;
+    var a1 = skwb_a1_(rr, cc); var cur = vals[rr][cc]; var key = book.name + '|' + day + '|' + a1; touched[a1] = 1;
     var itemName = '仕入 ' + k.replace('|10', '（酒10%）').replace('|8', '（酒以外8%）');
     var row = { 店舗: store, 日付: e.date, 項目: itemName, セル: day + '!' + a1, いま: cur === '' ? '（空欄）' : cur, 書く値: want, 出どころ: 'アプリ日報（納品書）' };
     if (fmls[rr][cc]) { row.結果 = '式なので書かない'; 結果.一覧.push(row); return; }
@@ -592,6 +606,19 @@ function skwb_slips_(e, vals, fmls, notes, sh, book, day, store, 前回, 結果,
       if (String(notes[rr][cc] || '') !== txt) sh.getRange(rr + 1, cc + 1).setNote(txt);
     }
     if (書き込む) 記録.push([new Date(), store, e.date, itemName, book.name, String(day), a1, cur, want, 済, 'アプリ日報（納品書）']);
+  });  /* ★2026-11-28（Codexレビュー）前の金額を0に戻す＝前回こちらが書いたセルのうち、今回の集計で行き先にならなかったもの。
+     起きる場面＝①全額返品で合計が0になった ②仕入先を選び直して行き先の行が変わった（前の行に金額が残り、二重に数えていた）。
+     店が手で直した値（前回こちらが書いた値と違う）には触らない。空欄にせず 0 を書く（自動で書いた所は 0・空欄は未処理の印という決まり） */
+  [food, drink].forEach(function (blk2) {
+    if (!blk2) return;
+    blk2.rows.forEach(function (r5) {
+      var a5 = skwb_a1_(r5, blk2.amt); if (touched[a5] || fmls[r5][blk2.amt]) return;
+      var cur5 = vals[r5][blk2.amt], key5 = book.name + '|' + day + '|' + a5;
+      if (cur5 === '' || cur5 == null || !skwb_num_(cur5) || 前回[key5] == null || skwb_num_(前回[key5]) !== skwb_num_(cur5)) return;
+      var name5 = '仕入 ' + String(vals[r5][blk2.col] || '').replace(/[\s　]/g, '') + '（前の金額を0に戻す）';
+      結果.書き直す++; 結果.一覧.push({ 店舗: store, 日付: e.date, 項目: name5, セル: day + '!' + a5, いま: cur5, 書く値: 0, 出どころ: 'アプリ日報（納品書）', 結果: '書き直す' });
+      if (書き込む) { sh.getRange(r5 + 1, blk2.amt + 1).setValue(0); 記録.push([new Date(), store, e.date, name5, book.name, String(day), a5, cur5, 0, '書き直した', 'アプリ日報（納品書）']); }
+    });
   });
 }
 /* 消耗品金額（アプリの日報）→ ＜消耗品内訳＞の行へ。品目「消耗品（アプリ日報）」＋金額（税込）。
