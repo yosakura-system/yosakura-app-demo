@@ -3620,6 +3620,17 @@
   };
   /* ★2026-11-28 浅草橋（土橋さんの商品リスト 11/5・11/28）＝仕入先が大阪の店と違う（西原商会・フレッシュエージェント・オノウエ・カクヤス）。同じ業態のほかの店は変えない＝店ごとの一覧を先に見る */
   const NOUHIN_VENDORS_BY_STORE = { '日本鰻世桜 浅草橋店': ['西原商会', 'フレッシュエージェント', 'オノウエ', 'カクヤス', '本部（鰻・タレ）', '本部（和牛）', '本部（梅酒）', '送料', 'その他'] };   /* 本部を3つに分けた＝11/28 増田さん「本部から仕入れる分も店舗で入力する想定」→ 総括表の行（Utec 鰻／メイヨウ／ZEST）へ書き分けるため。名前が「本部」で始まるので 8%＝食材・10%＝お酒 の扱いは今までどおり */   /* 送料＝11/28 増田さん「送料も原価に含める」・山盛さん「内訳は分けて管理」→ 総括表の「送料10%」の行へ入る（食材の行と混ぜない） */
+  /* ★2026-11-28 増田さん「鰻と和牛は、ケースとかキロ入れたら金額反映されるのがいいかも」＝本部から仕入れる分は、数量を入れると金額（税込）が入る。
+     単価＝その店の総括表【本部請求一覧】の税込目安（増田さん「単価は総括表に載せた額が正しい」）。[品名, 単位, 税込単価, 税率]。
+     数量は金額を出すための補助＝保存・集計・総括表へ行くのは今までどおり金額（a8・a10）だけ。金額の欄は手で直せる */
+  const NOUHIN_HQ_ITEMS_BY_STORE = { '日本鰻世桜 浅草橋店': {
+    '本部（鰻・タレ）': [['鰻', 'ケース', 39960, 8], ['ハラール鰻', 'ケース', 43200, 8], ['蒲焼タレ 関西風', 'ケース', 6804, 8], ['蒲焼タレ 関東風', 'ケース', 6642, 8]],
+    '本部（和牛）': [['和牛サーロイン', 'kg', 8964, 8]],
+    '本部（梅酒）': [['世桜梅酒 1.8L 6本入り', 'ケース', 29370, 10]] } };
+  const nouhinHqItems_ = (store, v) => (NOUHIN_HQ_ITEMS_BY_STORE[store] || {})[v] || null;
+  const nouhinHqQty_ = (x) => { const n = Number(String(x == null ? '' : x).replace(/[,，\s]/g, '')); return isFinite(n) && n > 0 ? n : 0; };
+  /* 数量 → 金額（税率ごと・円未満は四捨五入）。数量が1つも無ければ null＝金額の欄に触らない */
+  const nouhinHqSums_ = (items, q) => { let a8 = 0, a10 = 0, any = false; (items || []).forEach((it, j) => { const n = nouhinHqQty_(q && q[j]); if (!n) return; any = true; if (it[3] === 10) a10 += n * it[2]; else a8 += n * it[2]; }); return any ? { a8: Math.round(a8), a10: Math.round(a10) } : null; };
   const nouhinVendorsFor_ = (store) => NOUHIN_VENDORS_BY_STORE[store] || NOUHIN_VENDORS_BY_FORMAT[zkFormatOf_(store)] || NOUHIN_VENDORS;
   const NOUHIN_ALC_VENDORS = ['名畑', 'リカーマウンテン', '大洋商事', '大和屋', 'カクヤス'];   /* カクヤス＝浅草橋の酒屋（11/28） */   // ★2026-11-15 大和屋＝広島の酒屋（谷口さん）      // 酒屋＝8%はお酒以外の飲料・10%はお酒（大洋商事＝梅酒・寿司世桜）
   const NOUHIN_MIX_VENDORS = ['本部', 'イオン', 'ローソン'];     // 8%は食材・10%はお酒（本部請求＝和牛・鰻が8%、梅酒が10%）
@@ -3777,6 +3788,10 @@
         <input type="text" inputmode="numeric" data-s8="${i}" placeholder="${L({ ja:'8%対象（税込）', en:'8% (incl.)', vi:'8% (gồm thuế)' })}" value="${esc(s.a8 || '')}" style="min-width:0">
         <input type="text" inputmode="numeric" data-s10="${i}" placeholder="${L({ ja:'10%対象（税込）', en:'10% (incl.)', vi:'10% (gồm thuế)' })}" value="${esc(s.a10 || '')}" style="min-width:0">
         <button type="button" class="btn-sm" data-sdel="${i}" aria-label="delete">×</button>
+        ${(() => { const its = nouhinHqItems_(visibleStores()[0] || '', s.v); if (!its) return ''; return `<div data-shq="${i}" style="grid-column:1/-1;margin:0 0 4px;padding:8px 10px;background:#f6f1ea;border-radius:8px">
+            <div style="font-size:12px;font-weight:600;margin-bottom:4px">${L({ ja:'数量を入れると、金額が入ります', en:'Enter quantities to fill the amount', vi:'Nhập số lượng để tính tiền' })}</div>
+            ${its.map((it, j) => `<label style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:13px"><span style="flex:1;min-width:0">${esc(it[0])}<span class="muted" style="font-size:11px">　${it[2].toLocaleString()}${L({ ja:'円', en:' yen', vi:' yên' })}／${esc(it[1])}</span></span><input type="text" inputmode="decimal" data-sq="${i}:${j}" value="${esc((s.q && s.q[j]) || '')}" placeholder="0" style="width:84px;min-width:0;text-align:right"><span style="width:44px">${esc(it[1])}</span></label>`).join('')}
+          </div>`; })()}
         ${s.raw ? `<details style="grid-column:1/-1;margin:-2px 0 2px"><summary class="muted" style="font-size:11px;cursor:pointer">${L({ ja:'読み取った文字を見る（数字が違うときの照合用）', en:'Show recognized text', vi:'Xem chữ đã đọc' })}</summary><pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;max-height:160px;overflow:auto;margin:4px 0 0;padding:6px;background:#faf8f4;border-radius:6px">${esc(s.raw)}</pre></details>` : ''}
       </div>`;
   }).join(''); };
@@ -14852,12 +14867,19 @@
           if (d.pa != null) { skSups_[Number(d.pa)].a = e.target.value.trim(); skSupApply_(); }
           else if (d.s8 != null) { skSlips_[Number(d.s8)].a8 = e.target.value.trim(); slipsRefresh(false); }
           else if (d.s10 != null) { skSlips_[Number(d.s10)].a10 = e.target.value.trim(); slipsRefresh(false); }
+          else if (d.sq != null) {   // ★2026-11-28 本部の分＝数量 → 金額（描き直さない＝打っている欄からカーソルを外さない）
+            const ij = String(d.sq).split(':'), sl = skSlips_[Number(ij[0])]; if (!sl) return;
+            sl.q = sl.q || {}; sl.q[Number(ij[1])] = e.target.value.trim();
+            const sm = nouhinHqSums_(nouhinHqItems_(visibleStores()[0] || '', sl.v), sl.q);
+            if (sm) { sl.a8 = sm.a8 ? String(sm.a8) : ''; sl.a10 = sm.a10 ? String(sm.a10) : ''; const i8 = slipBox.querySelector('[data-s8="' + ij[0] + '"]'), i10 = slipBox.querySelector('[data-s10="' + ij[0] + '"]'); if (i8) i8.value = sl.a8; if (i10) i10.value = sl.a10; }
+            slipsRefresh(false);
+          }
         });
         slipBox.addEventListener('change', (e) => {
           const d = e.target.dataset || {};
           if (d.pv != null) { skSups_[Number(d.pv)].v = e.target.value; }
           else if (d.sv != null && skSupIsVendor_(e.target.value)) { const mv = skSlips_.splice(Number(d.sv), 1)[0]; if (mv) { mv.v = e.target.value; skSupCarry_(); skSups_.push(skSupFromSlip_(mv)); } skSupsRender_(); slipsRefresh(true); if (!skSlips_.length) { ['sk_buy_food', 'sk_buy_alc', 'sk_buy_drink', 'sk_buy'].forEach(id => { const el = byId(id); if (el) el.value = ''; }); cumUpd(); } toast(L({ ja:'消耗品に入れました（仕入には入りません）', en:'Moved to supplies (not a purchase)', vi:'Đã chuyển sang vật tư' })); }   // ★2026-11-27 アスクル＝消耗品の並びへ
-          else if (d.sv != null) { skSlips_[Number(d.sv)].v = e.target.value; slipsRefresh(true); }
+          else if (d.sv != null) { skSlips_[Number(d.sv)].v = e.target.value; delete skSlips_[Number(d.sv)].q; slipsRefresh(true); }   // 仕入先を変えたら数量は消す（品目が変わるため）
           else if (d.sret != null) { skSlips_[Number(d.sret)].ret = !!e.target.checked; slipsRefresh(true); }   // ★返品の切り替え（2026-10-15）
           else if (d.s8 != null || d.s10 != null) { const ds = skSlipDupSet_(skSlips_); const want = skSlips_.map(x => ds.has(skSlipKey_(x)) ? '1' : '0').join(''); const now = Array.from(slipBox.querySelectorAll('[data-slip]')).map(r => r.querySelector('[data-sdup]') ? '1' : '0').join(''); if (want !== now) skSlipsRender_(); }   // ★2026-11-26 金額を打ち終えたとき、「同じ仕入先・同じ金額」の印が変わるときだけ描き直す（毎回描き直すと、次の欄へ移るときにカーソルが外れる）
         });
